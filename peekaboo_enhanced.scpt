@@ -497,10 +497,17 @@ on run argv
             end if
         end if
         
-        if argCount < 2 then return my usageText()
+        if argCount < 1 then return my usageText()
         
         set appIdentifier to item 1 of argv
-        set outputPath to item 2 of argv
+        
+        -- Use default tmp path if no output path provided
+        if argCount >= 2 then
+            set outputPath to item 2 of argv
+        else
+            set timestamp to do shell script "date +%Y%m%d_%H%M%S"
+            set outputPath to "/tmp/peekaboo_" & timestamp & ".png"
+        end if
         set captureMode to "screen" -- default
         set multiWindow to false
         
@@ -524,7 +531,7 @@ on run argv
             return my formatErrorMessage("Argument Error", "App identifier cannot be empty." & linefeed & linefeed & my usageText(), "validation")
         end if
         
-        if not my isValidPath(outputPath) then
+        if argCount >= 2 and not my isValidPath(outputPath) then
             return my formatErrorMessage("Argument Error", "Output path must be an absolute path starting with '/'." & linefeed & linefeed & my usageText(), "validation")
         end if
         
@@ -624,13 +631,14 @@ on usageText()
     set outText to outText & "Takes unattended screenshots with multi-window support and app discovery." & LF & LF
     
     set outText to outText & "Usage:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"<app_name_or_bundle_id>\" \"<output_path>\" [options]" & LF
+    set outText to outText & "  osascript " & scriptName & " \"<app_name_or_bundle_id>\" [\"<output_path>\"] [options]" & LF
     set outText to outText & "  osascript " & scriptName & " list" & LF
     set outText to outText & "  osascript " & scriptName & " help" & LF & LF
     
     set outText to outText & "Parameters:" & LF
     set outText to outText & "  app_name_or_bundle_id: Application name (e.g., 'Safari') or bundle ID (e.g., 'com.apple.Safari')" & LF
-    set outText to outText & "  output_path:          Absolute path for screenshot file(s)" & LF & LF
+    set outText to outText & "  output_path:          Optional absolute path for screenshot file(s)" & LF
+    set outText to outText & "                        If not provided, saves to /tmp/peekaboo_TIMESTAMP.png" & LF & LF
     
     set outText to outText & "Options:" & LF
     set outText to outText & "  --window, -w:         Capture frontmost window only" & LF
@@ -645,14 +653,14 @@ on usageText()
     set outText to outText & "Examples:" & LF
     set outText to outText & "  # List running applications:" & LF
     set outText to outText & "  osascript " & scriptName & " list" & LF
-    set outText to outText & "  # Full screen capture:" & LF
+    set outText to outText & "  # Screenshot Safari to /tmp with timestamp:" & LF
+    set outText to outText & "  osascript " & scriptName & " \"Safari\"" & LF
+    set outText to outText & "  # Full screen capture with custom path:" & LF
     set outText to outText & "  osascript " & scriptName & " \"Safari\" \"/Users/username/Desktop/safari.png\"" & LF
     set outText to outText & "  # Front window only:" & LF
     set outText to outText & "  osascript " & scriptName & " \"TextEdit\" \"/tmp/textedit.png\" --window" & LF
     set outText to outText & "  # All windows with descriptive names:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"Safari\" \"/tmp/safari_windows.png\" --multi" & LF
-    set outText to outText & "  # Interactive selection:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"Finder\" \"/tmp/finder.png\" --interactive" & LF & LF
+    set outText to outText & "  osascript " & scriptName & " \"Safari\" \"/tmp/safari_windows.png\" --multi" & LF & LF
     
     set outText to outText & "Multi-Window Features:" & LF
     set outText to outText & "  • --multi creates separate files with descriptive names" & LF

@@ -255,17 +255,24 @@ on run argv
         my logVerbose("Starting Screenshotter v1.0.0")
         
         set argCount to count argv
-        if argCount < 2 then return my usageText()
+        if argCount < 1 then return my usageText()
         
         set appIdentifier to item 1 of argv
-        set outputPath to item 2 of argv
+        
+        -- Use default tmp path if no output path provided
+        if argCount >= 2 then
+            set outputPath to item 2 of argv
+        else
+            set timestamp to do shell script "date +%Y%m%d_%H%M%S"
+            set outputPath to "/tmp/peekaboo_" & timestamp & ".png"
+        end if
         
         -- Validate arguments
         if appIdentifier is "" then
             return my formatErrorMessage("Argument Error", "App identifier cannot be empty." & linefeed & linefeed & my usageText(), "validation")
         end if
         
-        if not my isValidPath(outputPath) then
+        if argCount >= 2 and not my isValidPath(outputPath) then
             return my formatErrorMessage("Argument Error", "Output path must be an absolute path starting with '/'." & linefeed & linefeed & my usageText(), "validation")
         end if
         
@@ -326,14 +333,17 @@ on usageText()
     set outText to outText & "Takes unattended screenshots of applications by name or bundle ID." & LF & LF
     
     set outText to outText & "Usage:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"<app_name_or_bundle_id>\" \"<output_path>\"" & LF & LF
+    set outText to outText & "  osascript " & scriptName & " \"<app_name_or_bundle_id>\" [\"<output_path>\"]" & LF & LF
     
     set outText to outText & "Parameters:" & LF
     set outText to outText & "  app_name_or_bundle_id: Application name (e.g., 'Safari') or bundle ID (e.g., 'com.apple.Safari')" & LF
-    set outText to outText & "  output_path:          Absolute path for screenshot file (e.g., '/Users/name/Desktop/screenshot.png')" & LF & LF
+    set outText to outText & "  output_path:          Optional absolute path for screenshot file" & LF
+    set outText to outText & "                        If not provided, saves to /tmp/peekaboo_TIMESTAMP.png" & LF & LF
     
     set outText to outText & "Examples:" & LF
-    set outText to outText & "  # Screenshot Safari using app name:" & LF
+    set outText to outText & "  # Screenshot Safari to /tmp with timestamp:" & LF
+    set outText to outText & "  osascript " & scriptName & " \"Safari\"" & LF
+    set outText to outText & "  # Screenshot Safari with custom path:" & LF
     set outText to outText & "  osascript " & scriptName & " \"Safari\" \"/Users/username/Desktop/safari_shot.png\"" & LF
     set outText to outText & "  # Screenshot using bundle ID:" & LF
     set outText to outText & "  osascript " & scriptName & " \"com.apple.TextEdit\" \"/tmp/textedit.png\"" & LF

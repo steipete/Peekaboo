@@ -1,8 +1,6 @@
-# 👀 PEEKABOO! 📸
+# Peekaboo—screenshot got you! Now you see it, now it's saved.
 
 ![Peekaboo Banner](assets/banner.png)
-
-## 🎯 **Peekaboo—screenshot got you! Now you see it, now it's saved.**
 
 👀 → 📸 → 💾 — **Unattended screenshot automation that actually works**
 
@@ -21,31 +19,37 @@
 
 ---
 
-## 🎪 **TWO FLAVORS**
+## 🎪 **HOW TO USE**
 
-### 🎯 **Peekaboo Classic** (`peekaboo.scpt`)
-*Simple. Fast. Reliable.*
+### 🎯 **Basic Usage**
+*Simple screenshot capture*
 
 ```bash
-# 👀 One app, one shot
+# 👀 Quick shot to /tmp with timestamp
+osascript peekaboo.scpt "Safari"
+
+# 🎯 Custom output path
 osascript peekaboo.scpt "Safari" "/Users/you/Desktop/safari.png"
 
 # 🎯 Bundle ID targeting  
 osascript peekaboo.scpt "com.apple.TextEdit" "/tmp/textedit.jpg"
 ```
 
-### 🎪 **Peekaboo Pro** (`peekaboo_enhanced.scpt`)
+### 🎪 **Advanced Features**
 *All the power. All the windows. All the time.*
 
 ```bash
 # 🔍 What's running right now?
-osascript peekaboo_enhanced.scpt list
+osascript peekaboo.scpt list
+
+# 👀 Quick shot to /tmp with timestamp
+osascript peekaboo.scpt "Chrome"
 
 # 🎭 Capture ALL windows with smart names
-osascript peekaboo_enhanced.scpt "Chrome" "/tmp/chrome.png" --multi
+osascript peekaboo.scpt "Chrome" "/tmp/chrome.png" --multi
 
 # 🪟 Just the front window  
-osascript peekaboo_enhanced.scpt "TextEdit" "/tmp/textedit.png" --window
+osascript peekaboo.scpt "TextEdit" "/tmp/textedit.png" --window
 ```
 
 ---
@@ -54,13 +58,20 @@ osascript peekaboo_enhanced.scpt "TextEdit" "/tmp/textedit.png" --window
 
 ### 🎯 **Basic Shot**
 ```bash
+# Quick shot with auto-generated filename
+osascript peekaboo.scpt "Finder"
+```
+**Result**: Full screen with Finder in focus → `/tmp/peekaboo_20250522_143052.png`
+
+```bash
+# Custom path
 osascript peekaboo.scpt "Finder" "/Desktop/finder.png"
 ```
 **Result**: Full screen with Finder in focus → `finder.png`
 
 ### 🎭 **Multi-Window Magic**  
 ```bash
-osascript peekaboo_enhanced.scpt "Safari" "/tmp/safari.png" --multi
+osascript peekaboo.scpt "Safari" "/tmp/safari.png" --multi
 ```
 **Result**: Multiple files with smart names:
 - `safari_window_1_GitHub.png`
@@ -69,7 +80,7 @@ osascript peekaboo_enhanced.scpt "Safari" "/tmp/safari.png" --multi
 
 ### 🔍 **App Discovery**
 ```bash
-osascript peekaboo_enhanced.scpt list
+osascript peekaboo.scpt list
 ```
 **Result**: Every running app + window titles. No guessing!
 
@@ -79,7 +90,7 @@ osascript peekaboo_enhanced.scpt list
 
 ### 1️⃣ **Make Executable**
 ```bash
-chmod +x peekaboo.scpt peekaboo_enhanced.scpt
+chmod +x peekaboo.scpt
 ```
 
 ### 2️⃣ **Grant Powers**
@@ -94,7 +105,10 @@ chmod +x peekaboo.scpt peekaboo_enhanced.scpt
 Peekaboo speaks all the languages:
 
 ```bash
-# PNG (default) - crisp and clean
+# PNG (default) - auto-generated in /tmp
+osascript peekaboo.scpt "Safari"
+
+# PNG with custom path
 osascript peekaboo.scpt "Safari" "/tmp/shot.png"
 
 # JPG - smaller files 
@@ -110,7 +124,10 @@ osascript peekaboo.scpt "Safari" "/tmp/shot.pdf"
 
 ### 🎯 **Targeting Options**
 ```bash
-# By name (easy)
+# By name (easy) - auto path
+osascript peekaboo.scpt "Safari"
+
+# By name with custom path
 osascript peekaboo.scpt "Safari" "/tmp/safari.png"
 
 # By bundle ID (precise)
@@ -134,7 +151,7 @@ osascript peekaboo.scpt "Final Cut Pro" "/tmp/finalcut.png"
 
 ### 🔍 **Discovery Mode**
 ```bash
-osascript peekaboo_enhanced.scpt list
+osascript peekaboo.scpt list
 ```
 Shows you:
 - 📱 All running apps
@@ -148,15 +165,23 @@ Shows you:
 
 ### 📊 **Documentation Screenshots**
 ```bash
-# Capture your entire workflow
-osascript peekaboo_enhanced.scpt "Xcode" "/docs/xcode.png" --multi
-osascript peekaboo_enhanced.scpt "Terminal" "/docs/terminal.png" --multi
-osascript peekaboo_enhanced.scpt "Safari" "/docs/browser.png" --multi
+# Quick capture to /tmp
+osascript peekaboo.scpt "Xcode" --multi
+osascript peekaboo.scpt "Terminal" --multi
+osascript peekaboo.scpt "Safari" --multi
+
+# Capture your entire workflow with custom paths
+osascript peekaboo.scpt "Xcode" "/docs/xcode.png" --multi
+osascript peekaboo.scpt "Terminal" "/docs/terminal.png" --multi
+osascript peekaboo.scpt "Safari" "/docs/browser.png" --multi
 ```
 
 ### 🚀 **CI/CD Integration**
 ```bash
-# Automated testing screenshots
+# Quick automated testing screenshots
+osascript peekaboo.scpt "Your App"
+
+# Custom path with timestamp
 osascript peekaboo.scpt "Your App" "/test-results/app-$(date +%s).png"
 ```
 
@@ -179,7 +204,7 @@ osascript peekaboo.scpt "Photoshop" "/content/after.png"
 ### 👻 **App Not Found?**
 ```bash
 # See what's actually running
-osascript peekaboo_enhanced.scpt list
+osascript peekaboo.scpt list
 
 # Try the bundle ID instead
 osascript peekaboo.scpt "com.company.AppName" "/tmp/shot.png"
@@ -192,23 +217,24 @@ osascript peekaboo.scpt "com.company.AppName" "/tmp/shot.png"
 
 ### 🐛 **Debug Mode**
 ```bash
-osascript peekaboo_enhanced.scpt "Safari" "/tmp/debug.png" --verbose
+osascript peekaboo.scpt "Safari" "/tmp/debug.png" --verbose
 ```
 
 ---
 
-## 🎪 **COMPARISON**
+## 🎪 **FEATURES**
 
-| Feature | Classic 🎯 | Pro 🎪 |
-|---------|------------|--------|
-| Basic screenshots | ✅ | ✅ |
-| App targeting | ✅ | ✅ |
-| Multi-format | ✅ | ✅ |
-| **App discovery** | ❌ | ✅ |
-| **Multi-window** | ❌ | ✅ |
-| **Smart naming** | ❌ | ✅ |
-| **Window modes** | ❌ | ✅ |
-| **Verbose logging** | ❌ | ✅ |
+| Feature | Description |
+|---------|-------------|
+| **Basic screenshots** | ✅ Full screen capture with app targeting |
+| **App targeting** | ✅ By name or bundle ID |
+| **Multi-format** | ✅ PNG, JPG, PDF support |
+| **App discovery** | ✅ `list` command shows running apps |
+| **Multi-window** | ✅ `--multi` captures all app windows |
+| **Smart naming** | ✅ Descriptive filenames for windows |
+| **Window modes** | ✅ `--window` for front window only |
+| **Auto paths** | ✅ Optional output path with /tmp default |
+| **Verbose logging** | ✅ `--verbose` for debugging |
 
 ---
 
@@ -280,9 +306,8 @@ Built in the style of the legendary **terminator.scpt** — because good pattern
 ## 🎪 **PROJECT FILES**
 
 ```
-📁 AppleScripts/
-├── 🎯 peekaboo.scpt              # Classic version
-├── 🎪 peekaboo_enhanced.scpt     # Pro version  
+📁 Peekaboo/
+├── 🎯 peekaboo.scpt              # Main screenshot tool
 ├── 🧪 test_screenshotter.sh      # Test suite
 └── 📖 README.md                  # This awesomeness
 ```
