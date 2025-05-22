@@ -1,98 +1,213 @@
-# Peekaboo—screenshot got you! Now you see it, now it's saved.
+# Peekaboo v1.0 — The screenshot tool that just works™
 
 ![Peekaboo Banner](assets/banner.png)
 
-👀 → 📸 → 💾 — **Unattended screenshot automation that actually works**
+👀 → 📸 → 💾 — **Zero-click screenshots with AI superpowers**
+
+---
+
+## ✨ **FEATURES**
+
+🎯 **Clean CLI** • 🤫 **Quiet Mode** • 🤖 **Dual AI Support** • ⚡ **Non-Interactive** • 📊 **Smart Defaults** • 🪟 **Multi-Window AI**
 
 ---
 
 ## 🚀 **THE MAGIC**
 
-**Peekaboo** is your silent screenshot assassin. Point it at any app, and SNAP! — it's captured and saved before you can blink.
+**Peekaboo** captures any app, any window, any time — no clicking required. Now with a beautiful command-line interface and AI vision analysis.
 
-- 🎯 **Smart targeting**: App names or bundle IDs
-- 🚀 **Auto-launch**: Sleeping apps? No problem!
-- 👁 **Brings apps forward**: Always gets the shot
-- 🏗 **Creates directories**: Paths don't exist? Fixed!
-- 🎨 **Multi-format**: PNG, JPG, PDF — you name it
-- 💥 **Zero interaction**: 100% unattended operation
-- 🧠 **Smart filenames**: Model-friendly names with app info
-- ⚡ **Optimized speed**: 70% faster capture delays
-- 🤖 **AI Vision Analysis**: Local Ollama integration with auto-model detection
-- ☁️ **Cloud AI Ready**: Self-documenting for Claude, Windsurf, ChatGPT integration
+### 🎯 **Core Features**
+- **Smart capture**: App window by default, fullscreen when no app specified
+- **Zero interaction**: Uses window IDs, not mouse clicks
+- **AI vision**: Ask questions about your screenshots (Ollama + Claude CLI)
+- **Quiet mode**: Perfect for scripts and automation (`-q`)
+- **Multi-window**: Capture all app windows separately (`-m`)
+- **Format control**: PNG, JPG, PDF with auto-detection
+- **Smart paths**: Auto-generated filenames or custom paths
+- **Fast & reliable**: Optimized delays, robust error handling
+
+### 🌟 **Key Highlights**
+- **Smart Multi-Window AI**: Automatically analyzes ALL windows for multi-window apps
+- **Timeout Protection**: 90-second timeout prevents hanging on slow models  
+- **Clean CLI Design**: Consistent flags, short aliases, logical defaults
+- **Claude CLI support**: Smart provider selection (Ollama preferred)
+- **Performance tracking**: See how long AI analysis takes
+- **Comprehensive help**: Clear sections, real examples
 
 ---
 
-## 🎪 **HOW TO USE**
-
-### 🎯 **Basic Usage**
-*Simple screenshot capture*
+## 🎯 **QUICK START**
 
 ```bash
-# 👀 Quick shot with smart filename
-osascript peekaboo.scpt "Safari"
-# → /tmp/peekaboo_safari_20250522_143052.png
+# Install (one-time)
+chmod +x peekaboo.scpt
 
-# 🎯 Custom output path
-osascript peekaboo.scpt "Safari" "/Users/you/Desktop/safari.png"
-
-# 🎯 Bundle ID targeting  
-osascript peekaboo.scpt "com.apple.TextEdit" "/tmp/textedit.jpg"
+# Basic usage
+osascript peekaboo.scpt              # Capture fullscreen
+osascript peekaboo.scpt Safari       # Capture Safari window
+osascript peekaboo.scpt help         # Show all options
 ```
 
-### 🎪 **Advanced Features**
-*All the power. All the windows. All the time.*
+---
 
+## 📖 **COMMAND REFERENCE**
+
+### 🎨 **Command Structure**
+```
+peekaboo [app] [options]                    # Capture app or fullscreen
+peekaboo analyze <image> "question" [opts]  # Analyze existing image
+peekaboo list|ls                            # List running apps
+peekaboo help|-h                            # Show help
+```
+
+### 🏷️ **Options**
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--output <path>` | `-o` | Output file or directory path |
+| `--fullscreen` | `-f` | Force fullscreen capture |
+| `--window` | `-w` | Single window (default with app) |
+| `--multi` | `-m` | Capture all app windows |
+| `--ask "question"` | `-a` | AI analysis of screenshot |
+| `--quiet` | `-q` | Minimal output (just path) |
+| `--verbose` | `-v` | Debug output |
+| `--format <fmt>` | | Output format: png\|jpg\|pdf |
+| `--model <model>` | | AI model (e.g., llava:7b) |
+| `--provider <p>` | | AI provider: auto\|ollama\|claude |
+
+---
+
+## 🎪 **USAGE EXAMPLES**
+
+### 📸 **Basic Screenshots**
 ```bash
-# 🔍 What's running right now?
+# Simplest captures
+osascript peekaboo.scpt                    # Fullscreen → /tmp/peekaboo_fullscreen_[timestamp].png
+osascript peekaboo.scpt Safari             # Safari window → /tmp/peekaboo_safari_[timestamp].png
+osascript peekaboo.scpt com.apple.Terminal # Using bundle ID → /tmp/peekaboo_com_apple_terminal_[timestamp].png
+
+# Custom output paths
+osascript peekaboo.scpt Safari -o ~/Desktop/safari.png
+osascript peekaboo.scpt Finder -o ~/screenshots/finder.jpg --format jpg
+osascript peekaboo.scpt -f -o ~/fullscreen.pdf  # Fullscreen as PDF
+```
+
+### 🤫 **Quiet Mode** (Perfect for Scripts)
+```bash
+# Just get the file path - no extra output
+FILE=$(osascript peekaboo.scpt Safari -q)
+echo "Screenshot saved to: $FILE"
+
+# Use in scripts
+SCREENSHOT=$(osascript peekaboo.scpt Terminal -q)
+scp "$SCREENSHOT" user@server:/uploads/
+
+# Chain commands
+osascript peekaboo.scpt Finder -q | pbcopy  # Copy path to clipboard
+```
+
+### 🎭 **Multi-Window Capture**
+```bash
+# Capture all windows of an app
+osascript peekaboo.scpt Chrome -m
+# Creates: /tmp/peekaboo_chrome_[timestamp]_window_1_[title].png
+#          /tmp/peekaboo_chrome_[timestamp]_window_2_[title].png
+#          etc.
+
+# Save to specific directory
+osascript peekaboo.scpt Safari -m -o ~/safari-windows/
+# Creates: ~/safari-windows/peekaboo_safari_[timestamp]_window_1_[title].png
+#          ~/safari-windows/peekaboo_safari_[timestamp]_window_2_[title].png
+```
+
+### 🤖 **AI Vision Analysis**
+```bash
+# One-step: Screenshot + Analysis
+osascript peekaboo.scpt Safari -a "What website is this?"
+osascript peekaboo.scpt Terminal -a "Are there any error messages?"
+osascript peekaboo.scpt -f -a "Describe what's on my screen"
+
+# Specify AI model
+osascript peekaboo.scpt Xcode -a "Is the build successful?" --model llava:13b
+
+# Two-step: Analyze existing image
+osascript peekaboo.scpt analyze screenshot.png "What do you see?"
+osascript peekaboo.scpt analyze error.png "Explain this error" --provider ollama
+```
+
+### 🔍 **App Discovery**
+```bash
+# List all running apps with window info
 osascript peekaboo.scpt list
+osascript peekaboo.scpt ls    # Short alias
 
-# 👀 Quick shot to /tmp with timestamp
-osascript peekaboo.scpt "Chrome"
+# Output:
+# • Google Chrome (com.google.Chrome)
+#   Windows: 3
+#     - "GitHub - Project"
+#     - "Documentation"
+#     - "Stack Overflow"
+# • Safari (com.apple.Safari)
+#   Windows: 2
+#     - "Apple.com"
+#     - "News"
+```
 
-# 🎭 Capture ALL windows with smart names
-osascript peekaboo.scpt "Chrome" "/tmp/chrome.png" --multi
+### 🎯 **Advanced Combinations**
+```bash
+# Quiet fullscreen with custom path and format
+osascript peekaboo.scpt -f -o ~/desktop-capture --format jpg -q
 
-# 🪟 Just the front window  
-osascript peekaboo.scpt "TextEdit" "/tmp/textedit.png" --window
+# Multi-window with AI analysis (analyzes first window)
+osascript peekaboo.scpt Chrome -m -a "What tabs are open?"
 
-# 🤖 AI analysis: Screenshot + question in one step
-osascript peekaboo.scpt "Safari" --ask "What's on this page?"
+# Verbose mode for debugging
+osascript peekaboo.scpt Safari -v -o ~/debug.png
 
-# 🔍 Analyze existing image
-osascript peekaboo.scpt analyze "/tmp/screenshot.png" "Any errors visible?"
+# Force window mode on fullscreen request
+osascript peekaboo.scpt Safari -f -w  # -w overrides -f
 ```
 
 ---
 
 ## ⚡ **QUICK WINS**
 
-### 🎯 **Basic Shot**
+### 🎯 **Basic Captures**
 ```bash
-# Quick shot with auto-generated filename
-osascript peekaboo.scpt "Finder"
+# Fullscreen (no app specified)
+osascript peekaboo.scpt
 ```
-**Result**: Full screen with Finder in focus → `/tmp/peekaboo_finder_20250522_143052.png`
-*Notice the smart filename: app name + timestamp, all lowercase with underscores*
+**Result**: Full screen → `/tmp/peekaboo_fullscreen_20250522_143052.png`
 
 ```bash
-# Custom path
-osascript peekaboo.scpt "Finder" "/Desktop/finder.png"
+# App window with smart filename
+osascript peekaboo.scpt Finder
 ```
-**Result**: Full screen with Finder in focus → `finder.png`
+**Result**: Finder window → `/tmp/peekaboo_finder_20250522_143052.png`
+
+```bash
+# Custom output path
+osascript peekaboo.scpt Finder -o ~/Desktop/finder.png
+```
+**Result**: Finder window → `~/Desktop/finder.png`
 
 ### 🎭 **Multi-Window Magic**  
 ```bash
-osascript peekaboo.scpt "Safari" "/tmp/safari.png" --multi
+osascript peekaboo.scpt Safari -m
 ```
 **Result**: Multiple files with smart names:
-- `safari_window_1_github.png`
-- `safari_window_2_documentation.png`  
-- `safari_window_3_google_search.png`
+- `/tmp/peekaboo_safari_20250522_143052_window_1_github.png`
+- `/tmp/peekaboo_safari_20250522_143052_window_2_docs.png`  
+- `/tmp/peekaboo_safari_20250522_143052_window_3_search.png`
+
+```bash
+# Save to specific directory
+osascript peekaboo.scpt Chrome -m -o ~/screenshots/
+```
+**Result**: All Chrome windows saved to `~/screenshots/` directory
 
 ### 🔍 **App Discovery**
 ```bash
-osascript peekaboo.scpt list
+osascript peekaboo.scpt list   # or use 'ls'
 ```
 **Result**: Every running app + window titles. No guessing!
 
@@ -118,54 +233,90 @@ Peekaboo speaks all the languages:
 
 ```bash
 # PNG (default) - smart filename in /tmp
-osascript peekaboo.scpt "Safari"
+osascript peekaboo.scpt Safari
 # → /tmp/peekaboo_safari_20250522_143052.png
 
-# PNG with custom path
-osascript peekaboo.scpt "Safari" "/tmp/shot.png"
-
-# JPG - smaller files 
-osascript peekaboo.scpt "Safari" "/tmp/shot.jpg"
+# JPG with format flag
+osascript peekaboo.scpt Safari -o ~/shot --format jpg
+# → ~/shot.jpg
 
 # PDF - vector goodness
-osascript peekaboo.scpt "Safari" "/tmp/shot.pdf"
+osascript peekaboo.scpt Safari -o ~/doc.pdf
+# → ~/doc.pdf (format auto-detected from extension)
+
+# Mix and match options
+osascript peekaboo.scpt -f --format jpg -o ~/fullscreen -q
+# → ~/fullscreen.jpg (quiet mode just prints path)
 ```
 
 ---
 
 ## 🤖 **AI VISION ANALYSIS** ⭐
 
-Peekaboo integrates with **Ollama** for powerful local AI vision analysis - ask questions about your screenshots! No cloud, no API keys, just pure local magic.
+Peekaboo integrates with AI providers for powerful vision analysis - ask questions about your screenshots! Supports both **Ollama** (local, privacy-focused) and **Claude CLI** (cloud-based).
+
+**🪟 NEW: Smart Multi-Window AI** - When analyzing apps with multiple windows, Peekaboo automatically captures and analyzes ALL windows, giving you comprehensive insights about each one!
 
 ### 🎯 **Key Features**
-- **🧠 Smart Model Auto-Detection** - Automatically picks the best available vision model
+- **🤖 Smart Provider Selection** - Auto-detects Ollama or Claude CLI
+- **🧠 Smart Model Auto-Detection** - Automatically picks the best available vision model (Ollama)
 - **📏 Intelligent Image Resizing** - Auto-compresses large screenshots (>5MB → 2048px) for optimal AI processing
+- **🪟 Smart Multi-Window Analysis** - Automatically analyzes ALL windows when app has multiple windows
 - **⚡ One or Two-Step Workflows** - Screenshot+analyze or analyze existing images
-- **🔒 100% Local & Private** - Everything runs on your machine via Ollama
-- **🎯 Zero Configuration** - Just install Ollama + model, Peekaboo handles the rest
+- **🔒 Privacy Options** - Choose between local (Ollama) or cloud (Claude) analysis
+- **⏱️ Performance Tracking** - Shows analysis time for each request
+- **⛰️ Timeout Protection** - 90-second timeout prevents hanging on slow models
+- **🎯 Zero Configuration** - Just install your preferred AI provider, Peekaboo handles the rest
 
 ### 🚀 **One-Step: Screenshot + Analysis**
 ```bash
-# Take screenshot and analyze it in one command
-osascript peekaboo.scpt "Safari" --ask "What's the main content on this page?"
-osascript peekaboo.scpt "Terminal" --ask "Any error messages visible?"
-osascript peekaboo.scpt "Xcode" --ask "Is the build successful?"
-osascript peekaboo.scpt "Chrome" --ask "What product is being shown?" --model llava:13b
+# Take screenshot and analyze it in one command (auto-selects provider)
+osascript peekaboo.scpt Safari -a "What's the main content on this page?"
+osascript peekaboo.scpt Terminal -a "Any error messages visible?"
+osascript peekaboo.scpt Xcode -a "Is the build successful?"
 
-# Fullscreen analysis (no app targeting needed)
-osascript peekaboo.scpt --ask "Describe what's on my screen"
-osascript peekaboo.scpt --verbose --ask "Any UI errors or warnings visible?"
+# Multi-window apps: Automatically analyzes ALL windows!
+osascript peekaboo.scpt Chrome -a "What tabs are open?"
+# 🤖 Result: Window 1 "GitHub": Shows a pull request page...
+#           Window 2 "Docs": Shows API documentation...
+#           Window 3 "Gmail": Shows email inbox...
+
+# Force single window with -w flag
+osascript peekaboo.scpt Chrome -w -a "What's on this tab?"
+
+# Specify AI provider explicitly
+osascript peekaboo.scpt Chrome -a "What product is shown?" --provider ollama
+osascript peekaboo.scpt Safari -a "Describe the page" --provider claude
+
+# Specify custom model (Ollama)
+osascript peekaboo.scpt Chrome -a "What product is being shown?" --model llava:13b
+
+# Fullscreen analysis (no app specified)
+osascript peekaboo.scpt -f -a "Describe what's on my screen"
+osascript peekaboo.scpt -a "Any UI errors or warnings visible?" -v
+
+# Quiet mode for scripting (just outputs path after analysis)
+osascript peekaboo.scpt Terminal -a "Find errors" -q
 ```
 
 ### 🔍 **Two-Step: Analyze Existing Images**  
 ```bash
 # Analyze screenshots you already have
-osascript peekaboo.scpt analyze "/tmp/screenshot.png" "Describe what you see"
-osascript peekaboo.scpt analyze "/path/error.png" "What error is shown?"
-osascript peekaboo.scpt analyze "/Desktop/ui.png" "Any UI issues?" --model qwen2.5vl:7b
+osascript peekaboo.scpt analyze /tmp/screenshot.png "Describe what you see"
+osascript peekaboo.scpt analyze error.png "What error is shown?"
+osascript peekaboo.scpt analyze ui.png "Any UI issues?" --model qwen2.5vl:7b
 ```
 
-### 🛠️ **Complete Ollama Setup Guide**
+### 🤖 **AI Provider Comparison**
+
+| Provider | Type | Image Analysis | Setup | Best For |
+|----------|------|---------------|-------|----------|
+| **Ollama** | Local | ✅ Direct file analysis | Install + pull models | Privacy, automation |
+| **Claude CLI** | Cloud | ❌ Limited support* | Install CLI | Text prompts |
+
+*Claude CLI currently doesn't support direct image file analysis but can work with images through interactive mode or MCP integrations.
+
+### 🛠️ **Complete Ollama Setup Guide** (Recommended for Image Analysis)
 
 #### 1️⃣ **Install Ollama**
 ```bash
@@ -258,6 +409,50 @@ osascript peekaboo.scpt "VS Code" --ask "Any syntax errors or warnings in the co
 osascript peekaboo.scpt --ask "Describe the overall layout and any issues"
 ```
 
+### 🪟 **Smart Multi-Window Analysis**
+When an app has multiple windows, Peekaboo automatically analyzes ALL of them:
+
+```bash
+# Chrome with 3 tabs open? Peekaboo analyzes them all!
+osascript peekaboo.scpt Chrome -a "What's on each tab?"
+
+# Result format:
+# Peekaboo 👀: Multi-window AI Analysis Complete! 🤖
+# 
+# 📸 App: Chrome (3 windows)
+# ❓ Question: What's on each tab?
+# 🤖 Model: qwen2.5vl:7b
+#
+# 💬 Results for each window:
+#
+# 🪟 Window 1: "GitHub - Pull Request #42"
+# This shows a pull request for adding authentication...
+#
+# 🪟 Window 2: "Stack Overflow - Python threading"
+# A Stack Overflow page discussing Python threading concepts...
+#
+# 🪟 Window 3: "Gmail - Inbox (42)"
+# Gmail inbox showing 42 unread emails...
+```
+
+**Smart Defaults:**
+- ✅ Multi-window apps → Analyzes ALL windows automatically
+- ✅ Single window apps → Analyzes the one window
+- ✅ Want just one window? → Use `-w` flag to force single window mode
+- ✅ Quiet mode → Returns condensed results for each window
+
+### ⏱️ **Performance Tracking & Timeouts**
+Every AI analysis shows execution time and has built-in protection:
+```
+Peekaboo 👀: Analysis via qwen2.5vl:7b took 7 sec.
+Peekaboo 👀: Analysis timed out after 90 seconds.
+```
+
+**Timeout Protection:**
+- ⏰ 90-second timeout prevents hanging on large models
+- 🛡️ Clear error messages if model is too slow
+- 💡 Suggests using smaller models on timeout
+
 **Perfect for:**
 - 🧪 **Automated UI Testing** - "Any error messages visible?"
 - 📊 **Dashboard Monitoring** - "Are all systems green?"  
@@ -265,6 +460,7 @@ osascript peekaboo.scpt --ask "Describe the overall layout and any issues"
 - 📸 **Content Verification** - "Does this page look correct?"
 - 🔍 **Visual QA Automation** - "Any broken UI elements?"
 - 📱 **App State Verification** - "Is the login successful?"
+- ⏱️ **Performance Benchmarking** - Compare model speeds
 
 ---
 
@@ -392,14 +588,14 @@ osascript peekaboo.scpt "Chrome" --multi       → chrome_window_1_github.png
 ### 🎯 **Targeting Options**
 ```bash
 # By name (easy) - smart filename
-osascript peekaboo.scpt "Safari"
+osascript peekaboo.scpt Safari
 # → /tmp/peekaboo_safari_20250522_143052.png
 
 # By name with custom path
-osascript peekaboo.scpt "Safari" "/tmp/safari.png"
+osascript peekaboo.scpt Safari -o /tmp/safari.png
 
 # By bundle ID (precise) - gets sanitized
-osascript peekaboo.scpt "com.apple.Safari"
+osascript peekaboo.scpt com.apple.Safari
 # → /tmp/peekaboo_com_apple_safari_20250522_143052.png
 
 # By display name (works too!) - spaces become underscores
@@ -410,13 +606,15 @@ osascript peekaboo.scpt "Final Cut Pro"
 ### 🎪 **Pro Features**
 ```bash
 # Multi-window capture
---multi         # All windows with descriptive names
+-m, --multi     # All windows with descriptive names
 
 # Window modes  
---window        # Front window only (unattended!)
+-w, --window    # Front window only (unattended!)
+-f, --fullscreen # Force fullscreen capture
 
-# Debug mode
---verbose       # See what's happening under the hood
+# Output control
+-q, --quiet     # Minimal output (just path)
+-v, --verbose   # See what's happening under the hood
 ```
 
 ### 🔍 **Discovery Mode**
@@ -435,15 +633,20 @@ Shows you:
 
 ### 📊 **Documentation Screenshots**
 ```bash
-# Quick capture to /tmp
-osascript peekaboo.scpt "Xcode" --multi
-osascript peekaboo.scpt "Terminal" --multi
-osascript peekaboo.scpt "Safari" --multi
+# Quick capture to /tmp with descriptive names
+osascript peekaboo.scpt Xcode -m
+osascript peekaboo.scpt Terminal -m
+osascript peekaboo.scpt Safari -m
 
-# Capture your entire workflow with custom paths
-osascript peekaboo.scpt "Xcode" "/docs/xcode.png" --multi
-osascript peekaboo.scpt "Terminal" "/docs/terminal.png" --multi
-osascript peekaboo.scpt "Safari" "/docs/browser.png" --multi
+# Capture your entire workflow to specific directory
+osascript peekaboo.scpt Xcode -m -o /docs/
+osascript peekaboo.scpt Terminal -m -o /docs/
+osascript peekaboo.scpt Safari -m -o /docs/
+
+# Or specific files
+osascript peekaboo.scpt Xcode -o /docs/xcode.png
+osascript peekaboo.scpt Terminal -o /docs/terminal.png
+osascript peekaboo.scpt Safari -o /docs/browser.png
 ```
 
 ### 🚀 **CI/CD Integration**
@@ -453,35 +656,49 @@ osascript peekaboo.scpt "Your App"
 # → /tmp/peekaboo_your_app_20250522_143052.png
 
 # Automated visual testing with AI
-osascript peekaboo.scpt "Your App" --ask "Any error messages or crashes visible?"
-osascript peekaboo.scpt "Your App" --ask "Is the login screen displayed correctly?"
+osascript peekaboo.scpt "Your App" -a "Any error messages or crashes visible?"
+osascript peekaboo.scpt "Your App" -a "Is the login screen displayed correctly?"
 
 # Custom path with timestamp
-osascript peekaboo.scpt "Your App" "/test-results/app-$(date +%s).png"
+osascript peekaboo.scpt "Your App" -o "/test-results/app-$(date +%s).png"
+
+# Quiet mode for scripts (just outputs path)
+SCREENSHOT=$(osascript peekaboo.scpt "Your App" -q)
+echo "Screenshot saved: $SCREENSHOT"
 ```
 
 ### 🎬 **Content Creation**
 ```bash
 # Before/after shots with AI descriptions
-osascript peekaboo.scpt "Photoshop" --ask "Describe the current design state"
+osascript peekaboo.scpt Photoshop -a "Describe the current design state"
 # ... do your work ...
-osascript peekaboo.scpt "Photoshop" --ask "What changes were made to the design?"
+osascript peekaboo.scpt Photoshop -a "What changes were made to the design?"
 
 # Traditional before/after shots
-osascript peekaboo.scpt "Photoshop" "/content/before.png"
+osascript peekaboo.scpt Photoshop -o /content/before.png
 # ... do your work ...
-osascript peekaboo.scpt "Photoshop" "/content/after.png"
+osascript peekaboo.scpt Photoshop -o /content/after.png
+
+# Capture all design windows
+osascript peekaboo.scpt Photoshop -m -o /content/designs/
 ```
 
 ### 🧪 **Automated QA & Testing**
 ```bash
 # Visual regression testing
-osascript peekaboo.scpt "Your App" --ask "Does the UI look correct?"
-osascript peekaboo.scpt "Safari" --ask "Are there any broken images or layout issues?"
-osascript peekaboo.scpt "Terminal" --ask "Any red error text visible?"
+osascript peekaboo.scpt "Your App" -a "Does the UI look correct?"
+osascript peekaboo.scpt Safari -a "Are there any broken images or layout issues?"
+osascript peekaboo.scpt Terminal -a "Any red error text visible?"
 
 # Dashboard monitoring
-osascript peekaboo.scpt analyze "/tmp/dashboard.png" "Are all metrics green?"
+osascript peekaboo.scpt analyze /tmp/dashboard.png "Are all metrics green?"
+
+# Quiet mode for test scripts
+if osascript peekaboo.scpt "Your App" -a "Any errors?" -q | grep -q "No errors"; then
+    echo "✅ Test passed"
+else
+    echo "❌ Test failed"
+fi
 ```
 
 ---
@@ -496,9 +713,11 @@ osascript peekaboo.scpt analyze "/tmp/dashboard.png" "Are all metrics green?"
 ```bash
 # See what's actually running
 osascript peekaboo.scpt list
+# or
+osascript peekaboo.scpt ls
 
 # Try the bundle ID instead
-osascript peekaboo.scpt "com.company.AppName" "/tmp/shot.png"
+osascript peekaboo.scpt com.company.AppName -o /tmp/shot.png
 ```
 
 ### 📁 **File Not Created?**
@@ -508,7 +727,9 @@ osascript peekaboo.scpt "com.company.AppName" "/tmp/shot.png"
 
 ### 🐛 **Debug Mode**
 ```bash
-osascript peekaboo.scpt "Safari" "/tmp/debug.png" --verbose
+osascript peekaboo.scpt Safari -o /tmp/debug.png -v
+# or
+osascript peekaboo.scpt Safari --output /tmp/debug.png --verbose
 ```
 
 ---
@@ -520,17 +741,20 @@ osascript peekaboo.scpt "Safari" "/tmp/debug.png" --verbose
 | **Basic screenshots** | ✅ Full screen capture with app targeting |
 | **App targeting** | ✅ By name or bundle ID |
 | **Multi-format** | ✅ PNG, JPG, PDF support |
-| **App discovery** | ✅ `list` command shows running apps |
-| **Multi-window** | ✅ `--multi` captures all app windows |
+| **App discovery** | ✅ `list`/`ls` command shows running apps |
+| **Multi-window** | ✅ `-m`/`--multi` captures all app windows |
 | **Smart naming** | ✅ Descriptive filenames for windows |
-| **Window modes** | ✅ `--window` for front window only |
+| **Window modes** | ✅ `-w`/`--window` for front window only |
 | **Auto paths** | ✅ Optional output path with smart /tmp defaults |
 | **Smart filenames** | ✅ Model-friendly: app_name_timestamp format |
-| **AI Vision Analysis** | ✅ Local Ollama integration with auto-model detection |
+| **AI Vision Analysis** | ✅ Ollama + Claude CLI support with smart fallback |
 | **Smart AI Models** | ✅ Auto-picks best: qwen2.5vl > llava > phi3 > minicpm |
 | **Smart Image Compression** | ✅ Auto-resizes large images (>5MB → 2048px) for AI |
+| **AI Provider Selection** | ✅ Auto-detect or specify with `--provider` flag |
+| **Performance Tracking** | ✅ Shows analysis time for benchmarking |
 | **Cloud AI Integration** | ✅ Self-documenting for Claude, Windsurf, ChatGPT, etc. |
-| **Verbose logging** | ✅ `--verbose` for debugging |
+| **Quiet mode** | ✅ `-q`/`--quiet` for minimal output |
+| **Verbose logging** | ✅ `-v`/`--verbose` for debugging |
 
 ---
 
@@ -625,6 +849,7 @@ property verboseLogging : false          -- Debug output
 ### 🤖 **AI-Powered Vision**
 - **Local analysis**: Private Ollama integration, no cloud
 - **Smart model selection**: Auto-picks best available model  
+- **Multi-window intelligence**: Analyzes ALL windows automatically
 - **One or two-step**: Screenshot+analyze or analyze existing images
 - **Perfect for automation**: Visual testing, error detection, QA
 
@@ -645,9 +870,11 @@ Built in the style of the legendary **terminator.scpt** — because good pattern
 
 ```
 📁 Peekaboo/
-├── 🎯 peekaboo.scpt              # Main screenshot tool
-├── 🧪 test_screenshotter.sh      # Test suite
-└── 📖 README.md                  # This awesomeness
+├── 🎯 peekaboo.scpt              # Main screenshot tool (v1.0)
+├── 🧪 test_peekaboo.sh          # Comprehensive test suite
+├── 📖 README.md                  # This awesomeness
+└── 🎨 assets/
+    └── banner.png               # Project banner
 ```
 
 ---

@@ -166,9 +166,13 @@ run_ai_test() {
     # Build command arguments based on test type
     case "$test_type" in
         "one-step")
-            cmd_args=("$app_or_image" "--ask" "$question")
+            cmd_args=("$app_or_image" "-a" "$question")
             if [[ -n "$model" ]]; then
-                cmd_args+=(--model "$model")
+                if [[ "$model" == "--provider"* ]]; then
+                    cmd_args+=($model)
+                else
+                    cmd_args+=(--model "$model")
+                fi
             fi
             ;;
         "two-step")
@@ -181,13 +185,21 @@ run_ai_test() {
             fi
             cmd_args=("analyze" "$test_image" "$question")
             if [[ -n "$model" ]]; then
-                cmd_args+=(--model "$model")
+                if [[ "$model" == "--provider"* ]]; then
+                    cmd_args+=($model)
+                else
+                    cmd_args+=(--model "$model")
+                fi
             fi
             ;;
         "analyze-only")
             cmd_args=("analyze" "$app_or_image" "$question")
             if [[ -n "$model" ]]; then
-                cmd_args+=(--model "$model")
+                if [[ "$model" == "--provider"* ]]; then
+                    cmd_args+=($model)
+                else
+                    cmd_args+=(--model "$model")
+                fi
             fi
             ;;
     esac
@@ -205,6 +217,11 @@ run_ai_test() {
             if [[ $exit_code -eq 0 ]] && [[ "$result" == *"AI Analysis Complete"* ]]; then
                 log_success "$test_name - AI analysis completed successfully"
                 log_info "  Model used: $(echo "$result" | grep "🤖 Model:" | cut -d: -f2 | xargs || echo "Unknown")"
+                # Check for timing info
+                if [[ "$result" == *"took"* && "$result" == *"sec."* ]]; then
+                    local timing=$(echo "$result" | grep -o "took [0-9.]* sec\." || echo "")
+                    log_info "  Timing: $timing"
+                fi
                 # Show first few words of AI response
                 local ai_answer=$(echo "$result" | sed -n '/💬 Answer:/,$ p' | tail -n +2 | head -1 | cut -c1-60)
                 if [[ -n "$ai_answer" ]]; then
@@ -231,6 +248,43 @@ run_ai_test() {
         "skip")
             log_warning "$test_name - Skipped (expected)"
             ((TESTS_FAILED--))  # Don't count as failure
+            ;;
+        "timing")
+            if [[ $exit_code -eq 0 ]] && [[ "$result" == *"took"* && "$result" == *"sec."* ]]; then
+                local timing=$(echo "$result" | grep -o "took [0-9.]* sec\." || echo "")
+                log_success "$test_name - Timing info present: $timing"
+            else
+                log_error "$test_name - Expected timing info but not found"
+            fi
+            ;;
+        "multi-window-success")
+            if [[ $exit_code -eq 0 ]] && [[ "$result" == *"Multi-window AI Analysis Complete"* ]]; then
+                log_success "$test_name - Multi-window AI analysis completed successfully"
+                # Count analyzed windows
+                local window_count=$(echo "$result" | grep -c "🪟 Window" || echo "0")
+                log_info "  Analyzed $window_count windows"
+                # Check for timing info
+                if [[ "$result" == *"Analysis of"* && "$result" == *"windows complete"* ]]; then
+                    log_info "  Multi-window analysis completed"
+                fi
+            elif [[ "$result" == *"AI Analysis Complete"* ]]; then
+                # Single window fallback (app might have closed windows)
+                log_success "$test_name - Completed (single window mode)"
+            else
+                log_error "$test_name - Expected multi-window analysis but got: $(echo "$result" | head -1)"
+            fi
+            ;;
+        "claude-limitation")
+            if [[ "$result" == *"Claude Limitation"* || "$result" == *"doesn't support direct image file analysis"* ]]; then
+                log_success "$test_name - Claude limitation correctly reported"
+                # Check for timing even in error
+                if [[ "$result" == *"took"* && "$result" == *"sec."* ]]; then
+                    local timing=$(echo "$result" | grep -o "took [0-9.]* sec\." || echo "")
+                    log_info "  Timing: $timing"
+                fi
+            else
+                log_error "$test_name - Expected Claude limitation message"
+            fi
             ;;
     esac
     
@@ -309,57 +363,112 @@ run_basic_tests() {
     log_info "=== BASIC FUNCTIONALITY TESTS ==="
     echo ""
     
-    # Test 1: Basic Finder test (Classic)
-    run_test "Classic: Basic Finder test" \
-        "$PEEKABOO_CLASSIC" \
-        "Finder" \
-        "$TEST_OUTPUT_DIR/classic_finder_${TIMESTAMP}.png" \
-        "success"
+    # Test 1: Basic app window capture
+    ((TESTS_RUN++))
+    log_info "Running test: Basic app window capture"
+    if result=$(osascript "$PEEKABOO_SCRIPT" Finder -q 2>&1); then
+        if [[ "$result" =~ ^/tmp/peekaboo_finder_[0-9_]+\.png$ ]]; then
+            log_success "Basic app window capture - Success"
+        else
+            log_error "Basic app window capture - Unexpected output: $result"
+        fi
+    else
+        log_error "Basic app window capture - Failed"
+    fi
+    echo ""
     
-    # Test 2: Basic Finder test (Pro)
-    run_test "Pro: Basic Finder test" \
-        "$PEEKABOO_PRO" \
-        "Finder" \
-        "$TEST_OUTPUT_DIR/pro_finder_${TIMESTAMP}.png" \
-        "success"
+    # Test 2: Fullscreen capture (no app)
+    ((TESTS_RUN++))
+    log_info "Running test: Fullscreen capture"
+    if result=$(osascript "$PEEKABOO_SCRIPT" -q 2>&1); then
+        if [[ "$result" =~ ^/tmp/peekaboo_fullscreen_[0-9_]+\.png$ ]]; then
+            log_success "Fullscreen capture - Success"
+        else
+            log_error "Fullscreen capture - Unexpected output: $result"
+        fi
+    else
+        log_error "Fullscreen capture - Failed"
+    fi
+    echo ""
     
-    # Test 3: Bundle ID test
-    run_test "Classic: Bundle ID test" \
-        "$PEEKABOO_CLASSIC" \
-        "com.apple.finder" \
-        "$TEST_OUTPUT_DIR/classic_finder_bundle_${TIMESTAMP}.png" \
-        "success"
+    # Test 3: Custom output path
+    ((TESTS_RUN++))
+    log_info "Running test: Custom output path"
+    local custom_path="$TEST_OUTPUT_DIR/custom_test_${TIMESTAMP}.png"
+    if result=$(osascript "$PEEKABOO_SCRIPT" Safari -o "$custom_path" -q 2>&1); then
+        if [[ "$result" == "$custom_path" ]] && [[ -f "$custom_path" ]]; then
+            log_success "Custom output path - File created correctly"
+        else
+            log_error "Custom output path - Output mismatch or file missing"
+        fi
+    else
+        log_error "Custom output path - Failed"
+    fi
+    echo ""
     
-    # Test 4: TextEdit test
-    run_test "Classic: TextEdit test" \
-        "$PEEKABOO_CLASSIC" \
-        "TextEdit" \
-        "$TEST_OUTPUT_DIR/classic_textedit_${TIMESTAMP}.png" \
-        "success"
+    # Test 4: Bundle ID support
+    ((TESTS_RUN++))
+    log_info "Running test: Bundle ID support"
+    if result=$(osascript "$PEEKABOO_SCRIPT" com.apple.finder -q 2>&1); then
+        if [[ "$result" =~ ^/tmp/peekaboo_com_apple_finder_[0-9_]+\.png$ ]]; then
+            log_success "Bundle ID support - Success"
+        else
+            log_error "Bundle ID support - Unexpected output: $result"
+        fi
+    else
+        log_error "Bundle ID support - Failed"
+    fi
+    echo ""
 }
 
 run_format_tests() {
     log_info "=== FORMAT SUPPORT TESTS ==="
     echo ""
     
-    # Test different formats
-    run_test "Classic: PNG format" \
-        "$PEEKABOO_CLASSIC" \
-        "Finder" \
-        "$TEST_OUTPUT_DIR/format_png_${TIMESTAMP}.png" \
-        "success"
+    # Test 1: PNG format (default)
+    ((TESTS_RUN++))
+    log_info "Running test: PNG format (default)"
+    local png_path="$TEST_OUTPUT_DIR/format_test_${TIMESTAMP}.png"
+    if result=$(osascript "$PEEKABOO_SCRIPT" Finder -o "$png_path" -q 2>&1); then
+        if [[ -f "$png_path" ]]; then
+            log_success "PNG format - File created successfully"
+        else
+            log_error "PNG format - File not created"
+        fi
+    else
+        log_error "PNG format - Failed"
+    fi
+    echo ""
     
-    run_test "Classic: JPG format" \
-        "$PEEKABOO_CLASSIC" \
-        "Finder" \
-        "$TEST_OUTPUT_DIR/format_jpg_${TIMESTAMP}.jpg" \
-        "success"
+    # Test 2: JPG format with --format flag
+    ((TESTS_RUN++))
+    log_info "Running test: JPG format with flag"
+    local jpg_base="$TEST_OUTPUT_DIR/format_jpg_${TIMESTAMP}"
+    if result=$(osascript "$PEEKABOO_SCRIPT" Finder -o "$jpg_base" --format jpg -q 2>&1); then
+        if [[ -f "${jpg_base}.jpg" ]]; then
+            log_success "JPG format - File created with correct extension"
+        else
+            log_error "JPG format - File not created or wrong extension"
+        fi
+    else
+        log_error "JPG format - Failed"
+    fi
+    echo ""
     
-    run_test "Classic: PDF format" \
-        "$PEEKABOO_CLASSIC" \
-        "TextEdit" \
-        "$TEST_OUTPUT_DIR/format_pdf_${TIMESTAMP}.pdf" \
-        "success"
+    # Test 3: PDF format via extension
+    ((TESTS_RUN++))
+    log_info "Running test: PDF format via extension"
+    local pdf_path="$TEST_OUTPUT_DIR/format_pdf_${TIMESTAMP}.pdf"
+    if result=$(osascript "$PEEKABOO_SCRIPT" Finder -o "$pdf_path" -q 2>&1); then
+        if [[ -f "$pdf_path" ]]; then
+            log_success "PDF format - File created with auto-detected format"
+        else
+            log_error "PDF format - File not created"
+        fi
+    else
+        log_error "PDF format - Failed"
+    fi
+    echo ""
     
     run_test "Pro: No extension (default PNG)" \
         "$PEEKABOO_PRO" \
@@ -369,36 +478,68 @@ run_format_tests() {
 }
 
 run_advanced_tests() {
-    log_info "=== ADVANCED PEEKABOO PRO TESTS ==="
+    log_info "=== ADVANCED FEATURE TESTS ==="
     echo ""
     
-    # Test window mode
-    run_test "Pro: Window mode test" \
-        "$PEEKABOO_PRO" \
-        "Finder" \
-        "$TEST_OUTPUT_DIR/pro_window_${TIMESTAMP}.png" \
-        "success" \
-        "--window"
+    # Test 1: Multi-window mode
+    ((TESTS_RUN++))
+    log_info "Running test: Multi-window mode"
+    if result=$(osascript "$PEEKABOO_SCRIPT" Finder -m -o "$TEST_OUTPUT_DIR/" 2>&1); then
+        # Check if multiple files were created
+        local window_files=$(ls "$TEST_OUTPUT_DIR"/peekaboo_finder_*_window_*.png 2>/dev/null | wc -l)
+        if [[ $window_files -gt 0 ]]; then
+            log_success "Multi-window mode - Created $window_files window files"
+        else
+            log_error "Multi-window mode - No window files created"
+        fi
+    else
+        log_error "Multi-window mode - Failed: $result"
+    fi
+    echo ""
     
-    # Test multi-window mode
-    run_test "Pro: Multi-window mode" \
-        "$PEEKABOO_PRO" \
-        "Finder" \
-        "$TEST_OUTPUT_DIR/pro_multi_${TIMESTAMP}.png" \
-        "success" \
-        "--multi"
+    # Test 2: Forced fullscreen with app
+    ((TESTS_RUN++))
+    log_info "Running test: Forced fullscreen with app"
+    if result=$(osascript "$PEEKABOO_SCRIPT" Safari -f -q 2>&1); then
+        if [[ "$result" =~ fullscreen ]]; then
+            log_success "Forced fullscreen - Correctly captured fullscreen despite app"
+        else
+            log_error "Forced fullscreen - Wrong capture mode"
+        fi
+    else
+        log_error "Forced fullscreen - Failed"
+    fi
+    echo ""
     
-    # Test verbose mode
-    run_test "Pro: Verbose mode" \
-        "$PEEKABOO_PRO" \
-        "Finder" \
-        "$TEST_OUTPUT_DIR/pro_verbose_${TIMESTAMP}.png" \
-        "success" \
-        "--verbose"
+    # Test 3: Verbose mode
+    ((TESTS_RUN++))
+    log_info "Running test: Verbose mode"
+    if result=$(osascript "$PEEKABOO_SCRIPT" Finder -v -q 2>&1); then
+        # Verbose should still output just path in quiet mode
+        if [[ "$result" =~ ^/tmp/peekaboo_finder_[0-9_]+\.png$ ]]; then
+            log_success "Verbose mode - Works with quiet mode"
+        else
+            log_warning "Verbose mode - May have extra output"
+        fi
+    else
+        log_error "Verbose mode - Failed"
+    fi
+    echo ""
     
-    # Test combined flags
-    run_test "Pro: Window + Verbose" \
-        "$PEEKABOO_PRO" \
+    # Test 4: Combined options
+    ((TESTS_RUN++))
+    log_info "Running test: Combined options"
+    local combo_path="$TEST_OUTPUT_DIR/combo_${TIMESTAMP}"
+    if result=$(osascript "$PEEKABOO_SCRIPT" TextEdit -w -o "$combo_path" --format jpg -v -q 2>&1); then
+        if [[ -f "${combo_path}.jpg" ]]; then
+            log_success "Combined options - All options work together"
+        else
+            log_error "Combined options - File not created correctly"
+        fi
+    else
+        log_error "Combined options - Failed"
+    fi
+    echo ""
         "TextEdit" \
         "$TEST_OUTPUT_DIR/pro_combined_${TIMESTAMP}.png" \
         "success" \
@@ -406,20 +547,65 @@ run_advanced_tests() {
 }
 
 run_discovery_tests() {
-    log_info "=== APP DISCOVERY TESTS ==="
+    log_info "=== COMMAND TESTS ==="
     echo ""
     
-    # Test list command
-    run_command_test "Pro: List running apps" \
-        "$PEEKABOO_PRO" \
-        "list" \
-        "Running Applications"
+    # Test 1: List command
+    ((TESTS_RUN++))
+    log_info "Running test: List command"
+    if result=$(osascript "$PEEKABOO_SCRIPT" list 2>&1); then
+        if [[ "$result" == *"Running Applications:"* ]]; then
+            local app_count=$(echo "$result" | grep -c "^•" || echo "0")
+            log_success "List command - Found $app_count running applications"
+        else
+            log_error "List command - Unexpected output"
+        fi
+    else
+        log_error "List command - Failed"
+    fi
+    echo ""
     
-    # Test help command
-    run_command_test "Pro: Help command" \
-        "$PEEKABOO_PRO" \
-        "help" \
-        "Peekaboo Pro"
+    # Test 2: ls alias
+    ((TESTS_RUN++))
+    log_info "Running test: ls command alias"
+    if result=$(osascript "$PEEKABOO_SCRIPT" ls 2>&1); then
+        if [[ "$result" == *"Running Applications:"* ]]; then
+            log_success "ls alias - Works correctly"
+        else
+            log_error "ls alias - Unexpected output"
+        fi
+    else
+        log_error "ls alias - Failed"
+    fi
+    echo ""
+    
+    # Test 3: Help command
+    ((TESTS_RUN++))
+    log_info "Running test: Help command"
+    if result=$(osascript "$PEEKABOO_SCRIPT" help 2>&1); then
+        if [[ "$result" == *"USAGE:"* ]] && [[ "$result" == *"OPTIONS:"* ]]; then
+            log_success "Help command - Shows proper help text"
+        else
+            log_error "Help command - Missing expected sections"
+        fi
+    else
+        log_error "Help command - Failed"
+    fi
+    echo ""
+    
+    # Test 4: -h flag
+    ((TESTS_RUN++))
+    log_info "Running test: -h help flag"
+    if result=$(osascript "$PEEKABOO_SCRIPT" -h 2>&1); then
+        if [[ "$result" == *"USAGE:"* ]]; then
+            log_success "-h flag - Shows help correctly"
+        else
+            log_error "-h flag - Unexpected output"
+        fi
+    else
+        log_error "-h flag - Failed"
+    fi
+    echo ""
     
     run_command_test "Classic: Help command" \
         "$PEEKABOO_CLASSIC" \
@@ -521,26 +707,66 @@ run_ai_analysis_tests() {
     log_info "=== AI VISION ANALYSIS TESTS ==="
     echo ""
     
-    # Check if Ollama is available
-    if ! check_ollama_available; then
-        log_warning "Ollama not found - skipping AI analysis tests"
-        log_info "To enable AI tests: curl -fsSL https://ollama.ai/install.sh | sh && ollama pull llava:7b"
+    # Check which providers are available
+    local ollama_available=false
+    local claude_available=false
+    
+    if check_ollama_available; then
+        ollama_available=true
+        log_info "✅ Ollama is available"
+    else
+        log_warning "❌ Ollama not found"
+    fi
+    
+    if command -v claude >/dev/null 2>&1; then
+        claude_available=true
+        log_info "✅ Claude CLI is available"
+    else
+        log_warning "❌ Claude CLI not found"
+    fi
+    
+    if [[ "$ollama_available" == false && "$claude_available" == false ]]; then
+        log_warning "No AI providers found - skipping AI analysis tests"
+        log_info "To enable AI tests:"
+        log_info "  • Ollama: curl -fsSL https://ollama.ai/install.sh | sh && ollama pull llava:7b"
+        log_info "  • Claude: Install from https://claude.ai/code"
         return
     fi
     
-    # Get available vision models
-    local models=($(get_test_vision_models))
-    if [[ ${#models[@]} -eq 0 ]]; then
-        log_warning "No vision models found - skipping AI analysis tests"
-        log_info "To enable AI tests: ollama pull qwen2.5vl:7b  # or llava:7b"
-        return
+    # Test Ollama if available
+    if [[ "$ollama_available" == true ]]; then
+        # Get available vision models
+        local models=($(get_test_vision_models))
+        if [[ ${#models[@]} -eq 0 ]]; then
+            log_warning "No Ollama vision models found - skipping Ollama tests"
+            log_info "To enable: ollama pull qwen2.5vl:7b  # or llava:7b"
+        else
+            log_info "Found Ollama vision models: ${models[*]}"
+            local test_model="${models[0]}"  # Use first available model
+            
+            # Run Ollama-specific tests
+            run_ollama_tests "$test_model"
+        fi
     fi
     
-    log_info "Found vision models: ${models[*]}"
-    local test_model="${models[0]}"  # Use first available model
+    # Test Claude if available
+    if [[ "$claude_available" == true ]]; then
+        run_claude_tests
+    fi
+    
+    # Test provider selection
+    if [[ "$ollama_available" == true || "$claude_available" == true ]]; then
+        run_provider_selection_tests "$ollama_available" "$claude_available"
+    fi
+}
+
+run_ollama_tests() {
+    local test_model="$1"
+    log_info ""
+    log_info "--- Ollama Provider Tests ---"
     
     # Test 1: One-step AI analysis (screenshot + analyze)
-    run_ai_test "AI: One-step screenshot + analysis" \
+    run_ai_test "Ollama: One-step screenshot + analysis" \
         "$PEEKABOO_SCRIPT" \
         "one-step" \
         "Finder" \
@@ -581,7 +807,54 @@ run_ai_analysis_tests() {
         log_warning "Could not create test screenshot for analysis"
     fi
     
-    # Test 5: Error handling - invalid model
+    # Test 5: Multi-window AI analysis (if supported app available)
+    # Try to find an app with multiple windows
+    local multi_window_app=""
+    for app in "Safari" "Chrome" "Google Chrome" "Firefox" "TextEdit"; do
+        if osascript -e "tell application \"System Events\" to get name of every process whose name is \"$app\"" >/dev/null 2>&1; then
+            # Check if app has multiple windows
+            local window_count=$(osascript -e "tell application \"System Events\" to tell process \"$app\" to count windows" 2>/dev/null || echo "0")
+            if [[ $window_count -gt 1 ]]; then
+                multi_window_app="$app"
+                break
+            fi
+        fi
+    done
+    
+    if [[ -n "$multi_window_app" ]]; then
+        run_ai_test "Ollama: Multi-window AI analysis" \
+            "$PEEKABOO_SCRIPT" \
+            "one-step" \
+            "$multi_window_app" \
+            "What's in each window?" \
+            "" \
+            "multi-window-success"
+    else
+        log_warning "No app with multiple windows found - skipping multi-window AI test"
+    fi
+    
+    # Test 6: Force single window mode with -w flag
+    if [[ -n "$multi_window_app" ]]; then
+        ((TESTS_RUN++))
+        log_info "Running AI test: Force single window with -w flag"
+        if result=$(osascript "$PEEKABOO_SCRIPT" "$multi_window_app" -w -a "What's on this tab?" 2>&1); then
+            if [[ "$result" == *"AI Analysis Complete"* ]] && [[ "$result" != *"Multi-window"* ]]; then
+                log_success "Single window mode - Correctly analyzed only one window"
+            else
+                log_error "Single window mode - Unexpected result"
+            fi
+        else
+            log_error "Single window mode - Failed"
+        fi
+        echo ""
+    fi
+    
+    # Note: Timeout testing (90 seconds) is not included in automated tests
+    # to avoid long test runs. The timeout is implemented with curl --max-time 90
+    log_info "Note: AI timeout protection (90s) is active but not tested here"
+    echo ""
+    
+    # Test 7: Error handling - invalid model
     run_ai_test "AI: Invalid model error handling" \
         "$PEEKABOO_SCRIPT" \
         "one-step" \
@@ -590,7 +863,7 @@ run_ai_analysis_tests() {
         "nonexistent-model:999b" \
         "error"
     
-    # Test 6: Error handling - invalid image path
+    # Test 8: Error handling - invalid image path
     run_ai_test "AI: Invalid image path error handling" \
         "$PEEKABOO_SCRIPT" \
         "analyze-only" \
@@ -618,10 +891,106 @@ run_ai_analysis_tests() {
     run_ai_test "AI: Complex question with special chars" \
         "$PEEKABOO_SCRIPT" \
         "one-step" \
-        "Finder" \
-        "Is there any text that says \"Finder\" or similar? What colors do you see?" \
+        "Safari" \
+        "What's the URL? Are there any errors?" \
         "" \
         "success"
+    
+    # Test 9: Timing verification
+    run_ai_test "AI: Verify timing output" \
+        "$PEEKABOO_SCRIPT" \
+        "one-step" \
+        "Finder" \
+        "What is shown?" \
+        "" \
+        "timing"
+}
+
+run_claude_tests() {
+    log_info ""
+    log_info "--- Claude Provider Tests ---"
+    
+    # Test 1: Claude provider selection
+    run_ai_test "Claude: Provider selection test" \
+        "$PEEKABOO_SCRIPT" \
+        "one-step" \
+        "Finder" \
+        "What do you see?" \
+        "--provider claude" \
+        "claude-limitation"
+    
+    # Test 2: Claude analyze command
+    run_ai_test "Claude: Analyze existing image" \
+        "$PEEKABOO_SCRIPT" \
+        "analyze-only" \
+        "$TEST_OUTPUT_DIR/test_image.png" \
+        "Describe this" \
+        "--provider claude" \
+        "claude-limitation"
+    
+    # Test 3: Claude timing verification
+    ((TESTS_RUN++))
+    log_info "Running AI test: Claude timing verification"
+    local result
+    if result=$(osascript "$PEEKABOO_SCRIPT" "Safari" "--ask" "Test" "--provider" "claude" 2>&1); then
+        if [[ "$result" == *"check took"* && "$result" == *"sec."* ]]; then
+            log_success "Claude: Timing verification - Shows execution time"
+        else
+            log_error "Claude: Timing verification - Missing timing info"
+        fi
+    else
+        log_error "Claude: Timing verification - Unexpected error: $result"
+    fi
+    echo ""
+}
+
+run_provider_selection_tests() {
+    local ollama_available="$1"
+    local claude_available="$2"
+    
+    log_info ""
+    log_info "--- Provider Selection Tests ---"
+    
+    # Test auto selection
+    ((TESTS_RUN++))
+    log_info "Running AI test: Auto provider selection"
+    local result
+    if result=$(osascript "$PEEKABOO_SCRIPT" "Finder" "--ask" "What is shown?" 2>&1); then
+        if [[ "$ollama_available" == true ]]; then
+            if [[ "$result" == *"Model:"* || "$result" == *"Analysis via"* ]]; then
+                log_success "Provider: Auto selection - Correctly used Ollama"
+            else
+                log_error "Provider: Auto selection - Unexpected result"
+            fi
+        else
+            if [[ "$result" == *"Claude"* ]]; then
+                log_success "Provider: Auto selection - Correctly fell back to Claude"
+            else
+                log_error "Provider: Auto selection - Unexpected result"
+            fi
+        fi
+    fi
+    echo ""
+    
+    # Test explicit Ollama selection
+    if [[ "$ollama_available" == true ]]; then
+        run_ai_test "Provider: Explicit Ollama selection" \
+            "$PEEKABOO_SCRIPT" \
+            "one-step" \
+            "Finder" \
+            "What do you see?" \
+            "--provider ollama" \
+            "success"
+    fi
+    
+    # Test invalid provider
+    run_ai_test "Provider: Invalid provider error" \
+        "$PEEKABOO_SCRIPT" \
+        "one-step" \
+        "Finder" \
+        "Test" \
+        "--provider invalid" \
+        "error"
 }
 
 run_performance_tests() {
@@ -751,29 +1120,29 @@ show_usage_tests() {
     echo ""
     
     # Test Classic usage
-    log_info "Testing Classic usage output..."
-    local classic_usage
-    if classic_usage=$(osascript "$PEEKABOO_CLASSIC" 2>&1); then
-        if [[ "$classic_usage" == *"Usage:"* ]] && [[ "$classic_usage" == *"Peekaboo"* ]]; then
-            log_success "Classic usage test - Proper usage information displayed"
+    log_info "Testing help output..."
+    local help_output
+    if help_output=$(osascript "$PEEKABOO_SCRIPT" help 2>&1); then
+        if [[ "$help_output" == *"USAGE:"* ]] && [[ "$help_output" == *"Peekaboo"* ]]; then
+            log_success "Help output test - Proper usage information displayed"
         else
-            log_error "Classic usage test - Usage information incomplete"
+            log_error "Help output test - Usage information incomplete"
         fi
     else
-        log_error "Classic usage test - Failed to get usage output"
+        log_error "Help output test - Failed to get help output"
     fi
     
-    # Test Pro usage
-    log_info "Testing Pro usage output..."
-    local pro_usage
-    if pro_usage=$(osascript "$PEEKABOO_PRO" 2>&1); then
-        if [[ "$pro_usage" == *"Usage:"* ]] && [[ "$pro_usage" == *"Peekaboo Pro"* ]]; then
-            log_success "Pro usage test - Proper usage information displayed"
+    # Test no arguments (should capture fullscreen)
+    log_info "Testing no arguments (fullscreen capture)..."
+    local no_args_output
+    if no_args_output=$(osascript "$PEEKABOO_SCRIPT" -q 2>&1); then
+        if [[ "$no_args_output" =~ ^/tmp/peekaboo_fullscreen_[0-9_]+\.png$ ]]; then
+            log_success "No args test - Correctly captures fullscreen"
         else
-            log_error "Pro usage test - Usage information incomplete"
+            log_error "No args test - Unexpected output: $no_args_output"
         fi
     else
-        log_error "Pro usage test - Failed to get usage output"
+        log_error "No args test - Failed"
     fi
     echo ""
 }

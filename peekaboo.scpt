@@ -1,8 +1,12 @@
 #!/usr/bin/osascript
 --------------------------------------------------------------------------------
--- peekaboo_enhanced.scpt - v1.0.0 "Peekaboo Pro! 👀 → 📸 → 💾"
+-- peekaboo.scpt - v1.0.0 "Peekaboo Pro! 👀 → 📸 → 💾"
 -- Enhanced screenshot capture with multi-window support and app discovery
 -- Peekaboo—screenshot got you! Now you see it, now it's saved.
+--
+-- IMPORTANT: This script uses non-interactive screencapture methods
+-- Do NOT use flags like -o -W which require user interaction
+-- Instead use -l<windowID> for specific window capture
 --------------------------------------------------------------------------------
 
 --#region Configuration Properties
@@ -17,6 +21,11 @@ property maxWindowTitleLength : 50
 property defaultVisionModel : "qwen2.5vl:7b"
 -- Prioritized list of vision models (best to fallback)
 property visionModelPriority : {"qwen2.5vl:7b", "llava:7b", "llava-phi3:3.8b", "minicpm-v:8b", "gemma3:4b", "llava:latest", "qwen2.5vl:3b", "llava:13b", "llava-llama3:8b"}
+-- AI Provider Configuration
+property aiProvider : "auto" -- "auto", "ollama", "claude"
+property claudeModel : "sonnet" -- default Claude model alias
+-- AI Analysis Timeout (90 seconds)
+property aiAnalysisTimeout : 90
 --#endregion Configuration Properties
 
 --#region Helper Functions
@@ -137,6 +146,83 @@ on trimWhitespace(theText)
     end repeat
     return newText
 end trimWhitespace
+
+on formatCaptureOutput(outputPath, appName, mode, isQuiet)
+    if isQuiet then
+        return outputPath
+    else
+        set msg to scriptInfoPrefix & "Screenshot captured successfully! 📸" & linefeed
+        set msg to msg & "• File: " & outputPath & linefeed
+        set msg to msg & "• App: " & appName & linefeed
+        set msg to msg & "• Mode: " & mode
+        return msg
+    end if
+end formatCaptureOutput
+
+on formatMultiOutput(capturedFiles, appName, isQuiet)
+    if isQuiet then
+        -- Just return paths separated by newlines
+        set paths to ""
+        repeat with fileInfo in capturedFiles
+            set filePath to item 1 of fileInfo
+            set paths to paths & filePath & linefeed
+        end repeat
+        return paths
+    else
+        set windowCount to count of capturedFiles
+        set msg to scriptInfoPrefix & "Multi-window capture successful! Captured " & windowCount & " window(s) for " & appName & ":" & linefeed
+        repeat with fileInfo in capturedFiles
+            set filePath to item 1 of fileInfo
+            set winTitle to item 2 of fileInfo
+            set msg to msg & "  📸 " & filePath & " → \"" & winTitle & "\"" & linefeed
+        end repeat
+        return msg
+    end if
+end formatMultiOutput
+
+on formatMultiWindowAnalysis(capturedFiles, analysisResults, appName, question, model, isQuiet)
+    if isQuiet then
+        -- In quiet mode, return condensed results
+        set output to ""
+        repeat with result in analysisResults
+            set winTitle to windowTitle of result
+            set answer to answer of result
+            set output to output & scriptInfoPrefix & "Window \"" & winTitle & "\": " & answer & linefeed
+        end repeat
+        return output
+    else
+        -- Full formatted output
+        set windowCount to count of capturedFiles
+        set msg to scriptInfoPrefix & "Multi-window AI Analysis Complete! 🤖" & linefeed & linefeed
+        set msg to msg & "📸 App: " & appName & " (" & windowCount & " windows)" & linefeed
+        set msg to msg & "❓ Question: " & question & linefeed
+        set msg to msg & "🤖 Model: " & model & linefeed & linefeed
+        
+        set msg to msg & "💬 Results for each window:" & linefeed & linefeed
+        
+        set windowNum to 1
+        repeat with result in analysisResults
+            set winTitle to windowTitle of result
+            set winIndex to windowIndex of result
+            set answer to answer of result
+            set success to success of result
+            
+            set msg to msg & "🪟 Window " & windowNum & ": \"" & winTitle & "\"" & linefeed
+            if success then
+                set msg to msg & answer & linefeed & linefeed
+            else
+                set msg to msg & "⚠️ Analysis failed: " & answer & linefeed & linefeed
+            end if
+            
+            set windowNum to windowNum + 1
+        end repeat
+        
+        -- Add timing info if available
+        set msg to msg & scriptInfoPrefix & "Analysis of " & windowCount & " windows complete."
+        
+        return msg
+    end if
+end formatMultiWindowAnalysis
 --#endregion Helper Functions
 
 --#region AI Analysis Functions
@@ -151,6 +237,16 @@ on checkOllamaAvailable()
         return false
     end try
 end checkOllamaAvailable
+
+on checkClaudeAvailable()
+    try
+        -- Check if claude command exists
+        do shell script "claude --version >/dev/null 2>&1"
+        return true
+    on error
+        return false
+    end try
+end checkClaudeAvailable
 
 on getAvailableVisionModels()
     set availableModels to {}
@@ -225,10 +321,13 @@ on getOllamaInstallInstructions()
     return instructions
 end getOllamaInstallInstructions
 
-on analyzeImageWithAI(imagePath, question, requestedModel)
+on analyzeImageWithOllama(imagePath, question, requestedModel)
     my logVerbose("Analyzing image with AI: " & imagePath)
     my logVerbose("Requested model: " & requestedModel)
     my logVerbose("Question: " & question)
+    
+    -- Record start time
+    set startTime to do shell script "date +%s"
     
     -- Check if Ollama is available
     if not my checkOllamaAvailable() then
@@ -278,7 +377,8 @@ on analyzeImageWithAI(imagePath, question, requestedModel)
                 close access fileRef
             end try
         end try
-        set curlCmd to "curl -s -X POST http://localhost:11434/api/generate -H 'Content-Type: application/json' -d @" & quoted form of jsonTempFile
+        -- Add timeout to curl command (60 seconds)
+        set curlCmd to "curl -s -X POST http://localhost:11434/api/generate -H 'Content-Type: application/json' -d @" & quoted form of jsonTempFile & " --max-time " & aiAnalysisTimeout
         
         set response to do shell script curlCmd
         
@@ -308,10 +408,29 @@ on analyzeImageWithAI(imagePath, question, requestedModel)
             error "Could not parse response: " & response
         end if
         
-        return scriptInfoPrefix & "AI Analysis Complete! 🤖" & linefeed & linefeed & "📸 Image: " & imagePath & linefeed & "❓ Question: " & question & linefeed & "🤖 Model: " & modelToUse & linefeed & linefeed & "💬 Answer:" & linefeed & aiResponse
+        -- Calculate elapsed time
+        set endTime to do shell script "date +%s"
+        set elapsedTime to (endTime as number) - (startTime as number)
+        -- Simple formatting - just show seconds
+        set elapsedTimeFormatted to elapsedTime as string
+        
+        set resultMsg to scriptInfoPrefix & "AI Analysis Complete! 🤖" & linefeed & linefeed
+        set resultMsg to resultMsg & "📸 Image: " & imagePath & linefeed
+        set resultMsg to resultMsg & "❓ Question: " & question & linefeed
+        set resultMsg to resultMsg & "🤖 Model: " & modelToUse & linefeed & linefeed
+        set resultMsg to resultMsg & "💬 Answer:" & linefeed & aiResponse & linefeed & linefeed
+        set resultMsg to resultMsg & scriptInfoPrefix & "Analysis via " & modelToUse & " took " & elapsedTimeFormatted & " sec."
+        
+        return resultMsg
         
     on error errMsg
-        if errMsg contains "model" and errMsg contains "not found" then
+        -- Calculate elapsed time even on error
+        set endTime to do shell script "date +%s"
+        set elapsedTime to (endTime as number) - (startTime as number)
+        
+        if errMsg contains "curl" and (errMsg contains "timed out" or errMsg contains "timeout" or elapsedTime ≥ aiAnalysisTimeout) then
+            return my formatErrorMessage("Timeout Error", "AI analysis timed out after " & aiAnalysisTimeout & " seconds." & linefeed & linefeed & "The model '" & modelToUse & "' may be too large or slow for your system." & linefeed & linefeed & "Try:" & linefeed & "• Using a smaller model (e.g., llava-phi3:3.8b)" & linefeed & "• Checking if Ollama is responding: ollama list" & linefeed & "• Restarting Ollama service", "timeout")
+        else if errMsg contains "model" and errMsg contains "not found" then
             return my formatErrorMessage("Model Error", "Model '" & modelToUse & "' not found." & linefeed & linefeed & "Install it with: ollama pull " & modelToUse & linefeed & linefeed & my getOllamaInstallInstructions(), "model not found")
         else
             return my formatErrorMessage("Analysis Error", "Failed to analyze image: " & errMsg & linefeed & linefeed & "Make sure Ollama is running and the model is available.", "ollama execution")
@@ -327,6 +446,99 @@ on escapeJSON(inputText)
     set escapedText to my replaceText(escapedText, tab, "\\t")
     return escapedText
 end escapeJSON
+
+on analyzeImageWithClaude(imagePath, question, modelAlias)
+    my logVerbose("Analyzing image with Claude: " & imagePath)
+    my logVerbose("Model: " & modelAlias)
+    my logVerbose("Question: " & question)
+    
+    -- Record start time
+    set startTime to do shell script "date +%s"
+    
+    -- Check if Claude is available
+    if not my checkClaudeAvailable() then
+        return my formatErrorMessage("Claude Error", "Claude CLI is not installed." & linefeed & linefeed & "Install it from: https://claude.ai/code", "claude unavailable")
+    end if
+    
+    -- Get Claude version
+    set claudeVersion to ""
+    try
+        set claudeVersion to do shell script "claude --version 2>/dev/null | head -1"
+    on error
+        set claudeVersion to "unknown"
+    end try
+    
+    try
+        -- Note: Claude CLI doesn't support direct image file analysis
+        -- This is a limitation of the current Claude CLI implementation
+        set errorMsg to "Claude CLI currently doesn't support direct image file analysis." & linefeed & linefeed
+        set errorMsg to errorMsg & "Claude can analyze images through:" & linefeed
+        set errorMsg to errorMsg & "• Copy/paste images in interactive mode" & linefeed  
+        set errorMsg to errorMsg & "• MCP (Model Context Protocol) integrations" & linefeed & linefeed
+        set errorMsg to errorMsg & "For automated image analysis, please use Ollama with vision models instead."
+        
+        -- Calculate elapsed time even for error
+        set endTime to do shell script "date +%s"
+        set elapsedTime to (endTime as number) - (startTime as number)
+        set elapsedTimeFormatted to elapsedTime as string
+        
+        set errorMsg to errorMsg & linefeed & linefeed & scriptInfoPrefix & "Claude " & claudeVersion & " check took " & elapsedTimeFormatted & " sec."
+        
+        return my formatErrorMessage("Claude Limitation", errorMsg, "feature not supported")
+        
+    on error errMsg
+        return my formatErrorMessage("Claude Analysis Error", "Failed to analyze image with Claude: " & errMsg, "claude execution")
+    end try
+end analyzeImageWithClaude
+
+on analyzeImageWithAI(imagePath, question, requestedModel, requestedProvider)
+    my logVerbose("Starting AI analysis with smart provider selection")
+    my logVerbose("Requested provider: " & requestedProvider)
+    
+    -- Determine which AI provider to use
+    set ollamaAvailable to my checkOllamaAvailable()
+    set claudeAvailable to my checkClaudeAvailable()
+    
+    my logVerbose("Ollama available: " & ollamaAvailable)
+    my logVerbose("Claude available: " & claudeAvailable)
+    
+    -- If neither is available, provide helpful error
+    if not ollamaAvailable and not claudeAvailable then
+        set errorMsg to "Neither Ollama nor Claude CLI is installed." & linefeed & linefeed
+        set errorMsg to errorMsg & "Install one of these AI providers:" & linefeed & linefeed
+        set errorMsg to errorMsg & "🤖 Ollama (local, privacy-focused):" & linefeed
+        set errorMsg to errorMsg & my getOllamaInstallInstructions() & linefeed & linefeed
+        set errorMsg to errorMsg & "☁️ Claude CLI (cloud-based):" & linefeed
+        set errorMsg to errorMsg & "Install from: https://claude.ai/code"
+        return my formatErrorMessage("No AI Provider", errorMsg, "no ai provider")
+    end if
+    
+    -- Smart selection based on availability and preference
+    if requestedProvider is "ollama" and ollamaAvailable then
+        return my analyzeImageWithOllama(imagePath, question, requestedModel)
+    else if requestedProvider is "claude" and claudeAvailable then
+        return my analyzeImageWithClaude(imagePath, question, requestedModel)
+    else if requestedProvider is "auto" then
+        -- Auto mode: prefer Ollama, fallback to Claude
+        if ollamaAvailable then
+            return my analyzeImageWithOllama(imagePath, question, requestedModel)
+        else if claudeAvailable then
+            return my analyzeImageWithClaude(imagePath, question, requestedModel)
+        end if
+    else
+        -- Requested provider not available, try the other one
+        if ollamaAvailable then
+            my logVerbose("Requested provider not available, using Ollama instead")
+            return my analyzeImageWithOllama(imagePath, question, requestedModel)
+        else if claudeAvailable then
+            my logVerbose("Requested provider not available, using Claude instead")
+            return my analyzeImageWithClaude(imagePath, question, requestedModel)
+        end if
+    end if
+    
+    -- Should never reach here
+    return my formatErrorMessage("Provider Error", "Unable to determine AI provider", "provider selection")
+end analyzeImageWithAI
 --#endregion AI Analysis Functions
 
 --#region App Discovery Functions
@@ -593,10 +805,17 @@ on captureScreenshot(outputPath, captureMode, appName)
     set screencaptureCmd to "screencapture -x"
     
     if captureMode is "window" then
-        -- Use frontmost window without interaction
-        set screencaptureCmd to screencaptureCmd & " -o -W"
+        -- IMPORTANT: Do NOT use -o -W flags as they require user interaction!
+        -- Instead, get the window ID of the frontmost window programmatically
+        try
+            -- Get the window ID of the frontmost window of the frontmost app
+            set windowID to do shell script "osascript -e 'tell application \"System Events\" to get the id of the first window of (first process whose frontmost is true)' 2>/dev/null"
+            set screencaptureCmd to screencaptureCmd & " -l" & windowID
+        on error
+            -- Fallback to full screen if we can't get window ID
+            my logVerbose("Could not get window ID, falling back to full screen capture")
+        end try
     end if
-    -- Remove interactive mode - not suitable for unattended operation
     
     -- Add format flag if not PNG (default)
     if fileExt is not "png" then
@@ -637,10 +856,16 @@ on captureMultipleWindows(appName, baseOutputPath)
     -- Get detailed window status first
     set windowStatus to my getAppWindowStatus(appName)
     
-    -- Check if it's an error
-    if (windowStatus starts with scriptInfoPrefix) then
-        return windowStatus -- Return the descriptive error
-    end if
+    -- Check if it's an error (string) or success (record)
+    try
+        set statusClass to class of windowStatus
+        if statusClass is text or statusClass is string then
+            -- It's an error message
+            return windowStatus
+        end if
+    on error
+        -- Assume it's a record and continue
+    end try
     
     -- Extract window info from successful status
     set windowInfo to windowInfo of windowStatus
@@ -708,119 +933,181 @@ end captureMultipleWindows
 on run argv
     set appSpecificErrorOccurred to false
     try
-        my logVerbose("Starting Screenshotter Enhanced v2.0.0")
+        my logVerbose("Starting Peekaboo v2.0.0")
         
         set argCount to count argv
         
-        -- Handle special commands
-        if argCount = 1 then
-            set command to item 1 of argv
-            if command is "list" or command is "--list" or command is "-l" then
-                set appList to my listRunningApps()
-                return my formatAppList(appList)
-            else if command is "help" or command is "--help" or command is "-h" then
-                return my usageText()
-            end if
-        end if
-        
-        -- Handle analyze command for existing images (two-step workflow)
-        if argCount ≥ 3 then
-            set firstArg to item 1 of argv
-            if firstArg is "analyze" or firstArg is "--analyze" then
-                set imagePath to item 2 of argv
-                set question to item 3 of argv
-                set modelToUse to defaultVisionModel
-                
-                -- Check for custom model
-                if argCount ≥ 5 then
-                    set modelFlag to item 4 of argv
-                    if modelFlag is "--model" then
-                        set modelToUse to item 5 of argv
-                    end if
-                end if
-                
-                return my analyzeImageWithAI(imagePath, question, modelToUse)
-            end if
-        end if
-        
-        if argCount < 1 then return my usageText()
-        
-        -- Initialize variables
-        set captureMode to "screen" -- default
+        -- Initialize all variables
+        set command to "" -- "capture", "analyze", "list", "help"
+        set appIdentifier to ""
+        set outputPath to ""
+        set outputSpecified to false
+        set captureMode to "" -- will be determined
+        set forceFullscreen to false
         set multiWindow to false
         set analyzeMode to false
         set analysisQuestion to ""
         set visionModel to defaultVisionModel
-        set outputPath to ""
-        set pathProvided to false
-        set appIdentifier to ""
+        set requestedProvider to aiProvider
+        set outputFormat to ""
+        set quietMode to false
         
-        -- Parse all arguments to find options and app identifier
+        -- Handle no arguments - default to fullscreen
+        if argCount = 0 then
+            set command to "capture"
+            set forceFullscreen to true
+        else
+            -- Check first argument for commands
+            set firstArg to item 1 of argv
+            if firstArg is "list" or firstArg is "ls" then
+                return my formatAppList(my listRunningApps())
+            else if firstArg is "help" or firstArg is "-h" or firstArg is "--help" then
+                return my usageText()
+            else if firstArg is "analyze" then
+                set command to "analyze"
+                -- analyze command requires at least image and question
+                if argCount < 3 then
+                    return my formatErrorMessage("Argument Error", "analyze command requires: analyze <image> \"question\"" & linefeed & linefeed & my usageText(), "validation")
+                end if
+                set appIdentifier to item 2 of argv -- actually the image path
+                set analysisQuestion to item 3 of argv
+                set analyzeMode to true
+            else
+                -- Regular capture command
+                set command to "capture"
+                -- Check if first arg is a flag or app name
+                if not (firstArg starts with "-") then
+                    set appIdentifier to firstArg
+                end if
+            end if
+        end if
+        
+        -- Parse remaining arguments
         set i to 1
+        if command is "analyze" then set i to 4 -- Skip "analyze image question"
+        if command is "capture" and appIdentifier is not "" then set i to 2 -- Skip app name
+        
         repeat while i ≤ argCount
             set arg to item i of argv
-            if arg is "--window" or arg is "-w" then
-                set captureMode to "window"
-            else if arg is "--multi" or arg is "-m" then
-                set multiWindow to true
-            else if arg is "--verbose" or arg is "-v" then
-                set verboseLogging to true
-            else if arg is "--ask" or arg is "--analyze" then
-                set analyzeMode to true
+            
+            -- Handle flags with values
+            if arg is "--output" or arg is "-o" then
+                if i < argCount then
+                    set i to i + 1
+                    set outputPath to item i of argv
+                    set outputSpecified to true
+                else
+                    return my formatErrorMessage("Argument Error", arg & " requires a path parameter", "validation")
+                end if
+            else if arg is "--ask" or arg is "-a" then
                 if i < argCount then
                     set i to i + 1
                     set analysisQuestion to item i of argv
+                    set analyzeMode to true
                 else
-                    return my formatErrorMessage("Argument Error", "--ask requires a question parameter" & linefeed & linefeed & my usageText(), "validation")
+                    return my formatErrorMessage("Argument Error", arg & " requires a question parameter", "validation")
                 end if
             else if arg is "--model" then
                 if i < argCount then
                     set i to i + 1
                     set visionModel to item i of argv
                 else
-                    return my formatErrorMessage("Argument Error", "--model requires a model name parameter" & linefeed & linefeed & my usageText(), "validation")
+                    return my formatErrorMessage("Argument Error", "--model requires a model name parameter", "validation")
                 end if
-            else if not (arg starts with "--") then
-                if appIdentifier is "" then
-                    -- First non-option argument is the app identifier
-                    set appIdentifier to arg
-                else if outputPath is "" then
-                    -- Second non-option argument is the output path
-                    set outputPath to arg
-                    set pathProvided to true
+            else if arg is "--provider" then
+                if i < argCount then
+                    set i to i + 1
+                    set requestedProvider to item i of argv
+                    if requestedProvider is not "auto" and requestedProvider is not "ollama" and requestedProvider is not "claude" then
+                        return my formatErrorMessage("Argument Error", "--provider must be 'auto', 'ollama', or 'claude'", "validation")
+                    end if
+                else
+                    return my formatErrorMessage("Argument Error", "--provider requires a provider name parameter", "validation")
                 end if
+            else if arg is "--format" then
+                if i < argCount then
+                    set i to i + 1
+                    set outputFormat to item i of argv
+                    if outputFormat is not "png" and outputFormat is not "jpg" and outputFormat is not "pdf" then
+                        return my formatErrorMessage("Argument Error", "--format must be 'png', 'jpg', or 'pdf'", "validation")
+                    end if
+                else
+                    return my formatErrorMessage("Argument Error", "--format requires a format parameter", "validation")
+                end if
+            
+            -- Handle boolean flags
+            else if arg is "--fullscreen" or arg is "-f" then
+                set forceFullscreen to true
+            else if arg is "--window" or arg is "-w" then
+                set captureMode to "window"
+            else if arg is "--multi" or arg is "-m" then
+                set multiWindow to true
+            else if arg is "--verbose" or arg is "-v" then
+                set verboseLogging to true
+            else if arg is "--quiet" or arg is "-q" then
+                set quietMode to true
+            
+            -- Handle positional argument (output path for old-style compatibility)
+            else if not (arg starts with "-") and command is "capture" and not outputSpecified then
+                set outputPath to arg
+                set outputSpecified to true
             end if
+            
             set i to i + 1
         end repeat
         
-        -- Handle case where only analysis is requested (full screen mode)
-        if appIdentifier is "" and analyzeMode then
-            set appIdentifier to "fullscreen"
+        -- Handle analyze command
+        if command is "analyze" then
+            -- For analyze command, appIdentifier contains the image path
+            return my analyzeImageWithAI(appIdentifier, analysisQuestion, visionModel, requestedProvider)
+        end if
+        
+        -- For capture command, determine capture mode
+        if captureMode is "" then
+            if forceFullscreen or appIdentifier is "" then
+                set captureMode to "screen"
+            else
+                -- App specified, default to window capture
+                set captureMode to "window"
+            end if
         end if
         
         -- Set default output path if none provided
-        if not pathProvided then
+        if outputPath is "" then
             set timestamp to do shell script "date +%Y%m%d_%H%M%S"
             -- Create model-friendly filename with app name
-            if appIdentifier is "fullscreen" then
+            if appIdentifier is "" or appIdentifier is "fullscreen" then
                 set appNameForFile to "fullscreen"
             else
                 set appNameForFile to my sanitizeAppName(appIdentifier)
             end if
-            set outputPath to "/tmp/peekaboo_" & appNameForFile & "_" & timestamp & ".png"
+            
+            -- Determine extension based on format
+            set fileExt to outputFormat
+            if fileExt is "" then set fileExt to defaultScreenshotFormat
+            
+            set outputPath to "/tmp/peekaboo_" & appNameForFile & "_" & timestamp & "." & fileExt
+        else
+            -- Check if user specified a directory for multi-window mode
+            if multiWindow and outputPath ends with "/" then
+                set timestamp to do shell script "date +%Y%m%d_%H%M%S"
+                set appNameForFile to my sanitizeAppName(appIdentifier)
+                set fileExt to outputFormat
+                if fileExt is "" then set fileExt to defaultScreenshotFormat
+                set outputPath to outputPath & "peekaboo_" & appNameForFile & "_" & timestamp & "." & fileExt
+            else if outputFormat is not "" and not (outputPath ends with ("." & outputFormat)) then
+                -- Apply format if specified but not in path
+                set outputPath to outputPath & "." & outputFormat
+            end if
         end if
         
-        -- Validate arguments
-        if appIdentifier is "" then
-            return my formatErrorMessage("Argument Error", "App identifier cannot be empty." & linefeed & linefeed & my usageText(), "validation")
-        end if
-        
-        if pathProvided and not my isValidPath(outputPath) then
-            return my formatErrorMessage("Argument Error", "Output path must be an absolute path starting with '/'." & linefeed & linefeed & my usageText(), "validation")
+        -- Validate output path
+        if outputSpecified and not my isValidPath(outputPath) then
+            return my formatErrorMessage("Argument Error", "Output path must be an absolute path starting with '/'.", "validation")
         end if
         
         -- Resolve app identifier with detailed diagnostics
-        if appIdentifier is "fullscreen" then
+        if appIdentifier is "" or appIdentifier is "fullscreen" then
             set appInfo to {appName:"fullscreen", bundleID:"fullscreen", isRunning:true, resolvedBy:"fullscreen"}
         else
             set appInfo to my resolveAppIdentifier(appIdentifier)
@@ -833,13 +1120,13 @@ on run argv
                 set errorDetails to errorDetails & " This appears to be a bundle ID. Common issues:" & linefeed
                 set errorDetails to errorDetails & "• Bundle ID may be incorrect (try 'com.apple.' prefix for system apps)" & linefeed
                 set errorDetails to errorDetails & "• App may not be installed" & linefeed
-                set errorDetails to errorDetails & "• Use 'osascript peekaboo_enhanced.scpt list' to see available apps"
+                set errorDetails to errorDetails & "• Use 'osascript peekaboo.scpt list' to see available apps"
             else
                 set errorDetails to errorDetails & " This appears to be an app name. Common issues:" & linefeed
                 set errorDetails to errorDetails & "• App name may be incorrect (case-sensitive)" & linefeed
                 set errorDetails to errorDetails & "• App may not be installed or running" & linefeed
                 set errorDetails to errorDetails & "• Try the full app name (e.g., 'Activity Monitor' not 'Activity')" & linefeed
-                set errorDetails to errorDetails & "• Use 'osascript peekaboo_enhanced.scpt list' to see running apps"
+                set errorDetails to errorDetails & "• Use 'osascript peekaboo.scpt list' to see running apps"
             end if
             
             return my formatErrorMessage("App Resolution Error", errorDetails, "app resolution")
@@ -853,41 +1140,99 @@ on run argv
         set frontError to my bringAppToFront(appInfo)
         if frontError is not "" then return frontError
         
-        -- Pre-capture window validation for better error messages
-        if multiWindow or captureMode is "window" then
+        -- Smart multi-window detection for AI analysis
+        if analyzeMode and resolvedAppName is not "fullscreen" and not forceFullscreen then
+            -- Check how many windows the app has
             set windowStatus to my getAppWindowStatus(resolvedAppName)
-            if (windowStatus starts with scriptInfoPrefix) then
-                -- Add context about what the user was trying to do
-                if multiWindow then
-                    set contextError to "Multi-window capture failed: " & windowStatus
-                    set contextError to contextError & linefeed & "💡 Suggestion: Try basic screenshot mode without --multi flag"
-                else
-                    set contextError to "Window capture failed: " & windowStatus  
-                    set contextError to contextError & linefeed & "💡 Suggestion: Try full-screen capture mode without --window flag"
+            try
+                set statusClass to class of windowStatus
+                if statusClass is not text and statusClass is not string then
+                    -- It's a success record
+                    set totalWindows to totalWindows of windowStatus
+                    if totalWindows > 1 and not multiWindow and captureMode is not "screen" then
+                        -- Automatically enable multi-window mode for AI analysis
+                        set multiWindow to true
+                        my logVerbose("Auto-enabling multi-window mode for AI analysis (app has " & totalWindows & " windows)")
+                    end if
                 end if
-                return contextError
-            end if
-            
-            -- Log successful window detection
-            set statusMsg to message of windowStatus
-            my logVerbose("Window validation passed: " & statusMsg)
+            on error
+                -- Continue without auto-enabling
+            end try
+        end if
+        
+        -- Pre-capture window validation for better error messages
+        if (multiWindow or captureMode is "window") and resolvedAppName is not "fullscreen" then
+            set windowStatus to my getAppWindowStatus(resolvedAppName)
+            -- Check if it's an error (string starting with prefix) or success (record)
+            try
+                set statusClass to class of windowStatus
+                if statusClass is text or statusClass is string then
+                    -- It's an error message
+                    if multiWindow then
+                        set contextError to "Multi-window capture failed: " & windowStatus
+                        set contextError to contextError & linefeed & "💡 Suggestion: Try basic screenshot mode without --multi flag"
+                    else
+                        set contextError to "Window capture failed: " & windowStatus  
+                        set contextError to contextError & linefeed & "💡 Suggestion: Try full-screen capture mode without --window flag"
+                    end if
+                    return contextError
+                else
+                    -- It's a success record
+                    set statusMsg to message of windowStatus
+                    my logVerbose("Window validation passed: " & statusMsg)
+                end if
+            on error
+                -- Fallback if type check fails
+                my logVerbose("Window validation status check bypassed")
+            end try
         end if
         
         -- Handle multi-window capture
         if multiWindow then
             set capturedFiles to my captureMultipleWindows(resolvedAppName, outputPath)
-            if capturedFiles starts with scriptInfoPrefix then
-                return capturedFiles -- Error message
-            else
-                set windowCount to count of capturedFiles
-                set resultMsg to scriptInfoPrefix & "Multi-window capture successful! Captured " & windowCount & " window(s) for " & resolvedAppName & ":" & linefeed
+            -- Check if it's an error (string) or success (list)
+            try
+                set capturedClass to class of capturedFiles
+                if capturedClass is text or capturedClass is string then
+                    return capturedFiles -- Error message
+                end if
+            on error
+                -- Continue with list processing
+            end try
+            
+            -- If AI analysis requested, analyze all captured windows
+            if analyzeMode and (count of capturedFiles) > 0 then
+                set analysisResults to {}
+                set allSuccess to true
+                
                 repeat with fileInfo in capturedFiles
                     set filePath to item 1 of fileInfo
-                    set winTitle to item 2 of fileInfo
-                    set resultMsg to resultMsg & "  📸 " & filePath & " → \"" & winTitle & "\"" & linefeed
+                    set windowTitle to item 2 of fileInfo
+                    set windowIndex to item 3 of fileInfo
+                    
+                    set analysisResult to my analyzeImageWithAI(filePath, analysisQuestion, visionModel, requestedProvider)
+                    
+                    if analysisResult starts with scriptInfoPrefix and analysisResult contains "Analysis Complete" then
+                        -- Extract just the answer part from the analysis
+                        set answerStart to (offset of "💬 Answer:" in analysisResult) + 10
+                        set answerEnd to (offset of (scriptInfoPrefix & "Analysis via") in analysisResult) - 1
+                        if answerStart > 10 and answerEnd > answerStart then
+                            set windowAnswer to text answerStart thru answerEnd of analysisResult
+                        else
+                            set windowAnswer to analysisResult
+                        end if
+                        set end of analysisResults to {windowTitle:windowTitle, windowIndex:windowIndex, answer:windowAnswer, success:true}
+                    else
+                        set allSuccess to false
+                        set end of analysisResults to {windowTitle:windowTitle, windowIndex:windowIndex, answer:analysisResult, success:false}
+                    end if
                 end repeat
-                set resultMsg to resultMsg & linefeed & "💡 All windows captured with descriptive filenames. Each file shows a different window of " & resolvedAppName & "."
-                return resultMsg
+                
+                -- Format multi-window AI analysis results
+                return my formatMultiWindowAnalysis(capturedFiles, analysisResults, resolvedAppName, analysisQuestion, visionModel, quietMode)
+            else
+                -- Process successful capture without AI
+                return my formatMultiOutput(capturedFiles, resolvedAppName, quietMode)
             end if
         else
             -- Single capture
@@ -900,7 +1245,7 @@ on run argv
                 
                 -- If AI analysis requested, analyze the screenshot
                 if analyzeMode then
-                    set analysisResult to my analyzeImageWithAI(screenshotResult, analysisQuestion, visionModel)
+                    set analysisResult to my analyzeImageWithAI(screenshotResult, analysisQuestion, visionModel, requestedProvider)
                     if analysisResult starts with scriptInfoPrefix and analysisResult contains "Analysis Complete" then
                         -- Successful analysis
                         return analysisResult
@@ -910,7 +1255,7 @@ on run argv
                     end if
                 else
                     -- Regular screenshot without analysis
-                    return scriptInfoPrefix & "Screenshot captured successfully! 📸" & linefeed & "• File: " & screenshotResult & linefeed & "• App: " & resolvedAppName & linefeed & "• Mode: " & modeDescription & linefeed & "💡 The " & modeDescription & " of " & resolvedAppName & " has been saved."
+                    return my formatCaptureOutput(screenshotResult, resolvedAppName, modeDescription, quietMode)
                 end if
             end if
         end if
@@ -925,60 +1270,72 @@ end run
 --#region Usage Function
 on usageText()
     set LF to linefeed
-    set scriptName to "peekaboo_enhanced.scpt"
+    set scriptName to "peekaboo.scpt"
     
-    set outText to scriptName & " - v1.0.0 \"Peekaboo Pro! 👀 → 📸 → 💾\" – Enhanced AppleScript Screenshot Utility" & LF & LF
-    set outText to outText & "Peekaboo—screenshot got you! Now you see it, now it's saved." & LF
-    set outText to outText & "Takes unattended screenshots with multi-window support and app discovery." & LF & LF
+    set outText to "Peekaboo v1.0.0 - Screenshot automation that actually works! 👀 → 📸 → 💾" & LF & LF
     
-    set outText to outText & "Usage:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"<app_name_or_bundle_id>\" [\"<output_path>\"] [options]" & LF
-    set outText to outText & "  osascript " & scriptName & " analyze \"<image_path>\" \"<question>\" [--model model_name]" & LF
-    set outText to outText & "  osascript " & scriptName & " list" & LF
-    set outText to outText & "  osascript " & scriptName & " help" & LF & LF
+    set outText to outText & "USAGE:" & LF
+    set outText to outText & "  peekaboo [app] [options]                    # Screenshot app or fullscreen" & LF
+    set outText to outText & "  peekaboo analyze <image> \"question\" [opts]  # Analyze existing image" & LF
+    set outText to outText & "  peekaboo list                               # List running apps" & LF
+    set outText to outText & "  peekaboo help                               # Show this help" & LF & LF
     
-    set outText to outText & "Parameters:" & LF
-    set outText to outText & "  app_name_or_bundle_id: Application name (e.g., 'Safari') or bundle ID (e.g., 'com.apple.Safari')" & LF
-    set outText to outText & "  output_path:          Optional absolute path for screenshot file(s)" & LF
-    set outText to outText & "                        If not provided, saves to /tmp/peekaboo_appname_TIMESTAMP.png" & LF & LF
+    set outText to outText & "COMMANDS:" & LF
+    set outText to outText & "  [app]        App name or bundle ID (optional, defaults to fullscreen)" & LF
+    set outText to outText & "  analyze      Analyze existing image with AI vision" & LF
+    set outText to outText & "  list, ls     List all running apps with window info" & LF
+    set outText to outText & "  help, -h     Show this help message" & LF & LF
     
-    set outText to outText & "Options:" & LF
-    set outText to outText & "  --window, -w:         Capture frontmost window only" & LF
-    set outText to outText & "  --multi, -m:          Capture all windows with descriptive names" & LF
-    set outText to outText & "  --ask \"question\":      AI analysis of screenshot (requires Ollama)" & LF
-    set outText to outText & "  --model model_name:   Custom vision model (auto-detects best available)" & LF
-    set outText to outText & "  --verbose, -v:        Enable verbose logging" & LF & LF
+    set outText to outText & "OPTIONS:" & LF
+    set outText to outText & "  -o, --output <path>      Output file or directory path" & LF
+    set outText to outText & "  -f, --fullscreen         Force fullscreen capture" & LF
+    set outText to outText & "  -w, --window             Single window capture (default with app)" & LF
+    set outText to outText & "  -m, --multi              Capture all app windows separately" & LF
+    set outText to outText & "  -a, --ask \"question\"     AI analysis of screenshot" & LF
+    set outText to outText & "  --model <model>          AI model (e.g., llava:7b)" & LF
+    set outText to outText & "  --provider <provider>    AI provider: auto|ollama|claude" & LF
+    set outText to outText & "  --format <fmt>           Output format: png|jpg|pdf" & LF
+    set outText to outText & "  -v, --verbose            Enable debug output" & LF
+    set outText to outText & "  -q, --quiet              Minimal output (just file path)" & LF & LF
     
-    set outText to outText & "Commands:" & LF
-    set outText to outText & "  list:                 List all running apps with window titles" & LF
-    set outText to outText & "  analyze:              Analyze existing image with AI vision" & LF
-    set outText to outText & "  help:                 Show this help message" & LF & LF
+    set outText to outText & "EXAMPLES:" & LF
+    set outText to outText & "  # Basic captures" & LF
+    set outText to outText & "  peekaboo                                    # Fullscreen" & LF
+    set outText to outText & "  peekaboo Safari                             # Safari window" & LF
+    set outText to outText & "  peekaboo Safari -o ~/Desktop/safari.png     # Specific path" & LF
+    set outText to outText & "  peekaboo -f -o screenshot.jpg --format jpg  # Fullscreen as JPG" & LF & LF
     
-    set outText to outText & "Examples:" & LF
-    set outText to outText & "  # List running applications:" & LF
-    set outText to outText & "  osascript " & scriptName & " list" & LF
-    set outText to outText & "  # Screenshot Safari to /tmp with timestamp:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"Safari\"" & LF
-    set outText to outText & "  # Full screen capture with custom path:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"Safari\" \"/Users/username/Desktop/safari.png\"" & LF
-    set outText to outText & "  # Front window only:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"TextEdit\" \"/tmp/textedit.png\" --window" & LF
-    set outText to outText & "  # All windows with descriptive names:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"Safari\" \"/tmp/safari_windows.png\" --multi" & LF
-    set outText to outText & "  # One-step: Screenshot + AI analysis:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"Safari\" --ask \"What's on this page?\"" & LF
-    set outText to outText & "  # Two-step: Analyze existing image:" & LF
-    set outText to outText & "  osascript " & scriptName & " analyze \"/tmp/screenshot.png\" \"Describe what you see\"" & LF
-    set outText to outText & "  # Custom model:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"Safari\" --ask \"Any errors?\" --model llava:13b" & LF & LF
+    set outText to outText & "  # Multi-window capture" & LF
+    set outText to outText & "  peekaboo Chrome -m                          # All Chrome windows" & LF
+    set outText to outText & "  peekaboo Safari -m -o ~/screenshots/        # To directory" & LF & LF
+    
+    set outText to outText & "  # AI analysis" & LF
+    set outText to outText & "  peekaboo Safari -a \"What's on this page?\"   # Screenshot + analyze" & LF
+    set outText to outText & "  peekaboo -f -a \"Any errors visible?\"        # Fullscreen + analyze" & LF
+    set outText to outText & "  peekaboo analyze photo.png \"What is this?\"  # Analyze existing" & LF
+    set outText to outText & "  peekaboo Terminal -a \"Show the error\" --model llava:13b" & LF & LF
+    
+    set outText to outText & "  # Other commands" & LF
+    set outText to outText & "  peekaboo list                               # Show running apps" & LF
+    set outText to outText & "  peekaboo help                               # This help" & LF & LF
+    
+    set outText to outText & "Note: When using with osascript, quote arguments and escape as needed:" & LF
+    set outText to outText & "  osascript peekaboo.scpt Safari -a \"What's shown?\"" & LF & LF
     
     set outText to outText & "AI Analysis Features:" & LF
-    set outText to outText & "  • Local inference with Ollama (private, no data sent to cloud)" & LF
-    set outText to outText & "  • Auto-detects best available vision model from your Ollama install" & LF
-    set outText to outText & "  • Priority: qwen2.5vl:7b > llava:7b > llava-phi3:3.8b > minicpm-v:8b" & LF
+    set outText to outText & "  • Smart provider detection: auto-detects Ollama or Claude CLI" & LF
+    set outText to outText & "  • Smart multi-window: Automatically analyzes ALL windows for multi-window apps" & LF
+    set outText to outText & "    - App has 3 windows? Analyzes all 3 and reports on each" & LF
+    set outText to outText & "    - Use -w flag to force single window analysis" & LF
+    set outText to outText & "  • Ollama: Local inference with vision models (recommended)" & LF
+    set outText to outText & "    - Supports direct image file analysis" & LF
+    set outText to outText & "    - Priority: qwen2.5vl:7b > llava:7b > llava-phi3:3.8b > minicpm-v:8b" & LF
+    set outText to outText & "  • Claude: Limited support (CLI doesn't analyze image files)" & LF
+    set outText to outText & "    - Claude CLI detected but can't process image files directly" & LF
+    set outText to outText & "    - Use Ollama for automated image analysis" & LF
     set outText to outText & "  • One-step: Screenshot + analysis in single command" & LF
     set outText to outText & "  • Two-step: Analyze existing images separately" & LF
-    set outText to outText & "  • Detailed setup guide if models missing" & LF & LF
+    set outText to outText & "  • Timeout protection: 90-second timeout prevents hanging" & LF & LF
     
     set outText to outText & "Multi-Window Features:" & LF
     set outText to outText & "  • --multi creates separate files with descriptive names" & LF
@@ -987,6 +1344,7 @@ on usageText()
     set outText to outText & "  • Each window is focused before capture for accuracy" & LF & LF
     
     set outText to outText & "Notes:" & LF
+    set outText to outText & "  • Default behavior: App specified = window capture, No app = full screen" & LF
     set outText to outText & "  • Requires Screen Recording permission in System Preferences" & LF
     set outText to outText & "  • Accessibility permission may be needed for window enumeration" & LF
     set outText to outText & "  • Window titles longer than " & maxWindowTitleLength & " characters are truncated" & LF
