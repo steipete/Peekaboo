@@ -234,7 +234,16 @@ on captureScreenshot(outputPath)
         end try
         
     on error errMsg number errNum
-        return my formatErrorMessage("Capture Error", "screencapture failed: " & errMsg, "error " & errNum)
+        -- Enhanced error handling for common screencapture issues
+        if errMsg contains "not authorized" or errMsg contains "Screen Recording" then
+            return my formatErrorMessage("Permission Error", "Screen Recording permission required. Please go to System Preferences > Security & Privacy > Screen Recording and add your terminal app to the allowed list. Then restart your terminal and try again.", "screen recording permission")
+        else if errMsg contains "No such file" then
+            return my formatErrorMessage("Path Error", "Cannot create screenshot at '" & outputPath & "'. Check that the directory exists and you have write permissions.", "file creation")
+        else if errMsg contains "Permission denied" then
+            return my formatErrorMessage("Permission Error", "Permission denied writing to '" & outputPath & "'. Check file/directory permissions or try a different location like /tmp/", "write permission")
+        else
+            return my formatErrorMessage("Capture Error", "screencapture failed: " & errMsg & ". This may be due to permissions, disk space, or system restrictions.", "error " & errNum)
+        end if
     end try
 end captureScreenshot
 --#endregion Screenshot Functions
@@ -260,10 +269,26 @@ on run argv
             return my formatErrorMessage("Argument Error", "Output path must be an absolute path starting with '/'." & linefeed & linefeed & my usageText(), "validation")
         end if
         
-        -- Resolve app identifier
+        -- Resolve app identifier with detailed diagnostics
         set appInfo to my resolveAppIdentifier(appIdentifier)
         if appInfo is missing value then
-            return my formatErrorMessage("Resolution Error", "Could not resolve app identifier '" & appIdentifier & "'. Check that the app name or bundle ID is correct.", "app resolution")
+            set errorDetails to "Could not resolve app identifier '" & appIdentifier & "'."
+            
+            -- Provide specific guidance based on identifier type
+            if appIdentifier contains "." then
+                set errorDetails to errorDetails & " This appears to be a bundle ID. Common issues:" & linefeed
+                set errorDetails to errorDetails & "• Bundle ID may be incorrect (try 'com.apple.' prefix for system apps)" & linefeed
+                set errorDetails to errorDetails & "• App may not be installed" & linefeed
+                set errorDetails to errorDetails & "• Try using the app name instead (e.g., 'Safari' instead of bundle ID)"
+            else
+                set errorDetails to errorDetails & " This appears to be an app name. Common issues:" & linefeed
+                set errorDetails to errorDetails & "• App name may be incorrect (case-sensitive)" & linefeed
+                set errorDetails to errorDetails & "• App may not be installed or running" & linefeed
+                set errorDetails to errorDetails & "• Try the full app name (e.g., 'Activity Monitor' not 'Activity')" & linefeed
+                set errorDetails to errorDetails & "• Some apps need to be launched first before capturing"
+            end if
+            
+            return my formatErrorMessage("App Resolution Error", errorDetails, "app resolution")
         end if
         
         set resolvedAppName to appName of appInfo
@@ -281,7 +306,7 @@ on run argv
             return screenshotResult
         else
             -- Success
-            return scriptInfoPrefix & "Screenshot captured successfully: " & screenshotResult & " (App: " & resolvedAppName & ")"
+            return scriptInfoPrefix & "Screenshot captured successfully! 📸" & linefeed & "• File: " & screenshotResult & linefeed & "• App: " & resolvedAppName & linefeed & "• Mode: full screen" & linefeed & "💡 The full screen with " & resolvedAppName & " active has been saved."
         end if
         
     on error generalErrorMsg number generalErrorNum

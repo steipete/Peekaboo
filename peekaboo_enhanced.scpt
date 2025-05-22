@@ -1,6 +1,6 @@
 #!/usr/bin/osascript
 --------------------------------------------------------------------------------
--- peekaboo_enhanced.scpt - v2.0.0 "Peekaboo Pro! 👀 → 📸 → 💾"
+-- peekaboo_enhanced.scpt - v1.0.0 "Peekaboo Pro! 👀 → 📸 → 💾"
 -- Enhanced screenshot capture with multi-window support and app discovery
 -- Peekaboo—screenshot got you! Now you see it, now it's saved.
 --------------------------------------------------------------------------------
@@ -257,15 +257,20 @@ end resolveAppIdentifier
 
 on getAppWindows(appName)
     set windowInfo to {}
+    set windowCount to 0
+    set accessibleWindows to 0
+    
     try
         tell application "System Events"
             tell process appName
-                repeat with i from 1 to count of windows
+                set windowCount to count of windows
+                repeat with i from 1 to windowCount
                     try
                         set win to window i
                         set winTitle to title of win
                         if winTitle is "" then set winTitle to "Untitled Window " & i
                         set end of windowInfo to {winTitle, i}
+                        set accessibleWindows to accessibleWindows + 1
                     on error
                         set end of windowInfo to {("Window " & i), i}
                     end try
@@ -274,9 +279,39 @@ on getAppWindows(appName)
         end tell
     on error errMsg
         my logVerbose("Failed to get windows for " & appName & ": " & errMsg)
+        return {windowInfo:windowInfo, totalWindows:0, accessibleWindows:0, errorMsg:errMsg}
     end try
-    return windowInfo
+    
+    return {windowInfo:windowInfo, totalWindows:windowCount, accessibleWindows:accessibleWindows, errorMsg:""}
 end getAppWindows
+
+on getAppWindowStatus(appName)
+    set windowStatus to my getAppWindows(appName)
+    set windowInfo to windowInfo of windowStatus
+    set totalWindows to totalWindows of windowStatus
+    set accessibleWindows to accessibleWindows of windowStatus
+    set windowError to errorMsg of windowStatus
+    
+    if windowError is not "" then
+        return my formatErrorMessage("Window Access Error", "Cannot access windows for app '" & appName & "': " & windowError & ". The app may not be running or may not have accessibility permissions.", "window enumeration")
+    end if
+    
+    if totalWindows = 0 then
+        return my formatErrorMessage("No Windows Error", "App '" & appName & "' is running but has no windows open. Peekaboo needs at least one window to capture. Please open a window in " & appName & " and try again.", "zero windows")
+    end if
+    
+    if accessibleWindows = 0 and totalWindows > 0 then
+        return my formatErrorMessage("Window Access Error", "App '" & appName & "' has " & totalWindows & " window(s) but none are accessible. This may require accessibility permissions in System Preferences > Security & Privacy > Accessibility.", "accessibility required")
+    end if
+    
+    -- Success case
+    set statusMsg to "App '" & appName & "' has " & totalWindows & " window(s)"
+    if accessibleWindows < totalWindows then
+        set statusMsg to statusMsg & " (" & accessibleWindows & " accessible)"
+    end if
+    
+    return {status:"success", message:statusMsg, windowInfo:windowInfo, totalWindows:totalWindows, accessibleWindows:accessibleWindows}
+end getAppWindowStatus
 
 on bringAppToFront(appInfo)
     set appName to appName of appInfo
@@ -359,16 +394,38 @@ on captureScreenshot(outputPath, captureMode, appName)
         end try
         
     on error errMsg number errNum
-        return my formatErrorMessage("Capture Error", "screencapture failed: " & errMsg, "error " & errNum)
+        -- Enhanced error handling for common screencapture issues
+        if errMsg contains "not authorized" or errMsg contains "Screen Recording" then
+            return my formatErrorMessage("Permission Error", "Screen Recording permission required. Please go to System Preferences > Security & Privacy > Screen Recording and add your terminal app to the allowed list. Then restart your terminal and try again.", "screen recording permission")
+        else if errMsg contains "No such file" then
+            return my formatErrorMessage("Path Error", "Cannot create screenshot at '" & outputPath & "'. Check that the directory exists and you have write permissions.", "file creation")
+        else if errMsg contains "Permission denied" then
+            return my formatErrorMessage("Permission Error", "Permission denied writing to '" & outputPath & "'. Check file/directory permissions or try a different location like /tmp/", "write permission")
+        else
+            return my formatErrorMessage("Capture Error", "screencapture failed: " & errMsg & ". This may be due to permissions, disk space, or system restrictions.", "error " & errNum)
+        end if
     end try
 end captureScreenshot
 
 on captureMultipleWindows(appName, baseOutputPath)
-    set windowInfo to my getAppWindows(appName)
+    -- Get detailed window status first
+    set windowStatus to my getAppWindowStatus(appName)
+    
+    -- Check if it's an error
+    if (windowStatus starts with scriptInfoPrefix) then
+        return windowStatus -- Return the descriptive error
+    end if
+    
+    -- Extract window info from successful status
+    set windowInfo to windowInfo of windowStatus
+    set totalWindows to totalWindows of windowStatus
+    set accessibleWindows to accessibleWindows of windowStatus
     set capturedFiles to {}
     
+    my logVerbose("Multi-window capture: " & totalWindows & " total, " & accessibleWindows & " accessible")
+    
     if (count of windowInfo) = 0 then
-        return my formatErrorMessage("Window Error", "No accessible windows found for app '" & appName & "'", "window enumeration")
+        return my formatErrorMessage("Multi-Window Error", "App '" & appName & "' has no accessible windows for multi-window capture. Try using single screenshot mode instead, or ensure the app has open windows.", "no accessible windows")
     end if
     
     -- Get base path components
@@ -471,10 +528,26 @@ on run argv
             return my formatErrorMessage("Argument Error", "Output path must be an absolute path starting with '/'." & linefeed & linefeed & my usageText(), "validation")
         end if
         
-        -- Resolve app identifier
+        -- Resolve app identifier with detailed diagnostics
         set appInfo to my resolveAppIdentifier(appIdentifier)
         if appInfo is missing value then
-            return my formatErrorMessage("Resolution Error", "Could not resolve app identifier '" & appIdentifier & "'. Check that the app name or bundle ID is correct.", "app resolution")
+            set errorDetails to "Could not resolve app identifier '" & appIdentifier & "'."
+            
+            -- Provide specific guidance based on identifier type
+            if appIdentifier contains "." then
+                set errorDetails to errorDetails & " This appears to be a bundle ID. Common issues:" & linefeed
+                set errorDetails to errorDetails & "• Bundle ID may be incorrect (try 'com.apple.' prefix for system apps)" & linefeed
+                set errorDetails to errorDetails & "• App may not be installed" & linefeed
+                set errorDetails to errorDetails & "• Use 'osascript peekaboo_enhanced.scpt list' to see available apps"
+            else
+                set errorDetails to errorDetails & " This appears to be an app name. Common issues:" & linefeed
+                set errorDetails to errorDetails & "• App name may be incorrect (case-sensitive)" & linefeed
+                set errorDetails to errorDetails & "• App may not be installed or running" & linefeed
+                set errorDetails to errorDetails & "• Try the full app name (e.g., 'Activity Monitor' not 'Activity')" & linefeed
+                set errorDetails to errorDetails & "• Use 'osascript peekaboo_enhanced.scpt list' to see running apps"
+            end if
+            
+            return my formatErrorMessage("App Resolution Error", errorDetails, "app resolution")
         end if
         
         set resolvedAppName to appName of appInfo
@@ -485,18 +558,40 @@ on run argv
         set frontError to my bringAppToFront(appInfo)
         if frontError is not "" then return frontError
         
+        -- Pre-capture window validation for better error messages
+        if multiWindow or captureMode is "window" then
+            set windowStatus to my getAppWindowStatus(resolvedAppName)
+            if (windowStatus starts with scriptInfoPrefix) then
+                -- Add context about what the user was trying to do
+                if multiWindow then
+                    set contextError to "Multi-window capture failed: " & windowStatus
+                    set contextError to contextError & linefeed & "💡 Suggestion: Try basic screenshot mode without --multi flag"
+                else
+                    set contextError to "Window capture failed: " & windowStatus  
+                    set contextError to contextError & linefeed & "💡 Suggestion: Try full-screen capture mode without --window flag"
+                end if
+                return contextError
+            end if
+            
+            -- Log successful window detection
+            set statusMsg to message of windowStatus
+            my logVerbose("Window validation passed: " & statusMsg)
+        end if
+        
         -- Handle multi-window capture
         if multiWindow then
             set capturedFiles to my captureMultipleWindows(resolvedAppName, outputPath)
             if capturedFiles starts with scriptInfoPrefix then
                 return capturedFiles -- Error message
             else
-                set resultMsg to scriptInfoPrefix & "Captured " & (count of capturedFiles) & " windows for " & resolvedAppName & ":" & linefeed
+                set windowCount to count of capturedFiles
+                set resultMsg to scriptInfoPrefix & "Multi-window capture successful! Captured " & windowCount & " window(s) for " & resolvedAppName & ":" & linefeed
                 repeat with fileInfo in capturedFiles
                     set filePath to item 1 of fileInfo
                     set winTitle to item 2 of fileInfo
-                    set resultMsg to resultMsg & "  • " & filePath & " (\"" & winTitle & "\")" & linefeed
+                    set resultMsg to resultMsg & "  📸 " & filePath & " → \"" & winTitle & "\"" & linefeed
                 end repeat
+                set resultMsg to resultMsg & linefeed & "💡 All windows captured with descriptive filenames. Each file shows a different window of " & resolvedAppName & "."
                 return resultMsg
             end if
         else
@@ -505,7 +600,10 @@ on run argv
             if screenshotResult starts with scriptInfoPrefix then
                 return screenshotResult -- Error message
             else
-                return scriptInfoPrefix & "Screenshot captured successfully: " & screenshotResult & " (App: " & resolvedAppName & ", Mode: " & captureMode & ")"
+                set modeDescription to "full screen"
+                if captureMode is "window" then set modeDescription to "front window only"
+                
+                return scriptInfoPrefix & "Screenshot captured successfully! 📸" & linefeed & "• File: " & screenshotResult & linefeed & "• App: " & resolvedAppName & linefeed & "• Mode: " & modeDescription & linefeed & "💡 The " & modeDescription & " of " & resolvedAppName & " has been saved."
             end if
         end if
         
@@ -521,7 +619,7 @@ on usageText()
     set LF to linefeed
     set scriptName to "peekaboo_enhanced.scpt"
     
-    set outText to scriptName & " - v2.0.0 \"Peekaboo Pro! 👀 → 📸 → 💾\" – Enhanced AppleScript Screenshot Utility" & LF & LF
+    set outText to scriptName & " - v1.0.0 \"Peekaboo Pro! 👀 → 📸 → 💾\" – Enhanced AppleScript Screenshot Utility" & LF & LF
     set outText to outText & "Peekaboo—screenshot got you! Now you see it, now it's saved." & LF
     set outText to outText & "Takes unattended screenshots with multi-window support and app discovery." & LF & LF
     
