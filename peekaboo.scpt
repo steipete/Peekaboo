@@ -8,8 +8,8 @@
 --#region Configuration Properties
 property scriptInfoPrefix : "Peekaboo 👀: "
 property defaultScreenshotFormat : "png"
-property captureDelay : 1.0
-property windowActivationDelay : 0.5
+property captureDelay : 0.3
+property windowActivationDelay : 0.2
 property enhancedErrorReporting : true
 property verboseLogging : false
 property maxWindowTitleLength : 50
@@ -59,6 +59,32 @@ on sanitizeFilename(filename)
     end if
     return filename
 end sanitizeFilename
+
+on sanitizeAppName(appName)
+    -- Create model-friendly app names (lowercase, underscores, no spaces)
+    set appName to my replaceText(appName, " ", "_")
+    set appName to my replaceText(appName, ".", "_")
+    set appName to my replaceText(appName, "-", "_")
+    set appName to my replaceText(appName, "/", "_")
+    set appName to my replaceText(appName, ":", "_")
+    set appName to my replaceText(appName, "*", "_")
+    set appName to my replaceText(appName, "?", "_")
+    set appName to my replaceText(appName, "\"", "_")
+    set appName to my replaceText(appName, "<", "_")
+    set appName to my replaceText(appName, ">", "_")
+    set appName to my replaceText(appName, "|", "_")
+    -- Convert to lowercase using shell
+    try
+        set appName to do shell script "echo " & quoted form of appName & " | tr '[:upper:]' '[:lower:]'"
+    on error
+        -- Fallback if shell command fails
+    end try
+    -- Limit length for readability
+    if (length of appName) > 20 then
+        set appName to text 1 thru 20 of appName
+    end if
+    return appName
+end sanitizeAppName
 
 on replaceText(theText, searchStr, replaceStr)
     set oldDelims to AppleScript's text item delimiters
@@ -444,7 +470,7 @@ on captureMultipleWindows(appName, baseOutputPath)
     repeat with winInfo in windowInfo
         set winTitle to item 1 of winInfo
         set winIndex to item 2 of winInfo
-        set sanitizedTitle to my sanitizeFilename(winTitle)
+        set sanitizedTitle to my sanitizeAppName(winTitle)
         
         set windowFileName to baseNameNoExt & "_window_" & winIndex & "_" & sanitizedTitle & "." & fileExt
         set windowOutputPath to outputDir & "/" & windowFileName
@@ -459,7 +485,7 @@ on captureMultipleWindows(appName, baseOutputPath)
                     end tell
                 end tell
             end tell
-            delay 0.3
+            delay 0.1
         on error
             my logVerbose("Could not focus window " & winIndex & ", continuing anyway")
         end try
@@ -506,7 +532,9 @@ on run argv
             set outputPath to item 2 of argv
         else
             set timestamp to do shell script "date +%Y%m%d_%H%M%S"
-            set outputPath to "/tmp/peekaboo_" & timestamp & ".png"
+            -- Create model-friendly filename with app name
+            set appNameForFile to my sanitizeAppName(appIdentifier)
+            set outputPath to "/tmp/peekaboo_" & appNameForFile & "_" & timestamp & ".png"
         end if
         set captureMode to "screen" -- default
         set multiWindow to false
@@ -638,7 +666,7 @@ on usageText()
     set outText to outText & "Parameters:" & LF
     set outText to outText & "  app_name_or_bundle_id: Application name (e.g., 'Safari') or bundle ID (e.g., 'com.apple.Safari')" & LF
     set outText to outText & "  output_path:          Optional absolute path for screenshot file(s)" & LF
-    set outText to outText & "                        If not provided, saves to /tmp/peekaboo_TIMESTAMP.png" & LF & LF
+    set outText to outText & "                        If not provided, saves to /tmp/peekaboo_appname_TIMESTAMP.png" & LF & LF
     
     set outText to outText & "Options:" & LF
     set outText to outText & "  --window, -w:         Capture frontmost window only" & LF
@@ -672,7 +700,7 @@ on usageText()
     set outText to outText & "  • Requires Screen Recording permission in System Preferences" & LF
     set outText to outText & "  • Accessibility permission may be needed for window enumeration" & LF
     set outText to outText & "  • Window titles longer than " & maxWindowTitleLength & " characters are truncated" & LF
-    set outText to outText & "  • Default capture delay: " & (captureDelay as string) & " second(s)" & LF
+    set outText to outText & "  • Default capture delay: " & (captureDelay as string) & " second(s) (optimized for speed)" & LF
     
     return outText
 end usageText

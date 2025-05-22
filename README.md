@@ -61,7 +61,7 @@ osascript peekaboo.scpt "TextEdit" "/tmp/textedit.png" --window
 # Quick shot with auto-generated filename
 osascript peekaboo.scpt "Finder"
 ```
-**Result**: Full screen with Finder in focus → `/tmp/peekaboo_20250522_143052.png`
+**Result**: Full screen with Finder in focus → `/tmp/peekaboo_finder_20250522_143052.png`
 
 ```bash
 # Custom path
@@ -74,9 +74,9 @@ osascript peekaboo.scpt "Finder" "/Desktop/finder.png"
 osascript peekaboo.scpt "Safari" "/tmp/safari.png" --multi
 ```
 **Result**: Multiple files with smart names:
-- `safari_window_1_GitHub.png`
-- `safari_window_2_Documentation.png`  
-- `safari_window_3_Google_Search.png`
+- `safari_window_1_github.png`
+- `safari_window_2_documentation.png`  
+- `safari_window_3_google_search.png`
 
 ### 🔍 **App Discovery**
 ```bash
