@@ -16,6 +16,8 @@
 - 🏗 **Creates directories**: Paths don't exist? Fixed!
 - 🎨 **Multi-format**: PNG, JPG, PDF — you name it
 - 💥 **Zero interaction**: 100% unattended operation
+- 🧠 **Smart filenames**: Model-friendly names with app info
+- ⚡ **Optimized speed**: 70% faster capture delays
 
 ---
 
@@ -25,8 +27,9 @@
 *Simple screenshot capture*
 
 ```bash
-# 👀 Quick shot to /tmp with timestamp
+# 👀 Quick shot with smart filename
 osascript peekaboo.scpt "Safari"
+# → /tmp/peekaboo_safari_20250522_143052.png
 
 # 🎯 Custom output path
 osascript peekaboo.scpt "Safari" "/Users/you/Desktop/safari.png"
@@ -62,6 +65,7 @@ osascript peekaboo.scpt "TextEdit" "/tmp/textedit.png" --window
 osascript peekaboo.scpt "Finder"
 ```
 **Result**: Full screen with Finder in focus → `/tmp/peekaboo_finder_20250522_143052.png`
+*Notice the smart filename: app name + timestamp, all lowercase with underscores*
 
 ```bash
 # Custom path
@@ -105,8 +109,9 @@ chmod +x peekaboo.scpt
 Peekaboo speaks all the languages:
 
 ```bash
-# PNG (default) - auto-generated in /tmp
+# PNG (default) - smart filename in /tmp
 osascript peekaboo.scpt "Safari"
+# → /tmp/peekaboo_safari_20250522_143052.png
 
 # PNG with custom path
 osascript peekaboo.scpt "Safari" "/tmp/shot.png"
@@ -120,21 +125,48 @@ osascript peekaboo.scpt "Safari" "/tmp/shot.pdf"
 
 ---
 
+## 🧠 **SMART FILENAMES**
+
+Peekaboo automatically generates **model-friendly** filenames that are perfect for automation:
+
+```bash
+# App names become lowercase with underscores
+osascript peekaboo.scpt "Safari"               → peekaboo_safari_TIMESTAMP.png
+osascript peekaboo.scpt "Activity Monitor"     → peekaboo_activity_monitor_TIMESTAMP.png
+osascript peekaboo.scpt "com.apple.TextEdit"   → peekaboo_com_apple_textedit_TIMESTAMP.png
+osascript peekaboo.scpt "Final Cut Pro"        → peekaboo_final_cut_pro_TIMESTAMP.png
+
+# Multi-window gets descriptive names
+osascript peekaboo.scpt "Chrome" --multi       → chrome_window_1_github.png
+                                                → chrome_window_2_documentation.png
+```
+
+**Perfect for:**
+- 🤖 AI model file references  
+- 📝 Scripting and automation
+- 🔍 Easy file searching
+- 📊 Batch processing
+
+---
+
 ## 🏆 **POWER MOVES**
 
 ### 🎯 **Targeting Options**
 ```bash
-# By name (easy) - auto path
+# By name (easy) - smart filename
 osascript peekaboo.scpt "Safari"
+# → /tmp/peekaboo_safari_20250522_143052.png
 
 # By name with custom path
 osascript peekaboo.scpt "Safari" "/tmp/safari.png"
 
-# By bundle ID (precise)
-osascript peekaboo.scpt "com.apple.Safari" "/tmp/safari.png"
+# By bundle ID (precise) - gets sanitized
+osascript peekaboo.scpt "com.apple.Safari"
+# → /tmp/peekaboo_com_apple_safari_20250522_143052.png
 
-# By display name (works too!)
-osascript peekaboo.scpt "Final Cut Pro" "/tmp/finalcut.png"
+# By display name (works too!) - spaces become underscores
+osascript peekaboo.scpt "Final Cut Pro"
+# → /tmp/peekaboo_final_cut_pro_20250522_143052.png
 ```
 
 ### 🎪 **Pro Features**
@@ -178,8 +210,9 @@ osascript peekaboo.scpt "Safari" "/docs/browser.png" --multi
 
 ### 🚀 **CI/CD Integration**
 ```bash
-# Quick automated testing screenshots
+# Quick automated testing screenshots with smart names
 osascript peekaboo.scpt "Your App"
+# → /tmp/peekaboo_your_app_20250522_143052.png
 
 # Custom path with timestamp
 osascript peekaboo.scpt "Your App" "/test-results/app-$(date +%s).png"
@@ -233,7 +266,8 @@ osascript peekaboo.scpt "Safari" "/tmp/debug.png" --verbose
 | **Multi-window** | ✅ `--multi` captures all app windows |
 | **Smart naming** | ✅ Descriptive filenames for windows |
 | **Window modes** | ✅ `--window` for front window only |
-| **Auto paths** | ✅ Optional output path with /tmp default |
+| **Auto paths** | ✅ Optional output path with smart /tmp defaults |
+| **Smart filenames** | ✅ Model-friendly: app_name_timestamp format |
 | **Verbose logging** | ✅ `--verbose` for debugging |
 
 ---
@@ -280,15 +314,22 @@ property verboseLogging : false          -- Debug output
 - Perfect for automation and CI/CD
 - Set it and forget it
 
-### 🎯 **Smart Targeting**
-- Works with app names OR bundle IDs
-- Auto-launches sleeping apps
-- Always brings your target to the front
+### 🧠 **Smart Everything**
+- **Smart filenames**: Model-friendly with app names
+- **Smart targeting**: Works with app names OR bundle IDs
+- **Smart delays**: Optimized for speed (70% faster)
+- Auto-launches sleeping apps and brings them forward
 
 ### 🎭 **Multi-Window Mastery**
 - Captures ALL windows with descriptive names
-- Safe filename generation
+- Safe filename generation with sanitization
 - Never overwrites accidentally
+
+### ⚡ **Blazing Fast**
+- **0.3s capture delay** (down from 1.0s)
+- **0.2s window activation** (down from 0.5s) 
+- **0.1s multi-window focus** (down from 0.3s)
+- Responsive and practical for daily use
 
 ### 🔍 **Discovery Built-In**
 - See exactly what's running
