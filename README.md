@@ -8,7 +8,7 @@
 
 ## ✨ **FEATURES**
 
-🎯 **Clean CLI** • 🤫 **Quiet Mode** • 🤖 **Dual AI Support** • ⚡ **Non-Interactive** • 📊 **Smart Defaults** • 🪟 **Multi-Window AI**
+🎯 **Clean CLI** • 🤫 **Quiet Mode** • 🤖 **AI Support** • ⚡ **Non-Interactive** • 🪟 **Multi-Window**
 
 ---
 
