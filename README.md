@@ -1,4 +1,4 @@
-# Peekaboo v1.0 — The screenshot tool that just works™
+# Peekaboo — The screenshot tool that just works™
 
 ![Peekaboo Banner](assets/banner.png)
 
@@ -870,7 +870,7 @@ Built in the style of the legendary **terminator.scpt** — because good pattern
 
 ```
 📁 Peekaboo/
-├── 🎯 peekaboo.scpt              # Main screenshot tool (v1.0)
+├── 🎯 peekaboo.scpt              # Main screenshot tool
 ├── 🧪 test_peekaboo.sh          # Comprehensive test suite
 ├── 📖 README.md                  # This awesomeness
 └── 🎨 assets/
