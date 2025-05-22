@@ -142,7 +142,10 @@ end trimWhitespace
 --#region AI Analysis Functions
 on checkOllamaAvailable()
     try
+        -- Check if ollama command exists
         do shell script "ollama --version >/dev/null 2>&1"
+        -- Check if ollama service is running by testing API
+        do shell script "curl -s http://localhost:11434/api/tags >/dev/null 2>&1"
         return true
     on error
         return false
@@ -238,13 +241,72 @@ on analyzeImageWithAI(imagePath, question, requestedModel)
         return my formatErrorMessage("Model Error", "No vision models found." & linefeed & linefeed & my getOllamaInstallInstructions(), "no vision models")
     end if
     
-    -- Use ollama run command (much simpler than API)
+    -- Use ollama run command with proper vision model syntax
     try
         my logVerbose("Using model: " & modelToUse)
-        set ollamaCmd to "ollama run " & quoted form of modelToUse & " --image " & quoted form of imagePath & " " & quoted form of question
-        my logVerbose("Running: " & ollamaCmd)
+        -- For vision models, we need to use the API approach or different command structure
+        -- Let's use a simpler approach with base64 and API
+        -- First check if image is too large and compress if needed
+        set imageSize to do shell script "wc -c < " & quoted form of imagePath
+        set imageSizeBytes to imageSize as number
+        my logVerbose("Image size: " & imageSize & " bytes")
         
-        set aiResponse to do shell script ollamaCmd
+        set processedImagePath to imagePath
+        if imageSizeBytes > 5000000 then -- 5MB threshold
+            my logVerbose("Image is large (" & imageSize & " bytes), creating compressed version for AI")
+            set compressedPath to "/tmp/peekaboo_ai_compressed.png"
+            -- Use sips to resize and compress image for AI analysis
+            do shell script "sips -Z 2048 -s format png " & quoted form of imagePath & " --out " & quoted form of compressedPath
+            set processedImagePath to compressedPath
+        end if
+        
+        set base64Image to do shell script "base64 -i " & quoted form of processedImagePath & " | tr -d '\\n'"
+        set jsonPayload to "{\"model\":\"" & modelToUse & "\",\"prompt\":\"" & my escapeJSON(question) & "\",\"images\":[\"" & base64Image & "\"],\"stream\":false}"
+        my logVerbose("Running API call to Ollama")
+        my logVerbose("JSON payload size: " & (length of jsonPayload) & " characters")
+        my logVerbose("Base64 image size: " & (length of base64Image) & " characters")
+        
+        -- Write JSON to temporary file using AppleScript file writing to avoid shell limitations
+        set jsonTempFile to "/tmp/peekaboo_ollama_request.json"
+        try
+            set fileRef to open for access (POSIX file jsonTempFile) with write permission
+            set eof of fileRef to 0
+            write jsonPayload to fileRef
+            close access fileRef
+        on error
+            try
+                close access fileRef
+            end try
+        end try
+        set curlCmd to "curl -s -X POST http://localhost:11434/api/generate -H 'Content-Type: application/json' -d @" & quoted form of jsonTempFile
+        
+        set response to do shell script curlCmd
+        
+        -- Parse JSON response
+        set responseStart to (offset of "\"response\":\"" in response) + 12
+        if responseStart > 12 then
+            set responseEnd to responseStart
+            set inEscape to false
+            repeat with i from responseStart to (length of response)
+                set char to character i of response
+                if inEscape then
+                    set inEscape to false
+                else if char is "\\" then
+                    set inEscape to true
+                else if char is "\"" then
+                    set responseEnd to i - 1
+                    exit repeat
+                end if
+            end repeat
+            
+            set aiResponse to text responseStart thru responseEnd of response
+            -- Unescape JSON
+            set aiResponse to my replaceText(aiResponse, "\\n", linefeed)
+            set aiResponse to my replaceText(aiResponse, "\\\"", "\"")
+            set aiResponse to my replaceText(aiResponse, "\\\\", "\\")
+        else
+            error "Could not parse response: " & response
+        end if
         
         return scriptInfoPrefix & "AI Analysis Complete! 🤖" & linefeed & linefeed & "📸 Image: " & imagePath & linefeed & "❓ Question: " & question & linefeed & "🤖 Model: " & modelToUse & linefeed & linefeed & "💬 Answer:" & linefeed & aiResponse
         
@@ -256,6 +318,15 @@ on analyzeImageWithAI(imagePath, question, requestedModel)
         end if
     end try
 end analyzeImageWithAI
+
+on escapeJSON(inputText)
+    set escapedText to my replaceText(inputText, "\\", "\\\\")
+    set escapedText to my replaceText(escapedText, "\"", "\\\"")
+    set escapedText to my replaceText(escapedText, linefeed, "\\n")
+    set escapedText to my replaceText(escapedText, return, "\\n")
+    set escapedText to my replaceText(escapedText, tab, "\\t")
+    return escapedText
+end escapeJSON
 --#endregion AI Analysis Functions
 
 --#region App Discovery Functions
@@ -468,6 +539,12 @@ on bringAppToFront(appInfo)
     
     my logVerbose("Bringing app to front: " & appName & " (running: " & isRunning & ")")
     
+    -- Skip app focus for fullscreen mode
+    if appName is "fullscreen" then
+        my logVerbose("Fullscreen mode - skipping app focus")
+        return ""
+    end if
+    
     if not isRunning then
         try
             tell application appName to activate
@@ -668,52 +745,69 @@ on run argv
         
         if argCount < 1 then return my usageText()
         
-        set appIdentifier to item 1 of argv
-        
-        -- Use default tmp path if no output path provided
-        if argCount >= 2 then
-            set outputPath to item 2 of argv
-        else
-            set timestamp to do shell script "date +%Y%m%d_%H%M%S"
-            -- Create model-friendly filename with app name
-            set appNameForFile to my sanitizeAppName(appIdentifier)
-            set outputPath to "/tmp/peekaboo_" & appNameForFile & "_" & timestamp & ".png"
-        end if
+        -- Initialize variables
         set captureMode to "screen" -- default
         set multiWindow to false
         set analyzeMode to false
         set analysisQuestion to ""
         set visionModel to defaultVisionModel
+        set outputPath to ""
+        set pathProvided to false
+        set appIdentifier to ""
         
-        -- Parse additional options
-        if argCount > 2 then
-            set i to 3
-            repeat while i ≤ argCount
-                set arg to item i of argv
-                if arg is "--window" or arg is "-w" then
-                    set captureMode to "window"
-                else if arg is "--multi" or arg is "-m" then
-                    set multiWindow to true
-                else if arg is "--verbose" or arg is "-v" then
-                    set verboseLogging to true
-                else if arg is "--ask" or arg is "--analyze" then
-                    set analyzeMode to true
-                    if i < argCount then
-                        set i to i + 1
-                        set analysisQuestion to item i of argv
-                    else
-                        return my formatErrorMessage("Argument Error", "--ask requires a question parameter" & linefeed & linefeed & my usageText(), "validation")
-                    end if
-                else if arg is "--model" then
-                    if i < argCount then
-                        set i to i + 1
-                        set visionModel to item i of argv
-                    else
-                        return my formatErrorMessage("Argument Error", "--model requires a model name parameter" & linefeed & linefeed & my usageText(), "validation")
-                    end if
+        -- Parse all arguments to find options and app identifier
+        set i to 1
+        repeat while i ≤ argCount
+            set arg to item i of argv
+            if arg is "--window" or arg is "-w" then
+                set captureMode to "window"
+            else if arg is "--multi" or arg is "-m" then
+                set multiWindow to true
+            else if arg is "--verbose" or arg is "-v" then
+                set verboseLogging to true
+            else if arg is "--ask" or arg is "--analyze" then
+                set analyzeMode to true
+                if i < argCount then
+                    set i to i + 1
+                    set analysisQuestion to item i of argv
+                else
+                    return my formatErrorMessage("Argument Error", "--ask requires a question parameter" & linefeed & linefeed & my usageText(), "validation")
                 end if
-                set i to i + 1
-            end repeat
+            else if arg is "--model" then
+                if i < argCount then
+                    set i to i + 1
+                    set visionModel to item i of argv
+                else
+                    return my formatErrorMessage("Argument Error", "--model requires a model name parameter" & linefeed & linefeed & my usageText(), "validation")
+                end if
+            else if not (arg starts with "--") then
+                if appIdentifier is "" then
+                    -- First non-option argument is the app identifier
+                    set appIdentifier to arg
+                else if outputPath is "" then
+                    -- Second non-option argument is the output path
+                    set outputPath to arg
+                    set pathProvided to true
+                end if
+            end if
+            set i to i + 1
+        end repeat
+        
+        -- Handle case where only analysis is requested (full screen mode)
+        if appIdentifier is "" and analyzeMode then
+            set appIdentifier to "fullscreen"
+        end if
+        
+        -- Set default output path if none provided
+        if not pathProvided then
+            set timestamp to do shell script "date +%Y%m%d_%H%M%S"
+            -- Create model-friendly filename with app name
+            if appIdentifier is "fullscreen" then
+                set appNameForFile to "fullscreen"
+            else
+                set appNameForFile to my sanitizeAppName(appIdentifier)
+            end if
+            set outputPath to "/tmp/peekaboo_" & appNameForFile & "_" & timestamp & ".png"
         end if
         
         -- Validate arguments
@@ -721,12 +815,16 @@ on run argv
             return my formatErrorMessage("Argument Error", "App identifier cannot be empty." & linefeed & linefeed & my usageText(), "validation")
         end if
         
-        if argCount >= 2 and not my isValidPath(outputPath) then
+        if pathProvided and not my isValidPath(outputPath) then
             return my formatErrorMessage("Argument Error", "Output path must be an absolute path starting with '/'." & linefeed & linefeed & my usageText(), "validation")
         end if
         
         -- Resolve app identifier with detailed diagnostics
-        set appInfo to my resolveAppIdentifier(appIdentifier)
+        if appIdentifier is "fullscreen" then
+            set appInfo to {appName:"fullscreen", bundleID:"fullscreen", isRunning:true, resolvedBy:"fullscreen"}
+        else
+            set appInfo to my resolveAppIdentifier(appIdentifier)
+        end if
         if appInfo is missing value then
             set errorDetails to "Could not resolve app identifier '" & appIdentifier & "'."
             

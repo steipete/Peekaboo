@@ -132,9 +132,16 @@ osascript peekaboo.scpt "Safari" "/tmp/shot.pdf"
 
 ---
 
-## 🤖 **AI VISION ANALYSIS**
+## 🤖 **AI VISION ANALYSIS** ⭐
 
-Peekaboo integrates with **Ollama** for local AI vision analysis - ask questions about your screenshots!
+Peekaboo integrates with **Ollama** for powerful local AI vision analysis - ask questions about your screenshots! No cloud, no API keys, just pure local magic.
+
+### 🎯 **Key Features**
+- **🧠 Smart Model Auto-Detection** - Automatically picks the best available vision model
+- **📏 Intelligent Image Resizing** - Auto-compresses large screenshots (>5MB → 2048px) for optimal AI processing
+- **⚡ One or Two-Step Workflows** - Screenshot+analyze or analyze existing images
+- **🔒 100% Local & Private** - Everything runs on your machine via Ollama
+- **🎯 Zero Configuration** - Just install Ollama + model, Peekaboo handles the rest
 
 ### 🚀 **One-Step: Screenshot + Analysis**
 ```bash
@@ -143,6 +150,10 @@ osascript peekaboo.scpt "Safari" --ask "What's the main content on this page?"
 osascript peekaboo.scpt "Terminal" --ask "Any error messages visible?"
 osascript peekaboo.scpt "Xcode" --ask "Is the build successful?"
 osascript peekaboo.scpt "Chrome" --ask "What product is being shown?" --model llava:13b
+
+# Fullscreen analysis (no app targeting needed)
+osascript peekaboo.scpt --ask "Describe what's on my screen"
+osascript peekaboo.scpt --verbose --ask "Any UI errors or warnings visible?"
 ```
 
 ### 🔍 **Two-Step: Analyze Existing Images**  
@@ -153,36 +164,106 @@ osascript peekaboo.scpt analyze "/path/error.png" "What error is shown?"
 osascript peekaboo.scpt analyze "/Desktop/ui.png" "Any UI issues?" --model qwen2.5vl:7b
 ```
 
-### 🧠 **Smart Model Selection**
-Peekaboo automatically picks the best available vision model:
+### 🛠️ **Complete Ollama Setup Guide**
 
-**Priority order:**
-1. `qwen2.5vl:7b` (6GB) - Best doc/chart understanding  
-2. `llava:7b` (4.7GB) - Solid all-rounder
-3. `llava-phi3:3.8b` (2.9GB) - Tiny but chatty
-4. `minicpm-v:8b` (5.5GB) - Killer OCR
-5. `gemma3:4b` (3.3GB) - Multilingual support
-
-### ⚡ **Quick Setup**
+#### 1️⃣ **Install Ollama**
 ```bash
-# Install Ollama
+# macOS (Homebrew)
+brew install ollama
+
+# Or direct install
 curl -fsSL https://ollama.ai/install.sh | sh
 
-# Pull a vision model (pick one)
-ollama pull qwen2.5vl:7b    # Recommended: best overall
-ollama pull llava:7b        # Popular: good balance  
-ollama pull llava-phi3:3.8b # Lightweight: low RAM
+# Or download from https://ollama.ai
+```
 
-# Ready to analyze!
-osascript peekaboo.scpt "Safari" --ask "What's on this page?"
+#### 2️⃣ **Start Ollama Service**
+```bash
+# Start the service (runs in background)
+ollama serve
+
+# Or use the Ollama.app (GUI version)
+# Download from https://ollama.ai → Double-click to install
+```
+
+#### 3️⃣ **Pull Vision Models**
+```bash
+# 🏆 Recommended: Best overall (6GB)
+ollama pull qwen2.5vl:7b
+
+# 🚀 Popular choice: Good balance (4.7GB)  
+ollama pull llava:7b
+
+# ⚡ Lightweight: Low RAM usage (2.9GB)
+ollama pull llava-phi3:3.8b
+
+# 🔍 OCR specialist: Great for text (5.5GB)
+ollama pull minicpm-v:8b
+
+# 🌍 Latest and greatest: Cutting edge (11GB)
+ollama pull llama3.2-vision:11b
+```
+
+#### 4️⃣ **Verify Setup**
+```bash
+# Check running models
+ollama list
+
+# Test vision analysis
+osascript peekaboo.scpt --ask "What do you see on my screen?"
+```
+
+### 🧠 **Smart Model Selection**
+Peekaboo automatically picks the best available vision model in priority order:
+
+| Model | Size | Strengths | Best For |
+|-------|------|-----------|----------|
+| **qwen2.5vl:7b** | 6GB | 🏆 Document/chart analysis | Technical screenshots, code, UI |
+| **llava:7b** | 4.7GB | 🚀 Well-rounded performance | General purpose, balanced usage |
+| **llava-phi3:3.8b** | 2.9GB | ⚡ Fast & lightweight | Low-resource systems, quick analysis |
+| **minicpm-v:8b** | 5.5GB | 🔍 Superior OCR accuracy | Text-heavy images, error messages |
+| **llama3.2-vision:11b** | 11GB | 🌟 Latest technology | Best quality, high-end systems |
+
+### 📏 **Smart Image Processing**
+Peekaboo automatically optimizes images for AI analysis:
+
+```bash
+# Large screenshots (>5MB) are automatically compressed
+🔍 Image size: 7126888 bytes
+🔍 Image is large (7126888 bytes), creating compressed version for AI
+# → Resized to 2048px max dimension while preserving aspect ratio
+# → Maintains quality while ensuring fast AI processing
+```
+
+**Benefits:**
+- ✅ **Faster Analysis** - Smaller images = quicker AI responses
+- ✅ **Reliable Processing** - Avoids API timeouts with huge images  
+- ✅ **Preserves Originals** - Full-resolution screenshots remain untouched
+- ✅ **Smart Compression** - Uses macOS native `sips` tool for quality resizing
+
+### 💡 **Pro Usage Examples**
+
+```bash
+# Automated UI testing with smart resizing
+osascript peekaboo.scpt "Your App" --ask "Any error dialogs or crashes visible?"
+
+# High-resolution dashboard analysis (auto-compressed for AI)
+osascript peekaboo.scpt "Grafana" --ask "Are all metrics healthy and green?"
+
+# Detailed code review screenshots
+osascript peekaboo.scpt "VS Code" --ask "Any syntax errors or warnings in the code?"
+
+# Large-screen analysis (automatically handles 4K+ displays)
+osascript peekaboo.scpt --ask "Describe the overall layout and any issues"
 ```
 
 **Perfect for:**
-- 🧪 Automated UI testing  
-- 📊 Dashboard monitoring
-- 🐛 Error detection
-- 📸 Content verification
-- 🔍 Visual QA automation
+- 🧪 **Automated UI Testing** - "Any error messages visible?"
+- 📊 **Dashboard Monitoring** - "Are all systems green?"  
+- 🐛 **Error Detection** - "What errors are shown in this log?"
+- 📸 **Content Verification** - "Does this page look correct?"
+- 🔍 **Visual QA Automation** - "Any broken UI elements?"
+- 📱 **App State Verification** - "Is the login successful?"
 
 ---
 
