@@ -357,23 +357,51 @@ osascript peekaboo.scpt "Safari" "/tmp/debug.png" --verbose
 
 ## 🧪 **TESTING**
 
-We've got you covered:
+We've got you covered with comprehensive testing:
 
 ```bash
 # Run the full test suite
-./test_screenshotter.sh
+./test_peekaboo.sh
+
+# Test specific features
+./test_peekaboo.sh ai           # AI vision analysis only
+./test_peekaboo.sh advanced     # Multi-window, discovery, AI
+./test_peekaboo.sh basic        # Core screenshot functionality
+./test_peekaboo.sh quick        # Essential tests only
 
 # Test and cleanup
-./test_screenshotter.sh --cleanup
+./test_peekaboo.sh all --cleanup
 ```
 
-Tests everything:
+**Complete Test Coverage:**
+- ✅ Basic screenshots with smart filenames
 - ✅ App resolution (names + bundle IDs)
 - ✅ Format support (PNG, JPG, PDF)  
-- ✅ Error handling
-- ✅ Directory creation
-- ✅ File validation
-- ✅ Multi-window scenarios
+- ✅ Multi-window scenarios with descriptive names
+- ✅ App discovery and window enumeration
+- ✅ **AI vision analysis (8 comprehensive tests)**
+  - One-step: Screenshot + AI analysis
+  - Two-step: Analyze existing images
+  - Model auto-detection and custom models
+  - Error handling and edge cases
+- ✅ Enhanced error messaging
+- ✅ Performance and stress testing
+- ✅ Integration workflows
+- ✅ Compatibility with system apps
+
+**AI Test Details:**
+```bash
+# Specific AI testing scenarios
+./test_peekaboo.sh ai
+```
+- ✅ One-step screenshot + analysis workflow
+- ✅ Custom model specification testing
+- ✅ Two-step analysis of existing images  
+- ✅ Complex questions with special characters
+- ✅ Invalid model error handling
+- ✅ Missing file error handling
+- ✅ Malformed command validation
+- ✅ Graceful Ollama/model availability checks
 
 ---
 
