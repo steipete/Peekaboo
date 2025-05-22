@@ -421,6 +421,126 @@ run_basic_tests() {
     echo ""
 }
 
+run_window_capture_tests() {
+    log_info "=== WINDOW CAPTURE TESTS ==="
+    echo ""
+    
+    # Test 1: Window bounds capture verification
+    ((TESTS_RUN++))
+    log_info "Running test: Window bounds capture"
+    local window_test_path="$TEST_OUTPUT_DIR/window_bounds_${TIMESTAMP}.png"
+    if result=$(osascript "$PEEKABOO_SCRIPT" Finder -o "$window_test_path" -v 2>&1); then
+        if [[ "$result" == *"Capturing window bounds for"* ]] && [[ "$result" == *"-R"* ]]; then
+            log_success "Window bounds capture - Using correct -R flag with bounds"
+            # Extract bounds from verbose output
+            local bounds=$(echo "$result" | grep -o "bounds for [^:]*: [0-9,]*" | head -1)
+            if [[ -n "$bounds" ]]; then
+                log_info "  Captured window bounds: $bounds"
+            fi
+        elif [[ "$result" == *"Warning: Could not capture window bounds"* ]]; then
+            log_warning "Window bounds capture - Fallback to fullscreen (app may not have accessible windows)"
+        else
+            log_error "Window bounds capture - Not using window bounds method"
+        fi
+    else
+        log_error "Window bounds capture - Failed"
+    fi
+    echo ""
+    
+    # Test 2: Verify file size is reasonable (window should be smaller than fullscreen)
+    ((TESTS_RUN++))
+    log_info "Running test: Window vs fullscreen size comparison"
+    local window_file="$TEST_OUTPUT_DIR/size_window_${TIMESTAMP}.png"
+    local fullscreen_file="$TEST_OUTPUT_DIR/size_fullscreen_${TIMESTAMP}.png"
+    
+    # Capture window
+    osascript "$PEEKABOO_SCRIPT" Safari -o "$window_file" -q 2>&1
+    # Capture fullscreen
+    osascript "$PEEKABOO_SCRIPT" -f -o "$fullscreen_file" -q 2>&1
+    
+    if [[ -f "$window_file" ]] && [[ -f "$fullscreen_file" ]]; then
+        local window_size=$(stat -f%z "$window_file" 2>/dev/null || stat -c%s "$window_file" 2>/dev/null)
+        local fullscreen_size=$(stat -f%z "$fullscreen_file" 2>/dev/null || stat -c%s "$fullscreen_file" 2>/dev/null)
+        
+        if [[ $window_size -lt $fullscreen_size ]]; then
+            log_success "Window size comparison - Window capture is smaller than fullscreen"
+            log_info "  Window size: $window_size bytes, Fullscreen: $fullscreen_size bytes"
+        else
+            log_warning "Window size comparison - Window not smaller (may have captured fullscreen)"
+        fi
+    else
+        log_error "Window size comparison - Could not create test files"
+    fi
+    echo ""
+    
+    # Test 3: Multi-window bounds capture
+    ((TESTS_RUN++))
+    log_info "Running test: Multi-window bounds capture"
+    # Find an app with multiple windows
+    local multi_app=""
+    for app in "Safari" "Chrome" "Google Chrome" "Finder"; do
+        local win_count=$(osascript -e "tell application \"System Events\" to tell process \"$app\" to count windows" 2>/dev/null || echo "0")
+        if [[ $win_count -gt 1 ]]; then
+            multi_app="$app"
+            break
+        fi
+    done
+    
+    if [[ -n "$multi_app" ]]; then
+        if result=$(osascript "$PEEKABOO_SCRIPT" "$multi_app" -m -v 2>&1); then
+            local bounds_count=$(echo "$result" | grep -c "Capturing window [0-9]* bounds:")
+            if [[ $bounds_count -gt 0 ]]; then
+                log_success "Multi-window bounds - Captured $bounds_count windows with bounds"
+            else
+                log_error "Multi-window bounds - No window bounds captured"
+            fi
+        else
+            log_error "Multi-window bounds - Failed"
+        fi
+    else
+        log_warning "Multi-window bounds - No app with multiple windows found"
+    fi
+    echo ""
+    
+    # Test 4: Fallback message format
+    ((TESTS_RUN++))
+    log_info "Running test: Fallback message format"
+    # Try to capture a non-existent or problematic app
+    if result=$(osascript "$PEEKABOO_SCRIPT" "NonExistentApp123" 2>&1); then
+        if [[ "$result" == *"Peekaboo 👀:"* ]]; then
+            log_success "Fallback message - Uses correct Peekaboo prefix"
+        else
+            log_error "Fallback message - Missing Peekaboo prefix"
+        fi
+    else
+        # Error is expected, check the error message
+        if [[ "$result" == *"Peekaboo 👀:"* ]]; then
+            log_success "Fallback message - Error uses correct prefix"
+        else
+            log_error "Fallback message - Error missing prefix: $result"
+        fi
+    fi
+    echo ""
+    
+    # Test 5: Window capture with AI (verify bounds in AI mode)
+    if command -v ollama >/dev/null 2>&1 && [[ $(get_test_vision_models | wc -l) -gt 0 ]]; then
+        ((TESTS_RUN++))
+        log_info "Running test: Window bounds with AI analysis"
+        if result=$(osascript "$PEEKABOO_SCRIPT" Finder -a "Test question" -v 2>&1); then
+            if [[ "$result" == *"Capturing window bounds"* ]] || [[ "$result" == *"Auto-enabling multi-window"* ]]; then
+                log_success "Window bounds with AI - Using proper window capture"
+            else
+                log_warning "Window bounds with AI - May be using fullscreen fallback"
+            fi
+        else
+            log_error "Window bounds with AI - Failed"
+        fi
+    else
+        log_warning "Window bounds with AI - Skipped (no AI provider available)"
+    fi
+    echo ""
+}
+
 run_format_tests() {
     log_info "=== FORMAT SUPPORT TESTS ==="
     echo ""
@@ -1104,6 +1224,7 @@ run_all_tests() {
     
     # Run all test categories
     run_basic_tests
+    run_window_capture_tests
     run_format_tests
     run_advanced_tests
     run_discovery_tests
@@ -1291,10 +1412,15 @@ main() {
             run_stress_tests
             run_performance_tests
             ;;
+        "window")
+            log_info "🪟 Running window capture tests only..."
+            run_window_capture_tests
+            ;;
         "quick")
             log_info "⚡ Running quick test suite..."
             show_usage_tests
             run_basic_tests
+            run_window_capture_tests
             run_format_tests
             ;;
         "all"|*)
@@ -1328,6 +1454,7 @@ case "${1:-}" in
         echo "Test Modes:"
         echo "  all          Run all tests (default) - comprehensive coverage"
         echo "  basic        Run basic functionality tests only"
+        echo "  window       Run window capture tests only"
         echo "  advanced     Run advanced features (multi-window, discovery, AI)"
         echo "  ai           Run AI vision analysis tests only"
         echo "  errors       Run error handling and edge case tests"
@@ -1341,6 +1468,8 @@ case "${1:-}" in
         echo "🎯 Test Coverage:"
         echo "- ✅ Basic screenshots with smart filenames"
         echo "- ✅ App name and bundle ID resolution"
+        echo "- ✅ Window bounds capture with -R flag"
+        echo "- ✅ Window vs fullscreen size verification"
         echo "- ✅ Multiple image formats (PNG, JPG, PDF)"
         echo "- ✅ Multi-window capture with descriptive names"
         echo "- ✅ App discovery and window enumeration"
@@ -1351,6 +1480,7 @@ case "${1:-}" in
         echo "- ✅ Performance and stress testing"
         echo "- ✅ Integration workflows"
         echo "- ✅ Compatibility with system apps"
+        echo "- ✅ Fallback message prefixes"
         echo ""
         echo "📝 Examples:"
         echo "  $0                    # Run all tests"

@@ -826,7 +826,7 @@ on captureScreenshot(outputPath, captureMode, appName)
         on error errMsg
             -- Fallback to full screen if we can't get window bounds
             my logVerbose("Could not get window bounds for " & appName & ", error: " & errMsg)
-            my logVerbose("Falling back to full screen capture")
+            log scriptInfoPrefix & "Warning: Could not capture window bounds for " & appName & ", using full screen capture instead"
         end try
     end if
     
