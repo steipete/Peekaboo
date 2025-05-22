@@ -73,11 +73,14 @@ run_test() {
         fi
     fi
     
-    # Check result
+    # Check result - Updated for enhanced error messages
     if [[ "$expected_result" == "success" ]]; then
-        if [[ $exit_code -eq 0 ]] && ([[ "$result" == *"Screenshot captured successfully"* ]] || [[ "$result" == *"Captured"* ]]); then
-            if [[ -f "$output_path" ]] || [[ "$result" == *"Captured"* ]]; then
-                log_success "$test_name - Success: $result"
+        if [[ $exit_code -eq 0 ]] && ([[ "$result" == *"Screenshot captured successfully"* ]] || [[ "$result" == *"Captured"* ]] || [[ "$result" == *"Multi-window capture successful"* ]]); then
+            if [[ -f "$output_path" ]] || [[ "$result" == *"Captured"* ]] || [[ "$result" == *"Multi-window"* ]]; then
+                log_success "$test_name - Success"
+                # Show first line of result for context
+                local first_line=$(echo "$result" | head -1)
+                log_info "  Result: $first_line"
                 # Get file size for verification if single file
                 if [[ -f "$output_path" ]]; then
                     local file_size=$(stat -f%z "$output_path" 2>/dev/null || echo "0")
@@ -94,9 +97,14 @@ run_test() {
             log_error "$test_name - Expected success but got: $result"
         fi
     else
-        # Expected error
-        if [[ $exit_code -ne 0 ]] || [[ "$result" == *"Error"* ]] || [[ "$result" == *"Peekaboo 👀:"* ]] && [[ "$result" == *"Error"* ]]; then
-            log_success "$test_name - Correctly failed with: $result"
+        # Expected error - Updated for enhanced error messages
+        if [[ $exit_code -ne 0 ]] || [[ "$result" == *"Error:"* ]] || [[ "$result" == *"Peekaboo 👀:"* ]] && [[ "$result" == *"Error"* ]]; then
+            log_success "$test_name - Correctly failed"
+            # Show error type for context
+            local error_type=$(echo "$result" | grep -o "[A-Za-z ]*Error:" | head -1)
+            if [[ -n "$error_type" ]]; then
+                log_info "  Error type: $error_type"
+            fi
         else
             log_error "$test_name - Expected error but got success: $result"
         fi
@@ -126,7 +134,15 @@ run_command_test() {
     
     if [[ $exit_code -eq 0 ]] && [[ "$result" == *"$expected_pattern"* ]]; then
         log_success "$test_name - Command executed successfully"
-        log_info "  Output preview: $(echo "$result" | head -3 | tr '\n' ' ')..."
+        # Show more meaningful output for list/help commands
+        if [[ "$command" == "list" ]]; then
+            local app_count=$(echo "$result" | grep -c "^•" || echo "0")
+            log_info "  Found $app_count running applications"
+        elif [[ "$command" == "help" ]] || [[ "$command" == "" ]]; then
+            log_info "  Help text displayed correctly"
+        else
+            log_info "  Output preview: $(echo "$result" | head -3 | tr '\n' ' ')..."
+        fi
     else
         log_error "$test_name - Command failed or unexpected output: $result"
     fi
@@ -291,11 +307,18 @@ run_error_tests() {
     log_info "=== ERROR HANDLING TESTS ==="
     echo ""
     
-    # Test non-existent app
-    run_test "Error: Non-existent app" \
+    # Test non-existent app (should show enhanced error message)
+    run_test "Error: Non-existent app name" \
         "$PEEKABOO_CLASSIC" \
         "NonExistentApp12345XYZ" \
         "$TEST_OUTPUT_DIR/error_nonexistent_${TIMESTAMP}.png" \
+        "error"
+    
+    # Test malformed bundle ID (should show enhanced error message)
+    run_test "Error: Non-existent bundle ID" \
+        "$PEEKABOO_PRO" \
+        "com.fake.nonexistent.app.that.does.not.exist" \
+        "$TEST_OUTPUT_DIR/error_bundle_${TIMESTAMP}.png" \
         "error"
     
     # Test invalid path
@@ -312,19 +335,20 @@ run_error_tests() {
         "$TEST_OUTPUT_DIR/error_empty_${TIMESTAMP}.png" \
         "error"
     
-    # Test malformed bundle ID
-    run_test "Error: Malformed bundle ID" \
-        "$PEEKABOO_PRO" \
-        "com.fake.nonexistent.app.that.does.not.exist" \
-        "$TEST_OUTPUT_DIR/error_bundle_${TIMESTAMP}.png" \
-        "error"
-    
     # Test permission edge cases
     run_test "Error: Read-only directory" \
         "$PEEKABOO_CLASSIC" \
         "Finder" \
         "/System/error_readonly_${TIMESTAMP}.png" \
         "error"
+    
+    # Test window mode with app that might have no windows
+    run_test "Error: Window mode with background app" \
+        "$PEEKABOO_PRO" \
+        "Mimestream" \
+        "$TEST_OUTPUT_DIR/error_no_windows_${TIMESTAMP}.png" \
+        "error" \
+        "--window"
 }
 
 run_edge_case_tests() {
@@ -397,6 +421,51 @@ run_performance_tests() {
         "success"
 }
 
+run_enhanced_messaging_tests() {
+    log_info "=== ENHANCED MESSAGING VALIDATION ==="
+    echo ""
+    
+    # Test that error messages contain specific guidance
+    log_info "Testing enhanced error message content..."
+    
+    local app_error_result
+    if app_error_result=$(osascript "$PEEKABOO_CLASSIC" "FakeApp123" "/tmp/test.png" 2>&1); then
+        log_error "Expected error for fake app"
+    else
+        if [[ "$app_error_result" == *"Common issues:"* ]] && [[ "$app_error_result" == *"case-sensitive"* ]]; then
+            log_success "Enhanced app name error - Contains troubleshooting guidance"
+        else
+            log_error "Enhanced app name error - Missing detailed guidance"
+        fi
+    fi
+    
+    local bundle_error_result
+    if bundle_error_result=$(osascript "$PEEKABOO_PRO" "com.fake.bundle" "/tmp/test.png" 2>&1); then
+        log_error "Expected error for fake bundle"
+    else
+        if [[ "$bundle_error_result" == *"bundle ID"* ]] && [[ "$bundle_error_result" == *"com.apple."* ]]; then
+            log_success "Enhanced bundle ID error - Contains specific guidance"
+        else
+            log_error "Enhanced bundle ID error - Missing bundle-specific guidance"
+        fi
+    fi
+    
+    # Test success message format
+    local success_result
+    if success_result=$(osascript "$PEEKABOO_CLASSIC" "Finder" "/tmp/peekaboo_message_test.png" 2>&1); then
+        if [[ "$success_result" == *"Screenshot captured successfully!"* ]] && [[ "$success_result" == *"• File:"* ]] && [[ "$success_result" == *"💡"* ]]; then
+            log_success "Enhanced success message - Contains structured information"
+            rm -f "/tmp/peekaboo_message_test.png"
+        else
+            log_error "Enhanced success message - Missing structured format"
+        fi
+    else
+        log_error "Could not test success message format"
+    fi
+    
+    echo ""
+}
+
 run_compatibility_tests() {
     log_info "=== COMPATIBILITY TESTS ==="
     echo ""
@@ -439,6 +508,7 @@ run_all_tests() {
     run_advanced_tests
     run_discovery_tests
     run_error_tests
+    run_enhanced_messaging_tests
     run_edge_case_tests
     run_performance_tests
     run_compatibility_tests
@@ -607,6 +677,7 @@ main() {
         "errors")
             log_info "⚠️ Running error tests only..."
             run_error_tests
+            run_enhanced_messaging_tests
             run_edge_case_tests
             ;;
         "stress")
@@ -667,6 +738,7 @@ case "${1:-}" in
         echo "- ✅ Multi-window capture with descriptive names"
         echo "- ✅ App discovery and window enumeration"
         echo "- ✅ Error handling and edge cases"
+        echo "- ✅ Enhanced error messaging validation"
         echo "- ✅ Performance and stress testing"
         echo "- ✅ Integration workflows"
         echo "- ✅ Compatibility with system apps"

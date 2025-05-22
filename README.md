@@ -1,5 +1,7 @@
 # 👀 PEEKABOO! 📸
 
+![Peekaboo Banner](assets/banner.png)
+
 ## 🎯 **Peekaboo—screenshot got you! Now you see it, now it's saved.**
 
 👀 → 📸 → 💾 — **Unattended screenshot automation that actually works**
