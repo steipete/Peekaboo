@@ -8,8 +8,10 @@ set -e
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PEEKABOO_CLASSIC="$SCRIPT_DIR/peekaboo.scpt"
-PEEKABOO_PRO="$SCRIPT_DIR/peekaboo_enhanced.scpt"
+PEEKABOO_SCRIPT="$SCRIPT_DIR/peekaboo.scpt"
+# Legacy variables for backward compatibility
+PEEKABOO_CLASSIC="$PEEKABOO_SCRIPT"
+PEEKABOO_PRO="$PEEKABOO_SCRIPT"
 TEST_OUTPUT_DIR="$HOME/Desktop/peekaboo_tests"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
@@ -109,6 +111,128 @@ run_test() {
             log_error "$test_name - Expected error but got success: $result"
         fi
     fi
+    
+    echo ""
+}
+
+# Helper functions for AI testing
+check_ollama_available() {
+    if command -v ollama >/dev/null 2>&1 && ollama --version >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+get_test_vision_models() {
+    if check_ollama_available; then
+        # Try to get available vision models, fallback to empty if none
+        ollama list 2>/dev/null | tail -n +2 | awk '{print $1}' | grep -E "(llava|qwen|gemma|minicpm)" | head -3 || echo ""
+    else
+        echo ""
+    fi
+}
+
+create_test_image() {
+    local image_path="$1"
+    # Create a simple test image using ImageMagick or native macOS tools
+    if command -v magick >/dev/null 2>&1; then
+        magick -size 400x300 xc:white -fill black -pointsize 30 -annotate +50+150 "Peekaboo Test Image" "$image_path"
+    elif command -v convert >/dev/null 2>&1; then
+        convert -size 400x300 xc:white -fill black -pointsize 30 -annotate +50+150 "Peekaboo Test Image" "$image_path"
+    else
+        # Fallback: take a screenshot of Finder to create test image
+        osascript "$PEEKABOO_SCRIPT" "Finder" "$image_path" >/dev/null 2>&1 || true
+    fi
+}
+
+# AI analysis test function
+run_ai_test() {
+    local test_name="$1"
+    local script_path="$2" 
+    local test_type="$3"  # "one-step" or "two-step" or "analyze-only"
+    local app_or_image="$4"
+    local question="$5"
+    local model="${6:-}"
+    local expected_result="$7" # "success", "error", or "skip"
+    
+    ((TESTS_RUN++))
+    log_info "Running AI test: $test_name"
+    
+    local result
+    local exit_code
+    local cmd_args=()
+    
+    # Build command arguments based on test type
+    case "$test_type" in
+        "one-step")
+            cmd_args=("$app_or_image" "--ask" "$question")
+            if [[ -n "$model" ]]; then
+                cmd_args+=(--model "$model")
+            fi
+            ;;
+        "two-step")
+            # First create a test image, then analyze it
+            local test_image="/tmp/peekaboo_ai_test_${TIMESTAMP}.png"
+            create_test_image "$test_image"
+            if [[ ! -f "$test_image" ]]; then
+                log_error "$test_name - Could not create test image"
+                return
+            fi
+            cmd_args=("analyze" "$test_image" "$question")
+            if [[ -n "$model" ]]; then
+                cmd_args+=(--model "$model")
+            fi
+            ;;
+        "analyze-only")
+            cmd_args=("analyze" "$app_or_image" "$question")
+            if [[ -n "$model" ]]; then
+                cmd_args+=(--model "$model")
+            fi
+            ;;
+    esac
+    
+    # Execute the command
+    if result=$(osascript "$script_path" "${cmd_args[@]}" 2>&1); then
+        exit_code=0
+    else
+        exit_code=1  
+    fi
+    
+    # Check results
+    case "$expected_result" in
+        "success")
+            if [[ $exit_code -eq 0 ]] && [[ "$result" == *"AI Analysis Complete"* ]]; then
+                log_success "$test_name - AI analysis completed successfully"
+                log_info "  Model used: $(echo "$result" | grep "🤖 Model:" | cut -d: -f2 | xargs || echo "Unknown")"
+                # Show first few words of AI response
+                local ai_answer=$(echo "$result" | sed -n '/💬 Answer:/,$ p' | tail -n +2 | head -1 | cut -c1-60)
+                if [[ -n "$ai_answer" ]]; then
+                    log_info "  AI Response: ${ai_answer}..."
+                fi
+            elif [[ "$result" == *"Ollama"* ]] && [[ "$result" == *"not"* ]]; then
+                log_warning "$test_name - Skipped: Ollama not available"
+                ((TESTS_FAILED--))  # Don't count as failure
+            elif [[ "$result" == *"vision models"* ]] && [[ "$result" == *"found"* ]]; then
+                log_warning "$test_name - Skipped: No vision models available"
+                ((TESTS_FAILED--))  # Don't count as failure
+            else
+                log_error "$test_name - Expected AI success but got: $(echo "$result" | head -1)"
+            fi
+            ;;
+        "error")
+            if [[ $exit_code -ne 0 ]] || [[ "$result" == *"Error"* ]] || [[ "$result" == *"not found"* ]]; then
+                log_success "$test_name - Correctly handled error case"
+                log_info "  Error: $(echo "$result" | head -1)"
+            else
+                log_error "$test_name - Expected error but got success: $(echo "$result" | head -1)"
+            fi
+            ;;
+        "skip")
+            log_warning "$test_name - Skipped (expected)"
+            ((TESTS_FAILED--))  # Don't count as failure
+            ;;
+    esac
     
     echo ""
 }
@@ -393,6 +517,113 @@ run_edge_case_tests() {
         "success"
 }
 
+run_ai_analysis_tests() {
+    log_info "=== AI VISION ANALYSIS TESTS ==="
+    echo ""
+    
+    # Check if Ollama is available
+    if ! check_ollama_available; then
+        log_warning "Ollama not found - skipping AI analysis tests"
+        log_info "To enable AI tests: curl -fsSL https://ollama.ai/install.sh | sh && ollama pull llava:7b"
+        return
+    fi
+    
+    # Get available vision models
+    local models=($(get_test_vision_models))
+    if [[ ${#models[@]} -eq 0 ]]; then
+        log_warning "No vision models found - skipping AI analysis tests"
+        log_info "To enable AI tests: ollama pull qwen2.5vl:7b  # or llava:7b"
+        return
+    fi
+    
+    log_info "Found vision models: ${models[*]}"
+    local test_model="${models[0]}"  # Use first available model
+    
+    # Test 1: One-step AI analysis (screenshot + analyze)
+    run_ai_test "AI: One-step screenshot + analysis" \
+        "$PEEKABOO_SCRIPT" \
+        "one-step" \
+        "Finder" \
+        "What application is shown in this screenshot?" \
+        "" \
+        "success"
+    
+    # Test 2: One-step with custom model
+    run_ai_test "AI: One-step with custom model" \
+        "$PEEKABOO_SCRIPT" \
+        "one-step" \
+        "TextEdit" \
+        "Describe what you see" \
+        "$test_model" \
+        "success"
+    
+    # Test 3: Two-step analysis (analyze existing image)
+    run_ai_test "AI: Two-step analysis" \
+        "$PEEKABOO_SCRIPT" \
+        "two-step" \
+        "" \
+        "What text is visible in this image?" \
+        "" \
+        "success"
+    
+    # Test 4: Analyze existing screenshot
+    local existing_screenshot="$TEST_OUTPUT_DIR/ai_test_existing_${TIMESTAMP}.png"
+    # First create a screenshot
+    if osascript "$PEEKABOO_SCRIPT" "Finder" "$existing_screenshot" >/dev/null 2>&1; then
+        run_ai_test "AI: Analyze existing screenshot" \
+            "$PEEKABOO_SCRIPT" \
+            "analyze-only" \
+            "$existing_screenshot" \
+            "What application window is shown?" \
+            "" \
+            "success"
+    else
+        log_warning "Could not create test screenshot for analysis"
+    fi
+    
+    # Test 5: Error handling - invalid model
+    run_ai_test "AI: Invalid model error handling" \
+        "$PEEKABOO_SCRIPT" \
+        "one-step" \
+        "Finder" \
+        "Test question" \
+        "nonexistent-model:999b" \
+        "error"
+    
+    # Test 6: Error handling - invalid image path
+    run_ai_test "AI: Invalid image path error handling" \
+        "$PEEKABOO_SCRIPT" \
+        "analyze-only" \
+        "/nonexistent/path/image.png" \
+        "What do you see?" \
+        "" \
+        "error"
+    
+    # Test 7: Error handling - missing question
+    ((TESTS_RUN++))
+    log_info "Running AI test: Missing question parameter"
+    local result
+    if result=$(osascript "$PEEKABOO_SCRIPT" "Finder" "--ask" 2>&1); then
+        log_error "AI: Missing question - Expected error but got success"
+    else
+        if [[ "$result" == *"requires a question"* ]]; then
+            log_success "AI: Missing question - Correctly handled error"
+        else
+            log_error "AI: Missing question - Unexpected error: $result"
+        fi
+    fi
+    echo ""
+    
+    # Test 8: Complex question with special characters
+    run_ai_test "AI: Complex question with special chars" \
+        "$PEEKABOO_SCRIPT" \
+        "one-step" \
+        "Finder" \
+        "Is there any text that says \"Finder\" or similar? What colors do you see?" \
+        "" \
+        "success"
+}
+
 run_performance_tests() {
     log_info "=== PERFORMANCE TESTS ==="
     echo ""
@@ -507,6 +738,7 @@ run_all_tests() {
     run_format_tests
     run_advanced_tests
     run_discovery_tests
+    run_ai_analysis_tests
     run_error_tests
     run_enhanced_messaging_tests
     run_edge_case_tests
@@ -673,6 +905,11 @@ main() {
             log_info "🎪 Running advanced tests only..."
             run_advanced_tests
             run_discovery_tests
+            run_ai_analysis_tests
+            ;;
+        "ai")
+            log_info "🤖 Running AI analysis tests only..."
+            run_ai_analysis_tests
             ;;
         "errors")
             log_info "⚠️ Running error tests only..."
@@ -708,7 +945,7 @@ main() {
         log_info "🧹 Test files cleaned up"
     else
         log_info "💡 Run with --cleanup to remove test files"
-        log_info "💡 Run with 'basic', 'advanced', 'errors', 'stress', or 'quick' for focused testing"
+        log_info "💡 Run with 'basic', 'advanced', 'ai', 'errors', 'stress', or 'quick' for focused testing"
     fi
 }
 
@@ -722,7 +959,8 @@ case "${1:-}" in
         echo "Test Modes:"
         echo "  all          Run all tests (default) - comprehensive coverage"
         echo "  basic        Run basic functionality tests only"
-        echo "  advanced     Run advanced Pro features (multi-window, discovery)"
+        echo "  advanced     Run advanced features (multi-window, discovery, AI)"
+        echo "  ai           Run AI vision analysis tests only"
         echo "  errors       Run error handling and edge case tests"
         echo "  stress       Run performance and stress tests"
         echo "  quick        Run essential tests quickly"
@@ -732,11 +970,13 @@ case "${1:-}" in
         echo "  --help       Show this help message"
         echo ""
         echo "🎯 Test Coverage:"
-        echo "- ✅ Basic screenshots (Classic & Pro versions)"
+        echo "- ✅ Basic screenshots with smart filenames"
         echo "- ✅ App name and bundle ID resolution"
         echo "- ✅ Multiple image formats (PNG, JPG, PDF)"
         echo "- ✅ Multi-window capture with descriptive names"
         echo "- ✅ App discovery and window enumeration"
+        echo "- ✅ AI vision analysis (one-step and two-step)"
+        echo "- ✅ AI model auto-detection and error handling"
         echo "- ✅ Error handling and edge cases"
         echo "- ✅ Enhanced error messaging validation"
         echo "- ✅ Performance and stress testing"
@@ -746,13 +986,15 @@ case "${1:-}" in
         echo "📝 Examples:"
         echo "  $0                    # Run all tests"
         echo "  $0 quick              # Quick test suite"
+        echo "  $0 ai                 # Test AI vision analysis only"
         echo "  $0 basic --cleanup    # Basic tests + cleanup"
         echo "  $0 stress             # Performance testing"
         echo ""
         echo "🔧 Requirements:"
         echo "- Screen Recording permission in System Preferences"
-        echo "- peekaboo.scpt and peekaboo_enhanced.scpt in same directory"
+        echo "- peekaboo.scpt in same directory"
         echo "- Various system apps available for testing"
+        echo "- Optional: Ollama + vision models for AI analysis tests"
         exit 0
         ;;
     *)
