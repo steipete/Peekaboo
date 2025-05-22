@@ -19,6 +19,7 @@
 - 🧠 **Smart filenames**: Model-friendly names with app info
 - ⚡ **Optimized speed**: 70% faster capture delays
 - 🤖 **AI Vision Analysis**: Local Ollama integration with auto-model detection
+- ☁️ **Cloud AI Ready**: Self-documenting for Claude, Windsurf, ChatGPT integration
 
 ---
 
@@ -267,6 +268,101 @@ osascript peekaboo.scpt --ask "Describe the overall layout and any issues"
 
 ---
 
+## ☁️ **CLOUD AI INTEGRATION** 
+
+Peekaboo works seamlessly with **any AI service** that can read files! Perfect for Claude Code, Windsurf, ChatGPT, or any other AI tool.
+
+### 🚀 **Quick Cloud AI Setup**
+
+**For AI tools like Claude Code, Windsurf, etc.:**
+
+1. **Copy the script file** to your project directory:
+   ```bash
+   cp peekaboo.scpt /path/to/your/project/
+   ```
+
+2. **Tell your AI tool about it**:
+   ```
+   I have a screenshot automation tool called peekaboo.scpt in this directory. 
+   It can capture screenshots of any app and save them automatically. 
+   Please read the file to understand how to use it.
+   ```
+
+3. **Your AI will automatically understand** how to:
+   - Take screenshots of specific apps
+   - Use smart filenames with timestamps  
+   - Capture multiple windows
+   - Handle different output formats
+   - Integrate with your workflow
+
+### 💡 **Example AI Prompts**
+
+```bash
+# Ask your AI assistant:
+"Use peekaboo.scpt to take a screenshot of Safari and save it to /tmp/webpage.png"
+
+"Capture all Chrome windows with the multi-window feature"
+
+"Take a screenshot of Xcode and then analyze if there are any build errors visible"
+
+"Set up an automated screenshot workflow for testing my app"
+```
+
+### 🎯 **AI Tool Integration Examples**
+
+**Claude Code / Windsurf:**
+```
+Use the peekaboo.scpt tool to capture screenshots during our development session. 
+The script automatically handles app targeting, file paths, and smart naming.
+```
+
+**ChatGPT / GitHub Copilot:**
+```
+I have a screenshot automation script. Please read peekaboo.scpt and help me 
+integrate it into my testing workflow.
+```
+
+**Custom AI Scripts:**
+```python
+import subprocess
+
+def take_screenshot(app_name, output_path):
+    """Use Peekaboo to capture app screenshots"""
+    cmd = ["osascript", "peekaboo.scpt", app_name, output_path]
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+# Your AI can now use this function automatically!
+```
+
+### 🧠 **Why AI Tools Love Peekaboo**
+
+- **📖 Self-Documenting**: AI reads the script and understands all features instantly
+- **🎯 Zero Config**: No API keys, no setup - just works  
+- **🧠 Smart Outputs**: Model-friendly filenames make AI integration seamless
+- **⚡ Reliable**: Unattended operation perfect for AI-driven workflows
+- **🔍 Comprehensive**: From basic screenshots to multi-window analysis
+
+**The AI tool will automatically discover:**
+- All available command-line options (`--multi`, `--window`, `--verbose`)
+- Smart filename generation patterns
+- Error handling and troubleshooting
+- Integration with local Ollama for AI analysis
+- Testing capabilities and examples
+
+### 🎪 **Cloud AI + Local AI Combo**
+
+**Powerful workflow example:**
+```bash
+# 1. Use Peekaboo to capture and analyze locally
+osascript peekaboo.scpt "Your App" --ask "Any errors visible?"
+
+# 2. Your cloud AI assistant can read the results and provide guidance
+# 3. Iterate and improve based on AI recommendations
+# 4. Automate the entire process with AI-generated scripts
+```
+
+---
+
 ## 🧠 **SMART FILENAMES**
 
 Peekaboo automatically generates **model-friendly** filenames that are perfect for automation:
@@ -432,6 +528,8 @@ osascript peekaboo.scpt "Safari" "/tmp/debug.png" --verbose
 | **Smart filenames** | ✅ Model-friendly: app_name_timestamp format |
 | **AI Vision Analysis** | ✅ Local Ollama integration with auto-model detection |
 | **Smart AI Models** | ✅ Auto-picks best: qwen2.5vl > llava > phi3 > minicpm |
+| **Smart Image Compression** | ✅ Auto-resizes large images (>5MB → 2048px) for AI |
+| **Cloud AI Integration** | ✅ Self-documenting for Claude, Windsurf, ChatGPT, etc. |
 | **Verbose logging** | ✅ `--verbose` for debugging |
 
 ---
