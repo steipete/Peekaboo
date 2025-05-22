@@ -804,16 +804,29 @@ on captureScreenshot(outputPath, captureMode, appName)
     -- Build screencapture command based on mode
     set screencaptureCmd to "screencapture -x"
     
-    if captureMode is "window" then
+    if captureMode is "window" and appName is not "fullscreen" then
         -- IMPORTANT: Do NOT use -o -W flags as they require user interaction!
-        -- Instead, get the window ID of the frontmost window programmatically
+        -- Instead, capture the window using its bounds (position and size)
         try
-            -- Get the window ID of the frontmost window of the frontmost app
-            set windowID to do shell script "osascript -e 'tell application \"System Events\" to get the id of the first window of (first process whose frontmost is true)' 2>/dev/null"
-            set screencaptureCmd to screencaptureCmd & " -l" & windowID
-        on error
-            -- Fallback to full screen if we can't get window ID
-            my logVerbose("Could not get window ID, falling back to full screen capture")
+            tell application "System Events"
+                tell process appName
+                    set winPosition to position of window 1
+                    set winSize to size of window 1
+                end tell
+            end tell
+            
+            set x to item 1 of winPosition
+            set y to item 2 of winPosition
+            set w to item 1 of winSize
+            set h to item 2 of winSize
+            
+            -- Use -R flag to capture a specific rectangle
+            set screencaptureCmd to screencaptureCmd & " -R" & x & "," & y & "," & w & "," & h
+            my logVerbose("Capturing window bounds for " & appName & ": " & x & "," & y & "," & w & "," & h)
+        on error errMsg
+            -- Fallback to full screen if we can't get window bounds
+            my logVerbose("Could not get window bounds for " & appName & ", error: " & errMsg)
+            my logVerbose("Falling back to full screen capture")
         end try
     end if
     
@@ -851,6 +864,77 @@ on captureScreenshot(outputPath, captureMode, appName)
         end if
     end try
 end captureScreenshot
+
+on captureWindowByIndex(outputPath, appName, winIndex)
+    my logVerbose("Capturing window " & winIndex & " of " & appName & " to: " & outputPath)
+    
+    -- Ensure output directory exists
+    set outputDir to do shell script "dirname " & quoted form of outputPath
+    if not my ensureDirectoryExists(outputDir) then
+        return my formatErrorMessage("Directory Error", "Could not create output directory: " & outputDir, "directory creation")
+    end if
+    
+    -- Wait for capture delay
+    delay captureDelay
+    
+    -- Determine screenshot format
+    set fileExt to my getFileExtension(outputPath)
+    if fileExt is "" then
+        set fileExt to defaultScreenshotFormat
+        set outputPath to outputPath & "." & fileExt
+    end if
+    
+    -- Build screencapture command
+    set screencaptureCmd to "screencapture -x"
+    
+    -- Get window bounds for specific window
+    try
+        tell application "System Events"
+            tell process appName
+                set winPosition to position of window winIndex
+                set winSize to size of window winIndex
+            end tell
+        end tell
+        
+        set x to item 1 of winPosition
+        set y to item 2 of winPosition
+        set w to item 1 of winSize
+        set h to item 2 of winSize
+        
+        -- Use -R flag to capture a specific rectangle
+        set screencaptureCmd to screencaptureCmd & " -R" & x & "," & y & "," & w & "," & h
+        my logVerbose("Capturing window " & winIndex & " bounds: " & x & "," & y & "," & w & "," & h)
+    on error errMsg
+        -- Fallback to full screen if we can't get window bounds
+        my logVerbose("Could not get bounds for window " & winIndex & ", error: " & errMsg)
+        return my formatErrorMessage("Window Error", "Could not get bounds for window " & winIndex & " of " & appName, "window bounds")
+    end try
+    
+    -- Add format flag if not PNG (default)
+    if fileExt is not "png" then
+        set screencaptureCmd to screencaptureCmd & " -t " & fileExt
+    end if
+    
+    -- Add output path
+    set screencaptureCmd to screencaptureCmd & " " & quoted form of outputPath
+    
+    -- Capture screenshot
+    try
+        my logVerbose("Running: " & screencaptureCmd)
+        do shell script screencaptureCmd
+        
+        -- Verify file was created
+        try
+            do shell script "test -f " & quoted form of outputPath
+            return outputPath
+        on error
+            return my formatErrorMessage("Capture Error", "Screenshot file was not created at: " & outputPath, "file verification")
+        end try
+        
+    on error errMsg
+        return my formatErrorMessage("Capture Error", "Failed to capture window: " & errMsg, "screencapture")
+    end try
+end captureWindowByIndex
 
 on captureMultipleWindows(appName, baseOutputPath)
     -- Get detailed window status first
@@ -915,8 +999,8 @@ on captureMultipleWindows(appName, baseOutputPath)
             my logVerbose("Could not focus window " & winIndex & ", continuing anyway")
         end try
         
-        -- Capture the frontmost window
-        set captureResult to my captureScreenshot(windowOutputPath, "window", appName)
+        -- Capture the specific window using a custom method
+        set captureResult to my captureWindowByIndex(windowOutputPath, appName, winIndex)
         if captureResult starts with scriptInfoPrefix then
             -- Error occurred, but continue with other windows
             my logVerbose("Failed to capture window " & winIndex & ": " & captureResult)
