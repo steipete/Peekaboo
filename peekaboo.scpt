@@ -13,6 +13,10 @@ property windowActivationDelay : 0.2
 property enhancedErrorReporting : true
 property verboseLogging : false
 property maxWindowTitleLength : 50
+-- AI Analysis Configuration  
+property defaultVisionModel : "qwen2.5vl:7b"
+-- Prioritized list of vision models (best to fallback)
+property visionModelPriority : {"qwen2.5vl:7b", "llava:7b", "llava-phi3:3.8b", "minicpm-v:8b", "gemma3:4b", "llava:latest", "qwen2.5vl:3b", "llava:13b", "llava-llama3:8b"}
 --#endregion Configuration Properties
 
 --#region Helper Functions
@@ -134,6 +138,125 @@ on trimWhitespace(theText)
     return newText
 end trimWhitespace
 --#endregion Helper Functions
+
+--#region AI Analysis Functions
+on checkOllamaAvailable()
+    try
+        do shell script "ollama --version >/dev/null 2>&1"
+        return true
+    on error
+        return false
+    end try
+end checkOllamaAvailable
+
+on getAvailableVisionModels()
+    set availableModels to {}
+    try
+        set ollamaList to do shell script "ollama list 2>/dev/null | tail -n +2 | awk '{print $1}' | grep -v '^$'"
+        set modelLines to paragraphs of ollamaList
+        repeat with modelLine in modelLines
+            set modelName to contents of modelLine
+            if modelName is not "" then
+                set end of availableModels to modelName
+            end if
+        end repeat
+    on error
+        -- Return empty list if ollama list fails
+    end try
+    return availableModels
+end getAvailableVisionModels
+
+on findBestVisionModel(requestedModel)
+    my logVerbose("Finding best vision model, requested: " & requestedModel)
+    
+    set availableModels to my getAvailableVisionModels()
+    my logVerbose("Available models: " & (availableModels as string))
+    
+    -- If specific model requested and available, use it
+    if requestedModel is not defaultVisionModel then
+        repeat with availModel in availableModels
+            if contents of availModel is requestedModel then
+                my logVerbose("Using requested model: " & requestedModel)
+                return requestedModel
+            end if
+        end repeat
+        -- Requested model not found, will fall back to priority list
+        my logVerbose("Requested model '" & requestedModel & "' not found, checking priority list")
+    end if
+    
+    -- Find best available model from priority list
+    repeat with priorityModel in visionModelPriority
+        repeat with availModel in availableModels
+            if contents of availModel is contents of priorityModel then
+                my logVerbose("Using priority model: " & contents of priorityModel)
+                return contents of priorityModel
+            end if
+        end repeat
+    end repeat
+    
+    -- No priority models available, use first available vision model
+    repeat with availModel in availableModels
+        set modelName to contents of availModel
+        if modelName contains "llava" or modelName contains "qwen" or modelName contains "gemma" or modelName contains "minicpm" then
+            my logVerbose("Using first available vision model: " & modelName)
+            return modelName
+        end if
+    end repeat
+    
+    -- No vision models found
+    return ""
+end findBestVisionModel
+
+on getOllamaInstallInstructions()
+    set instructions to scriptInfoPrefix & "AI Analysis requires Ollama with a vision model." & linefeed & linefeed
+    set instructions to instructions & "🚀 Quick Setup:" & linefeed
+    set instructions to instructions & "1. Install Ollama: curl -fsSL https://ollama.ai/install.sh | sh" & linefeed
+    set instructions to instructions & "2. Pull a vision model: ollama pull " & defaultVisionModel & linefeed
+    set instructions to instructions & "3. Models are ready to use!" & linefeed & linefeed
+    set instructions to instructions & "💡 Recommended models:" & linefeed
+    set instructions to instructions & "  • qwen2.5vl:7b (6GB) - Best doc/chart understanding" & linefeed
+    set instructions to instructions & "  • llava:7b (4.7GB) - Solid all-rounder" & linefeed  
+    set instructions to instructions & "  • llava-phi3:3.8b (2.9GB) - Tiny but chatty" & linefeed
+    set instructions to instructions & "  • minicpm-v:8b (5.5GB) - Killer OCR" & linefeed & linefeed
+    set instructions to instructions & "Then retry your Peekaboo command with --ask or --analyze!"
+    return instructions
+end getOllamaInstallInstructions
+
+on analyzeImageWithAI(imagePath, question, requestedModel)
+    my logVerbose("Analyzing image with AI: " & imagePath)
+    my logVerbose("Requested model: " & requestedModel)
+    my logVerbose("Question: " & question)
+    
+    -- Check if Ollama is available
+    if not my checkOllamaAvailable() then
+        return my formatErrorMessage("Ollama Error", "Ollama is not installed or not in PATH." & linefeed & linefeed & my getOllamaInstallInstructions(), "ollama unavailable")
+    end if
+    
+    -- Find best available vision model
+    set modelToUse to my findBestVisionModel(requestedModel)
+    if modelToUse is "" then
+        return my formatErrorMessage("Model Error", "No vision models found." & linefeed & linefeed & my getOllamaInstallInstructions(), "no vision models")
+    end if
+    
+    -- Use ollama run command (much simpler than API)
+    try
+        my logVerbose("Using model: " & modelToUse)
+        set ollamaCmd to "ollama run " & quoted form of modelToUse & " --image " & quoted form of imagePath & " " & quoted form of question
+        my logVerbose("Running: " & ollamaCmd)
+        
+        set aiResponse to do shell script ollamaCmd
+        
+        return scriptInfoPrefix & "AI Analysis Complete! 🤖" & linefeed & linefeed & "📸 Image: " & imagePath & linefeed & "❓ Question: " & question & linefeed & "🤖 Model: " & modelToUse & linefeed & linefeed & "💬 Answer:" & linefeed & aiResponse
+        
+    on error errMsg
+        if errMsg contains "model" and errMsg contains "not found" then
+            return my formatErrorMessage("Model Error", "Model '" & modelToUse & "' not found." & linefeed & linefeed & "Install it with: ollama pull " & modelToUse & linefeed & linefeed & my getOllamaInstallInstructions(), "model not found")
+        else
+            return my formatErrorMessage("Analysis Error", "Failed to analyze image: " & errMsg & linefeed & linefeed & "Make sure Ollama is running and the model is available.", "ollama execution")
+        end if
+    end try
+end analyzeImageWithAI
+--#endregion AI Analysis Functions
 
 --#region App Discovery Functions
 on listRunningApps()
@@ -523,6 +646,26 @@ on run argv
             end if
         end if
         
+        -- Handle analyze command for existing images (two-step workflow)
+        if argCount ≥ 3 then
+            set firstArg to item 1 of argv
+            if firstArg is "analyze" or firstArg is "--analyze" then
+                set imagePath to item 2 of argv
+                set question to item 3 of argv
+                set modelToUse to defaultVisionModel
+                
+                -- Check for custom model
+                if argCount ≥ 5 then
+                    set modelFlag to item 4 of argv
+                    if modelFlag is "--model" then
+                        set modelToUse to item 5 of argv
+                    end if
+                end if
+                
+                return my analyzeImageWithAI(imagePath, question, modelToUse)
+            end if
+        end if
+        
         if argCount < 1 then return my usageText()
         
         set appIdentifier to item 1 of argv
@@ -538,19 +681,38 @@ on run argv
         end if
         set captureMode to "screen" -- default
         set multiWindow to false
+        set analyzeMode to false
+        set analysisQuestion to ""
+        set visionModel to defaultVisionModel
         
         -- Parse additional options
         if argCount > 2 then
-            repeat with i from 3 to argCount
+            set i to 3
+            repeat while i ≤ argCount
                 set arg to item i of argv
                 if arg is "--window" or arg is "-w" then
                     set captureMode to "window"
-                -- Remove interactive mode option
                 else if arg is "--multi" or arg is "-m" then
                     set multiWindow to true
                 else if arg is "--verbose" or arg is "-v" then
                     set verboseLogging to true
+                else if arg is "--ask" or arg is "--analyze" then
+                    set analyzeMode to true
+                    if i < argCount then
+                        set i to i + 1
+                        set analysisQuestion to item i of argv
+                    else
+                        return my formatErrorMessage("Argument Error", "--ask requires a question parameter" & linefeed & linefeed & my usageText(), "validation")
+                    end if
+                else if arg is "--model" then
+                    if i < argCount then
+                        set i to i + 1
+                        set visionModel to item i of argv
+                    else
+                        return my formatErrorMessage("Argument Error", "--model requires a model name parameter" & linefeed & linefeed & my usageText(), "validation")
+                    end if
                 end if
+                set i to i + 1
             end repeat
         end if
         
@@ -638,7 +800,20 @@ on run argv
                 set modeDescription to "full screen"
                 if captureMode is "window" then set modeDescription to "front window only"
                 
-                return scriptInfoPrefix & "Screenshot captured successfully! 📸" & linefeed & "• File: " & screenshotResult & linefeed & "• App: " & resolvedAppName & linefeed & "• Mode: " & modeDescription & linefeed & "💡 The " & modeDescription & " of " & resolvedAppName & " has been saved."
+                -- If AI analysis requested, analyze the screenshot
+                if analyzeMode then
+                    set analysisResult to my analyzeImageWithAI(screenshotResult, analysisQuestion, visionModel)
+                    if analysisResult starts with scriptInfoPrefix and analysisResult contains "Analysis Complete" then
+                        -- Successful analysis
+                        return analysisResult
+                    else
+                        -- Analysis failed, return screenshot success + analysis error
+                        return scriptInfoPrefix & "Screenshot captured successfully! 📸" & linefeed & "• File: " & screenshotResult & linefeed & "• App: " & resolvedAppName & linefeed & "• Mode: " & modeDescription & linefeed & linefeed & "⚠️ AI Analysis failed:" & linefeed & analysisResult
+                    end if
+                else
+                    -- Regular screenshot without analysis
+                    return scriptInfoPrefix & "Screenshot captured successfully! 📸" & linefeed & "• File: " & screenshotResult & linefeed & "• App: " & resolvedAppName & linefeed & "• Mode: " & modeDescription & linefeed & "💡 The " & modeDescription & " of " & resolvedAppName & " has been saved."
+                end if
             end if
         end if
         
@@ -660,6 +835,7 @@ on usageText()
     
     set outText to outText & "Usage:" & LF
     set outText to outText & "  osascript " & scriptName & " \"<app_name_or_bundle_id>\" [\"<output_path>\"] [options]" & LF
+    set outText to outText & "  osascript " & scriptName & " analyze \"<image_path>\" \"<question>\" [--model model_name]" & LF
     set outText to outText & "  osascript " & scriptName & " list" & LF
     set outText to outText & "  osascript " & scriptName & " help" & LF & LF
     
@@ -670,12 +846,14 @@ on usageText()
     
     set outText to outText & "Options:" & LF
     set outText to outText & "  --window, -w:         Capture frontmost window only" & LF
-    set outText to outText & "  --interactive, -i:    Interactive window selection" & LF
     set outText to outText & "  --multi, -m:          Capture all windows with descriptive names" & LF
+    set outText to outText & "  --ask \"question\":      AI analysis of screenshot (requires Ollama)" & LF
+    set outText to outText & "  --model model_name:   Custom vision model (auto-detects best available)" & LF
     set outText to outText & "  --verbose, -v:        Enable verbose logging" & LF & LF
     
     set outText to outText & "Commands:" & LF
     set outText to outText & "  list:                 List all running apps with window titles" & LF
+    set outText to outText & "  analyze:              Analyze existing image with AI vision" & LF
     set outText to outText & "  help:                 Show this help message" & LF & LF
     
     set outText to outText & "Examples:" & LF
@@ -688,7 +866,21 @@ on usageText()
     set outText to outText & "  # Front window only:" & LF
     set outText to outText & "  osascript " & scriptName & " \"TextEdit\" \"/tmp/textedit.png\" --window" & LF
     set outText to outText & "  # All windows with descriptive names:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"Safari\" \"/tmp/safari_windows.png\" --multi" & LF & LF
+    set outText to outText & "  osascript " & scriptName & " \"Safari\" \"/tmp/safari_windows.png\" --multi" & LF
+    set outText to outText & "  # One-step: Screenshot + AI analysis:" & LF
+    set outText to outText & "  osascript " & scriptName & " \"Safari\" --ask \"What's on this page?\"" & LF
+    set outText to outText & "  # Two-step: Analyze existing image:" & LF
+    set outText to outText & "  osascript " & scriptName & " analyze \"/tmp/screenshot.png\" \"Describe what you see\"" & LF
+    set outText to outText & "  # Custom model:" & LF
+    set outText to outText & "  osascript " & scriptName & " \"Safari\" --ask \"Any errors?\" --model llava:13b" & LF & LF
+    
+    set outText to outText & "AI Analysis Features:" & LF
+    set outText to outText & "  • Local inference with Ollama (private, no data sent to cloud)" & LF
+    set outText to outText & "  • Auto-detects best available vision model from your Ollama install" & LF
+    set outText to outText & "  • Priority: qwen2.5vl:7b > llava:7b > llava-phi3:3.8b > minicpm-v:8b" & LF
+    set outText to outText & "  • One-step: Screenshot + analysis in single command" & LF
+    set outText to outText & "  • Two-step: Analyze existing images separately" & LF
+    set outText to outText & "  • Detailed setup guide if models missing" & LF & LF
     
     set outText to outText & "Multi-Window Features:" & LF
     set outText to outText & "  • --multi creates separate files with descriptive names" & LF
