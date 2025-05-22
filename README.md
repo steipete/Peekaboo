@@ -255,7 +255,7 @@ osascript peekaboo.scpt -f --format jpg -o ~/fullscreen -q
 
 Peekaboo integrates with AI providers for powerful vision analysis - ask questions about your screenshots! Supports both **Ollama** (local, privacy-focused) and **Claude CLI** (cloud-based).
 
-**🪟 NEW: Smart Multi-Window AI** - When analyzing apps with multiple windows, Peekaboo automatically captures and analyzes ALL windows, giving you comprehensive insights about each one!
+**🪟 Smart Multi-Window AI** - When analyzing apps with multiple windows, Peekaboo automatically captures and analyzes ALL windows, giving you comprehensive insights about each one!
 
 ### 🎯 **Key Features**
 - **🤖 Smart Provider Selection** - Auto-detects Ollama or Claude CLI
