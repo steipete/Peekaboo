@@ -1,17 +1,18 @@
 #!/usr/bin/osascript
 --------------------------------------------------------------------------------
--- peekaboo.scpt - v1.0.0 "Peekaboo! 👀 → 📸 → 💾"
--- Unattended screenshot capture with app targeting and location specification
+-- peekaboo_enhanced.scpt - v1.0.0 "Peekaboo Pro! 👀 → 📸 → 💾"
+-- Enhanced screenshot capture with multi-window support and app discovery
 -- Peekaboo—screenshot got you! Now you see it, now it's saved.
 --------------------------------------------------------------------------------
 
 --#region Configuration Properties
 property scriptInfoPrefix : "Peekaboo 👀: "
 property defaultScreenshotFormat : "png"
-property captureDelay : 1.0 -- Delay after bringing app to front before capture
-property windowActivationDelay : 0.5 -- Delay for window activation
+property captureDelay : 1.0
+property windowActivationDelay : 0.5
 property enhancedErrorReporting : true
 property verboseLogging : false
+property maxWindowTitleLength : 50
 --#endregion Configuration Properties
 
 --#region Helper Functions
@@ -42,6 +43,32 @@ on ensureDirectoryExists(dirPath)
         return false
     end try
 end ensureDirectoryExists
+
+on sanitizeFilename(filename)
+    -- Replace problematic characters for filenames
+    set filename to my replaceText(filename, "/", "_")
+    set filename to my replaceText(filename, ":", "_")
+    set filename to my replaceText(filename, "*", "_")
+    set filename to my replaceText(filename, "?", "_")
+    set filename to my replaceText(filename, "\"", "_")
+    set filename to my replaceText(filename, "<", "_")
+    set filename to my replaceText(filename, ">", "_")
+    set filename to my replaceText(filename, "|", "_")
+    if (length of filename) > maxWindowTitleLength then
+        set filename to text 1 thru maxWindowTitleLength of filename
+    end if
+    return filename
+end sanitizeFilename
+
+on replaceText(theText, searchStr, replaceStr)
+    set oldDelims to AppleScript's text item delimiters
+    set AppleScript's text item delimiters to searchStr
+    set textItems to text items of theText
+    set AppleScript's text item delimiters to replaceStr
+    set newText to textItems as text
+    set AppleScript's text item delimiters to oldDelims
+    return newText
+end replaceText
 
 on formatErrorMessage(errorType, errorMsg, context)
     if enhancedErrorReporting then
@@ -81,6 +108,74 @@ on trimWhitespace(theText)
     return newText
 end trimWhitespace
 --#endregion Helper Functions
+
+--#region App Discovery Functions
+on listRunningApps()
+    set appList to {}
+    try
+        tell application "System Events"
+            repeat with proc in (every application process whose background only is false)
+                try
+                    set appName to name of proc
+                    set bundleID to bundle identifier of proc
+                    set windowCount to count of windows of proc
+                    set windowTitles to {}
+                    
+                    if windowCount > 0 then
+                        repeat with win in windows of proc
+                            try
+                                set winTitle to title of win
+                                if winTitle is not "" then
+                                    set end of windowTitles to winTitle
+                                end if
+                            on error
+                                -- Skip windows without accessible titles
+                            end try
+                        end repeat
+                    end if
+                    
+                    set end of appList to {appName:appName, bundleID:bundleID, windowCount:windowCount, windowTitles:windowTitles}
+                on error
+                    -- Skip apps we can't access
+                end try
+            end repeat
+        end tell
+    on error errMsg
+        return my formatErrorMessage("Discovery Error", "Failed to enumerate running applications: " & errMsg, "app enumeration")
+    end try
+    return appList
+end listRunningApps
+
+on formatAppList(appList)
+    if appList starts with scriptInfoPrefix then
+        return appList -- Error message
+    end if
+    
+    set output to scriptInfoPrefix & "Running Applications:" & linefeed & linefeed
+    
+    repeat with appInfo in appList
+        set appName to appName of appInfo
+        set bundleID to bundleID of appInfo
+        set windowCount to windowCount of appInfo
+        set windowTitles to windowTitles of appInfo
+        
+        set output to output & "• " & appName & " (" & bundleID & ")" & linefeed
+        set output to output & "  Windows: " & windowCount
+        
+        if windowCount > 0 and (count of windowTitles) > 0 then
+            set output to output & linefeed
+            repeat with winTitle in windowTitles
+                set output to output & "    - \"" & winTitle & "\"" & linefeed
+            end repeat
+        else
+            set output to output & linefeed
+        end if
+        set output to output & linefeed
+    end repeat
+    
+    return output
+end formatAppList
+--#endregion App Discovery Functions
 
 --#region App Resolution Functions
 on resolveAppIdentifier(appIdentifier)
@@ -160,6 +255,64 @@ on resolveAppIdentifier(appIdentifier)
     return missing value
 end resolveAppIdentifier
 
+on getAppWindows(appName)
+    set windowInfo to {}
+    set windowCount to 0
+    set accessibleWindows to 0
+    
+    try
+        tell application "System Events"
+            tell process appName
+                set windowCount to count of windows
+                repeat with i from 1 to windowCount
+                    try
+                        set win to window i
+                        set winTitle to title of win
+                        if winTitle is "" then set winTitle to "Untitled Window " & i
+                        set end of windowInfo to {winTitle, i}
+                        set accessibleWindows to accessibleWindows + 1
+                    on error
+                        set end of windowInfo to {("Window " & i), i}
+                    end try
+                end repeat
+            end tell
+        end tell
+    on error errMsg
+        my logVerbose("Failed to get windows for " & appName & ": " & errMsg)
+        return {windowInfo:windowInfo, totalWindows:0, accessibleWindows:0, errorMsg:errMsg}
+    end try
+    
+    return {windowInfo:windowInfo, totalWindows:windowCount, accessibleWindows:accessibleWindows, errorMsg:""}
+end getAppWindows
+
+on getAppWindowStatus(appName)
+    set windowStatus to my getAppWindows(appName)
+    set windowInfo to windowInfo of windowStatus
+    set totalWindows to totalWindows of windowStatus
+    set accessibleWindows to accessibleWindows of windowStatus
+    set windowError to errorMsg of windowStatus
+    
+    if windowError is not "" then
+        return my formatErrorMessage("Window Access Error", "Cannot access windows for app '" & appName & "': " & windowError & ". The app may not be running or may not have accessibility permissions.", "window enumeration")
+    end if
+    
+    if totalWindows = 0 then
+        return my formatErrorMessage("No Windows Error", "App '" & appName & "' is running but has no windows open. Peekaboo needs at least one window to capture. Please open a window in " & appName & " and try again.", "zero windows")
+    end if
+    
+    if accessibleWindows = 0 and totalWindows > 0 then
+        return my formatErrorMessage("Window Access Error", "App '" & appName & "' has " & totalWindows & " window(s) but none are accessible. This may require accessibility permissions in System Preferences > Security & Privacy > Accessibility.", "accessibility required")
+    end if
+    
+    -- Success case
+    set statusMsg to "App '" & appName & "' has " & totalWindows & " window(s)"
+    if accessibleWindows < totalWindows then
+        set statusMsg to statusMsg & " (" & accessibleWindows & " accessible)"
+    end if
+    
+    return {status:"success", message:statusMsg, windowInfo:windowInfo, totalWindows:totalWindows, accessibleWindows:accessibleWindows}
+end getAppWindowStatus
+
 on bringAppToFront(appInfo)
     set appName to appName of appInfo
     set isRunning to isRunning of appInfo
@@ -191,8 +344,8 @@ end bringAppToFront
 --#endregion App Resolution Functions
 
 --#region Screenshot Functions
-on captureScreenshot(outputPath)
-    my logVerbose("Capturing screenshot to: " & outputPath)
+on captureScreenshot(outputPath, captureMode, appName)
+    my logVerbose("Capturing screenshot to: " & outputPath & " (mode: " & captureMode & ")")
     
     -- Ensure output directory exists
     set outputDir to do shell script "dirname " & quoted form of outputPath
@@ -210,18 +363,25 @@ on captureScreenshot(outputPath)
         set outputPath to outputPath & "." & fileExt
     end if
     
-    -- Capture screenshot using screencapture
+    -- Build screencapture command based on mode
+    set screencaptureCmd to "screencapture -x"
+    
+    if captureMode is "window" then
+        -- Use frontmost window without interaction
+        set screencaptureCmd to screencaptureCmd & " -o -W"
+    end if
+    -- Remove interactive mode - not suitable for unattended operation
+    
+    -- Add format flag if not PNG (default)
+    if fileExt is not "png" then
+        set screencaptureCmd to screencaptureCmd & " -t " & fileExt
+    end if
+    
+    -- Add output path
+    set screencaptureCmd to screencaptureCmd & " " & quoted form of outputPath
+    
+    -- Capture screenshot
     try
-        set screencaptureCmd to "screencapture -x"
-        
-        -- Add format flag if not PNG (default)
-        if fileExt is not "png" then
-            set screencaptureCmd to screencaptureCmd & " -t " & fileExt
-        end if
-        
-        -- Add output path
-        set screencaptureCmd to screencaptureCmd & " " & quoted form of outputPath
-        
         my logVerbose("Running: " & screencaptureCmd)
         do shell script screencaptureCmd
         
@@ -246,15 +406,97 @@ on captureScreenshot(outputPath)
         end if
     end try
 end captureScreenshot
+
+on captureMultipleWindows(appName, baseOutputPath)
+    -- Get detailed window status first
+    set windowStatus to my getAppWindowStatus(appName)
+    
+    -- Check if it's an error
+    if (windowStatus starts with scriptInfoPrefix) then
+        return windowStatus -- Return the descriptive error
+    end if
+    
+    -- Extract window info from successful status
+    set windowInfo to windowInfo of windowStatus
+    set totalWindows to totalWindows of windowStatus
+    set accessibleWindows to accessibleWindows of windowStatus
+    set capturedFiles to {}
+    
+    my logVerbose("Multi-window capture: " & totalWindows & " total, " & accessibleWindows & " accessible")
+    
+    if (count of windowInfo) = 0 then
+        return my formatErrorMessage("Multi-Window Error", "App '" & appName & "' has no accessible windows for multi-window capture. Try using single screenshot mode instead, or ensure the app has open windows.", "no accessible windows")
+    end if
+    
+    -- Get base path components
+    set outputDir to do shell script "dirname " & quoted form of baseOutputPath
+    set baseName to do shell script "basename " & quoted form of baseOutputPath
+    set fileExt to my getFileExtension(baseName)
+    if fileExt is not "" then
+        set baseNameNoExt to text 1 thru -((length of fileExt) + 2) of baseName
+    else
+        set baseNameNoExt to baseName
+        set fileExt to defaultScreenshotFormat
+    end if
+    
+    my logVerbose("Capturing " & (count of windowInfo) & " windows for " & appName)
+    
+    repeat with winInfo in windowInfo
+        set winTitle to item 1 of winInfo
+        set winIndex to item 2 of winInfo
+        set sanitizedTitle to my sanitizeFilename(winTitle)
+        
+        set windowFileName to baseNameNoExt & "_window_" & winIndex & "_" & sanitizedTitle & "." & fileExt
+        set windowOutputPath to outputDir & "/" & windowFileName
+        
+        -- Focus the specific window first
+        try
+            tell application "System Events"
+                tell process appName
+                    set frontmost to true
+                    tell window winIndex
+                        perform action "AXRaise"
+                    end tell
+                end tell
+            end tell
+            delay 0.3
+        on error
+            my logVerbose("Could not focus window " & winIndex & ", continuing anyway")
+        end try
+        
+        -- Capture the frontmost window
+        set captureResult to my captureScreenshot(windowOutputPath, "window", appName)
+        if captureResult starts with scriptInfoPrefix then
+            -- Error occurred, but continue with other windows
+            my logVerbose("Failed to capture window " & winIndex & ": " & captureResult)
+        else
+            set end of capturedFiles to {captureResult, winTitle, winIndex}
+        end if
+    end repeat
+    
+    return capturedFiles
+end captureMultipleWindows
 --#endregion Screenshot Functions
 
 --#region Main Script Logic (on run)
 on run argv
     set appSpecificErrorOccurred to false
     try
-        my logVerbose("Starting Screenshotter v1.0.0")
+        my logVerbose("Starting Screenshotter Enhanced v2.0.0")
         
         set argCount to count argv
+        
+        -- Handle special commands
+        if argCount = 1 then
+            set command to item 1 of argv
+            if command is "list" or command is "--list" or command is "-l" then
+                set appList to my listRunningApps()
+                return my formatAppList(appList)
+            else if command is "help" or command is "--help" or command is "-h" then
+                return my usageText()
+            end if
+        end if
+        
         if argCount < 1 then return my usageText()
         
         set appIdentifier to item 1 of argv
@@ -265,6 +507,23 @@ on run argv
         else
             set timestamp to do shell script "date +%Y%m%d_%H%M%S"
             set outputPath to "/tmp/peekaboo_" & timestamp & ".png"
+        end if
+        set captureMode to "screen" -- default
+        set multiWindow to false
+        
+        -- Parse additional options
+        if argCount > 2 then
+            repeat with i from 3 to argCount
+                set arg to item i of argv
+                if arg is "--window" or arg is "-w" then
+                    set captureMode to "window"
+                -- Remove interactive mode option
+                else if arg is "--multi" or arg is "-m" then
+                    set multiWindow to true
+                else if arg is "--verbose" or arg is "-v" then
+                    set verboseLogging to true
+                end if
+            end repeat
         end if
         
         -- Validate arguments
@@ -286,13 +545,13 @@ on run argv
                 set errorDetails to errorDetails & " This appears to be a bundle ID. Common issues:" & linefeed
                 set errorDetails to errorDetails & "• Bundle ID may be incorrect (try 'com.apple.' prefix for system apps)" & linefeed
                 set errorDetails to errorDetails & "• App may not be installed" & linefeed
-                set errorDetails to errorDetails & "• Try using the app name instead (e.g., 'Safari' instead of bundle ID)"
+                set errorDetails to errorDetails & "• Use 'osascript peekaboo_enhanced.scpt list' to see available apps"
             else
                 set errorDetails to errorDetails & " This appears to be an app name. Common issues:" & linefeed
                 set errorDetails to errorDetails & "• App name may be incorrect (case-sensitive)" & linefeed
                 set errorDetails to errorDetails & "• App may not be installed or running" & linefeed
                 set errorDetails to errorDetails & "• Try the full app name (e.g., 'Activity Monitor' not 'Activity')" & linefeed
-                set errorDetails to errorDetails & "• Some apps need to be launched first before capturing"
+                set errorDetails to errorDetails & "• Use 'osascript peekaboo_enhanced.scpt list' to see running apps"
             end if
             
             return my formatErrorMessage("App Resolution Error", errorDetails, "app resolution")
@@ -306,14 +565,53 @@ on run argv
         set frontError to my bringAppToFront(appInfo)
         if frontError is not "" then return frontError
         
-        -- Capture screenshot
-        set screenshotResult to my captureScreenshot(outputPath)
-        if screenshotResult starts with scriptInfoPrefix then
-            -- Error occurred
-            return screenshotResult
+        -- Pre-capture window validation for better error messages
+        if multiWindow or captureMode is "window" then
+            set windowStatus to my getAppWindowStatus(resolvedAppName)
+            if (windowStatus starts with scriptInfoPrefix) then
+                -- Add context about what the user was trying to do
+                if multiWindow then
+                    set contextError to "Multi-window capture failed: " & windowStatus
+                    set contextError to contextError & linefeed & "💡 Suggestion: Try basic screenshot mode without --multi flag"
+                else
+                    set contextError to "Window capture failed: " & windowStatus  
+                    set contextError to contextError & linefeed & "💡 Suggestion: Try full-screen capture mode without --window flag"
+                end if
+                return contextError
+            end if
+            
+            -- Log successful window detection
+            set statusMsg to message of windowStatus
+            my logVerbose("Window validation passed: " & statusMsg)
+        end if
+        
+        -- Handle multi-window capture
+        if multiWindow then
+            set capturedFiles to my captureMultipleWindows(resolvedAppName, outputPath)
+            if capturedFiles starts with scriptInfoPrefix then
+                return capturedFiles -- Error message
+            else
+                set windowCount to count of capturedFiles
+                set resultMsg to scriptInfoPrefix & "Multi-window capture successful! Captured " & windowCount & " window(s) for " & resolvedAppName & ":" & linefeed
+                repeat with fileInfo in capturedFiles
+                    set filePath to item 1 of fileInfo
+                    set winTitle to item 2 of fileInfo
+                    set resultMsg to resultMsg & "  📸 " & filePath & " → \"" & winTitle & "\"" & linefeed
+                end repeat
+                set resultMsg to resultMsg & linefeed & "💡 All windows captured with descriptive filenames. Each file shows a different window of " & resolvedAppName & "."
+                return resultMsg
+            end if
         else
-            -- Success
-            return scriptInfoPrefix & "Screenshot captured successfully! 📸" & linefeed & "• File: " & screenshotResult & linefeed & "• App: " & resolvedAppName & linefeed & "• Mode: full screen" & linefeed & "💡 The full screen with " & resolvedAppName & " active has been saved."
+            -- Single capture
+            set screenshotResult to my captureScreenshot(outputPath, captureMode, resolvedAppName)
+            if screenshotResult starts with scriptInfoPrefix then
+                return screenshotResult -- Error message
+            else
+                set modeDescription to "full screen"
+                if captureMode is "window" then set modeDescription to "front window only"
+                
+                return scriptInfoPrefix & "Screenshot captured successfully! 📸" & linefeed & "• File: " & screenshotResult & linefeed & "• App: " & resolvedAppName & linefeed & "• Mode: " & modeDescription & linefeed & "💡 The " & modeDescription & " of " & resolvedAppName & " has been saved."
+            end if
         end if
         
     on error generalErrorMsg number generalErrorNum
@@ -326,43 +624,55 @@ end run
 --#region Usage Function
 on usageText()
     set LF to linefeed
-    set scriptName to "peekaboo.scpt"
+    set scriptName to "peekaboo_enhanced.scpt"
     
-    set outText to scriptName & " - v1.0.0 \"Peekaboo! 👀 → 📸 → 💾\" – AppleScript Screenshot Utility" & LF & LF
+    set outText to scriptName & " - v1.0.0 \"Peekaboo Pro! 👀 → 📸 → 💾\" – Enhanced AppleScript Screenshot Utility" & LF & LF
     set outText to outText & "Peekaboo—screenshot got you! Now you see it, now it's saved." & LF
-    set outText to outText & "Takes unattended screenshots of applications by name or bundle ID." & LF & LF
+    set outText to outText & "Takes unattended screenshots with multi-window support and app discovery." & LF & LF
     
     set outText to outText & "Usage:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"<app_name_or_bundle_id>\" [\"<output_path>\"]" & LF & LF
+    set outText to outText & "  osascript " & scriptName & " \"<app_name_or_bundle_id>\" [\"<output_path>\"] [options]" & LF
+    set outText to outText & "  osascript " & scriptName & " list" & LF
+    set outText to outText & "  osascript " & scriptName & " help" & LF & LF
     
     set outText to outText & "Parameters:" & LF
     set outText to outText & "  app_name_or_bundle_id: Application name (e.g., 'Safari') or bundle ID (e.g., 'com.apple.Safari')" & LF
-    set outText to outText & "  output_path:          Optional absolute path for screenshot file" & LF
+    set outText to outText & "  output_path:          Optional absolute path for screenshot file(s)" & LF
     set outText to outText & "                        If not provided, saves to /tmp/peekaboo_TIMESTAMP.png" & LF & LF
     
+    set outText to outText & "Options:" & LF
+    set outText to outText & "  --window, -w:         Capture frontmost window only" & LF
+    set outText to outText & "  --interactive, -i:    Interactive window selection" & LF
+    set outText to outText & "  --multi, -m:          Capture all windows with descriptive names" & LF
+    set outText to outText & "  --verbose, -v:        Enable verbose logging" & LF & LF
+    
+    set outText to outText & "Commands:" & LF
+    set outText to outText & "  list:                 List all running apps with window titles" & LF
+    set outText to outText & "  help:                 Show this help message" & LF & LF
+    
     set outText to outText & "Examples:" & LF
+    set outText to outText & "  # List running applications:" & LF
+    set outText to outText & "  osascript " & scriptName & " list" & LF
     set outText to outText & "  # Screenshot Safari to /tmp with timestamp:" & LF
     set outText to outText & "  osascript " & scriptName & " \"Safari\"" & LF
-    set outText to outText & "  # Screenshot Safari with custom path:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"Safari\" \"/Users/username/Desktop/safari_shot.png\"" & LF
-    set outText to outText & "  # Screenshot using bundle ID:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"com.apple.TextEdit\" \"/tmp/textedit.png\"" & LF
-    set outText to outText & "  # Screenshot with different format:" & LF
-    set outText to outText & "  osascript " & scriptName & " \"Xcode\" \"/Users/username/Screenshots/xcode.jpg\"" & LF & LF
+    set outText to outText & "  # Full screen capture with custom path:" & LF
+    set outText to outText & "  osascript " & scriptName & " \"Safari\" \"/Users/username/Desktop/safari.png\"" & LF
+    set outText to outText & "  # Front window only:" & LF
+    set outText to outText & "  osascript " & scriptName & " \"TextEdit\" \"/tmp/textedit.png\" --window" & LF
+    set outText to outText & "  # All windows with descriptive names:" & LF
+    set outText to outText & "  osascript " & scriptName & " \"Safari\" \"/tmp/safari_windows.png\" --multi" & LF & LF
     
-    set outText to outText & "Features:" & LF
-    set outText to outText & "  • Automatically resolves app names to bundle IDs and vice versa" & LF
-    set outText to outText & "  • Launches apps if not running" & LF
-    set outText to outText & "  • Brings target app to front before capture" & LF
-    set outText to outText & "  • Supports PNG, JPG, PDF, and other formats via file extension" & LF
-    set outText to outText & "  • Creates output directories automatically" & LF
-    set outText to outText & "  • Enhanced error reporting with context" & LF & LF
+    set outText to outText & "Multi-Window Features:" & LF
+    set outText to outText & "  • --multi creates separate files with descriptive names" & LF
+    set outText to outText & "  • Window titles are sanitized for safe filenames" & LF
+    set outText to outText & "  • Files named as: basename_window_N_title.ext" & LF
+    set outText to outText & "  • Each window is focused before capture for accuracy" & LF & LF
     
     set outText to outText & "Notes:" & LF
-    set outText to outText & "  • Requires Screen Recording permission in System Preferences > Security & Privacy" & LF
-    set outText to outText & "  • Output path must be absolute (starting with '/')" & LF
-    set outText to outText & "  • Default format is PNG if no extension specified" & LF
-    set outText to outText & "  • The script will wait " & (captureDelay as string) & " second(s) after bringing app to front before capture" & LF
+    set outText to outText & "  • Requires Screen Recording permission in System Preferences" & LF
+    set outText to outText & "  • Accessibility permission may be needed for window enumeration" & LF
+    set outText to outText & "  • Window titles longer than " & maxWindowTitleLength & " characters are truncated" & LF
+    set outText to outText & "  • Default capture delay: " & (captureDelay as string) & " second(s)" & LF
     
     return outText
 end usageText
