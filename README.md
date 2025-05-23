@@ -9,6 +9,30 @@
 
 A ghostly macOS utility that haunts your screen, capturing spectral snapshots and peering into windows with supernatural AI vision. 🎃
 
+## 👁️‍🗨️ "I SEE DEAD PIXELS!" - Your AI Assistant, Probably
+
+**🎭 Peekaboo: Because even AI needs to see what the hell you're talking about!**
+
+Ever tried explaining a UI bug to Claude or Cursor? It's like playing charades with a blindfolded ghost! 👻
+
+"The button is broken!"  
+*"Which button?"*  
+"The blue one!"  
+*"...I'm an AI, I can't see colors. Or buttons. Or anything really."*  
+
+**Enter Peekaboo** - the supernatural sight-giver that grants your AI assistants the mystical power of ACTUAL VISION! 
+
+### 🔮 Why Your AI Needs Eyes
+
+- **🐛 Bug Hunting**: "See that weird layout issue?" Now they actually CAN see it!
+- **🎨 Design Reviews**: Let AI roast your CSS crimes with visual evidence
+- **📊 Data Analysis**: "What's in this chart?" AI can now divine the answer
+- **🖼️ UI Testing**: Verify your app looks right without the "works on my machine" curse
+- **📱 Multi-Screen Sorcery**: Capture any window, any app, any time
+- **🤖 Automation Magic**: Let AI see what you see, then fix what you broke
+
+Think of Peekaboo as supernatural contact lenses for your coding assistant. No more explaining where the "Submit" button is for the 47th time! 🙄
+
 ## 🦇 Summoning Peekaboo
 
 ### Ritual Requirements
