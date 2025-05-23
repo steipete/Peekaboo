@@ -59,7 +59,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/steipete/peekaboo.git"
+    "url": "git+https://github.com/steipete/peekaboo.git"
   },
   "bugs": {
     "url": "https://github.com/steipete/peekaboo/issues"

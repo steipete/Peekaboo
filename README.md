@@ -9,75 +9,80 @@
 
 A macOS utility exposed via Node.js MCP server for advanced screen captures, image analysis, and window management.
 
-## 🚀 Installation & Setup
+## 🚀 Installation
 
 ### Prerequisites
 
-Before installing Peekaboo, ensure your system meets these requirements:
-
-**System Requirements:**
 - **macOS 12.0+** (Monterey or later)
-- **Node.js 18.0+** 
-- **Swift 5.7+** (for building the native CLI)
-- **Xcode Command Line Tools**
+- **Node.js 18.0+**
 
-**Install Prerequisites:**
-```bash
-# Install Node.js (if not already installed)
-brew install node
+### Quick Start
 
-# Install Xcode Command Line Tools (if not already installed)
-xcode-select --install
+Add Peekaboo to your Claude Desktop configuration:
+
+1. Open Claude Desktop settings
+2. Go to the Developer tab
+3. Edit the configuration file and add:
+
+```json
+{
+  "mcpServers": {
+    "peekaboo": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@steipete/peekaboo-mcp@latest"
+      ]
+    }
+  }
+}
 ```
 
-### Installation Methods
+4. Restart Claude Desktop
 
-#### Method 1: NPM Installation (Recommended)
-
-```bash
-# Install globally for system-wide access
-npm install -g @steipete/peekaboo-mcp
-
-# Or install locally in your project
-npm install @steipete/peekaboo-mcp
-```
-
-#### Method 2: From Source
-
-```bash
-# Clone the repository
-git clone https://github.com/steipete/peekaboo.git
-cd peekaboo
-
-# Install Node.js dependencies
-npm install
-
-# Build the TypeScript server
-npm run build
-
-# Build the Swift CLI component
-cd swift-cli
-swift build -c release
-
-# Copy the binary to the project root
-cp .build/release/peekaboo ../peekaboo
-
-# Return to project root
-cd ..
-
-# Optional: Link for global access
-npm link
-```
+That's it! Peekaboo will be automatically installed and available.
 
 ### 🔧 Configuration
 
-#### Environment Setup
+#### Environment Variables
 
-Create a `.env` file in your project or set environment variables:
+You can configure Peekaboo with environment variables in your Claude Desktop configuration:
 
-```bash
-# AI Provider Configuration (Optional)
-AI_PROVIDERS='[
+```json
+{
+  "mcpServers": {
+    "peekaboo": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@steipete/peekaboo-mcp@latest"
+      ],
+      "env": {
+        "AI_PROVIDERS": "[{\"type\":\"ollama\",\"baseUrl\":\"http://localhost:11434\",\"model\":\"llava\",\"enabled\":true}]",
+        "LOG_LEVEL": "INFO",
+        "PEEKABOO_LOG_FILE": "/tmp/peekaboo-mcp.log",
+        "PEEKABOO_DEFAULT_SAVE_PATH": "~/Pictures/Screenshots"
+      }
+    }
+  }
+}
+```
+
+#### Available Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AI_PROVIDERS` | JSON array of AI provider configurations | `[]` |
+| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARN, ERROR) | `INFO` |
+| `PEEKABOO_LOG_FILE` | Log file path | `/tmp/peekaboo-mcp.log` |
+| `PEEKABOO_DEFAULT_SAVE_PATH` | Default screenshot save location | `~/Pictures/Screenshots` |
+
+#### AI Provider Configuration
+
+Configure AI providers for image analysis:
+
+```json
+[
   {
     "type": "ollama",
     "baseUrl": "http://localhost:11434",
@@ -85,51 +90,12 @@ AI_PROVIDERS='[
     "enabled": true
   },
   {
-    "type": "openai", 
+    "type": "openai",
     "apiKey": "your-openai-api-key",
     "model": "gpt-4-vision-preview",
     "enabled": false
   }
-]'
-
-# Logging Configuration
-LOG_LEVEL="INFO"
-PEEKABOO_LOG_FILE="/tmp/peekaboo-mcp.log"
-
-# Optional: Custom paths for screenshots
-PEEKABOO_DEFAULT_SAVE_PATH="~/Pictures/Screenshots"
-```
-
-#### MCP Server Configuration
-
-Add Peekaboo to your MCP client configuration:
-
-**For Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):**
-```json
-{
-  "mcpServers": {
-    "peekaboo": {
-      "command": "peekaboo-mcp",
-      "args": [],
-      "env": {
-        "AI_PROVIDERS": "[{\"type\":\"ollama\",\"baseUrl\":\"http://localhost:11434\",\"model\":\"llava\",\"enabled\":true}]"
-      }
-    }
-  }
-}
-```
-
-**For other MCP clients:**
-```json
-{
-  "server": {
-    "command": "node",
-    "args": ["/path/to/peekaboo/dist/index.js"],
-    "env": {
-      "AI_PROVIDERS": "[{\"type\":\"ollama\",\"baseUrl\":\"http://localhost:11434\",\"model\":\"llava\",\"enabled\":true}]"
-    }
-  }
-}
+]
 ```
 
 ### 🔐 Permissions Setup
@@ -235,6 +201,77 @@ LOG_LEVEL=DEBUG peekaboo-mcp
 - 📚 [Documentation](./docs/)
 - 🐛 [Issues](https://github.com/yourusername/peekaboo/issues)
 - 💬 [Discussions](https://github.com/yourusername/peekaboo/discussions)
+
+## 📦 Alternative Installation Methods
+
+### From Source
+
+If you want to build from source or contribute to development:
+
+```bash
+# Clone the repository
+git clone https://github.com/steipete/peekaboo.git
+cd peekaboo
+
+# Install Node.js dependencies
+npm install
+
+# Build the TypeScript server
+npm run build
+
+# Build the Swift CLI component
+cd swift-cli
+swift build -c release
+
+# Copy the binary to the project root
+cp .build/release/peekaboo ../peekaboo
+
+# Return to project root
+cd ..
+
+# Optional: Link for global access
+npm link
+```
+
+Then configure Claude Desktop to use your local installation:
+
+```json
+{
+  "mcpServers": {
+    "peekaboo": {
+      "command": "peekaboo-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+### Using AppleScript
+
+For basic screen capture without the full MCP server, you can use the included AppleScript:
+
+```bash
+# Run the AppleScript directly
+osascript peekaboo.scpt
+```
+
+This provides a simple way to capture screenshots but doesn't include the MCP integration or AI analysis features.
+
+### Manual Configuration for Other MCP Clients
+
+For MCP clients other than Claude Desktop:
+
+```json
+{
+  "server": {
+    "command": "node",
+    "args": ["/path/to/peekaboo/dist/index.js"],
+    "env": {
+      "AI_PROVIDERS": "[{\"type\":\"ollama\",\"baseUrl\":\"http://localhost:11434\",\"model\":\"llava\",\"enabled\":true}]"
+    }
+  }
+}
+```
 
 ---
 
