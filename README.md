@@ -1,4 +1,4 @@
-# 👻 Peekaboo MCP Server
+# 👻 Peekaboo MCP: Screenshots so fast they’re practically paranormal.
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
