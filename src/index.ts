@@ -38,7 +38,7 @@ initializeSwiftCliPath(packageRootDir);
 let hasSentInitialStatus = false;
 
 // Initialize logger
-const baseLogLevel = process.env.LOG_LEVEL || 'info';
+const baseLogLevel = (process.env.LOG_LEVEL || 'info').toLowerCase();
 const logFile = process.env.LOG_FILE || path.join(os.tmpdir(), 'peekaboo-mcp.log');
 
 const transportTargets = [];

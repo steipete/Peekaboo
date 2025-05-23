@@ -59,7 +59,7 @@ You can configure Peekaboo with environment variables in your Claude Desktop con
       ],
       "env": {
         "AI_PROVIDERS": "[{\"type\":\"ollama\",\"baseUrl\":\"http://localhost:11434\",\"model\":\"llava\",\"enabled\":true}]",
-        "LOG_LEVEL": "INFO",
+        "LOG_LEVEL": "info",
         "LOG_FILE": "/tmp/peekaboo-mcp.log",
         "DEFAULT_SAVE_PATH": "~/Pictures/Screenshots",
         "CONSOLE_LOGGING": "true",
@@ -75,7 +75,7 @@ You can configure Peekaboo with environment variables in your Claude Desktop con
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `AI_PROVIDERS` | JSON array of AI provider configurations | `[]` |
-| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARN, ERROR) | `INFO` |
+| `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info` |
 | `LOG_FILE` | Path to the server's log file. | `path.join(os.tmpdir(), 'peekaboo-mcp.log')` |
 | `DEFAULT_SAVE_PATH` | Default base absolute path for saving images captured by `peekaboo.image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic. | (none, Swift CLI uses temp paths) |
 | `CONSOLE_LOGGING` | Boolean (`"true"`/`"false"`) for dev console logs. | `"false"` |
@@ -195,7 +195,7 @@ Once installed and configured:
 **Debug Mode:**
 ```bash
 # Enable verbose logging
-LOG_LEVEL=DEBUG peekaboo-mcp
+LOG_LEVEL=debug peekaboo-mcp
 
 # Check permissions
 ./peekaboo list server_status --json-output
