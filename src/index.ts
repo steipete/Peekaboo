@@ -38,34 +38,30 @@ initializeSwiftCliPath(packageRootDir);
 let hasSentInitialStatus = false;
 
 // Initialize logger
-const pinoTransports = [];
+const logLevel = process.env.LOG_LEVEL || 'info';
+const logFile = path.join(os.tmpdir(), 'peekaboo-mcp.log');
 
-// Default file transport
-pinoTransports.push({
-  level: process.env.LOG_LEVEL || 'info',
-  target: 'pino/file',
-  options: { 
-    destination: path.join(os.tmpdir(), 'peekaboo-mcp.log'),
-    mkdir: true // Ensure the directory exists
-  }
-});
-
-// Conditional console logging for development
-if (process.env.PEEKABOO_MCP_CONSOLE_LOGGING === 'true') {
-  pinoTransports.push({
-    level: process.env.LOG_LEVEL || 'info', // Or a more verbose level for console e.g. 'debug'
-    target: 'pino-pretty',
-    options: {
-      destination: 2, // stderr
-      colorize: true, // pino-pretty typically defaults to true if TTY
-    }
-  });
-}
-
-const logger = pino({
-  name: 'peekaboo-mcp',
-  level: process.env.LOG_LEVEL || 'info', // Overall minimum level, transport levels can be more specific
-}, pino.multistream(pinoTransports as any)); // Use pino.multistream
+// Create logger with file destination by default
+const logger = process.env.PEEKABOO_MCP_CONSOLE_LOGGING === 'true' 
+  ? pino({
+      name: 'peekaboo-mcp',
+      level: logLevel,
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: true,
+          ignore: 'pid,hostname'
+        }
+      }
+    })
+  : pino({
+      name: 'peekaboo-mcp',
+      level: logLevel
+    }, pino.destination({
+      dest: logFile,
+      sync: false
+    }));
 
 // Tool context for handlers
 const toolContext = { logger };

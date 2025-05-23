@@ -1,5 +1,12 @@
 # Peekaboo MCP Server
 
+![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
+
+[![npm version](https://badge.fury.io/js/%40steipete%2Fpeekaboo-mcp.svg)](https://www.npmjs.com/package/@steipete/peekaboo-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![macOS](https://img.shields.io/badge/macOS-12.0%2B-blue.svg)](https://www.apple.com/macos/)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+
 A macOS utility exposed via Node.js MCP server for advanced screen captures, image analysis, and window management.
 
 ## 🚀 Installation & Setup
@@ -29,17 +36,17 @@ xcode-select --install
 
 ```bash
 # Install globally for system-wide access
-npm install -g peekaboo-mcp
+npm install -g @steipete/peekaboo-mcp
 
 # Or install locally in your project
-npm install peekaboo-mcp
+npm install @steipete/peekaboo-mcp
 ```
 
 #### Method 2: From Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/peekaboo.git
+git clone https://github.com/steipete/peekaboo.git
 cd peekaboo
 
 # Install Node.js dependencies

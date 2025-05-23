@@ -1,0 +1,62 @@
+# Source files
+src/
+swift-cli/Sources/
+swift-cli/Tests/
+
+# Test files
+tests/
+test_peekaboo.sh
+jest.config.cjs
+coverage/
+*.test.ts
+*.test.js
+
+# Development files
+.gitignore
+.eslintrc*
+.prettierrc*
+tsconfig.json
+.editorconfig
+.nvmrc
+
+# IDE and system files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.tsbuildinfo
+.build/
+DerivedData/
+
+# Documentation source
+docs/
+*.md
+!README.md
+!LICENSE
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+*.log
+
+# Development dependencies
+pino-pretty
+
+# Swift build files (except the binary)
+swift-cli/Package.swift
+swift-cli/Package.resolved
+swift-cli/.build/
+swift-cli/.swiftpm/
+
+# Keep only the compiled binary
+!peekaboo

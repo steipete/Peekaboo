@@ -1,0 +1,68 @@
+{
+  "name": "@steipete/peekaboo-mcp",
+  "version": "1.0.0-alpha1",
+  "description": "A macOS utility exposed via Node.js MCP server for advanced screen captures, image analysis, and window management",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "peekaboo-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "peekaboo"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:swift": "./scripts/build-swift-cli.sh",
+    "build:all": "npm run build:swift && npm run build",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build:all",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:swift": "cd swift-cli && swift test",
+    "test:integration": "npm run build && npm run test:swift && npm test",
+    "test:all": "npm run test:integration",
+    "postinstall": "chmod +x dist/index.js 2>/dev/null || true"
+  },
+  "keywords": [
+    "mcp",
+    "screen-capture",
+    "macos",
+    "ai-analysis",
+    "image-analysis",
+    "window-management"
+  ],
+  "author": "Peter Steinberger <steipete@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "openai": "^4.0.0",
+    "pino": "^8.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.8",
+    "@types/node": "^20.10.0",
+    "jest": "^29.7.0",
+    "pino-pretty": "^10.0.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": [
+    "darwin"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/steipete/peekaboo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/steipete/peekaboo/issues"
+  },
+  "homepage": "https://github.com/steipete/peekaboo#readme"
+} 
