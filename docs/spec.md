@@ -9,7 +9,7 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     *   **NPM Package Name:** `peekaboo-mcp`.
     *   **GitHub Project Name:** `peekaboo`.
     *   Implements MCP server logic using the latest stable `@modelcontextprotocol/sdk`.
-    *   Exposes three primary MCP tools: `peekaboo.image`, `peekaboo.analyze`, `peekaboo.list`.
+    *   Exposes three primary MCP tools: `image`, `analyze`, `list`.
     *   Translates MCP tool calls into commands for the Swift `peekaboo` CLI.
     *   Parses structured JSON output from the Swift `peekaboo` CLI.
     *   Handles image data preparation (reading files, Base64 encoding) for MCP responses if image data is explicitly requested by the client.
@@ -60,21 +60,23 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     *   **Conditional Console Logging (Development Only):** If ENV VAR `PEEKABOO_MCP_CONSOLE_LOGGING="true"`, add a second Pino transport targeting `process.stderr.fd` (potentially using `pino-pretty` for human-readable output).
     *   **Strict Rule:** All server operational logging must use the configured Pino instance. No direct `console.log/warn/error` that might output to `stdout`.
 5.  **Environment Variables (Read by Server):**
-    *   `AI_PROVIDERS`: Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `"openai/gpt-4o,ollama/qwen2.5vl:7b"`). If unset/empty, `peekaboo.analyze` tool reports AI not configured.
+    *   `AI_PROVIDERS`: Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `"openai/gpt-4o,ollama/qwen2.5vl:7b"`). If unset/empty, `analyze` tool reports AI not configured.
     *   `OPENAI_API_KEY`: API key for OpenAI.
     *   `ANTHROPIC_API_KEY`: (Example for future) API key for Anthropic.
     *   (Other cloud provider API keys as standard ENV VAR names).
     *   `OLLAMA_BASE_URL`: Base URL for local Ollama instance. Default: `"http://localhost:11434"`.
     *   `LOG_LEVEL`: For Pino logger. Default: `"info"`.
-    *   `PEEKABOO_MCP_CONSOLE_LOGGING`: Boolean (`"true"`/`"false"`) for dev console logs. Default: `"false"`.
-    *   `PEEKABOO_CLI_PATH`: Optional override for Swift `peekaboo` CLI path.
+    *   `LOG_FILE`: Path to the server's log file. Default: `path.join(os.tmpdir(), 'peekaboo-mcp.log')`.
+    *   `DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
+    *   `CONSOLE_LOGGING`: Boolean (`"true"`/`"false"`) for dev console logs. Default: `"false"`.
+    *   `CLI_PATH`: Optional override for Swift `peekaboo` CLI path.
 6.  **Initial Status Reporting Logic:**
     *   A server-instance-level boolean flag: `let hasSentInitialStatus = false;`.
     *   A function `generateServerStatusString()`: Creates a formatted string: `"\n\n--- Peekaboo MCP Server Status ---\nName: PeekabooMCP\nVersion: <server_version>\nConfigured AI Providers (from AI_PROVIDERS ENV): <parsed list or 'None Configured. Set AI_PROVIDERS ENV.'>\n---"`.
-    *   Response Augmentation: In the function that sends a `ToolResponse` back to the MCP client, if the response is for a successful tool call (not `initialize`/`initialized` or `peekaboo.list` with `item_type: "server_status"`) AND `hasSentInitialStatus` is `false`:
+    *   Response Augmentation: In the function that sends a `ToolResponse` back to the MCP client, if the response is for a successful tool call (not `initialize`/`initialized` or `list` with `item_type: "server_status"`) AND `hasSentInitialStatus` is `false`:
         *   Append `generateServerStatusString()` to the first `TextContentItem` in `ToolResponse.content`. If no text item exists, prepend a new one.
         *   Set `hasSentInitialStatus = true`.
-7.  **Tool Registration:** Register `peekaboo.image`, `peekaboo.analyze`, `peekaboo.list` with their Zod input schemas and handler functions.
+7.  **Tool Registration:** Register `image`, `analyze`, `list` with their Zod input schemas and handler functions.
 8.  **Transport:** `await server.connect(new StdioServerTransport());`.
 9.  **Shutdown:** Implement graceful shutdown on `SIGINT`, `SIGTERM` (e.g., `await server.close(); logger.flush(); process.exit(0);`).
 
@@ -101,7 +103,7 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
         *   If `swiftResponse.success === true`:
             *   Process `swiftResponse.data` to construct the success MCP `ToolResponse`.
             *   Relay `swiftResponse.messages` as `TextContentItem`s in the MCP response if appropriate.
-            *   For `peekaboo.image` with `input.return_data: true`:
+            *   For `image` with `input.return_data: true`:
                 *   Iterate `swiftResponse.data.saved_files.[*].path`.
                 *   For each path, read image file into a `Buffer`.
                 *   Base64 encode the `Buffer`.
@@ -109,14 +111,14 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     *   Augment successful `ToolResponse` with initial server status string if applicable (see B.6).
     *   Send MCP `ToolResponse`.
 
-**Tool 1: `peekaboo.image`**
+**Tool 1: `image`**
 
 *   **MCP Description:** "Captures macOS screen content. Targets: entire screen (each display separately), a specific application window, or all windows of an application. Supports foreground/background capture. Captured image(s) can be saved to file(s) and/or returned directly as image data. Window shadows/frames are automatically excluded. Application identification uses intelligent fuzzy matching."
 *   **MCP Input Schema (`ImageInputSchema`):**
     ```typescript
     z.object({
       app: z.string().optional().describe("Optional. Target application: name, bundle ID, or partial name. If omitted, captures screen(s). Uses fuzzy matching."),
-      path: z.string().optional().describe("Optional. Base absolute path for saving. For 'screen' or 'multi' mode, display/window info is appended by backend. If omitted, default temporary paths used by backend. If 'return_data' true, images saved AND returned if 'path' specified."),
+      path: z.string().optional().describe("Optional. Base absolute path for saving. For 'screen' or 'multi' mode, display/window info is appended by backend. If omitted, the server checks the DEFAULT_SAVE_PATH environment variable. If neither is set, the Swift CLI uses its default temporary paths. If 'return_data' true, images saved AND returned if a path is determined (either from input or ENV)."),
       mode: z.enum(["screen", "window", "multi"]).optional().describe("Capture mode. Defaults to 'window' if 'app' is provided, otherwise 'screen'."),
       window_specifier: z.union([
         z.object({ title: z.string().describe("Capture window by title.") }),
@@ -137,7 +139,7 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     *   `isError?: boolean`
     *   `_meta?: { backend_error_code?: string }` (For relaying Swift CLI error codes).
 
-**Tool 2: `peekaboo.analyze`**
+**Tool 2: `analyze`**
 
 *   **MCP Description:** "Analyzes an image file using a configured AI model (local Ollama, cloud OpenAI, etc.) and returns a textual analysis/answer. Requires image path. AI provider selection and model defaults are governed by the server's `AI_PROVIDERS` environment variable and client overrides."
 *   **MCP Input Schema (`AnalyzeInputSchema`):**
@@ -183,7 +185,7 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     *   `isError?: boolean`
     *   `_meta?: { backend_error_code?: string }` (For AI provider API errors).
 
-**Tool 3: `peekaboo.list`**
+**Tool 3: `list`**
 
 *   **MCP Description:** "Lists system items: all running applications, windows of a specific app, or server status. Allows specifying window details. App ID uses fuzzy matching."
 *   **MCP Input Schema (`ListInputSchema`):**
@@ -408,16 +410,18 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
         }
         ```
 5.  **Required macOS Permissions:**
-    *   **Screen Recording:** Essential for ALL `peekaboo.image` functionalities and for `peekaboo.list` if it needs to read window titles (which it does via `CGWindowListCopyWindowInfo`). Provide clear, step-by-step instructions for System Settings. Include `open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"` command.
-    *   **Accessibility:** Required *only* if `peekaboo.image` with `capture_focus: "foreground"` needs to perform specific window raising actions (beyond simple app activation) via the Accessibility API. Explain this nuance. Include `open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"` command.
+    *   **Screen Recording:** Essential for ALL `image` functionalities and for `list` if it needs to read window titles (which it does via `CGWindowListCopyWindowInfo`). Provide clear, step-by-step instructions for System Settings. Include `open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"` command.
+    *   **Accessibility:** Required *only* if `image` with `capture_focus: "foreground"` needs to perform specific window raising actions (beyond simple app activation) via the Accessibility API. Explain this nuance. Include `open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"` command.
 6.  **Environment Variables (for Node.js `peekaboo-mcp` server):**
-    *   `AI_PROVIDERS`: Crucial for `peekaboo.analyze`. Explain format (`provider/model,provider/model`), effect, and that `peekaboo.analyze` reports "not configured" if unset. List recognized `provider` names ("ollama", "openai").
+    *   `AI_PROVIDERS`: Crucial for `analyze`. Explain format (`provider/model,provider/model`), effect, and that `analyze` reports "not configured" if unset. List recognized `provider` names ("ollama", "openai").
     *   `OPENAI_API_KEY` (and similar for other cloud providers): How they are used.
     *   `OLLAMA_BASE_URL`: Default and purpose.
     *   `LOG_LEVEL`: For `pino` logger. Values and default.
-    *   `PEEKABOO_MCP_CONSOLE_LOGGING`: For development.
-    *   `PEEKABOO_CLI_PATH`: For overriding bundled Swift CLI.
+    *   `LOG_FILE`: Path to the server's log file. Default: `path.join(os.tmpdir(), 'peekaboo-mcp.log')`.
+    *   `DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
+    *   `CONSOLE_LOGGING`: For development.
+    *   `CLI_PATH`: For overriding bundled Swift CLI.
 7.  **MCP Tool Overview:**
-    *   Brief descriptions of `peekaboo.image`, `peekaboo.analyze`, `peekaboo.list` and their primary purpose.
+    *   Brief descriptions of `image`, `analyze`, `list` and their primary purpose.
 8.  **Link to Detailed Tool Specification:** A separate `TOOL_API_REFERENCE.md` (generated from or summarizing the Zod schemas and output structures in this document) for users/AI developers needing full schema details.
 9.  **Troubleshooting / Support:** Link to GitHub issues.

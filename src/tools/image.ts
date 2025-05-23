@@ -120,8 +120,13 @@ export function buildSwiftCliArgs(input: ImageToolInput): string[] {
     args.push('--app', input.app);
   }
   
-  if (input.path) {
-    args.push('--path', input.path);
+  let effectivePath = input.path;
+  if (!effectivePath && process.env.DEFAULT_SAVE_PATH) {
+    effectivePath = process.env.DEFAULT_SAVE_PATH;
+  }
+
+  if (effectivePath) {
+    args.push('--path', effectivePath);
   }
   
   args.push('--mode', mode);

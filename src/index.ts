@@ -38,30 +38,39 @@ initializeSwiftCliPath(packageRootDir);
 let hasSentInitialStatus = false;
 
 // Initialize logger
-const logLevel = process.env.LOG_LEVEL || 'info';
-const logFile = path.join(os.tmpdir(), 'peekaboo-mcp.log');
+const baseLogLevel = process.env.LOG_LEVEL || 'info';
+const logFile = process.env.LOG_FILE || path.join(os.tmpdir(), 'peekaboo-mcp.log');
 
-// Create logger with file destination by default
-const logger = process.env.PEEKABOO_MCP_CONSOLE_LOGGING === 'true' 
-  ? pino({
-      name: 'peekaboo-mcp',
-      level: logLevel,
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: true,
-          ignore: 'pid,hostname'
-        }
-      }
-    })
-  : pino({
-      name: 'peekaboo-mcp',
-      level: logLevel
-    }, pino.destination({
-      dest: logFile,
-      sync: false
-    }));
+const transportTargets = [];
+
+// Always add file transport
+transportTargets.push({
+  level: baseLogLevel, // Explicitly set level for this transport
+  target: 'pino/file',
+  options: { 
+    destination: logFile,
+    mkdir: true // Ensure the directory exists
+  }
+});
+
+// Conditional console logging for development
+if (process.env.CONSOLE_LOGGING === 'true') {
+  transportTargets.push({
+    level: baseLogLevel, // Explicitly set level for this transport
+    target: 'pino-pretty',
+    options: {
+      destination: 2, // stderr
+      colorize: true,
+      translateTime: 'SYS:standard', // More standard time format
+      ignore: 'pid,hostname'
+    }
+  });
+}
+
+const logger = pino({
+  name: 'peekaboo-mcp',
+  level: baseLogLevel, // Overall minimum level
+}, pino.transport({ targets: transportTargets }));
 
 // Tool context for handlers
 const toolContext = { logger };
@@ -137,17 +146,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
-        name: 'peekaboo.image',
+        name: 'image',
         description: 'Captures macOS screen content. Targets: entire screen (each display separately), a specific application window, or all windows of an application. Supports foreground/background capture. Captured image(s) can be saved to file(s) and/or returned directly as image data. Window shadows/frames are automatically excluded. Application identification uses intelligent fuzzy matching.',
         inputSchema: zodToJsonSchema(imageToolSchema)
       },
       {
-        name: 'peekaboo.analyze',
+        name: 'analyze',
         description: 'Analyzes an image file using a configured AI model (local Ollama, cloud OpenAI, etc.) and returns a textual analysis/answer. Requires image path. AI provider selection and model defaults are governed by the server\'s `AI_PROVIDERS` environment variable and client overrides.',
         inputSchema: zodToJsonSchema(analyzeToolSchema)
       },
       {
-        name: 'peekaboo.list',
+        name: 'list',
         description: 'Lists system items: all running applications, windows of a specific app, or server status. Allows specifying window details. App ID uses fuzzy matching.',
         inputSchema: zodToJsonSchema(listToolSchema)
       }
@@ -164,17 +173,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     switch (name) {
-      case 'peekaboo.image': {
+      case 'image': {
         const validatedArgs = imageToolSchema.parse(args || {});
         response = await imageToolHandler(validatedArgs, toolContext);
         break;
       }
-      case 'peekaboo.analyze': {
+      case 'analyze': {
         const validatedArgs = analyzeToolSchema.parse(args || {});
         response = await analyzeToolHandler(validatedArgs, toolContext);
         break;
       }
-      case 'peekaboo.list': {
+      case 'list': {
         const validatedArgs = listToolSchema.parse(args || {});
         response = await listToolHandler(validatedArgs, toolContext);
         // Do not augment status for peekaboo.list with item_type: "server_status"

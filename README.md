@@ -60,8 +60,10 @@ You can configure Peekaboo with environment variables in your Claude Desktop con
       "env": {
         "AI_PROVIDERS": "[{\"type\":\"ollama\",\"baseUrl\":\"http://localhost:11434\",\"model\":\"llava\",\"enabled\":true}]",
         "LOG_LEVEL": "INFO",
-        "PEEKABOO_LOG_FILE": "/tmp/peekaboo-mcp.log",
-        "PEEKABOO_DEFAULT_SAVE_PATH": "~/Pictures/Screenshots"
+        "LOG_FILE": "/tmp/peekaboo-mcp.log",
+        "DEFAULT_SAVE_PATH": "~/Pictures/Screenshots",
+        "CONSOLE_LOGGING": "true",
+        "CLI_PATH": "/usr/local/bin/peekaboo_custom"
       }
     }
   }
@@ -74,8 +76,10 @@ You can configure Peekaboo with environment variables in your Claude Desktop con
 |----------|-------------|---------|
 | `AI_PROVIDERS` | JSON array of AI provider configurations | `[]` |
 | `LOG_LEVEL` | Logging level (DEBUG, INFO, WARN, ERROR) | `INFO` |
-| `PEEKABOO_LOG_FILE` | Log file path | `/tmp/peekaboo-mcp.log` |
-| `PEEKABOO_DEFAULT_SAVE_PATH` | Default screenshot save location | `~/Pictures/Screenshots` |
+| `LOG_FILE` | Path to the server's log file. | `path.join(os.tmpdir(), 'peekaboo-mcp.log')` |
+| `DEFAULT_SAVE_PATH` | Default base absolute path for saving images captured by `peekaboo.image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic. | (none, Swift CLI uses temp paths) |
+| `CONSOLE_LOGGING` | Boolean (`"true"`/`"false"`) for dev console logs. | `"false"` |
+| `CLI_PATH` | Optional override for Swift `peekaboo` CLI path. | (bundled CLI) |
 
 #### AI Provider Configuration
 
@@ -233,18 +237,45 @@ cd ..
 npm link
 ```
 
-Then configure Claude Desktop to use your local installation:
+Then configure Claude Desktop (or a similar MCP client) to use your local installation. If you used `npm link`, the command `peekaboo-mcp` should be globally available. If you prefer to run directly via `node`:
 
+**Example MCP Client Configuration (using local build):**
+
+If you ran `npm link` and `peekaboo-mcp` is in your PATH:
 ```json
 {
   "mcpServers": {
-    "peekaboo": {
+    "peekaboo_local": {
       "command": "peekaboo-mcp",
-      "args": []
+      "args": [],
+      "env": {
+        "LOG_LEVEL": "debug",
+        "CONSOLE_LOGGING": "true"
+      }
     }
   }
 }
 ```
+
+Alternatively, running directly with `node`:
+```json
+{
+  "mcpServers": {
+    "peekaboo_local_node": {
+      "command": "node",
+      "args": [
+        "/Users/steipete/Projects/Peekaboo/dist/index.js"
+      ],
+      "env": {
+        "LOG_LEVEL": "debug",
+        "CONSOLE_LOGGING": "true"
+      }
+    }
+  }
+}
+```
+Remember to replace `/Users/steipete/Projects/Peekaboo/dist/index.js` with the actual absolute path to the `dist/index.js` in your cloned project if it differs.
+Also, when using these local configurations, ensure you use a distinct key (like "peekaboo_local" or "peekaboo_local_node") in your MCP client's server list to avoid conflicts if you also have the npx-based "peekaboo" server configured.
 
 ### Using AppleScript
 
@@ -279,7 +310,7 @@ For MCP clients other than Claude Desktop:
 
 Once installed, Peekaboo provides three powerful MCP tools:
 
-### 📸 `peekaboo.image` - Screen Capture
+### 📸 `image` - Screen Capture
 
 **Parameters:**
 - `mode`: `"screen"` | `"window"` | `"multi"` (default: "screen")
@@ -289,7 +320,7 @@ Once installed, Peekaboo provides three powerful MCP tools:
 **Example:**
 ```json
 {
-  "name": "peekaboo.image", 
+  "name": "image", 
   "arguments": {
     "mode": "window",
     "app": "Safari"
@@ -297,7 +328,7 @@ Once installed, Peekaboo provides three powerful MCP tools:
 }
 ```
 
-### 📋 `peekaboo.list` - Application Listing
+### 📋 `list` - Application Listing
 
 **Parameters:**
 - `item_type`: `"running_applications"` | `"application_windows"` | `"server_status"`
@@ -306,14 +337,14 @@ Once installed, Peekaboo provides three powerful MCP tools:
 **Example:**
 ```json
 {
-  "name": "peekaboo.list",
+  "name": "list",
   "arguments": {
     "item_type": "running_applications"
   }
 }
 ```
 
-### 🧩 `peekaboo.analyze` - AI Analysis
+### 🧩 `analyze` - AI Analysis
 
 **Parameters:**
 - `image_path`: Absolute path to image file
@@ -322,7 +353,7 @@ Once installed, Peekaboo provides three powerful MCP tools:
 **Example:**
 ```json
 {
-  "name": "peekaboo.analyze",
+  "name": "analyze",
   "arguments": {
     "image_path": "/tmp/screenshot.png",
     "question": "What applications are visible in this screenshot?"
@@ -427,7 +458,7 @@ Peekaboo respects macOS security by:
 echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | node dist/index.js
 
 # Test image capture
-echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "peekaboo.image", "arguments": {"mode": "screen"}}}' | node dist/index.js
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "image", "arguments": {"mode": "screen"}}}' | node dist/index.js
 ```
 
 ### Automated Testing
