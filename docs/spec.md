@@ -1,0 +1,423 @@
+## Peekaboo: Full & Final Detailed Specification v1.1.1
+https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
+
+**Project Vision:** Peekaboo is a macOS utility exposed via a Node.js MCP server, enabling AI agents to perform advanced screen captures, image analysis via user-configured AI providers, and query application/window information. The core macOS interactions are handled by a native Swift command-line interface (CLI) named `peekaboo`, which is called by the Node.js server. All image captures automatically exclude window shadows/frames.
+
+**Core Components:**
+
+1.  **Node.js/TypeScript MCP Server (`peekaboo-mcp`):**
+    *   **NPM Package Name:** `peekaboo-mcp`.
+    *   **GitHub Project Name:** `peekaboo`.
+    *   Implements MCP server logic using the latest stable `@modelcontextprotocol/sdk`.
+    *   Exposes three primary MCP tools: `peekaboo.image`, `peekaboo.analyze`, `peekaboo.list`.
+    *   Translates MCP tool calls into commands for the Swift `peekaboo` CLI.
+    *   Parses structured JSON output from the Swift `peekaboo` CLI.
+    *   Handles image data preparation (reading files, Base64 encoding) for MCP responses if image data is explicitly requested by the client.
+    *   Manages interaction with configured AI providers based on environment variables. All AI provider calls (Ollama, OpenAI, etc.) are made from this Node.js layer.
+    *   Implements robust logging to a file using `pino`, ensuring no logs interfere with MCP stdio communication.
+2.  **Swift CLI (`peekaboo`):**
+    *   A standalone macOS command-line tool, built as a universal binary (arm64 + x86_64).
+    *   Handles all direct macOS system interactions: image capture, application/window listing, and fuzzy application matching.
+    *   **Does NOT directly interact with any AI providers (Ollama, OpenAI, etc.).**
+    *   Outputs all results and errors in a structured JSON format via a global `--json-output` flag. This JSON includes a `debug_logs` array for internal Swift CLI logs, which the Node.js server can relay to its own logger.
+    *   The `peekaboo` binary is bundled at the root of the `peekaboo-mcp` NPM package.
+
+---
+
+### I. Node.js/TypeScript MCP Server (`peekaboo-mcp`)
+
+#### A. Project Setup & Distribution
+
+1.  **Language/Runtime:** Node.js (latest LTS recommended, e.g., v18+ or v20+), TypeScript (latest stable, e.g., v5+).
+2.  **Package Manager:** NPM.
+3.  **`package.json`:**
+    *   `name`: `"peekaboo-mcp"`
+    *   `version`: Semantic versioning (e.g., `1.1.1`).
+    *   `type`: `"module"` (for ES Modules).
+    *   `main`: `"dist/index.js"` (compiled server entry point).
+    *   `bin`: `{ "peekaboo-mcp": "dist/index.js" }`.
+    *   `files`: `["dist/", "peekaboo"]` (includes compiled JS and the Swift `peekaboo` binary at package root).
+    *   `scripts`:
+        *   `build`: Command to compile TypeScript (e.g., `tsc`).
+        *   `start`: `node dist/index.js`.
+        *   `prepublishOnly`: `npm run build`.
+    *   `dependencies`: `@modelcontextprotocol/sdk` (latest stable), `zod` (for input validation), `pino` (for logging), relevant cloud AI SDKs (e.g., `openai`, `@anthropic-ai/sdk`).
+    *   `devDependencies`: `typescript`, `@types/node`, `pino-pretty` (for optional development console logging).
+4.  **Distribution:** Published to NPM. Installable via `npm i -g peekaboo-mcp` or usable with `npx peekaboo-mcp`.
+5.  **Swift CLI Location Strategy:**
+    *   The Node.js server will first check the environment variable `PEEKABOO_CLI_PATH`. If set and points to a valid executable, that path will be used.
+    *   If `PEEKABOO_CLI_PATH` is not set or invalid, the server will fall back to a bundled path, resolved relative to its own script location (e.g., `path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'peekaboo')`, assuming the compiled server script is in `dist/` and `peekaboo` binary is at the package root).
+
+#### B. Server Initialization & Configuration (`src/index.ts`)
+
+1.  **Imports:** `McpServer`, `StdioServerTransport` from `@modelcontextprotocol/sdk`; `pino` from `pino`; `os`, `path` from Node.js built-ins.
+2.  **Server Info:** `name: "PeekabooMCP"`, `version: <package_version from package.json>`.
+3.  **Server Capabilities:** Advertise `tools` capability.
+4.  **Logging (Pino):**
+    *   Instantiate `pino` logger.
+    *   **Default Transport:** File transport to `path.join(os.tmpdir(), 'peekaboo-mcp.log')`. Use `mkdir: true` option for destination.
+    *   **Log Level:** Controlled by ENV VAR `LOG_LEVEL` (standard Pino levels: `trace`, `debug`, `info`, `warn`, `error`, `fatal`). Default: `"info"`.
+    *   **Conditional Console Logging (Development Only):** If ENV VAR `PEEKABOO_MCP_CONSOLE_LOGGING="true"`, add a second Pino transport targeting `process.stderr.fd` (potentially using `pino-pretty` for human-readable output).
+    *   **Strict Rule:** All server operational logging must use the configured Pino instance. No direct `console.log/warn/error` that might output to `stdout`.
+5.  **Environment Variables (Read by Server):**
+    *   `AI_PROVIDERS`: Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `"openai/gpt-4o,ollama/qwen2.5vl:7b"`). If unset/empty, `peekaboo.analyze` tool reports AI not configured.
+    *   `OPENAI_API_KEY`: API key for OpenAI.
+    *   `ANTHROPIC_API_KEY`: (Example for future) API key for Anthropic.
+    *   (Other cloud provider API keys as standard ENV VAR names).
+    *   `OLLAMA_BASE_URL`: Base URL for local Ollama instance. Default: `"http://localhost:11434"`.
+    *   `LOG_LEVEL`: For Pino logger. Default: `"info"`.
+    *   `PEEKABOO_MCP_CONSOLE_LOGGING`: Boolean (`"true"`/`"false"`) for dev console logs. Default: `"false"`.
+    *   `PEEKABOO_CLI_PATH`: Optional override for Swift `peekaboo` CLI path.
+6.  **Initial Status Reporting Logic:**
+    *   A server-instance-level boolean flag: `let hasSentInitialStatus = false;`.
+    *   A function `generateServerStatusString()`: Creates a formatted string: `"\n\n--- Peekaboo MCP Server Status ---\nName: PeekabooMCP\nVersion: <server_version>\nConfigured AI Providers (from AI_PROVIDERS ENV): <parsed list or 'None Configured. Set AI_PROVIDERS ENV.'>\n---"`.
+    *   Response Augmentation: In the function that sends a `ToolResponse` back to the MCP client, if the response is for a successful tool call (not `initialize`/`initialized` or `peekaboo.list` with `item_type: "server_status"`) AND `hasSentInitialStatus` is `false`:
+        *   Append `generateServerStatusString()` to the first `TextContentItem` in `ToolResponse.content`. If no text item exists, prepend a new one.
+        *   Set `hasSentInitialStatus = true`.
+7.  **Tool Registration:** Register `peekaboo.image`, `peekaboo.analyze`, `peekaboo.list` with their Zod input schemas and handler functions.
+8.  **Transport:** `await server.connect(new StdioServerTransport());`.
+9.  **Shutdown:** Implement graceful shutdown on `SIGINT`, `SIGTERM` (e.g., `await server.close(); logger.flush(); process.exit(0);`).
+
+#### C. MCP Tool Specifications & Node.js Handler Logic
+
+**General Node.js Handler Pattern (for tools calling Swift `peekaboo` CLI):**
+
+1.  Validate MCP `input` against the tool's Zod schema. If invalid, log error with Pino and return MCP error `ToolResponse`.
+2.  Construct command-line arguments for Swift `peekaboo` CLI based on MCP `input`. **Always include `--json-output`**.
+3.  Log the constructed Swift command with Pino at `debug` level.
+4.  Execute Swift `peekaboo` CLI using `child_process.spawn`, capturing `stdout`, `stderr`, and `exitCode`.
+5.  If any data is received on Swift CLI's `stderr`, log it immediately with Pino at `warn` level, prefixed (e.g., `[SwiftCLI-stderr]`).
+6.  On Swift CLI process close:
+    *   If `exitCode !== 0` or `stdout` is empty/not parseable as JSON:
+        *   Log failure details with Pino (`error` level).
+        *   Construct MCP error `ToolResponse` (e.g., `errorCode: "SWIFT_CLI_EXECUTION_ERROR"` or `SWIFT_CLI_INVALID_OUTPUT` in `_meta`). Message should include relevant parts of raw `stdout`/`stderr` if available.
+    *   If `exitCode === 0`:
+        *   Attempt to parse `stdout` as JSON. If parsing fails, treat as error (above).
+        *   Let `swiftResponse = JSON.parse(stdout)`.
+        *   If `swiftResponse.debug_logs` (array of strings) exists, log each entry via Pino at `debug` level, clearly marked as from backend (e.g., `logger.debug({ backend: "swift", swift_log: entry })`).
+        *   If `swiftResponse.success === false`:
+            *   Extract `swiftResponse.error.message`, `swiftResponse.error.code`, `swiftResponse.error.details`.
+            *   Construct and return MCP error `ToolResponse`, relaying these details (e.g., `message` in `content`, `code` in `_meta.backend_error_code`).
+        *   If `swiftResponse.success === true`:
+            *   Process `swiftResponse.data` to construct the success MCP `ToolResponse`.
+            *   Relay `swiftResponse.messages` as `TextContentItem`s in the MCP response if appropriate.
+            *   For `peekaboo.image` with `input.return_data: true`:
+                *   Iterate `swiftResponse.data.saved_files.[*].path`.
+                *   For each path, read image file into a `Buffer`.
+                *   Base64 encode the `Buffer`.
+                *   Construct `ImageContentItem` for MCP `ToolResponse.content`, including `data` (Base64 string) and `mimeType` (from `swiftResponse.data.saved_files.[*].mime_type`).
+    *   Augment successful `ToolResponse` with initial server status string if applicable (see B.6).
+    *   Send MCP `ToolResponse`.
+
+**Tool 1: `peekaboo.image`**
+
+*   **MCP Description:** "Captures macOS screen content. Targets: entire screen (each display separately), a specific application window, or all windows of an application. Supports foreground/background capture. Captured image(s) can be saved to file(s) and/or returned directly as image data. Window shadows/frames are automatically excluded. Application identification uses intelligent fuzzy matching."
+*   **MCP Input Schema (`ImageInputSchema`):**
+    ```typescript
+    z.object({
+      app: z.string().optional().describe("Optional. Target application: name, bundle ID, or partial name. If omitted, captures screen(s). Uses fuzzy matching."),
+      path: z.string().optional().describe("Optional. Base absolute path for saving. For 'screen' or 'multi' mode, display/window info is appended by backend. If omitted, default temporary paths used by backend. If 'return_data' true, images saved AND returned if 'path' specified."),
+      mode: z.enum(["screen", "window", "multi"]).optional().describe("Capture mode. Defaults to 'window' if 'app' is provided, otherwise 'screen'."),
+      window_specifier: z.union([
+        z.object({ title: z.string().describe("Capture window by title.") }),
+        z.object({ index: z.number().int().nonnegative().describe("Capture window by index (0=frontmost). 'capture_focus' might need to be 'foreground'.") }),
+      ]).optional().describe("Optional. Specifies which window for 'window' mode. Defaults to main/frontmost of target app."),
+      format: z.enum(["png", "jpg"]).optional().default("png").describe("Output image format. Defaults to 'png'."),
+      return_data: z.boolean().optional().default(false).describe("Optional. If true, image data is returned in response content (one item for 'window' mode, multiple for 'screen' or 'multi' mode)."),
+      capture_focus: z.enum(["background", "foreground"])
+        .optional().default("background").describe("Optional. Focus behavior. 'background' (default): capture without altering window focus. 'foreground': bring target to front before capture.")
+    })
+    ```
+    *   **Node.js Handler - Default `mode` Logic:** If `input.app` provided & `input.mode` undefined, `mode="window"`. If no `input.app` & `input.mode` undefined, `mode="screen"`.
+*   **MCP Output Schema (`ToolResponse`):**
+    *   `content`: `Array<ImageContentItem | TextContentItem>`
+        *   If `input.return_data: true`: Contains `ImageContentItem`(s): `{ type: "image", data: "<base64_string_no_prefix>", mimeType: "image/<format>", metadata?: { item_label?: string, window_title?: string, window_id?: number, source_path?: string } }`.
+        *   May contain `TextContentItem`(s) (summary, file paths from `saved_files`, Swift CLI `messages`).
+    *   `saved_files`: `Array<{ path: string, item_label?: string, window_title?: string, window_id?: number, mime_type: string }>` (Directly from Swift CLI JSON `data.saved_files` if images were saved).
+    *   `isError?: boolean`
+    *   `_meta?: { backend_error_code?: string }` (For relaying Swift CLI error codes).
+
+**Tool 2: `peekaboo.analyze`**
+
+*   **MCP Description:** "Analyzes an image file using a configured AI model (local Ollama, cloud OpenAI, etc.) and returns a textual analysis/answer. Requires image path. AI provider selection and model defaults are governed by the server's `AI_PROVIDERS` environment variable and client overrides."
+*   **MCP Input Schema (`AnalyzeInputSchema`):**
+    ```typescript
+    z.object({
+      image_path: z.string().describe("Required. Absolute path to image file (.png, .jpg, .webp) to be analyzed."),
+      question: z.string().describe("Required. Question for the AI about the image."),
+      provider_config: z.object({
+        type: z.enum(["auto", "ollama", "openai" /* future: "anthropic_api" */]).default("auto")
+          .describe("AI provider. 'auto' uses server's AI_PROVIDERS ENV preference. Specific provider must be enabled in server's AI_PROVIDERS."),
+        model: z.string().optional().describe("Optional. Model name. If omitted, uses model from server's AI_PROVIDERS for chosen provider, or an internal default for that provider.")
+      }).optional().describe("Optional. Explicit provider/model. Validated against server's AI_PROVIDERS.")
+    })
+    ```
+*   **Node.js Handler Logic:**
+    1.  Validate input. Server pre-checks `image_path` extension (`.png`, `.jpg`, `.jpeg`, `.webp`); return MCP error if not recognized.
+    2.  Read `process.env.AI_PROVIDERS`. If unset/empty, return MCP error "AI analysis not configured on this server. Set the AI_PROVIDERS environment variable." Log this with Pino (`error` level).
+    3.  Parse `AI_PROVIDERS` into `configuredItems = [{provider: string, model: string}]`.
+    4.  **Determine Provider & Model:**
+        *   `requestedProviderType = input.provider_config?.type || "auto"`.
+        *   `requestedModelName = input.provider_config?.model`.
+        *   `chosenProvider: string | null = null`, `chosenModel: string | null = null`.
+        *   If `requestedProviderType !== "auto"`:
+            *   Find entry in `configuredItems` where `provider === requestedProviderType`.
+            *   If not found, MCP error: "Provider '{requestedProviderType}' is not enabled in server's AI_PROVIDERS configuration."
+            *   `chosenProvider = requestedProviderType`.
+            *   `chosenModel = requestedModelName || model_from_matching_configuredItem || hardcoded_default_for_chosenProvider`.
+        *   Else (`requestedProviderType === "auto"`):
+            *   Iterate `configuredItems` in order. For each `{provider, modelFromEnv}`:
+                *   Check availability (Ollama up? Cloud API key for `provider` set in `process.env`?).
+                *   If available: `chosenProvider = provider`, `chosenModel = requestedModelName || modelFromEnv`. Break.
+            *   If no provider found after iteration, MCP error: "No configured AI providers in AI_PROVIDERS are currently operational."
+    5.  **Execute Analysis (Node.js handles all AI calls):**
+        *   Read `input.image_path` into a `Buffer`. Base64 encode.
+        *   If `chosenProvider` is "ollama": HTTP POST to Ollama (using `process.env.OLLAMA_BASE_URL`) with Base64 image, `input.question`, `chosenModel`. Handle Ollama API errors.
+        *   If `chosenProvider` is "openai": Use OpenAI SDK/HTTP with Base64 image, `input.question`, `chosenModel`, and API key from `process.env.OPENAI_API_KEY`. Handle OpenAI API errors.
+        *   (Similar for other cloud providers).
+    6.  Construct MCP `ToolResponse`.
+*   **MCP Output Schema (`ToolResponse`):**
+    *   `content`: `[{ type: "text", text: "<AI's analysis/answer>" }]`
+    *   `analysis_text`: `string` (Core AI answer).
+    *   `model_used`: `string` (e.g., "ollama/llava:7b", "openai/gpt-4o") - The actual provider/model pair used.
+    *   `isError?: boolean`
+    *   `_meta?: { backend_error_code?: string }` (For AI provider API errors).
+
+**Tool 3: `peekaboo.list`**
+
+*   **MCP Description:** "Lists system items: all running applications, windows of a specific app, or server status. Allows specifying window details. App ID uses fuzzy matching."
+*   **MCP Input Schema (`ListInputSchema`):**
+    ```typescript
+    z.object({
+      item_type: z.enum(["running_applications", "application_windows", "server_status"])
+        .default("running_applications").describe("What to list. 'server_status' returns Peekaboo server info."),
+      app: z.string().optional().describe("Required if 'item_type' is 'application_windows'. Target application. Uses fuzzy matching."),
+      include_window_details: z.array(
+        z.enum(["off_screen", "bounds", "ids"])
+      ).optional().describe("Optional, for 'application_windows'. Additional window details. Example: ['bounds', 'ids']")
+    }).refine(data => data.item_type !== "application_windows" || (data.app !== undefined && data.app.trim() !== ""), {
+      message: "For 'application_windows', 'app' identifier is required.", path: ["app"],
+    }).refine(data => !data.include_window_details || data.item_type === "application_windows", {
+      message: "'include_window_details' only for 'application_windows'.", path: ["include_window_details"],
+    }).refine(data => data.item_type !== "server_status" || (data.app === undefined && data.include_window_details === undefined), {
+        message: "'app' and 'include_window_details' not applicable for 'server_status'.", path: ["item_type"]
+    })
+    ```
+*   **Node.js Handler Logic:**
+    *   If `input.item_type === "server_status"`: Handler directly calls `generateServerStatusString()` and returns it in `ToolResponse.content[{type:"text"}]`. Does NOT call Swift CLI. Does NOT affect `hasSentInitialStatus`.
+    *   Else (for "running_applications", "application_windows"): Call Swift `peekaboo list ...` with mapped args (including joining `include_window_details` array to comma-separated string for Swift CLI flag). Parse Swift JSON. Format MCP `ToolResponse`.
+*   **MCP Output Schema (`ToolResponse`):**
+    *   `content`: `[{ type: "text", text: "<Summary or Status String>" }]`
+    *   If `item_type: "running_applications"`: `application_list`: `Array<{ app_name: string; bundle_id: string; pid: number; is_active: boolean; window_count: number }>`.
+    *   If `item_type: "application_windows"`:
+        *   `window_list`: `Array<{ window_title: string; window_id?: number; window_index?: number; bounds?: {x:number,y:number,w:number,h:number}; is_on_screen?: boolean }>`.
+        *   `target_application_info`: `{ app_name: string; bundle_id?: string; pid: number }`.
+    *   `isError?: boolean`
+    *   `_meta?: { backend_error_code?: string }`
+
+---
+
+### II. Swift CLI (`peekaboo`)
+
+#### A. General CLI Design
+
+1.  **Executable Name:** `peekaboo` (Universal macOS binary: arm64 + x86_64).
+2.  **Argument Parser:** Use `swift-argument-parser` package.
+3.  **Top-Level Commands (Subcommands of `peekaboo`):** `image`, `list`. (No `analyze` command).
+4.  **Global Option (for all commands/subcommands):** `--json-output` (Boolean flag).
+    *   If present: All `stdout` from Swift CLI MUST be a single, valid JSON object. `stderr` should be empty on success, or may contain system-level error text on catastrophic failure before JSON can be formed.
+    *   If absent: Output human-readable text to `stdout` and `stderr` as appropriate for direct CLI usage.
+    *   **Success JSON Structure:**
+        ```json
+        {
+          "success": true,
+          "data": { /* Command-specific structured data */ },
+          "messages": ["Optional user-facing status/warning message from Swift CLI operations"],
+          "debug_logs": ["Internal Swift CLI debug log entry 1", "Another trace message"]
+        }
+        ```
+    *   **Error JSON Structure:**
+        ```json
+        {
+          "success": false,
+          "error": {
+            "message": "Detailed, user-understandable error message.",
+            "code": "SWIFT_ERROR_CODE_STRING", // e.g., PERMISSION_DENIED_SCREEN_RECORDING
+            "details": "Optional additional technical details or context."
+          },
+          "debug_logs": ["Contextual debug log leading to error"]
+        }
+        ```
+    *   **Standardized Swift Error Codes (`error.code` values):**
+        *   `PERMISSION_DENIED_SCREEN_RECORDING`
+        *   `PERMISSION_DENIED_ACCESSIBILITY` (if Accessibility API is attempted for foregrounding)
+        *   `APP_NOT_FOUND` (general app lookup failure)
+        *   `AMBIGUOUS_APP_IDENTIFIER` (fuzzy match yields multiple candidates)
+        *   `WINDOW_NOT_FOUND`
+        *   `CAPTURE_FAILED` (general image capture error)
+        *   `FILE_IO_ERROR` (e.g., cannot write to specified path)
+        *   `INVALID_ARGUMENT` (CLI argument validation failure)
+        *   `SIPS_ERROR` (if `sips` is used for PDF fallback and fails)
+        *   `INTERNAL_SWIFT_ERROR` (unexpected Swift runtime errors)
+5.  **Permissions Handling:**
+    *   The CLI must proactively check for Screen Recording permission before attempting any capture or window listing that requires it (e.g., reading window titles via `CGWindowListCopyWindowInfo`).
+    *   If Accessibility is used for `--capture-focus foreground` window raising, check that permission.
+    *   If permissions are missing, output the specific JSON error (e.g., code `PERMISSION_DENIED_SCREEN_RECORDING`) and exit. Do not hang or prompt interactively.
+6.  **Temporary File Management:**
+    *   If the CLI needs to save an image temporarily (e.g., if `screencapture` is used as a fallback for PDF, or if no `--path` is given by Node.js), it uses `FileManager.default.temporaryDirectory` with unique filenames (e.g., `peekaboo_<uuid>_<info>.<format>`).
+    *   These self-created temporary files **MUST be deleted by the Swift CLI** after it has successfully generated and flushed its JSON output to `stdout`.
+    *   Files saved to a user/Node.js-specified `--path` are **NEVER** deleted by the Swift CLI.
+7.  **Internal Logging for `--json-output`:**
+    *   When `--json-output` is active, internal verbose/debug messages are collected into the `debug_logs: [String]` array in the final JSON output. They are **NOT** printed to `stderr`.
+    *   For standalone CLI use (no `--json-output`), these debug messages can print to `stderr`.
+
+#### B. `peekaboo image` Command
+
+*   **Options (defined using `swift-argument-parser`):**
+    *   `--app <String?>`: App identifier.
+    *   `--path <String?>`: Base output directory or file prefix/path.
+    *   `--mode <ModeEnum?>`: `ModeEnum` is `screen, window, multi`. Default logic: if `--app` then `window`, else `screen`.
+    *   `--window-title <String?>`: For `mode window`.
+    *   `--window-index <Int?>`: For `mode window`.
+    *   `--format <FormatEnum?>`: `FormatEnum` is `png, jpg`. Default `png`.
+    *   `--capture-focus <FocusEnum?>`: `FocusEnum` is `background, foreground`. Default `background`.
+*   **Behavior:**
+    *   Implements fuzzy app matching. On ambiguity, returns JSON error with `code: "AMBIGUOUS_APP_IDENTIFIER"` and lists potential matches in `error.details` or `error.message`.
+    *   Always attempts to exclude window shadow/frame (`CGWindowImageOption.boundsIgnoreFraming` or `screencapture -o` if shelled out for PDF). No cursor is captured.
+    *   **Background Capture (`--capture-focus background` or default):**
+        *   Primary method: Uses `CGWindowListCopyWindowInfo` to identify target window(s)/screen(s).
+        *   Captures via `CGDisplayCreateImage` (for screen mode) or `CGWindowListCreateImageFromArray` (for window/multi modes).
+        *   Converts `CGImage` to `Data` (PNG or JPG) and saves to file (at user `--path` or its own temp path).
+    *   **Foreground Capture (`--capture-focus foreground`):**
+        *   Activates app using `NSRunningApplication.activate(options: [.activateIgnoringOtherApps])`.
+        *   If a specific window needs raising (e.g., from `--window-index` or specific `--window-title` for an app with many windows), it *may* attempt to use Accessibility API (`AXUIElementPerformAction(kAXRaiseAction)`) if available and permissioned.
+        *   If specific window raise fails (or Accessibility not used/permitted), it logs a warning to the `debug_logs` array (e.g., "Could not raise specific window; proceeding with frontmost of activated app.") and captures the most suitable front window of the activated app.
+        *   Capture mechanism is still preferably native CG APIs.
+    *   **Multi-Screen (`--mode screen`):** Enumerates `CGGetActiveDisplayList`, captures each display using `CGDisplayCreateImage`. Filenames (if saving) get display-specific suffixes (e.g., `_display0_main.png`, `_display1.png`).
+    *   **Multi-Window (`--mode multi`):** Uses `CGWindowListCopyWindowInfo` for target app's PID, captures each relevant window (on-screen by default) with `CGWindowListCreateImageFromArray`. Filenames get window-specific suffixes.
+    *   **PDF Format Handling (as per Q7 decision):** If `--format pdf` were still supported (it's removed), it would use `Process` to call `screencapture -t pdf -R<bounds>` or `-l<id>`. Since PDF is removed, this is not applicable.
+*   **JSON Output `data` field structure (on success):**
+    ```json
+    {
+      "saved_files": [ // Array is always present, even if empty (e.g. capture failed before saving)
+        {
+          "path": "/absolute/path/to/saved/image.png", // Absolute path
+          "item_label": "Display 1 / Main", // Or window_title for window/multi modes
+          "window_id": 12345, // CGWindowID (UInt32), optional, if available & relevant
+          "window_index": 0,  // Optional, if relevant (e.g. for multi-window or indexed capture)
+          "mime_type": "image/png" // Actual MIME type of the saved file
+        }
+        // ... more items if mode is screen or multi ...
+      ]
+    }
+    ```
+
+#### C. `peekaboo list` Command
+
+*   **Subcommands & Options:**
+    *   `peekaboo list apps [--json-output]`
+    *   `peekaboo list windows --app <app_identifier_string> [--include-details <comma_separated_string_of_options>] [--json-output]`
+        *   `--include-details` options: `off_screen`, `bounds`, `ids`.
+*   **Behavior:**
+    *   `apps`: Uses `NSWorkspace.shared.runningApplications`. For each app, retrieves `localizedName`, `bundleIdentifier`, `processIdentifier` (pid), `isActive`. To get `window_count`, it performs a `CGWindowListCopyWindowInfo` call filtered by the app's PID and counts on-screen windows.
+    *   `windows`:
+        *   Resolves `app_identifier` using fuzzy matching. If ambiguous, returns JSON error.
+        *   Uses `CGWindowListCopyWindowInfo` filtered by the target app's PID.
+        *   If `--include-details` contains `"off_screen"`, uses `CGWindowListOption.optionAllScreenWindows` (and includes `kCGWindowIsOnscreen` boolean in output). Otherwise, uses `CGWindowListOption.optionOnScreenOnly`.
+        *   Extracts `kCGWindowName` (title).
+        *   If `"ids"` in `--include-details`, extracts `kCGWindowNumber` as `window_id`.
+        *   If `"bounds"` in `--include-details`, extracts `kCGWindowBounds` as `bounds: {x, y, width, height}`.
+        *   `window_index` is the 0-based index from the filtered array returned by `CGWindowListCopyWindowInfo` (reflecting z-order for on-screen windows).
+*   **JSON Output `data` field structure (on success):**
+    *   For `apps`:
+        ```json
+        {
+          "applications": [
+            {
+              "app_name": "Safari",
+              "bundle_id": "com.apple.Safari",
+              "pid": 501,
+              "is_active": true,
+              "window_count": 3 // Count of on-screen windows for this app
+            }
+            // ... more applications ...
+          ]
+        }
+        ```
+    *   For `windows`:
+        ```json
+        {
+          "target_application_info": {
+            "app_name": "Safari",
+            "pid": 501,
+            "bundle_id": "com.apple.Safari"
+          },
+          "windows": [
+            {
+              "window_title": "Apple",
+              "window_id": 67, // if "ids" requested
+              "window_index": 0,
+              "is_on_screen": true, // Potentially useful, especially if "off_screen" included
+              "bounds": {"x": 0, "y": 0, "width": 800, "height": 600} // if "bounds" requested
+            }
+            // ... more windows ...
+          ]
+        }
+        ```
+
+---
+
+### III. Build, Packaging & Distribution
+
+1.  **Swift CLI (`peekaboo`):**
+    *   `Package.swift` defines an executable product named `peekaboo`.
+    *   Build process (e.g., part of NPM `prepublishOnly` or a separate build script): `swift build -c release --arch arm64 --arch x86_64`.
+    *   The resulting universal binary (e.g., from `.build/apple/Products/Release/peekaboo`) is copied to the root of the `peekaboo-mcp` NPM package directory before publishing.
+2.  **Node.js MCP Server:**
+    *   TypeScript is compiled to JavaScript (e.g., into `dist/`) using `tsc`.
+    *   The NPM package includes `dist/` and the `peekaboo` Swift binary (at package root).
+
+---
+
+### IV. Documentation (`README.md` for `peekaboo-mcp` NPM Package)
+
+1.  **Project Overview:** Briefly state vision and components.
+2.  **Prerequisites:**
+    *   macOS version (e.g., 12.0+ or as required by Swift/APIs).
+    *   Xcode Command Line Tools (recommended for a stable development environment on macOS, even if not strictly used by the final Swift binary for all operations).
+    *   Ollama (if using local Ollama for analysis) + instructions to pull models.
+3.  **Installation:**
+    *   Primary: `npm install -g peekaboo-mcp`.
+    *   Alternative: `npx peekaboo-mcp`.
+4.  **MCP Client Configuration:**
+    *   Provide example JSON snippets for configuring popular MCP clients (e.g., VS Code, Cursor) to use `peekaboo-mcp`.
+    *   Example for VS Code/Cursor using `npx` for robustness:
+        ```json
+        {
+          "mcpServers": {
+            "PeekabooMCP": {
+              "command": "npx",
+              "args": ["peekaboo-mcp"],
+              "env": {
+                "AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
+                "OPENAI_API_KEY": "sk-yourkeyhere"
+                /* other ENV VARS */
+              }
+            }
+          }
+        }
+        ```
+5.  **Required macOS Permissions:**
+    *   **Screen Recording:** Essential for ALL `peekaboo.image` functionalities and for `peekaboo.list` if it needs to read window titles (which it does via `CGWindowListCopyWindowInfo`). Provide clear, step-by-step instructions for System Settings. Include `open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"` command.
+    *   **Accessibility:** Required *only* if `peekaboo.image` with `capture_focus: "foreground"` needs to perform specific window raising actions (beyond simple app activation) via the Accessibility API. Explain this nuance. Include `open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"` command.
+6.  **Environment Variables (for Node.js `peekaboo-mcp` server):**
+    *   `AI_PROVIDERS`: Crucial for `peekaboo.analyze`. Explain format (`provider/model,provider/model`), effect, and that `peekaboo.analyze` reports "not configured" if unset. List recognized `provider` names ("ollama", "openai").
+    *   `OPENAI_API_KEY` (and similar for other cloud providers): How they are used.
+    *   `OLLAMA_BASE_URL`: Default and purpose.
+    *   `LOG_LEVEL`: For `pino` logger. Values and default.
+    *   `PEEKABOO_MCP_CONSOLE_LOGGING`: For development.
+    *   `PEEKABOO_CLI_PATH`: For overriding bundled Swift CLI.
+7.  **MCP Tool Overview:**
+    *   Brief descriptions of `peekaboo.image`, `peekaboo.analyze`, `peekaboo.list` and their primary purpose.
+8.  **Link to Detailed Tool Specification:** A separate `TOOL_API_REFERENCE.md` (generated from or summarizing the Zod schemas and output structures in this document) for users/AI developers needing full schema details.
+9.  **Troubleshooting / Support:** Link to GitHub issues.
