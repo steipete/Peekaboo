@@ -1,4 +1,4 @@
-# Peekaboo MCP Server
+# 👻 Peekaboo MCP Server
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
@@ -7,18 +7,18 @@
 [![macOS](https://img.shields.io/badge/macOS-12.0%2B-blue.svg)](https://www.apple.com/macos/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 
-A macOS utility exposed via Node.js MCP server for advanced screen captures, image analysis, and window management.
+A ghostly macOS utility that haunts your screen, capturing spectral snapshots and peering into windows with supernatural AI vision. 🎃
 
-## 🚀 Installation
+## 🦇 Summoning Peekaboo
 
-### Prerequisites
+### Ritual Requirements
 
 - **macOS 12.0+** (Monterey or later)
 - **Node.js 18.0+**
 
-### Quick Start
+### 🕯️ Quick Summoning Ritual
 
-Add Peekaboo to your Claude Desktop configuration:
+Summon Peekaboo into your Claude Desktop realm:
 
 1. Open Claude Desktop settings
 2. Go to the Developer tab
@@ -40,13 +40,13 @@ Add Peekaboo to your Claude Desktop configuration:
 
 4. Restart Claude Desktop
 
-That's it! Peekaboo will be automatically installed and available.
+That's it! Peekaboo will materialize from the digital ether, ready to haunt your screen! 👻
 
-### 🔧 Configuration
+### 🔮 Mystical Configuration
 
-#### Environment Variables
+#### Enchantment Variables
 
-You can configure Peekaboo with environment variables in your Claude Desktop configuration:
+Cast powerful spells upon Peekaboo using mystical environment variables:
 
 ```json
 {
@@ -70,7 +70,7 @@ You can configure Peekaboo with environment variables in your Claude Desktop con
 }
 ```
 
-#### Available Environment Variables
+#### 🎭 Available Enchantments
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -81,9 +81,9 @@ You can configure Peekaboo with environment variables in your Claude Desktop con
 | `CONSOLE_LOGGING` | Boolean (`"true"`/`"false"`) for dev console logs. | `"false"` |
 | `CLI_PATH` | Optional override for Swift `peekaboo` CLI path. | (bundled CLI) |
 
-#### AI Provider Configuration
+#### 🧙 AI Spirit Guide Configuration
 
-Configure AI providers for image analysis:
+Summon AI spirit guides to divine the meaning of captured visions:
 
 ```json
 [
@@ -102,50 +102,50 @@ Configure AI providers for image analysis:
 ]
 ```
 
-### 🔐 Permissions Setup
+### 🕰️ Granting Mystical Permissions
 
-Peekaboo requires specific macOS permissions to function properly:
+Peekaboo requires ancient macOS rites to manifest its powers:
 
-#### 1. Screen Recording Permission
+#### 1. 👁️ The All-Seeing Eye Permission
 
-**Grant permission via System Preferences:**
+**Perform the permission ritual:**
 1. Open **System Preferences** → **Security & Privacy** → **Privacy**
 2. Select **Screen Recording** from the left sidebar
 3. Click the **lock icon** and enter your password
 4. Click **+** and add your terminal application or MCP client
 5. Restart the application
 
-**For common applications:**
+**Known vessels that can channel Peekaboo:**
 - **Terminal.app**: `/Applications/Utilities/Terminal.app`
 - **Claude Desktop**: `/Applications/Claude.app`
 - **VS Code**: `/Applications/Visual Studio Code.app`
 
-#### 2. Accessibility Permission (Optional)
+#### 2. 🪄 Window Whisperer Permission (Optional)
 
-For advanced window management features:
+To whisper commands to windows and make them dance:
 1. Open **System Preferences** → **Security & Privacy** → **Privacy**
 2. Select **Accessibility** from the left sidebar
 3. Add your terminal/MCP client application
 
-### ✅ Verification
+### 🕯️ Séance Verification
 
-Test your installation:
+Verify that Peekaboo has successfully crossed over:
 
 ```bash
-# Test the Swift CLI directly
+# Commune with the Swift spirit directly
 ./peekaboo --help
 
-# Test server status
+# Check the spectral server's pulse
 ./peekaboo list server_status --json-output
 
-# Test screen capture (requires permissions)
+# Capture a soul (requires permission wards)
 ./peekaboo image --mode screen --format png
 
-# Start the MCP server for testing
+# Open the portal for testing
 peekaboo-mcp
 ```
 
-**Expected output for server status:**
+**Expected ghostly whispers:**
 ```json
 {
   "success": true,
@@ -161,83 +161,83 @@ peekaboo-mcp
 }
 ```
 
-### 🎯 Quick Start
+### 🎙 Channeling Peekaboo
 
-Once installed and configured:
+Once the portal is open and Peekaboo lurks in the shadows:
 
-1. **Capture Screenshot:**
+1. **🖼️ Capture Ghostly Visions:**
    ```bash
    peekaboo-mcp
-   # In your MCP client: "Take a screenshot of my screen"
+   # Whisper: "Capture the essence of my screen"
    ```
 
-2. **List Applications:**
+2. **💀 Reveal Hidden Spirits:**
    ```bash
-   # In your MCP client: "Show me all running applications"
+   # Whisper: "Reveal all digital spirits dwelling here"
    ```
 
-3. **Analyze Screenshot:**
+3. **🔮 Divine the Captured Essence:**
 ```bash
-   # In your MCP client: "Take a screenshot and tell me what's on my screen"
+   # Whisper: "Divine the visions upon my ethereal display"
    ```
 
-### 🐛 Troubleshooting
+### 🕸️ Exorcising Demons
 
-**Common Issues:**
+**Common Hauntings:**
 
-| Issue | Solution |
+| Haunting | Exorcism |
 |-------|----------|
 | `Permission denied` errors | Grant Screen Recording permission in System Preferences |
 | `Swift CLI unavailable` | Rebuild Swift CLI: `cd swift-cli && swift build -c release` |
 | `AI analysis failed` | Check AI provider configuration and network connectivity |
 | `Command not found: peekaboo-mcp` | Run `npm link` or check global npm installation |
 
-**Debug Mode:**
+**Ghost Hunter Mode:**
 ```bash
-# Enable verbose logging
+# Unleash the ghost hunters
 LOG_LEVEL=debug peekaboo-mcp
 
-# Check permissions
+# Divine the permission wards
 ./peekaboo list server_status --json-output
 ```
 
-**Get Help:**
+**Summon the Spirit Guides:**
 - 📚 [Documentation](./docs/)
 - 🐛 [Issues](https://github.com/yourusername/peekaboo/issues)
 - 💬 [Discussions](https://github.com/yourusername/peekaboo/discussions)
 
-## 📦 Alternative Installation Methods
+## 🧿 Alternative Summoning Rituals
 
-### From Source
+### 🧪 From the Ancient Scrolls
 
-If you want to build from source or contribute to development:
+If you dare to invoke Peekaboo from the ancient source grimoires:
 
 ```bash
-# Clone the repository
+# Clone the cursed repository
 git clone https://github.com/steipete/peekaboo.git
 cd peekaboo
 
-# Install Node.js dependencies
+# Gather spectral dependencies
 npm install
 
-# Build the TypeScript server
+# Forge the TypeScript vessel
 npm run build
 
-# Build the Swift CLI component
+# Craft the Swift talisman
 cd swift-cli
 swift build -c release
 
-# Copy the binary to the project root
+# Transport the enchanted binary
 cp .build/release/peekaboo ../peekaboo
 
-# Return to project root
+# Return to the haunted grounds
 cd ..
 
-# Optional: Link for global access
+# Optional: Cast a global summoning spell
 npm link
 ```
 
-Then configure Claude Desktop (or a similar MCP client) to use your local installation. If you used `npm link`, the command `peekaboo-mcp` should be globally available. If you prefer to run directly via `node`:
+Then bind Peekaboo to Claude Desktop (or another MCP vessel) using your local incantations. If you performed `npm link`, the spell `peekaboo-mcp` echoes through the command realm. Alternatively, summon directly through `node`:
 
 **Example MCP Client Configuration (using local build):**
 
@@ -277,9 +277,9 @@ Alternatively, running directly with `node`:
 Remember to replace `/Users/steipete/Projects/Peekaboo/dist/index.js` with the actual absolute path to the `dist/index.js` in your cloned project if it differs.
 Also, when using these local configurations, ensure you use a distinct key (like "peekaboo_local" or "peekaboo_local_node") in your MCP client's server list to avoid conflicts if you also have the npx-based "peekaboo" server configured.
 
-### Using AppleScript
+### 🍎 Ancient AppleScript Ritual
 
-For basic screen capture without the full MCP server, you can use the included AppleScript:
+For those who seek a simpler conjuring without the full spectral server, invoke the ancient AppleScript:
 
 ```bash
 # Run the AppleScript directly
@@ -306,11 +306,11 @@ For MCP clients other than Claude Desktop:
 
 ---
 
-## 🛠️ Available Tools
+## 🎭 Spectral Powers
 
-Once installed, Peekaboo provides three powerful MCP tools:
+Once summoned, Peekaboo grants you three supernatural abilities:
 
-### 📸 `image` - Screen Capture
+### 🖼️ `image` - Soul Capture
 
 **Parameters:**
 - `mode`: `"screen"` | `"window"` | `"multi"` (default: "screen")
@@ -328,7 +328,7 @@ Once installed, Peekaboo provides three powerful MCP tools:
 }
 ```
 
-### 📋 `list` - Application Listing
+### 👻 `list` - Spirit Detection
 
 **Parameters:**
 - `item_type`: `"running_applications"` | `"application_windows"` | `"server_status"`
@@ -344,7 +344,7 @@ Once installed, Peekaboo provides three powerful MCP tools:
 }
 ```
 
-### 🧩 `analyze` - AI Analysis
+### 🔮 `analyze` - Vision Divination
 
 **Parameters:**
 - `image_path`: Absolute path to image file
@@ -361,27 +361,27 @@ Once installed, Peekaboo provides three powerful MCP tools:
 }
 ```
 
-## 🎯 Key Features
+## 🌙 Supernatural Abilities
 
-### Screen Capture
-- **Multi-display support**: Captures each display separately
-- **Window targeting**: Intelligent app/window matching with fuzzy search
-- **Format flexibility**: PNG, JPEG, WebP, HEIF support
-- **Automatic naming**: Timestamps and descriptive filenames
-- **Permission handling**: Automatic screen recording permission checks
+### 🖼️ Ethereal Vision Capture
+- **Multi-realm vision**: Captures each spectral display separately
+- **Soul targeting**: Supernatural app/window divination with ethereal matching
+- **Essence preservation**: PNG, JPEG, WebP, HEIF soul containers
+- **Mystical naming**: Temporal runes and descriptive incantations
+- **Ward detection**: Automatic permission ward verification
 
-### Application Management  
-- **Running app enumeration**: Complete system application listing
-- **Window discovery**: Per-app window enumeration with metadata
-- **Fuzzy matching**: Find apps by partial name, bundle ID, or PID
-- **Real-time status**: Active/background status, window counts
+### 👻 Spirit Management  
+- **Spirit census**: Complete digital ghost registry
+- **Portal detection**: Per-spirit window scrying with ethereal metadata
+- **Spectral matching**: Divine apps by partial essence, soul ID, or spirit number
+- **Life force monitoring**: Active/slumbering status, portal counts
 
-### AI Integration
-- **Provider agnostic**: Support for Ollama, OpenAI, and other providers
+### 🧿 Oracle Integration
+- **Oracle agnostic**: Channels Ollama, OpenAI, and other mystical seers
 - **Image analysis**: Natural language querying of captured content
 - **Configurable**: Environment-based provider selection
 
-## 🏛️ Project Structure
+## 🏩 Haunted Architecture
 
 ```
 Peekaboo/
@@ -411,9 +411,9 @@ Peekaboo/
 └── README.md               # This file
 ```
 
-## 🔧 Technical Details
+## 🔬 Arcane Knowledge
 
-### Swift CLI JSON Output
+### 📜 Ancient Runes (JSON Output)
 The Swift CLI outputs structured JSON when called with `--json-output`:
 
 ```json
@@ -434,34 +434,34 @@ The Swift CLI outputs structured JSON when called with `--json-output`:
 }
 ```
 
-### MCP Integration
+### 🌌 Portal Integration
 The Node.js server translates between MCP's JSON-RPC protocol and the Swift CLI's JSON output, providing:
 - **Schema validation** via Zod
 - **Error handling** with proper MCP error codes
 - **Logging** via Pino logger
 - **Type safety** throughout the TypeScript codebase
 
-### Permission Model
+### 🚪 Permission Wards
 Peekaboo respects macOS security by:
 - **Checking screen recording permissions** before capture operations
 - **Graceful degradation** when permissions are missing
 - **Clear error messages** guiding users to grant required permissions
 
-## 🧪 Testing
+## 🧿 Ghost Hunting
 
-### Manual Testing
+### 🕯️ Manual Séances
 ```bash
-# Test Swift CLI directly
+# Channel the Swift spirit
 ./peekaboo list apps --json-output | head -20
 
-# Test MCP integration  
+# Test the spectral portal  
 echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | node dist/index.js
 
 # Test image capture
 echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "image", "arguments": {"mode": "screen"}}}' | node dist/index.js
 ```
 
-### Automated Testing
+### 🤖 Automated Exorcisms
 ```bash
 # TypeScript compilation
 npm run build
@@ -470,12 +470,12 @@ npm run build
 cd swift-cli && swift build
 ```
 
-## 🐛 Known Issues
+## 🕸️ Known Curses
 
 - **FileHandle warning**: Non-critical Swift warning about TextOutputStream conformance
 - **AI Provider Config**: Requires `AI_PROVIDERS` environment variable for analysis features
 
-## 🚀 Future Enhancements
+## 🌀 Future Hauntings
 
 - [ ] **OCR Integration**: Built-in text extraction from screenshots
 - [ ] **Video Capture**: Screen recording capabilities
@@ -483,11 +483,11 @@ cd swift-cli && swift build
 - [ ] **Cloud Storage**: Direct upload to cloud providers
 - [ ] **Hotkey Support**: System-wide keyboard shortcuts
 
-## 📄 License
+## 📜 Ancient Pact
 
-MIT License - see LICENSE file for details.
+MIT License - bound by the ancient pact in the LICENSE grimoire.
 
-## 🤝 Contributing
+## 🧛 Join the Coven
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -497,4 +497,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**🎉 Peekaboo is ready to use!** The project successfully combines the power of native macOS APIs with modern Node.js tooling to create a comprehensive screen capture and analysis solution.
+**🎃 Peekaboo awaits your command!** This spectral servant bridges the veil between macOS's forbidden APIs and the ethereal realm of Node.js, granting you powers to capture souls and divine their secrets. Happy haunting! 👻
