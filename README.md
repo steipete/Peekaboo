@@ -31,7 +31,7 @@ Add Peekaboo to your Claude Desktop configuration:
       "command": "npx",
       "args": [
         "-y",
-        "@steipete/peekaboo-mcp@latest"
+        "@steipete/peekaboo-mcp@beta"
       ]
     }
   }
@@ -55,7 +55,7 @@ You can configure Peekaboo with environment variables in your Claude Desktop con
       "command": "npx",
       "args": [
         "-y",
-        "@steipete/peekaboo-mcp@latest"
+        "@steipete/peekaboo-mcp@beta"
       ],
       "env": {
         "AI_PROVIDERS": "[{\"type\":\"ollama\",\"baseUrl\":\"http://localhost:11434\",\"model\":\"llava\",\"enabled\":true}]",
