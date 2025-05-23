@@ -1,4 +1,4 @@
-# Peekaboo MCP: Screenshots so fast they’re paranormal
+# Peekaboo MCP: Screenshots so fast they’re paranormal.
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
