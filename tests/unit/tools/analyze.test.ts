@@ -1,0 +1,274 @@
+import { pino } from 'pino';
+import { analyzeToolHandler, determineProviderAndModel, AnalyzeToolInput } from '../../../src/tools/analyze';
+import { readImageAsBase64 } from '../../../src/utils/swift-cli';
+import {
+  parseAIProviders,
+  isProviderAvailable,
+  analyzeImageWithProvider,
+  getDefaultModelForProvider
+} from '../../../src/utils/ai-providers';
+import { ToolContext, AIProvider } from '../../../src/types';
+import path from 'path'; // Import path for extname
+
+// Mocks
+jest.mock('../../../src/utils/swift-cli');
+jest.mock('../../../src/utils/ai-providers');
+
+const mockReadImageAsBase64 = readImageAsBase64 as jest.MockedFunction<typeof readImageAsBase64>;
+const mockParseAIProviders = parseAIProviders as jest.MockedFunction<typeof parseAIProviders>;
+const mockIsProviderAvailable = isProviderAvailable as jest.MockedFunction<typeof isProviderAvailable>;
+const mockAnalyzeImageWithProvider = analyzeImageWithProvider as jest.MockedFunction<typeof analyzeImageWithProvider>;
+const mockGetDefaultModelForProvider = getDefaultModelForProvider as jest.MockedFunction<typeof getDefaultModelForProvider>;
+
+
+// Create a mock logger for tests
+const mockLogger = pino({ level: 'silent' });
+const mockContext: ToolContext = { logger: mockLogger };
+
+const MOCK_IMAGE_BASE64 = 'base64imagedata';
+
+describe('Analyze Tool', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Reset environment variables
+    delete process.env.AI_PROVIDERS;
+    mockReadImageAsBase64.mockResolvedValue(MOCK_IMAGE_BASE64); // Default mock for successful read
+  });
+
+  describe('determineProviderAndModel', () => {
+    const configured: AIProvider[] = [
+      { provider: 'ollama', model: 'llava:server' },
+      { provider: 'openai', model: 'gpt-4o:server' },
+    ];
+
+    it('should use auto: first available configured provider if no input config', async () => {
+      mockIsProviderAvailable.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+      mockGetDefaultModelForProvider.mockReturnValue('default-model');
+
+      const result = await determineProviderAndModel(undefined, configured, mockLogger);
+      expect(result).toEqual({ provider: 'openai', model: 'gpt-4o:server' });
+      expect(mockIsProviderAvailable).toHaveBeenCalledTimes(2);
+      expect(mockIsProviderAvailable).toHaveBeenNthCalledWith(1, configured[0], mockLogger);
+      expect(mockIsProviderAvailable).toHaveBeenNthCalledWith(2, configured[1], mockLogger);
+      expect(mockGetDefaultModelForProvider).not.toHaveBeenCalled(); // Model was in configuredProviders
+    });
+
+    it('should use auto: first available and use default model if configured has no model', async () => {
+      const configuredNoModel: AIProvider[] = [{ provider: 'ollama', model: '' }];
+      mockIsProviderAvailable.mockResolvedValueOnce(true);
+      mockGetDefaultModelForProvider.mockReturnValueOnce('llava:default');
+
+      const result = await determineProviderAndModel(undefined, configuredNoModel, mockLogger);
+      expect(result).toEqual({ provider: 'ollama', model: 'llava:default' });
+      expect(mockGetDefaultModelForProvider).toHaveBeenCalledWith('ollama');
+    });
+
+    it('should use auto: input model overrides configured provider model', async () => {
+      mockIsProviderAvailable.mockResolvedValueOnce(true);
+      const result = await determineProviderAndModel(
+        { type: 'auto', model: 'custom-llava' }, 
+        configured, 
+        mockLogger
+      );
+      expect(result).toEqual({ provider: 'ollama', model: 'custom-llava' });
+    });
+
+    it('should use specific provider if available', async () => {
+      mockIsProviderAvailable.mockResolvedValue(true);
+      const result = await determineProviderAndModel(
+        { type: 'openai', model: 'gpt-custom' },
+        configured,
+        mockLogger
+      );
+      expect(result).toEqual({ provider: 'openai', model: 'gpt-custom' });
+      expect(mockIsProviderAvailable).toHaveBeenCalledWith(configured[1], mockLogger);
+    });
+
+    it('should use specific provider with its configured model if no input model', async () => {
+      mockIsProviderAvailable.mockResolvedValue(true);
+      const result = await determineProviderAndModel(
+        { type: 'openai' },
+        configured,
+        mockLogger
+      );
+      expect(result).toEqual({ provider: 'openai', model: 'gpt-4o:server' });
+    });
+    
+    it('should use specific provider with default model if no input model and no configured model', async () => {
+      const configuredNoModel: AIProvider[] = [{ provider: 'openai', model: ''}];
+      mockIsProviderAvailable.mockResolvedValue(true);
+      mockGetDefaultModelForProvider.mockReturnValueOnce('gpt-default');
+      const result = await determineProviderAndModel(
+        { type: 'openai' },
+        configuredNoModel,
+        mockLogger
+      );
+      expect(result).toEqual({ provider: 'openai', model: 'gpt-default' });
+      expect(mockGetDefaultModelForProvider).toHaveBeenCalledWith('openai');
+    });
+
+    it('should throw if specific provider is not in server config', async () => {
+      const serverConfigWithoutOpenAI: AIProvider[] = [
+        { provider: 'ollama', model: 'llava:server' }
+      ];
+      await expect(determineProviderAndModel(
+        { type: 'openai' }, // Type is valid enum, but openai is not in serverConfigWithoutOpenAI
+        serverConfigWithoutOpenAI,
+        mockLogger
+      )).rejects.toThrow("Provider 'openai' is not enabled in server's AI_PROVIDERS configuration.");
+    });
+
+    it('should throw if specific provider is configured but not available', async () => {
+      mockIsProviderAvailable.mockResolvedValue(false);
+      await expect(determineProviderAndModel(
+        { type: 'ollama' },
+        configured,
+        mockLogger
+      )).rejects.toThrow("Provider 'ollama' is configured but not currently available.");
+    });
+
+    it('should return null provider if auto and no providers are available', async () => {
+      mockIsProviderAvailable.mockResolvedValue(false);
+      const result = await determineProviderAndModel(undefined, configured, mockLogger);
+      expect(result).toEqual({ provider: null, model: '' });
+      expect(mockIsProviderAvailable).toHaveBeenCalledTimes(configured.length);
+    });
+  });
+
+  describe('analyzeToolHandler', () => {
+    const validInput: AnalyzeToolInput = {
+      image_path: '/path/to/image.png',
+      question: 'What is this?'
+    };
+
+    it('should analyze image successfully with auto provider selection', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava,openai/gpt-4o';
+      const parsedProviders: AIProvider[] = [{ provider: 'ollama', model: 'llava' }, { provider: 'openai', model: 'gpt-4o' }];
+      mockParseAIProviders.mockReturnValue(parsedProviders);
+      mockIsProviderAvailable.mockResolvedValueOnce(false).mockResolvedValueOnce(true); // openai is available
+      mockAnalyzeImageWithProvider.mockResolvedValue('AI says: It is an apple.');
+
+      const result = await analyzeToolHandler(validInput, mockContext);
+
+      expect(mockReadImageAsBase64).toHaveBeenCalledWith(validInput.image_path);
+      expect(mockParseAIProviders).toHaveBeenCalledWith(process.env.AI_PROVIDERS);
+      expect(mockIsProviderAvailable).toHaveBeenCalledWith(parsedProviders[1], mockLogger); 
+      expect(mockAnalyzeImageWithProvider).toHaveBeenCalledWith(
+        { provider: 'openai', model: 'gpt-4o' }, // Determined provider/model
+        validInput.image_path,
+        MOCK_IMAGE_BASE64,
+        validInput.question,
+        mockLogger
+      );
+      expect(result.content[0].text).toBe('AI says: It is an apple.');
+      expect(result.analysis_text).toBe('AI says: It is an apple.');
+      expect((result as any).model_used).toBe('openai/gpt-4o');
+      expect(result.isError).toBeUndefined();
+    });
+
+    it('should use specific provider and model if provided and available', async () => {
+      process.env.AI_PROVIDERS = 'openai/gpt-4-turbo';
+      const parsedProviders: AIProvider[] = [{ provider: 'openai', model: 'gpt-4-turbo' }];
+      mockParseAIProviders.mockReturnValue(parsedProviders);
+      mockIsProviderAvailable.mockResolvedValue(true); 
+      mockAnalyzeImageWithProvider.mockResolvedValue('GPT-Turbo says hi.');
+
+      const inputWithProvider: AnalyzeToolInput = {
+        ...validInput,
+        provider_config: { type: 'openai', model: 'gpt-custom-model' }
+      };
+      const result = await analyzeToolHandler(inputWithProvider, mockContext);
+
+      expect(mockAnalyzeImageWithProvider).toHaveBeenCalledWith(
+        { provider: 'openai', model: 'gpt-custom-model' },
+        validInput.image_path,
+        MOCK_IMAGE_BASE64,
+        validInput.question,
+        mockLogger
+      );
+      expect(result.content[0].text).toBe('GPT-Turbo says hi.');
+      expect((result as any).model_used).toBe('openai/gpt-custom-model');
+      expect(result.isError).toBeUndefined();
+    });
+
+    it('should return error for unsupported image format', async () => {
+      const result = await analyzeToolHandler({ ...validInput, image_path: '/path/image.gif' }, mockContext) as any;
+      expect(result.content[0].text).toContain('Unsupported image format: .gif');
+      expect(result.isError).toBe(true);
+    });
+
+    it('should return error if AI_PROVIDERS env is not set', async () => {
+      const result = await analyzeToolHandler(validInput, mockContext) as any;
+      expect(result.content[0].text).toContain('AI analysis not configured on this server');
+      expect(result.isError).toBe(true);
+    });
+
+    it('should return error if AI_PROVIDERS env has no valid providers', async () => {
+      process.env.AI_PROVIDERS = 'invalid/';
+      mockParseAIProviders.mockReturnValue([]);
+      const result = await analyzeToolHandler(validInput, mockContext) as any;
+      expect(result.content[0].text).toContain('No valid AI providers found');
+      expect(result.isError).toBe(true);
+    });
+
+    it('should return error if no configured providers are operational (auto mode)', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava';
+      mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
+      mockIsProviderAvailable.mockResolvedValue(false); // All configured are unavailable
+      const result = await analyzeToolHandler(validInput, mockContext) as any;
+      expect(result.content[0].text).toContain('No configured AI providers are currently operational');
+      expect(result.isError).toBe(true);
+    });
+
+    it('should return error if specific provider in config is not enabled on server', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava'; // Server only has ollama
+      mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
+      // User requests openai
+      const inputWithProvider: AnalyzeToolInput = { ...validInput, provider_config: { type: 'openai' } };
+      const result = await analyzeToolHandler(inputWithProvider, mockContext) as any;
+      // This error is now caught by determineProviderAndModel and then re-thrown, so analyzeToolHandler catches it
+      expect(result.content[0].text).toContain("Provider 'openai' is not enabled in server's AI_PROVIDERS configuration");
+      expect(result.isError).toBe(true);
+    });
+
+     it('should return error if specific provider is configured but not available', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava';
+      mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
+      mockIsProviderAvailable.mockResolvedValue(false); // ollama is configured but not available
+      const inputWithProvider: AnalyzeToolInput = { ...validInput, provider_config: { type: 'ollama' } };
+      const result = await analyzeToolHandler(inputWithProvider, mockContext) as any;
+      expect(result.content[0].text).toContain("Provider 'ollama' is configured but not currently available");
+      expect(result.isError).toBe(true);
+    });
+
+    it('should return error if readImageAsBase64 fails', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava';
+      mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
+      mockIsProviderAvailable.mockResolvedValue(true);
+      mockReadImageAsBase64.mockRejectedValue(new Error('Cannot access file'));
+      const result = await analyzeToolHandler(validInput, mockContext) as any;
+      expect(result.content[0].text).toContain('Failed to read image file: Cannot access file');
+      expect(result.isError).toBe(true);
+    });
+
+    it('should return error if analyzeImageWithProvider fails', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava';
+      mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
+      mockIsProviderAvailable.mockResolvedValue(true);
+      mockAnalyzeImageWithProvider.mockRejectedValue(new Error('AI exploded'));
+      const result = await analyzeToolHandler(validInput, mockContext) as any;
+      expect(result.content[0].text).toContain('AI analysis failed: AI exploded');
+      expect(result.isError).toBe(true);
+      expect(result._meta.backend_error_code).toBe('AI_PROVIDER_ERROR');
+    });
+
+    it('should handle unexpected errors gracefully', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava';
+      mockParseAIProviders.mockImplementation(() => { throw new Error('Unexpected parse error'); }); // Force an error
+      const result = await analyzeToolHandler(validInput, mockContext) as any;
+      expect(result.content[0].text).toContain('Unexpected error: Unexpected parse error');
+      expect(result.isError).toBe(true);
+    });
+
+  });
+}); 
