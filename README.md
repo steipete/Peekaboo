@@ -148,21 +148,29 @@ ollama serve
 ```
 The daemon will run at `http://localhost:11434` by default.
 
-#### 🎭 Downloading the LLaVA Vision Model
+#### 🎭 Downloading Vision Models
 
-LLaVA (Large Language and Vision Assistant) is the recommended model for image analysis:
+**For powerful machines**, LLaVA (Large Language and Vision Assistant) is the recommended model:
 
 ```bash
-# Download the latest LLaVA model (recommended)
+# Download the latest LLaVA model (recommended for best quality)
 ollama pull llava:latest
 
-# Alternative: Download a specific version
+# Alternative LLaVA versions
 ollama pull llava:7b-v1.6
 ollama pull llava:13b-v1.6  # Larger, more capable
 ollama pull llava:34b-v1.6  # Largest, most powerful (requires significant RAM)
 ```
 
+**For less beefy machines**, Qwen2-VL provides excellent performance with lower resource requirements:
+
+```bash
+# Download Qwen2-VL 7B model (great balance of quality and performance)
+ollama pull qwen2-vl:7b
+```
+
 **Model Size Guide:**
+- `qwen2-vl:7b` - ~4GB download, ~6GB RAM required (excellent for lighter machines)
 - `llava:7b` - ~4.5GB download, ~8GB RAM required
 - `llava:13b` - ~8GB download, ~16GB RAM required  
 - `llava:34b` - ~20GB download, ~40GB RAM required
@@ -182,6 +190,25 @@ Add Ollama to your Claude Desktop configuration:
       ],
       "env": {
         "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest",
+        "PEEKABOO_OLLAMA_BASE_URL": "http://localhost:11434"
+      }
+    }
+  }
+}
+```
+
+**For less powerful machines (using Qwen2-VL):**
+```json
+{
+  "mcpServers": {
+    "peekaboo": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@steipete/peekaboo-mcp@beta"
+      ],
+      "env": {
+        "PEEKABOO_AI_PROVIDERS": "ollama/qwen2-vl:7b",
         "PEEKABOO_OLLAMA_BASE_URL": "http://localhost:11434"
       }
     }
