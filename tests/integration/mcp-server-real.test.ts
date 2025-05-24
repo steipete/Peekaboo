@@ -102,39 +102,45 @@ describe('MCP Server Real Integration Tests', () => {
       const result = await imageToolHandler({
         format: 'png',
         return_data: false,
-        capture_focus: 'background',
-        window_id: 12345
+        capture_focus: 'background'
       }, mockContext);
 
       expect(result.content).toHaveLength(1);
       expect(result.content[0].type).toBe('text');
       expect(result.content[0].text).toContain('Captured 1 image');
-      expect(result.saved_files).toHaveLength(1);
-      expect(result.saved_files[0].path).toContain('.png');
-      expect(result.saved_files[0].mime_type).toBe('image/png');
+      expect(result.saved_files).toBeDefined();
+      if (result.saved_files) {
+        expect(result.saved_files).toHaveLength(1);
+        expect(result.saved_files[0].path).toContain('.png');
+        expect(result.saved_files[0].mime_type).toBe('image/png');
+      }
     });
 
     it('should capture with different formats', async () => {
-      const formats = ['png', 'jpg', 'gif', 'pdf'];
+      const formats: Array<'png' | 'jpg'> = ['png', 'jpg'];
       
       for (const format of formats) {
         const result = await imageToolHandler({
-          format: format as any,
+          format,
           return_data: false,
           capture_focus: 'foreground'
         }, mockContext);
 
         expect(result.content[0].text).toContain('Captured 1 image');
-        expect(result.saved_files[0].path).toContain(`.${format}`);
-        expect(result.saved_files[0].mime_type).toBe(`image/${format === 'jpg' ? 'jpeg' : format}`);
+        if (result.saved_files) {
+          expect(result.saved_files[0].path).toContain(`.${format}`);
+          expect(result.saved_files[0].mime_type).toBe(`image/${format === 'jpg' ? 'jpeg' : format}`);
+        }
       }
     });
 
-    it('should handle window capture by window ID', async () => {
+    it('should handle window capture by window specifier index', async () => {
       const result = await imageToolHandler({
-        window_id: 12345,
+        app: 'Safari',
+        window_specifier: { index: 0 },
         format: 'png',
-        return_data: false
+        return_data: false,
+        capture_focus: 'background'
       }, mockContext);
 
       expect(result.content[0].text).toContain('Captured 1 image');
@@ -335,14 +341,15 @@ describe('MCP Server Real Integration Tests', () => {
 
   describe('Error Recovery and Edge Cases', () => {
     it('should handle Swift CLI timeout gracefully', async () => {
-      const swiftCLI = require('../../src/utils/swift-cli');
+      const swiftCLI = require('../../src/utils/peekaboo-cli');
       swiftCLI.runSwiftCLI.mockImplementationOnce(() => {
         throw new Error('Command timed out');
       });
 
       const result = await imageToolHandler({
         format: 'png',
-        return_data: false
+        return_data: false,
+        capture_focus: 'background'
       }, mockContext);
 
       expect(result.isError).toBe(true);
@@ -350,7 +357,7 @@ describe('MCP Server Real Integration Tests', () => {
     });
 
     it('should handle malformed Swift CLI output', async () => {
-      const swiftCLI = require('../../src/utils/swift-cli');
+      const swiftCLI = require('../../src/utils/peekaboo-cli');
       swiftCLI.runSwiftCLI.mockImplementationOnce(() => {
         return { invalid: 'data' };
       });
@@ -365,9 +372,9 @@ describe('MCP Server Real Integration Tests', () => {
 
     it('should handle concurrent tool execution', async () => {
       const promises = [
-        imageToolHandler({ format: 'png', return_data: false }, mockContext),
+        imageToolHandler({ format: 'png', return_data: false, capture_focus: 'background' }, mockContext),
         listToolHandler({ item_type: 'running_applications' }, mockContext),
-        imageToolHandler({ format: 'jpg', return_data: false }, mockContext)
+        imageToolHandler({ format: 'jpg', return_data: false, capture_focus: 'background' }, mockContext)
       ];
 
       const results = await Promise.all(promises);

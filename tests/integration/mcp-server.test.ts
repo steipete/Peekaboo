@@ -146,7 +146,7 @@ describe('MCP Server Integration', () => {
 
     describe('Analyze Tool', () => {
       beforeEach(() => {
-        process.env.AI_PROVIDERS = 'ollama/llava';
+        process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
       });
 
       it('should analyze image successfully', async () => {
@@ -174,7 +174,7 @@ describe('MCP Server Integration', () => {
         const mockResult = {
           content: [{
             type: 'text',
-            text: 'AI analysis not configured. Please set AI_PROVIDERS environment variable.'
+            text: 'AI analysis not configured. Please set PEEKABOO_AI_PROVIDERS environment variable.'
           }],
           isError: true
         };

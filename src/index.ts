@@ -21,7 +21,7 @@ import {
   listToolSchema
 } from './tools/index.js';
 import { generateServerStatusString } from './utils/server-status.js';
-import { initializeSwiftCliPath } from './utils/swift-cli.js';
+import { initializeSwiftCliPath } from './utils/peekaboo-cli.js';
 
 // Get package version and determine package root
 const __filename = fileURLToPath(import.meta.url);

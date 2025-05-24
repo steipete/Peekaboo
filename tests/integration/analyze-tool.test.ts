@@ -70,7 +70,7 @@ describe('analyzeToolHandler Integration Tests', () => {
     // Reset ENV VARS
     process.env.PEEKABOO_AI_PROVIDERS = '';
     process.env.OPENAI_API_KEY = '';
-    process.env.OLLAMA_BASE_URL = 'http://localhost:11434';
+    process.env.PEEKABOO_OLLAMA_BASE_URL = 'http://localhost:11434';
   });
 
   it('should return error if PEEKABOO_AI_PROVIDERS is not configured (env var is empty)', async () => {

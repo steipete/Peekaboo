@@ -4,8 +4,8 @@
 
 [![npm version](https://badge.fury.io/js/%40steipete%2Fpeekaboo-mcp.svg)](https://www.npmjs.com/package/@steipete/peekaboo-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![macOS](https://img.shields.io/badge/macOS-12.0%2B-blue.svg)](https://www.apple.com/macos/)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+[![macOS](https://img.shields.io/badge/macOS-14.0%2B-blue.svg)](https://www.apple.com/macos/)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 
 A ghostly macOS utility that haunts your screen, capturing spectral snapshots and peering into windows with supernatural AI vision. 🎃
 
@@ -37,8 +37,8 @@ Think of Peekaboo as supernatural contact lenses for your coding assistant. No m
 
 ### Ritual Requirements
 
-- **macOS 12.0+** (Monterey or later)
-- **Node.js 18.0+**
+- **macOS 14.0+** (Sonoma or later)
+- **Node.js 20.0+**
 
 ### 🕯️ Quick Summoning Ritual
 
@@ -387,7 +387,7 @@ Once the portal is open and Peekaboo lurks in the shadows, your AI assistant can
 |-------|----------|
 | `Permission denied` errors during image capture | Grant **Screen Recording** permission in System Settings → Privacy & Security. Ensure the correct application (Terminal, Claude, VS Code, etc.) is added and checked. Restart the app after changing permissions. |
 | Window capture issues (wrong window, focus problems) | Grant **Accessibility** permission if using `capture_focus: "foreground"` or for more reliable window targeting. |
-| `Swift CLI unavailable` or `PEEKABOO_CLI_PATH` issues | Ensure the `peekaboo` binary is at the root of the NPM package, or if `PEEKABOO_CLI_PATH` is set, verify it points to a valid executable. You can test the Swift CLI directly: `path/to/peekaboo --version`. If missing or broken, rebuild: `cd swift-cli && swift build -c release` (then place binary appropriately or update `PEEKABOO_CLI_PATH`). |
+| `Swift CLI unavailable` or `PEEKABOO_CLI_PATH` issues | Ensure the `peekaboo` binary is at the root of the NPM package, or if `PEEKABOO_CLI_PATH` is set, verify it points to a valid executable. You can test the Swift CLI directly: `path/to/peekaboo --version`. If missing or broken, rebuild: `cd peekaboo-cli && swift build -c release` (then place binary appropriately or update `PEEKABOO_CLI_PATH`). |
 | `AI analysis failed` | Check your `PEEKABOO_AI_PROVIDERS` environment variable for correct format and valid provider/model pairs. Ensure API keys (e.g., `OPENAI_API_KEY`) are set if using cloud providers. Verify local services like Ollama are running (`PEEKABOO_OLLAMA_BASE_URL`). Check the server logs (`PEEKABOO_LOG_FILE` or console if `PEEKABOO_CONSOLE_LOGGING="true"`) for detailed error messages from the AI provider. |
 | `Command not found: peekaboo-mcp` | If installed globally, ensure your system's PATH includes the global npm binaries directory. If running from a local clone, use `node dist/index.js` or a configured npm script. For `npx`, ensure the package name `@steipete/peekaboo-mcp` is correct. |
 | General weirdness or unexpected behavior | Check the Peekaboo MCP server logs! The default location is `/tmp/peekaboo-mcp.log` (or what you set in `PEEKABOO_LOG_FILE`). Set `PEEKABOO_LOG_LEVEL=debug` for maximum detail. |
@@ -424,7 +424,7 @@ npm install
 npm run build
 
 # Craft the Swift talisman
-cd swift-cli
+cd peekaboo-cli
 swift build -c release
 
 # Transport the enchanted binary
@@ -592,11 +592,11 @@ Peekaboo/
 │   │   ├── analyze.ts       # AI analysis tool  
 │   │   └── list.ts          # Application/window listing
 │   ├── utils/               # Utility modules
-│   │   ├── swift-cli.ts     # Swift CLI integration
+│   │   ├── peekaboo-cli.ts   # Swift CLI integration
 │   │   ├── ai-providers.ts  # AI provider management
 │   │   └── server-status.ts # Server status utilities
 │   └── types/               # Shared type definitions
-├── swift-cli/               # Native Swift CLI
+├── peekaboo-cli/            # Native Swift CLI
 │   └── Sources/peekaboo/    # Swift source files
 │       ├── main.swift       # CLI entry point
 │       ├── ImageCommand.swift    # Image capture implementation
@@ -667,7 +667,7 @@ echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "im
 npm run build
 
 # Swift compilation  
-cd swift-cli && swift build
+cd peekaboo-cli && swift build
 ```
 
 ## 🕸️ Known Curses

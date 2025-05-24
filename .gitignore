@@ -71,10 +71,10 @@ lib-cov/
 *.sublime-project
 
 # Swift / Xcode
-swift-cli/.build/
-swift-cli/DerivedData/
-swift-cli/.swiftpm/
-swift-cli/*.bc
+peekaboo-cli/.build/
+peekaboo-cli/DerivedData/
+peekaboo-cli/.swiftpm/
+peekaboo-cli/*.bc
 peekaboo
 .build/
 DerivedData/
