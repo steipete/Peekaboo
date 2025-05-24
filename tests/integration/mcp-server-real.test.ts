@@ -151,23 +151,43 @@ describe('MCP Server Real Integration Tests', () => {
       const result = await imageToolHandler({
         app: 'com.apple.Safari',
         format: 'png',
-        return_data: false
+        return_data: false,
+        capture_focus: 'background'
       }, mockContext);
 
       expect(result.content[0].text).toContain('Captured 1 image');
       expect(result.content[0].text).toContain('application mode');
     });
 
-    it('should validate conflicting parameters', async () => {
-      const result = await imageToolHandler({
-        app: 'Safari',
-        window_id: 12345,
+    it('should handle all capture modes', async () => {
+      // Test screen mode
+      const screenResult = await imageToolHandler({
+        mode: 'screen',
         format: 'png',
-        return_data: false
+        return_data: false,
+        capture_focus: 'background'
       }, mockContext);
+      expect(screenResult.content[0].text).toContain('screen mode');
 
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Cannot specify both');
+      // Test window mode
+      const windowResult = await imageToolHandler({
+        app: 'Safari',
+        mode: 'window',
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+      expect(windowResult.content[0].text).toContain('window mode');
+
+      // Test multi mode
+      const multiResult = await imageToolHandler({
+        app: 'Safari',
+        mode: 'multi',
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+      expect(multiResult.content[0].text).toContain('multi mode');
     });
   });
 
