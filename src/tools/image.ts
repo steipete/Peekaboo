@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ToolContext, ImageCaptureData, SavedFile } from '../types/index.js';
-import { executeSwiftCli, readImageAsBase64 } from '../utils/swift-cli.js';
+import { executeSwiftCli, readImageAsBase64 } from '../utils/peekaboo-cli.js';
 
 export const imageToolSchema = z.object({
   app: z.string().optional().describe("Optional. Target application: name, bundle ID, or partial name. If omitted, captures screen(s). Uses fuzzy matching."),

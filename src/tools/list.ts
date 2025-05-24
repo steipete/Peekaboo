@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ToolContext, ApplicationListData, WindowListData } from '../types/index.js';
-import { executeSwiftCli } from '../utils/swift-cli.js';
+import { executeSwiftCli } from '../utils/peekaboo-cli.js';
 import { generateServerStatusString } from '../utils/server-status.js';
 import fs from 'fs/promises';
 import path from 'path';

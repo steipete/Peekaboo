@@ -1,11 +1,11 @@
 import { imageToolHandler, buildSwiftCliArgs, ImageToolInput } from '../../../src/tools/image';
-import { executeSwiftCli, readImageAsBase64 } from '../../../src/utils/swift-cli';
-import { mockSwiftCli } from '../../mocks/swift-cli.mock';
+import { executeSwiftCli, readImageAsBase64 } from '../../../src/utils/peekaboo-cli';
+import { mockSwiftCli } from '../../mocks/peekaboo-cli.mock';
 import { pino } from 'pino';
 import { SavedFile, ImageCaptureData } from '../../../src/types';
 
 // Mock the Swift CLI utility
-jest.mock('../../../src/utils/swift-cli', () => ({
+jest.mock('../../../src/utils/peekaboo-cli', () => ({
   executeSwiftCli: jest.fn(),
   readImageAsBase64: jest.fn()
 }));

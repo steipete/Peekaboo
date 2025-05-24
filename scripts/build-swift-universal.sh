@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e # Exit immediately if a command exits with a non-zero status.
 
-PROJECT_ROOT_REL=".." # Relative path to project root from swift-cli
+PROJECT_ROOT_REL=".." # Relative path to project root from peekaboo-cli
 PROJECT_ROOT=$(cd "$(dirname "$0")/$PROJECT_ROOT_REL" && pwd)
-SWIFT_PROJECT_PATH="$PROJECT_ROOT/swift-cli"
+SWIFT_PROJECT_PATH="$PROJECT_ROOT/peekaboo-cli"
 FINAL_BINARY_NAME="peekaboo"
 FINAL_BINARY_PATH="$PROJECT_ROOT/$FINAL_BINARY_NAME"
 

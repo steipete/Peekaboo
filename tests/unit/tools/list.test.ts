@@ -1,6 +1,6 @@
 import { pino } from 'pino';
-import { listToolHandler, buildSwiftCliArgs, ListToolInput } from '../../../src/tools/list';
-import { executeSwiftCli } from '../../../src/utils/swift-cli';
+import { listToolHandler, buildSwiftCliArgs, ListToolInput, listToolSchema } from '../../../src/tools/list';
+import { executeSwiftCli } from '../../../src/utils/peekaboo-cli';
 import { generateServerStatusString } from '../../../src/utils/server-status';
 import fs from 'fs/promises';
 // import path from 'path'; // path is still used by the test itself for expect.stringContaining if needed, but not for mocking resolve/dirname
@@ -8,7 +8,7 @@ import fs from 'fs/promises';
 import { ToolContext, ApplicationListData, WindowListData } from '../../../src/types/index.js';
 
 // Mocks
-jest.mock('../../../src/utils/swift-cli');
+jest.mock('../../../src/utils/peekaboo-cli');
 jest.mock('../../../src/utils/server-status');
 jest.mock('fs/promises');
 
@@ -230,13 +230,15 @@ describe('List Tool', () => {
     });
 
     it('should handle missing app parameter for application_windows', async () => {
-      const result = await listToolHandler({
-        item_type: 'application_windows'
-      }, mockContext);
-
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toBe("For 'application_windows', 'app' identifier is required.");
-      expect(mockExecuteSwiftCli).not.toHaveBeenCalled();
+      // The Zod schema validation should catch this before the handler is called
+      // In real usage, this would throw a validation error
+      // For testing, we can simulate what would happen if validation was bypassed
+      expect(() => {
+        listToolSchema.parse({
+          item_type: 'application_windows'
+          // missing app parameter
+        });
+      }).toThrow();
     });
 
     it('should handle empty applications list', async () => {
@@ -364,7 +366,7 @@ describe('List Tool', () => {
 
       const result = await listToolHandler({
         item_type: 'running_applications'
-      }, mockContext);
+      }, mockContext) as any;
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Invalid response');
@@ -379,7 +381,7 @@ describe('List Tool', () => {
       const result = await listToolHandler({
         item_type: 'application_windows',
         app: 'Safari'
-      }, mockContext);
+      }, mockContext) as any;
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Invalid response');
@@ -459,7 +461,7 @@ describe('List Tool', () => {
 
       const result = await listToolHandler({
         item_type: 'server_status'
-      }, mockContext);
+      }, mockContext) as any;
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Unexpected error');

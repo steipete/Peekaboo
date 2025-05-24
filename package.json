@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "build:swift": "./scripts/build-swift-cli.sh",
+    "build:swift": "./scripts/build-peekaboo-cli.sh",
     "build:all": "npm run build:swift && npm run build",
     "start": "node dist/index.js",
     "prepublishOnly": "npm run build:all",
@@ -22,7 +22,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:swift": "cd swift-cli && swift test",
+    "test:swift": "cd peekaboo-cli && swift test",
     "test:integration": "npm run build && npm run test:swift && npm test",
     "test:all": "npm run test:integration",
     "postinstall": "chmod +x dist/index.js 2>/dev/null || true"
