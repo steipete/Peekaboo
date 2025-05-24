@@ -103,6 +103,31 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
     };
   }
   
+  if (schema instanceof z.ZodLiteral) {
+    const value = schema._def.value;
+    const jsonSchema: any = {};
+    
+    if (typeof value === 'string') {
+      jsonSchema.type = 'string';
+      jsonSchema.const = value;
+    } else if (typeof value === 'number') {
+      jsonSchema.type = 'number';
+      jsonSchema.const = value;
+    } else if (typeof value === 'boolean') {
+      jsonSchema.type = 'boolean';
+      jsonSchema.const = value;
+    } else {
+      // For other types, just use const
+      jsonSchema.const = value;
+    }
+    
+    if (schema.description) {
+      jsonSchema.description = schema.description;
+    }
+    
+    return jsonSchema;
+  }
+  
   // Fallback
   return { type: 'any' };
 }

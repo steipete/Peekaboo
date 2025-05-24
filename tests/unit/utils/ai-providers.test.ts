@@ -36,7 +36,7 @@ jest.mock('openai', () => {
 describe('AI Providers Utility', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    delete process.env.OLLAMA_BASE_URL;
+    delete process.env.PEEKABOO_OLLAMA_BASE_URL;
     delete process.env.OPENAI_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
     (global.fetch as jest.Mock).mockReset();
@@ -89,8 +89,8 @@ describe('AI Providers Utility', () => {
       expect(global.fetch).toHaveBeenCalledWith('http://localhost:11434/api/tags');
     });
 
-    it('should use OLLAMA_BASE_URL for Ollama check', async () => {
-        process.env.OLLAMA_BASE_URL = 'http://custom-ollama:11434';
+    it('should use PEEKABOO_OLLAMA_BASE_URL for Ollama check', async () => {
+        process.env.PEEKABOO_OLLAMA_BASE_URL = 'http://custom-ollama:11434';
         (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
         await isProviderAvailable({ provider: 'ollama', model: 'llava' }, mockLogger);
         expect(global.fetch).toHaveBeenCalledWith('http://custom-ollama:11434/api/tags');

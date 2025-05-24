@@ -1,6 +1,6 @@
 import { pino } from 'pino';
 import { analyzeToolHandler, determineProviderAndModel, AnalyzeToolInput } from '../../../src/tools/analyze';
-import { readImageAsBase64 } from '../../../src/utils/swift-cli';
+import { readImageAsBase64 } from '../../../src/utils/peekaboo-cli';
 import {
   parseAIProviders,
   isProviderAvailable,
@@ -31,7 +31,7 @@ describe('Analyze Tool', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset environment variables
-    delete process.env.AI_PROVIDERS;
+    delete process.env.PEEKABOO_AI_PROVIDERS;
     mockReadImageAsBase64.mockResolvedValue(MOCK_IMAGE_BASE64); // Default mock for successful read
   });
 
@@ -115,7 +115,7 @@ describe('Analyze Tool', () => {
         { type: 'openai' }, // Type is valid enum, but openai is not in serverConfigWithoutOpenAI
         serverConfigWithoutOpenAI,
         mockLogger
-      )).rejects.toThrow("Provider 'openai' is not enabled in server's AI_PROVIDERS configuration.");
+      )).rejects.toThrow("Provider 'openai' is not enabled in server's PEEKABOO_AI_PROVIDERS configuration.");
     });
 
     it('should throw if specific provider is configured but not available', async () => {
@@ -142,7 +142,7 @@ describe('Analyze Tool', () => {
     };
 
     it('should analyze image successfully with auto provider selection', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava,openai/gpt-4o';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava,openai/gpt-4o';
       const parsedProviders: AIProvider[] = [{ provider: 'ollama', model: 'llava' }, { provider: 'openai', model: 'gpt-4o' }];
       mockParseAIProviders.mockReturnValue(parsedProviders);
       mockIsProviderAvailable.mockResolvedValueOnce(false).mockResolvedValueOnce(true); // openai is available
@@ -151,7 +151,7 @@ describe('Analyze Tool', () => {
       const result = await analyzeToolHandler(validInput, mockContext);
 
       expect(mockReadImageAsBase64).toHaveBeenCalledWith(validInput.image_path);
-      expect(mockParseAIProviders).toHaveBeenCalledWith(process.env.AI_PROVIDERS);
+      expect(mockParseAIProviders).toHaveBeenCalledWith(process.env.PEEKABOO_AI_PROVIDERS);
       expect(mockIsProviderAvailable).toHaveBeenCalledWith(parsedProviders[1], mockLogger); 
       expect(mockAnalyzeImageWithProvider).toHaveBeenCalledWith(
         { provider: 'openai', model: 'gpt-4o' }, // Determined provider/model
@@ -167,7 +167,7 @@ describe('Analyze Tool', () => {
     });
 
     it('should use specific provider and model if provided and available', async () => {
-      process.env.AI_PROVIDERS = 'openai/gpt-4-turbo';
+      process.env.PEEKABOO_AI_PROVIDERS = 'openai/gpt-4-turbo';
       const parsedProviders: AIProvider[] = [{ provider: 'openai', model: 'gpt-4-turbo' }];
       mockParseAIProviders.mockReturnValue(parsedProviders);
       mockIsProviderAvailable.mockResolvedValue(true); 
@@ -197,14 +197,14 @@ describe('Analyze Tool', () => {
       expect(result.isError).toBe(true);
     });
 
-    it('should return error if AI_PROVIDERS env is not set', async () => {
+    it('should return error if PEEKABOO_AI_PROVIDERS env is not set', async () => {
       const result = await analyzeToolHandler(validInput, mockContext) as any;
       expect(result.content[0].text).toContain('AI analysis not configured on this server');
       expect(result.isError).toBe(true);
     });
 
-    it('should return error if AI_PROVIDERS env has no valid providers', async () => {
-      process.env.AI_PROVIDERS = 'invalid/';
+    it('should return error if PEEKABOO_AI_PROVIDERS env has no valid providers', async () => {
+      process.env.PEEKABOO_AI_PROVIDERS = 'invalid/';
       mockParseAIProviders.mockReturnValue([]);
       const result = await analyzeToolHandler(validInput, mockContext) as any;
       expect(result.content[0].text).toContain('No valid AI providers found');
@@ -212,7 +212,7 @@ describe('Analyze Tool', () => {
     });
 
     it('should return error if no configured providers are operational (auto mode)', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
       mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
       mockIsProviderAvailable.mockResolvedValue(false); // All configured are unavailable
       const result = await analyzeToolHandler(validInput, mockContext) as any;
@@ -221,18 +221,18 @@ describe('Analyze Tool', () => {
     });
 
     it('should return error if specific provider in config is not enabled on server', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava'; // Server only has ollama
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava'; // Server only has ollama
       mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
       // User requests openai
       const inputWithProvider: AnalyzeToolInput = { ...validInput, provider_config: { type: 'openai' } };
       const result = await analyzeToolHandler(inputWithProvider, mockContext) as any;
       // This error is now caught by determineProviderAndModel and then re-thrown, so analyzeToolHandler catches it
-      expect(result.content[0].text).toContain("Provider 'openai' is not enabled in server's AI_PROVIDERS configuration");
+      expect(result.content[0].text).toContain("Provider 'openai' is not enabled in server's PEEKABOO_AI_PROVIDERS configuration");
       expect(result.isError).toBe(true);
     });
 
      it('should return error if specific provider is configured but not available', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
       mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
       mockIsProviderAvailable.mockResolvedValue(false); // ollama is configured but not available
       const inputWithProvider: AnalyzeToolInput = { ...validInput, provider_config: { type: 'ollama' } };
@@ -242,7 +242,7 @@ describe('Analyze Tool', () => {
     });
 
     it('should return error if readImageAsBase64 fails', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
       mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
       mockIsProviderAvailable.mockResolvedValue(true);
       mockReadImageAsBase64.mockRejectedValue(new Error('Cannot access file'));
@@ -252,7 +252,7 @@ describe('Analyze Tool', () => {
     });
 
     it('should return error if analyzeImageWithProvider fails', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
       mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
       mockIsProviderAvailable.mockResolvedValue(true);
       mockAnalyzeImageWithProvider.mockRejectedValue(new Error('AI exploded'));
@@ -263,7 +263,7 @@ describe('Analyze Tool', () => {
     });
 
     it('should handle unexpected errors gracefully', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
       mockParseAIProviders.mockImplementation(() => { throw new Error('Unexpected parse error'); }); // Force an error
       const result = await analyzeToolHandler(validInput, mockContext) as any;
       expect(result.content[0].text).toContain('Unexpected error: Unexpected parse error');
@@ -271,13 +271,20 @@ describe('Analyze Tool', () => {
     });
 
     it('should handle very long file paths', async () => {
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
+      mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
+      mockIsProviderAvailable.mockResolvedValue(true);
+      mockAnalyzeImageWithProvider.mockResolvedValue('Analysis complete');
+      
       const longPath = '/very/long/path/that/goes/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/image.png';
-      const result = await analyzeToolHandler({ ...validInput, image_path: longPath }, mockContext) as any;
+      const result = await analyzeToolHandler({ ...validInput, image_path: longPath }, mockContext);
+      
       expect(mockReadImageAsBase64).toHaveBeenCalledWith(longPath);
+      expect(result.isError).toBeUndefined();
     });
 
     it('should handle special characters in file paths', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
       mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
       mockIsProviderAvailable.mockResolvedValue(true);
       mockAnalyzeImageWithProvider.mockResolvedValue('Analysis complete');
@@ -290,7 +297,7 @@ describe('Analyze Tool', () => {
     });
 
     it('should handle empty question gracefully', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
       mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
       mockIsProviderAvailable.mockResolvedValue(true);
       mockAnalyzeImageWithProvider.mockResolvedValue('General image description');
@@ -311,7 +318,7 @@ describe('Analyze Tool', () => {
     });
 
     it('should handle very long questions', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
       mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
       mockIsProviderAvailable.mockResolvedValue(true);
       mockAnalyzeImageWithProvider.mockResolvedValue('Long answer');
@@ -345,7 +352,7 @@ describe('Analyze Tool', () => {
     });
 
     it('should handle null or undefined in error messages', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
       mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
       mockIsProviderAvailable.mockResolvedValue(true);
       mockAnalyzeImageWithProvider.mockRejectedValue(null);
@@ -356,7 +363,7 @@ describe('Analyze Tool', () => {
     });
 
     it('should handle provider returning empty string', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava';
       mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
       mockIsProviderAvailable.mockResolvedValue(true);
       mockAnalyzeImageWithProvider.mockResolvedValue('');
@@ -368,7 +375,7 @@ describe('Analyze Tool', () => {
     });
 
     it('should handle multiple providers where all fail', async () => {
-      process.env.AI_PROVIDERS = 'ollama/llava,openai/gpt-4o,anthropic/claude-3';
+      process.env.PEEKABOO_AI_PROVIDERS = 'ollama/llava,openai/gpt-4o,anthropic/claude-3';
       mockParseAIProviders.mockReturnValue([
         { provider: 'ollama', model: 'llava' },
         { provider: 'openai', model: 'gpt-4o' },
