@@ -69,12 +69,11 @@ That's it! Peekaboo will materialize from the digital ether, ready to haunt your
 
 #### Enchantment Variables
 
-Cast powerful spells upon Peekaboo using mystical environment variables. When using `npx` or a similar runner, these might be configured in your MCP client's settings (like Claude Desktop's `mcpServers.peekaboo.env`).
+Cast powerful spells upon Peekaboo using mystical environment variables:
 
-Example `env` block:
 ```json
 {
-  "PEEKABOO_AI_PROVIDERS": "ollama/llava,openai/gpt-4-vision-preview",
+  "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
   "PEEKABOO_LOG_LEVEL": "debug",
   "PEEKABOO_LOG_FILE": "/tmp/peekaboo-mcp.log",
   "PEEKABOO_DEFAULT_SAVE_PATH": "~/Pictures/PeekabooCaptures",
@@ -91,6 +90,7 @@ Example `env` block:
 | `PEEKABOO_LOG_LEVEL` | Logging level (trace, debug, info, warn, error, fatal). | `info` |
 | `PEEKABOO_LOG_FILE` | Path to the server's log file. | `path.join(os.tmpdir(), 'peekaboo-mcp.log')` |
 | `PEEKABOO_DEFAULT_SAVE_PATH` | Default base absolute path for saving images captured by the `image` tool. If the `path` argument is provided to the `image` tool, it takes precedence. If neither `image.path` nor this environment variable is set, the Swift CLI saves to its default temporary directory. | (none, Swift CLI uses temp paths) |
+| `PEEKABOO_OLLAMA_BASE_URL` | Base URL for the Ollama API server. Only needed if Ollama is running on a non-default address. | `http://localhost:11434` |
 | `PEEKABOO_CONSOLE_LOGGING` | Boolean (`"true"`/`"false"`) for development console logs. | `"false"` |
 | `PEEKABOO_CLI_PATH` | Optional override for the Swift `peekaboo` CLI executable path. | (uses bundled CLI) |
 
@@ -98,35 +98,16 @@ Example `env` block:
 
 The `PEEKABOO_AI_PROVIDERS` environment variable is your gateway to unlocking Peekaboo's analytical abilities. It should be a comma-separated string defining the AI providers and their default models. For example:
 
-`PEEKABOO_AI_PROVIDERS="ollama/llava:latest,openai/gpt-4-vision-preview,anthropic/claude-3-haiku-20240307"`
+`PEEKABOO_AI_PROVIDERS="ollama/llava:latest,openai/gpt-4o,anthropic/claude-3-haiku-20240307"`
 
 Each entry follows the format `provider_name/model_identifier`.
 
 - **`provider_name`**: Currently supported values are `ollama` (for local Ollama instances) and `openai`. Support for `anthropic` is planned.
-- **`model_identifier`**: The specific model to use for that provider (e.g., `llava:latest`, `gpt-4-vision-preview`, `gpt-4o`).
+- **`model_identifier`**: The specific model to use for that provider (e.g., `llava:latest`, `gpt-4o`).
 
-The `analyze` tool will use these configurations. If the `provider_config` argument in the `analyze` tool is set to `"auto"` (the default), Peekaboo will try providers from `PEEKABOO_AI_PROVIDERS` in the order they are listed, checking for necessary API keys (like `OPENAI_API_KEY`) or service availability (like Ollama running at `PEEKABOO_OLLAMA_BASE_URL`).
+The `analyze` tool will use these configurations. If the `provider_config` argument in the `analyze` tool is set to `"auto"` (the default), Peekaboo will try providers from `PEEKABOO_AI_PROVIDERS` in the order they are listed, checking for necessary API keys (like `OPENAI_API_KEY`) or service availability (like Ollama running at `http://localhost:11434` or the URL specified in `PEEKABOO_OLLAMA_BASE_URL`).
 
 You can override the model or pick a specific provider listed in `PEEKABOO_AI_PROVIDERS` using the `analyze` tool's `provider_config` argument. (The system will still verify its operational readiness, e.g., API key presence or service availability.)
-
-**Example JSON thinking for `PEEKABOO_AI_PROVIDERS` (this is NOT the ENV var format, just for understanding):**
-If you were thinking about this as a more structured configuration, the string `ollama/llava,openai/gpt-4-vision-preview` conceptually maps to something like:
-
-```json
-[
-  {
-    "provider": "ollama",
-    "default_model": "llava",
-    "config_needed": "PEEKABOO_OLLAMA_BASE_URL (defaults to http://localhost:11434)"
-  },
-  {
-    "provider": "openai",
-    "default_model": "gpt-4-vision-preview",
-    "config_needed": "OPENAI_API_KEY"
-  }
-]
-```
-Remember to set the actual `PEEKABOO_AI_PROVIDERS` environment variable as the comma-separated string.
 
 ### 🦙 Summoning Ollama - The Local Vision Oracle
 
@@ -138,8 +119,6 @@ Ollama provides a powerful local AI that can analyze your screenshots without se
 ```bash
 brew install ollama
 ```
-
-**macOS (Direct Download):**
 Visit [ollama.ai](https://ollama.ai) and download the macOS app.
 
 **Start the Ollama daemon:**
@@ -189,8 +168,7 @@ Add Ollama to your Claude Desktop configuration:
         "@steipete/peekaboo-mcp@beta"
       ],
       "env": {
-        "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest",
-        "PEEKABOO_OLLAMA_BASE_URL": "http://localhost:11434"
+        "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest"
       }
     }
   }
@@ -208,8 +186,7 @@ Add Ollama to your Claude Desktop configuration:
         "@steipete/peekaboo-mcp@beta"
       ],
       "env": {
-        "PEEKABOO_AI_PROVIDERS": "ollama/qwen2-vl:7b",
-        "PEEKABOO_OLLAMA_BASE_URL": "http://localhost:11434"
+        "PEEKABOO_AI_PROVIDERS": "ollama/qwen2-vl:7b"
       }
     }
   }
@@ -220,7 +197,7 @@ Add Ollama to your Claude Desktop configuration:
 ```json
 {
   "env": {
-    "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4-vision-preview",
+    "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
     "OPENAI_API_KEY": "your-api-key-here"
   }
 }
@@ -525,7 +502,7 @@ For MCP clients other than Claude Desktop:
     "command": "node",
     "args": ["/path/to/peekaboo/dist/index.js"],
     "env": {
-      "PEEKABOO_AI_PROVIDERS": "ollama/llava,openai/gpt-4-vision-preview"
+      "PEEKABOO_AI_PROVIDERS": "ollama/llava,openai/gpt-4o"
     }
   }
 }
