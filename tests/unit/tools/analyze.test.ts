@@ -11,7 +11,7 @@ import { ToolContext, AIProvider } from '../../../src/types';
 import path from 'path'; // Import path for extname
 
 // Mocks
-jest.mock('../../../src/utils/swift-cli');
+jest.mock('../../../src/utils/peekaboo-cli');
 jest.mock('../../../src/utils/ai-providers');
 
 const mockReadImageAsBase64 = readImageAsBase64 as jest.MockedFunction<typeof readImageAsBase64>;
