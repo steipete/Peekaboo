@@ -228,5 +228,272 @@ describe('List Tool', () => {
       const result = await listToolHandler({ item_type: 'application_windows', app: 'TestApp' }, mockContext);
       expect(result.content[0].text).toContain('Messages: Note: Some windows might be minimized.');
     });
+
+    it('should handle missing app parameter for application_windows', async () => {
+      const result = await listToolHandler({
+        item_type: 'application_windows'
+      }, mockContext);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toBe("For 'application_windows', 'app' identifier is required.");
+      expect(mockExecuteSwiftCli).not.toHaveBeenCalled();
+    });
+
+    it('should handle empty applications list', async () => {
+      const mockSwiftResponse: ApplicationListData = {
+        applications: []
+      };
+      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+
+      const result = await listToolHandler({
+        item_type: 'running_applications'
+      }, mockContext);
+
+      expect(result.content[0].text).toContain('Found 0 running applications');
+      expect((result as any).application_list).toEqual([]);
+    });
+
+    it('should handle empty windows list', async () => {
+      const mockSwiftResponse: WindowListData = {
+        target_application_info: { app_name: 'Safari', bundle_id: 'com.apple.Safari', pid: 1234 },
+        windows: []
+      };
+      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+
+      const result = await listToolHandler({
+        item_type: 'application_windows',
+        app: 'Safari'
+      }, mockContext);
+
+      expect(result.content[0].text).toContain('Found 0 windows for application: Safari');
+      expect((result as any).window_list).toEqual([]);
+    });
+
+    it('should handle very long app names', async () => {
+      const longAppName = 'A'.repeat(256);
+      const mockSwiftResponse: ApplicationListData = {
+        applications: [{
+          app_name: longAppName,
+          bundle_id: 'com.long.app',
+          pid: 9999,
+          is_active: false,
+          window_count: 1
+        }]
+      };
+      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+
+      const result = await listToolHandler({
+        item_type: 'running_applications'
+      }, mockContext);
+
+      expect(result.content[0].text).toContain(longAppName);
+    });
+
+    it('should handle special characters in app names', async () => {
+      const specialAppName = 'App™ with © Special & Characters™';
+      const mockSwiftResponse: ApplicationListData = {
+        applications: [{
+          app_name: specialAppName,
+          bundle_id: 'com.special.app',
+          pid: 1111,
+          is_active: true,
+          window_count: 2
+        }]
+      };
+      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+
+      const result = await listToolHandler({
+        item_type: 'running_applications'
+      }, mockContext);
+
+      expect(result.content[0].text).toContain(specialAppName);
+    });
+
+    it('should handle all window detail options', async () => {
+      const mockSwiftResponse: WindowListData = {
+        target_application_info: { app_name: 'TestApp', bundle_id: 'com.test.app', pid: 1234 },
+        windows: [{
+          window_title: 'Test Window',
+          window_id: 12345,
+          window_index: 0,
+          is_on_screen: true,
+          bounds: { x: 100, y: 200, width: 800, height: 600 }
+        }]
+      };
+      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+
+      const result = await listToolHandler({
+        item_type: 'application_windows',
+        app: 'TestApp',
+        include_window_details: ['ids', 'bounds', 'off_screen']
+      }, mockContext);
+
+      // Window index is always shown
+      expect(result.content[0].text).toContain('Index: 0');
+      expect(result.content[0].text).toContain('[ID: 12345]');
+      expect(result.content[0].text).toContain('[100,200 800×600]');
+      expect(result.content[0].text).toContain('[ON-SCREEN]');
+    });
+
+    it('should handle windows with missing optional fields', async () => {
+      const mockSwiftResponse: WindowListData = {
+        target_application_info: { app_name: 'TestApp', pid: 1234 },
+        windows: [{
+          window_title: 'Minimal Window',
+          // All other fields are optional
+        }]
+      };
+      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+
+      const result = await listToolHandler({
+        item_type: 'application_windows',
+        app: 'TestApp',
+        include_window_details: ['ids', 'bounds']
+      }, mockContext);
+
+      expect(result.content[0].text).toContain('"Minimal Window"');
+      expect(result.content[0].text).not.toContain('[ID:'); // No ID present
+      expect(result.content[0].text).not.toContain('×'); // No bounds present
+    });
+
+    it('should handle malformed Swift CLI response for applications', async () => {
+      mockExecuteSwiftCli.mockResolvedValue({ 
+        success: true, 
+        data: null // Invalid data
+      });
+
+      const result = await listToolHandler({
+        item_type: 'running_applications'
+      }, mockContext);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Invalid response');
+    });
+
+    it('should handle malformed Swift CLI response for windows', async () => {
+      mockExecuteSwiftCli.mockResolvedValue({ 
+        success: true, 
+        data: { windows: [] } // Missing target_application_info
+      });
+
+      const result = await listToolHandler({
+        item_type: 'application_windows',
+        app: 'Safari'
+      }, mockContext);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Invalid response');
+    });
+
+    it('should handle very large PID values', async () => {
+      const mockSwiftResponse: ApplicationListData = {
+        applications: [{
+          app_name: 'TestApp',
+          bundle_id: 'com.test.app',
+          pid: Number.MAX_SAFE_INTEGER,
+          is_active: false,
+          window_count: 0
+        }]
+      };
+      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+
+      const result = await listToolHandler({
+        item_type: 'running_applications'
+      }, mockContext);
+
+      expect(result.content[0].text).toContain(`PID: ${Number.MAX_SAFE_INTEGER}`);
+    });
+
+    it('should handle negative window count', async () => {
+      const mockSwiftResponse: ApplicationListData = {
+        applications: [{
+          app_name: 'BuggyApp',
+          bundle_id: 'com.buggy.app',
+          pid: 1234,
+          is_active: false,
+          window_count: -1 // Shouldn't happen but testing edge case
+        }]
+      };
+      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+
+      const result = await listToolHandler({
+        item_type: 'running_applications'
+      }, mockContext);
+
+      expect(result.content[0].text).toContain('Windows: -1');
+    });
+
+    it('should handle very long window titles', async () => {
+      const longTitle = 'Window '.repeat(100);
+      const mockSwiftResponse: WindowListData = {
+        target_application_info: { app_name: 'TestApp', pid: 1234 },
+        windows: [{
+          window_title: longTitle,
+          window_id: 12345
+        }]
+      };
+      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+
+      const result = await listToolHandler({
+        item_type: 'application_windows',
+        app: 'TestApp'
+      }, mockContext);
+
+      expect(result.content[0].text).toContain(longTitle);
+    });
+
+    it('should handle invalid version in package.json', async () => {
+      mockFsReadFile.mockResolvedValue('{ "not_version": "1.0.0" }');
+      mockGenerateServerStatusString.mockReturnValue('Peekaboo MCP Server v[unknown]\nStatus: Test');
+
+      const result = await listToolHandler({
+        item_type: 'server_status'
+      }, mockContext);
+
+      expect(mockGenerateServerStatusString).toHaveBeenCalledWith('[unknown]');
+      expect(result.content[0].text).toContain('[unknown]');
+    });
+
+    it('should handle malformed package.json', async () => {
+      mockFsReadFile.mockResolvedValue('{ invalid json }');
+
+      const result = await listToolHandler({
+        item_type: 'server_status'
+      }, mockContext);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Unexpected error');
+    });
+
+    it('should handle empty window details array', async () => {
+      const mockSwiftResponse: WindowListData = {
+        target_application_info: { app_name: 'TestApp', pid: 1234 },
+        windows: [{ window_title: 'Test Window' }]
+      };
+      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+
+      const result = await listToolHandler({
+        item_type: 'application_windows',
+        app: 'TestApp',
+        include_window_details: []
+      }, mockContext);
+
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        ['list', 'windows', '--app', 'TestApp'],
+        mockLogger
+      );
+      expect(result.content[0].text).toContain('"Test Window"');
+    });
+
+    it('should handle duplicate window detail options', async () => {
+      const input: ListToolInput = {
+        item_type: 'application_windows',
+        app: 'TestApp',
+        include_window_details: ['ids', 'ids', 'bounds', 'bounds'] // Duplicates
+      };
+      
+      const args = buildSwiftCliArgs(input);
+      expect(args).toEqual(['list', 'windows', '--app', 'TestApp', '--include-details', 'ids,ids,bounds,bounds']);
+    });
   });
 }); 

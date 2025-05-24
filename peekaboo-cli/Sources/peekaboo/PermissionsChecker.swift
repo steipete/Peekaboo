@@ -28,13 +28,13 @@ class PermissionsChecker {
         return AXIsProcessTrustedWithOptions(options as CFDictionary)
     }
     
-    static func requireScreenRecordingPermission() throws {
+    static func requireScreenRecordingPermission() throws(CaptureError) {
         if !checkScreenRecordingPermission() {
             throw CaptureError.capturePermissionDenied
         }
     }
     
-    static func requireAccessibilityPermission() throws {
+    static func requireAccessibilityPermission() throws(CaptureError) {
         if !checkAccessibilityPermission() {
             throw CaptureError.capturePermissionDenied
         }

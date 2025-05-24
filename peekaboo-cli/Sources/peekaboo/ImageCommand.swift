@@ -4,6 +4,20 @@ import AppKit
 import CoreGraphics
 import UniformTypeIdentifiers
 
+// Define the wrapper struct
+struct FileHandleTextOutputStream: TextOutputStream {
+    private let fileHandle: FileHandle
+
+    init(_ fileHandle: FileHandle) {
+        self.fileHandle = fileHandle
+    }
+
+    mutating func write(_ string: String) {
+        guard let data = string.data(using: .utf8) else { return }
+        fileHandle.write(data)
+    }
+}
+
 struct ImageCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "image",
@@ -80,7 +94,9 @@ struct ImageCommand: ParsableCommand {
                     details: "Image capture operation failed"
                 )
             } else {
-                print("Error: \(error.localizedDescription)", to: &standardError)
+                // Create an instance for standard error for this specific print call
+                var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
+                print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
             }
             throw ExitCode.failure
         }
@@ -93,7 +109,7 @@ struct ImageCommand: ParsableCommand {
         return app != nil ? .window : .screen
     }
     
-    private func captureAllScreens() throws -> [SavedFile] {
+    private func captureAllScreens() throws(CaptureError) -> [SavedFile] {
         var savedFiles: [SavedFile] = []
         
         var displayCount: UInt32 = 0
@@ -210,14 +226,14 @@ struct ImageCommand: ParsableCommand {
         return savedFiles
     }
     
-    private func captureDisplay(_ displayID: CGDirectDisplayID, to path: String) throws {
+    private func captureDisplay(_ displayID: CGDirectDisplayID, to path: String) throws(CaptureError) {
         guard let image = CGDisplayCreateImage(displayID) else {
             throw CaptureError.captureCreationFailed
         }
         try saveImage(image, to: path)
     }
     
-    private func captureWindow(_ window: WindowData, to path: String) throws {
+    private func captureWindow(_ window: WindowData, to path: String) throws(CaptureError) {
         let options: CGWindowImageOption = [.boundsIgnoreFraming, .shouldBeOpaque]
         
         guard let image = CGWindowListCreateImage(
@@ -232,7 +248,7 @@ struct ImageCommand: ParsableCommand {
         try saveImage(image, to: path)
     }
     
-    private func saveImage(_ image: CGImage, to path: String) throws {
+    private func saveImage(_ image: CGImage, to path: String) throws(CaptureError) {
         let url = URL(fileURLWithPath: path)
         
         let utType: UTType = format == .png ? .png : .jpeg
@@ -288,13 +304,4 @@ extension DateFormatter {
         formatter.dateFormat = "yyyyMMdd_HHmmss"
         return formatter
     }()
-}
-
-var standardError = FileHandle.standardError
-
-extension FileHandle: TextOutputStream {
-    public func write(_ string: String) {
-        guard let data = string.data(using: .utf8) else { return }
-        self.write(data)
-    }
 } 

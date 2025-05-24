@@ -42,11 +42,7 @@ Think of Peekaboo as supernatural contact lenses for your coding assistant. No m
 
 ### 🕯️ Quick Summoning Ritual
 
-Summon Peekaboo into your Claude Desktop realm:
-
-1. Open Claude Desktop settings
-2. Go to the Developer tab
-3. Edit the configuration file and add:
+Summon Peekaboo into your Agent realm:
 
 ```json
 {
@@ -56,7 +52,10 @@ Summon Peekaboo into your Claude Desktop realm:
       "args": [
         "-y",
         "@steipete/peekaboo-mcp@beta"
-      ]
+      ],
+      "env": {
+        "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest"
+      }
     }
   }
 }
@@ -70,7 +69,107 @@ That's it! Peekaboo will materialize from the digital ether, ready to haunt your
 
 #### Enchantment Variables
 
-Cast powerful spells upon Peekaboo using mystical environment variables:
+Cast powerful spells upon Peekaboo using mystical environment variables. When using `npx` or a similar runner, these might be configured in your MCP client's settings (like Claude Desktop's `mcpServers.peekaboo.env`).
+
+Example `env` block:
+```json
+{
+  "PEEKABOO_AI_PROVIDERS": "ollama/llava,openai/gpt-4-vision-preview",
+  "PEEKABOO_LOG_LEVEL": "debug",
+  "PEEKABOO_LOG_FILE": "/tmp/peekaboo-mcp.log",
+  "PEEKABOO_DEFAULT_SAVE_PATH": "~/Pictures/PeekabooCaptures",
+  "PEEKABOO_CONSOLE_LOGGING": "true",
+  "PEEKABOO_CLI_PATH": "/opt/custom/peekaboo"
+}
+```
+
+#### 🎭 Available Enchantments
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PEEKABOO_AI_PROVIDERS` | Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `"openai/gpt-4o,ollama/llava:7b"`). If a model is not specified for a provider (e.g., `"openai"`), a default model for that provider will be used. This setting determines which AI backends are available for the `analyze` tool. **Recommended for Ollama:** `"ollama/llava:latest"` for the best vision model. | `""` (none) |
+| `PEEKABOO_LOG_LEVEL` | Logging level (trace, debug, info, warn, error, fatal). | `info` |
+| `PEEKABOO_LOG_FILE` | Path to the server's log file. | `path.join(os.tmpdir(), 'peekaboo-mcp.log')` |
+| `PEEKABOO_DEFAULT_SAVE_PATH` | Default base absolute path for saving images captured by the `image` tool. If the `path` argument is provided to the `image` tool, it takes precedence. If neither `image.path` nor this environment variable is set, the Swift CLI saves to its default temporary directory. | (none, Swift CLI uses temp paths) |
+| `PEEKABOO_CONSOLE_LOGGING` | Boolean (`"true"`/`"false"`) for development console logs. | `"false"` |
+| `PEEKABOO_CLI_PATH` | Optional override for the Swift `peekaboo` CLI executable path. | (uses bundled CLI) |
+
+#### 🧙 AI Spirit Guide Configuration (`PEEKABOO_AI_PROVIDERS` In-Depth)
+
+The `PEEKABOO_AI_PROVIDERS` environment variable is your gateway to unlocking Peekaboo's analytical abilities. It should be a comma-separated string defining the AI providers and their default models. For example:
+
+`PEEKABOO_AI_PROVIDERS="ollama/llava:latest,openai/gpt-4-vision-preview,anthropic/claude-3-haiku-20240307"`
+
+Each entry follows the format `provider_name/model_identifier`.
+
+- **`provider_name`**: Currently supported values are `ollama` (for local Ollama instances) and `openai`. Support for `anthropic` is planned.
+- **`model_identifier`**: The specific model to use for that provider (e.g., `llava:latest`, `gpt-4-vision-preview`, `gpt-4o`).
+
+The `analyze` tool will use these configurations. If the `provider_config` argument in the `analyze` tool is set to `"auto"` (the default), Peekaboo will try providers from `PEEKABOO_AI_PROVIDERS` in the order they are listed, checking for necessary API keys (like `OPENAI_API_KEY`) or service availability (like Ollama running at `PEEKABOO_OLLAMA_BASE_URL`).
+
+You can override the model or pick a specific provider listed in `PEEKABOO_AI_PROVIDERS` using the `analyze` tool's `provider_config` argument. (The system will still verify its operational readiness, e.g., API key presence or service availability.)
+
+**Example JSON thinking for `PEEKABOO_AI_PROVIDERS` (this is NOT the ENV var format, just for understanding):**
+If you were thinking about this as a more structured configuration, the string `ollama/llava,openai/gpt-4-vision-preview` conceptually maps to something like:
+
+```json
+[
+  {
+    "provider": "ollama",
+    "default_model": "llava",
+    "config_needed": "PEEKABOO_OLLAMA_BASE_URL (defaults to http://localhost:11434)"
+  },
+  {
+    "provider": "openai",
+    "default_model": "gpt-4-vision-preview",
+    "config_needed": "OPENAI_API_KEY"
+  }
+]
+```
+Remember to set the actual `PEEKABOO_AI_PROVIDERS` environment variable as the comma-separated string.
+
+### 🦙 Summoning Ollama - The Local Vision Oracle
+
+Ollama provides a powerful local AI that can analyze your screenshots without sending data to the cloud. Here's how to summon this digital spirit:
+
+#### 📦 Installing Ollama
+
+**macOS (via Homebrew):**
+```bash
+brew install ollama
+```
+
+**macOS (Direct Download):**
+Visit [ollama.ai](https://ollama.ai) and download the macOS app.
+
+**Start the Ollama daemon:**
+```bash
+ollama serve
+```
+The daemon will run at `http://localhost:11434` by default.
+
+#### 🎭 Downloading the LLaVA Vision Model
+
+LLaVA (Large Language and Vision Assistant) is the recommended model for image analysis:
+
+```bash
+# Download the latest LLaVA model (recommended)
+ollama pull llava:latest
+
+# Alternative: Download a specific version
+ollama pull llava:7b-v1.6
+ollama pull llava:13b-v1.6  # Larger, more capable
+ollama pull llava:34b-v1.6  # Largest, most powerful (requires significant RAM)
+```
+
+**Model Size Guide:**
+- `llava:7b` - ~4.5GB download, ~8GB RAM required
+- `llava:13b` - ~8GB download, ~16GB RAM required  
+- `llava:34b` - ~20GB download, ~40GB RAM required
+
+#### 🔮 Configuring Peekaboo with Ollama
+
+Add Ollama to your Claude Desktop configuration:
 
 ```json
 {
@@ -82,48 +181,33 @@ Cast powerful spells upon Peekaboo using mystical environment variables:
         "@steipete/peekaboo-mcp@beta"
       ],
       "env": {
-        "AI_PROVIDERS": "[{\"type\":\"ollama\",\"baseUrl\":\"http://localhost:11434\",\"model\":\"llava\",\"enabled\":true}]",
-        "LOG_LEVEL": "info",
-        "LOG_FILE": "/tmp/peekaboo-mcp.log",
-        "DEFAULT_SAVE_PATH": "~/Pictures/Screenshots",
-        "CONSOLE_LOGGING": "true",
-        "CLI_PATH": "/usr/local/bin/peekaboo_custom"
+        "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest",
+        "PEEKABOO_OLLAMA_BASE_URL": "http://localhost:11434"
       }
     }
   }
 }
 ```
 
-#### 🎭 Available Enchantments
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AI_PROVIDERS` | JSON array of AI provider configurations | `[]` |
-| `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info` |
-| `LOG_FILE` | Path to the server's log file. | `path.join(os.tmpdir(), 'peekaboo-mcp.log')` |
-| `DEFAULT_SAVE_PATH` | Default base absolute path for saving images captured by `peekaboo.image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic. | (none, Swift CLI uses temp paths) |
-| `CONSOLE_LOGGING` | Boolean (`"true"`/`"false"`) for dev console logs. | `"false"` |
-| `CLI_PATH` | Optional override for Swift `peekaboo` CLI path. | (bundled CLI) |
-
-#### 🧙 AI Spirit Guide Configuration
-
-Summon AI spirit guides to divine the meaning of captured visions:
-
+**Multiple AI Providers (Ollama + OpenAI):**
 ```json
-[
-  {
-    "type": "ollama",
-    "baseUrl": "http://localhost:11434",
-    "model": "llava",
-    "enabled": true
-  },
-  {
-    "type": "openai",
-    "apiKey": "your-openai-api-key",
-    "model": "gpt-4-vision-preview",
-    "enabled": false
+{
+  "env": {
+    "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4-vision-preview",
+    "OPENAI_API_KEY": "your-api-key-here"
   }
-]
+}
+```
+
+#### 🧪 Testing Ollama Integration
+
+Verify Ollama is running and accessible:
+```bash
+# Check Ollama is running
+curl http://localhost:11434/api/tags
+
+# Test with Peekaboo directly
+./peekaboo analyze --image-path ~/Desktop/screenshot.png --question "What do you see?"
 ```
 
 ### 🕰️ Granting Mystical Permissions
@@ -187,23 +271,113 @@ peekaboo-mcp
 
 ### 🎙 Channeling Peekaboo
 
-Once the portal is open and Peekaboo lurks in the shadows:
+Once the portal is open and Peekaboo lurks in the shadows, your AI assistant can invoke its tools. Here's how it might look (these are conceptual MCP client calls):
 
-1. **🖼️ Capture Ghostly Visions:**
-   ```bash
-   peekaboo-mcp
-   # Whisper: "Capture the essence of my screen"
-   ```
+#### 1. 🖼️ `image`: Capture Ghostly Visions
 
-2. **💀 Reveal Hidden Spirits:**
-   ```bash
-   # Whisper: "Reveal all digital spirits dwelling here"
-   ```
+**To capture the entire main screen and save it:**
+```json
+{
+  "tool_name": "image",
+  "arguments": {
+    "mode": "screen",
+    "path": "~/Desktop/myscreen.png",
+    "format": "png"
+  }
+}
+```
+*Peekaboo whispers back details of the saved file(s).*
 
-3. **🔮 Divine the Captured Essence:**
-```bash
-   # Whisper: "Divine the visions upon my ethereal display"
-   ```
+**To capture the active window of Finder and return its data as Base64:**
+```json
+{
+  "tool_name": "image",
+  "arguments": {
+    "app": "Finder",
+    "mode": "window",
+    "return_data": true,
+    "format": "jpg"
+  }
+}
+```
+*Peekaboo sends back the image data directly, ready for AI eyes, along with info about where it might have been saved if a path was determined.*
+
+**To capture all windows of "Google Chrome" and bring it to the foreground first:**
+```json
+{
+  "tool_name": "image",
+  "arguments": {
+    "app": "Google Chrome",
+    "mode": "multi",
+    "capture_focus": "foreground",
+    "path": "~/Desktop/ChromeWindows/" // Files will be named and saved here
+  }
+}
+```
+
+#### 2. 👁️ `list`: Reveal Hidden Spirits
+
+**To list all running applications:**
+```json
+{
+  "tool_name": "list",
+  "arguments": {
+    "item_type": "running_applications"
+  }
+}
+```
+*Peekaboo reveals a list of all active digital entities, their PIDs, and more.*
+
+**To list all windows of the "Preview" app, including their bounds and IDs:**
+```json
+{
+  "tool_name": "list",
+  "arguments": {
+    "item_type": "application_windows",
+    "app": "Preview",
+    "include_window_details": ["bounds", "ids"]
+  }
+}
+```
+
+**To get the server's current status:**
+```json
+{
+  "tool_name": "list",
+  "arguments": {
+    "item_type": "server_status"
+  }
+}
+```
+
+#### 3. 🔮 `analyze`: Divine the Captured Essence
+
+**To ask a question about an image using the auto-configured AI provider:**
+```json
+{
+  "tool_name": "analyze",
+  "arguments": {
+    "image_path": "~/Desktop/myscreen.png",
+    "question": "What is the main color visible in the top-left quadrant?"
+  }
+}
+```
+*Peekaboo consults its AI spirit guides and returns their wisdom.*
+
+**To force using Ollama with a specific model for analysis:**
+```json
+{
+  "tool_name": "analyze",
+  "arguments": {
+    "image_path": "~/Desktop/some_diagram.jpg",
+    "question": "Explain this diagram.",
+    "provider_config": {
+      "type": "ollama",
+      "model": "llava:13b-v1.6"
+    }
+  }
+}
+```
 
 ### 🕸️ Exorcising Demons
 
@@ -211,15 +385,17 @@ Once the portal is open and Peekaboo lurks in the shadows:
 
 | Haunting | Exorcism |
 |-------|----------|
-| `Permission denied` errors | Grant Screen Recording permission in System Preferences |
-| `Swift CLI unavailable` | Rebuild Swift CLI: `cd swift-cli && swift build -c release` |
-| `AI analysis failed` | Check AI provider configuration and network connectivity |
-| `Command not found: peekaboo-mcp` | Run `npm link` or check global npm installation |
+| `Permission denied` errors during image capture | Grant **Screen Recording** permission in System Settings → Privacy & Security. Ensure the correct application (Terminal, Claude, VS Code, etc.) is added and checked. Restart the app after changing permissions. |
+| Window capture issues (wrong window, focus problems) | Grant **Accessibility** permission if using `capture_focus: "foreground"` or for more reliable window targeting. |
+| `Swift CLI unavailable` or `PEEKABOO_CLI_PATH` issues | Ensure the `peekaboo` binary is at the root of the NPM package, or if `PEEKABOO_CLI_PATH` is set, verify it points to a valid executable. You can test the Swift CLI directly: `path/to/peekaboo --version`. If missing or broken, rebuild: `cd swift-cli && swift build -c release` (then place binary appropriately or update `PEEKABOO_CLI_PATH`). |
+| `AI analysis failed` | Check your `PEEKABOO_AI_PROVIDERS` environment variable for correct format and valid provider/model pairs. Ensure API keys (e.g., `OPENAI_API_KEY`) are set if using cloud providers. Verify local services like Ollama are running (`PEEKABOO_OLLAMA_BASE_URL`). Check the server logs (`PEEKABOO_LOG_FILE` or console if `PEEKABOO_CONSOLE_LOGGING="true"`) for detailed error messages from the AI provider. |
+| `Command not found: peekaboo-mcp` | If installed globally, ensure your system's PATH includes the global npm binaries directory. If running from a local clone, use `node dist/index.js` or a configured npm script. For `npx`, ensure the package name `@steipete/peekaboo-mcp` is correct. |
+| General weirdness or unexpected behavior | Check the Peekaboo MCP server logs! The default location is `/tmp/peekaboo-mcp.log` (or what you set in `PEEKABOO_LOG_FILE`). Set `PEEKABOO_LOG_LEVEL=debug` for maximum detail. |
 
 **Ghost Hunter Mode:**
 ```bash
 # Unleash the ghost hunters
-LOG_LEVEL=debug peekaboo-mcp
+PEEKABOO_LOG_LEVEL=debug peekaboo-mcp
 
 # Divine the permission wards
 ./peekaboo list server_status --json-output
@@ -227,8 +403,8 @@ LOG_LEVEL=debug peekaboo-mcp
 
 **Summon the Spirit Guides:**
 - 📚 [Documentation](./docs/)
-- 🐛 [Issues](https://github.com/yourusername/peekaboo/issues)
-- 💬 [Discussions](https://github.com/yourusername/peekaboo/discussions)
+- 🐛 [Issues](https://github.com/steipete/peekaboo/issues)
+- 💬 [Discussions](https://github.com/steipete/peekaboo/discussions)
 
 ## 🧿 Alternative Summoning Rituals
 
@@ -273,8 +449,8 @@ If you ran `npm link` and `peekaboo-mcp` is in your PATH:
       "command": "peekaboo-mcp",
       "args": [],
       "env": {
-        "LOG_LEVEL": "debug",
-        "CONSOLE_LOGGING": "true"
+        "PEEKABOO_LOG_LEVEL": "debug",
+        "PEEKABOO_CONSOLE_LOGGING": "true"
       }
     }
   }
@@ -291,8 +467,8 @@ Alternatively, running directly with `node`:
         "/Users/steipete/Projects/Peekaboo/dist/index.js"
       ],
       "env": {
-        "LOG_LEVEL": "debug",
-        "CONSOLE_LOGGING": "true"
+        "PEEKABOO_LOG_LEVEL": "debug",
+        "PEEKABOO_CONSOLE_LOGGING": "true"
       }
     }
   }
@@ -322,7 +498,7 @@ For MCP clients other than Claude Desktop:
     "command": "node",
     "args": ["/path/to/peekaboo/dist/index.js"],
     "env": {
-      "AI_PROVIDERS": "[{\"type\":\"ollama\",\"baseUrl\":\"http://localhost:11434\",\"model\":\"llava\",\"enabled\":true}]"
+      "PEEKABOO_AI_PROVIDERS": "ollama/llava,openai/gpt-4-vision-preview"
     }
   }
 }
@@ -401,7 +577,7 @@ Once summoned, Peekaboo grants you three supernatural abilities:
 - **Life force monitoring**: Active/slumbering status, portal counts
 
 ### 🧿 Oracle Integration
-- **Oracle agnostic**: Channels Ollama, OpenAI, and other mystical seers
+- **Oracle agnostic**: Currently channels Ollama (via direct API calls) and OpenAI (via its official Node.js SDK). Support for other mystical seers like Anthropic is anticipated.
 - **Image analysis**: Natural language querying of captured content
 - **Configurable**: Environment-based provider selection
 
@@ -497,7 +673,7 @@ cd swift-cli && swift build
 ## 🕸️ Known Curses
 
 - **FileHandle warning**: Non-critical Swift warning about TextOutputStream conformance
-- **AI Provider Config**: Requires `AI_PROVIDERS` environment variable for analysis features
+- **AI Provider Config**: Requires `PEEKABOO_AI_PROVIDERS` environment variable for analysis features
 
 ## 🌀 Future Hauntings
 

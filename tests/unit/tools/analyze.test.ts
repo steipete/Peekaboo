@@ -270,5 +270,143 @@ describe('Analyze Tool', () => {
       expect(result.isError).toBe(true);
     });
 
+    it('should handle very long file paths', async () => {
+      const longPath = '/very/long/path/that/goes/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/and/on/image.png';
+      const result = await analyzeToolHandler({ ...validInput, image_path: longPath }, mockContext) as any;
+      expect(mockReadImageAsBase64).toHaveBeenCalledWith(longPath);
+    });
+
+    it('should handle special characters in file paths', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava';
+      mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
+      mockIsProviderAvailable.mockResolvedValue(true);
+      mockAnalyzeImageWithProvider.mockResolvedValue('Analysis complete');
+      
+      const specialPath = '/path/with spaces/and-special_chars/image (1).png';
+      const result = await analyzeToolHandler({ ...validInput, image_path: specialPath }, mockContext);
+      
+      expect(mockReadImageAsBase64).toHaveBeenCalledWith(specialPath);
+      expect(result.isError).toBeUndefined();
+    });
+
+    it('should handle empty question gracefully', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava';
+      mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
+      mockIsProviderAvailable.mockResolvedValue(true);
+      mockAnalyzeImageWithProvider.mockResolvedValue('General image description');
+      
+      const result = await analyzeToolHandler({ 
+        image_path: validInput.image_path,
+        question: ''
+      }, mockContext);
+      
+      expect(mockAnalyzeImageWithProvider).toHaveBeenCalledWith(
+        expect.any(Object),
+        validInput.image_path,
+        MOCK_IMAGE_BASE64,
+        '',
+        mockLogger
+      );
+      expect(result.isError).toBeUndefined();
+    });
+
+    it('should handle very long questions', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava';
+      mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
+      mockIsProviderAvailable.mockResolvedValue(true);
+      mockAnalyzeImageWithProvider.mockResolvedValue('Long answer');
+      
+      const longQuestion = 'What '.repeat(1000) + 'is in this image?';
+      const result = await analyzeToolHandler({ 
+        ...validInput,
+        question: longQuestion
+      }, mockContext);
+      
+      expect(mockAnalyzeImageWithProvider).toHaveBeenCalledWith(
+        expect.any(Object),
+        validInput.image_path,
+        MOCK_IMAGE_BASE64,
+        longQuestion,
+        mockLogger
+      );
+      expect(result.isError).toBeUndefined();
+    });
+
+    it('should handle mixed case file extensions', async () => {
+      const upperCasePath = '/path/to/image.PNG';
+      const mixedCasePath = '/path/to/image.JpG';
+      
+      const result1 = await analyzeToolHandler({ ...validInput, image_path: upperCasePath }, mockContext);
+      const result2 = await analyzeToolHandler({ ...validInput, image_path: mixedCasePath }, mockContext);
+      
+      // Should not return unsupported format error for valid extensions with different cases
+      expect(result1.content[0].text).not.toContain('Unsupported image format');
+      expect(result2.content[0].text).not.toContain('Unsupported image format');
+    });
+
+    it('should handle null or undefined in error messages', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava';
+      mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
+      mockIsProviderAvailable.mockResolvedValue(true);
+      mockAnalyzeImageWithProvider.mockRejectedValue(null);
+      
+      const result = await analyzeToolHandler(validInput, mockContext) as any;
+      expect(result.content[0].text).toContain('AI analysis failed');
+      expect(result.isError).toBe(true);
+    });
+
+    it('should handle provider returning empty string', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava';
+      mockParseAIProviders.mockReturnValue([{ provider: 'ollama', model: 'llava' }]);
+      mockIsProviderAvailable.mockResolvedValue(true);
+      mockAnalyzeImageWithProvider.mockResolvedValue('');
+      
+      const result = await analyzeToolHandler(validInput, mockContext);
+      expect(result.content[0].text).toBe('');
+      expect(result.analysis_text).toBe('');
+      expect(result.isError).toBeUndefined();
+    });
+
+    it('should handle multiple providers where all fail', async () => {
+      process.env.AI_PROVIDERS = 'ollama/llava,openai/gpt-4o,anthropic/claude-3';
+      mockParseAIProviders.mockReturnValue([
+        { provider: 'ollama', model: 'llava' },
+        { provider: 'openai', model: 'gpt-4o' },
+        { provider: 'anthropic', model: 'claude-3' }
+      ]);
+      mockIsProviderAvailable.mockResolvedValue(false); // All unavailable
+      
+      const result = await analyzeToolHandler(validInput, mockContext) as any;
+      expect(result.content[0].text).toContain('No configured AI providers are currently operational');
+      expect(mockIsProviderAvailable).toHaveBeenCalledTimes(3);
+    });
+
+    it('should validate file extension case-insensitively', async () => {
+      const validExtensions = ['.PNG', '.Png', '.pNg', '.JPEG', '.Jpg', '.JPG', '.WebP', '.WEBP'];
+      const invalidExtensions = ['.tiff', '.TIFF', '.Bmp', '.gif'];
+      
+      // Valid extensions should pass
+      for (const ext of validExtensions) {
+        const result = await analyzeToolHandler({ 
+          ...validInput, 
+          image_path: `/path/to/image${ext}` 
+        }, mockContext);
+        
+        // Should proceed to check AI_PROVIDERS (not return unsupported format)
+        expect(result.content[0].text).not.toContain('Unsupported image format');
+      }
+      
+      // Invalid extensions should fail
+      for (const ext of invalidExtensions) {
+        const result = await analyzeToolHandler({ 
+          ...validInput, 
+          image_path: `/path/to/image${ext}` 
+        }, mockContext);
+        
+        expect(result.content[0].text).toContain('Unsupported image format');
+        expect(result.isError).toBe(true);
+      }
+    });
+
   });
 }); 

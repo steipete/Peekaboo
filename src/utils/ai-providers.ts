@@ -42,7 +42,7 @@ export async function isProviderAvailable(provider: AIProvider, logger: Logger):
 
 async function checkOllamaAvailability(logger: Logger): Promise<boolean> {
   try {
-    const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+    const baseUrl = process.env.PEEKABOO_OLLAMA_BASE_URL || 'http://localhost:11434';
     const response = await fetch(`${baseUrl}/api/tags`);
     return response.ok;
   } catch (error) {
@@ -84,7 +84,7 @@ async function analyzeWithOllama(
   question: string,
   logger: Logger
 ): Promise<string> {
-  const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+  const baseUrl = process.env.PEEKABOO_OLLAMA_BASE_URL || 'http://localhost:11434';
   
   logger.debug({ model, baseUrl }, 'Analyzing image with Ollama');
   

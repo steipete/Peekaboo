@@ -74,7 +74,6 @@ export interface OllamaConfig {
   type: 'ollama';
   baseUrl: string;
   model: string;
-  enabled?: boolean;
   requestTimeout?: number;
   keepAlive?: string;
 }
@@ -83,7 +82,6 @@ export interface OpenAIConfig {
   type: 'openai';
   apiKey?: string; // Optional because it can be set via env
   model: string;
-  enabled?: boolean;
   maxTokens?: number;
   temperature?: number;
 } 

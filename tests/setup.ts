@@ -27,7 +27,7 @@ jest.setTimeout(10000);
 
 // Mock environment variables for testing
 process.env.NODE_ENV = 'test';
-process.env.AI_PROVIDERS = JSON.stringify([
+process.env.PEEKABOO_AI_PROVIDERS = JSON.stringify([
   {
     type: 'ollama',
     baseUrl: 'http://localhost:11434',

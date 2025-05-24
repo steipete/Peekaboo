@@ -38,8 +38,8 @@ initializeSwiftCliPath(packageRootDir);
 let hasSentInitialStatus = false;
 
 // Initialize logger
-const baseLogLevel = (process.env.LOG_LEVEL || 'info').toLowerCase();
-const logFile = process.env.LOG_FILE || path.join(os.tmpdir(), 'peekaboo-mcp.log');
+const baseLogLevel = (process.env.PEEKABOO_LOG_LEVEL || 'info').toLowerCase();
+const logFile = process.env.PEEKABOO_LOG_FILE || path.join(os.tmpdir(), 'peekaboo-mcp.log');
 
 const transportTargets = [];
 
@@ -54,7 +54,7 @@ transportTargets.push({
 });
 
 // Conditional console logging for development
-if (process.env.CONSOLE_LOGGING === 'true') {
+if (process.env.PEEKABOO_CONSOLE_LOGGING === 'true') {
   transportTargets.push({
     level: baseLogLevel, // Explicitly set level for this transport
     target: 'pino-pretty',

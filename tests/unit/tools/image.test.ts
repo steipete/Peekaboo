@@ -272,4 +272,320 @@ describe('Image Tool', () => {
       ]);
     });
   });
+
+  describe('Edge Cases and Error Handling', () => {
+    it('should handle window capture with window_specifier index', async () => {
+      const mockResponse = mockSwiftCli.captureImage('window');
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const result = await imageToolHandler({
+        app: 'Safari',
+        window_specifier: { index: 0 },
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.isError).toBeUndefined();
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(['--window-index', '0']),
+        mockLogger
+      );
+    });
+
+    it('should handle all supported image formats', async () => {
+      const formats: Array<'png' | 'jpg'> = ['png', 'jpg'];
+      
+      for (const format of formats) {
+        const mockResponse = mockSwiftCli.captureImage('screen');
+        mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+        
+        const result = await imageToolHandler({
+          format,
+          return_data: false,
+          capture_focus: 'background'
+        }, mockContext);
+        
+        expect(result.isError).toBeUndefined();
+        expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+          expect.arrayContaining(['--format', format]),
+          mockLogger
+        );
+      }
+    });
+
+    it('should handle window capture with window_specifier title', async () => {
+      const mockResponse = mockSwiftCli.captureImage('window');
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const result = await imageToolHandler({
+        app: 'Safari',
+        window_specifier: { title: 'Google' },
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.isError).toBeUndefined();
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(['--window-title', 'Google']),
+        mockLogger
+      );
+    });
+
+    it('should handle very long app names', async () => {
+      const longAppName = 'A'.repeat(256);
+      const mockResponse = mockSwiftCli.captureImage('window');
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const result = await imageToolHandler({
+        app: longAppName,
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.isError).toBeUndefined();
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(['--app', longAppName]),
+        mockLogger
+      );
+    });
+
+    it('should handle special characters in app names', async () => {
+      const specialAppName = 'App with Spaces & Special-Chars (1)';
+      const mockResponse = mockSwiftCli.captureImage('window');
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const result = await imageToolHandler({
+        app: specialAppName,
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.isError).toBeUndefined();
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(['--app', specialAppName]),
+        mockLogger
+      );
+    });
+
+    it('should handle paths with spaces and special characters', async () => {
+      const specialPath = '/Users/Test User/Documents/Screen Captures (2024)/';
+      const mockResponse = mockSwiftCli.captureImage('screen');
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const result = await imageToolHandler({
+        path: specialPath,
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.isError).toBeUndefined();
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(['--path', specialPath]),
+        mockLogger
+      );
+    });
+
+    it('should handle empty saved_files array', async () => {
+      const mockResponse = {
+        success: true,
+        data: { saved_files: [] }
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const result = await imageToolHandler({
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.content[0].text).toContain('Captured 0 images');
+      expect(result.saved_files).toEqual([]);
+    });
+
+    it('should handle malformed Swift CLI response', async () => {
+      const mockResponse = {
+        success: true,
+        data: null // Invalid data
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse as any);
+
+      const result = await imageToolHandler({
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Invalid response from image capture');
+    });
+
+    it('should handle multiple saved files', async () => {
+      const mockFiles: SavedFile[] = [
+        { path: '/tmp/screen1.png', mime_type: 'image/png', item_label: 'Screen 1' },
+        { path: '/tmp/screen2.png', mime_type: 'image/png', item_label: 'Screen 2' },
+        { path: '/tmp/screen3.png', mime_type: 'image/png', item_label: 'Screen 3' }
+      ];
+      const mockResponse = {
+        success: true,
+        data: { saved_files: mockFiles }
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const result = await imageToolHandler({
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.content[0].text).toContain('Captured 3 images');
+      expect(result.content[0].text).toContain('Screen 1');
+      expect(result.content[0].text).toContain('Screen 2');
+      expect(result.content[0].text).toContain('Screen 3');
+      expect(result.saved_files).toEqual(mockFiles);
+    });
+
+    it('should handle return_data with multiple files', async () => {
+      const mockFiles: SavedFile[] = [
+        { path: '/tmp/img1.png', mime_type: 'image/png', item_label: 'Image 1' },
+        { path: '/tmp/img2.jpg', mime_type: 'image/jpeg', item_label: 'Image 2' }
+      ];
+      const mockResponse = {
+        success: true,
+        data: { saved_files: mockFiles }
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+      mockReadImageAsBase64
+        .mockResolvedValueOnce('base64data1')
+        .mockResolvedValueOnce('base64data2');
+
+      const result = await imageToolHandler({
+        format: 'png',
+        return_data: true,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.content).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          type: 'image',
+          data: 'base64data1',
+          mimeType: 'image/png'
+        }),
+        expect.objectContaining({
+          type: 'image',
+          data: 'base64data2',
+          mimeType: 'image/jpeg'
+        })
+      ]));
+      expect(mockReadImageAsBase64).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle partial failures when reading multiple images', async () => {
+      const mockFiles: SavedFile[] = [
+        { path: '/tmp/img1.png', mime_type: 'image/png', item_label: 'Image 1' },
+        { path: '/tmp/img2.jpg', mime_type: 'image/jpeg', item_label: 'Image 2' }
+      ];
+      const mockResponse = {
+        success: true,
+        data: { saved_files: mockFiles }
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+      mockReadImageAsBase64
+        .mockResolvedValueOnce('base64data1')
+        .mockRejectedValueOnce(new Error('Read failed'));
+
+      const result = await imageToolHandler({
+        format: 'png',
+        return_data: true,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.content).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          type: 'image',
+          data: 'base64data1'
+        }),
+        expect.objectContaining({
+          type: 'text',
+          text: 'Warning: Could not read image data from /tmp/img2.jpg'
+        })
+      ]));
+    });
+
+    it('should handle Swift CLI timeout errors', async () => {
+      const mockResponse = {
+        success: false,
+        error: {
+          message: 'Command timed out after 30 seconds',
+          code: 'TIMEOUT'
+        }
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const result = await imageToolHandler({
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Command timed out');
+      expect(result._meta.backend_error_code).toBe('TIMEOUT');
+    });
+
+    it('should handle window_specifier with both title and index', async () => {
+      const mockResponse = mockSwiftCli.captureImage('window');
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const args = buildSwiftCliArgs({
+        app: 'Safari',
+        window_specifier: { title: 'Google', index: 1 },
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      });
+
+      // Should only include the first one (title takes precedence in implementation)
+      expect(args).toContain('--window-title');
+      expect(args).toContain('Google');
+      expect(args).not.toContain('--window-index');
+    });
+
+    it('should handle negative window index', async () => {
+      const args = buildSwiftCliArgs({
+        app: 'Safari',
+        window_specifier: { index: -1 },
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      });
+
+      expect(args).toContain('--window-index');
+      expect(args).toContain('-1');
+    });
+
+    it('should handle very large window index', async () => {
+      const largeWindowIndex = 999999;
+      const mockResponse = mockSwiftCli.captureImage('window');
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const result = await imageToolHandler({
+        app: 'Safari',
+        window_specifier: { index: largeWindowIndex },
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.isError).toBeUndefined();
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(['--window-index', largeWindowIndex.toString()]),
+        mockLogger
+      );
+    });
+  });
 }); 

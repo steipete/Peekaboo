@@ -9,7 +9,7 @@ struct AppMatch {
 
 class ApplicationFinder {
     
-    static func findApplication(identifier: String) throws -> NSRunningApplication {
+    static func findApplication(identifier: String) throws(ApplicationError) -> NSRunningApplication {
         Logger.shared.debug("Searching for application: \(identifier)")
         
         let runningApps = NSWorkspace.shared.runningApplications

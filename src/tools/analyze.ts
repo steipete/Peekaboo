@@ -14,9 +14,9 @@ export const analyzeToolSchema = z.object({
   question: z.string().describe("Required. Question for the AI about the image."),
   provider_config: z.object({
     type: z.enum(["auto", "ollama", "openai"]).default("auto")
-      .describe("AI provider. 'auto' uses server's AI_PROVIDERS ENV preference. Specific provider must be enabled in server's AI_PROVIDERS."),
-    model: z.string().optional().describe("Optional. Model name. If omitted, uses model from server's AI_PROVIDERS for chosen provider, or an internal default for that provider.")
-  }).optional().describe("Optional. Explicit provider/model. Validated against server's AI_PROVIDERS.")
+      .describe("AI provider. 'auto' uses server's PEEKABOO_AI_PROVIDERS ENV preference. Specific provider must be enabled in server's PEEKABOO_AI_PROVIDERS."),
+    model: z.string().optional().describe("Optional. Model name. If omitted, uses model from server's PEEKABOO_AI_PROVIDERS for chosen provider, or an internal default for that provider.")
+  }).optional().describe("Optional. Explicit provider/model. Validated against server's PEEKABOO_AI_PROVIDERS.")
 });
 
 export type AnalyzeToolInput = z.infer<typeof analyzeToolSchema>;
@@ -43,13 +43,13 @@ export async function analyzeToolHandler(
     }
 
     // Check AI providers configuration
-    const aiProvidersEnv = process.env.AI_PROVIDERS;
+    const aiProvidersEnv = process.env.PEEKABOO_AI_PROVIDERS;
     if (!aiProvidersEnv || !aiProvidersEnv.trim()) {
-      logger.error('AI_PROVIDERS environment variable not configured');
+      logger.error('PEEKABOO_AI_PROVIDERS environment variable not configured');
       return {
         content: [{
           type: 'text',
-          text: 'AI analysis not configured on this server. Set the AI_PROVIDERS environment variable.'
+          text: 'AI analysis not configured on this server. Set the PEEKABOO_AI_PROVIDERS environment variable.'
         }],
         isError: true
       };
@@ -61,7 +61,7 @@ export async function analyzeToolHandler(
       return {
         content: [{
           type: 'text',
-          text: 'No valid AI providers found in AI_PROVIDERS configuration.'
+          text: 'No valid AI providers found in PEEKABOO_AI_PROVIDERS configuration.'
         }],
         isError: true
       };
@@ -159,7 +159,7 @@ export async function determineProviderAndModel(
     );
 
     if (!configuredProvider) {
-      throw new Error(`Provider '${requestedProviderType}' is not enabled in server's AI_PROVIDERS configuration.`);
+      throw new Error(`Provider '${requestedProviderType}' is not enabled in server's PEEKABOO_AI_PROVIDERS configuration.`);
     }
 
     // Check if provider is available

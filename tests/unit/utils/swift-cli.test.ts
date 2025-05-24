@@ -28,7 +28,7 @@ describe('Swift CLI Utility', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env.PEEKABOO_CLI_PATH = '';
+    process.env.CLI_PATH = '';
     // Reset the internal resolvedCliPath by re-importing or having a reset function (not available here)
     // For now, we will rely on initializeSwiftCliPath overwriting it or testing its logic flow.
     // This is a limitation of testing module-scoped variables without a reset mechanism.
@@ -36,18 +36,18 @@ describe('Swift CLI Utility', () => {
   });
 
   describe('executeSwiftCli with path resolution', () => {
-    it('should use CLI path from PEEKABOO_CLI_PATH if set and valid', async () => {
-      process.env.PEEKABOO_CLI_PATH = CUSTOM_CLI_PATH;
+    it('should use CLI path from CLI_PATH if set and valid', async () => {
+      process.env.CLI_PATH = CUSTOM_CLI_PATH;
       mockExistsSync.mockReturnValue(true); // Simulate path exists
-      initializeSwiftCliPath(MOCK_PACKAGE_ROOT); // Root dir is secondary if PEEKABOO_CLI_PATH is valid
+      initializeSwiftCliPath(MOCK_PACKAGE_ROOT); // Root dir is secondary if CLI_PATH is valid
       
       mockSpawn.mockReturnValue({ stdout: { on: jest.fn() }, stderr: { on: jest.fn() }, on: jest.fn((e,c) => {if(e==='close')c(0)}) });
       await executeSwiftCli(['test'], mockLogger);
       expect(mockSpawn).toHaveBeenCalledWith(CUSTOM_CLI_PATH, ['test', '--json-output']);
     });
 
-    it('should use bundled path if PEEKABOO_CLI_PATH is set but invalid', async () => {
-      process.env.PEEKABOO_CLI_PATH = '/invalid/custom/path';
+    it('should use bundled path if CLI_PATH is set but invalid', async () => {
+      process.env.CLI_PATH = '/invalid/path/peekaboo';
       mockExistsSync.mockReturnValue(false); // Simulate path does NOT exist
       initializeSwiftCliPath(MOCK_PACKAGE_ROOT);
       
@@ -59,8 +59,8 @@ describe('Swift CLI Utility', () => {
       // expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('PEEKABOO_CLI_PATH is set to '/invalid/custom/path', but this path does not exist'));
     });
 
-    it('should use bundled path derived from packageRootDir if PEEKABOO_CLI_PATH is not set', async () => {
-      // PEEKABOO_CLI_PATH is empty by default from beforeEach
+    it('should use bundled path derived from packageRootDir if CLI_PATH is not set', async () => {
+      // CLI_PATH is empty by default from beforeEach
       initializeSwiftCliPath(MOCK_PACKAGE_ROOT);
       
       mockSpawn.mockReturnValue({ stdout: { on: jest.fn() }, stderr: { on: jest.fn() }, on: jest.fn((e,c) => {if(e==='close')c(0)}) });
@@ -69,7 +69,7 @@ describe('Swift CLI Utility', () => {
     });
 
     // Test for the import.meta.url fallback is hard because it would only trigger if 
-    // initializeSwiftCliPath was never called or called with undefined rootDir, AND PEEKABOO_CLI_PATH is not set.
+    // initializeSwiftCliPath was never called or called with undefined rootDir, AND CLI_PATH is not set.
     // Such a scenario would also mean the console.warn/error for uninitialized path would trigger.
     // It's better to ensure tests always initialize appropriately.
   });
@@ -79,8 +79,8 @@ describe('Swift CLI Utility', () => {
   describe('executeSwiftCli command execution and output parsing', () => {
     beforeEach(() => {
       // Ensure a default path is initialized for these tests
-      // PEEKABOO_CLI_PATH is empty, so it will use MOCK_PACKAGE_ROOT
-      mockExistsSync.mockReturnValue(false); // Ensure PEEKABOO_CLI_PATH (if accidentally set) is seen as invalid
+      // CLI_PATH is empty, so it will use MOCK_PACKAGE_ROOT
+      mockExistsSync.mockReturnValue(false); // Ensure CLI_PATH (if accidentally set) is seen as invalid
       initializeSwiftCliPath(MOCK_PACKAGE_ROOT);
     });
 

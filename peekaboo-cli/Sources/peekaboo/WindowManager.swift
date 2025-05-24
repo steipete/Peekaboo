@@ -4,7 +4,7 @@ import AppKit
 
 class WindowManager {
     
-    static func getWindowsForApp(pid: pid_t, includeOffScreen: Bool = false) throws -> [WindowData] {
+    static func getWindowsForApp(pid: pid_t, includeOffScreen: Bool = false) throws(WindowError) -> [WindowData] {
         Logger.shared.debug("Getting windows for PID: \(pid)")
         
         let options: CGWindowListOption = includeOffScreen 
@@ -70,7 +70,7 @@ class WindowManager {
         includeOffScreen: Bool = false,
         includeBounds: Bool = false,
         includeIDs: Bool = false
-    ) throws -> [WindowInfo] {
+    ) throws(WindowError) -> [WindowInfo] {
         
         let windowDataArray = try getWindowsForApp(pid: pid, includeOffScreen: includeOffScreen)
         
@@ -93,7 +93,7 @@ class WindowManager {
 
 // Extension to add the getWindowsForApp function to ImageCommand
 extension ImageCommand {
-    func getWindowsForApp(pid: pid_t) throws -> [WindowData] {
+    func getWindowsForApp(pid: pid_t) throws(WindowError) -> [WindowData] {
         return try WindowManager.getWindowsForApp(pid: pid)
     }
 }

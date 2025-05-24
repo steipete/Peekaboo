@@ -41,7 +41,7 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
         *   `build`: Command to compile TypeScript (e.g., `tsc`).
         *   `start`: `node dist/index.js`.
         *   `prepublishOnly`: `npm run build`.
-    *   `dependencies`: `@modelcontextprotocol/sdk` (latest stable), `zod` (for input validation), `pino` (for logging), relevant cloud AI SDKs (e.g., `openai`, `@anthropic-ai/sdk`).
+    *   `dependencies`: `@modelcontextprotocol/sdk` (latest stable), `zod` (for input validation), `pino` (for logging), `openai` (for OpenAI API interaction). Support for other AI providers like Anthropic (e.g., using `@anthropic-ai/sdk`) is planned.
     *   `devDependencies`: `typescript`, `@types/node`, `pino-pretty` (for optional development console logging).
 4.  **Distribution:** Published to NPM. Installable via `npm i -g peekaboo-mcp` or usable with `npx peekaboo-mcp`.
 5.  **Swift CLI Location Strategy:**
@@ -56,23 +56,23 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
 4.  **Logging (Pino):**
     *   Instantiate `pino` logger.
     *   **Default Transport:** File transport to `path.join(os.tmpdir(), 'peekaboo-mcp.log')`. Use `mkdir: true` option for destination.
-    *   **Log Level:** Controlled by ENV VAR `LOG_LEVEL` (standard Pino levels: `trace`, `debug`, `info`, `warn`, `error`, `fatal`). Default: `"info"`.
+    *   **Log Level:** Controlled by ENV VAR `PEEKABOO_LOG_LEVEL` (standard Pino levels: `trace`, `debug`, `info`, `warn`, `error`, `fatal`). Default: `"info"`.
     *   **Conditional Console Logging (Development Only):** If ENV VAR `PEEKABOO_MCP_CONSOLE_LOGGING="true"`, add a second Pino transport targeting `process.stderr.fd` (potentially using `pino-pretty` for human-readable output).
     *   **Strict Rule:** All server operational logging must use the configured Pino instance. No direct `console.log/warn/error` that might output to `stdout`.
 5.  **Environment Variables (Read by Server):**
-    *   `AI_PROVIDERS`: Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `"openai/gpt-4o,ollama/qwen2.5vl:7b"`). If unset/empty, `analyze` tool reports AI not configured.
+    *   `PEEKABOO_AI_PROVIDERS`: Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `"openai/gpt-4o,ollama/qwen2.5vl:7b"`). Currently, recognized `provider_name` values are `"openai"` and `"ollama"`. Support for `"anthropic"` is planned. If unset/empty, `analyze` tool reports AI not configured.
     *   `OPENAI_API_KEY`: API key for OpenAI.
-    *   `ANTHROPIC_API_KEY`: (Example for future) API key for Anthropic.
+    *   `ANTHROPIC_API_KEY`: API key for Anthropic (used for future planned support).
     *   (Other cloud provider API keys as standard ENV VAR names).
-    *   `OLLAMA_BASE_URL`: Base URL for local Ollama instance. Default: `"http://localhost:11434"`.
-    *   `LOG_LEVEL`: For Pino logger. Default: `"info"`.
-    *   `LOG_FILE`: Path to the server's log file. Default: `path.join(os.tmpdir(), 'peekaboo-mcp.log')`.
-    *   `DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
-    *   `CONSOLE_LOGGING`: Boolean (`"true"`/`"false"`) for dev console logs. Default: `"false"`.
-    *   `CLI_PATH`: Optional override for Swift `peekaboo` CLI path.
+    *   `PEEKABOO_OLLAMA_BASE_URL`: Base URL for local Ollama instance. Default: `"http://localhost:11434"`.
+    *   `PEEKABOO_LOG_LEVEL`: For Pino logger. Default: `"info"`.
+    *   `PEEKABOO_LOG_FILE`: Path to the server's log file. Default: `path.join(os.tmpdir(), 'peekaboo-mcp.log')`.
+    *   `PEEKABOO_DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
+    *   `PEEKABOO_CONSOLE_LOGGING`: Boolean (`"true"`/`"false"`) for dev console logs. Default: `"false"`.
+    *   `PEEKABOO_CLI_PATH`: Optional override for Swift `peekaboo` CLI path.
 6.  **Initial Status Reporting Logic:**
     *   A server-instance-level boolean flag: `let hasSentInitialStatus = false;`.
-    *   A function `generateServerStatusString()`: Creates a formatted string: `"\n\n--- Peekaboo MCP Server Status ---\nName: PeekabooMCP\nVersion: <server_version>\nConfigured AI Providers (from AI_PROVIDERS ENV): <parsed list or 'None Configured. Set AI_PROVIDERS ENV.'>\n---"`.
+    *   A function `generateServerStatusString()`: Creates a formatted string: `"\n\n--- Peekaboo MCP Server Status ---\nName: PeekabooMCP\nVersion: <server_version>\nConfigured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None Configured. Set PEEKABOO_AI_PROVIDERS ENV.'>\n---"`.
     *   Response Augmentation: In the function that sends a `ToolResponse` back to the MCP client, if the response is for a successful tool call (not `initialize`/`initialized` or `list` with `item_type: "server_status"`) AND `hasSentInitialStatus` is `false`:
         *   Append `generateServerStatusString()` to the first `TextContentItem` in `ToolResponse.content`. If no text item exists, prepend a new one.
         *   Set `hasSentInitialStatus = true`.
@@ -118,7 +118,7 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     ```typescript
     z.object({
       app: z.string().optional().describe("Optional. Target application: name, bundle ID, or partial name. If omitted, captures screen(s). Uses fuzzy matching."),
-      path: z.string().optional().describe("Optional. Base absolute path for saving. For 'screen' or 'multi' mode, display/window info is appended by backend. If omitted, the server checks the DEFAULT_SAVE_PATH environment variable. If neither is set, the Swift CLI uses its default temporary paths. If 'return_data' true, images saved AND returned if a path is determined (either from input or ENV)."),
+      path: z.string().optional().describe("Optional. Base absolute path for saving. For 'screen' or 'multi' mode, display/window info is appended by backend. If omitted, the server checks the PEEKABOO_DEFAULT_SAVE_PATH environment variable. If neither is set, the Swift CLI uses its default temporary paths. If 'return_data' true, images saved AND returned if a path is determined (either from input or ENV)."),
       mode: z.enum(["screen", "window", "multi"]).optional().describe("Capture mode. Defaults to 'window' if 'app' is provided, otherwise 'screen'."),
       window_specifier: z.union([
         z.object({ title: z.string().describe("Capture window by title.") }),
@@ -148,35 +148,36 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
       image_path: z.string().describe("Required. Absolute path to image file (.png, .jpg, .webp) to be analyzed."),
       question: z.string().describe("Required. Question for the AI about the image."),
       provider_config: z.object({
-        type: z.enum(["auto", "ollama", "openai" /* future: "anthropic_api" */]).default("auto")
-          .describe("AI provider. 'auto' uses server's AI_PROVIDERS ENV preference. Specific provider must be enabled in server's AI_PROVIDERS."),
+        type: z.enum(["auto", "ollama", "openai" /* "anthropic" is planned */])
+          .default("auto")
+          .describe("AI provider. 'auto' uses server's PEEKABOO_AI_PROVIDERS ENV preference. Specific provider must be one of the currently implemented options ('ollama', 'openai') and enabled in server's PEEKABOO_AI_PROVIDERS."),
         model: z.string().optional().describe("Optional. Model name. If omitted, uses model from server's AI_PROVIDERS for chosen provider, or an internal default for that provider.")
-      }).optional().describe("Optional. Explicit provider/model. Validated against server's AI_PROVIDERS.")
+      }).optional().describe("Optional. Explicit provider/model. Validated against server's PEEKABOO_AI_PROVIDERS.")
     })
     ```
 *   **Node.js Handler Logic:**
     1.  Validate input. Server pre-checks `image_path` extension (`.png`, `.jpg`, `.jpeg`, `.webp`); return MCP error if not recognized.
-    2.  Read `process.env.AI_PROVIDERS`. If unset/empty, return MCP error "AI analysis not configured on this server. Set the AI_PROVIDERS environment variable." Log this with Pino (`error` level).
-    3.  Parse `AI_PROVIDERS` into `configuredItems = [{provider: string, model: string}]`.
+    2.  Read `process.env.PEEKABOO_AI_PROVIDERS`. If unset/empty, return MCP error "AI analysis not configured on this server. Set the PEEKABOO_AI_PROVIDERS environment variable." Log this with Pino (`error` level).
+    3.  Parse `PEEKABOO_AI_PROVIDERS` into `configuredItems = [{provider: string, model: string}]`.
     4.  **Determine Provider & Model:**
         *   `requestedProviderType = input.provider_config?.type || "auto"`.
         *   `requestedModelName = input.provider_config?.model`.
         *   `chosenProvider: string | null = null`, `chosenModel: string | null = null`.
         *   If `requestedProviderType !== "auto"`:
             *   Find entry in `configuredItems` where `provider === requestedProviderType`.
-            *   If not found, MCP error: "Provider '{requestedProviderType}' is not enabled in server's AI_PROVIDERS configuration."
+            *   If not found, MCP error: "Provider '{requestedProviderType}' is not enabled in server's PEEKABOO_AI_PROVIDERS configuration."
             *   `chosenProvider = requestedProviderType`.
             *   `chosenModel = requestedModelName || model_from_matching_configuredItem || hardcoded_default_for_chosenProvider`.
         *   Else (`requestedProviderType === "auto"`):
             *   Iterate `configuredItems` in order. For each `{provider, modelFromEnv}`:
                 *   Check availability (Ollama up? Cloud API key for `provider` set in `process.env`?).
                 *   If available: `chosenProvider = provider`, `chosenModel = requestedModelName || modelFromEnv`. Break.
-            *   If no provider found after iteration, MCP error: "No configured AI providers in AI_PROVIDERS are currently operational."
+            *   If no provider found after iteration, MCP error: "No configured AI providers in PEEKABOO_AI_PROVIDERS are currently operational."
     5.  **Execute Analysis (Node.js handles all AI calls):**
         *   Read `input.image_path` into a `Buffer`. Base64 encode.
-        *   If `chosenProvider` is "ollama": HTTP POST to Ollama (using `process.env.OLLAMA_BASE_URL`) with Base64 image, `input.question`, `chosenModel`. Handle Ollama API errors.
-        *   If `chosenProvider` is "openai": Use OpenAI SDK/HTTP with Base64 image, `input.question`, `chosenModel`, and API key from `process.env.OPENAI_API_KEY`. Handle OpenAI API errors.
-        *   (Similar for other cloud providers).
+        *   If `chosenProvider` is "ollama": Make direct HTTP POST calls to the Ollama API (e.g., `/api/generate`) using `process.env.PEEKABOO_OLLAMA_BASE_URL`. Handle Ollama API errors.
+        *   If `chosenProvider` is "openai": Use the official `openai` Node.js SDK with Base64 image, `input.question`, `chosenModel`, and API key from `process.env.OPENAI_API_KEY`. Handle OpenAI API errors.
+        *   If `chosenProvider` is "anthropic": (Currently not implemented) This would involve using the Anthropic SDK and API key from `process.env.ANTHROPIC_API_KEY`. For now, attempting to use Anthropic will result in an error.
     6.  Construct MCP `ToolResponse`.
 *   **MCP Output Schema (`ToolResponse`):**
     *   `content`: `[{ type: "text", text: "<AI's analysis/answer>" }]`
@@ -401,7 +402,7 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
               "command": "npx",
               "args": ["peekaboo-mcp"],
               "env": {
-                "AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
+                "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
                 "OPENAI_API_KEY": "sk-yourkeyhere"
                 /* other ENV VARS */
               }
@@ -413,15 +414,65 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     *   **Screen Recording:** Essential for ALL `image` functionalities and for `list` if it needs to read window titles (which it does via `CGWindowListCopyWindowInfo`). Provide clear, step-by-step instructions for System Settings. Include `open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"` command.
     *   **Accessibility:** Required *only* if `image` with `capture_focus: "foreground"` needs to perform specific window raising actions (beyond simple app activation) via the Accessibility API. Explain this nuance. Include `open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"` command.
 6.  **Environment Variables (for Node.js `peekaboo-mcp` server):**
-    *   `AI_PROVIDERS`: Crucial for `analyze`. Explain format (`provider/model,provider/model`), effect, and that `analyze` reports "not configured" if unset. List recognized `provider` names ("ollama", "openai").
+    *   `PEEKABOO_AI_PROVIDERS`: Crucial for `analyze`. Explain format (`provider/model,provider/model`), effect, and that `analyze` reports "not configured" if unset. List recognized `provider` names ("ollama", "openai").
     *   `OPENAI_API_KEY` (and similar for other cloud providers): How they are used.
-    *   `OLLAMA_BASE_URL`: Default and purpose.
-    *   `LOG_LEVEL`: For `pino` logger. Values and default.
-    *   `LOG_FILE`: Path to the server's log file. Default: `path.join(os.tmpdir(), 'peekaboo-mcp.log')`.
-    *   `DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
-    *   `CONSOLE_LOGGING`: For development.
-    *   `CLI_PATH`: For overriding bundled Swift CLI.
+    *   `PEEKABOO_OLLAMA_BASE_URL`: Default and purpose.
+    *   `PEEKABOO_LOG_LEVEL`: For `pino` logger. Values and default.
+    *   `PEEKABOO_LOG_FILE`: Path to the server's log file. Default: `path.join(os.tmpdir(), 'peekaboo-mcp.log')`.
+    *   `PEEKABOO_DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
+    *   `PEEKABOO_CONSOLE_LOGGING`: For development.
+    *   `PEEKABOO_CLI_PATH`: For overriding bundled Swift CLI.
 7.  **MCP Tool Overview:**
     *   Brief descriptions of `image`, `analyze`, `list` and their primary purpose.
 8.  **Link to Detailed Tool Specification:** A separate `TOOL_API_REFERENCE.md` (generated from or summarizing the Zod schemas and output structures in this document) for users/AI developers needing full schema details.
 9.  **Troubleshooting / Support:** Link to GitHub issues.
+
+---
+
+### V. Testing Strategy
+
+Comprehensive testing is crucial for ensuring the reliability and correctness of Peekaboo. The strategy includes unit tests for individual modules, integration tests for component interactions, and end-to-end tests for validating complete user flows.
+
+#### A. Unit Tests
+
+*   **Node.js Server (`src/`)**: Unit tests are written using Jest for utility functions, individual tool handlers (mocking Swift CLI execution and AI provider calls), and schema validation logic. Focus is on isolating and testing specific pieces of logic.
+*   **Swift CLI (`swift-cli/`)**: Swift XCTests are used to test individual functions, argument parsing, JSON serialization/deserialization, and core macOS interaction logic (potentially mocking system calls where feasible or testing against known system states).
+
+#### B. Integration Tests
+
+*   **Node.js Server & Swift CLI**: Tests that verify the correct interaction between the Node.js server and the Swift CLI. This involves the Node.js server actually spawning the Swift CLI process and validating that arguments are passed correctly and JSON responses are parsed as expected. These tests might use a real (but controlled) Swift CLI binary.
+*   **Node.js Server & AI Providers**: Tests that verify the interaction with AI providers. These would typically involve mocking the AI provider SDKs/APIs to simulate various responses (success, error, specific content) and ensure the Node.js server handles them correctly.
+
+#### C. End-to-End (E2E) Tests
+
+E2E tests validate the entire system flow from the perspective of an MCP client. They ensure all components work together as expected.
+
+1.  **Setup:**
+    *   The test runner will start an instance of the `peekaboo-mcp` server.
+    *   The environment will be configured appropriately (e.g., `PEEKABOO_AI_PROVIDERS` pointing to mock services or controlled real services, `PEEKABOO_LOG_LEVEL` set for test visibility).
+    *   A mock Swift CLI could be used for some scenarios to control its output precisely, or the real Swift CLI for full integration.
+
+2.  **Test Scenarios (Examples):**
+    *   **Tool Discovery:** Client sends `ListToolsRequest`, verifies the correct tools (`image`, `analyze`, `list`) and their schemas are returned.
+    *   **`image` tool - Screen Capture:**
+        *   Call `image` to capture the entire screen and save to a file. Verify the file is created and is a valid image.
+        *   Call `image` to capture a specific (test) application's window, save to file, and return data. Verify file creation, image data in response, and correct metadata.
+        *   Test different modes (`screen`, `window`, `multi`) and options (`format`, `capture_focus`).
+        *   Test error conditions: invalid app name, permissions not granted (if testable in CI environment or via mocks).
+    *   **`analyze` tool - Image Analysis:**
+        *   Provide a test image and a question. Configure `PEEKABOO_AI_PROVIDERS` to use a mock AI service.
+        *   Call `analyze`, verify the mock AI service was called with the correct parameters (image data, question, model).
+        *   Verify the mock AI service's response is correctly relayed in the MCP `ToolResponse`.
+        *   Test with different AI provider configurations (auto, specific). Test error handling if AI provider is unavailable or returns an error.
+    *   **`list` tool - Listing System Items:**
+        *   Call `list` for `running_applications`. Verify the structure of the response (may need to mock Swift CLI or run in a controlled environment to get predictable app lists).
+        *   Call `list` for `application_windows` of a known (test) application. Verify window details.
+        *   Call `list` for `server_status`. Verify the server status string is returned.
+        *   Test error conditions: app not found for `application_windows`.
+
+3.  **Tooling:**
+    *   E2E tests can be written using a test runner like Jest, combined with a library or custom code to simulate an MCP client (i.e., send JSON-RPC requests and receive responses over stdio if testing against a server started with `StdioServerTransport`).
+    *   Assertions will be made on the MCP `ToolResponse` objects and any side effects (e.g., files created, logs written).
+
+4.  **Execution:**
+    *   E2E tests are typically run as a separate suite, often in a CI/CD pipeline, as they can be slower and require more setup than unit or integration tests.
