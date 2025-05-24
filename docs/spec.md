@@ -436,7 +436,7 @@ Comprehensive testing is crucial for ensuring the reliability and correctness of
 #### A. Unit Tests
 
 *   **Node.js Server (`src/`)**: Unit tests are written using Jest for utility functions, individual tool handlers (mocking Swift CLI execution and AI provider calls), and schema validation logic. Focus is on isolating and testing specific pieces of logic.
-*   **Swift CLI (`swift-cli/`)**: Swift XCTests are used to test individual functions, argument parsing, JSON serialization/deserialization, and core macOS interaction logic (potentially mocking system calls where feasible or testing against known system states).
+*   **Swift CLI (`peekaboo-cli/`)**: Swift XCTests are used to test individual functions, argument parsing, JSON serialization/deserialization, and core macOS interaction logic (potentially mocking system calls where feasible or testing against known system states).
 
 #### B. Integration Tests
 
