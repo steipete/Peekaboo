@@ -534,7 +534,7 @@ function checkSwiftCLIIntegration() {
   
   // Test 1: Invalid command
   const invalidCmd = exec('./peekaboo invalid-command 2>&1', { allowFailure: true });
-  if (!invalidCmd || !invalidCmd.includes('Error') && !invalidCmd.includes('USAGE')) {
+  if (!invalidCmd || (!invalidCmd.includes('Error:') && !invalidCmd.includes('Unexpected argument'))) {
     logError('Swift CLI should show error for invalid command');
     return false;
   }
