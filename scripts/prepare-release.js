@@ -235,13 +235,13 @@ function checkSwift() {
   }
   
   try {
-    const appsData = JSON.parse(appsOutput);
-    if (!appsData.applications || !Array.isArray(appsData.applications)) {
+    const response = JSON.parse(appsOutput);
+    if (!response.success || !response.data || !response.data.applications || !Array.isArray(response.data.applications)) {
       logError('Apps list has invalid structure');
       return false;
     }
     // Should always have at least some apps running
-    if (appsData.applications.length === 0) {
+    if (response.data.applications.length === 0) {
       logError('No running applications found');
       return false;
     }
@@ -258,13 +258,13 @@ function checkSwift() {
   }
   
   try {
-    const windowsData = JSON.parse(windowsOutput);
-    if (!windowsData.windows || !Array.isArray(windowsData.windows)) {
+    const response = JSON.parse(windowsOutput);
+    if (!response.success || !response.data || !response.data.windows || !Array.isArray(response.data.windows)) {
       logError('Windows list has invalid structure');
       return false;
     }
     // Finder might not have windows, so just check structure
-    if (!windowsData.target_application_info) {
+    if (!response.data.target_application_info) {
       logError('Windows response missing target_application_info');
       return false;
     }
