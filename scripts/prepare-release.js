@@ -552,14 +552,25 @@ function checkSwiftCLIIntegration() {
   }
   
   // Test 2: Missing required arguments for window mode
-  const missingArgs = exec('./peekaboo image --mode window --json-output 2>&1', { allowFailure: true });
-  if (!missingArgs) {
+  let missingArgsOutput;
+  try {
+    missingArgsOutput = execSync('./peekaboo image --mode window --json-output 2>&1', { 
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: 'pipe'
+    });
+  } catch (error) {
+    // Command fails with non-zero exit code, but we want the output
+    missingArgsOutput = error.stdout || error.stderr || '';
+  }
+  
+  if (!missingArgsOutput) {
     logError('Swift CLI should produce output for missing --app with window mode');
     return false;
   }
   
   try {
-    const errorData = JSON.parse(missingArgs);
+    const errorData = JSON.parse(missingArgsOutput);
     if (!errorData.error || errorData.success !== false) {
       logError('Swift CLI should return error JSON for missing --app with window mode');
       return false;
