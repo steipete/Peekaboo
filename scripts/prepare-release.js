@@ -293,6 +293,59 @@ function buildAndVerifyPackage() {
   }
   logSuccess('All required files included in package');
 
+  // Verify peekaboo binary
+  log('Verifying peekaboo binary...', colors.cyan);
+  const binaryPath = join(projectRoot, 'peekaboo');
+  
+  // Check if binary exists
+  if (!existsSync(binaryPath)) {
+    logError('peekaboo binary not found');
+    return false;
+  }
+  
+  // Check if binary is executable
+  try {
+    const stats = exec(`stat -f "%Lp" "${binaryPath}" 2>/dev/null || stat -c "%a" "${binaryPath}"`);
+    const perms = parseInt(stats, 8);
+    if ((perms & 0o111) === 0) {
+      logError('peekaboo binary is not executable');
+      return false;
+    }
+  } catch (error) {
+    logError('Failed to check binary permissions');
+    return false;
+  }
+  
+  // Check binary architectures
+  try {
+    const lipoOutput = exec(`lipo -info "${binaryPath}"`);
+    if (!lipoOutput.includes('arm64') || !lipoOutput.includes('x86_64')) {
+      logError('peekaboo binary does not contain both architectures (arm64 and x86_64)');
+      logError(`Found: ${lipoOutput}`);
+      return false;
+    }
+    logSuccess('Binary contains both arm64 and x86_64 architectures');
+  } catch (error) {
+    logError('Failed to check binary architectures (lipo command failed)');
+    return false;
+  }
+  
+  // Check if binary responds to --help
+  try {
+    const helpOutput = exec(`"${binaryPath}" --help`);
+    if (!helpOutput || helpOutput.length === 0) {
+      logError('peekaboo binary does not respond to --help command');
+      return false;
+    }
+    logSuccess('Binary responds correctly to --help command');
+  } catch (error) {
+    logError('peekaboo binary failed to execute with --help');
+    logError(`Error: ${error.message}`);
+    return false;
+  }
+  
+  logSuccess('peekaboo binary verification passed');
+
   // Check package.json version
   const packageJson = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'));
   const version = packageJson.version;
