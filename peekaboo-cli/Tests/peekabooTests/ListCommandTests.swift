@@ -229,12 +229,12 @@ final class ListCommandTests: XCTestCase {
 
     func testApplicationInfoEncodingPerformance() throws {
         // Test performance of encoding many applications
-        let apps = (0..<100).map { i in
+        let apps = (0..<100).map { index in
             ApplicationInfo(
-                name: "App\(i)",
-                bundleIdentifier: "com.example.app\(i)",
-                processIdentifier: pid_t(1000 + i),
-                isActive: i == 0
+                name: "App\(index)",
+                bundleIdentifier: "com.example.app\(index)",
+                processIdentifier: pid_t(1000 + index),
+                isActive: index == 0
             )
         }
 
