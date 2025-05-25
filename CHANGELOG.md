@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0-beta.3] - YYYY-MM-DD
+## [1.0.0-beta.3] - 2025-01-21
 
 ### Added
 - Enhanced `image` tool to support optional immediate analysis of the captured screenshot by providing a `question` and `provider_config`.
@@ -24,12 +24,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial E2E tests for CLI image capture. 
 
-## [1.0.0-beta.4] - YYYY-MM-DD
+## [1.0.0-beta.4] - 2025-01-25
 
 ### ✨ Added
+- Comprehensive Swift unit tests for all CLI components
+- Release preparation script with extensive validation checks
+- Swift code linting and formatting with SwiftLint and SwiftFormat
+- Enhanced image tool with blur detection, custom formats (PNG/JPG), and naming patterns
+- Robust error handling for Swift CLI integration
 
-- **Swift CLI `image` command:** Added `--screen-index <Int>` option to capture a specific display when `--mode screen` is used. (Part of `image` tool simplification)
-- **MCP `image` tool:** Now fully supports `app_target: "screen:INDEX"` by utilizing the Swift CLI's new `--screen-index` capability.
+### 🐛 Fixed
+- Swift CLI integration tests now properly handle error output
+- Fixed Swift code to comply with SwiftLint rules
+- Corrected JSON structure expectations in tests
+
+### 📚 Changed
+- Updated all dependencies to latest versions
+- Improved test coverage for both TypeScript and Swift code
+- Enhanced release process with automated checks
+- Swift CLI `image` command: Added `--screen-index <Int>` option to capture a specific display when `--mode screen` is used
+- MCP `image` tool: Now fully supports `app_target: "screen:INDEX"` by utilizing the Swift CLI's new `--screen-index` capability
 
 ### ♻️ Changed
 
