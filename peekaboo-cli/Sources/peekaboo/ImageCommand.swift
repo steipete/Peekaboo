@@ -71,12 +71,12 @@ struct ImageCommand: ParsableCommand {
         case .screen:
             return try captureScreens()
         case .window:
-            guard let app = app else {
+            guard let app else {
                 throw CaptureError.appNotFound("No application specified for window capture")
             }
             return try captureApplicationWindow(app)
         case .multi:
-            if let app = app {
+            if let app {
                 return try captureAllApplicationWindows(app)
             } else {
                 return try captureScreens()
@@ -112,7 +112,7 @@ struct ImageCommand: ParsableCommand {
     }
 
     private func determineMode() -> CaptureMode {
-        if let mode = mode {
+        if let mode {
             return mode
         }
         return app != nil ? .window : .screen
@@ -134,7 +134,7 @@ struct ImageCommand: ParsableCommand {
         }
 
         // If screenIndex is specified, capture only that screen
-        if let screenIndex = screenIndex {
+        if let screenIndex {
             if screenIndex >= 0 && screenIndex < displays.count {
                 let displayID = displays[screenIndex]
                 let fileName = generateFileName(displayIndex: screenIndex)
@@ -209,12 +209,12 @@ struct ImageCommand: ParsableCommand {
         }
 
         let targetWindow: WindowData
-        if let windowTitle = windowTitle {
+        if let windowTitle {
             guard let window = windows.first(where: { $0.title.contains(windowTitle) }) else {
                 throw CaptureError.windowNotFound
             }
             targetWindow = window
-        } else if let windowIndex = windowIndex {
+        } else if let windowIndex {
             guard windowIndex >= 0 && windowIndex < windows.count else {
                 throw CaptureError.invalidWindowIndex(windowIndex)
             }
@@ -329,13 +329,13 @@ struct ImageCommand: ParsableCommand {
         let timestamp = DateFormatter.timestamp.string(from: Date())
         let ext = format.rawValue
 
-        if let displayIndex = displayIndex {
+        if let displayIndex {
             return "screen_\(displayIndex + 1)_\(timestamp).\(ext)"
-        } else if let appName = appName {
+        } else if let appName {
             let cleanAppName = appName.replacingOccurrences(of: " ", with: "_")
-            if let windowIndex = windowIndex {
+            if let windowIndex {
                 return "\(cleanAppName)_window_\(windowIndex)_\(timestamp).\(ext)"
-            } else if let windowTitle = windowTitle {
+            } else if let windowTitle {
                 let cleanTitle = windowTitle.replacingOccurrences(of: " ", with: "_").prefix(20)
                 return "\(cleanAppName)_\(cleanTitle)_\(timestamp).\(ext)"
             } else {
@@ -348,9 +348,9 @@ struct ImageCommand: ParsableCommand {
 
     private func getOutputPath(_ fileName: String) -> String {
         if let basePath = path {
-            return "\(basePath)/\(fileName)"
+            "\(basePath)/\(fileName)"
         } else {
-            return "/tmp/\(fileName)"
+            "/tmp/\(fileName)"
         }
     }
 }

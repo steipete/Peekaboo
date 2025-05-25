@@ -91,7 +91,7 @@ struct AnyCodable: Codable {
         } else if let string = try? container.decode(String.self) {
             value = string
         } else if let array = try? container.decode([AnyCodable].self) {
-            value = array.map { $0.value }
+            value = array.map(\.value)
         } else if let dict = try? container.decode([String: AnyCodable].self) {
             value = dict.mapValues { $0.value }
         } else {
@@ -148,14 +148,14 @@ func outputSuccess(data: Any? = nil, messages: [String]? = nil) {
     }
 }
 
-func outputSuccessCodable<T: Codable>(data: T, messages: [String]? = nil) {
+func outputSuccessCodable(data: some Codable, messages: [String]? = nil) {
     let response = CodableJSONResponse(
         success: true, data: data, messages: messages, debug_logs: Logger.shared.getDebugLogs()
     )
     outputJSONCodable(response)
 }
 
-func outputJSONCodable<T: Codable>(_ response: T) {
+func outputJSONCodable(_ response: some Codable) {
     do {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted

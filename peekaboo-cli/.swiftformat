@@ -1,5 +1,8 @@
 # SwiftFormat configuration for Peekaboo CLI
 
+# Swift version
+--swiftversion 6.0
+
 # Format options
 --indent 4
 --indentcase false

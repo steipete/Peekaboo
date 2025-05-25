@@ -100,7 +100,7 @@ class WindowManager {
 // Extension to add the getWindowsForApp function to ImageCommand
 extension ImageCommand {
     func getWindowsForApp(pid: pid_t) throws(WindowError) -> [WindowData] {
-        return try WindowManager.getWindowsForApp(pid: pid)
+        try WindowManager.getWindowsForApp(pid: pid)
     }
 }
 
@@ -111,9 +111,9 @@ enum WindowError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .windowListFailed:
-            return "Failed to get window list from system"
+            "Failed to get window list from system"
         case .noWindowsFound:
-            return "No windows found for the specified application"
+            "No windows found for the specified application"
         }
     }
 }

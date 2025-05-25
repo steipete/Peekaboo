@@ -93,7 +93,7 @@ class ApplicationFinder {
                 message: "No running applications found matching identifier: \(identifier)",
                 code: .APP_NOT_FOUND,
                 details: "Available applications: " +
-                    "\(runningApps.compactMap { $0.localizedName }.joined(separator: ", "))"
+                    "\(runningApps.compactMap(\.localizedName).joined(separator: ", "))"
             )
             throw ApplicationError.notFound(identifier)
         }
@@ -104,7 +104,7 @@ class ApplicationFinder {
 
         if topMatches.count > 1 {
             handleAmbiguousMatches(topMatches, identifier: identifier)
-            throw ApplicationError.ambiguous(identifier, topMatches.map { $0.app })
+            throw ApplicationError.ambiguous(identifier, topMatches.map(\.app))
         }
 
         let bestMatch = matches[0]

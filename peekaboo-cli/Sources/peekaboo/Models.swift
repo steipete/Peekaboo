@@ -113,24 +113,24 @@ enum CaptureError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noDisplaysAvailable:
-            return "No displays available for capture"
+            "No displays available for capture"
         case .capturePermissionDenied:
-            return "Screen recording permission denied. Please grant permission in " +
+            "Screen recording permission denied. Please grant permission in " +
                 "System Preferences > Security & Privacy > Privacy > Screen Recording"
         case .invalidDisplayID:
-            return "Invalid display ID"
+            "Invalid display ID"
         case .captureCreationFailed:
-            return "Failed to create screen capture"
+            "Failed to create screen capture"
         case .windowNotFound:
-            return "Window not found"
+            "Window not found"
         case .windowCaptureFailed:
-            return "Failed to capture window"
+            "Failed to capture window"
         case let .fileWriteError(path):
-            return "Failed to write file to: \(path)"
+            "Failed to write file to: \(path)"
         case let .appNotFound(identifier):
-            return "Application not found: \(identifier)"
+            "Application not found: \(identifier)"
         case let .invalidWindowIndex(index):
-            return "Invalid window index: \(index)"
+            "Invalid window index: \(index)"
         }
     }
 }

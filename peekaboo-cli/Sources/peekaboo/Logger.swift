@@ -45,7 +45,7 @@ class Logger {
     }
 
     func getDebugLogs() -> [String] {
-        return debugLogs
+        debugLogs
     }
 
     func clearDebugLogs() {
