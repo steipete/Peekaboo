@@ -170,7 +170,7 @@ struct WindowsSubcommand: ParsableCommand {
             }
 
             if let bounds = window.bounds {
-                print("   Bounds: (\(bounds.x), \(bounds.y)) \(bounds.width)×\(bounds.height)")
+                print("   Bounds: (\(bounds.xCoordinate), \(bounds.yCoordinate)) \(bounds.width)×\(bounds.height)")
             }
 
             print()
