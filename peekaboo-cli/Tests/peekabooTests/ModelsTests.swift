@@ -51,10 +51,10 @@ final class ModelsTests: XCTestCase {
     }
 
     func testWindowBounds() {
-        let bounds = WindowBounds(x: 100, y: 200, width: 1200, height: 800)
+        let bounds = WindowBounds(xCoordinate: 100, yCoordinate: 200, width: 1200, height: 800)
 
-        XCTAssertEqual(bounds.x, 100)
-        XCTAssertEqual(bounds.y, 200)
+        XCTAssertEqual(bounds.xCoordinate, 100)
+        XCTAssertEqual(bounds.yCoordinate, 200)
         XCTAssertEqual(bounds.width, 1200)
         XCTAssertEqual(bounds.height, 800)
     }
@@ -112,7 +112,7 @@ final class ModelsTests: XCTestCase {
     }
 
     func testWindowInfo() {
-        let bounds = WindowBounds(x: 100, y: 100, width: 1200, height: 800)
+        let bounds = WindowBounds(xCoordinate: 100, yCoordinate: 100, width: 1200, height: 800)
         let windowInfo = WindowInfo(
             window_title: "Safari - Main Window",
             window_id: 12345,
@@ -125,8 +125,8 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(windowInfo.window_id, 12345)
         XCTAssertEqual(windowInfo.window_index, 0)
         XCTAssertNotNil(windowInfo.bounds)
-        XCTAssertEqual(windowInfo.bounds?.x, 100)
-        XCTAssertEqual(windowInfo.bounds?.y, 100)
+        XCTAssertEqual(windowInfo.bounds?.xCoordinate, 100)
+        XCTAssertEqual(windowInfo.bounds?.yCoordinate, 100)
         XCTAssertEqual(windowInfo.bounds?.width, 1200)
         XCTAssertEqual(windowInfo.bounds?.height, 800)
         XCTAssertTrue(windowInfo.is_on_screen!)
@@ -169,7 +169,7 @@ final class ModelsTests: XCTestCase {
     }
 
     func testWindowListData() {
-        let bounds = WindowBounds(x: 100, y: 100, width: 1200, height: 800)
+        let bounds = WindowBounds(xCoordinate: 100, yCoordinate: 100, width: 1200, height: 800)
         let window = WindowInfo(
             window_title: "Safari - Main Window",
             window_id: 12345,
