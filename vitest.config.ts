@@ -1,26 +1,23 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'node',
+    environment: "node",
     include: [
-      '**/tests/unit/**/*.test.ts',
-      '**/tests/integration/**/*.test.ts',
-      'peekaboo-cli/tests/e2e/**/*.test.ts',
+      "**/tests/unit/**/*.test.ts",
+      "**/tests/integration/**/*.test.ts",
+      "peekaboo-cli/tests/e2e/**/*.test.ts",
     ],
-    exclude: [
-      '**/node_modules/**',
-      '**/dist/**',
-    ],
+    exclude: ["**/node_modules/**", "**/dist/**"],
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'lcov', 'html'],
-      reportsDirectory: './coverage',
-      include: ['src/**/*.ts'],
+      provider: "v8",
+      reporter: ["text", "lcov", "html"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.ts"],
       exclude: [
-        'src/**/*.d.ts',
-        'src/index.ts', // Assuming this is the main entry point
+        "src/**/*.d.ts",
+        "src/index.ts", // Assuming this is the main entry point
       ],
     },
     // alias: {
@@ -32,4 +29,4 @@ export default defineConfig({
   //     { find: /^(\..*)\.js$/, replacement: '$1' },
   //   ],
   // },
-}); 
+});

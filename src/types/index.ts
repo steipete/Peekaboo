@@ -1,4 +1,4 @@
-import { Logger } from 'pino';
+import { Logger } from "pino";
 
 export interface SwiftCliResponse {
   success: boolean;
@@ -71,7 +71,7 @@ export interface AIProvider {
 }
 
 export interface OllamaConfig {
-  type: 'ollama';
+  type: "ollama";
   baseUrl: string;
   model: string;
   requestTimeout?: number;
@@ -79,9 +79,27 @@ export interface OllamaConfig {
 }
 
 export interface OpenAIConfig {
-  type: 'openai';
+  type: "openai";
   apiKey?: string; // Optional because it can be set via env
   model: string;
   maxTokens?: number;
   temperature?: number;
-} 
+}
+
+export type AIProviderConfig = OllamaConfig | OpenAIConfig;
+
+export interface ToolResponse {
+  content: Array<{
+    type: "text" | "image";
+    text?: string;
+    data?: string;
+    mimeType?: string;
+    metadata?: any;
+  }>;
+  isError?: boolean;
+  saved_files?: SavedFile[];
+  analysis_text?: string;
+  model_used?: string;
+  _meta?: Record<string, any>;
+  [key: string]: any; // Allow additional properties
+}

@@ -1,5 +1,5 @@
-import Foundation
 import ArgumentParser
+import Foundation
 
 // MARK: - Image Capture Models
 
@@ -109,13 +109,14 @@ enum CaptureError: Error, LocalizedError {
     case fileWriteError(String)
     case appNotFound(String)
     case invalidWindowIndex(Int)
-    
+
     var errorDescription: String? {
         switch self {
         case .noDisplaysAvailable:
             return "No displays available for capture"
         case .capturePermissionDenied:
-            return "Screen recording permission denied. Please grant permission in System Preferences > Security & Privacy > Privacy > Screen Recording"
+            return "Screen recording permission denied. Please grant permission in " +
+                "System Preferences > Security & Privacy > Privacy > Screen Recording"
         case .invalidDisplayID:
             return "Invalid display ID"
         case .captureCreationFailed:
@@ -124,12 +125,12 @@ enum CaptureError: Error, LocalizedError {
             return "Window not found"
         case .windowCaptureFailed:
             return "Failed to capture window"
-        case .fileWriteError(let path):
+        case let .fileWriteError(path):
             return "Failed to write file to: \(path)"
-        case .appNotFound(let identifier):
+        case let .appNotFound(identifier):
             return "Application not found: \(identifier)"
-        case .invalidWindowIndex(let index):
+        case let .invalidWindowIndex(index):
             return "Invalid window index: \(index)"
         }
     }
-} 
+}

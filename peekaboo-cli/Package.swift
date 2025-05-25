@@ -10,21 +10,21 @@ let package = Package(
         .executable(
             name: "peekaboo",
             targets: ["peekaboo"]
-        ),
+        )
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0")
     ],
     targets: [
         .executableTarget(
             name: "peekaboo",
             dependencies: [
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "ArgumentParser", package: "swift-argument-parser")
             ]
         ),
         .testTarget(
             name: "peekabooTests",
             dependencies: ["peekaboo"]
-        ),
+        )
     ]
-) 
+)

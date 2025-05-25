@@ -1,57 +1,85 @@
-import { z } from 'zod';
-import path from 'path';
-import { ToolContext, AIProvider } from '../types/index.js';
-import { readImageAsBase64 } from '../utils/peekaboo-cli.js';
-import { 
-  parseAIProviders, 
-  isProviderAvailable, 
-  analyzeImageWithProvider, 
-  getDefaultModelForProvider 
-} from '../utils/ai-providers.js';
+import { z } from "zod";
+import path from "path";
+import { ToolContext, AIProvider } from "../types/index.js";
+import { readImageAsBase64 } from "../utils/peekaboo-cli.js";
+import {
+  parseAIProviders,
+  isProviderAvailable,
+  analyzeImageWithProvider,
+  getDefaultModelForProvider,
+  determineProviderAndModel,
+} from "../utils/ai-providers.js";
 
 export const analyzeToolSchema = z.object({
-  image_path: z.string().describe("Required. Absolute path to image file (.png, .jpg, .webp) to be analyzed."),
-  question: z.string().describe("Required. Question for the AI about the image."),
-  provider_config: z.object({
-    type: z.enum(["auto", "ollama", "openai"]).default("auto")
-      .describe("AI provider, default: auto. 'auto' uses server's PEEKABOO_AI_PROVIDERS environment preference. Specific provider must be enabled in server's PEEKABOO_AI_PROVIDERS."),
-    model: z.string().optional().describe("Optional. Model name. If omitted, uses model from server's PEEKABOO_AI_PROVIDERS for chosen provider, or an internal default for that provider.")
-  }).optional().describe("Optional. Explicit provider/model. Validated against server's PEEKABOO_AI_PROVIDERS.")
+  image_path: z
+    .string()
+    .describe(
+      "Required. Absolute path to image file (.png, .jpg, .webp) to be analyzed.",
+    ),
+  question: z
+    .string()
+    .describe("Required. Question for the AI about the image."),
+  provider_config: z
+    .object({
+      type: z
+        .enum(["auto", "ollama", "openai"])
+        .default("auto")
+        .describe(
+          "AI provider, default: auto. 'auto' uses server's PEEKABOO_AI_PROVIDERS environment preference. Specific provider must be enabled in server's PEEKABOO_AI_PROVIDERS.",
+        ),
+      model: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. Model name. If omitted, uses model from server's PEEKABOO_AI_PROVIDERS for chosen provider, or an internal default for that provider.",
+        ),
+    })
+    .optional()
+    .describe(
+      "Optional. Explicit provider/model. Validated against server's PEEKABOO_AI_PROVIDERS.",
+    ),
 });
 
 export type AnalyzeToolInput = z.infer<typeof analyzeToolSchema>;
 
 export async function analyzeToolHandler(
   input: AnalyzeToolInput,
-  context: ToolContext
+  context: ToolContext,
 ) {
   const { logger } = context;
 
   try {
-    logger.debug({ input: { ...input, image_path: input.image_path.split('/').pop() } }, 'Processing peekaboo.analyze tool call');
+    logger.debug(
+      { input: { ...input, image_path: input.image_path.split("/").pop() } },
+      "Processing peekaboo.analyze tool call",
+    );
 
     // Validate image file extension
     const ext = path.extname(input.image_path).toLowerCase();
-    if (!['.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {
+    if (![".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
       return {
-        content: [{
-          type: 'text',
-          text: `Unsupported image format: ${ext}. Supported formats: .png, .jpg, .jpeg, .webp`
-        }],
-        isError: true
+        content: [
+          {
+            type: "text",
+            text: `Unsupported image format: ${ext}. Supported formats: .png, .jpg, .jpeg, .webp`,
+          },
+        ],
+        isError: true,
       };
     }
 
     // Check AI providers configuration
     const aiProvidersEnv = process.env.PEEKABOO_AI_PROVIDERS;
     if (!aiProvidersEnv || !aiProvidersEnv.trim()) {
-      logger.error('PEEKABOO_AI_PROVIDERS environment variable not configured');
+      logger.error("PEEKABOO_AI_PROVIDERS environment variable not configured");
       return {
-        content: [{
-          type: 'text',
-          text: 'AI analysis not configured on this server. Set the PEEKABOO_AI_PROVIDERS environment variable.'
-        }],
-        isError: true
+        content: [
+          {
+            type: "text",
+            text: "AI analysis not configured on this server. Set the PEEKABOO_AI_PROVIDERS environment variable.",
+          },
+        ],
+        isError: true,
       };
     }
 
@@ -59,11 +87,13 @@ export async function analyzeToolHandler(
     const configuredProviders = parseAIProviders(aiProvidersEnv);
     if (configuredProviders.length === 0) {
       return {
-        content: [{
-          type: 'text',
-          text: 'No valid AI providers found in PEEKABOO_AI_PROVIDERS configuration.'
-        }],
-        isError: true
+        content: [
+          {
+            type: "text",
+            text: "No valid AI providers found in PEEKABOO_AI_PROVIDERS configuration.",
+          },
+        ],
+        isError: true,
       };
     }
 
@@ -71,16 +101,18 @@ export async function analyzeToolHandler(
     const { provider, model } = await determineProviderAndModel(
       input.provider_config,
       configuredProviders,
-      logger
+      logger,
     );
 
     if (!provider) {
       return {
-        content: [{
-          type: 'text',
-          text: 'No configured AI providers are currently operational.'
-        }],
-        isError: true
+        content: [
+          {
+            type: "text",
+            text: "No configured AI providers are currently operational.",
+          },
+        ],
+        isError: true,
       };
     }
 
@@ -89,13 +121,18 @@ export async function analyzeToolHandler(
     try {
       imageBase64 = await readImageAsBase64(input.image_path);
     } catch (error) {
-      logger.error({ error, path: input.image_path }, 'Failed to read image file');
+      logger.error(
+        { error, path: input.image_path },
+        "Failed to read image file",
+      );
       return {
-        content: [{
-          type: 'text',
-          text: `Failed to read image file: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
+        content: [
+          {
+            type: "text",
+            text: `Failed to read image file: ${error instanceof Error ? error.message : "Unknown error"}`,
+          },
+        ],
+        isError: true,
       };
     }
 
@@ -108,19 +145,21 @@ export async function analyzeToolHandler(
         input.image_path,
         imageBase64,
         input.question,
-        logger
+        logger,
       );
     } catch (error) {
-      logger.error({ error, provider, model }, 'AI analysis failed');
+      logger.error({ error, provider, model }, "AI analysis failed");
       return {
-        content: [{
-          type: 'text',
-          text: `AI analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
+        content: [
+          {
+            type: "text",
+            text: `AI analysis failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+          },
+        ],
         isError: true,
         _meta: {
-          backend_error_code: 'AI_PROVIDER_ERROR'
-        }
+          backend_error_code: "AI_PROVIDER_ERROR",
+        },
       };
     }
 
@@ -133,78 +172,27 @@ export async function analyzeToolHandler(
     return {
       content: [
         {
-          type: 'text',
-          text: analysisResult
+          type: "text",
+          text: analysisResult,
         },
         {
-          type: 'text',
-          text: analysisTimeMessage // Add the timing message
-        }
+          type: "text",
+          text: analysisTimeMessage, // Add the timing message
+        },
       ],
       analysis_text: analysisResult,
-      model_used: `${provider}/${model}`
+      model_used: `${provider}/${model}`,
     };
-
   } catch (error) {
-    logger.error({ error }, 'Unexpected error in analyze tool handler');
+    logger.error({ error }, "Unexpected error in analyze tool handler");
     return {
-      content: [{
-        type: 'text',
-        text: `Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      }],
-      isError: true
+      content: [
+        {
+          type: "text",
+          text: `Unexpected error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        },
+      ],
+      isError: true,
     };
   }
 }
-
-export async function determineProviderAndModel(
-  providerConfig: AnalyzeToolInput['provider_config'],
-  configuredProviders: AIProvider[],
-  logger: any
-): Promise<{ provider: string | null; model: string }> {
-  const requestedProviderType = providerConfig?.type || 'auto';
-  const requestedModelName = providerConfig?.model;
-
-  if (requestedProviderType !== 'auto') {
-    // Find specific provider in configuration
-    const configuredProvider = configuredProviders.find(
-      p => p.provider.toLowerCase() === requestedProviderType.toLowerCase()
-    );
-
-    if (!configuredProvider) {
-      throw new Error(`Provider '${requestedProviderType}' is not enabled in server's PEEKABOO_AI_PROVIDERS configuration.`);
-    }
-
-    // Check if provider is available
-    const available = await isProviderAvailable(configuredProvider, logger);
-    if (!available) {
-      throw new Error(`Provider '${requestedProviderType}' is configured but not currently available.`);
-    }
-
-    const model = requestedModelName || 
-                 configuredProvider.model || 
-                 getDefaultModelForProvider(requestedProviderType);
-
-    return {
-      provider: requestedProviderType,
-      model
-    };
-  }
-
-  // Auto mode - find first available provider
-  for (const configuredProvider of configuredProviders) {
-    const available = await isProviderAvailable(configuredProvider, logger);
-    if (available) {
-      const model = requestedModelName || 
-                   configuredProvider.model || 
-                   getDefaultModelForProvider(configuredProvider.provider);
-
-      return {
-        provider: configuredProvider.provider,
-        model
-      };
-    }
-  }
-
-  return { provider: null, model: '' };
-} 

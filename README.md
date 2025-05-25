@@ -1,4 +1,4 @@
-# Peekaboo MCP: Screenshots so fast they’re paranormal.
+# Peekaboo MCP: Screenshots so fast they're paranormal.
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
@@ -25,6 +25,7 @@ Ever tried explaining a UI bug to Claude or Cursor? It's like playing charades w
 ### 🔮 Why Your AI Needs Eyes
 
 - **🐛 Bug Hunting**: "See that weird layout issue?" Now they actually CAN see it!
+- **📸 Instant Analysis**: Take a screenshot and ask a question about it in one go!
 - **🎨 Design Reviews**: Let AI roast your CSS crimes with visual evidence
 - **📊 Data Analysis**: "What's in this chart?" AI can now divine the answer
 - **🖼️ UI Testing**: Verify your app looks right without the "works on my machine" curse
@@ -86,7 +87,7 @@ Cast powerful spells upon Peekaboo using mystical environment variables:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PEEKABOO_AI_PROVIDERS` | Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `"openai/gpt-4o,ollama/llava:7b"`). If a model is not specified for a provider (e.g., `"openai"`), a default model for that provider will be used. This setting determines which AI backends are available for the `analyze` tool. **Recommended for Ollama:** `"ollama/llava:latest"` for the best vision model. | `""` (none) |
+| `PEEKABOO_AI_PROVIDERS` | Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `\"openai/gpt-4o,ollama/llava:7b\"`). If a model is not specified for a provider (e.g., `\"openai\"`), a default model for that provider will be used. This setting determines which AI backends are available for the `analyze` tool and the `image` tool (when a `question` is provided). **Recommended for Ollama:** `\"ollama/llava:latest\"` for the best vision model. | `\"\"` (none) |
 | `PEEKABOO_LOG_LEVEL` | Logging level (trace, debug, info, warn, error, fatal). | `info` |
 | `PEEKABOO_LOG_FILE` | Path to the server's log file. | `path.join(os.tmpdir(), 'peekaboo-mcp.log')` |
 | `PEEKABOO_DEFAULT_SAVE_PATH` | Default base absolute path for saving images captured by the `image` tool. If the `path` argument is provided to the `image` tool, it takes precedence. If neither `image.path` nor this environment variable is set, the Swift CLI saves to its default temporary directory. | (none, Swift CLI uses temp paths) |
@@ -96,7 +97,7 @@ Cast powerful spells upon Peekaboo using mystical environment variables:
 
 #### 🧙 AI Spirit Guide Configuration (`PEEKABOO_AI_PROVIDERS` In-Depth)
 
-The `PEEKABOO_AI_PROVIDERS` environment variable is your gateway to unlocking Peekaboo's analytical abilities. It should be a comma-separated string defining the AI providers and their default models. For example:
+The `PEEKABOO_AI_PROVIDERS` environment variable is your gateway to unlocking Peekaboo\'s analytical abilities for both the dedicated `analyze` tool and the `image` tool (when a `question` is supplied with an image capture). It should be a comma-separated string defining the AI providers and their default models. For example:
 
 `PEEKABOO_AI_PROVIDERS="ollama/llava:latest,openai/gpt-4o,anthropic/claude-3-haiku-20240307"`
 
@@ -105,9 +106,9 @@ Each entry follows the format `provider_name/model_identifier`.
 - **`provider_name`**: Currently supported values are `ollama` (for local Ollama instances) and `openai`. Support for `anthropic` is planned.
 - **`model_identifier`**: The specific model to use for that provider (e.g., `llava:latest`, `gpt-4o`).
 
-The `analyze` tool will use these configurations. If the `provider_config` argument in the `analyze` tool is set to `"auto"` (the default), Peekaboo will try providers from `PEEKABOO_AI_PROVIDERS` in the order they are listed, checking for necessary API keys (like `OPENAI_API_KEY`) or service availability (like Ollama running at `http://localhost:11434` or the URL specified in `PEEKABOO_OLLAMA_BASE_URL`).
+The `analyze` tool and the `image` tool (when a `question` is provided) will use these configurations. If the `provider_config` argument in these tools is set to `\"auto\"` (the default for `analyze`, and an option for `image`), Peekaboo will try providers from `PEEKABOO_AI_PROVIDERS` in the order they are listed, checking for necessary API keys (like `OPENAI_API_KEY`) or service availability (like Ollama running at `http://localhost:11434` or the URL specified in `PEEKABOO_OLLAMA_BASE_URL`).
 
-You can override the model or pick a specific provider listed in `PEEKABOO_AI_PROVIDERS` using the `analyze` tool's `provider_config` argument. (The system will still verify its operational readiness, e.g., API key presence or service availability.)
+You can override the model or pick a specific provider listed in `PEEKABOO_AI_PROVIDERS` using the `provider_config` argument in the `analyze` or `image` tools. (The system will still verify its operational readiness, e.g., API key presence or service availability.)
 
 ### 🦙 Summoning Ollama - The Local Vision Oracle
 
@@ -210,8 +211,13 @@ Verify Ollama is running and accessible:
 # Check Ollama is running
 curl http://localhost:11434/api/tags
 
-# Test with Peekaboo directly
-./peekaboo analyze --image-path ~/Desktop/screenshot.png --question "What do you see?"
+# Test with Peekaboo directly (image capture only)
+./peekaboo image --app Finder --path ~/Desktop/finder.png
+
+# Test with Peekaboo directly (image capture and analysis - requires PEEKABOO_AI_PROVIDERS to be set for the environment Peekaboo runs in)
+# Note: The CLI itself doesn't take a question, this is an MCP server feature.
+# The MCP server would call: ./peekaboo image ... (to get the image)
+# And then internally call the AI provider if a question was part of the MCP 'image' tool input.
 ```
 
 ### 🕰️ Granting Mystical Permissions
@@ -702,3 +708,21 @@ MIT License - bound by the ancient pact in the LICENSE grimoire.
 ---
 
 **🎃 Peekaboo awaits your command!** This spectral servant bridges the veil between macOS's forbidden APIs and the ethereal realm of Node.js, granting you powers to capture souls and divine their secrets. Happy haunting! 👻
+
+### 📜 Available Tools (via MCP Server)
+
+Peekaboo exposes its powers through the following tools when run as an MCP server:
+
+- **`image`**: Captures macOS screen content. 
+  - Can target entire screens, specific application windows, or all windows of an app.
+  - Supports various formats and capture modes (foreground/background).
+  - **New:** Can optionally take a `question` and `provider_config` to analyze the captured image immediately, returning the analysis along with image details. If a question is asked, the image file is temporary and deleted after analysis unless a `path` is specified. Image data (Base64) is not returned if a question is asked.
+  - See `docs/spec.md` for full input/output schema.
+
+- **`analyze`**: Analyzes a pre-existing image file using a configured AI model.
+  - Requires the image path and a question.
+  - Uses AI providers configured via `PEEKABOO_AI_PROVIDERS` and `provider_config` input.
+  - See `docs/spec.md` for full input/output schema.
+
+- **`list`**: Lists system items like running applications, windows of a specific app, or server status.
+  - See `docs/spec.md` for full input/output schema.

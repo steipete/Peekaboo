@@ -1,364 +1,370 @@
-import { z } from 'zod';
-import { zodToJsonSchema } from '../../../src/utils/zod-to-json-schema';
+import { z } from "zod";
+import { zodToJsonSchema } from "../../../src/utils/zod-to-json-schema";
 
-describe('zodToJsonSchema', () => {
-  describe('primitive types', () => {
-    test('converts ZodString to JSON Schema', () => {
+describe("zodToJsonSchema", () => {
+  describe("primitive types", () => {
+    test("converts ZodString to JSON Schema", () => {
       const schema = z.string();
-      expect(zodToJsonSchema(schema)).toEqual({ type: 'string' });
+      expect(zodToJsonSchema(schema)).toEqual({ type: "string" });
     });
 
-    test('converts ZodString with description', () => {
-      const schema = z.string().describe('A test string');
+    test("converts ZodString with description", () => {
+      const schema = z.string().describe("A test string");
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'string',
-        description: 'A test string'
+        type: "string",
+        description: "A test string",
       });
     });
 
-    test('converts ZodNumber to JSON Schema', () => {
+    test("converts ZodNumber to JSON Schema", () => {
       const schema = z.number();
-      expect(zodToJsonSchema(schema)).toEqual({ type: 'number' });
+      expect(zodToJsonSchema(schema)).toEqual({ type: "number" });
     });
 
-    test('converts ZodNumber with description', () => {
-      const schema = z.number().describe('A test number');
+    test("converts ZodNumber with description", () => {
+      const schema = z.number().describe("A test number");
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'number',
-        description: 'A test number'
+        type: "number",
+        description: "A test number",
       });
     });
 
-    test('converts ZodBoolean to JSON Schema', () => {
+    test("converts ZodBoolean to JSON Schema", () => {
       const schema = z.boolean();
-      expect(zodToJsonSchema(schema)).toEqual({ type: 'boolean' });
+      expect(zodToJsonSchema(schema)).toEqual({ type: "boolean" });
     });
 
-    test('converts ZodBoolean with description', () => {
-      const schema = z.boolean().describe('A test boolean');
+    test("converts ZodBoolean with description", () => {
+      const schema = z.boolean().describe("A test boolean");
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'boolean',
-        description: 'A test boolean'
+        type: "boolean",
+        description: "A test boolean",
       });
     });
   });
 
-  describe('enum types', () => {
-    test('converts ZodEnum to JSON Schema', () => {
-      const schema = z.enum(['option1', 'option2', 'option3']);
+  describe("enum types", () => {
+    test("converts ZodEnum to JSON Schema", () => {
+      const schema = z.enum(["option1", "option2", "option3"]);
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'string',
-        enum: ['option1', 'option2', 'option3']
+        type: "string",
+        enum: ["option1", "option2", "option3"],
       });
     });
 
-    test('converts ZodEnum with description', () => {
-      const schema = z.enum(['red', 'green', 'blue']).describe('Color options');
+    test("converts ZodEnum with description", () => {
+      const schema = z.enum(["red", "green", "blue"]).describe("Color options");
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'string',
-        enum: ['red', 'green', 'blue'],
-        description: 'Color options'
+        type: "string",
+        enum: ["red", "green", "blue"],
+        description: "Color options",
       });
     });
   });
 
-  describe('array types', () => {
-    test('converts ZodArray of strings to JSON Schema', () => {
+  describe("array types", () => {
+    test("converts ZodArray of strings to JSON Schema", () => {
       const schema = z.array(z.string());
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'array',
-        items: { type: 'string' }
+        type: "array",
+        items: { type: "string" },
       });
     });
 
-    test('converts ZodArray with description', () => {
-      const schema = z.array(z.number()).describe('Array of numbers');
+    test("converts ZodArray with description", () => {
+      const schema = z.array(z.number()).describe("Array of numbers");
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'array',
-        items: { type: 'number' },
-        description: 'Array of numbers'
+        type: "array",
+        items: { type: "number" },
+        description: "Array of numbers",
       });
     });
 
-    test('converts nested arrays', () => {
+    test("converts nested arrays", () => {
       const schema = z.array(z.array(z.boolean()));
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'array',
+        type: "array",
         items: {
-          type: 'array',
-          items: { type: 'boolean' }
-        }
+          type: "array",
+          items: { type: "boolean" },
+        },
       });
     });
   });
 
-  describe('object types', () => {
-    test('converts simple ZodObject to JSON Schema', () => {
+  describe("object types", () => {
+    test("converts simple ZodObject to JSON Schema", () => {
       const schema = z.object({
         name: z.string(),
-        age: z.number()
+        age: z.number(),
       });
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'object',
+        type: "object",
         properties: {
-          name: { type: 'string' },
-          age: { type: 'number' }
+          name: { type: "string" },
+          age: { type: "number" },
         },
-        required: ['name', 'age']
+        required: ["name", "age"],
       });
     });
 
-    test('converts ZodObject with optional fields', () => {
+    test("converts ZodObject with optional fields", () => {
       const schema = z.object({
         required: z.string(),
-        optional: z.string().optional()
+        optional: z.string().optional(),
       });
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'object',
+        type: "object",
         properties: {
-          required: { type: 'string' },
-          optional: { type: 'string' }
+          required: { type: "string" },
+          optional: { type: "string" },
         },
-        required: ['required']
+        required: ["required"],
       });
     });
 
-    test('converts ZodObject with default fields', () => {
+    test("converts ZodObject with default fields", () => {
       const schema = z.object({
         name: z.string(),
-        status: z.string().default('active')
+        status: z.string().default("active"),
       });
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'object',
+        type: "object",
         properties: {
-          name: { type: 'string' },
-          status: { type: 'string', default: 'active' }
+          name: { type: "string" },
+          status: { type: "string", default: "active" },
         },
-        required: ['name']
+        required: ["name"],
       });
     });
 
-    test('converts nested objects', () => {
+    test("converts nested objects", () => {
       const schema = z.object({
         user: z.object({
           name: z.string(),
           settings: z.object({
-            theme: z.enum(['light', 'dark'])
-          })
-        })
+            theme: z.enum(["light", "dark"]),
+          }),
+        }),
       });
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'object',
+        type: "object",
         properties: {
           user: {
-            type: 'object',
+            type: "object",
             properties: {
-              name: { type: 'string' },
+              name: { type: "string" },
               settings: {
-                type: 'object',
+                type: "object",
                 properties: {
                   theme: {
-                    type: 'string',
-                    enum: ['light', 'dark']
-                  }
+                    type: "string",
+                    enum: ["light", "dark"],
+                  },
                 },
-                required: ['theme']
-              }
+                required: ["theme"],
+              },
             },
-            required: ['name', 'settings']
-          }
+            required: ["name", "settings"],
+          },
         },
-        required: ['user']
+        required: ["user"],
       });
     });
 
-    test('converts ZodObject with description', () => {
-      const schema = z.object({
-        id: z.string()
-      }).describe('User object');
+    test("converts ZodObject with description", () => {
+      const schema = z
+        .object({
+          id: z.string(),
+        })
+        .describe("User object");
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'object',
+        type: "object",
         properties: {
-          id: { type: 'string' }
+          id: { type: "string" },
         },
-        required: ['id'],
-        description: 'User object'
+        required: ["id"],
+        description: "User object",
       });
     });
   });
 
-  describe('union types', () => {
-    test('converts ZodUnion to JSON Schema', () => {
+  describe("union types", () => {
+    test("converts ZodUnion to JSON Schema", () => {
       const schema = z.union([z.string(), z.number()]);
       expect(zodToJsonSchema(schema)).toEqual({
-        oneOf: [
-          { type: 'string' },
-          { type: 'number' }
-        ]
+        oneOf: [{ type: "string" }, { type: "number" }],
       });
     });
 
-    test('converts complex union types', () => {
+    test("converts complex union types", () => {
       const schema = z.union([
-        z.object({ type: z.literal('text'), value: z.string() }),
-        z.object({ type: z.literal('number'), value: z.number() })
+        z.object({ type: z.literal("text"), value: z.string() }),
+        z.object({ type: z.literal("number"), value: z.number() }),
       ]);
       expect(zodToJsonSchema(schema)).toEqual({
         oneOf: [
           {
-            type: 'object',
+            type: "object",
             properties: {
-              type: { type: 'string', const: 'text' },
-              value: { type: 'string' }
+              type: { type: "string", const: "text" },
+              value: { type: "string" },
             },
-            required: ['type', 'value']
+            required: ["type", "value"],
           },
           {
-            type: 'object',
+            type: "object",
             properties: {
-              type: { type: 'string', const: 'number' },
-              value: { type: 'number' }
+              type: { type: "string", const: "number" },
+              value: { type: "number" },
             },
-            required: ['type', 'value']
-          }
-        ]
+            required: ["type", "value"],
+          },
+        ],
       });
     });
   });
 
-  describe('literal types', () => {
-    test('converts string literal', () => {
-      const schema = z.literal('hello');
-      expect(zodToJsonSchema(schema)).toEqual({ type: 'string', const: 'hello' });
+  describe("literal types", () => {
+    test("converts string literal", () => {
+      const schema = z.literal("hello");
+      expect(zodToJsonSchema(schema)).toEqual({
+        type: "string",
+        const: "hello",
+      });
     });
 
-    test('converts number literal', () => {
+    test("converts number literal", () => {
       const schema = z.literal(42);
-      expect(zodToJsonSchema(schema)).toEqual({ type: 'number', const: 42 });
+      expect(zodToJsonSchema(schema)).toEqual({ type: "number", const: 42 });
     });
 
-    test('converts boolean literal', () => {
+    test("converts boolean literal", () => {
       const schema = z.literal(true);
-      expect(zodToJsonSchema(schema)).toEqual({ type: 'boolean', const: true });
+      expect(zodToJsonSchema(schema)).toEqual({ type: "boolean", const: true });
     });
 
-    test('converts literal with description', () => {
-      const schema = z.literal('active').describe('Status must be active');
-      expect(zodToJsonSchema(schema)).toEqual({ 
-        type: 'string', 
-        const: 'active',
-        description: 'Status must be active'
+    test("converts literal with description", () => {
+      const schema = z.literal("active").describe("Status must be active");
+      expect(zodToJsonSchema(schema)).toEqual({
+        type: "string",
+        const: "active",
+        description: "Status must be active",
       });
     });
   });
 
-  describe('modifier types', () => {
-    test('handles ZodOptional correctly', () => {
+  describe("modifier types", () => {
+    test("handles ZodOptional correctly", () => {
       const schema = z.string().optional();
-      expect(zodToJsonSchema(schema)).toEqual({ type: 'string' });
+      expect(zodToJsonSchema(schema)).toEqual({ type: "string" });
     });
 
-    test('handles ZodDefault correctly', () => {
+    test("handles ZodDefault correctly", () => {
       const schema = z.number().default(42);
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'number',
-        default: 42
+        type: "number",
+        default: 42,
       });
     });
 
-    test('handles chained modifiers', () => {
-      const schema = z.string().optional().default('default');
+    test("handles chained modifiers", () => {
+      const schema = z.string().optional().default("default");
       const result = zodToJsonSchema(schema);
       expect(result).toEqual({
-        type: 'string',
-        default: 'default'
+        type: "string",
+        default: "default",
       });
     });
   });
 
-  describe('edge cases', () => {
-    test('handles unknown types with fallback', () => {
+  describe("edge cases", () => {
+    test("handles unknown types with fallback", () => {
       // Create a custom Zod type that isn't handled
       const customSchema = z.any();
-      expect(zodToJsonSchema(customSchema)).toEqual({ type: 'any' });
+      expect(zodToJsonSchema(customSchema)).toEqual({ type: "any" });
     });
 
-    test('handles deeply nested structures', () => {
+    test("handles deeply nested structures", () => {
       const schema = z.object({
         level1: z.object({
           level2: z.object({
-            level3: z.array(z.object({
-              value: z.string()
-            }))
-          })
-        })
+            level3: z.array(
+              z.object({
+                value: z.string(),
+              }),
+            ),
+          }),
+        }),
       });
-      
+
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'object',
+        type: "object",
         properties: {
           level1: {
-            type: 'object',
+            type: "object",
             properties: {
               level2: {
-                type: 'object',
+                type: "object",
                 properties: {
                   level3: {
-                    type: 'array',
+                    type: "array",
                     items: {
-                      type: 'object',
+                      type: "object",
                       properties: {
-                        value: { type: 'string' }
+                        value: { type: "string" },
                       },
-                      required: ['value']
-                    }
-                  }
+                      required: ["value"],
+                    },
+                  },
                 },
-                required: ['level3']
-              }
+                required: ["level3"],
+              },
             },
-            required: ['level2']
-          }
+            required: ["level2"],
+          },
         },
-        required: ['level1']
+        required: ["level1"],
       });
     });
 
-    test('handles complex real-world schema', () => {
+    test("handles complex real-world schema", () => {
       const schema = z.object({
-        action: z.enum(['show', 'hide', 'toggle']),
+        action: z.enum(["show", "hide", "toggle"]),
         bundleId: z.string().optional(),
         windowId: z.number().optional(),
-        config: z.object({
-          animationDuration: z.number().default(200),
-          position: z.enum(['left', 'right', 'center']).optional()
-        }).optional()
+        config: z
+          .object({
+            animationDuration: z.number().default(200),
+            position: z.enum(["left", "right", "center"]).optional(),
+          })
+          .optional(),
       });
 
       expect(zodToJsonSchema(schema)).toEqual({
-        type: 'object',
+        type: "object",
         properties: {
           action: {
-            type: 'string',
-            enum: ['show', 'hide', 'toggle']
+            type: "string",
+            enum: ["show", "hide", "toggle"],
           },
-          bundleId: { type: 'string' },
-          windowId: { type: 'number' },
+          bundleId: { type: "string" },
+          windowId: { type: "number" },
           config: {
-            type: 'object',
+            type: "object",
             properties: {
               animationDuration: {
-                type: 'number',
-                default: 200
+                type: "number",
+                default: 200,
               },
               position: {
-                type: 'string',
-                enum: ['left', 'right', 'center']
-              }
-            }
-          }
+                type: "string",
+                enum: ["left", "right", "center"],
+              },
+            },
+          },
         },
-        required: ['action']
+        required: ["action"],
       });
     });
   });

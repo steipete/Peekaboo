@@ -6,12 +6,12 @@ struct JSONResponse: Codable {
     let messages: [String]?
     let debug_logs: [String]
     let error: ErrorInfo?
-    
+
     init(success: Bool, data: Any? = nil, messages: [String]? = nil, error: ErrorInfo? = nil) {
         self.success = success
         self.data = data.map(AnyCodable.init)
         self.messages = messages
-        self.debug_logs = Logger.shared.getDebugLogs()
+        debug_logs = Logger.shared.getDebugLogs()
         self.error = error
     }
 }
@@ -20,7 +20,7 @@ struct ErrorInfo: Codable {
     let message: String
     let code: String
     let details: String?
-    
+
     init(message: String, code: ErrorCode, details: String? = nil) {
         self.message = message
         self.code = code.rawValue
@@ -29,29 +29,29 @@ struct ErrorInfo: Codable {
 }
 
 enum ErrorCode: String {
-    case PERMISSION_DENIED_SCREEN_RECORDING = "PERMISSION_DENIED_SCREEN_RECORDING"
-    case PERMISSION_DENIED_ACCESSIBILITY = "PERMISSION_DENIED_ACCESSIBILITY"
-    case APP_NOT_FOUND = "APP_NOT_FOUND"
-    case AMBIGUOUS_APP_IDENTIFIER = "AMBIGUOUS_APP_IDENTIFIER"
-    case WINDOW_NOT_FOUND = "WINDOW_NOT_FOUND"
-    case CAPTURE_FAILED = "CAPTURE_FAILED"
-    case FILE_IO_ERROR = "FILE_IO_ERROR"
-    case INVALID_ARGUMENT = "INVALID_ARGUMENT"
-    case SIPS_ERROR = "SIPS_ERROR"
-    case INTERNAL_SWIFT_ERROR = "INTERNAL_SWIFT_ERROR"
+    case PERMISSION_DENIED_SCREEN_RECORDING
+    case PERMISSION_DENIED_ACCESSIBILITY
+    case APP_NOT_FOUND
+    case AMBIGUOUS_APP_IDENTIFIER
+    case WINDOW_NOT_FOUND
+    case CAPTURE_FAILED
+    case FILE_IO_ERROR
+    case INVALID_ARGUMENT
+    case SIPS_ERROR
+    case INTERNAL_SWIFT_ERROR
 }
 
 // Helper for encoding arbitrary data as JSON
 struct AnyCodable: Codable {
     let value: Any
-    
+
     init(_ value: Any) {
         self.value = value
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        
+
         if let codable = value as? Codable {
             // Handle Codable types by encoding them directly as JSON
             let jsonEncoder = JSONEncoder()
@@ -78,10 +78,10 @@ struct AnyCodable: Codable {
             }
         }
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if let bool = try? container.decode(Bool.self) {
             value = bool
         } else if let int = try? container.decode(Int.self) {
@@ -105,11 +105,11 @@ struct AnyCodable: Codable {
 // Helper for encoding any Codable type
 private struct AnyEncodable: Encodable {
     let encodable: Encodable
-    
+
     init(_ encodable: Encodable) {
         self.encodable = encodable
     }
-    
+
     func encode(to encoder: Encoder) throws {
         try encodable.encode(to: encoder)
     }
@@ -149,7 +149,9 @@ func outputSuccess(data: Any? = nil, messages: [String]? = nil) {
 }
 
 func outputSuccessCodable<T: Codable>(data: T, messages: [String]? = nil) {
-    let response = CodableJSONResponse(success: true, data: data, messages: messages, debug_logs: Logger.shared.getDebugLogs())
+    let response = CodableJSONResponse(
+        success: true, data: data, messages: messages, debug_logs: Logger.shared.getDebugLogs()
+    )
     outputJSONCodable(response)
 }
 
@@ -187,4 +189,4 @@ struct CodableJSONResponse<T: Codable>: Codable {
 func outputError(message: String, code: ErrorCode, details: String? = nil) {
     let error = ErrorInfo(message: message, code: code, details: details)
     outputJSON(JSONResponse(success: false, error: error))
-} 
+}

@@ -1,5 +1,5 @@
-import Foundation
 import ArgumentParser
+import Foundation
 
 struct PeekabooCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -12,4 +12,4 @@ struct PeekabooCommand: ParsableCommand {
 }
 
 // Entry point
-PeekabooCommand.main() 
+PeekabooCommand.main()

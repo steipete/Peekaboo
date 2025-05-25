@@ -1,17 +1,26 @@
-import { vi } from 'vitest';
-import { pino } from 'pino';
-import { listToolHandler, buildSwiftCliArgs, ListToolInput, listToolSchema } from '../../../src/tools/list';
-import { executeSwiftCli } from '../../../src/utils/peekaboo-cli';
-import { generateServerStatusString } from '../../../src/utils/server-status';
-import fs from 'fs/promises';
+import { vi } from "vitest";
+import { pino } from "pino";
+import {
+  listToolHandler,
+  buildSwiftCliArgs,
+  ListToolInput,
+  listToolSchema,
+} from "../../../src/tools/list";
+import { executeSwiftCli } from "../../../src/utils/peekaboo-cli";
+import { generateServerStatusString } from "../../../src/utils/server-status";
+import fs from "fs/promises";
 // import path from 'path'; // path is still used by the test itself for expect.stringContaining if needed, but not for mocking resolve/dirname
 // import { fileURLToPath } from 'url'; // No longer needed
-import { ToolContext, ApplicationListData, WindowListData } from '../../../src/types/index.js';
+import {
+  ToolContext,
+  ApplicationListData,
+  WindowListData,
+} from "../../../src/types/index.js";
 
 // Mocks
-vi.mock('../../../src/utils/peekaboo-cli');
-vi.mock('../../../src/utils/server-status');
-vi.mock('fs/promises');
+vi.mock("../../../src/utils/peekaboo-cli");
+vi.mock("../../../src/utils/server-status");
+vi.mock("fs/promises");
 
 // Mock path and url functions to avoid import.meta.url issues in test environment
 // jest.mock('url', () => ({ // REMOVED
@@ -30,473 +39,738 @@ vi.mock('fs/promises');
 //   }), // REMOVED
 // })); // REMOVED
 
-const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<typeof executeSwiftCli>;
-const mockGenerateServerStatusString = generateServerStatusString as vi.MockedFunction<typeof generateServerStatusString>;
+const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<
+  typeof executeSwiftCli
+>;
+const mockGenerateServerStatusString =
+  generateServerStatusString as vi.MockedFunction<
+    typeof generateServerStatusString
+  >;
 const mockFsReadFile = fs.readFile as vi.MockedFunction<typeof fs.readFile>;
 
 // Create a mock logger for tests
-const mockLogger = pino({ level: 'silent' });
+const mockLogger = pino({ level: "silent" });
 const mockContext: ToolContext = { logger: mockLogger };
 
-describe('List Tool', () => {
+describe("List Tool", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('buildSwiftCliArgs', () => {
-    it('should return default args for running_applications', () => {
-      const input: ListToolInput = { item_type: 'running_applications' };
-      expect(buildSwiftCliArgs(input)).toEqual(['list', 'apps']);
+  describe("buildSwiftCliArgs", () => {
+    it("should return default args for running_applications", () => {
+      const input: ListToolInput = { item_type: "running_applications" };
+      expect(buildSwiftCliArgs(input)).toEqual(["list", "apps"]);
     });
 
-    it('should return args for application_windows with app only', () => {
-      const input: ListToolInput = { item_type: 'application_windows', app: 'Safari' };
-      expect(buildSwiftCliArgs(input)).toEqual(['list', 'windows', '--app', 'Safari']);
+    it("should return args for application_windows with app only", () => {
+      const input: ListToolInput = {
+        item_type: "application_windows",
+        app: "Safari",
+      };
+      expect(buildSwiftCliArgs(input)).toEqual([
+        "list",
+        "windows",
+        "--app",
+        "Safari",
+      ]);
     });
 
-    it('should return args for application_windows with app and details', () => {
+    it("should return args for application_windows with app and details", () => {
       const input: ListToolInput = {
-        item_type: 'application_windows',
-        app: 'Chrome',
-        include_window_details: ['bounds', 'ids']
+        item_type: "application_windows",
+        app: "Chrome",
+        include_window_details: ["bounds", "ids"],
       };
-      expect(buildSwiftCliArgs(input)).toEqual(['list', 'windows', '--app', 'Chrome', '--include-details', 'bounds,ids']);
+      expect(buildSwiftCliArgs(input)).toEqual([
+        "list",
+        "windows",
+        "--app",
+        "Chrome",
+        "--include-details",
+        "bounds,ids",
+      ]);
     });
 
-    it('should return args for application_windows with app and empty details', () => {
+    it("should return args for application_windows with app and empty details", () => {
       const input: ListToolInput = {
-        item_type: 'application_windows',
-        app: 'Finder',
-        include_window_details: []
+        item_type: "application_windows",
+        app: "Finder",
+        include_window_details: [],
       };
-      expect(buildSwiftCliArgs(input)).toEqual(['list', 'windows', '--app', 'Finder']);
+      expect(buildSwiftCliArgs(input)).toEqual([
+        "list",
+        "windows",
+        "--app",
+        "Finder",
+      ]);
     });
-    
-    it('should ignore app and include_window_details if item_type is not application_windows', () => {
+
+    it("should ignore app and include_window_details if item_type is not application_windows", () => {
       const input: ListToolInput = {
-        item_type: 'running_applications',
-        app: 'ShouldBeIgnored',
-        include_window_details: ['bounds']
+        item_type: "running_applications",
+        app: "ShouldBeIgnored",
+        include_window_details: ["bounds"],
       };
-      expect(buildSwiftCliArgs(input)).toEqual(['list', 'apps']);
+      expect(buildSwiftCliArgs(input)).toEqual(["list", "apps"]);
     });
   });
 
-  describe('listToolHandler', () => {
-    it('should list running applications', async () => {
+  describe("listToolHandler", () => {
+    it("should list running applications", async () => {
       const mockSwiftResponse: ApplicationListData = {
         applications: [
-          { app_name: 'Safari', bundle_id: 'com.apple.Safari', pid: 1234, is_active: true, window_count: 2 },
-          { app_name: 'Cursor', bundle_id: 'com.todesktop.230313mzl4w4u92', pid: 5678, is_active: false, window_count: 1 },
-        ]
+          {
+            app_name: "Safari",
+            bundle_id: "com.apple.Safari",
+            pid: 1234,
+            is_active: true,
+            window_count: 2,
+          },
+          {
+            app_name: "Cursor",
+            bundle_id: "com.todesktop.230313mzl4w4u92",
+            pid: 5678,
+            is_active: false,
+            window_count: 1,
+          },
+        ],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'running_applications'
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "running_applications",
+        },
+        mockContext,
+      );
 
-      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(['list', 'apps'], mockLogger);
-      expect(result.content[0].text).toContain('Found 2 running applications');
-      expect(result.content[0].text).toContain('Safari (com.apple.Safari) - PID: 1234 [ACTIVE] - Windows: 2');
-      expect(result.content[0].text).toContain('Cursor (com.todesktop.230313mzl4w4u92) - PID: 5678 - Windows: 1');
-      expect((result as any).application_list).toEqual(mockSwiftResponse.applications);
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        ["list", "apps"],
+        mockLogger,
+      );
+      expect(result.content[0].text).toContain("Found 2 running applications");
+      expect(result.content[0].text).toContain(
+        "Safari (com.apple.Safari) - PID: 1234 [ACTIVE] - Windows: 2",
+      );
+      expect(result.content[0].text).toContain(
+        "Cursor (com.todesktop.230313mzl4w4u92) - PID: 5678 - Windows: 1",
+      );
+      expect((result as any).application_list).toEqual(
+        mockSwiftResponse.applications,
+      );
     });
 
-    it('should list application windows', async () => {
+    it("should list application windows", async () => {
       const mockSwiftResponse: WindowListData = {
-        target_application_info: { app_name: 'Safari', bundle_id: 'com.apple.Safari', pid: 1234 },
+        target_application_info: {
+          app_name: "Safari",
+          bundle_id: "com.apple.Safari",
+          pid: 1234,
+        },
         windows: [
-          { window_title: 'Main Window', window_id: 12345, is_on_screen: true, bounds: {x:0,y:0,width:800,height:600} },
-          { window_title: 'Secondary Window', window_id: 12346, is_on_screen: false },
-        ]
+          {
+            window_title: "Main Window",
+            window_id: 12345,
+            is_on_screen: true,
+            bounds: { x: 0, y: 0, width: 800, height: 600 },
+          },
+          {
+            window_title: "Secondary Window",
+            window_id: 12346,
+            is_on_screen: false,
+          },
+        ],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'application_windows',
-        app: 'Safari',
-        include_window_details: ['ids', 'bounds', 'off_screen']
-      }, mockContext);
-      
-      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(['list', 'windows', '--app', 'Safari', '--include-details', 'ids,bounds,off_screen'], mockLogger);
-      expect(result.content[0].text).toContain('Found 2 windows for application: Safari (com.apple.Safari) - PID: 1234');
-      expect(result.content[0].text).toContain('1. "Main Window" [ID: 12345] [ON-SCREEN] [0,0 800×600]');
-      expect(result.content[0].text).toContain('2. "Secondary Window" [ID: 12346] [OFF-SCREEN]');
+      const result = await listToolHandler(
+        {
+          item_type: "application_windows",
+          app: "Safari",
+          include_window_details: ["ids", "bounds", "off_screen"],
+        },
+        mockContext,
+      );
+
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        [
+          "list",
+          "windows",
+          "--app",
+          "Safari",
+          "--include-details",
+          "ids,bounds,off_screen",
+        ],
+        mockLogger,
+      );
+      expect(result.content[0].text).toContain(
+        "Found 2 windows for application: Safari (com.apple.Safari) - PID: 1234",
+      );
+      expect(result.content[0].text).toContain(
+        '1. "Main Window" [ID: 12345] [ON-SCREEN] [0,0 800×600]',
+      );
+      expect(result.content[0].text).toContain(
+        '2. "Secondary Window" [ID: 12346] [OFF-SCREEN]',
+      );
       expect((result as any).window_list).toEqual(mockSwiftResponse.windows);
-      expect((result as any).target_application_info).toEqual(mockSwiftResponse.target_application_info);
+      expect((result as any).target_application_info).toEqual(
+        mockSwiftResponse.target_application_info,
+      );
     });
 
-    it('should handle server status', async () => {
+    it("should handle server status", async () => {
       // process.cwd() will be the project root during tests
-      const expectedPackageJsonPath = require('path').join(process.cwd(), 'package.json');
-      mockFsReadFile.mockResolvedValue(JSON.stringify({ version: '1.2.3' }));
-      mockGenerateServerStatusString.mockReturnValue('Peekaboo MCP Server v1.2.3\nStatus: Test Status');
+      const expectedPackageJsonPath = require("path").join(
+        process.cwd(),
+        "package.json",
+      );
+      mockFsReadFile.mockResolvedValue(JSON.stringify({ version: "1.2.3" }));
+      mockGenerateServerStatusString.mockReturnValue(
+        "Peekaboo MCP Server v1.2.3\nStatus: Test Status",
+      );
 
-      const result = await listToolHandler({
-        item_type: 'server_status'
-      }, mockContext);
-      
-      expect(mockFsReadFile).toHaveBeenCalledWith(expectedPackageJsonPath, 'utf-8');
-      expect(mockGenerateServerStatusString).toHaveBeenCalledWith('1.2.3');
-      expect(result.content[0].text).toBe('Peekaboo MCP Server v1.2.3\nStatus: Test Status');
+      const result = await listToolHandler(
+        {
+          item_type: "server_status",
+        },
+        mockContext,
+      );
+
+      expect(mockFsReadFile).toHaveBeenCalledWith(
+        expectedPackageJsonPath,
+        "utf-8",
+      );
+      expect(mockGenerateServerStatusString).toHaveBeenCalledWith("1.2.3");
+      expect(result.content[0].text).toBe(
+        "Peekaboo MCP Server v1.2.3\nStatus: Test Status",
+      );
       expect(mockExecuteSwiftCli).not.toHaveBeenCalled();
     });
 
-    it('should handle Swift CLI errors', async () => {
-      mockExecuteSwiftCli.mockResolvedValue({ 
-        success: false, 
-        error: { message: 'Application not found', code: 'APP_NOT_FOUND' } 
+    it("should handle Swift CLI errors", async () => {
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: false,
+        error: { message: "Application not found", code: "APP_NOT_FOUND" },
       });
 
-      const result = await listToolHandler({
-        item_type: 'running_applications'
-      }, mockContext) as { content: any[], isError?: boolean, _meta?: any };
+      const result = (await listToolHandler(
+        {
+          item_type: "running_applications",
+        },
+        mockContext,
+      )) as { content: any[]; isError?: boolean; _meta?: any };
 
-      expect(result.content[0].text).toBe('List operation failed: Application not found');
+      expect(result.content[0].text).toBe(
+        "List operation failed: Application not found",
+      );
       expect(result.isError).toBe(true);
-      expect((result as any)._meta.backend_error_code).toBe('APP_NOT_FOUND');
+      expect((result as any)._meta.backend_error_code).toBe("APP_NOT_FOUND");
     });
 
-    it('should handle Swift CLI errors with no message or code', async () => {
-      mockExecuteSwiftCli.mockResolvedValue({ 
-        success: false, 
-        error: { message: 'Unknown error', code: 'UNKNOWN_SWIFT_ERROR' } // Provide default message and code
+    it("should handle Swift CLI errors with no message or code", async () => {
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: false,
+        error: { message: "Unknown error", code: "UNKNOWN_SWIFT_ERROR" }, // Provide default message and code
       });
 
-      const result = await listToolHandler({
-        item_type: 'running_applications'
-      }, mockContext) as { content: any[], isError?: boolean, _meta?: any };
+      const result = (await listToolHandler(
+        {
+          item_type: "running_applications",
+        },
+        mockContext,
+      )) as { content: any[]; isError?: boolean; _meta?: any };
 
-      expect(result.content[0].text).toBe('List operation failed: Unknown error');
+      expect(result.content[0].text).toBe(
+        "List operation failed: Unknown error",
+      );
       expect(result.isError).toBe(true);
       // Meta might or might not be undefined depending on the exact path, so let's check the code if present
       if (result._meta) {
-        expect(result._meta.backend_error_code).toBe('UNKNOWN_SWIFT_ERROR');
+        expect(result._meta.backend_error_code).toBe("UNKNOWN_SWIFT_ERROR");
       } else {
         // If no _meta, the code should still reflect the error object passed
         // This case might need adjustment based on listToolHandler's exact logic for _meta creation
       }
     });
 
-    it('should handle unexpected errors during Swift CLI execution', async () => {
-      mockExecuteSwiftCli.mockRejectedValue(new Error('Unexpected Swift execution error'));
+    it("should handle unexpected errors during Swift CLI execution", async () => {
+      mockExecuteSwiftCli.mockRejectedValue(
+        new Error("Unexpected Swift execution error"),
+      );
 
-      const result = await listToolHandler({
-        item_type: 'running_applications'
-      }, mockContext) as { content: any[], isError?: boolean };
+      const result = (await listToolHandler(
+        {
+          item_type: "running_applications",
+        },
+        mockContext,
+      )) as { content: any[]; isError?: boolean };
 
-      expect(result.content[0].text).toBe('Unexpected error: Unexpected Swift execution error');
+      expect(result.content[0].text).toBe(
+        "Unexpected error: Unexpected Swift execution error",
+      );
       expect(result.isError).toBe(true);
     });
-    
-    it('should handle unexpected errors during server status (fs.readFile fails)', async () => {
-      mockFsReadFile.mockRejectedValue(new Error('Cannot read package.json'));
 
-      const result = await listToolHandler({
-        item_type: 'server_status'
-      }, mockContext) as { content: any[], isError?: boolean };
+    it("should handle unexpected errors during server status (fs.readFile fails)", async () => {
+      mockFsReadFile.mockRejectedValue(new Error("Cannot read package.json"));
 
-      expect(result.content[0].text).toBe('Unexpected error: Cannot read package.json');
+      const result = (await listToolHandler(
+        {
+          item_type: "server_status",
+        },
+        mockContext,
+      )) as { content: any[]; isError?: boolean };
+
+      expect(result.content[0].text).toBe(
+        "Unexpected error: Cannot read package.json",
+      );
       expect(result.isError).toBe(true);
     });
-    
-    it('should include Swift CLI messages in the output for applications list', async () => {
+
+    it("should include Swift CLI messages in the output for applications list", async () => {
       const mockSwiftResponse: ApplicationListData = {
-        applications: [{ app_name: 'TestApp', bundle_id: 'com.test.app', pid: 111, is_active: false, window_count: 0 }]
+        applications: [
+          {
+            app_name: "TestApp",
+            bundle_id: "com.test.app",
+            pid: 111,
+            is_active: false,
+            window_count: 0,
+          },
+        ],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ 
-        success: true, 
-        data: mockSwiftResponse, 
-        messages: ['Warning: One app hidden.', 'Info: Low memory.'] 
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: ["Warning: One app hidden.", "Info: Low memory."],
       });
 
-      const result = await listToolHandler({ item_type: 'running_applications' }, mockContext);
-      expect(result.content[0].text).toContain('Messages: Warning: One app hidden.; Info: Low memory.');
+      const result = await listToolHandler(
+        { item_type: "running_applications" },
+        mockContext,
+      );
+      expect(result.content[0].text).toContain(
+        "Messages: Warning: One app hidden.; Info: Low memory.",
+      );
     });
-    
-    it('should include Swift CLI messages in the output for windows list', async () => {
+
+    it("should include Swift CLI messages in the output for windows list", async () => {
       const mockSwiftResponse: WindowListData = {
-        target_application_info: { app_name: 'TestApp', pid: 111 },
-        windows: [{ window_title: 'TestWindow', window_id: 222 }]
+        target_application_info: { app_name: "TestApp", pid: 111 },
+        windows: [{ window_title: "TestWindow", window_id: 222 }],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ 
-        success: true, 
-        data: mockSwiftResponse, 
-        messages: ['Note: Some windows might be minimized.'] 
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: ["Note: Some windows might be minimized."],
       });
 
-      const result = await listToolHandler({ item_type: 'application_windows', app: 'TestApp' }, mockContext);
-      expect(result.content[0].text).toContain('Messages: Note: Some windows might be minimized.');
+      const result = await listToolHandler(
+        { item_type: "application_windows", app: "TestApp" },
+        mockContext,
+      );
+      expect(result.content[0].text).toContain(
+        "Messages: Note: Some windows might be minimized.",
+      );
     });
 
-    it('should handle missing app parameter for application_windows', async () => {
+    it("should handle missing app parameter for application_windows", async () => {
       // The Zod schema validation should catch this before the handler is called
       // In real usage, this would throw a validation error
       // For testing, we can simulate what would happen if validation was bypassed
       expect(() => {
         listToolSchema.parse({
-          item_type: 'application_windows'
+          item_type: "application_windows",
           // missing app parameter
         });
       }).toThrow();
     });
 
-    it('should handle empty applications list', async () => {
+    it("should handle empty applications list", async () => {
       const mockSwiftResponse: ApplicationListData = {
-        applications: []
+        applications: [],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'running_applications'
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "running_applications",
+        },
+        mockContext,
+      );
 
-      expect(result.content[0].text).toContain('Found 0 running applications');
+      expect(result.content[0].text).toContain("Found 0 running applications");
       expect((result as any).application_list).toEqual([]);
     });
 
-    it('should handle empty windows list', async () => {
+    it("should handle empty windows list", async () => {
       const mockSwiftResponse: WindowListData = {
-        target_application_info: { app_name: 'Safari', bundle_id: 'com.apple.Safari', pid: 1234 },
-        windows: []
+        target_application_info: {
+          app_name: "Safari",
+          bundle_id: "com.apple.Safari",
+          pid: 1234,
+        },
+        windows: [],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'application_windows',
-        app: 'Safari'
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "application_windows",
+          app: "Safari",
+        },
+        mockContext,
+      );
 
-      expect(result.content[0].text).toContain('Found 0 windows for application: Safari');
+      expect(result.content[0].text).toContain(
+        "Found 0 windows for application: Safari",
+      );
       expect((result as any).window_list).toEqual([]);
     });
 
-    it('should handle very long app names', async () => {
-      const longAppName = 'A'.repeat(256);
+    it("should handle very long app names", async () => {
+      const longAppName = "A".repeat(256);
       const mockSwiftResponse: ApplicationListData = {
-        applications: [{
-          app_name: longAppName,
-          bundle_id: 'com.long.app',
-          pid: 9999,
-          is_active: false,
-          window_count: 1
-        }]
+        applications: [
+          {
+            app_name: longAppName,
+            bundle_id: "com.long.app",
+            pid: 9999,
+            is_active: false,
+            window_count: 1,
+          },
+        ],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'running_applications'
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "running_applications",
+        },
+        mockContext,
+      );
 
       expect(result.content[0].text).toContain(longAppName);
     });
 
-    it('should handle special characters in app names', async () => {
-      const specialAppName = 'App™ with © Special & Characters™';
+    it("should handle special characters in app names", async () => {
+      const specialAppName = "App™ with © Special & Characters™";
       const mockSwiftResponse: ApplicationListData = {
-        applications: [{
-          app_name: specialAppName,
-          bundle_id: 'com.special.app',
-          pid: 1111,
-          is_active: true,
-          window_count: 2
-        }]
+        applications: [
+          {
+            app_name: specialAppName,
+            bundle_id: "com.special.app",
+            pid: 1111,
+            is_active: true,
+            window_count: 2,
+          },
+        ],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'running_applications'
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "running_applications",
+        },
+        mockContext,
+      );
 
       expect(result.content[0].text).toContain(specialAppName);
     });
 
-    it('should handle all window detail options', async () => {
+    it("should handle all window detail options", async () => {
       const mockSwiftResponse: WindowListData = {
-        target_application_info: { app_name: 'TestApp', bundle_id: 'com.test.app', pid: 1234 },
-        windows: [{
-          window_title: 'Test Window',
-          window_id: 12345,
-          window_index: 0,
-          is_on_screen: true,
-          bounds: { x: 100, y: 200, width: 800, height: 600 }
-        }]
+        target_application_info: {
+          app_name: "TestApp",
+          bundle_id: "com.test.app",
+          pid: 1234,
+        },
+        windows: [
+          {
+            window_title: "Test Window",
+            window_id: 12345,
+            window_index: 0,
+            is_on_screen: true,
+            bounds: { x: 100, y: 200, width: 800, height: 600 },
+          },
+        ],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'application_windows',
-        app: 'TestApp',
-        include_window_details: ['ids', 'bounds', 'off_screen']
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "application_windows",
+          app: "TestApp",
+          include_window_details: ["ids", "bounds", "off_screen"],
+        },
+        mockContext,
+      );
 
       // Window numbering is 1-based in the output
       expect(result.content[0].text).toContain('1. "Test Window"');
-      expect(result.content[0].text).toContain('[ID: 12345]');
-      expect(result.content[0].text).toContain('[100,200 800×600]');
-      expect(result.content[0].text).toContain('[ON-SCREEN]');
+      expect(result.content[0].text).toContain("[ID: 12345]");
+      expect(result.content[0].text).toContain("[100,200 800×600]");
+      expect(result.content[0].text).toContain("[ON-SCREEN]");
     });
 
-    it('should handle windows with missing optional fields', async () => {
+    it("should handle windows with missing optional fields", async () => {
       const mockSwiftResponse: WindowListData = {
-        target_application_info: { app_name: 'TestApp', pid: 1234 },
-        windows: [{
-          window_title: 'Minimal Window',
-          // All other fields are optional
-        }]
+        target_application_info: { app_name: "TestApp", pid: 1234 },
+        windows: [
+          {
+            window_title: "Minimal Window",
+            // All other fields are optional
+          },
+        ],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'application_windows',
-        app: 'TestApp',
-        include_window_details: ['ids', 'bounds']
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "application_windows",
+          app: "TestApp",
+          include_window_details: ["ids", "bounds"],
+        },
+        mockContext,
+      );
 
       expect(result.content[0].text).toContain('"Minimal Window"');
-      expect(result.content[0].text).not.toContain('[ID:'); // No ID present
-      expect(result.content[0].text).not.toContain('×'); // No bounds present
+      expect(result.content[0].text).not.toContain("[ID:"); // No ID present
+      expect(result.content[0].text).not.toContain("×"); // No bounds present
     });
 
-    it('should handle malformed Swift CLI response for applications', async () => {
-      mockExecuteSwiftCli.mockResolvedValue({ 
-        success: true, 
-        data: null // Invalid data
+    it("should handle malformed Swift CLI response for applications", async () => {
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: null, // Invalid data
       });
 
-      const result = await listToolHandler({
-        item_type: 'running_applications'
-      }, mockContext) as any;
+      const result = (await listToolHandler(
+        {
+          item_type: "running_applications",
+        },
+        mockContext,
+      )) as any;
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Invalid response from list utility');
+      expect(result.content[0].text).toContain(
+        "Invalid response from list utility",
+      );
     });
 
-    it('should handle malformed Swift CLI response for windows', async () => {
-      mockExecuteSwiftCli.mockResolvedValue({ 
-        success: true, 
-        data: { windows: [] } // Missing target_application_info
+    it("should handle malformed Swift CLI response for windows", async () => {
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: { windows: [] }, // Missing target_application_info
       });
 
-      const result = await listToolHandler({
-        item_type: 'application_windows',
-        app: 'Safari'
-      }, mockContext) as any;
+      const result = (await listToolHandler(
+        {
+          item_type: "application_windows",
+          app: "Safari",
+        },
+        mockContext,
+      )) as any;
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Invalid response from list utility');
+      expect(result.content[0].text).toContain(
+        "Invalid response from list utility",
+      );
     });
 
-    it('should handle very large PID values', async () => {
+    it("should handle very large PID values", async () => {
       const mockSwiftResponse: ApplicationListData = {
-        applications: [{
-          app_name: 'TestApp',
-          bundle_id: 'com.test.app',
-          pid: Number.MAX_SAFE_INTEGER,
-          is_active: false,
-          window_count: 0
-        }]
+        applications: [
+          {
+            app_name: "TestApp",
+            bundle_id: "com.test.app",
+            pid: Number.MAX_SAFE_INTEGER,
+            is_active: false,
+            window_count: 0,
+          },
+        ],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'running_applications'
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "running_applications",
+        },
+        mockContext,
+      );
 
-      expect(result.content[0].text).toContain(`PID: ${Number.MAX_SAFE_INTEGER}`);
+      expect(result.content[0].text).toContain(
+        `PID: ${Number.MAX_SAFE_INTEGER}`,
+      );
     });
 
-    it('should handle negative window count', async () => {
+    it("should handle negative window count", async () => {
       const mockSwiftResponse: ApplicationListData = {
-        applications: [{
-          app_name: 'BuggyApp',
-          bundle_id: 'com.buggy.app',
-          pid: 1234,
-          is_active: false,
-          window_count: -1 // Shouldn't happen but testing edge case
-        }]
+        applications: [
+          {
+            app_name: "BuggyApp",
+            bundle_id: "com.buggy.app",
+            pid: 1234,
+            is_active: false,
+            window_count: -1, // Shouldn't happen but testing edge case
+          },
+        ],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'running_applications'
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "running_applications",
+        },
+        mockContext,
+      );
 
-      expect(result.content[0].text).toContain('Windows: -1');
+      expect(result.content[0].text).toContain("Windows: -1");
     });
 
-    it('should handle very long window titles', async () => {
-      const longTitle = 'Window '.repeat(100);
+    it("should handle very long window titles", async () => {
+      const longTitle = "Window ".repeat(100);
       const mockSwiftResponse: WindowListData = {
-        target_application_info: { app_name: 'TestApp', pid: 1234 },
-        windows: [{
-          window_title: longTitle,
-          window_id: 12345
-        }]
+        target_application_info: { app_name: "TestApp", pid: 1234 },
+        windows: [
+          {
+            window_title: longTitle,
+            window_id: 12345,
+          },
+        ],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'application_windows',
-        app: 'TestApp'
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "application_windows",
+          app: "TestApp",
+        },
+        mockContext,
+      );
 
       expect(result.content[0].text).toContain(longTitle);
     });
 
-    it('should handle invalid version in package.json', async () => {
+    it("should handle invalid version in package.json", async () => {
       mockFsReadFile.mockResolvedValue('{ "not_version": "1.0.0" }');
-      mockGenerateServerStatusString.mockReturnValue('Peekaboo MCP Server v[unknown]\nStatus: Test');
+      mockGenerateServerStatusString.mockReturnValue(
+        "Peekaboo MCP Server v[unknown]\nStatus: Test",
+      );
 
-      const result = await listToolHandler({
-        item_type: 'server_status'
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "server_status",
+        },
+        mockContext,
+      );
 
-      expect(mockGenerateServerStatusString).toHaveBeenCalledWith('[unknown]');
-      expect(result.content[0].text).toContain('[unknown]');
+      expect(mockGenerateServerStatusString).toHaveBeenCalledWith("[unknown]");
+      expect(result.content[0].text).toContain("[unknown]");
     });
 
-    it('should handle malformed package.json', async () => {
-      mockFsReadFile.mockResolvedValue('{ invalid json }');
+    it("should handle malformed package.json", async () => {
+      mockFsReadFile.mockResolvedValue("{ invalid json }");
 
-      const result = await listToolHandler({
-        item_type: 'server_status'
-      }, mockContext) as any;
+      const result = (await listToolHandler(
+        {
+          item_type: "server_status",
+        },
+        mockContext,
+      )) as any;
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Unexpected error');
+      expect(result.content[0].text).toContain("Unexpected error");
     });
 
-    it('should handle empty window details array', async () => {
+    it("should handle empty window details array", async () => {
       const mockSwiftResponse: WindowListData = {
-        target_application_info: { app_name: 'TestApp', pid: 1234 },
-        windows: [{ window_title: 'Test Window' }]
+        target_application_info: { app_name: "TestApp", pid: 1234 },
+        windows: [{ window_title: "Test Window" }],
       };
-      mockExecuteSwiftCli.mockResolvedValue({ success: true, data: mockSwiftResponse, messages: [] });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: mockSwiftResponse,
+        messages: [],
+      });
 
-      const result = await listToolHandler({
-        item_type: 'application_windows',
-        app: 'TestApp',
-        include_window_details: []
-      }, mockContext);
+      const result = await listToolHandler(
+        {
+          item_type: "application_windows",
+          app: "TestApp",
+          include_window_details: [],
+        },
+        mockContext,
+      );
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ['list', 'windows', '--app', 'TestApp'],
-        mockLogger
+        ["list", "windows", "--app", "TestApp"],
+        mockLogger,
       );
       expect(result.content[0].text).toContain('"Test Window"');
     });
 
-    it('should handle duplicate window detail options', async () => {
+    it("should handle duplicate window detail options", async () => {
       const input: ListToolInput = {
-        item_type: 'application_windows',
-        app: 'TestApp',
-        include_window_details: ['ids', 'ids', 'bounds', 'bounds'] // Duplicates
+        item_type: "application_windows",
+        app: "TestApp",
+        include_window_details: ["ids", "ids", "bounds", "bounds"], // Duplicates
       };
-      
+
       const args = buildSwiftCliArgs(input);
-      expect(args).toEqual(['list', 'windows', '--app', 'TestApp', '--include-details', 'ids,ids,bounds,bounds']);
+      expect(args).toEqual([
+        "list",
+        "windows",
+        "--app",
+        "TestApp",
+        "--include-details",
+        "ids,ids,bounds,bounds",
+      ]);
     });
   });
-}); 
+});
