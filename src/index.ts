@@ -34,8 +34,7 @@ const SERVER_VERSION = packageJson.version;
 // Initialize the Swift CLI Path once
 initializeSwiftCliPath(packageRootDir);
 
-// Server-level state
-let hasSentInitialStatus = false;
+// No longer need to track initial status display
 
 // Initialize logger
 const baseLogLevel = (process.env.PEEKABOO_LOG_LEVEL || 'info').toLowerCase();
@@ -143,21 +142,25 @@ const server = new Server(
 
 // Set up request handlers
 server.setRequestHandler(ListToolsRequestSchema, async () => {
+  // Generate server status string to append to tool descriptions
+  const serverStatus = generateServerStatusString(SERVER_VERSION);
+  const statusSuffix = `\n${serverStatus}`;
+  
   return {
     tools: [
       {
         name: 'image',
-        description: 'Captures macOS screen content. Targets: entire screen (each display separately), a specific application window, or all windows of an application. Supports foreground/background capture. Captured image(s) can be saved to file(s) and/or returned directly as image data. Window shadows/frames are automatically excluded. Application identification uses intelligent fuzzy matching.',
+        description: 'Captures macOS screen content. Targets: entire screen (each display separately), a specific application window, or all windows of an application. Supports foreground/background capture. Captured image(s) can be saved to file(s) and/or returned directly as image data. Window shadows/frames are automatically excluded. Application identification uses intelligent fuzzy matching.' + statusSuffix,
         inputSchema: zodToJsonSchema(imageToolSchema)
       },
       {
         name: 'analyze',
-        description: 'Analyzes an image file using a configured AI model (local Ollama, cloud OpenAI, etc.) and returns a textual analysis/answer. Requires image path. AI provider selection and model defaults are governed by the server\'s `AI_PROVIDERS` environment variable and client overrides.',
+        description: 'Analyzes an image file using a configured AI model (local Ollama, cloud OpenAI, etc.) and returns a textual analysis/answer. Requires image path. AI provider selection and model defaults are governed by the server\'s `AI_PROVIDERS` environment variable and client overrides.' + statusSuffix,
         inputSchema: zodToJsonSchema(analyzeToolSchema)
       },
       {
         name: 'list',
-        description: 'Lists system items: all running applications, windows of a specific app, or server status. Allows specifying window details. App ID uses fuzzy matching.',
+        description: 'Lists system items: all running applications, windows of a specific app, or server status. Allows specifying window details. App ID uses fuzzy matching.' + statusSuffix,
         inputSchema: zodToJsonSchema(listToolSchema)
       }
     ]
@@ -186,10 +189,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'list': {
         const validatedArgs = listToolSchema.parse(args || {});
         response = await listToolHandler(validatedArgs, toolContext);
-        // Do not augment status for peekaboo.list with item_type: "server_status"
-        if (validatedArgs.item_type === 'server_status') {
-          return response;
-        }
         break;
       }
       default:
@@ -197,29 +196,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [{ type: 'text', text: `Unknown tool: ${name}` }],
           isError: true
         };
-        // Log error for unknown tool, but allow status augmentation if it somehow wasn't an error response initially
         logger.error(`Unknown tool: ${name}`);
     }
 
-    // Augment successful tool responses with initial server status
-    if (response && !response.isError && !hasSentInitialStatus) {
-      const statusString = generateServerStatusString(SERVER_VERSION);
-      const statusContentItem = { type: 'text', text: statusString };
-
-      if (response.content && Array.isArray(response.content) && response.content.length > 0) {
-        // Check if first item is a text item
-        if (response.content[0].type === 'text') {
-          response.content[0].text += statusString; // Append to existing text item
-        } else {
-          response.content.unshift(statusContentItem); // Prepend as new text item
-        }
-      } else {
-        response.content = [statusContentItem]; // Create content array with status item
-      }
-      hasSentInitialStatus = true;
-      logger.info('Initial server status message appended to tool response.');
-    }
-    return response; // Return the (potentially augmented) response
+    return response;
 
   } catch (error) {
     logger.error({ error, toolName: name }, 'Tool execution failed');
