@@ -6,7 +6,7 @@ module.exports = {
   transform: {
     '^.+\\.ts$': ['ts-jest', {
       useESM: true,
-      tsconfig: 'tsconfig.jest.json'
+      tsconfig: '<rootDir>/tsconfig.jest.json'
     }]
   },
   moduleNameMapper: {
@@ -16,6 +16,7 @@ module.exports = {
   testMatch: [
     '**/tests/unit/**/*.test.ts',
     '**/tests/integration/**/*.test.ts',
+    'peekaboo-cli/tests/e2e/**/*.test.ts',
   ],
   collectCoverageFrom: [
     'src/**/*.ts',
