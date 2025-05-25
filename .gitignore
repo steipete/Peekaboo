@@ -75,7 +75,8 @@ peekaboo-cli/.build/
 peekaboo-cli/DerivedData/
 peekaboo-cli/.swiftpm/
 peekaboo-cli/*.bc
-peekaboo
+# Compiled CLI binary in root
+/peekaboo
 .build/
 DerivedData/
 *.pbxuser
@@ -110,3 +111,6 @@ playground.xcworkspace
 
 # OS generated files
 Thumbs.db
+
+# npm package files
+*.tgz
