@@ -213,6 +213,40 @@ function checkSwift() {
   return true;
 }
 
+function checkVersionAvailability() {
+  logStep('Version Availability Check');
+
+  const packageJson = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'));
+  const packageName = packageJson.name;
+  const version = packageJson.version;
+
+  log(`Checking if ${packageName}@${version} is already published...`, colors.cyan);
+
+  // Check if version exists on npm
+  const existingVersions = exec(`npm view ${packageName} versions --json`, { allowFailure: true });
+  
+  if (existingVersions) {
+    try {
+      const versions = JSON.parse(existingVersions);
+      if (versions.includes(version)) {
+        logError(`Version ${version} is already published on npm!`);
+        logError('Please update the version in package.json before releasing.');
+        return false;
+      }
+    } catch (e) {
+      // If parsing fails, try to check if it's a single version
+      if (existingVersions.includes(version)) {
+        logError(`Version ${version} is already published on npm!`);
+        logError('Please update the version in package.json before releasing.');
+        return false;
+      }
+    }
+  }
+
+  logSuccess(`Version ${version} is available for publishing`);
+  return true;
+}
+
 function buildAndVerifyPackage() {
   logStep('Build and Package Verification');
 
@@ -240,19 +274,21 @@ function buildAndVerifyPackage() {
 
   // Verify critical files are included
   const requiredFiles = [
-    'package/dist/index.js',
-    'package/peekaboo',
-    'package/README.md',
-    'package/LICENSE'
+    'dist/index.js',
+    'peekaboo',
+    'README.md',
+    'LICENSE'
   ];
 
-  const missingFiles = requiredFiles.filter(file => 
-    !packOutput.includes(file)
-  );
+  let allFilesPresent = true;
+  for (const file of requiredFiles) {
+    if (!packOutput.includes(file)) {
+      logError(`Missing required file in package: ${file}`);
+      allFilesPresent = false;
+    }
+  }
 
-  if (missingFiles.length > 0) {
-    logError('Missing required files in package:');
-    missingFiles.forEach(file => console.log(`  - ${file}`));
+  if (!allFilesPresent) {
     return false;
   }
   logSuccess('All required files included in package');
@@ -284,6 +320,7 @@ async function main() {
   const checks = [
     checkGitStatus,
     checkDependencies,
+    checkVersionAvailability,
     checkTypeScript,
     checkSwift,
     buildAndVerifyPackage
