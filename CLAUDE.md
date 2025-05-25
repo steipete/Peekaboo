@@ -53,6 +53,9 @@ npm run lint:swift
 
 # Format Swift code
 npm run format:swift
+
+# Prepare for release (comprehensive checks)
+npm run prepare-release
 ```
 
 ### Testing the MCP server

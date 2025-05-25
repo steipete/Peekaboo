@@ -28,6 +28,7 @@
     "test:all": "npm run test:integration",
     "lint:swift": "cd peekaboo-cli && swiftlint",
     "format:swift": "cd peekaboo-cli && swiftformat .",
+    "prepare-release": "node ./scripts/prepare-release.js",
     "postinstall": "chmod +x dist/index.js 2>/dev/null || true"
   },
   "keywords": [
