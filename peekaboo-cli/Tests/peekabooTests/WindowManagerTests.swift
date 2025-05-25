@@ -21,8 +21,8 @@ final class WindowManagerTests: XCTestCase {
 
         // If there are windows, verify they're sorted by index
         if windows.count > 1 {
-            for i in 1..<windows.count {
-                XCTAssertGreaterThanOrEqual(windows[i].windowIndex, windows[i - 1].windowIndex)
+            for index in 1..<windows.count {
+                XCTAssertGreaterThanOrEqual(windows[index].windowIndex, windows[index - 1].windowIndex)
             }
         }
     }
