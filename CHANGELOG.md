@@ -23,3 +23,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Initial E2E tests for CLI image capture. 
+
+## [1.0.0-beta.4] - YYYY-MM-DD
+
+### ✨ Added
+
+- **Swift CLI `image` command:** Added `--screen-index <Int>` option to capture a specific display when `--mode screen` is used. (Part of `image` tool simplification)
+- **MCP `image` tool:** Now fully supports `app_target: "screen:INDEX"` by utilizing the Swift CLI's new `--screen-index` capability.
+
+### ♻️ Changed
+
+- **MCP `image` tool API significantly simplified:**
+    - Replaced `app`, `mode`, and `window_specifier` parameters with a single `app_target` string (e.g., `"AppName"`, `"AppName:WINDOW_TITLE:Title"`, `"screen:0"`).
+    - `format` parameter now includes `"data"` option to return Base64 PNG data directly. If `path` is also given with `format: "data"`, file is saved (as PNG) AND data is returned.
+    - If `path` is omitted, `image` tool now defaults to `format: "data"` behavior (returns Base64 PNG data).
+    - `return_data` parameter removed (behavior now implied by `format` and `path`).
+    - `provider_config` parameter removed. AI provider for analysis (when `question` is supplied) is now automatically selected from `PEEKABOO_AI_PROVIDERS` environment variable.
+- **Node.js `imageToolHandler` and `buildSwiftCliArgs`:** Refactored to support the new `image` tool API and `--screen-index`.
+- **Tests:** Unit and Integration tests for the `image` tool were extensively updated to reflect the API changes and new functionalities.
+
+### 🐛 Fixed
+
+- Addressed an issue in `src/tools/image.ts` where `logger.debug()` could be called without checking for logger existence (relevant for `buildSwiftCliArgs` if called in an unexpected context, though typically safe). 

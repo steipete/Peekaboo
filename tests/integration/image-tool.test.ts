@@ -39,6 +39,9 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
+// Import SwiftCliResponse type
+import { SwiftCliResponse } from "../../src/types";
+
 describe("Image Tool Integration Tests", () => {
   let tempDir: string;
 
@@ -104,11 +107,36 @@ describe("Image Tool Integration Tests", () => {
       expect(result.content[0].text).toContain("Captured");
     });
 
-    it("should handle screen:INDEX format (with warning)", async () => {
+    it("should handle screen:INDEX format (valid index)", async () => {
       const input: ImageInput = { app_target: "screen:0" };
+      
+      // Mock successful screen capture with specific screen index
+      mockExecuteSwiftCli.mockResolvedValue(
+        mockSwiftCli.captureImage("screen", {
+          path: path.join(tempDir, "peekaboo-img-test", "capture.png"),
+          format: "png",
+          item_label: "Display 0 (Index 0)"
+        })
+      );
+      
+      const result = await imageToolHandler(input, mockContext);
+
+      expect(result.isError).toBeFalsy();
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["image", "--mode", "screen", "--screen-index", "0"]),
+        mockLogger
+      );
+      // Check that the item_label indicates the specific screen was captured
+      if (result.saved_files && result.saved_files.length > 0) {
+        expect(result.saved_files[0].item_label).toContain("Display 0");
+      }
+    });
+
+    it("should handle screen:INDEX format (invalid index)", async () => {
+      const input: ImageInput = { app_target: "screen:abc" };
       const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
       
-      // Mock successful screen capture
+      // Mock successful screen capture (falls back to all screens)
       mockExecuteSwiftCli.mockResolvedValue(
         mockSwiftCli.captureImage("screen", {
           path: path.join(tempDir, "peekaboo-img-test", "capture.png"),
@@ -120,9 +148,44 @@ describe("Image Tool Integration Tests", () => {
 
       expect(result.isError).toBeFalsy();
       expect(loggerWarnSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ screenIndex: "0" }),
-        "Screen index specification not yet supported by Swift CLI, capturing all screens",
+        expect.objectContaining({ screenIndex: "abc" }),
+        "Invalid screen index 'abc' in app_target, capturing all screens.",
       );
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.not.arrayContaining(["--screen-index"]),
+        mockLogger
+      );
+    });
+
+    it("should handle screen:INDEX format (out-of-bounds index)", async () => {
+      const input: ImageInput = { app_target: "screen:99" };
+      
+      // Mock response with debug logs indicating out-of-bounds
+      const mockResponse = {
+        success: true,
+        data: {
+          saved_files: [{
+            path: path.join(tempDir, "peekaboo-img-test", "capture.png"),
+            mime_type: "image/png",
+            item_label: "All Screens"
+          }]
+        },
+        messages: ["Captured 1 image"],
+        debug_logs: ["Screen index 99 is out of bounds. Falling back to capturing all screens."]
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+      
+      const result = await imageToolHandler(input, mockContext);
+
+      expect(result.isError).toBeFalsy();
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["image", "--mode", "screen", "--screen-index", "99"]),
+        mockLogger
+      );
+      // The Swift CLI should handle the out-of-bounds gracefully and capture all screens
+      if (result.saved_files && result.saved_files.length > 0) {
+        expect(result.saved_files[0].item_label).not.toContain("Index 99");
+      }
     });
 
     it("should handle frontmost app_target (with warning)", async () => {
@@ -294,6 +357,32 @@ describe("Image Tool Integration Tests", () => {
         expect(result.saved_files).toHaveLength(1);
         expect(result.saved_files[0].path).toBe(testPath);
         expect(result.saved_files[0].mime_type).toBe("image/jpeg");
+      }
+    });
+
+    it("should include item_label in metadata when format is 'data' with screen:INDEX", async () => {
+      const input: ImageInput = { format: "data", app_target: "screen:1" };
+      
+      // Mock successful capture with specific screen index
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: {
+          saved_files: [{
+            path: expect.stringMatching(/peekaboo-img-.*\/capture\.png$/),
+            mime_type: "image/png",
+            item_label: "Display 1 (Index 1)"
+          }]
+        },
+        messages: ["Captured 1 image"]
+      });
+      
+      const result = await imageToolHandler(input, mockContext);
+
+      if (!result.isError) {
+        // Check for image content with metadata
+        const imageContent = result.content.find((item) => item.type === "image");
+        expect(imageContent).toBeDefined();
+        expect(imageContent?.metadata?.item_label).toBe("Display 1 (Index 1)");
       }
     });
   });

@@ -276,12 +276,15 @@ export function buildSwiftCliArgs(
     // 'screen:INDEX': Specific display
     const screenIndex = input.app_target.substring(7);
     args.push("--mode", "screen");
-    // Note: --screen-index is not yet implemented in Swift CLI
-    // For now, we'll just use screen mode without index
-    log.warn(
-      { screenIndex },
-      "Screen index specification not yet supported by Swift CLI, capturing all screens",
-    );
+    const index = parseInt(screenIndex, 10);
+    if (!isNaN(index)) {
+      args.push("--screen-index", index.toString());
+    } else {
+      log.warn(
+        { screenIndex },
+        `Invalid screen index '${screenIndex}' in app_target, capturing all screens.`,
+      );
+    }
   } else if (input.app_target === "frontmost") {
     // 'frontmost': Would need to determine frontmost app
     // For now, default to screen mode with a warning
@@ -336,6 +339,9 @@ export function buildSwiftCliArgs(
   // Add capture focus
   args.push("--capture-focus", input.capture_focus || "background");
 
+  if (logger) {
+    logger.debug({ cliArgs: args }, "Built Swift CLI arguments for image tool");
+  }
   return args;
 }
 

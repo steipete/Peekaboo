@@ -39,6 +39,9 @@ struct ImageCommand: ParsableCommand {
     @Option(name: .long, help: "Window index to capture (0=frontmost)")
     var windowIndex: Int?
 
+    @Option(name: .long, help: "Screen index to capture (0-based)")
+    var screenIndex: Int?
+
     @Option(name: .long, help: "Image format")
     var format: ImageFormat = .png
 
@@ -66,7 +69,7 @@ struct ImageCommand: ParsableCommand {
 
         switch captureMode {
         case .screen:
-            return try captureAllScreens()
+            return try captureScreens()
         case .window:
             guard let app = app else {
                 throw CaptureError.appNotFound("No application specified for window capture")
@@ -76,7 +79,7 @@ struct ImageCommand: ParsableCommand {
             if let app = app {
                 return try captureAllApplicationWindows(app)
             } else {
-                return try captureAllScreens()
+                return try captureScreens()
             }
         }
     }
@@ -115,7 +118,7 @@ struct ImageCommand: ParsableCommand {
         return app != nil ? .window : .screen
     }
 
-    private func captureAllScreens() throws(CaptureError) -> [SavedFile] {
+    private func captureScreens() throws(CaptureError) -> [SavedFile] {
         var savedFiles: [SavedFile] = []
 
         var displayCount: UInt32 = 0
@@ -130,21 +133,62 @@ struct ImageCommand: ParsableCommand {
             throw CaptureError.noDisplaysAvailable
         }
 
-        for (index, displayID) in displays.enumerated() {
-            let fileName = generateFileName(displayIndex: index)
-            let filePath = getOutputPath(fileName)
+        // If screenIndex is specified, capture only that screen
+        if let screenIndex = screenIndex {
+            if screenIndex >= 0 && screenIndex < displays.count {
+                let displayID = displays[screenIndex]
+                let fileName = generateFileName(displayIndex: screenIndex)
+                let filePath = getOutputPath(fileName)
+                
+                try captureDisplay(displayID, to: filePath)
+                
+                let savedFile = SavedFile(
+                    path: filePath,
+                    item_label: "Display \(screenIndex + 1) (Index \(screenIndex))",
+                    window_title: nil,
+                    window_id: nil,
+                    window_index: nil,
+                    mime_type: format == .png ? "image/png" : "image/jpeg"
+                )
+                savedFiles.append(savedFile)
+            } else {
+                Logger.shared.debug("Screen index \(screenIndex) is out of bounds. Capturing all screens instead.")
+                // Fall through to capture all screens
+                for (index, displayID) in displays.enumerated() {
+                    let fileName = generateFileName(displayIndex: index)
+                    let filePath = getOutputPath(fileName)
 
-            try captureDisplay(displayID, to: filePath)
+                    try captureDisplay(displayID, to: filePath)
 
-            let savedFile = SavedFile(
-                path: filePath,
-                item_label: "Display \(index + 1)",
-                window_title: nil,
-                window_id: nil,
-                window_index: nil,
-                mime_type: format == .png ? "image/png" : "image/jpeg"
-            )
-            savedFiles.append(savedFile)
+                    let savedFile = SavedFile(
+                        path: filePath,
+                        item_label: "Display \(index + 1)",
+                        window_title: nil,
+                        window_id: nil,
+                        window_index: nil,
+                        mime_type: format == .png ? "image/png" : "image/jpeg"
+                    )
+                    savedFiles.append(savedFile)
+                }
+            }
+        } else {
+            // Capture all screens
+            for (index, displayID) in displays.enumerated() {
+                let fileName = generateFileName(displayIndex: index)
+                let filePath = getOutputPath(fileName)
+
+                try captureDisplay(displayID, to: filePath)
+
+                let savedFile = SavedFile(
+                    path: filePath,
+                    item_label: "Display \(index + 1)",
+                    window_title: nil,
+                    window_id: nil,
+                    window_index: nil,
+                    mime_type: format == .png ? "image/png" : "image/jpeg"
+                )
+                savedFiles.append(savedFile)
+            }
         }
 
         return savedFiles

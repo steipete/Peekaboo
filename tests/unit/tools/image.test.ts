@@ -214,23 +214,44 @@ describe("Image Tool", () => {
       expect(result.saved_files).toEqual([mockSavedFile]);
     });
 
-    it("should handle app_target: 'screen:1' with warning", async () => {
-      const mockResponse = mockSwiftCli.captureImage("screen", {});
+    it("should handle app_target: 'screen:1' with --screen-index", async () => {
+      const mockResponse = mockSwiftCli.captureImage("screen", {
+        item_label: "Display 0 (Index 1)",
+      });
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
-
-      const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
 
       await imageToolHandler(
         { app_target: "screen:1" },
         mockContext,
       );
 
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--mode", "screen", "--screen-index", "1"]),
+        mockLogger,
+      );
+    });
+
+    it("should handle app_target: 'screen:abc' with warning about invalid index", async () => {
+      const mockResponse = mockSwiftCli.captureImage("screen", {});
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
+
+      await imageToolHandler(
+        { app_target: "screen:abc" },
+        mockContext,
+      );
+
       expect(loggerWarnSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ screenIndex: "1" }),
-        "Screen index specification not yet supported by Swift CLI, capturing all screens",
+        expect.objectContaining({ screenIndex: "abc" }),
+        "Invalid screen index 'abc' in app_target, capturing all screens.",
       );
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--mode", "screen"]),
+        mockLogger,
+      );
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.not.arrayContaining(["--screen-index"]),
         mockLogger,
       );
     });
@@ -525,14 +546,34 @@ describe("Image Tool", () => {
       ]);
     });
 
-    it("should handle app_target: 'screen:1'", () => {
-      const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
+    it("should handle app_target: 'screen:1' with --screen-index", () => {
       const args = buildSwiftCliArgs({ app_target: "screen:1" }, mockLogger);
+      expect(args).toEqual(
+        expect.arrayContaining(["--mode", "screen", "--screen-index", "1"]),
+      );
+      expect(args).not.toContain("--app");
+    });
+
+    it("should handle app_target: 'screen:0' with --screen-index", () => {
+      const args = buildSwiftCliArgs({ app_target: "screen:0" }, mockLogger);
+      expect(args).toEqual(
+        expect.arrayContaining(["--mode", "screen", "--screen-index", "0"]),
+      );
+      expect(args).not.toContain("--app");
+    });
+
+    it("should handle app_target: 'screen:abc' with warning", () => {
+      const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
+      const args = buildSwiftCliArgs({ app_target: "screen:abc" }, mockLogger);
       expect(args).toEqual(
         expect.arrayContaining(["--mode", "screen"]),
       );
+      expect(args).not.toContain("--screen-index");
       expect(args).not.toContain("--app");
-      expect(loggerWarnSpy).toHaveBeenCalled();
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ screenIndex: "abc" }),
+        "Invalid screen index 'abc' in app_target, capturing all screens.",
+      );
     });
 
     it("should handle app_target: 'frontmost'", () => {
