@@ -4,26 +4,41 @@ import fs from 'fs/promises';
 // import * as AIProviders from '../../src/utils/ai-providers'; // No longer using wildcard import for mocks
 import { Result } from '@modelcontextprotocol/sdk/types.js';
 import { AIProvider } from '../../src/types';
+import { vi } from 'vitest';
+import { readImageAsBase64 } from '../../src/utils/peekaboo-cli';
 
 // Mock Logger
 const mockLogger: Logger = {
-  debug: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  fatal: jest.fn(),
-  child: jest.fn().mockReturnThis(),
-  flush: jest.fn(),
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  child: vi.fn().mockReturnThis(),
   level: 'info',
-  levels: { values: { info: 30 }, labels: { '30': 'info' } }
-} as unknown as Logger;
+} as any;
 
 // Mock fs.readFile
-jest.mock('fs/promises', () => ({
-  ...jest.requireActual('fs/promises'),
-  readFile: jest.fn(),
-  access: jest.fn().mockResolvedValue(undefined),
+vi.mock('fs/promises', async () => ({
+  ...(await vi.importActual('fs/promises')),
+  readFile: vi.fn(),
+  access: vi.fn().mockResolvedValue(undefined),
 }));
+
+// Mock the readImageAsBase64 function
+vi.mock('../../src/utils/peekaboo-cli', () => ({
+  readImageAsBase64: vi.fn(),
+  executeSwiftCli: vi.fn(), // Also mock this if analyzeToolHandler somehow uses it
+}));
+
+// Mock AI Provider utilities
+vi.mock('../../src/utils/ai-providers', () => ({
+  parseAIProviders: vi.fn(),
+  isProviderAvailable: vi.fn(),
+  analyzeImageWithProvider: vi.fn(),
+  getDefaultModelForProvider: vi.fn(),
+}));
+
+const mockReadImageAsBase64 = readImageAsBase64 as vi.MockedFunction<typeof readImageAsBase64>;
 
 // --- Advanced Mocking Strategy for ai-providers ---
 // These will hold the current mock implementations for each function.
@@ -33,7 +48,7 @@ let currentIsProviderAvailableImpl: (...args: any[]) => Promise<boolean> = async
 let currentAnalyzeImageWithProviderImpl: (...args: any[]) => Promise<string> = async () => 'Mocked AI Response';
 let currentGetDefaultModelForProviderImpl: (...args: any[]) => string = () => 'unknown-default';
 
-jest.mock('../../src/utils/ai-providers', () => ({
+vi.mock('../../src/utils/ai-providers', () => ({
   __esModule: true,
   // The mocked functions will call the current implementations stored in the variables above.
   parseAIProviders: (...args: any[]) => currentParseAIProvidersImpl(...args),
@@ -48,11 +63,12 @@ const MOCK_IMAGE_BASE64 = 'mockbase64string';
 const MOCK_QUESTION = 'What is in this image?';
 
 describe('analyzeToolHandler Integration Tests', () => {
-  // Hold onto the original fs.readFile mock to reset it if needed, though usually jest.clearAllMocks() or mockClear() on the function itself is enough.
-  const originalReadFileMock = fs.readFile as jest.Mock;
+  let originalReadFileMock: vi.Mock;
 
-  beforeEach(() => {
-    // Reset implementations to their defaults for each test
+  beforeEach(async () => {
+    const mockedFs = await import('fs/promises');
+    originalReadFileMock = mockedFs.readFile as vi.Mock;
+
     currentParseAIProvidersImpl = () => [];
     currentIsProviderAvailableImpl = async () => false;
     currentAnalyzeImageWithProviderImpl = async () => 'Mocked AI Response';
@@ -62,19 +78,15 @@ describe('analyzeToolHandler Integration Tests', () => {
       return 'unknown-default';
     };
 
-    // Clear call history for fs.readFile (and other direct jest.fn mocks if any were used differently)
     originalReadFileMock.mockClear();
-    // Setup default behavior for fs.readFile for each test
     originalReadFileMock.mockResolvedValue(Buffer.from(MOCK_IMAGE_BASE64, 'base64'));
 
-    // Reset ENV VARS
     process.env.PEEKABOO_AI_PROVIDERS = '';
     process.env.OPENAI_API_KEY = '';
     process.env.PEEKABOO_OLLAMA_BASE_URL = 'http://localhost:11434';
   });
 
   it('should return error if PEEKABOO_AI_PROVIDERS is not configured (env var is empty)', async () => {
-    // process.env.PEEKABOO_AI_PROVIDERS is already empty from beforeEach
     const args = analyzeToolSchema.parse({ image_path: MOCK_IMAGE_PATH, question: MOCK_QUESTION });
     const response: Result = await analyzeToolHandler(args, { logger: mockLogger });
     expect(response.isError).toBe(true);

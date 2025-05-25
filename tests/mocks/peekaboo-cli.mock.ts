@@ -1,4 +1,5 @@
 import { SwiftCliResponse, ApplicationListData, WindowListData, ImageCaptureData } from '../../src/types/index';
+import { vi } from 'vitest';
 
 // Mock Swift CLI responses for testing
 export const mockSwiftCli = {
@@ -67,18 +68,22 @@ export const mockSwiftCli = {
   },
 
   // Mock successful image capture response
-  captureImage(mode: string, app?: string): SwiftCliResponse {
-    const fileName = app ? `${app.toLowerCase()}_window.png` : 'screen_capture.png';
+  captureImage(mode: string, options?: { app?: string; path?: string; format?: string }): SwiftCliResponse {
+    const appName = options?.app;
+    const format = options?.format || 'png';
+    const defaultFileName = appName ? `${appName.toLowerCase()}_window.${format}` : `screen_capture.${format}`;
+    const actualPath = options?.path || `/tmp/${defaultFileName}`;
+
     return {
       success: true,
       data: {
         saved_files: [
           {
-            path: `/tmp/${fileName}`,
-            item_label: app ? `${app} Window` : 'Screen Capture',
-            window_title: app ? `${app} - Main Window` : undefined,
-            window_id: app ? 1 : undefined,
-            mime_type: 'image/png'
+            path: actualPath,
+            item_label: appName ? `${appName} Window` : 'Screen Capture',
+            window_title: appName ? `${appName} - Main Window` : undefined,
+            window_id: appName ? 1 : undefined,
+            mime_type: `image/${format === 'jpg' ? 'jpeg' : format}`
           }
         ]
       } as ImageCaptureData,
@@ -123,18 +128,18 @@ export const mockSwiftCli = {
 
 // Mock child_process.spawn for Swift CLI execution
 export const mockChildProcess = {
-  spawn: jest.fn().mockImplementation(() => ({
+  spawn: vi.fn().mockImplementation(() => ({
     stdout: {
-      on: jest.fn((event, callback) => {
+      on: vi.fn((event, callback) => {
         if (event === 'data') {
           callback(Buffer.from(JSON.stringify(mockSwiftCli.listApplications())));
         }
       })
     },
     stderr: {
-      on: jest.fn()
+      on: vi.fn()
     },
-    on: jest.fn((event, callback) => {
+    on: vi.fn((event, callback) => {
       if (event === 'close') {
         callback(0);
       }

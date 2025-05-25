@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import os from 'os';
 import { Logger } from 'pino'; 
+import { vi } from 'vitest';
 
 import { 
   imageToolHandler, 
@@ -57,13 +58,13 @@ const packageRootDir = path.resolve(__dirname, '..', '..'); // Adjust path from 
 initializeSwiftCliPath(packageRootDir);
 
 const mockLogger: Logger = {
-  debug: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  fatal: jest.fn(),
-  child: jest.fn().mockReturnThis(),
-  flush: jest.fn(),
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  fatal: vi.fn(),
+  child: vi.fn().mockReturnThis(),
+  flush: vi.fn(),
   level: 'info',
   levels: { values: { info: 30 }, labels: { '30': 'info'} }
 } as unknown as Logger; // Still using unknown for simplicity if full mock is too verbose

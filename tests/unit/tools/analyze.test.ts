@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { pino } from 'pino';
 import { analyzeToolHandler, determineProviderAndModel, AnalyzeToolInput } from '../../../src/tools/analyze';
 import { readImageAsBase64 } from '../../../src/utils/peekaboo-cli';
@@ -11,14 +12,14 @@ import { ToolContext, AIProvider } from '../../../src/types';
 import path from 'path'; // Import path for extname
 
 // Mocks
-jest.mock('../../../src/utils/peekaboo-cli');
-jest.mock('../../../src/utils/ai-providers');
+vi.mock('../../../src/utils/peekaboo-cli');
+vi.mock('../../../src/utils/ai-providers');
 
-const mockReadImageAsBase64 = readImageAsBase64 as jest.MockedFunction<typeof readImageAsBase64>;
-const mockParseAIProviders = parseAIProviders as jest.MockedFunction<typeof parseAIProviders>;
-const mockIsProviderAvailable = isProviderAvailable as jest.MockedFunction<typeof isProviderAvailable>;
-const mockAnalyzeImageWithProvider = analyzeImageWithProvider as jest.MockedFunction<typeof analyzeImageWithProvider>;
-const mockGetDefaultModelForProvider = getDefaultModelForProvider as jest.MockedFunction<typeof getDefaultModelForProvider>;
+const mockReadImageAsBase64 = readImageAsBase64 as vi.MockedFunction<typeof readImageAsBase64>;
+const mockParseAIProviders = parseAIProviders as vi.MockedFunction<typeof parseAIProviders>;
+const mockIsProviderAvailable = isProviderAvailable as vi.MockedFunction<typeof isProviderAvailable>;
+const mockAnalyzeImageWithProvider = analyzeImageWithProvider as vi.MockedFunction<typeof analyzeImageWithProvider>;
+const mockGetDefaultModelForProvider = getDefaultModelForProvider as vi.MockedFunction<typeof getDefaultModelForProvider>;
 
 
 // Create a mock logger for tests
@@ -29,7 +30,7 @@ const MOCK_IMAGE_BASE64 = 'base64imagedata';
 
 describe('Analyze Tool', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset environment variables
     delete process.env.PEEKABOO_AI_PROVIDERS;
     mockReadImageAsBase64.mockResolvedValue(MOCK_IMAGE_BASE64); // Default mock for successful read

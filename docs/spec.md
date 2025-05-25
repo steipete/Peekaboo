@@ -118,34 +118,56 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
 
 **Tool 1: `image`**
 
-*   **MCP Description:** "Captures macOS screen content. Targets: entire screen (each display separately), a specific application window, or all windows of an application. Supports foreground/background capture. Captured image(s) can be saved to file(s) and/or returned directly as image data. Window shadows/frames are automatically excluded. Application identification uses intelligent fuzzy matching."
+*   **MCP Description:** "Captures macOS screen content. Targets: entire screen (each display separately), a specific application window, or all windows of an application. Supports foreground/background capture. Captured image(s) can be saved to file(s) and/or returned directly as image data. If a question is provided, the captured image is also analyzed by an AI model. Window shadows/frames are automatically excluded. Application identification uses intelligent fuzzy matching."
 *   **MCP Input Schema (`ImageInputSchema`):**
     ```typescript
     z.object({
       app: z.string().optional().describe("Optional. Target application: name, bundle ID, or partial name. If omitted, captures screen(s). Uses fuzzy matching."),
-      path: z.string().optional().describe("Optional. Base absolute path for saving. For 'screen' or 'multi' mode, display/window info is appended by backend. If omitted, the server checks the PEEKABOO_DEFAULT_SAVE_PATH environment variable. If neither is set, the Swift CLI uses its default temporary paths. If 'return_data' true, images saved AND returned if a path is determined (either from input or ENV)."),
+      path: z.string().optional().describe("Optional. Base absolute path for saving. For 'screen' or 'multi' mode, display/window info is appended by backend. If omitted and no 'question' is provided, the server checks PEEKABOO_DEFAULT_SAVE_PATH or Swift CLI uses temporary paths. If 'question' is provided and 'path' is omitted, a temporary path is used for capture, and the file is deleted after analysis. If 'return_data' is true and no 'question' is asked, images saved AND returned if a path is determined."),
       mode: z.enum(["screen", "window", "multi"]).optional().describe("Capture mode. Defaults to 'window' if 'app' is provided, otherwise 'screen'."),
       window_specifier: z.union([
         z.object({ title: z.string().describe("Capture window by title.") }),
         z.object({ index: z.number().int().nonnegative().describe("Capture window by index (0=frontmost). 'capture_focus' might need to be 'foreground'.") }),
       ]).optional().describe("Optional. Specifies which window for 'window' mode. Defaults to main/frontmost of target app."),
       format: z.enum(["png", "jpg"]).optional().default("png").describe("Output image format. Defaults to 'png'."),
-      return_data: z.boolean().optional().default(false).describe("Optional. If true, image data is returned in response content (one item for 'window' mode, multiple for 'screen' or 'multi' mode)."),
+      return_data: z.boolean().optional().default(false).describe("Optional. If true AND no 'question' is provided, image data is returned in response content. If 'question' is provided, image data is NOT returned in the 'content' array, regardless of this flag, as 'analysis_text' becomes the primary payload."),
       capture_focus: z.enum(["background", "foreground"])
-        .optional().default("background").describe("Optional. Focus behavior. 'background' (default): capture without altering window focus. 'foreground': bring target to front before capture.")
+        .optional().default("background").describe("Optional. Focus behavior. 'background' (default): capture without altering window focus. 'foreground': bring target to front before capture."),
+      question: z.string().optional().describe("Optional. If provided, the captured image will be analyzed using this question. Analysis results will be added to the output."),
+      provider_config: z.object({
+        type: z.enum(["auto", "ollama", "openai" /* "anthropic" is planned */])
+          .default("auto")
+          .describe("AI provider for analysis. 'auto' uses server's PEEKABOO_AI_PROVIDERS ENV preference. Specific provider must be enabled in server's PEEKABOO_AI_PROVIDERS."),
+        model: z.string().optional().describe("Optional. Model name for analysis. If omitted, uses model from server's AI_PROVIDERS for chosen provider, or an internal default for that provider.")
+      }).optional().describe("Optional. Explicit provider/model for analysis if 'question' is provided. Validated against server's PEEKABOO_AI_PROVIDERS.")
     })
     ```
     *   **Node.js Handler - Default `mode` Logic:** If `input.app` provided & `input.mode` undefined, `mode="window"`. If no `input.app` & `input.mode` undefined, `mode="screen"`.
-    *   **Node.js Handler - Resilience with `path` and `return_data: true`:** If `input.return_data` is true and `input.path` is specified:
+    *   **Node.js Handler - Analysis Logic (if `input.question` is provided):**
+        *   An `effectivePath` is determined: if `input.path` is set, it's used. Otherwise, a temporary file path is generated.
+        *   Swift CLI is called to capture the image and save it to `effectivePath`.
+        *   The image file at `effectivePath` is read into a base64 string.
+        *   The AI provider and model are determined using logic similar to the `analyze` tool (checking `input.provider_config` and `PEEKABOO_AI_PROVIDERS`).
+        *   The image (base64) and `input.question` are sent to the chosen AI provider.
+        *   If a temporary path was used, the temporary image file and its directory are deleted after analysis attempt (success or failure).
+        *   The `analysis_text` and `model_used` are added to the tool's response.
+        *   `base64_data` (image data) is *not* included in the `content` array of the response when a `question` is asked.
+    *   **Node.js Handler - Resilience with `path` and `return_data: true` (No `question`):** If `input.return_data` is true, `input.question` is NOT provided, and `input.path` is specified:
         *   The handler will still attempt to process and return Base64 image data for successfully captured images even if the Swift CLI (or the handler itself) encounters an error saving to or reading from the user-specified `input.path` (or paths derived from it).
         *   In such cases where image data is returned despite a save-to-path failure, a `TextContentItem` containing a "Peekaboo Warning:" message detailing the path saving issue will be included in the `ToolResponse.content`.
 *   **MCP Output Schema (`ToolResponse`):**
     *   `content`: `Array<ImageContentItem | TextContentItem>`
-        *   If `input.return_data: true`: Contains `ImageContentItem`(s): `{ type: "image", data: "<base64_string_no_prefix>", mimeType: "image/<format>", metadata?: { item_label?: string, window_title?: string, window_id?: number, source_path?: string } }`.
-        *   May contain `TextContentItem`(s) (summary, file paths from `saved_files`, Swift CLI `messages`).
-    *   `saved_files`: `Array<{ path: string, item_label?: string, window_title?: string, window_id?: number, mime_type: string }>` (Directly from Swift CLI JSON `data.saved_files` if images were saved).
-    *   `isError?: boolean`
-    *   `_meta?: { backend_error_code?: string }` (For relaying Swift CLI error codes).
+        *   If `input.return_data: true` AND `input.question` is NOT provided: Contains `ImageContentItem`(s): `{ type: "image", data: "<base64_string_no_prefix>", mimeType: "image/<format>", metadata?: { item_label?: string, window_title?: string, window_id?: number, source_path?: string } }`.
+        *   If `input.question` IS provided, `ImageContentItem`s with base64 data are NOT added.
+        *   Always contains `TextContentItem`(s) (summary, file paths from `saved_files` if applicable, Swift CLI `messages`, and analysis results if a `question` was asked).
+    *   `saved_files`: `Array<{ path: string, item_label?: string, window_title?: string, window_id?: number, mime_type: string }>`
+        *   If `input.question` is provided AND `input.path` was NOT specified (temp image used): This array will be empty as the temp file is deleted.
+        *   If `input.question` is provided AND `input.path` WAS specified: Contains information about the file saved at `input.path`.
+        *   If `input.question` is NOT provided: Populated as per original behavior (directly from Swift CLI JSON `data.saved_files` if images were saved).
+    *   `analysis_text?: string`: (Conditionally present if `input.question` was provided) Core AI answer or error/skip message.
+    *   `model_used?: string`: (Conditionally present if analysis was successful) e.g., "ollama/llava:7b", "openai/gpt-4o".
+    *   `isError?: boolean` (Can be true if capture fails, or if analysis is attempted but fails, even if capture succeeded).
+    *   `_meta?: { backend_error_code?: string, analysis_error?: string }` (For relaying Swift CLI error codes or analysis error messages).
 
 **Tool 2: `analyze`**
 

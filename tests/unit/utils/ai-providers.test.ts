@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   parseAIProviders,
   isProviderAvailable,
@@ -8,38 +9,38 @@ import { AIProvider } from '../../../src/types';
 import OpenAI from 'openai';
 
 const mockLogger = {
-  info: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-  warn: jest.fn(),
+  info: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  warn: vi.fn(),
 } as any;
 
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 // Centralized mock for OpenAI().chat.completions.create
-const mockChatCompletionsCreate = jest.fn();
+const mockChatCompletionsCreate = vi.fn();
 
-jest.mock('openai', () => {
-  // This is the mock constructor for OpenAI
-  return jest.fn().mockImplementation(() => {
+vi.mock('openai', () => {
+  const MockedOpenAI = vi.fn().mockImplementation(() => {
     return {
       chat: {
         completions: {
-          create: mockChatCompletionsCreate, // All instances use this mock
+          create: mockChatCompletionsCreate,
         },
       },
     };
   });
+  return { default: MockedOpenAI }; // Simulate default export
 });
 // No need for `let mockOpenAICreate` outside, use mockChatCompletionsCreate directly.
 
 describe('AI Providers Utility', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     delete process.env.PEEKABOO_OLLAMA_BASE_URL;
     delete process.env.OPENAI_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
-    (global.fetch as jest.Mock).mockReset();
+    (global.fetch as vi.Mock).mockReset();
     mockChatCompletionsCreate.mockReset(); // Reset the shared mock function
   });
 
@@ -83,7 +84,7 @@ describe('AI Providers Utility', () => {
 
   describe('isProviderAvailable', () => {
     it('should return true for available Ollama (fetch ok)', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+      (global.fetch as vi.Mock).mockResolvedValue({ ok: true });
       const result = await isProviderAvailable({ provider: 'ollama', model: 'llava' }, mockLogger);
       expect(result).toBe(true);
       expect(global.fetch).toHaveBeenCalledWith('http://localhost:11434/api/tags');
@@ -91,20 +92,20 @@ describe('AI Providers Utility', () => {
 
     it('should use PEEKABOO_OLLAMA_BASE_URL for Ollama check', async () => {
         process.env.PEEKABOO_OLLAMA_BASE_URL = 'http://custom-ollama:11434';
-        (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+        (global.fetch as vi.Mock).mockResolvedValue({ ok: true });
         await isProviderAvailable({ provider: 'ollama', model: 'llava' }, mockLogger);
         expect(global.fetch).toHaveBeenCalledWith('http://custom-ollama:11434/api/tags');
       });
 
     it('should return false for unavailable Ollama (fetch fails)', async () => {
-      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network Error'));
+      (global.fetch as vi.Mock).mockRejectedValue(new Error('Network Error'));
       const result = await isProviderAvailable({ provider: 'ollama', model: 'llava' }, mockLogger);
       expect(result).toBe(false);
       expect(mockLogger.debug).toHaveBeenCalledWith({ error: new Error('Network Error') }, 'Ollama not available');
     });
     
     it('should return false for unavailable Ollama (response not ok)', async () => {
-        (global.fetch as jest.Mock).mockResolvedValue({ ok: false });
+        (global.fetch as vi.Mock).mockResolvedValue({ ok: false });
         const result = await isProviderAvailable({ provider: 'ollama', model: 'llava' }, mockLogger);
         expect(result).toBe(false);
       });
@@ -139,9 +140,9 @@ describe('AI Providers Utility', () => {
 
      it('should handle errors during ollama availability check gracefully (fetch throws)', async () => {
         const fetchError = new Error("Unexpected fetch error");
-        (global.fetch as jest.Mock).mockImplementationOnce(() => { 
+        (global.fetch as vi.Mock).mockImplementationOnce(() => { 
           // Ensure this mock is specific to the ollama check path that uses fetch
-          if ((global.fetch as jest.Mock).mock.calls.some(call => call[0].includes('/api/tags'))) {
+          if ((global.fetch as vi.Mock).mock.calls.some(call => call[0].includes('/api/tags'))) {
             throw fetchError; 
           }
           // Fallback for other fetches if any, though not expected in this test path
@@ -162,20 +163,20 @@ describe('AI Providers Utility', () => {
     const question = 'What is this?';
 
     it('should call analyzeWithOllama for ollama provider', async () => {
-      (global.fetch as jest.Mock).mockResolvedValueOnce({ 
+      (global.fetch as vi.Mock).mockResolvedValueOnce({ 
         ok: true, 
         json: async () => ({ response: 'Ollama says hello' }) 
       });
       const result = await analyzeImageWithProvider({ provider: 'ollama', model: 'llava' }, 'path/img.png', imageBase64, question, mockLogger);
       expect(result).toBe('Ollama says hello');
       expect(global.fetch).toHaveBeenCalledWith('http://localhost:11434/api/generate', expect.any(Object));
-      expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).toEqual(
+      expect(JSON.parse((global.fetch as vi.Mock).mock.calls[0][1].body)).toEqual(
         expect.objectContaining({ model: 'llava', prompt: question, images: [imageBase64] })
       );
     });
     
     it('should throw Ollama API error if response not ok', async () => {
-        (global.fetch as jest.Mock).mockResolvedValueOnce({ 
+        (global.fetch as vi.Mock).mockResolvedValueOnce({ 
           ok: false, 
           status: 500,
           text: async () => "Internal Server Error"
@@ -221,7 +222,7 @@ describe('AI Providers Utility', () => {
     });
     
     it('should return default message if Ollama provides no response content', async () => {
-        (global.fetch as jest.Mock).mockResolvedValueOnce({ 
+        (global.fetch as vi.Mock).mockResolvedValueOnce({ 
           ok: true, 
           json: async () => ({ response: null }) 
         });

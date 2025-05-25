@@ -2,6 +2,7 @@ import * as child_process from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 
 // Helper function to run AppleScript
 const runAppleScript = (script: string): Promise<string> => {
@@ -115,6 +116,28 @@ const describeAppImageCaptureTest = (appName: string) => {
       // Optional: Check stdout for confirmation message if peekaboo CLI provides one
       // expect(imageResult.stdout).toContain(`Successfully saved screenshot to ${tempImagePath}`);
     }, 20000); // Timeout for app interaction and CLI execution
+
+    // test(`should analyze the screenshot of ${appName} using the CLI`, async () => {
+    //   // This test depends on tempImagePath being set by the previous test
+    //   expect(fs.existsSync(tempImagePath)).toBe(true); // Ensure image exists before analyzing
+      
+    //   console.log(`Analyzing screenshot of ${appName} from ${tempImagePath} using CLI...`);
+    //   const question = "Describe this application window in detail.";
+    //   const analyzeResult = await runPeekabooCli(['analyze', '--image-path', tempImagePath, '--question', question]);
+      
+    //   console.log(`${appName} 'analyze' CLI stdout: ${analyzeResult.stdout}`);
+    //   console.error(`${appName} 'analyze' CLI stderr: ${analyzeResult.stderr}`);
+
+    //   expect(analyzeResult.code).toBe(0);
+    //   expect(analyzeResult.stderr.toLowerCase()).not.toContain('error');
+    //   expect(analyzeResult.stderr.toLowerCase()).not.toContain('failed');
+      
+    //   // Check for a non-empty stdout, which should contain the analysis
+    //   expect(analyzeResult.stdout.trim()).not.toBe('');
+    //   // A more specific check could be to ensure some keywords related to analysis are present,
+    //   // but that might make the test brittle depending on the AI model's output.
+    //   // For now, a non-empty response is a good indicator.
+    // }, 30000); // Increased timeout for potential AI model processing time
   });
 };
 
@@ -130,4 +153,5 @@ describeAppImageCaptureTest('Terminal');
 
 // To run these tests, ensure:
 // 1. Peekaboo CLI (the Swift executable) is built and accessible at the root of the project.
-// 2. Screen Recording and Accessibility permissions are granted for the terminal running the tests. 
+// 2. Screen Recording and Accessibility permissions are granted for the terminal running the tests.
+// 3. An Ollama server is running locally with a vision model (e.g., llava) available. 

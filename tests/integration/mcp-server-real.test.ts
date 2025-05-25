@@ -4,119 +4,53 @@ import { zodToJsonSchema } from '../../src/utils/zod-to-json-schema';
 import { execSync } from 'child_process';
 import { join } from 'path';
 import { existsSync, mkdirSync, rmSync } from 'fs';
+import { vi } from 'vitest';
+import { pino } from 'pino';
 
-// Mock peekaboo-cli to avoid actual system interactions
-jest.mock('../../src/utils/peekaboo-cli', () => ({
-  executeSwiftCli: jest.fn().mockImplementation((args, logger) => {
-    const command = args[0];
-    if (command === 'list' && args[1] === 'running_applications') {
-      return {
-        success: true,
-        data: {
-          applications: [
-            {
-              app_name: 'Safari',
-              bundle_id: 'com.apple.Safari',
-              pid: 1234,
-              is_active: true,
-              window_count: 2
-            },
-            {
-              app_name: 'Cursor',
-              bundle_id: 'com.todesktop.230313mzl4w4u92',
-              pid: 5678,
-              is_active: false,
-              window_count: 1
-            }
-          ]
-        }
-      };
-    }
-    if (command === 'list' && args[1] === 'application_windows') {
-      return {
-        success: true,
-        data: {
-          windows: [
-            {
-              window_title: 'Safari - Main Window',
-              window_id: 12345,
-              window_index: 0,
-              is_on_screen: true
-            }
-          ],
-          target_application_info: {
-            app_name: 'Safari',
-            bundle_id: 'com.apple.Safari',
-            pid: 1234
-          }
-        }
-      };
-    }
-    if (command === 'image') {
-      const testDir = '/tmp/peekaboo-test';
-      if (!existsSync(testDir)) {
-        mkdirSync(testDir, { recursive: true });
-      }
-      const filePath = join(testDir, 'test-capture.png');
-      // Create a dummy file
-      execSync(`touch "${filePath}"`);
-      return {
-        success: true,
-        data: {
-          saved_files: [
-            {
-              path: filePath,
-              mime_type: 'image/png',
-              item_label: 'Screen Capture'
-            }
-          ]
-        }
-      };
-    }
-    throw new Error('Unknown command');
-  }),
-  readImageAsBase64: jest.fn().mockImplementation((path) => {
-    return Promise.resolve('base64-test-data');
-  })
+// Mock for a skipped test suite. This aims to be simple and avoid hoisting issues.
+vi.mock('../../src/utils/peekaboo-cli', () => ({
+  executeSwiftCli: vi.fn().mockResolvedValue({ success: true, data: { message: 'Mocked Swift CLI for skipped tests' } }),
+  readImageAsBase64: vi.fn().mockResolvedValue('base64-test-data'),
+  initializeSwiftCliPath: vi.fn(), // Mock initializeSwiftCliPath as well if it's called
 }));
 
 // Import the actual server components
 import { imageToolHandler } from '../../src/tools/image';
 import { listToolHandler } from '../../src/tools/list';
 import { analyzeToolHandler } from '../../src/tools/analyze';
-import { pino } from 'pino';
 
 describe.skip('MCP Server Real Integration Tests', () => {
   const mockLogger = pino({ level: 'silent' });
   const mockContext = { logger: mockLogger };
   const testDir = '/tmp/peekaboo-test';
-  
-  // Store the original mock implementation
-  const originalExecuteSwiftCli = require('../../src/utils/peekaboo-cli').executeSwiftCli;
 
-  beforeAll(() => {
-    // Create test directory
+  let mockedExecuteSwiftCli: vi.MockInstance;
+
+  beforeAll(async () => {
     if (!existsSync(testDir)) {
       mkdirSync(testDir, { recursive: true });
     }
+    // We need to import the mocked module to get a reference to the vi.fn() instance
+    const peekabooCliUtils = await import('../../src/utils/peekaboo-cli');
+    mockedExecuteSwiftCli = peekabooCliUtils.executeSwiftCli as unknown as vi.MockInstance;
+     // peekabooCliUtils.initializeSwiftCliPath(); // Call the mocked version if needed by the test setup
   });
 
   afterAll(() => {
-    // Clean up test directory
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks(); 
+    // Default mock for the tests if they were to run
+    mockedExecuteSwiftCli.mockResolvedValue({ success: true, data: { message: 'Default beforeEach mock' } });
   });
   
-  afterEach(() => {
-    // Restore the original mock implementation
-    const { executeSwiftCli } = require('../../src/utils/peekaboo-cli');
-    executeSwiftCli.mockImplementation(originalExecuteSwiftCli.getMockImplementation());
-  });
+  // afterEach is removed as direct restoration of originalExecuteSwiftCli 
+  // via mockImplementation is complex with vi.mock factory pattern.
+  // Mock behavior is controlled per test or in beforeEach.
 
   describe('Image Tool Real Execution', () => {
     it('should capture screen with all parameters', async () => {

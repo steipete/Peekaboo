@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { pino } from 'pino';
 import { listToolHandler, buildSwiftCliArgs, ListToolInput, listToolSchema } from '../../../src/tools/list';
 import { executeSwiftCli } from '../../../src/utils/peekaboo-cli';
@@ -8,9 +9,9 @@ import fs from 'fs/promises';
 import { ToolContext, ApplicationListData, WindowListData } from '../../../src/types/index.js';
 
 // Mocks
-jest.mock('../../../src/utils/peekaboo-cli');
-jest.mock('../../../src/utils/server-status');
-jest.mock('fs/promises');
+vi.mock('../../../src/utils/peekaboo-cli');
+vi.mock('../../../src/utils/server-status');
+vi.mock('fs/promises');
 
 // Mock path and url functions to avoid import.meta.url issues in test environment
 // jest.mock('url', () => ({ // REMOVED
@@ -29,9 +30,9 @@ jest.mock('fs/promises');
 //   }), // REMOVED
 // })); // REMOVED
 
-const mockExecuteSwiftCli = executeSwiftCli as jest.MockedFunction<typeof executeSwiftCli>;
-const mockGenerateServerStatusString = generateServerStatusString as jest.MockedFunction<typeof generateServerStatusString>;
-const mockFsReadFile = fs.readFile as jest.MockedFunction<typeof fs.readFile>;
+const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<typeof executeSwiftCli>;
+const mockGenerateServerStatusString = generateServerStatusString as vi.MockedFunction<typeof generateServerStatusString>;
+const mockFsReadFile = fs.readFile as vi.MockedFunction<typeof fs.readFile>;
 
 // Create a mock logger for tests
 const mockLogger = pino({ level: 'silent' });
@@ -39,7 +40,7 @@ const mockContext: ToolContext = { logger: mockLogger };
 
 describe('List Tool', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('buildSwiftCliArgs', () => {

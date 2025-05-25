@@ -1,6 +1,10 @@
 import { z } from 'zod';
-import { ToolContext, ImageCaptureData, SavedFile } from '../types/index.js';
+import { ToolContext, ImageCaptureData, SavedFile, AIProviderConfig, ToolResponse, AIProvider } from '../types/index.js';
 import { executeSwiftCli, readImageAsBase64 } from '../utils/peekaboo-cli.js';
+import { determineProviderAndModel, analyzeImageWithProvider, parseAIProviders, isProviderAvailable } from '../utils/ai-providers.js';
+import * as fs from 'fs/promises';
+import * as pathModule from 'path';
+import * as os from 'os';
 
 export const imageToolSchema = z.object({
   app: z.string().optional().describe("Optional. Target application: name, bundle ID, or partial name. If omitted, captures screen(s). Uses fuzzy matching."),
@@ -11,8 +15,10 @@ export const imageToolSchema = z.object({
     z.object({ index: z.number().int().nonnegative().describe("Capture window by index (0=frontmost). 'capture_focus' might need to be 'foreground'.") }),
   ]).optional().describe("Optional. Specifies which window for 'window' mode. Defaults to main/frontmost of target app."),
   format: z.enum(["png", "jpg"]).optional().default("png").describe("Output image format. Defaults to 'png'."),
-  return_data: z.boolean().optional().default(false).describe("Optional. If true, image data is returned in response content (one item for 'window' mode, multiple for 'screen' or 'multi' mode)."),
-  capture_focus: z.enum(["background", "foreground"]).optional().default("background").describe("Optional. Focus behavior. 'background' (default): capture without altering window focus. 'foreground': bring target to front before capture.")
+  return_data: z.boolean().optional().default(false).describe("Optional. If true, image data is returned in response content (one item for 'window' mode, multiple for 'screen' or 'multi' mode). If 'question' is provided, 'base64_data' is NOT returned regardless of this flag."),
+  capture_focus: z.enum(["background", "foreground"]).optional().default("background").describe("Optional. Focus behavior. 'background' (default): capture without altering window focus. 'foreground': bring target to front before capture."),
+  question: z.string().optional().describe("If provided, the captured image will be analyzed using this question. Analysis results will be added to the output."),
+  provider_config: z.custom<AIProviderConfig>().optional().describe("AI provider configuration for analysis (e.g., { type: 'ollama', model: 'llava' }). If not provided, uses server default configuration for analysis. Refer to 'analyze' tool schema for structure.")
 });
 
 export type ImageToolInput = z.infer<typeof imageToolSchema>;
@@ -20,99 +26,115 @@ export type ImageToolInput = z.infer<typeof imageToolSchema>;
 export async function imageToolHandler(
   input: ImageToolInput,
   context: ToolContext
-) {
+): Promise<ToolResponse> {
   const { logger } = context;
+  let tempImagePathUsed: string | undefined = undefined;
+  let finalSavedFiles: SavedFile[] = [];
+  let analysisAttempted = false;
+  let analysisSucceeded = false;
+  let analysisText: string | undefined = undefined;
+  let modelUsed: string | undefined = undefined;
 
   try {
     logger.debug({ input }, 'Processing peekaboo.image tool call');
 
-    // Validate input and apply defaults
-    const args = buildSwiftCliArgs(input);
+    let effectivePath = input.path;
+    if (input.question && !input.path) {
+      const tempDir = await fs.mkdtemp(pathModule.join(os.tmpdir(), 'peekaboo-img-'));
+      tempImagePathUsed = pathModule.join(tempDir, `capture.${input.format || 'png'}`);
+      effectivePath = tempImagePathUsed;
+      logger.debug({ tempPath: tempImagePathUsed }, 'Using temporary path for capture as question is provided and no path specified.');
+    }
+
+    const cliInput = { ...input, path: effectivePath };
+    const args = buildSwiftCliArgs(cliInput);
     
-    // Execute Swift CLI
     const swiftResponse = await executeSwiftCli(args, logger);
     
     if (!swiftResponse.success) {
-      logger.error({ error: swiftResponse.error }, 'Swift CLI returned error');
+      logger.error({ error: swiftResponse.error }, 'Swift CLI returned error for image capture');
       return {
         content: [{
           type: 'text',
           text: `Image capture failed: ${swiftResponse.error?.message || 'Unknown error'}`
         }],
         isError: true,
-        _meta: {
-          backend_error_code: swiftResponse.error?.code
-        }
+        _meta: { backend_error_code: swiftResponse.error?.code }
       };
     }
 
-    // If success is true, data should be present
-    if (!swiftResponse.data) {
-      logger.error('Swift CLI reported success but no data was returned.');
+    if (!swiftResponse.data || !swiftResponse.data.saved_files || swiftResponse.data.saved_files.length === 0) {
+      logger.error('Swift CLI reported success but no data/saved_files were returned.');
       return {
         content: [{
           type: 'text',
-          text: 'Image capture failed: Invalid response from capture utility (no data).'
+          text: 'Image capture failed: Invalid response from capture utility (no saved files data).'
         }],
         isError: true,
-        _meta: {
-          backend_error_code: 'INVALID_RESPONSE_NO_DATA'
-        }
+        _meta: { backend_error_code: 'INVALID_RESPONSE_NO_SAVED_FILES' }
       };
     }
     
-    const data = swiftResponse.data as ImageCaptureData;
-    const content: any[] = [];
+    const captureData = swiftResponse.data as ImageCaptureData;
+    const imagePathForAnalysis = captureData.saved_files[0].path; 
+    finalSavedFiles = input.question && tempImagePathUsed ? [] : captureData.saved_files || [];
 
-    // Check for errors related to the user-specified path if provided
-    // The original logic relied on savedFile.error, which doesn't exist.
-    // If the CLI fails to save to a user-specified path, it should ideally be reflected
-    // in swiftResponse.success or swiftResponse.messages. For now, this specific check is removed.
-    /*
-    if (input.path && data.saved_files?.length > 0) {
-      for (const savedFile of data.saved_files) {
-        if (savedFile.path.startsWith(input.path) && savedFile.error) { // savedFile.error is the issue
-          userPathSaveError = `Peekaboo Warning: Failed to save to user-specified path '${input.path}'. CLI Error: ${savedFile.error}`;
-          logger.warn({ userPath: input.path, fileError: savedFile.error }, 'Error saving to user-specified path');
-          break;
+    let imageBase64ForAnalysis: string | undefined;
+    if (input.question) {
+      analysisAttempted = true;
+      try {
+        imageBase64ForAnalysis = await readImageAsBase64(imagePathForAnalysis);
+        logger.debug('Image read successfully for analysis.');
+      } catch (readError) {
+        logger.error({ error: readError, path: imagePathForAnalysis }, 'Failed to read captured image for analysis');
+        analysisText = `Analysis skipped: Failed to read captured image at ${imagePathForAnalysis}. Error: ${readError instanceof Error ? readError.message : 'Unknown read error'}`;
+      }
+
+      if (imageBase64ForAnalysis) {
+        const configuredProviders = parseAIProviders(process.env.PEEKABOO_AI_PROVIDERS || '');
+        if (!configuredProviders.length && !input.provider_config) {
+            analysisText = "Analysis skipped: AI analysis not configured on this server (PEEKABOO_AI_PROVIDERS is not set or empty) and no specific provider was requested.";
+            logger.warn(analysisText);
+        } else {
+            try {
+                const providerDetails = await determineProviderAndModel(input.provider_config, configuredProviders, logger);
+
+                if (!providerDetails.provider) {
+                    analysisText = "Analysis skipped: No AI providers are currently operational or configured for the request.";
+                    logger.warn(analysisText);
+                } else {
+                    analysisText = await analyzeImageWithProvider(
+                        providerDetails as AIProvider,
+                        imagePathForAnalysis,
+                        imageBase64ForAnalysis,
+                        input.question,
+                        logger
+                    );
+                    modelUsed = `${providerDetails.provider}/${providerDetails.model}`;
+                    analysisSucceeded = true;
+                    logger.info({ provider: modelUsed }, 'Image analysis successful');
+                }
+            } catch (aiError) {
+                logger.error({ error: aiError }, 'AI analysis failed');
+                analysisText = `AI analysis failed: ${aiError instanceof Error ? aiError.message : 'Unknown AI error'}`;
+            }
         }
       }
     }
-    */
     
-    // Add text summary
-    const summary = generateImageCaptureSummary(data, input);
-    content.push({
-      type: 'text',
-      text: summary
-    });
-
-    // If there was an error saving to the user-specified path, add it to the content
-    // This part is removed as userPathSaveError logic is removed.
-    /*
-    if (userPathSaveError) {
-      content.push({
-        type: 'text',
-        text: userPathSaveError
-      });
+    const content: any[] = [];
+    let summary = generateImageCaptureSummary(captureData, input);
+    if (analysisAttempted) {
+      summary += `\nAnalysis ${analysisSucceeded ? 'succeeded' : 'failed/skipped'}.`;
     }
-    */
+    content.push({ type: 'text', text: summary });
+
+    if (analysisText) {
+      content.push({ type: 'text', text: `Analysis Result: ${analysisText}` });
+    }
     
-    // Add image data if requested
-    if (input.return_data && data.saved_files?.length > 0) {
-      for (const savedFile of data.saved_files) {
-        // If swiftResponse.success is true, assume individual files were processed correctly by CLI
-        // unless specific messages indicate otherwise. The savedFile.error check is removed.
-        /* 
-        if (savedFile.error) { // savedFile.error is the issue
-          logger.warn({ path: savedFile.path, error: savedFile.error }, 'Skipping base64 conversion for file with reported error by CLI');
-          content.push({
-            type: 'text',
-            text: `Peekaboo Warning: Could not process file '${savedFile.path}' due to CLI error: ${savedFile.error}`
-          });
-          continue;
-        }
-        */
+    if (input.return_data && !input.question && captureData.saved_files?.length > 0) {
+      for (const savedFile of captureData.saved_files) {
         try {
           const imageBase64 = await readImageAsBase64(savedFile.path);
           content.push({
@@ -127,27 +149,30 @@ export async function imageToolHandler(
             }
           });
         } catch (error) {
-          logger.error({ error, path: savedFile.path }, 'Failed to read image file');
-          content.push({
-            type: 'text',
-            text: `Warning: Could not read image data from ${savedFile.path}. Error: ${error instanceof Error ? error.message : 'Unknown error'}`
-          });
+          logger.error({ error, path: savedFile.path }, 'Failed to read image file for return_data');
         }
       }
     }
     
-    // Add messages from Swift CLI if any
     if (swiftResponse.messages?.length) {
-      content.push({
-        type: 'text',
-        text: `Messages: ${swiftResponse.messages.join('; ')}`
-      });
+      content.push({ type: 'text', text: `Capture Messages: ${swiftResponse.messages.join('; ')}` });
     }
     
-    return {
+    const result: ToolResponse = {
       content,
-      saved_files: data.saved_files // Ensure this matches the expected return type, possibly ImageToolOutput
+      saved_files: finalSavedFiles,
     };
+
+    if (analysisAttempted) {
+      result.analysis_text = analysisText;
+      result.model_used = modelUsed;
+    }
+    if (!analysisSucceeded && analysisAttempted) {
+        result.isError = true;
+        result._meta = { ...result._meta, analysis_error: analysisText };
+    }
+
+    return result;
     
   } catch (error) {
     logger.error({ error }, 'Unexpected error in image tool handler');
@@ -156,15 +181,27 @@ export async function imageToolHandler(
         type: 'text',
         text: `Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`
       }],
-      isError: true
+      isError: true,
+      _meta: { backend_error_code: 'UNEXPECTED_HANDLER_ERROR' }
     };
+  } finally {
+    if (tempImagePathUsed) {
+      logger.debug({ tempPath: tempImagePathUsed }, 'Attempting to delete temporary image file.');
+      try {
+        await fs.unlink(tempImagePathUsed);
+        const tempDir = pathModule.dirname(tempImagePathUsed);
+        await fs.rmdir(tempDir);
+        logger.info({ tempPath: tempImagePathUsed }, 'Temporary image file and directory deleted.');
+      } catch (cleanupError) {
+        logger.warn({ error: cleanupError, path: tempImagePathUsed }, 'Failed to delete temporary image file or directory.');
+      }
+    }
   }
 }
 
 export function buildSwiftCliArgs(input: ImageToolInput): string[] {
   const args = ['image'];
   
-  // Determine mode
   let mode = input.mode;
   if (!mode) {
     mode = input.app ? 'window' : 'screen';
@@ -174,13 +211,10 @@ export function buildSwiftCliArgs(input: ImageToolInput): string[] {
     args.push('--app', input.app);
   }
   
-  let effectivePath = input.path;
-  if (!effectivePath && process.env.PEEKABOO_DEFAULT_SAVE_PATH) {
-    effectivePath = process.env.PEEKABOO_DEFAULT_SAVE_PATH;
-  }
-
-  if (effectivePath) {
-    args.push('--path', effectivePath);
+  if (input.path) { 
+    args.push('--path', input.path);
+  } else if (process.env.PEEKABOO_DEFAULT_SAVE_PATH && !input.question) {
+    args.push('--path', process.env.PEEKABOO_DEFAULT_SAVE_PATH);
   }
   
   args.push('--mode', mode);
@@ -193,8 +227,8 @@ export function buildSwiftCliArgs(input: ImageToolInput): string[] {
     }
   }
   
-  args.push('--format', input.format);
-  args.push('--capture-focus', input.capture_focus);
+  args.push('--format', input.format!);
+  args.push('--capture-focus', input.capture_focus!);
   
   return args;
 }
@@ -202,8 +236,8 @@ export function buildSwiftCliArgs(input: ImageToolInput): string[] {
 function generateImageCaptureSummary(data: ImageCaptureData, input: ImageToolInput): string {
   const fileCount = data.saved_files?.length || 0;
   
-  if (fileCount === 0) {
-    return 'Image capture completed but no files were saved.';
+  if (fileCount === 0 && !(input.question && data.saved_files && data.saved_files.length > 0)) {
+    return 'Image capture completed but no files were saved or available for analysis.';
   }
   
   const mode = input.mode || (input.app ? 'window' : 'screen');
@@ -215,7 +249,7 @@ function generateImageCaptureSummary(data: ImageCaptureData, input: ImageToolInp
   }
   summary += '.';
   
-  if (data.saved_files?.length) {
+  if (data.saved_files?.length && !(input.question && !input.path)) {
     summary += '\n\nSaved files:';
     data.saved_files.forEach((file, index) => {
       summary += `\n${index + 1}. ${file.path}`;
@@ -223,6 +257,10 @@ function generateImageCaptureSummary(data: ImageCaptureData, input: ImageToolInp
         summary += ` (${file.item_label})`;
       }
     });
+  } else if (input.question && input.path && data.saved_files?.length){
+    summary += `\nImage saved to: ${data.saved_files[0].path}`;
+  } else if (input.question && data.saved_files?.length) {
+    summary += `\nImage captured to temporary location for analysis.`;
   }
   
   return summary;

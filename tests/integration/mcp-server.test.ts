@@ -1,19 +1,20 @@
+import { vi } from 'vitest';
 import { pino } from 'pino';
 
 // Mock all the tool handlers to avoid import.meta issues
-const mockImageToolHandler = jest.fn();
-const mockListToolHandler = jest.fn();
-const mockAnalyzeToolHandler = jest.fn();
+const mockImageToolHandler = vi.fn();
+const mockListToolHandler = vi.fn();
+const mockAnalyzeToolHandler = vi.fn();
 
-jest.mock('../../src/tools/image', () => ({
+vi.mock('../../src/tools/image', () => ({
   imageToolHandler: mockImageToolHandler
 }));
 
-jest.mock('../../src/tools/list', () => ({
+vi.mock('../../src/tools/list', () => ({
   listToolHandler: mockListToolHandler
 }));
 
-jest.mock('../../src/tools/analyze', () => ({
+vi.mock('../../src/tools/analyze', () => ({
   analyzeToolHandler: mockAnalyzeToolHandler
 }));
 
@@ -23,7 +24,7 @@ const mockContext = { logger: mockLogger };
 
 describe('MCP Server Integration', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Tool Integration Tests', () => {

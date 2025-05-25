@@ -1,96 +1,94 @@
+import { vi } from 'vitest'; // Import vi
 import { executeSwiftCli, initializeSwiftCliPath } from '../../../src/utils/peekaboo-cli';
 import { spawn } from 'child_process';
 import path from 'path'; // Import path for joining
 
 // Mock child_process
-jest.mock('child_process');
+vi.mock('child_process');
 
-// Mock fs to control existsSync behavior for PEEKABOO_CLI_PATH tests
-jest.mock('fs', () => ({
-  ...jest.requireActual('fs'), // Preserve other fs functions
-  existsSync: jest.fn(),
-}));
+// Mock fs to control existsSync behavior
+vi.mock('fs', async () => {
+  const actualFs = await vi.importActual('fs');
+  return {
+    ...actualFs,
+    existsSync: vi.fn(), // Provide a mock function for existsSync
+    // Ensure other fs functions if needed by SUT are also mocked or actual
+  };
+});
 
-const mockSpawn = spawn as jest.Mock;
-const mockExistsSync = jest.requireMock('fs').existsSync as jest.Mock;
+const mockSpawn = spawn as vi.Mock;
+// mockExistsSync will be obtained from the mocked 'fs' module within tests
 
 describe('Swift CLI Utility', () => {
   const mockLogger = {
-    info: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    warn: jest.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
   } as any;
 
   const MOCK_PACKAGE_ROOT = '/test/package/root';
   const DEFAULT_CLI_PATH_IN_PACKAGE = path.join(MOCK_PACKAGE_ROOT, 'peekaboo');
   const CUSTOM_CLI_PATH = '/custom/path/to/peekaboo';
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+  let mockedFsExistsSync: vi.Mock; // To store the mock instance
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
     process.env.PEEKABOO_CLI_PATH = '';
-    // Reset the internal resolvedCliPath by re-importing or having a reset function (not available here)
-    // For now, we will rely on initializeSwiftCliPath overwriting it or testing its logic flow.
-    // This is a limitation of testing module-scoped variables without a reset mechanism.
-    // We can ensure each describe block for executeSwiftCli calls initializeSwiftCliPath with its desired setup.
+    const fs = await import('fs'); // Import the mocked fs module here
+    mockedFsExistsSync = fs.existsSync as vi.Mock;
   });
 
   describe('executeSwiftCli with path resolution', () => {
     it('should use CLI path from PEEKABOO_CLI_PATH if set and valid', async () => {
       process.env.PEEKABOO_CLI_PATH = CUSTOM_CLI_PATH;
-      mockExistsSync.mockReturnValue(true); // Simulate path exists
-      initializeSwiftCliPath(MOCK_PACKAGE_ROOT); // Root dir is secondary if PEEKABOO_CLI_PATH is valid
+      mockedFsExistsSync.mockReturnValue(true); // Simulate path exists
+
+      initializeSwiftCliPath(MOCK_PACKAGE_ROOT); 
       
-      mockSpawn.mockReturnValue({ stdout: { on: jest.fn() }, stderr: { on: jest.fn() }, on: jest.fn((e,c) => {if(e==='close')c(0)}) });
+      mockSpawn.mockReturnValue({ stdout: { on: vi.fn() }, stderr: { on: vi.fn() }, on: vi.fn((e,c) => {if(e==='close')c(0)}) });
       await executeSwiftCli(['test'], mockLogger);
       expect(mockSpawn).toHaveBeenCalledWith(CUSTOM_CLI_PATH, ['test', '--json-output']);
     });
 
     it('should use bundled path if PEEKABOO_CLI_PATH is set but invalid', async () => {
       process.env.PEEKABOO_CLI_PATH = '/invalid/path/peekaboo';
-      mockExistsSync.mockReturnValue(false); // Simulate path does NOT exist
+      mockedFsExistsSync.mockReturnValue(false); // Simulate path does NOT exist
       initializeSwiftCliPath(MOCK_PACKAGE_ROOT);
       
-      mockSpawn.mockReturnValue({ stdout: { on: jest.fn() }, stderr: { on: jest.fn() }, on: jest.fn((e,c) => {if(e==='close')c(0)}) });
+      mockSpawn.mockReturnValue({ stdout: { on: vi.fn() }, stderr: { on: vi.fn() }, on: vi.fn((e,c) => {if(e==='close')c(0)}) });
       await executeSwiftCli(['test'], mockLogger);
       expect(mockSpawn).toHaveBeenCalledWith(DEFAULT_CLI_PATH_IN_PACKAGE, ['test', '--json-output']);
-      // Check console.warn for invalid path (this is in SUT, so it's a side effect test)
-      // This test is a bit brittle as it relies on console.warn in the SUT which might change.
-      // expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('PEEKABOO_CLI_PATH is set to '/invalid/custom/path', but this path does not exist'));
     });
 
     it('should use bundled path derived from packageRootDir if PEEKABOO_CLI_PATH is not set', async () => {
-      // PEEKABOO_CLI_PATH is empty by default from beforeEach
       initializeSwiftCliPath(MOCK_PACKAGE_ROOT);
+      // No need to mock existsSync here if PEEKABOO_CLI_PATH is empty, as it won't be checked for that path.
+      // However, if initializeSwiftCliPath itself uses existsSync, ensure it gets a sensible default or specific mock.
+      mockedFsExistsSync.mockReturnValue(true); // Default for bundled path check if any
       
-      mockSpawn.mockReturnValue({ stdout: { on: jest.fn() }, stderr: { on: jest.fn() }, on: jest.fn((e,c) => {if(e==='close')c(0)}) });
+      mockSpawn.mockReturnValue({ stdout: { on: vi.fn() }, stderr: { on: vi.fn() }, on: vi.fn((e,c) => {if(e==='close')c(0)}) });
       await executeSwiftCli(['test'], mockLogger);
       expect(mockSpawn).toHaveBeenCalledWith(DEFAULT_CLI_PATH_IN_PACKAGE, ['test', '--json-output']);
     });
-
-    // Test for the import.meta.url fallback is hard because it would only trigger if 
-    // initializeSwiftCliPath was never called or called with undefined rootDir, AND CLI_PATH is not set.
-    // Such a scenario would also mean the console.warn/error for uninitialized path would trigger.
-    // It's better to ensure tests always initialize appropriately.
   });
 
-  // Remaining tests for executeSwiftCli behavior (parsing, errors, etc.) are largely the same
-  // but need to ensure initializeSwiftCliPath has run before each of them.
   describe('executeSwiftCli command execution and output parsing', () => {
-    beforeEach(() => {
-      // Ensure a default path is initialized for these tests
-      // CLI_PATH is empty, so it will use MOCK_PACKAGE_ROOT
-      mockExistsSync.mockReturnValue(false); // Ensure CLI_PATH (if accidentally set) is seen as invalid
-      initializeSwiftCliPath(MOCK_PACKAGE_ROOT);
+    beforeEach(async () => {
+      const fs = await import('fs'); // Import the mocked fs module here
+      mockedFsExistsSync = fs.existsSync as vi.Mock;
+      mockedFsExistsSync.mockReturnValue(false); // Ensure PEEKABOO_CLI_PATH (if set) is seen as invalid
+      initializeSwiftCliPath(MOCK_PACKAGE_ROOT); // Default to bundled path
     });
 
     it('should execute command and parse valid JSON output', async () => {
       const mockStdOutput = JSON.stringify({ success: true, data: { message: "Hello" } });
       const mockChildProcess = {
-        stdout: { on: jest.fn((event, cb) => { if (event === 'data') cb(Buffer.from(mockStdOutput)); }) },
-        stderr: { on: jest.fn() },
-        on: jest.fn((event, cb) => { if (event === 'close') cb(0); }),
-        kill: jest.fn(),
+        stdout: { on: vi.fn((event, cb) => { if (event === 'data') cb(Buffer.from(mockStdOutput)); }) },
+        stderr: { on: vi.fn() },
+        on: vi.fn((event, cb) => { if (event === 'close') cb(0); }),
+        kill: vi.fn(),
       };
       mockSpawn.mockReturnValue(mockChildProcess);
 
@@ -103,10 +101,10 @@ describe('Swift CLI Utility', () => {
     it('should handle Swift CLI error with JSON output from CLI', async () => {
       const errorPayload = { success: false, error: { code: 'PERMISSIONS_ERROR', message: "Permission denied" } };
       const mockChildProcess = {
-        stdout: { on: jest.fn((event, cb) => { if (event === 'data') cb(Buffer.from(JSON.stringify(errorPayload))); }) },
-        stderr: { on: jest.fn() },
-        on: jest.fn((event, cb) => { if (event === 'close') cb(0); }), // Swift CLI itself exits 0, but payload indicates error
-        kill: jest.fn(),
+        stdout: { on: vi.fn((event, cb) => { if (event === 'data') cb(Buffer.from(JSON.stringify(errorPayload))); }) },
+        stderr: { on: vi.fn() },
+        on: vi.fn((event, cb) => { if (event === 'close') cb(0); }),
+        kill: vi.fn(),
       };
       mockSpawn.mockReturnValue(mockChildProcess);
 
@@ -116,10 +114,10 @@ describe('Swift CLI Utility', () => {
 
     it('should handle non-JSON output from Swift CLI with non-zero exit', async () => {
         const mockChildProcess = {
-          stdout: { on: jest.fn((event, cb) => { if (event === 'data') cb(Buffer.from("Plain text error")); }) },
-          stderr: { on: jest.fn() },
-          on: jest.fn((event, cb) => { if (event === 'close') cb(1); }),
-          kill: jest.fn(),
+          stdout: { on: vi.fn((event, cb) => { if (event === 'data') cb(Buffer.from("Plain text error")); }) },
+          stderr: { on: vi.fn() },
+          on: vi.fn((event, cb) => { if (event === 'close') cb(1); }),
+          kill: vi.fn(),
         };
         mockSpawn.mockReturnValue(mockChildProcess);
   
@@ -140,14 +138,14 @@ describe('Swift CLI Utility', () => {
       spawnError.code = 'EACCES';
       
       const mockChildProcess = {
-        stdout: { on: jest.fn() },
-        stderr: { on: jest.fn() },
-        on: jest.fn((event: string, cb: (err: Error) => void) => {
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn((event: string, cb: (err: Error) => void) => {
           if (event === 'error') {
             cb(spawnError);
           }
         }),
-        kill: jest.fn(),
+        kill: vi.fn(),
       } as any;
 
       mockSpawn.mockReturnValue(mockChildProcess);
@@ -167,10 +165,10 @@ describe('Swift CLI Utility', () => {
 
     it('should append --json-output to args', async () => {
         const mockChildProcess = {
-            stdout: { on: jest.fn((event, cb) => { if (event === 'data') cb(Buffer.from(JSON.stringify({ success: true }))); }) },
-            stderr: { on: jest.fn() },
-            on: jest.fn((event, cb) => { if (event === 'close') cb(0); }),
-            kill: jest.fn(),
+            stdout: { on: vi.fn((event, cb) => { if (event === 'data') cb(Buffer.from(JSON.stringify({ success: true }))); }) },
+            stderr: { on: vi.fn() },
+            on: vi.fn((event, cb) => { if (event === 'close') cb(0); }),
+            kill: vi.fn(),
           };
           mockSpawn.mockReturnValue(mockChildProcess);
     
@@ -180,10 +178,10 @@ describe('Swift CLI Utility', () => {
 
     it('should capture stderr output from Swift CLI for debugging', async () => {
         const mockChildProcess = {
-          stdout: { on: jest.fn((event, cb) => { if (event === 'data') cb(Buffer.from(JSON.stringify({ success: true, data: {} }))); }) },
-          stderr: { on: jest.fn((event, cb) => { if (event === 'data') cb(Buffer.from("Debug warning on stderr")); }) },
-          on: jest.fn((event, cb) => { if (event === 'close') cb(0); }),
-          kill: jest.fn(),
+          stdout: { on: vi.fn((event, cb) => { if (event === 'data') cb(Buffer.from(JSON.stringify({ success: true, data: {} }))); }) },
+          stderr: { on: vi.fn((event, cb) => { if (event === 'data') cb(Buffer.from("Debug warning on stderr")); }) },
+          on: vi.fn((event, cb) => { if (event === 'close') cb(0); }),
+          kill: vi.fn(),
         };
         mockSpawn.mockReturnValue(mockChildProcess);
   
