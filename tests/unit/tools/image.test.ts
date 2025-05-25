@@ -111,7 +111,7 @@ describe("Image Tool", () => {
       const result = await imageToolHandler(
         {
           format: "png",
-          return_data: false,
+        return_data: false,
           capture_focus: "background",
         },
         mockContext,
@@ -455,7 +455,7 @@ describe("Image Tool", () => {
       const result = await imageToolHandler(
         {
           question: MOCK_QUESTION,
-          return_data: true,
+        return_data: true,
           format: "png",
         },
         mockContext,
@@ -651,4 +651,4 @@ describe("Image Tool", () => {
       expect(args).toContain("background");
     });
   });
-});
+}); 

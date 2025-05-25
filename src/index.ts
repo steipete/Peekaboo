@@ -22,6 +22,7 @@ import {
 } from "./tools/index.js";
 import { generateServerStatusString } from "./utils/server-status.js";
 import { initializeSwiftCliPath } from "./utils/peekaboo-cli.js";
+import { zodToJsonSchema } from "./utils/zod-to-json-schema.js";
 
 // Get package version and determine package root
 const __filename = fileURLToPath(import.meta.url);
@@ -78,86 +79,6 @@ const logger = pino(
 // Tool context for handlers
 const toolContext = { logger };
 
-// Convert Zod schema to JSON Schema format
-function zodToJsonSchema(schema: any): any {
-  // Simple conversion - this would need to be more sophisticated for complex schemas
-  if (schema._def?.typeName === "ZodObject") {
-    const properties: any = {};
-    const required = [];
-
-    for (const [key, value] of Object.entries(schema.shape)) {
-      const field = value as any;
-      if (field._def?.typeName === "ZodString") {
-        properties[key] = { type: "string", description: field.description };
-        if (!field.isOptional()) required.push(key);
-      } else if (field._def?.typeName === "ZodEnum") {
-        properties[key] = {
-          type: "string",
-          enum: field._def.values,
-          description: field.description,
-        };
-        if (!field.isOptional()) required.push(key);
-      } else if (field._def?.typeName === "ZodBoolean") {
-        properties[key] = { type: "boolean", description: field.description };
-        if (!field.isOptional()) required.push(key);
-      } else if (field._def?.typeName === "ZodOptional") {
-        // Handle optional fields
-        const innerType = field._def.innerType;
-        if (innerType._def?.typeName === "ZodString") {
-          properties[key] = {
-            type: "string",
-            description: innerType.description,
-          };
-        } else if (innerType._def?.typeName === "ZodEnum") {
-          properties[key] = {
-            type: "string",
-            enum: innerType._def.values,
-            description: innerType.description,
-          };
-        }
-      } else if (field._def?.typeName === "ZodDefault") {
-        // Handle default fields
-        const innerType = field._def.innerType;
-        if (innerType._def?.typeName === "ZodString") {
-          properties[key] = {
-            type: "string",
-            description: innerType.description,
-            default: field._def.defaultValue(),
-          };
-        } else if (innerType._def?.typeName === "ZodEnum") {
-          properties[key] = {
-            type: "string",
-            enum: innerType._def.values,
-            description: innerType.description,
-            default: field._def.defaultValue(),
-          };
-        } else if (innerType._def?.typeName === "ZodBoolean") {
-          properties[key] = {
-            type: "boolean",
-            description: innerType.description,
-            default: field._def.defaultValue(),
-          };
-        }
-      } else {
-        // Fallback for complex types
-        properties[key] = {
-          type: "object",
-          description: field.description || "Complex object",
-        };
-      }
-    }
-
-    return {
-      type: "object",
-      properties,
-      required,
-    };
-  }
-
-  // Fallback
-  return { type: "object" };
-}
-
 // Create MCP server using the low-level API
 const server = new Server(
   {
@@ -182,21 +103,56 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "image",
         description:
-          "Captures macOS screen content. Targets: entire screen (each display separately), a specific application window, or all windows of an application. Supports foreground/background capture. Captured image(s) can be saved to file(s) and/or returned directly as image data. Window shadows/frames are automatically excluded. Application identification uses intelligent fuzzy matching." +
+`Captures macOS screen content and can optionally perform AI-powered analysis on the screenshot.
+
+Core Capabilities:
+- Screen Capture: Captures the entire screen (handles multiple displays by capturing each as a separate image), a specific application window, or all windows of a target application.
+- Flexible Output: Saves images to a specified path and/or returns image data directly in the response.
+- AI Analysis: If a 'question' parameter is provided, the captured image is sent to an AI model for analysis (e.g., asking what's in the image, reading text).
+
+Multi-Screen/Window Behavior:
+- 'screen' mode with multiple displays: Captures each display as an individual image. If a path is provided, files will be named like 'path_display1.png', 'path_display2.png'.
+- 'multi' mode for an app: Captures all visible windows of the specified application. If a path is provided, files will be named like 'path_window1_title.png', 'path_window2_title.png'.` +
           statusSuffix,
         inputSchema: zodToJsonSchema(imageToolSchema),
       },
       {
         name: "analyze",
         description:
-          "Analyzes an image file using a configured AI model (local Ollama, cloud OpenAI, etc.) and returns a textual analysis/answer. Requires image path. AI provider selection and model defaults are governed by the server's `AI_PROVIDERS` environment variable and client overrides." +
+`Analyzes a pre-existing image file from the local filesystem using a configured AI model.
+
+This tool is useful when an image already exists (e.g., previously captured, downloaded, or generated) and you need to understand its content, extract text, or answer specific questions about it.
+
+Capabilities:
+- Image Understanding: Provide any question about the image (e.g., "What objects are in this picture?", "Describe the scene.", "Is there a red car?").
+- Text Extraction (OCR): Ask the AI to extract text from the image (e.g., "What text is visible in this screenshot?").
+- Flexible AI Configuration: Can use server-default AI providers/models or specify a particular one per call via 'provider_config'.
+
+Example:
+If you have an image '/tmp/chart.png' showing a bar chart, you could ask:
+{ "image_path": "/tmp/chart.png", "question": "Which category has the highest value in this bar chart?" }
+The AI will analyze the image and attempt to answer your question based on its visual content.` +
           statusSuffix,
         inputSchema: zodToJsonSchema(analyzeToolSchema),
       },
       {
         name: "list",
         description:
-          "Lists system items: all running applications, windows of a specific app, or server status. Allows specifying window details. App ID uses fuzzy matching." +
+`Lists various system items on macOS, providing situational awareness.
+
+Capabilities:
+- Running Applications: Get a list of all currently running applications (names and bundle IDs).
+- Application Windows: For a specific application (identified by name or bundle ID), list its open windows.
+  - Details: Optionally include window IDs, bounds (position and size), and whether a window is off-screen.
+  - Multi-window apps: Clearly lists each window of the target app.
+- Server Status: Provides information about the Peekaboo MCP server itself (version, configured AI providers).
+
+Use Cases:
+- Agent needs to know if 'Photoshop' is running before attempting to automate it.
+  { "item_type": "running_applications" } // Agent checks if 'Photoshop' is in the list.
+- Agent wants to find a specific 'Notes' window to capture.
+  { "item_type": "application_windows", "app": "Notes", "include_window_details": ["ids", "bounds"] }
+  The agent can then use the window title or ID with the 'image' tool.` +
           statusSuffix,
         inputSchema: zodToJsonSchema(listToolSchema),
       },

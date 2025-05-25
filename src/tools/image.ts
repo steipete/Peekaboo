@@ -22,8 +22,31 @@ export const imageToolSchema = z.object({
   app: z
     .string()
     .optional()
+    .describe("Target application name or bundle ID."),
+  question: z
+    .string()
+    .optional()
     .describe(
-      "Optional. Target application: name, bundle ID, or partial name. If omitted, captures screen(s). Uses fuzzy matching.",
+      "If provided, the captured image will be analyzed using this question. Analysis results will be added to the output.",
+    ),
+  format: z
+    .enum(["png", "jpg"])
+    .optional()
+    .default("png")
+    .describe("Output image format. Defaults to 'png'."),
+  return_data: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      "Optional. If true, image data is returned in response content (one item for 'window' mode, multiple for 'screen' or 'multi' mode). If 'question' is provided, 'base64_data' is NOT returned regardless of this flag.",
+    ),
+  capture_focus: z
+    .enum(["background", "foreground"])
+    .optional()
+    .default("background")
+    .describe(
+      "Optional. Focus behavior. 'background' (default): capture without altering window focus. 'foreground': bring target to front before capture.",
     ),
   path: z
     .string()
@@ -54,36 +77,24 @@ export const imageToolSchema = z.object({
     .describe(
       "Optional. Specifies which window for 'window' mode. Defaults to main/frontmost of target app.",
     ),
-  format: z
-    .enum(["png", "jpg"])
-    .optional()
-    .default("png")
-    .describe("Output image format. Defaults to 'png'."),
-  return_data: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe(
-      "Optional. If true, image data is returned in response content (one item for 'window' mode, multiple for 'screen' or 'multi' mode). If 'question' is provided, 'base64_data' is NOT returned regardless of this flag.",
-    ),
-  capture_focus: z
-    .enum(["background", "foreground"])
-    .optional()
-    .default("background")
-    .describe(
-      "Optional. Focus behavior. 'background' (default): capture without altering window focus. 'foreground': bring target to front before capture.",
-    ),
-  question: z
-    .string()
-    .optional()
-    .describe(
-      "If provided, the captured image will be analyzed using this question. Analysis results will be added to the output.",
-    ),
   provider_config: z
-    .custom<AIProviderConfig>()
+    .object({
+      type: z
+        .enum(["auto", "ollama", "openai"])
+        .default("auto")
+        .describe(
+          "AI provider type (e.g., 'ollama', 'openai'). 'auto' uses server default. Must be enabled on server.",
+        ),
+      model: z
+        .string()
+        .optional()
+        .describe(
+          "Optional model name. If omitted, uses server default for the chosen provider type.",
+        ),
+    })
     .optional()
     .describe(
-      "AI provider configuration for analysis (e.g., { type: 'ollama', model: 'llava' }). If not provided, uses server default configuration for analysis. Refer to 'analyze' tool schema for structure.",
+      "Optional. Specify AI provider and model for analysis. Overrides server defaults.",
     ),
 });
 
