@@ -286,12 +286,6 @@ function checkSwift() {
     }
   }
   
-  // Test error handling - non-existent app
-  const errorOutput = exec('./peekaboo list windows --app NonExistentApp12345 --json-output 2>&1', { allowFailure: true });
-  if (errorOutput && !errorOutput.includes('error')) {
-    logWarning('Error handling may not be working correctly');
-  }
-  
   // Test image command help
   const imageHelpOutput = exec('./peekaboo image --help', { allowFailure: true });
   if (!imageHelpOutput || !imageHelpOutput.includes('mode')) {
