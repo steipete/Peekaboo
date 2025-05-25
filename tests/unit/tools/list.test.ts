@@ -330,8 +330,8 @@ describe('List Tool', () => {
         include_window_details: ['ids', 'bounds', 'off_screen']
       }, mockContext);
 
-      // Window index is always shown
-      expect(result.content[0].text).toContain('Index: 0');
+      // Window numbering is 1-based in the output
+      expect(result.content[0].text).toContain('1. "Test Window"');
       expect(result.content[0].text).toContain('[ID: 12345]');
       expect(result.content[0].text).toContain('[100,200 800×600]');
       expect(result.content[0].text).toContain('[ON-SCREEN]');
@@ -369,7 +369,7 @@ describe('List Tool', () => {
       }, mockContext) as any;
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Invalid response');
+      expect(result.content[0].text).toContain('Invalid response from list utility');
     });
 
     it('should handle malformed Swift CLI response for windows', async () => {
@@ -384,7 +384,7 @@ describe('List Tool', () => {
       }, mockContext) as any;
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Invalid response');
+      expect(result.content[0].text).toContain('Invalid response from list utility');
     });
 
     it('should handle very large PID values', async () => {

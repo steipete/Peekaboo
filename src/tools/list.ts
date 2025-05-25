@@ -36,7 +36,7 @@ export async function listToolHandler(
       // Get package version
       const packageJsonPath = path.join(process.cwd(), 'package.json');
       const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
-      const version = packageJson.version;
+      const version = packageJson.version || '[unknown]';
       return await handleServerStatus(version);
     }
 
@@ -56,6 +56,21 @@ export async function listToolHandler(
         isError: true,
         _meta: {
           backend_error_code: swiftResponse.error?.code
+        }
+      };
+    }
+    
+    // Check if data is null or undefined
+    if (!swiftResponse.data) {
+      logger.error('Swift CLI reported success but no data was returned.');
+      return {
+        content: [{
+          type: 'text',
+          text: 'List operation failed: Invalid response from list utility (no data).'
+        }],
+        isError: true,
+        _meta: {
+          backend_error_code: 'INVALID_RESPONSE_NO_DATA'
         }
       };
     }
@@ -156,9 +171,23 @@ function handleWindowsList(
   data: WindowListData, 
   input: ListToolInput,
   swiftResponse: any
-): { content: { type: string; text: string }[]; window_list: any[]; target_application_info: any } {
+): { content: { type: string; text: string }[]; window_list?: any[]; target_application_info?: any; isError?: boolean; _meta?: any } {
   const windows = data.windows || [];
   const appInfo = data.target_application_info;
+  
+  // Validate required fields
+  if (!appInfo) {
+    return {
+      content: [{
+        type: 'text',
+        text: 'List operation failed: Invalid response from list utility (missing application info).'
+      }],
+      isError: true,
+      _meta: {
+        backend_error_code: 'INVALID_RESPONSE_MISSING_APP_INFO'
+      }
+    };
+  }
   
   let summary = `Found ${windows.length} window${windows.length !== 1 ? 's' : ''} for application: ${appInfo.app_name}`;
   
