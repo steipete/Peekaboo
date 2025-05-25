@@ -53,52 +53,58 @@ struct ImageCommand: ParsableCommand {
 
         do {
             try PermissionsChecker.requireScreenRecordingPermission()
-
-            let captureMode = determineMode()
-            let savedFiles: [SavedFile]
-
-            switch captureMode {
-            case .screen:
-                savedFiles = try captureAllScreens()
-            case .window:
-                if let app = app {
-                    savedFiles = try captureApplicationWindow(app)
-                } else {
-                    throw CaptureError.appNotFound("No application specified for window capture")
-                }
-            case .multi:
-                if let app = app {
-                    savedFiles = try captureAllApplicationWindows(app)
-                } else {
-                    savedFiles = try captureAllScreens()
-                }
-            }
-
-            let data = ImageCaptureData(saved_files: savedFiles)
-
-            if jsonOutput {
-                outputSuccess(data: data)
-            } else {
-                print("Captured \(savedFiles.count) image(s):")
-                for file in savedFiles {
-                    print("  \(file.path)")
-                }
-            }
-
+            let savedFiles = try performCapture()
+            outputResults(savedFiles)
         } catch {
-            if jsonOutput {
-                let code: ErrorCode = .CAPTURE_FAILED
-                outputError(
-                    message: error.localizedDescription,
-                    code: code,
-                    details: "Image capture operation failed"
-                )
-            } else {
-                // Create an instance for standard error for this specific print call
-                var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
-                print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
-            }
+            handleError(error)
             throw ExitCode.failure
+        }
+    }
+
+    private func performCapture() throws -> [SavedFile] {
+        let captureMode = determineMode()
+
+        switch captureMode {
+        case .screen:
+            return try captureAllScreens()
+        case .window:
+            guard let app = app else {
+                throw CaptureError.appNotFound("No application specified for window capture")
+            }
+            return try captureApplicationWindow(app)
+        case .multi:
+            if let app = app {
+                return try captureAllApplicationWindows(app)
+            } else {
+                return try captureAllScreens()
+            }
+        }
+    }
+
+    private func outputResults(_ savedFiles: [SavedFile]) {
+        let data = ImageCaptureData(saved_files: savedFiles)
+
+        if jsonOutput {
+            outputSuccess(data: data)
+        } else {
+            print("Captured \(savedFiles.count) image(s):")
+            for file in savedFiles {
+                print("  \(file.path)")
+            }
+        }
+    }
+
+    private func handleError(_ error: Error) {
+        if jsonOutput {
+            let code: ErrorCode = .CAPTURE_FAILED
+            outputError(
+                message: error.localizedDescription,
+                code: code,
+                details: "Image capture operation failed"
+            )
+        } else {
+            var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
+            print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
         }
     }
 

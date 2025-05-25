@@ -26,6 +26,8 @@
     "test:swift": "cd peekaboo-cli && swift test",
     "test:integration": "npm run build && npm run test:swift && vitest run",
     "test:all": "npm run test:integration",
+    "lint:swift": "cd peekaboo-cli && swiftlint",
+    "format:swift": "cd peekaboo-cli && swiftformat .",
     "postinstall": "chmod +x dist/index.js 2>/dev/null || true"
   },
   "keywords": [

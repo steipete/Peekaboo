@@ -1,0 +1,42 @@
+# SwiftFormat configuration for Peekaboo CLI
+
+# Format options
+--indent 4
+--indentcase false
+--trimwhitespace always
+--voidtype tuple
+--nospaceoperators ..<, ...
+--ifdef noindent
+--stripunusedargs closure-only
+--maxwidth 120
+
+# Wrap options
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--closingparen balanced
+
+# Rules to enable
+--enable sortImports
+--enable duplicateImports
+--enable consecutiveSpaces
+--enable trailingSpace
+--enable blankLinesAroundMark
+--enable anyObjectProtocol
+--enable redundantReturn
+--enable redundantInit
+--enable redundantSelf
+--enable redundantType
+--enable redundantPattern
+--enable redundantGet
+--enable strongOutlets
+--enable unusedArguments
+
+# Rules to disable
+--disable andOperator
+--disable trailingCommas
+--disable wrapMultilineStatementBraces
+
+# Paths
+--exclude .build
+--exclude Package.swift

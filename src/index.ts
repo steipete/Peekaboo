@@ -102,18 +102,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "image",
-        description:
-`Captures macOS screen content and can optionally perform AI-powered analysis on the screenshot.
-
-Core Capabilities:
-- Screen Capture: Captures the entire screen (handles multiple displays by capturing each as a separate image), a specific application window, or all windows of a target application.
-- Flexible Output: Saves images to a specified path and/or returns image data directly in the response.
-- AI Analysis: If a 'question' parameter is provided, the captured image is sent to an AI model for analysis (e.g., asking what's in the image, reading text).
-
-Multi-Screen/Window Behavior:
-- 'screen' mode with multiple displays: Captures each display as an individual image. If a path is provided, files will be named like 'path_display1.png', 'path_display2.png'.
-- 'multi' mode for an app: Captures all visible windows of the specified application. If a path is provided, files will be named like 'path_window1_title.png', 'path_window2_title.png'.` +
-          statusSuffix,
+        description: `Captures macOS screen content and optionally analyzes it. \
+Targets can be entire screen, specific app window, or all windows of an app (via app_target). \
+Supports foreground/background capture. Output via file path or inline Base64 data (format: "data"). \
+If a question is provided, image is analyzed by an AI model (auto-selected from PEEKABOO_AI_PROVIDERS). \
+Window shadows/frames excluded. ${serverStatus}`,
         inputSchema: zodToJsonSchema(imageToolSchema),
       },
       {

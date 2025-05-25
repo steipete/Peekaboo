@@ -51,7 +51,7 @@ describe("MCP Server Integration", () => {
         const result = await mockImageToolHandler(
           {
             format: "png",
-            return_data: false,
+            path: "/tmp/screen_capture.png",
             capture_focus: "background",
           },
           mockContext,
@@ -84,7 +84,6 @@ describe("MCP Server Integration", () => {
         const result = await mockImageToolHandler(
           {
             format: "png",
-            return_data: false,
             capture_focus: "background",
           },
           mockContext,
@@ -261,7 +260,6 @@ describe("MCP Server Integration", () => {
       const result = await mockImageToolHandler(
         {
           format: "png",
-          return_data: false,
           capture_focus: "background",
         },
         mockContext,
@@ -325,7 +323,7 @@ describe("MCP Server Integration", () => {
       const [listResult, imageResult] = await Promise.all([
         mockListToolHandler({ item_type: "running_applications" }, mockContext),
         mockImageToolHandler(
-          { format: "png", return_data: false, capture_focus: "background" },
+          { format: "png", capture_focus: "background" },
           mockContext,
         ),
       ]);

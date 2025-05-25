@@ -6,6 +6,14 @@ class WindowManager {
     static func getWindowsForApp(pid: pid_t, includeOffScreen: Bool = false) throws(WindowError) -> [WindowData] {
         Logger.shared.debug("Getting windows for PID: \(pid)")
 
+        let windowList = try fetchWindowList(includeOffScreen: includeOffScreen)
+        let windows = extractWindowsForPID(pid, from: windowList)
+
+        Logger.shared.debug("Found \(windows.count) windows for PID \(pid)")
+        return windows.sorted { $0.windowIndex < $1.windowIndex }
+    }
+
+    private static func fetchWindowList(includeOffScreen: Bool) throws(WindowError) -> [[String: Any]] {
         let options: CGWindowListOption = includeOffScreen
             ? [.excludeDesktopElements]
             : [.excludeDesktopElements, .optionOnScreenOnly]
@@ -14,55 +22,54 @@ class WindowManager {
             throw WindowError.windowListFailed
         }
 
+        return windowList
+    }
+
+    private static func extractWindowsForPID(_ pid: pid_t, from windowList: [[String: Any]]) -> [WindowData] {
         var windows: [WindowData] = []
         var windowIndex = 0
 
         for windowInfo in windowList {
-            guard let windowPID = windowInfo[kCGWindowOwnerPID as String] as? Int32,
-                  windowPID == pid
-            else {
-                continue
+            if let window = parseWindowInfo(windowInfo, targetPID: pid, index: windowIndex) {
+                windows.append(window)
+                windowIndex += 1
             }
-
-            guard let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID else {
-                continue
-            }
-
-            let windowTitle = windowInfo[kCGWindowName as String] as? String ?? "Untitled"
-
-            // Get window bounds
-            var bounds = CGRect.zero
-            if let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any] {
-                let x = boundsDict["X"] as? Double ?? 0
-                let y = boundsDict["Y"] as? Double ?? 0
-                let width = boundsDict["Width"] as? Double ?? 0
-                let height = boundsDict["Height"] as? Double ?? 0
-                bounds = CGRect(x: x, y: y, width: width, height: height)
-            }
-
-            // Determine if window is on screen
-            let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? true
-
-            let windowData = WindowData(
-                windowId: windowID,
-                title: windowTitle,
-                bounds: bounds,
-                isOnScreen: isOnScreen,
-                windowIndex: windowIndex
-            )
-
-            windows.append(windowData)
-            windowIndex += 1
         }
 
-        // Sort by window layer (frontmost first)
-        windows.sort { (first: WindowData, second: WindowData) -> Bool in
-            // Windows with higher layer (closer to front) come first
-            return first.windowIndex < second.windowIndex
-        }
-
-        Logger.shared.debug("Found \(windows.count) windows for PID \(pid)")
         return windows
+    }
+
+    private static func parseWindowInfo(_ info: [String: Any], targetPID: pid_t, index: Int) -> WindowData? {
+        guard let windowPID = info[kCGWindowOwnerPID as String] as? Int32,
+              windowPID == targetPID,
+              let windowID = info[kCGWindowNumber as String] as? CGWindowID else {
+            return nil
+        }
+
+        let title = info[kCGWindowName as String] as? String ?? "Untitled"
+        let bounds = extractWindowBounds(from: info)
+        let isOnScreen = info[kCGWindowIsOnscreen as String] as? Bool ?? true
+
+        return WindowData(
+            windowId: windowID,
+            title: title,
+            bounds: bounds,
+            isOnScreen: isOnScreen,
+            windowIndex: index
+        )
+    }
+
+    private static func extractWindowBounds(from windowInfo: [String: Any]) -> CGRect {
+        guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any] else {
+            return .zero
+        }
+
+        let xCoordinate = boundsDict["X"] as? Double ?? 0
+        let yCoordinate = boundsDict["Y"] as? Double ?? 0
+        let width = boundsDict["Width"] as? Double ?? 0
+        let height = boundsDict["Height"] as? Double ?? 0
+
+        return CGRect(x: xCoordinate, y: yCoordinate, width: width, height: height)
     }
 
     static func getWindowsInfoForApp(
@@ -79,8 +86,8 @@ class WindowManager {
                 window_id: includeIDs ? windowData.windowId : nil,
                 window_index: windowData.windowIndex,
                 bounds: includeBounds ? WindowBounds(
-                    x: Int(windowData.bounds.origin.x),
-                    y: Int(windowData.bounds.origin.y),
+                    xCoordinate: Int(windowData.bounds.origin.x),
+                    yCoordinate: Int(windowData.bounds.origin.y),
                     width: Int(windowData.bounds.size.width),
                     height: Int(windowData.bounds.size.height)
                 ) : nil,

@@ -1,107 +1,26 @@
-import { z } from "zod";
 import {
   ToolContext,
   ImageCaptureData,
   SavedFile,
-  AIProviderConfig,
   ToolResponse,
   AIProvider,
+  ImageInput,
+  imageToolSchema,
 } from "../types/index.js";
 import { executeSwiftCli, readImageAsBase64 } from "../utils/peekaboo-cli.js";
 import {
-  determineProviderAndModel,
-  analyzeImageWithProvider,
   parseAIProviders,
-  isProviderAvailable,
+  analyzeImageWithProvider,
 } from "../utils/ai-providers.js";
 import * as fs from "fs/promises";
 import * as pathModule from "path";
 import * as os from "os";
+import { Logger } from "pino";
 
-export const imageToolSchema = z.object({
-  app: z
-    .string()
-    .optional()
-    .describe("Target application name or bundle ID."),
-  question: z
-    .string()
-    .optional()
-    .describe(
-      "If provided, the captured image will be analyzed using this question. Analysis results will be added to the output.",
-    ),
-  format: z
-    .enum(["png", "jpg"])
-    .optional()
-    .default("png")
-    .describe("Output image format. Defaults to 'png'."),
-  return_data: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe(
-      "Optional. If true, image data is returned in response content (one item for 'window' mode, multiple for 'screen' or 'multi' mode). If 'question' is provided, 'base64_data' is NOT returned regardless of this flag.",
-    ),
-  capture_focus: z
-    .enum(["background", "foreground"])
-    .optional()
-    .default("background")
-    .describe(
-      "Optional. Focus behavior. 'background' (default): capture without altering window focus. 'foreground': bring target to front before capture.",
-    ),
-  path: z
-    .string()
-    .optional()
-    .describe(
-      "Optional. Base absolute path for saving. For 'screen' or 'multi' mode, display/window info is appended by backend. If omitted, default temporary paths used by backend. If 'return_data' true, images saved AND returned if 'path' specified.",
-    ),
-  mode: z
-    .enum(["screen", "window", "multi"])
-    .optional()
-    .describe(
-      "Capture mode. Defaults to 'window' if 'app' is provided, otherwise 'screen'.",
-    ),
-  window_specifier: z
-    .union([
-      z.object({ title: z.string().describe("Capture window by title.") }),
-      z.object({
-        index: z
-          .number()
-          .int()
-          .nonnegative()
-          .describe(
-            "Capture window by index (0=frontmost). 'capture_focus' might need to be 'foreground'.",
-          ),
-      }),
-    ])
-    .optional()
-    .describe(
-      "Optional. Specifies which window for 'window' mode. Defaults to main/frontmost of target app.",
-    ),
-  provider_config: z
-    .object({
-      type: z
-        .enum(["auto", "ollama", "openai"])
-        .default("auto")
-        .describe(
-          "AI provider type (e.g., 'ollama', 'openai'). 'auto' uses server default. Must be enabled on server.",
-        ),
-      model: z
-        .string()
-        .optional()
-        .describe(
-          "Optional model name. If omitted, uses server default for the chosen provider type.",
-        ),
-    })
-    .optional()
-    .describe(
-      "Optional. Specify AI provider and model for analysis. Overrides server defaults.",
-    ),
-});
-
-export type ImageToolInput = z.infer<typeof imageToolSchema>;
+export { imageToolSchema } from "../types/index.js";
 
 export async function imageToolHandler(
-  input: ImageToolInput,
+  input: ImageInput,
   context: ToolContext,
 ): Promise<ToolResponse> {
   const { logger } = context;
@@ -115,24 +34,28 @@ export async function imageToolHandler(
   try {
     logger.debug({ input }, "Processing peekaboo.image tool call");
 
+    // Determine effective path and format for Swift CLI
     let effectivePath = input.path;
-    if (input.question && !input.path) {
+    let swiftFormat = input.format === "data" ? "png" : (input.format || "png");
+    
+    // Create temporary path if needed for analysis or data return without path
+    const needsTempPath = (input.question && !input.path) || (!input.path && input.format === "data") || (!input.path && !input.format);
+    if (needsTempPath) {
       const tempDir = await fs.mkdtemp(
         pathModule.join(os.tmpdir(), "peekaboo-img-"),
       );
       tempImagePathUsed = pathModule.join(
         tempDir,
-        `capture.${input.format || "png"}`,
+        `capture.${swiftFormat}`,
       );
       effectivePath = tempImagePathUsed;
       logger.debug(
         { tempPath: tempImagePathUsed },
-        "Using temporary path for capture as question is provided and no path specified.",
+        "Using temporary path for capture.",
       );
     }
 
-    const cliInput = { ...input, path: effectivePath };
-    const args = buildSwiftCliArgs(cliInput);
+    const args = buildSwiftCliArgs(input, logger, effectivePath, swiftFormat);
 
     const swiftResponse = await executeSwiftCli(args, logger);
 
@@ -175,8 +98,18 @@ export async function imageToolHandler(
 
     const captureData = swiftResponse.data as ImageCaptureData;
     const imagePathForAnalysis = captureData.saved_files[0].path;
-    finalSavedFiles =
-      input.question && tempImagePathUsed ? [] : captureData.saved_files || [];
+    
+    // Determine which files to report as saved
+    if (input.question && tempImagePathUsed) {
+      // Analysis with temp path - don't include in saved_files
+      finalSavedFiles = [];
+    } else if (!input.path && (input.format === "data" || !input.format)) {
+      // Data format without path - don't include in saved_files
+      finalSavedFiles = [];
+    } else {
+      // User provided path or default save behavior - include in saved_files
+      finalSavedFiles = captureData.saved_files || [];
+    }
 
     let imageBase64ForAnalysis: string | undefined;
     if (input.question) {
@@ -196,37 +129,25 @@ export async function imageToolHandler(
         const configuredProviders = parseAIProviders(
           process.env.PEEKABOO_AI_PROVIDERS || "",
         );
-        if (!configuredProviders.length && !input.provider_config) {
+        if (!configuredProviders.length) {
           analysisText =
-            "Analysis skipped: AI analysis not configured on this server (PEEKABOO_AI_PROVIDERS is not set or empty) and no specific provider was requested.";
+            "Analysis skipped: AI analysis not configured on this server (PEEKABOO_AI_PROVIDERS is not set or empty).";
           logger.warn(analysisText);
         } else {
-          try {
-            const providerDetails = await determineProviderAndModel(
-              input.provider_config,
-              configuredProviders,
-              logger,
-            );
-
-            if (!providerDetails.provider) {
-              analysisText =
-                "Analysis skipped: No AI providers are currently operational or configured for the request.";
-              logger.warn(analysisText);
-            } else {
-              analysisText = await analyzeImageWithProvider(
-                providerDetails as AIProvider,
-                imagePathForAnalysis,
-                imageBase64ForAnalysis,
-                input.question,
-                logger,
-              );
-              modelUsed = `${providerDetails.provider}/${providerDetails.model}`;
-              analysisSucceeded = true;
-              logger.info({ provider: modelUsed }, "Image analysis successful");
-            }
-          } catch (aiError) {
-            logger.error({ error: aiError }, "AI analysis failed");
-            analysisText = `AI analysis failed: ${aiError instanceof Error ? aiError.message : "Unknown AI error"}`;
+          const analysisResult = await performAutomaticAnalysis(
+            imageBase64ForAnalysis,
+            input.question,
+            logger,
+            process.env.PEEKABOO_AI_PROVIDERS || "",
+          );
+          
+          if (analysisResult.error) {
+            analysisText = analysisResult.error;
+          } else {
+            analysisText = analysisResult.analysisText;
+            modelUsed = analysisResult.modelUsed;
+            analysisSucceeded = true;
+            logger.info({ provider: modelUsed }, "Image analysis successful");
           }
         }
       }
@@ -243,11 +164,10 @@ export async function imageToolHandler(
       content.push({ type: "text", text: `Analysis Result: ${analysisText}` });
     }
 
-    if (
-      input.return_data &&
-      !input.question &&
-      captureData.saved_files?.length > 0
-    ) {
+    // Return base64 data if format is 'data' or path not provided (and no question)
+    const shouldReturnData = (input.format === "data" || !input.path) && !input.question;
+    
+    if (shouldReturnData && captureData.saved_files?.length > 0) {
       for (const savedFile of captureData.saved_files) {
         try {
           const imageBase64 = await readImageAsBase64(savedFile.path);
@@ -329,43 +249,99 @@ export async function imageToolHandler(
   }
 }
 
-export function buildSwiftCliArgs(input: ImageToolInput): string[] {
+export function buildSwiftCliArgs(
+  input: ImageInput,
+  logger?: Logger,
+  effectivePath?: string | undefined,
+  swiftFormat?: string,
+): string[] {
   const args = ["image"];
+  
+  // Use provided values or derive from input
+  const actualPath = effectivePath !== undefined ? effectivePath : input.path;
+  const actualFormat = swiftFormat || (input.format === "data" ? "png" : input.format) || "png";
+  
+  // Create a logger if not provided (for backward compatibility)
+  const log = logger || { 
+    warn: () => {}, 
+    error: () => {}, 
+    debug: () => {} 
+  } as any;
 
-  let mode = input.mode;
-  if (!mode) {
-    mode = input.app ? "window" : "screen";
+  // Parse app_target to determine Swift CLI arguments
+  if (!input.app_target || input.app_target === "") {
+    // Omitted/empty: All screens
+    args.push("--mode", "screen");
+  } else if (input.app_target.startsWith("screen:")) {
+    // 'screen:INDEX': Specific display
+    const screenIndex = input.app_target.substring(7);
+    args.push("--mode", "screen");
+    // Note: --screen-index is not yet implemented in Swift CLI
+    // For now, we'll just use screen mode without index
+    log.warn(
+      { screenIndex },
+      "Screen index specification not yet supported by Swift CLI, capturing all screens",
+    );
+  } else if (input.app_target === "frontmost") {
+    // 'frontmost': Would need to determine frontmost app
+    // For now, default to screen mode with a warning
+    log.warn(
+      "'frontmost' target requires determining current frontmost app, defaulting to screen mode",
+    );
+    args.push("--mode", "screen");
+  } else if (input.app_target.includes(":")) {
+    // 'AppName:WINDOW_TITLE:Title' or 'AppName:WINDOW_INDEX:Index'
+    const parts = input.app_target.split(":");
+    if (parts.length >= 3) {
+      const appName = parts[0];
+      const specifierType = parts[1];
+      const specifierValue = parts.slice(2).join(":"); // Handle colons in window titles
+      
+      args.push("--app", appName);
+      args.push("--mode", "window");
+      
+      if (specifierType === "WINDOW_TITLE") {
+        args.push("--window-title", specifierValue);
+      } else if (specifierType === "WINDOW_INDEX") {
+        args.push("--window-index", specifierValue);
+      } else {
+        log.warn(
+          { specifierType },
+          "Unknown window specifier type, defaulting to main window",
+        );
+      }
+    } else {
+      log.error(
+        { app_target: input.app_target },
+        "Invalid app_target format",
+      );
+      args.push("--mode", "screen");
+    }
+  } else {
+    // 'AppName': All windows of the app
+    args.push("--app", input.app_target);
+    args.push("--mode", "multi");
   }
 
-  if (input.app) {
-    args.push("--app", input.app);
-  }
-
-  if (input.path) {
-    args.push("--path", input.path);
-  } else if (process.env.PEEKABOO_DEFAULT_SAVE_PATH && !input.question) {
+  // Add path if provided
+  if (actualPath) {
+    args.push("--path", actualPath);
+  } else if (process.env.PEEKABOO_DEFAULT_SAVE_PATH) {
     args.push("--path", process.env.PEEKABOO_DEFAULT_SAVE_PATH);
   }
 
-  args.push("--mode", mode);
+  // Add format
+  args.push("--format", actualFormat);
 
-  if (input.window_specifier) {
-    if ("title" in input.window_specifier) {
-      args.push("--window-title", input.window_specifier.title);
-    } else if ("index" in input.window_specifier) {
-      args.push("--window-index", input.window_specifier.index.toString());
-    }
-  }
-
-  args.push("--format", input.format!);
-  args.push("--capture-focus", input.capture_focus!);
+  // Add capture focus
+  args.push("--capture-focus", input.capture_focus || "background");
 
   return args;
 }
 
 function generateImageCaptureSummary(
   data: ImageCaptureData,
-  input: ImageToolInput,
+  input: ImageInput,
 ): string {
   const fileCount = data.saved_files?.length || 0;
 
@@ -376,12 +352,29 @@ function generateImageCaptureSummary(
     return "Image capture completed but no files were saved or available for analysis.";
   }
 
-  const mode = input.mode || (input.app ? "window" : "screen");
-  const target = input.app || "screen";
+  // Determine mode and target from app_target
+  let mode = "screen";
+  let target = "screen";
+  
+  if (input.app_target) {
+    if (input.app_target.startsWith("screen:")) {
+      mode = "screen";
+      target = input.app_target;
+    } else if (input.app_target === "frontmost") {
+      mode = "screen"; // defaulted to screen
+      target = "frontmost application";
+    } else if (input.app_target.includes(":")) {
+      mode = "window";
+      target = input.app_target.split(":")[0];
+    } else {
+      mode = "multi";
+      target = input.app_target;
+    }
+  }
 
   let summary = `Captured ${fileCount} image${fileCount > 1 ? "s" : ""} in ${mode} mode`;
-  if (input.app) {
-    summary += ` for application: ${target}`;
+  if (input.app_target && target !== "screen") {
+    summary += ` for ${target}`;
   }
   summary += ".";
 
@@ -400,4 +393,78 @@ function generateImageCaptureSummary(
   }
 
   return summary;
+}
+
+async function performAutomaticAnalysis(
+  base64Image: string,
+  question: string,
+  logger: Logger,
+  availableProvidersEnv: string,
+): Promise<{
+  analysisText?: string;
+  modelUsed?: string;
+  error?: string;
+}> {
+  const providers = parseAIProviders(availableProvidersEnv);
+  
+  if (!providers.length) {
+    return {
+      error: "Analysis skipped: No AI providers configured",
+    };
+  }
+  
+  // Try each provider in order until one succeeds
+  for (const provider of providers) {
+    try {
+      logger.debug(
+        { provider: `${provider.provider}/${provider.model}` },
+        "Attempting analysis with provider",
+      );
+      
+      // Create a temporary file for the provider (some providers need file paths)
+      const tempDir = await fs.mkdtemp(
+        pathModule.join(os.tmpdir(), "peekaboo-analysis-"),
+      );
+      const tempPath = pathModule.join(tempDir, "image.png");
+      const imageBuffer = Buffer.from(base64Image, "base64");
+      await fs.writeFile(tempPath, imageBuffer);
+      
+      try {
+        const analysisText = await analyzeImageWithProvider(
+          provider,
+          tempPath,
+          base64Image,
+          question,
+          logger,
+        );
+        
+        // Clean up temp file
+        await fs.unlink(tempPath);
+        await fs.rmdir(tempDir);
+        
+        return {
+          analysisText,
+          modelUsed: `${provider.provider}/${provider.model}`,
+        };
+      } finally {
+        // Ensure cleanup even if analysis fails
+        try {
+          await fs.unlink(tempPath);
+          await fs.rmdir(tempDir);
+        } catch (cleanupError) {
+          logger.debug({ error: cleanupError }, "Failed to clean up analysis temp file");
+        }
+      }
+    } catch (error) {
+      logger.debug(
+        { error, provider: `${provider.provider}/${provider.model}` },
+        "Provider failed, trying next",
+      );
+      // Continue to next provider
+    }
+  }
+  
+  return {
+    error: "Analysis failed: All configured AI providers failed or are unavailable",
+  };
 }

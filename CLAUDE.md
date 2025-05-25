@@ -47,6 +47,12 @@ npm start
 
 # Clean build artifacts
 npm run clean
+
+# Lint Swift code
+npm run lint:swift
+
+# Format Swift code
+npm run format:swift
 ```
 
 ### Testing the MCP server

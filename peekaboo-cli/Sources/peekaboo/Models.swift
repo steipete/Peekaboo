@@ -55,8 +55,8 @@ struct WindowInfo: Codable {
 }
 
 struct WindowBounds: Codable {
-    let x: Int
-    let y: Int
+    let xCoordinate: Int
+    let yCoordinate: Int
     let width: Int
     let height: Int
 }
