@@ -14,7 +14,7 @@ export const analyzeToolSchema = z.object({
   question: z.string().describe("Required. Question for the AI about the image."),
   provider_config: z.object({
     type: z.enum(["auto", "ollama", "openai"]).default("auto")
-      .describe("AI provider. 'auto' uses server's PEEKABOO_AI_PROVIDERS ENV preference. Specific provider must be enabled in server's PEEKABOO_AI_PROVIDERS."),
+      .describe("AI provider, default: auto. 'auto' uses server's PEEKABOO_AI_PROVIDERS environment preference. Specific provider must be enabled in server's PEEKABOO_AI_PROVIDERS."),
     model: z.string().optional().describe("Optional. Model name. If omitted, uses model from server's PEEKABOO_AI_PROVIDERS for chosen provider, or an internal default for that provider.")
   }).optional().describe("Optional. Explicit provider/model. Validated against server's PEEKABOO_AI_PROVIDERS.")
 });
@@ -101,6 +101,7 @@ export async function analyzeToolHandler(
 
     // Analyze image
     let analysisResult: string;
+    const startTime = Date.now(); // Record start time
     try {
       analysisResult = await analyzeImageWithProvider(
         { provider, model },
@@ -123,11 +124,23 @@ export async function analyzeToolHandler(
       };
     }
 
+    const endTime = Date.now(); // Record end time
+    const durationMs = endTime - startTime;
+    const durationSeconds = (durationMs / 1000).toFixed(2);
+
+    const analysisTimeMessage = `👻 Peekaboo: Analyzed image with ${provider}/${model} in ${durationSeconds}s.`;
+
     return {
-      content: [{
-        type: 'text',
-        text: analysisResult
-      }],
+      content: [
+        {
+          type: 'text',
+          text: analysisResult
+        },
+        {
+          type: 'text',
+          text: analysisTimeMessage // Add the timing message
+        }
+      ],
       analysis_text: analysisResult,
       model_used: `${provider}/${model}`
     };
