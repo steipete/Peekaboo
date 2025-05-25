@@ -176,9 +176,77 @@ describe('Image Tool', () => {
       expect(result.isError).toBeUndefined();
       expect(result.content).toEqual(expect.arrayContaining([
         expect.objectContaining({ type: 'text', text: expect.stringContaining('Captured 1 image') }),
-        expect.objectContaining({ type: 'text', text: 'Warning: Could not read image data from /tmp/fail.png' })
+        expect.objectContaining({ type: 'text', text: 'Warning: Could not read image data from /tmp/fail.png. Error: Read failed' })
       ]));
       expect(result.saved_files).toEqual([mockSavedFile]);
+    });
+
+    it('should handle empty saved_files array', async () => {
+      const mockResponse = {
+        success: true,
+        data: { saved_files: [] }
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      const result = await imageToolHandler({
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.content[0].text).toBe('Image capture completed but no files were saved.');
+      expect(result.saved_files).toEqual([]);
+    });
+
+    it('should handle malformed Swift CLI response', async () => {
+      const mockResponse = {
+        success: true,
+        data: null // Invalid data, triggers the new check in imageToolHandler
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse as any);
+
+      const result = await imageToolHandler({
+        format: 'png',
+        return_data: false,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Image capture failed: Invalid response from capture utility (no data).');
+      expect(result._meta?.backend_error_code).toBe('INVALID_RESPONSE_NO_DATA');
+    });
+
+    it('should handle partial failures when reading multiple images', async () => {
+      const mockFiles: SavedFile[] = [
+        { path: '/tmp/img1.png', mime_type: 'image/png', item_label: 'Image 1' },
+        { path: '/tmp/img2.jpg', mime_type: 'image/jpeg', item_label: 'Image 2' }
+      ];
+      const mockResponse = {
+        success: true,
+        data: { saved_files: mockFiles }
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+      mockReadImageAsBase64
+        .mockResolvedValueOnce('base64data1')
+        .mockRejectedValueOnce(new Error('Read failed'));
+
+      const result = await imageToolHandler({
+        format: 'png',
+        return_data: true,
+        capture_focus: 'background'
+      }, mockContext);
+
+      expect(result.content).toEqual(expect.arrayContaining([
+        expect.objectContaining({ type: 'text', text: expect.stringContaining('Captured 2 images')}), // Summary text
+        expect.objectContaining({
+          type: 'image',
+          data: 'base64data1'
+        }),
+        expect.objectContaining({
+          type: 'text',
+          text: 'Warning: Could not read image data from /tmp/img2.jpg. Error: Read failed'
+        })
+      ]));
     });
   });
 
@@ -390,40 +458,6 @@ describe('Image Tool', () => {
       );
     });
 
-    it('should handle empty saved_files array', async () => {
-      const mockResponse = {
-        success: true,
-        data: { saved_files: [] }
-      };
-      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
-
-      const result = await imageToolHandler({
-        format: 'png',
-        return_data: false,
-        capture_focus: 'background'
-      }, mockContext);
-
-      expect(result.content[0].text).toContain('Captured 0 images');
-      expect(result.saved_files).toEqual([]);
-    });
-
-    it('should handle malformed Swift CLI response', async () => {
-      const mockResponse = {
-        success: true,
-        data: null // Invalid data
-      };
-      mockExecuteSwiftCli.mockResolvedValue(mockResponse as any);
-
-      const result = await imageToolHandler({
-        format: 'png',
-        return_data: false,
-        capture_focus: 'background'
-      }, mockContext);
-
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Invalid response from image capture');
-    });
-
     it('should handle multiple saved files', async () => {
       const mockFiles: SavedFile[] = [
         { path: '/tmp/screen1.png', mime_type: 'image/png', item_label: 'Screen 1' },
@@ -484,38 +518,6 @@ describe('Image Tool', () => {
       expect(mockReadImageAsBase64).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle partial failures when reading multiple images', async () => {
-      const mockFiles: SavedFile[] = [
-        { path: '/tmp/img1.png', mime_type: 'image/png', item_label: 'Image 1' },
-        { path: '/tmp/img2.jpg', mime_type: 'image/jpeg', item_label: 'Image 2' }
-      ];
-      const mockResponse = {
-        success: true,
-        data: { saved_files: mockFiles }
-      };
-      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
-      mockReadImageAsBase64
-        .mockResolvedValueOnce('base64data1')
-        .mockRejectedValueOnce(new Error('Read failed'));
-
-      const result = await imageToolHandler({
-        format: 'png',
-        return_data: true,
-        capture_focus: 'background'
-      }, mockContext);
-
-      expect(result.content).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          type: 'image',
-          data: 'base64data1'
-        }),
-        expect.objectContaining({
-          type: 'text',
-          text: 'Warning: Could not read image data from /tmp/img2.jpg'
-        })
-      ]));
-    });
-
     it('should handle Swift CLI timeout errors', async () => {
       const mockResponse = {
         success: false,
@@ -534,7 +536,7 @@ describe('Image Tool', () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Command timed out');
-      expect(result._meta.backend_error_code).toBe('TIMEOUT');
+      expect(result._meta?.backend_error_code).toBe('TIMEOUT');
     });
 
     it('should handle window_specifier with both title and index', async () => {

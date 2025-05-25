@@ -94,12 +94,21 @@ export async function executeSwiftCli(
       
       if (exitCode !== 0 || !stdout.trim()) {
         logger.error({ exitCode, stdout, stderr }, 'Swift CLI execution failed');
+        
+        // Prioritize stderr for the main message if available
+        const errorMessage = stderr.trim() 
+          ? `Peekaboo CLI Error: ${stderr.trim()}`
+          : `Swift CLI execution failed (exit code: ${exitCode})`;
+        const errorDetails = stderr.trim() && stdout.trim() 
+          ? `Stdout: ${stdout.trim()}` 
+          : stderr.trim() ? '' : (stdout.trim() || 'No output received');
+
         resolve({
           success: false,
           error: {
-            message: `Swift CLI execution failed (exit code: ${exitCode})`,
+            message: errorMessage,
             code: 'SWIFT_CLI_EXECUTION_ERROR',
-            details: stderr || stdout || 'No output received'
+            details: errorDetails
           }
         });
         return;

@@ -45,9 +45,40 @@ export async function imageToolHandler(
         }
       };
     }
+
+    // If success is true, data should be present
+    if (!swiftResponse.data) {
+      logger.error('Swift CLI reported success but no data was returned.');
+      return {
+        content: [{
+          type: 'text',
+          text: 'Image capture failed: Invalid response from capture utility (no data).'
+        }],
+        isError: true,
+        _meta: {
+          backend_error_code: 'INVALID_RESPONSE_NO_DATA'
+        }
+      };
+    }
     
     const data = swiftResponse.data as ImageCaptureData;
     const content: any[] = [];
+
+    // Check for errors related to the user-specified path if provided
+    // The original logic relied on savedFile.error, which doesn't exist.
+    // If the CLI fails to save to a user-specified path, it should ideally be reflected
+    // in swiftResponse.success or swiftResponse.messages. For now, this specific check is removed.
+    /*
+    if (input.path && data.saved_files?.length > 0) {
+      for (const savedFile of data.saved_files) {
+        if (savedFile.path.startsWith(input.path) && savedFile.error) { // savedFile.error is the issue
+          userPathSaveError = `Peekaboo Warning: Failed to save to user-specified path '${input.path}'. CLI Error: ${savedFile.error}`;
+          logger.warn({ userPath: input.path, fileError: savedFile.error }, 'Error saving to user-specified path');
+          break;
+        }
+      }
+    }
+    */
     
     // Add text summary
     const summary = generateImageCaptureSummary(data, input);
@@ -55,10 +86,33 @@ export async function imageToolHandler(
       type: 'text',
       text: summary
     });
+
+    // If there was an error saving to the user-specified path, add it to the content
+    // This part is removed as userPathSaveError logic is removed.
+    /*
+    if (userPathSaveError) {
+      content.push({
+        type: 'text',
+        text: userPathSaveError
+      });
+    }
+    */
     
     // Add image data if requested
     if (input.return_data && data.saved_files?.length > 0) {
       for (const savedFile of data.saved_files) {
+        // If swiftResponse.success is true, assume individual files were processed correctly by CLI
+        // unless specific messages indicate otherwise. The savedFile.error check is removed.
+        /* 
+        if (savedFile.error) { // savedFile.error is the issue
+          logger.warn({ path: savedFile.path, error: savedFile.error }, 'Skipping base64 conversion for file with reported error by CLI');
+          content.push({
+            type: 'text',
+            text: `Peekaboo Warning: Could not process file '${savedFile.path}' due to CLI error: ${savedFile.error}`
+          });
+          continue;
+        }
+        */
         try {
           const imageBase64 = await readImageAsBase64(savedFile.path);
           content.push({
@@ -76,7 +130,7 @@ export async function imageToolHandler(
           logger.error({ error, path: savedFile.path }, 'Failed to read image file');
           content.push({
             type: 'text',
-            text: `Warning: Could not read image data from ${savedFile.path}`
+            text: `Warning: Could not read image data from ${savedFile.path}. Error: ${error instanceof Error ? error.message : 'Unknown error'}`
           });
         }
       }
@@ -92,7 +146,7 @@ export async function imageToolHandler(
     
     return {
       content,
-      saved_files: data.saved_files
+      saved_files: data.saved_files // Ensure this matches the expected return type, possibly ImageToolOutput
     };
     
   } catch (error) {
