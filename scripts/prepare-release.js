@@ -210,6 +210,99 @@ function checkSwift() {
   }
   logSuccess('Swift tests passed');
 
+  // Test Swift CLI commands directly
+  log('Testing Swift CLI commands...', colors.cyan);
+  
+  // Test help command
+  const helpOutput = exec('./peekaboo --help', { allowFailure: true });
+  if (!helpOutput || !helpOutput.includes('USAGE:')) {
+    logError('Swift CLI help command failed');
+    return false;
+  }
+  
+  // Test version command
+  const versionOutput = exec('./peekaboo --version', { allowFailure: true });
+  if (!versionOutput) {
+    logError('Swift CLI version command failed');
+    return false;
+  }
+  
+  // Test list server_status command
+  const serverStatusOutput = exec('./peekaboo list server_status --json-output', { allowFailure: true });
+  if (!serverStatusOutput) {
+    logError('Swift CLI server_status command failed');
+    return false;
+  }
+  
+  try {
+    const status = JSON.parse(serverStatusOutput);
+    if (!status.hasOwnProperty('has_screen_recording_permission') || 
+        !status.hasOwnProperty('has_accessibility_permission')) {
+      logError('Server status missing required fields');
+      return false;
+    }
+  } catch (e) {
+    logError('Swift CLI server_status JSON output is invalid');
+    return false;
+  }
+  
+  // Test list running_applications command
+  const appsOutput = exec('./peekaboo list running_applications --json-output', { allowFailure: true });
+  if (!appsOutput) {
+    logError('Swift CLI running_applications command failed');
+    return false;
+  }
+  
+  try {
+    const appsData = JSON.parse(appsOutput);
+    if (!appsData.applications || !Array.isArray(appsData.applications)) {
+      logError('Applications list has invalid structure');
+      return false;
+    }
+    // Should always have at least Finder running
+    const hasApps = appsData.applications.length > 0;
+    if (!hasApps) {
+      logError('No running applications found (expected at least Finder)');
+      return false;
+    }
+  } catch (e) {
+    logError('Swift CLI applications JSON output is invalid');
+    return false;
+  }
+  
+  // Test list windows command for Finder
+  const windowsOutput = exec('./peekaboo list windows --app Finder --json-output', { allowFailure: true });
+  if (!windowsOutput) {
+    logError('Swift CLI windows command failed');
+    return false;
+  }
+  
+  try {
+    const windowsData = JSON.parse(windowsOutput);
+    if (!windowsData.target_app || !windowsData.windows) {
+      logError('Windows list has invalid structure');
+      return false;
+    }
+  } catch (e) {
+    logError('Swift CLI windows JSON output is invalid');
+    return false;
+  }
+  
+  // Test error handling - non-existent app
+  const errorOutput = exec('./peekaboo list windows --app NonExistentApp12345 --json-output 2>&1', { allowFailure: true });
+  if (errorOutput && !errorOutput.includes('error')) {
+    logWarning('Error handling may not be working correctly');
+  }
+  
+  // Test image command help
+  const imageHelpOutput = exec('./peekaboo image --help', { allowFailure: true });
+  if (!imageHelpOutput || !imageHelpOutput.includes('mode')) {
+    logError('Swift CLI image help command failed');
+    return false;
+  }
+  
+  logSuccess('Swift CLI commands working correctly');
+
   return true;
 }
 
@@ -244,6 +337,366 @@ function checkVersionAvailability() {
   }
 
   logSuccess(`Version ${version} is available for publishing`);
+  return true;
+}
+
+function checkChangelog() {
+  logStep('Changelog Entry Check');
+
+  const packageJson = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'));
+  const version = packageJson.version;
+
+  // Read CHANGELOG.md
+  const changelogPath = join(projectRoot, 'CHANGELOG.md');
+  if (!existsSync(changelogPath)) {
+    logError('CHANGELOG.md not found');
+    return false;
+  }
+
+  const changelog = readFileSync(changelogPath, 'utf8');
+  
+  // Check for version entry (handle both x.x.x and x.x.x-beta.x formats)
+  const versionPattern = new RegExp(`^#+\\s*(?:\\[)?${version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\])?`, 'm');
+  if (!changelog.match(versionPattern)) {
+    logError(`No entry found for version ${version} in CHANGELOG.md`);
+    logError('Please add a changelog entry before releasing');
+    return false;
+  }
+
+  logSuccess(`CHANGELOG.md contains entry for version ${version}`);
+  return true;
+}
+
+function checkSecurityAudit() {
+  logStep('Security Audit');
+
+  log('Running npm audit...', colors.cyan);
+  
+  const auditResult = exec('npm audit --json', { allowFailure: true });
+  
+  if (auditResult) {
+    try {
+      const audit = JSON.parse(auditResult);
+      const vulnCount = audit.metadata?.vulnerabilities || {};
+      const total = Object.values(vulnCount).reduce((sum, count) => sum + count, 0);
+      
+      if (total > 0) {
+        logWarning(`Found ${total} vulnerabilities:`);
+        if (vulnCount.critical > 0) logError(`  Critical: ${vulnCount.critical}`);
+        if (vulnCount.high > 0) logError(`  High: ${vulnCount.high}`);
+        if (vulnCount.moderate > 0) logWarning(`  Moderate: ${vulnCount.moderate}`);
+        if (vulnCount.low > 0) log(`  Low: ${vulnCount.low}`, colors.yellow);
+        
+        if (vulnCount.critical > 0 || vulnCount.high > 0) {
+          logError('Critical or high severity vulnerabilities found. Please fix before releasing.');
+          return false;
+        }
+        
+        logWarning('Non-critical vulnerabilities found. Consider fixing before release.');
+      } else {
+        logSuccess('No security vulnerabilities found');
+      }
+    } catch (e) {
+      logWarning('Could not parse npm audit results');
+    }
+  } else {
+    logSuccess('No security vulnerabilities found');
+  }
+  
+  return true;
+}
+
+function checkPackageSize() {
+  logStep('Package Size Check');
+
+  // Create a temporary package to get accurate size
+  log('Calculating package size...', colors.cyan);
+  const packOutput = exec('npm pack --dry-run 2>&1');
+  
+  // Extract size information
+  const unpackedMatch = packOutput.match(/unpacked size: ([^\n]+)/);
+  
+  if (unpackedMatch) {
+    const sizeStr = unpackedMatch[1];
+    
+    // Convert to bytes for comparison
+    let sizeInBytes = 0;
+    if (sizeStr.includes('MB')) {
+      sizeInBytes = parseFloat(sizeStr) * 1024 * 1024;
+    } else if (sizeStr.includes('kB')) {
+      sizeInBytes = parseFloat(sizeStr) * 1024;
+    } else if (sizeStr.includes('B')) {
+      sizeInBytes = parseFloat(sizeStr);
+    }
+    
+    const maxSizeInBytes = 2 * 1024 * 1024; // 2MB
+    
+    if (sizeInBytes > maxSizeInBytes) {
+      logWarning(`Package size (${sizeStr}) exceeds 2MB threshold`);
+      logWarning('Consider reviewing included files to reduce package size');
+    } else {
+      logSuccess(`Package size (${sizeStr}) is within acceptable limits`);
+    }
+  } else {
+    logWarning('Could not determine package size');
+  }
+  
+  return true;
+}
+
+function checkTypeScriptDeclarations() {
+  logStep('TypeScript Declarations Check');
+
+  // Check if .d.ts files are generated
+  const distPath = join(projectRoot, 'dist');
+  
+  if (!existsSync(distPath)) {
+    logError('dist/ directory not found. Please build the project first.');
+    return false;
+  }
+  
+  // Look for .d.ts files
+  const dtsFiles = exec(`find "${distPath}" -name "*.d.ts" -type f`, { allowFailure: true });
+  
+  if (!dtsFiles || dtsFiles.trim() === '') {
+    logError('No TypeScript declaration files (.d.ts) found in dist/');
+    logError('Ensure TypeScript is configured to generate declarations');
+    return false;
+  }
+  
+  const declarationFiles = dtsFiles.split('\n').filter(f => f.trim());
+  log(`Found ${declarationFiles.length} TypeScript declaration files`, colors.cyan);
+  
+  // Check for main declaration file
+  const mainDtsPath = join(distPath, 'index.d.ts');
+  if (!existsSync(mainDtsPath)) {
+    logError('Missing main declaration file: dist/index.d.ts');
+    return false;
+  }
+  
+  logSuccess('TypeScript declarations are properly generated');
+  return true;
+}
+
+function checkMCPServerSmoke() {
+  logStep('MCP Server Smoke Test');
+
+  const serverPath = join(projectRoot, 'dist', 'index.js');
+  
+  if (!existsSync(serverPath)) {
+    logError('Server not built. Please run build first.');
+    return false;
+  }
+  
+  log('Testing MCP server with simple JSON-RPC request...', colors.cyan);
+  
+  try {
+    // Test with a simple tools/list request
+    const testRequest = '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}';
+    const result = exec(`echo '${testRequest}' | node "${serverPath}"`, { allowFailure: true });
+    
+    if (!result) {
+      logError('MCP server failed to respond');
+      return false;
+    }
+    
+    // Parse and validate response
+    const lines = result.split('\n').filter(line => line.trim());
+    const response = lines[lines.length - 1]; // Get last line (the actual response)
+    
+    try {
+      const parsed = JSON.parse(response);
+      
+      if (parsed.error) {
+        logError(`MCP server returned error: ${parsed.error.message}`);
+        return false;
+      }
+      
+      if (!parsed.result || !parsed.result.tools) {
+        logError('MCP server response missing expected tools array');
+        return false;
+      }
+      
+      const toolCount = parsed.result.tools.length;
+      log(`MCP server responded successfully with ${toolCount} tools`, colors.cyan);
+      
+    } catch (e) {
+      logError('Failed to parse MCP server response');
+      logError(`Response: ${response}`);
+      return false;
+    }
+    
+  } catch (error) {
+    logError(`MCP server smoke test failed: ${error.message}`);
+    return false;
+  }
+  
+  logSuccess('MCP server smoke test passed');
+  return true;
+}
+
+function checkSwiftCLIIntegration() {
+  logStep('Swift CLI Integration Tests');
+  
+  log('Testing Swift CLI error handling and edge cases...', colors.cyan);
+  
+  // Test 1: Invalid command
+  const invalidCmd = exec('./peekaboo invalid-command 2>&1', { allowFailure: true });
+  if (!invalidCmd || !invalidCmd.includes('Error') && !invalidCmd.includes('USAGE')) {
+    logError('Swift CLI should show error for invalid command');
+    return false;
+  }
+  
+  // Test 2: Missing required arguments
+  const missingArgs = exec('./peekaboo image --mode app --json-output 2>&1', { allowFailure: true });
+  if (!missingArgs || (!missingArgs.includes('error') && !missingArgs.includes('Error'))) {
+    logError('Swift CLI should show error for missing --app with app mode');
+    return false;
+  }
+  
+  // Test 3: Invalid window ID
+  const invalidWindowId = exec('./peekaboo image --mode window --window-id abc --json-output 2>&1', { allowFailure: true });
+  if (!invalidWindowId || !invalidWindowId.includes('Error')) {
+    logError('Swift CLI should show error for invalid window ID');
+    return false;
+  }
+  
+  // Test 4: Test all subcommands are available
+  const subcommands = ['list', 'image'];
+  for (const cmd of subcommands) {
+    const helpOutput = exec(`./peekaboo ${cmd} --help`, { allowFailure: true });
+    if (!helpOutput || !helpOutput.includes('USAGE')) {
+      logError(`Swift CLI ${cmd} command help not available`);
+      return false;
+    }
+  }
+  
+  // Test 5: JSON output format validation
+  const formats = [
+    { cmd: './peekaboo list server_status --json-output', required: ['has_screen_recording_permission'] },
+    { cmd: './peekaboo list running_applications --json-output', required: ['applications'] }
+  ];
+  
+  for (const { cmd, required } of formats) {
+    const output = exec(cmd, { allowFailure: true });
+    if (!output) {
+      logError(`Command failed: ${cmd}`);
+      return false;
+    }
+    
+    try {
+      const data = JSON.parse(output);
+      for (const field of required) {
+        if (!(field in data)) {
+          logError(`Missing required field '${field}' in: ${cmd}`);
+          return false;
+        }
+      }
+    } catch (e) {
+      logError(`Invalid JSON from: ${cmd}`);
+      return false;
+    }
+  }
+  
+  // Test 6: Permission handling
+  const permissionTest = exec('./peekaboo list server_status --json-output', { allowFailure: true });
+  if (permissionTest) {
+    try {
+      const status = JSON.parse(permissionTest);
+      log(`Permissions - Screen Recording: ${status.has_screen_recording_permission}, Accessibility: ${status.has_accessibility_permission}`, colors.cyan);
+    } catch (e) {
+      // Ignore, already tested above
+    }
+  }
+  
+  logSuccess('Swift CLI integration tests passed');
+  return true;
+}
+
+function checkVersionConsistency() {
+  logStep('Version Consistency Check');
+
+  const packageJsonPath = join(projectRoot, 'package.json');
+  const packageLockPath = join(projectRoot, 'package-lock.json');
+  
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+  const packageVersion = packageJson.version;
+  
+  // Check package-lock.json
+  if (!existsSync(packageLockPath)) {
+    logError('package-lock.json not found');
+    return false;
+  }
+  
+  const packageLock = JSON.parse(readFileSync(packageLockPath, 'utf8'));
+  const lockVersion = packageLock.version;
+  
+  if (packageVersion !== lockVersion) {
+    logError(`Version mismatch: package.json has ${packageVersion}, package-lock.json has ${lockVersion}`);
+    logError('Run "npm install" to update package-lock.json');
+    return false;
+  }
+  
+  // Also check that the package name matches in package-lock
+  if (packageLock.packages && packageLock.packages[''] && packageLock.packages[''].version !== packageVersion) {
+    logError(`Version mismatch in package-lock.json packages section`);
+    return false;
+  }
+  
+  logSuccess(`Version ${packageVersion} is consistent across package.json and package-lock.json`);
+  return true;
+}
+
+function checkRequiredFields() {
+  logStep('Required Fields Validation');
+
+  const packageJson = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'));
+  
+  const requiredFields = {
+    'name': 'Package name',
+    'version': 'Package version',
+    'description': 'Package description',
+    'main': 'Main entry point',
+    'type': 'Module type',
+    'scripts': 'Scripts section',
+    'repository': 'Repository information',
+    'keywords': 'Keywords for npm search',
+    'author': 'Author information',
+    'license': 'License',
+    'engines': 'Node.js engine requirements',
+    'files': 'Files to include in package'
+  };
+  
+  const missingFields = [];
+  
+  for (const [field, description] of Object.entries(requiredFields)) {
+    if (!packageJson[field]) {
+      missingFields.push(`${field} (${description})`);
+    }
+  }
+  
+  if (missingFields.length > 0) {
+    logError('Missing required fields in package.json:');
+    missingFields.forEach(field => logError(`  - ${field}`));
+    return false;
+  }
+  
+  // Additional validations
+  if (!packageJson.repository || typeof packageJson.repository !== 'object' || !packageJson.repository.url) {
+    logError('Repository field must be an object with a url property');
+    return false;
+  }
+  
+  if (!Array.isArray(packageJson.keywords) || packageJson.keywords.length === 0) {
+    logWarning('Keywords array is empty. Consider adding keywords for better discoverability');
+  }
+  
+  if (!packageJson.engines || !packageJson.engines.node) {
+    logError('Missing engines.node field to specify Node.js version requirements');
+    return false;
+  }
+  
+  logSuccess('All required fields are present in package.json');
   return true;
 }
 
@@ -372,11 +825,19 @@ async function main() {
 
   const checks = [
     checkGitStatus,
+    checkRequiredFields,
     checkDependencies,
+    checkSecurityAudit,
     checkVersionAvailability,
+    checkVersionConsistency,
+    checkChangelog,
     checkTypeScript,
+    checkTypeScriptDeclarations,
     checkSwift,
-    buildAndVerifyPackage
+    buildAndVerifyPackage,
+    checkSwiftCLIIntegration,
+    checkPackageSize,
+    checkMCPServerSmoke
   ];
 
   for (const check of checks) {

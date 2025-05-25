@@ -2,48 +2,55 @@
 
 This document outlines the steps to release a new version of the `@steipete/peekaboo-mcp` NPM package.
 
-## Pre-Release Checklist
+## Automated Release Preparation
 
-1.  **Ensure Main Branch is Up-to-Date:**
-    - Pull the latest changes from the main branch (`main` or `master`).
-    - `git pull origin main`
+The project includes an automated release preparation script that performs comprehensive checks before release. Run it with:
 
-2.  **Create a Release Branch (Optional but Recommended):**
-    - Create a new branch for the release, e.g., `release/v1.0.0-beta.3`.
-    - `git checkout -b release/vX.Y.Z`
+```bash
+npm run prepare-release
+```
 
-3.  **Update Version Number:**
+This script performs the following checks:
+- **Git Status**: Ensures you're on the main branch with no uncommitted changes
+- **Required Fields**: Validates all required fields in package.json
+- **Dependencies**: Checks for missing or outdated dependencies
+- **Security Audit**: Runs npm audit to check for vulnerabilities
+- **Version Availability**: Confirms the version isn't already published
+- **Version Consistency**: Ensures package.json and package-lock.json versions match
+- **Changelog Entry**: Verifies CHANGELOG.md has an entry for the current version
+- **TypeScript**: Compiles and runs tests
+- **TypeScript Declarations**: Verifies .d.ts files are generated
+- **Swift**: Runs format, lint, and tests
+- **Build Verification**: Builds everything and verifies the package
+- **Package Size**: Warns if package exceeds 2MB
+- **MCP Server Smoke Test**: Tests the server with a simple JSON-RPC request
+
+If all checks pass, follow the manual steps below.
+
+## Manual Pre-Release Steps
+
+1.  **Update Version Number:**
     - Decide on the new semantic version number (e.g., `1.0.0-beta.3`, `1.0.0`, `1.1.0`).
     - Update the `version` field in `package.json`.
 
-4.  **Update Documentation:**
+2.  **Update Documentation:**
     - **`README.md`**: Ensure it accurately reflects the latest features, installation instructions, and any breaking changes.
     - **`docs/spec.md`**: If there are changes to tool schemas or server behavior, update the detailed specification.
     - Any other relevant documentation.
 
-5.  **Update `CHANGELOG.md`:**
+3.  **Update `CHANGELOG.md`:**
     - Add a new section for the upcoming release version (e.g., `## [1.0.0-beta.3] - YYYY-MM-DD`).
     - List all notable changes (Added, Changed, Fixed, Removed, Deprecated, Security) under this version.
     - Replace `YYYY-MM-DD` with the current date.
 
-6.  **Run All Tests:**
-    - Ensure all unit, integration, and E2E tests are passing.
-    - `npm test` (or `npm run test:all` if that's more comprehensive for your setup).
+4.  **Run Release Preparation:**
+    - Run `npm run prepare-release` to ensure everything is ready.
+    - Fix any issues identified by the script.
 
-7.  **Build the Project:**
-    - Run the build script to compile TypeScript and the Swift CLI.
-    - `npm run build:all` (as defined in `package.json`).
-
-8.  **Commit Changes:**
+5.  **Commit Changes:**
     - Commit all changes related to the version bump, documentation, and changelog.
     - `git add .`
     - `git commit -m "Prepare release vX.Y.Z"`
-
-9.  **Merge to Main Branch (If Using a Release Branch):**
-    - Merge the release branch back into the main branch.
-    - `git checkout main`
-    - `git merge release/vX.Y.Z --no-ff` (using `--no-ff` creates a merge commit, which can be useful for tracking releases).
-    - `git push origin main`
 
 ## Publishing to NPM
 
