@@ -551,17 +551,40 @@ function checkSwiftCLIIntegration() {
     return false;
   }
   
-  // Test 2: Missing required arguments
-  const missingArgs = exec('./peekaboo image --mode app --json-output 2>&1', { allowFailure: true });
-  if (!missingArgs || (!missingArgs.includes('error') && !missingArgs.includes('Error'))) {
-    logError('Swift CLI should show error for missing --app with app mode');
+  // Test 2: Missing required arguments for window mode
+  const missingArgs = exec('./peekaboo image --mode window --json-output 2>&1', { allowFailure: true });
+  if (!missingArgs) {
+    logError('Swift CLI should produce output for missing --app with window mode');
     return false;
   }
   
-  // Test 3: Invalid window ID
-  const invalidWindowId = exec('./peekaboo image --mode window --window-id abc --json-output 2>&1', { allowFailure: true });
-  if (!invalidWindowId || !invalidWindowId.includes('Error')) {
-    logError('Swift CLI should show error for invalid window ID');
+  try {
+    const errorData = JSON.parse(missingArgs);
+    if (!errorData.error || errorData.success !== false) {
+      logError('Swift CLI should return error JSON for missing --app with window mode');
+      return false;
+    }
+  } catch (e) {
+    logError('Swift CLI should return valid JSON for missing --app error');
+    return false;
+  }
+  
+  // Test 3: Invalid window index
+  let invalidWindowOutput;
+  try {
+    execSync('./peekaboo image --mode window --app Finder --window-index abc --json-output 2>&1', { 
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: 'pipe'
+    });
+    logError('Swift CLI should fail for invalid window index');
+    return false;
+  } catch (error) {
+    invalidWindowOutput = error.stdout || error.stderr || error.toString();
+  }
+  
+  if (!invalidWindowOutput.includes('invalid for') || !invalidWindowOutput.includes('window-index')) {
+    logError('Swift CLI should show error for invalid window index');
     return false;
   }
   
@@ -577,8 +600,7 @@ function checkSwiftCLIIntegration() {
   
   // Test 5: JSON output format validation
   const formats = [
-    { cmd: './peekaboo list server_status --json-output', required: ['has_screen_recording_permission'] },
-    { cmd: './peekaboo list running_applications --json-output', required: ['applications'] }
+    { cmd: './peekaboo list apps --json-output', required: ['success', 'data'] }
   ];
   
   for (const { cmd, required } of formats) {
@@ -589,12 +611,17 @@ function checkSwiftCLIIntegration() {
     }
     
     try {
-      const data = JSON.parse(output);
+      const response = JSON.parse(output);
       for (const field of required) {
-        if (!(field in data)) {
+        if (!(field in response)) {
           logError(`Missing required field '${field}' in: ${cmd}`);
           return false;
         }
+      }
+      // For list apps, also check data.applications exists
+      if (cmd.includes('list apps') && (!response.data || !response.data.applications)) {
+        logError(`Missing data.applications in: ${cmd}`);
+        return false;
       }
     } catch (e) {
       logError(`Invalid JSON from: ${cmd}`);
@@ -602,14 +629,19 @@ function checkSwiftCLIIntegration() {
     }
   }
   
-  // Test 6: Permission handling
-  const permissionTest = exec('./peekaboo list server_status --json-output', { allowFailure: true });
-  if (permissionTest) {
+  // Test 6: Permission info in error messages
+  // Try to capture without permissions (this is just a smoke test, actual permission errors depend on system state)
+  const captureTest = exec('./peekaboo image --mode screen --json-output', { allowFailure: true });
+  if (captureTest) {
     try {
-      const status = JSON.parse(permissionTest);
-      log(`Permissions - Screen Recording: ${status.has_screen_recording_permission}, Accessibility: ${status.has_accessibility_permission}`, colors.cyan);
+      const result = JSON.parse(captureTest);
+      if (result.success) {
+        log('Screen capture succeeded (permissions granted)', colors.cyan);
+      } else if (result.error && result.error.code === 'PERMISSION_DENIED_SCREEN_RECORDING') {
+        log('Screen recording permission correctly detected as missing', colors.cyan);
+      }
     } catch (e) {
-      // Ignore, already tested above
+      // Not JSON, might be a different error
     }
   }
   
