@@ -153,10 +153,7 @@ export const imageToolSchema = z.object({
   "- Analysis Integration: Provide a `question` to have the captured image analyzed by an AI model (selected from the `PEEKABOO_AI_PROVIDERS` environment variable).\n" +
   "- Output Options: Save as 'png' or 'jpg', or get 'data' (Base64 PNG). The format defaults to 'data' if `path` is omitted.\n" +
   "- Window Handling: Window shadows and frames are excluded from captures.\n\n" +
-  "Server Status:\n" +
-  "- Name: PeekabooMCP\n" +
-  "- Version: 1.0.0-beta.5\n" +
-  "- Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): ollama/llava:latest"
+  `- Peekaboo MCP ${process.env.npm_package_version || 'VERSION_UNKNOWN'} using ${process.env.PEEKABOO_AI_PROVIDERS || 'AI_PROVIDERS_NOT_SET'}`
 );
 
 export type ImageInput = z.infer<typeof imageToolSchema>;
