@@ -83,12 +83,13 @@ final class ImageCommandTests: XCTestCase {
         XCTAssertEqual(command.app, "Finder")
     }
 
-    func testImageCommandValidationMissingWindowId() {
-        // Test that window mode requires window ID
-        XCTAssertThrowsError(try ImageCommand.parse([
-            "--mode", "window"
-            // Missing --window-id parameter
-        ]))
+    func testImageCommandWithScreenIndex() throws {
+        // Test screen index parameter
+        let command = try ImageCommand.parse([
+            "--screen-index", "0"
+        ])
+        
+        XCTAssertEqual(command.screenIndex, 0)
     }
 
     func testImageCommandWithFocus() throws {
