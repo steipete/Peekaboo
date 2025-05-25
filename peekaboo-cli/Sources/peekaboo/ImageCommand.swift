@@ -139,9 +139,9 @@ struct ImageCommand: ParsableCommand {
                 let displayID = displays[screenIndex]
                 let fileName = generateFileName(displayIndex: screenIndex)
                 let filePath = getOutputPath(fileName)
-                
+
                 try captureDisplay(displayID, to: filePath)
-                
+
                 let savedFile = SavedFile(
                     path: filePath,
                     item_label: "Display \(screenIndex + 1) (Index \(screenIndex))",
