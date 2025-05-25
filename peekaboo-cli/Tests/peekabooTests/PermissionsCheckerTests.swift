@@ -2,23 +2,12 @@
 import XCTest
 
 final class PermissionsCheckerTests: XCTestCase {
-    var permissionsChecker: PermissionsChecker!
-
-    override func setUp() {
-        super.setUp()
-        permissionsChecker = PermissionsChecker()
-    }
-
-    override func tearDown() {
-        permissionsChecker = nil
-        super.tearDown()
-    }
 
     // MARK: - hasScreenRecordingPermission Tests
 
-    func testHasScreenRecordingPermission() {
+    func testCheckScreenRecordingPermission() {
         // Test screen recording permission check
-        let hasPermission = permissionsChecker.hasScreenRecordingPermission()
+        let hasPermission = PermissionsChecker.checkScreenRecordingPermission()
 
         // This test will pass or fail based on actual system permissions
         // In CI/CD, this might need to be mocked
@@ -31,17 +20,17 @@ final class PermissionsCheckerTests: XCTestCase {
 
     func testScreenRecordingPermissionConsistency() {
         // Test that multiple calls return consistent results
-        let firstCheck = permissionsChecker.hasScreenRecordingPermission()
-        let secondCheck = permissionsChecker.hasScreenRecordingPermission()
+        let firstCheck = PermissionsChecker.checkScreenRecordingPermission()
+        let secondCheck = PermissionsChecker.checkScreenRecordingPermission()
 
         XCTAssertEqual(firstCheck, secondCheck, "Permission check should be consistent")
     }
 
     // MARK: - hasAccessibilityPermission Tests
 
-    func testHasAccessibilityPermission() {
+    func testCheckAccessibilityPermission() {
         // Test accessibility permission check
-        let hasPermission = permissionsChecker.hasAccessibilityPermission()
+        let hasPermission = PermissionsChecker.checkAccessibilityPermission()
 
         // This will return the actual system state
         XCTAssertNotNil(hasPermission)
@@ -50,9 +39,10 @@ final class PermissionsCheckerTests: XCTestCase {
     }
 
     func testAccessibilityPermissionWithTrustedCheck() {
-        // Test the AXIsProcessTrusted check
-        let isTrusted = AXIsProcessTrusted()
-        let hasPermission = permissionsChecker.hasAccessibilityPermission()
+        // Test the AXIsProcessTrusted check  
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false]
+        let isTrusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
+        let hasPermission = PermissionsChecker.checkAccessibilityPermission()
 
         // These should match
         XCTAssertEqual(isTrusted, hasPermission)
@@ -60,17 +50,16 @@ final class PermissionsCheckerTests: XCTestCase {
 
     // MARK: - checkAllPermissions Tests
 
-    func testCheckAllPermissions() {
-        // Test combined permissions check
-        let (screenRecording, accessibility) = permissionsChecker.checkAllPermissions()
+    func testBothPermissions() {
+        // Test both permission checks
+        let screenRecording = PermissionsChecker.checkScreenRecordingPermission()
+        let accessibility = PermissionsChecker.checkAccessibilityPermission()
 
         // Both should return boolean values
         XCTAssertNotNil(screenRecording)
         XCTAssertNotNil(accessibility)
-
-        // Verify individual checks match combined check
-        XCTAssertEqual(screenRecording, permissionsChecker.hasScreenRecordingPermission())
-        XCTAssertEqual(accessibility, permissionsChecker.hasAccessibilityPermission())
+        
+        print("Permissions - Screen: \(screenRecording), Accessibility: \(accessibility)")
     }
 
     // MARK: - Permission State Tests
@@ -97,11 +86,9 @@ final class PermissionsCheckerTests: XCTestCase {
 
     func testPermissionDeniedError() {
         // Test error creation for permission denied
-        let screenError = CaptureError.permissionDeniedScreenRecording
-        let accessError = CaptureError.permissionDeniedAccessibility
-
-        XCTAssertEqual(screenError.description, "Screen recording permission is required")
-        XCTAssertEqual(accessError.description, "Accessibility permission is required")
+        let error = CaptureError.capturePermissionDenied
+        
+        XCTAssertEqual(error.description, "Screen recording permission is required")
     }
 
     // MARK: - Performance Tests
@@ -109,7 +96,8 @@ final class PermissionsCheckerTests: XCTestCase {
     func testPermissionCheckPerformance() {
         // Test that permission checks are fast
         measure {
-            _ = permissionsChecker.checkAllPermissions()
+            _ = PermissionsChecker.checkScreenRecordingPermission()
+            _ = PermissionsChecker.checkAccessibilityPermission()
         }
     }
 
