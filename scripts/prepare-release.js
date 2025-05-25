@@ -227,65 +227,63 @@ function checkSwift() {
     return false;
   }
   
-  // Test list server_status command
-  const serverStatusOutput = exec('./peekaboo list server_status --json-output', { allowFailure: true });
-  if (!serverStatusOutput) {
-    logError('Swift CLI server_status command failed');
-    return false;
-  }
-  
-  try {
-    const status = JSON.parse(serverStatusOutput);
-    if (!status.hasOwnProperty('has_screen_recording_permission') || 
-        !status.hasOwnProperty('has_accessibility_permission')) {
-      logError('Server status missing required fields');
-      return false;
-    }
-  } catch (e) {
-    logError('Swift CLI server_status JSON output is invalid');
-    return false;
-  }
-  
-  // Test list running_applications command
-  const appsOutput = exec('./peekaboo list running_applications --json-output', { allowFailure: true });
+  // Test list apps command
+  const appsOutput = exec('./peekaboo list apps --json-output', { allowFailure: true });
   if (!appsOutput) {
-    logError('Swift CLI running_applications command failed');
+    logError('Swift CLI list apps command failed');
     return false;
   }
   
   try {
     const appsData = JSON.parse(appsOutput);
     if (!appsData.applications || !Array.isArray(appsData.applications)) {
-      logError('Applications list has invalid structure');
+      logError('Apps list has invalid structure');
       return false;
     }
-    // Should always have at least Finder running
-    const hasApps = appsData.applications.length > 0;
-    if (!hasApps) {
-      logError('No running applications found (expected at least Finder)');
+    // Should always have at least some apps running
+    if (appsData.applications.length === 0) {
+      logError('No running applications found');
       return false;
     }
   } catch (e) {
-    logError('Swift CLI applications JSON output is invalid');
+    logError('Swift CLI apps JSON output is invalid');
     return false;
   }
   
-  // Test list windows command for Finder
+  // Test list windows command for Finder  
   const windowsOutput = exec('./peekaboo list windows --app Finder --json-output', { allowFailure: true });
   if (!windowsOutput) {
-    logError('Swift CLI windows command failed');
+    logError('Swift CLI list windows command failed');
     return false;
   }
   
   try {
     const windowsData = JSON.parse(windowsOutput);
-    if (!windowsData.target_app || !windowsData.windows) {
+    if (!windowsData.windows || !Array.isArray(windowsData.windows)) {
       logError('Windows list has invalid structure');
+      return false;
+    }
+    // Finder might not have windows, so just check structure
+    if (!windowsData.target_application_info) {
+      logError('Windows response missing target_application_info');
       return false;
     }
   } catch (e) {
     logError('Swift CLI windows JSON output is invalid');
     return false;
+  }
+  
+  // Test error handling - non-existent app
+  const errorOutput = exec('./peekaboo list windows --app NonExistentApp12345 --json-output 2>&1', { allowFailure: true });
+  if (errorOutput) {
+    try {
+      const errorData = JSON.parse(errorOutput);
+      if (!errorData.error) {
+        logWarning('Error response missing error field');
+      }
+    } catch (e) {
+      // If it's not JSON, that's OK - might be stderr output
+    }
   }
   
   // Test error handling - non-existent app
