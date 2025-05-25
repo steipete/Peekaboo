@@ -145,14 +145,12 @@ export const imageToolSchema = z.object({
     ),
 })
 .describe(
-  "Captures macOS screen content and optionally analyzes it.\n" +
-  "This tool allows for flexible screen capture, targeting entire screens, specific application windows, or all windows of an application. " +
-  "It supports foreground/background capture modes and can output images to a file path or as inline Base64 data.\n\n" +
-  "Key Capabilities:\n" +
-  "- Versatile Targeting: Use `app_target` to specify what to capture (see `app_target` parameter description for examples).\n" +
-  "- Analysis Integration: Provide a `question` to have the captured image analyzed by an AI model (selected from the `PEEKABOO_AI_PROVIDERS` environment variable).\n" +
-  "- Output Options: Save as 'png' or 'jpg', or get 'data' (Base64 PNG). The format defaults to 'data' if `path` is omitted.\n" +
-  "- Window Handling: Window shadows and frames are excluded from captures."
+  "Captures screen content and optionally analyzes it. " +
+  "Targets entire screens, specific app windows, or all windows of an app (via `app_target`). " +
+  "Supports foreground/background capture. " +
+  "Output to file path or inline Base64 data (`format: \"data\"`). " +
+  "If a `question` is provided, an AI model analyzes the image. " +
+  "Window shadows/frames excluded."
 );
 
 export type ImageInput = z.infer<typeof imageToolSchema>;

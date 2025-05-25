@@ -10,5 +10,5 @@ export function generateServerStatusString(version: string): string {
     providersText = providers.join(", ");
   }
 
-  return `\n- Peekaboo MCP ${version} using ${providersText}`.trim();
+  return `\n\nPeekaboo MCP ${version} using ${providersText}`.trim();
 }
