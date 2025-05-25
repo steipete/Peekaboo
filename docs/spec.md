@@ -70,12 +70,16 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     *   `PEEKABOO_DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
     *   `PEEKABOO_CONSOLE_LOGGING`: Boolean (`"true"`/`"false"`) for dev console logs. Default: `"false"`.
     *   `PEEKABOO_CLI_PATH`: Optional override for Swift `peekaboo` CLI path.
-6.  **Initial Status Reporting Logic:**
-    *   A server-instance-level boolean flag: `let hasSentInitialStatus = false;`.
-    *   A function `generateServerStatusString()`: Creates a formatted string: `"\n\n--- Peekaboo MCP Server Status ---\nName: PeekabooMCP\nVersion: <server_version>\nConfigured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None Configured. Set PEEKABOO_AI_PROVIDERS ENV.'>\n---"`.
-    *   Response Augmentation: In the function that sends a `ToolResponse` back to the MCP client, if the response is for a successful tool call (not `initialize`/`initialized` or `list` with `item_type: "server_status"`) AND `hasSentInitialStatus` is `false`:
-        *   Append `generateServerStatusString()` to the first `TextContentItem` in `ToolResponse.content`. If no text item exists, prepend a new one.
-        *   Set `hasSentInitialStatus = true`.
+6.  **Server Status Reporting Logic:**
+    *   A utility function `generateServerStatusString()` creates a formatted string: `"
+
+--- Peekaboo MCP Server Status ---
+Name: PeekabooMCP
+Version: <server_version>
+Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None Configured. Set PEEKABOO_AI_PROVIDERS ENV.'>
+---"`.
+    *   **Tool Descriptions:** When the server handles a `ListToolsRequest` (typically at client initialization), it appends the `generateServerStatusString()` output to the `description` field of each advertised tool (`image`, `analyze`, `list`). This provides clients with immediate server status information alongside tool capabilities.
+    *   **Direct Access via `list` tool:** The server status string can also be retrieved directly by calling the `list` tool with `item_type: "server_status"` (see Tool 3 details).
 7.  **Tool Registration:** Register `image`, `analyze`, `list` with their Zod input schemas and handler functions.
 8.  **Transport:** `await server.connect(new StdioServerTransport());`.
 9.  **Shutdown:** Implement graceful shutdown on `SIGINT`, `SIGTERM` (e.g., `await server.close(); logger.flush(); process.exit(0);`).
@@ -92,7 +96,8 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
 6.  On Swift CLI process close:
     *   If `exitCode !== 0` or `stdout` is empty/not parseable as JSON:
         *   Log failure details with Pino (`error` level).
-        *   Construct MCP error `ToolResponse` (e.g., `errorCode: "SWIFT_CLI_EXECUTION_ERROR"` or `SWIFT_CLI_INVALID_OUTPUT` in `_meta`). Message should include relevant parts of raw `stdout`/`stderr` if available.
+        *   Construct MCP error `ToolResponse` (e.g., `errorCode: "SWIFT_CLI_EXECUTION_ERROR"` or `SWIFT_CLI_INVALID_OUTPUT` in `_meta`). 
+        *   **Error Message Prioritization:** The primary `message` in the error response will be derived from the Swift CLI's `stderr` output if available, prefixed with "Peekaboo CLI Error: ". Otherwise, a generic message like "Swift CLI execution failed (exit code: X)" will be used. The `details` field will contain `stdout` if `stderr` was the source of the main message and `stdout` had content, or further context.
     *   If `exitCode === 0`:
         *   Attempt to parse `stdout` as JSON. If parsing fails, treat as error (above).
         *   Let `swiftResponse = JSON.parse(stdout)`.
@@ -131,6 +136,9 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     })
     ```
     *   **Node.js Handler - Default `mode` Logic:** If `input.app` provided & `input.mode` undefined, `mode="window"`. If no `input.app` & `input.mode` undefined, `mode="screen"`.
+    *   **Node.js Handler - Resilience with `path` and `return_data: true`:** If `input.return_data` is true and `input.path` is specified:
+        *   The handler will still attempt to process and return Base64 image data for successfully captured images even if the Swift CLI (or the handler itself) encounters an error saving to or reading from the user-specified `input.path` (or paths derived from it).
+        *   In such cases where image data is returned despite a save-to-path failure, a `TextContentItem` containing a "Peekaboo Warning:" message detailing the path saving issue will be included in the `ToolResponse.content`.
 *   **MCP Output Schema (`ToolResponse`):**
     *   `content`: `Array<ImageContentItem | TextContentItem>`
         *   If `input.return_data: true`: Contains `ImageContentItem`(s): `{ type: "image", data: "<base64_string_no_prefix>", mimeType: "image/<format>", metadata?: { item_label?: string, window_title?: string, window_id?: number, source_path?: string } }`.
@@ -180,7 +188,7 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
         *   If `chosenProvider` is "anthropic": (Currently not implemented) This would involve using the Anthropic SDK and API key from `process.env.ANTHROPIC_API_KEY`. For now, attempting to use Anthropic will result in an error.
     6.  Construct MCP `ToolResponse`.
 *   **MCP Output Schema (`ToolResponse`):**
-    *   `content`: `[{ type: "text", text: "<AI's analysis/answer>" }]`
+    *   `content`: `[{ type: "text", text: "<AI's analysis/answer>" }, { type: "text", text: "👻 Peekaboo: Analyzed image with <provider>/<model> in X.XXs." }]` (The second text item provides feedback on the analysis process).
     *   `analysis_text`: `string` (Core AI answer).
     *   `model_used`: `string` (e.g., "ollama/llava:7b", "openai/gpt-4o") - The actual provider/model pair used.
     *   `isError?: boolean`
@@ -207,7 +215,7 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     })
     ```
 *   **Node.js Handler Logic:**
-    *   If `input.item_type === "server_status"`: Handler directly calls `generateServerStatusString()` and returns it in `ToolResponse.content[{type:"text"}]`. Does NOT call Swift CLI. Does NOT affect `hasSentInitialStatus`.
+    *   If `input.item_type === "server_status"`: Handler directly calls `generateServerStatusString()` (after retrieving the server version) and returns the resulting string in `ToolResponse.content[{type:"text"}]`. Does NOT call Swift CLI.
     *   Else (for "running_applications", "application_windows"): Call Swift `peekaboo list ...` with mapped args (including joining `include_window_details` array to comma-separated string for Swift CLI flag). Parse Swift JSON. Format MCP `ToolResponse`.
 *   **MCP Output Schema (`ToolResponse`):**
     *   `content`: `[{ type: "text", text: "<Summary or Status String>" }]`
