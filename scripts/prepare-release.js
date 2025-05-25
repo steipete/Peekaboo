@@ -533,9 +533,21 @@ function checkSwiftCLIIntegration() {
   log('Testing Swift CLI error handling and edge cases...', colors.cyan);
   
   // Test 1: Invalid command (since image is default, this gets interpreted as image subcommand argument)
-  const invalidCmd = exec('./peekaboo invalid-command 2>&1', { allowFailure: true });
-  if (!invalidCmd || !invalidCmd.includes('Unexpected argument')) {
-    logError('Swift CLI should show error for invalid command');
+  let invalidOutput;
+  try {
+    execSync('./peekaboo invalid-command 2>&1', { 
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: 'pipe'
+    });
+    logError('Swift CLI should fail for invalid command');
+    return false;
+  } catch (error) {
+    invalidOutput = error.stdout || error.stderr || error.toString();
+  }
+  
+  if (!invalidOutput.includes('Unexpected argument')) {
+    logError('Swift CLI should show proper error for invalid command');
     return false;
   }
   
