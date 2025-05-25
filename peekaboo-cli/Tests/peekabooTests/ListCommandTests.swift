@@ -30,32 +30,18 @@ final class ListCommandTests: XCTestCase {
         
         XCTAssertEqual(command.app, "Finder")
         XCTAssertFalse(command.jsonOutput)
-        XCTAssertFalse(command.includeOffScreen)
-        XCTAssertEqual(command.details, [])
+        XCTAssertNil(command.includeDetails)
     }
 
     func testWindowsSubcommandWithDetails() throws {
         // Test windows subcommand with detail options
         let command = try WindowsSubcommand.parse([
             "--app", "Finder",
-            "--details", "bounds",
-            "--details", "ids"
+            "--include-details", "bounds,ids"
         ])
         
         XCTAssertEqual(command.app, "Finder")
-        XCTAssertTrue(command.details.contains(.bounds))
-        XCTAssertTrue(command.details.contains(.ids))
-    }
-
-    func testWindowsSubcommandWithOffScreen() throws {
-        // Test windows subcommand with off-screen option
-        let command = try WindowsSubcommand.parse([
-            "--app", "Safari",
-            "--include-off-screen"
-        ])
-        
-        XCTAssertEqual(command.app, "Safari")
-        XCTAssertTrue(command.includeOffScreen)
+        XCTAssertEqual(command.includeDetails, "bounds,ids")
     }
 
     // MARK: - Data Structure Tests
