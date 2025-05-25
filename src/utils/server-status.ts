@@ -10,10 +10,5 @@ export function generateServerStatusString(version: string): string {
     providersText = providers.join(", ");
   }
 
-  return `
---- Peekaboo MCP Server Status ---
-Name: PeekabooMCP
-Version: ${version}
-Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): ${providersText}
----`.trim();
+  return `\n- Peekaboo MCP ${version} using ${providersText}`.trim();
 }
