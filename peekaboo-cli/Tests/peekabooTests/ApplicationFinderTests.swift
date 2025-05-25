@@ -57,7 +57,7 @@ final class ApplicationFinderTests: XCTestCase {
         XCTAssertGreaterThan(apps.count, 0)
         
         // Should include Finder
-        let hasFinder = apps.contains { $0.name == "Finder" }
+        let hasFinder = apps.contains { $0.app_name == "Finder" }
         XCTAssertTrue(hasFinder, "Finder should always be running")
     }
 
