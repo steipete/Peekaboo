@@ -88,7 +88,7 @@ final class ImageCommandTests: XCTestCase {
         let command = try ImageCommand.parse([
             "--screen-index", "0"
         ])
-        
+
         XCTAssertEqual(command.screenIndex, 0)
     }
 
