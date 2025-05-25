@@ -31,7 +31,7 @@ final class ImageCommandTests: XCTestCase {
             "--app", "Finder"
         ])
 
-        XCTAssertNil(command.mode)  // mode is optional
+        XCTAssertNil(command.mode) // mode is optional
         XCTAssertEqual(command.app, "Finder")
     }
 
@@ -78,7 +78,7 @@ final class ImageCommandTests: XCTestCase {
             "--mode", "multi",
             "--app", "Finder"
         ])
-        
+
         XCTAssertEqual(command.mode, .multi)
         XCTAssertEqual(command.app, "Finder")
     }
@@ -96,7 +96,7 @@ final class ImageCommandTests: XCTestCase {
         let command = try ImageCommand.parse([
             "--capture-focus", "foreground"
         ])
-        
+
         XCTAssertEqual(command.captureFocus, .foreground)
     }
 
@@ -116,7 +116,7 @@ final class ImageCommandTests: XCTestCase {
     }
 
     // MARK: - Focus Mode Tests
-    
+
     func testCaptureFocusRawValues() {
         // Test capture focus values
         XCTAssertEqual(CaptureFocus.foreground.rawValue, "foreground")
@@ -124,7 +124,7 @@ final class ImageCommandTests: XCTestCase {
     }
 
     // MARK: - Model Tests
-    
+
     func testSavedFileModel() {
         // Test SavedFile structure
         let savedFile = SavedFile(
@@ -135,7 +135,7 @@ final class ImageCommandTests: XCTestCase {
             window_index: 0,
             mime_type: "image/png"
         )
-        
+
         XCTAssertEqual(savedFile.path, "/tmp/screenshot.png")
         XCTAssertEqual(savedFile.item_label, "Finder Window")
         XCTAssertEqual(savedFile.window_title, "Documents")
@@ -157,7 +157,7 @@ final class ImageCommandTests: XCTestCase {
                 mime_type: "image/png"
             )
         ]
-        
+
         let captureData = ImageCaptureData(saved_files: savedFiles)
 
         let encoder = JSONEncoder()
@@ -167,10 +167,10 @@ final class ImageCommandTests: XCTestCase {
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
 
         XCTAssertNotNil(json)
-        
+
         let files = json?["saved_files"] as? [[String: Any]]
         XCTAssertEqual(files?.count, 1)
-        
+
         let firstFile = files?.first
         XCTAssertEqual(firstFile?["path"] as? String, "/tmp/screenshot1.png")
         XCTAssertEqual(firstFile?["mime_type"] as? String, "image/png")

@@ -2,7 +2,6 @@
 import XCTest
 
 final class PermissionsCheckerTests: XCTestCase {
-
     // MARK: - hasScreenRecordingPermission Tests
 
     func testCheckScreenRecordingPermission() {
@@ -39,7 +38,7 @@ final class PermissionsCheckerTests: XCTestCase {
     }
 
     func testAccessibilityPermissionWithTrustedCheck() {
-        // Test the AXIsProcessTrusted check  
+        // Test the AXIsProcessTrusted check
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false]
         let isTrusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
         let hasPermission = PermissionsChecker.checkAccessibilityPermission()
@@ -58,7 +57,7 @@ final class PermissionsCheckerTests: XCTestCase {
         // Both should return boolean values
         XCTAssertNotNil(screenRecording)
         XCTAssertNotNil(accessibility)
-        
+
         print("Permissions - Screen: \(screenRecording), Accessibility: \(accessibility)")
     }
 
@@ -68,7 +67,7 @@ final class PermissionsCheckerTests: XCTestCase {
         // Test permission error types
         let screenError = PermissionError.screenRecordingDenied
         let accessError = PermissionError.accessibilityDenied
-        
+
         XCTAssertNotNil(screenError)
         XCTAssertNotNil(accessError)
     }
@@ -78,7 +77,7 @@ final class PermissionsCheckerTests: XCTestCase {
     func testCaptureError() {
         // Test error creation for permission denied
         let error = CaptureError.capturePermissionDenied
-        
+
         // CaptureError conforms to LocalizedError, so it has errorDescription
         XCTAssertNotNil(error.errorDescription)
         XCTAssertTrue(error.errorDescription?.contains("permission") ?? false)
@@ -95,7 +94,7 @@ final class PermissionsCheckerTests: XCTestCase {
     }
 
     // MARK: - Require Permission Tests
-    
+
     func testRequireScreenRecordingPermission() {
         // Test the require method - it should throw if permission is denied
         do {
@@ -107,7 +106,7 @@ final class PermissionsCheckerTests: XCTestCase {
             XCTAssertTrue(error is CaptureError)
         }
     }
-    
+
     func testRequireAccessibilityPermission() {
         // Test the require method - it should throw if permission is denied
         do {

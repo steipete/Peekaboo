@@ -2,7 +2,6 @@
 import XCTest
 
 final class ApplicationFinderTests: XCTestCase {
-
     // MARK: - findRunningApplication Tests
 
     func testFindApplicationExactMatch() throws {
@@ -48,14 +47,14 @@ final class ApplicationFinderTests: XCTestCase {
     }
 
     // MARK: - Static Method Tests
-    
+
     func testGetAllRunningApplications() {
         // Test getting all running applications
         let apps = ApplicationFinder.getAllRunningApplications()
-        
+
         // Should have at least some apps running
         XCTAssertGreaterThan(apps.count, 0)
-        
+
         // Should include Finder
         let hasFinder = apps.contains { $0.app_name == "Finder" }
         XCTAssertTrue(hasFinder, "Finder should always be running")

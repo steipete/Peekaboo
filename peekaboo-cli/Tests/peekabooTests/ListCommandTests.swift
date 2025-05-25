@@ -27,7 +27,7 @@ final class ListCommandTests: XCTestCase {
     func testWindowsSubcommandParsing() throws {
         // Test parsing windows subcommand with required app
         let command = try WindowsSubcommand.parse(["--app", "Finder"])
-        
+
         XCTAssertEqual(command.app, "Finder")
         XCTAssertFalse(command.jsonOutput)
         XCTAssertNil(command.includeDetails)
@@ -39,7 +39,7 @@ final class ListCommandTests: XCTestCase {
             "--app", "Finder",
             "--include-details", "bounds,ids"
         ])
-        
+
         XCTAssertEqual(command.app, "Finder")
         XCTAssertEqual(command.includeDetails, "bounds,ids")
     }
@@ -55,13 +55,13 @@ final class ListCommandTests: XCTestCase {
             is_active: true,
             window_count: 5
         )
-        
+
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
-        
+
         let data = try encoder.encode(appInfo)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        
+
         XCTAssertNotNil(json)
         XCTAssertEqual(json?["app_name"] as? String, "Finder")
         XCTAssertEqual(json?["bundle_id"] as? String, "com.apple.finder")
@@ -90,13 +90,13 @@ final class ListCommandTests: XCTestCase {
                 )
             ]
         )
-        
+
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
-        
+
         let data = try encoder.encode(appData)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        
+
         XCTAssertNotNil(json)
         let apps = json?["applications"] as? [[String: Any]]
         XCTAssertEqual(apps?.count, 2)
@@ -111,18 +111,18 @@ final class ListCommandTests: XCTestCase {
             bounds: WindowBounds(xCoordinate: 100, yCoordinate: 200, width: 800, height: 600),
             is_on_screen: true
         )
-        
+
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
-        
+
         let data = try encoder.encode(windowInfo)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        
+
         XCTAssertNotNil(json)
         XCTAssertEqual(json?["window_title"] as? String, "Documents")
         XCTAssertEqual(json?["window_id"] as? UInt32, 1001)
         XCTAssertEqual(json?["is_on_screen"] as? Bool, true)
-        
+
         let bounds = json?["bounds"] as? [String: Any]
         XCTAssertEqual(bounds?["x_coordinate"] as? Int, 100)
         XCTAssertEqual(bounds?["y_coordinate"] as? Int, 200)
@@ -148,18 +148,18 @@ final class ListCommandTests: XCTestCase {
                 pid: 123
             )
         )
-        
+
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
-        
+
         let data = try encoder.encode(windowData)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        
+
         XCTAssertNotNil(json)
-        
+
         let windows = json?["windows"] as? [[String: Any]]
         XCTAssertEqual(windows?.count, 1)
-        
+
         let targetApp = json?["target_application_info"] as? [String: Any]
         XCTAssertEqual(targetApp?["app_name"] as? String, "Finder")
         XCTAssertEqual(targetApp?["bundle_id"] as? String, "com.apple.finder")
@@ -179,7 +179,7 @@ final class ListCommandTests: XCTestCase {
     func testWindowSpecifierTitle() {
         // Test window specifier with title
         let specifier = WindowSpecifier.title("Documents")
-        
+
         switch specifier {
         case let .title(title):
             XCTAssertEqual(title, "Documents")
@@ -191,7 +191,7 @@ final class ListCommandTests: XCTestCase {
     func testWindowSpecifierIndex() {
         // Test window specifier with index
         let specifier = WindowSpecifier.index(0)
-        
+
         switch specifier {
         case let .index(index):
             XCTAssertEqual(index, 0)
@@ -220,11 +220,11 @@ final class ListCommandTests: XCTestCase {
                 window_count: index % 5
             )
         }
-        
+
         let appData = ApplicationListData(applications: apps)
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
-        
+
         measure {
             _ = try? encoder.encode(appData)
         }
