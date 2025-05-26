@@ -52,13 +52,11 @@ try {
   const testFile = path.join(logDir, `.peekaboo-test-${Date.now()}`);
   await fs.writeFile(testFile, "test");
   await fs.unlink(testFile);
-} catch (error) {
+} catch (_error) {
   // If we can't write to the configured/default location, fall back to temp directory
   if (logFile !== fallbackLogPath) {
-    const originalPath = logFile;
     logFile = fallbackLogPath;
     // We'll log this error after the logger is initialized
-    console.error(`Unable to write to log directory: ${logDir}. Falling back to: ${fallbackLogPath}`);
   }
 }
 

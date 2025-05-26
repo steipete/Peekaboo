@@ -1,12 +1,10 @@
 import { z } from "zod";
 import path from "path";
-import { ToolContext, AIProvider } from "../types/index.js";
+import { ToolContext } from "../types/index.js";
 import { readImageAsBase64 } from "../utils/peekaboo-cli.js";
 import {
   parseAIProviders,
-  isProviderAvailable,
   analyzeImageWithProvider,
-  getDefaultModelForProvider,
   determineProviderAndModel,
 } from "../utils/ai-providers.js";
 

@@ -171,3 +171,39 @@ export async function readImageAsBase64(imagePath: string): Promise<string> {
   const buffer = await fsPromises.readFile(imagePath);
   return buffer.toString("base64");
 }
+
+// Simple execution function for basic commands without logger dependency
+export async function execPeekaboo(
+  args: string[],
+  packageRootDir: string,
+  options: { expectSuccess?: boolean } = {}
+): Promise<{ success: boolean; data?: string; error?: string }> {
+  const cliPath = process.env.PEEKABOO_CLI_PATH || path.resolve(packageRootDir, "peekaboo");
+  
+  return new Promise((resolve) => {
+    const process = spawn(cliPath, args);
+    let stdout = "";
+    let stderr = "";
+
+    process.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    process.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    process.on("close", (code) => {
+      const success = code === 0;
+      if (options.expectSuccess !== false && !success) {
+        resolve({ success: false, error: stderr || stdout });
+      } else {
+        resolve({ success, data: stdout, error: stderr });
+      }
+    });
+
+    process.on("error", (err) => {
+      resolve({ success: false, error: err.message });
+    });
+  });
+}

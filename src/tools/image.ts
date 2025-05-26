@@ -3,9 +3,7 @@ import {
   ImageCaptureData,
   SavedFile,
   ToolResponse,
-  AIProvider,
   ImageInput,
-  imageToolSchema,
 } from "../types/index.js";
 import { executeSwiftCli, readImageAsBase64 } from "../utils/peekaboo-cli.js";
 import {
@@ -36,7 +34,7 @@ export async function imageToolHandler(
 
     // Determine effective path and format for Swift CLI
     let effectivePath = input.path;
-    let swiftFormat = input.format === "data" ? "png" : (input.format || "png");
+    const swiftFormat = input.format === "data" ? "png" : (input.format || "png");
     
     // Create temporary path if needed for analysis or data return without path
     const needsTempPath = (input.question && !input.path) || (!input.path && input.format === "data") || (!input.path && !input.format);
