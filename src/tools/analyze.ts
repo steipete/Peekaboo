@@ -1,6 +1,6 @@
 import { z } from "zod";
 import path from "path";
-import { ToolContext } from "../types/index.js";
+import { ToolContext, ToolResponse } from "../types/index.js";
 import { readImageAsBase64 } from "../utils/peekaboo-cli.js";
 import {
   parseAIProviders,
@@ -43,7 +43,7 @@ export type AnalyzeToolInput = z.infer<typeof analyzeToolSchema>;
 export async function analyzeToolHandler(
   input: AnalyzeToolInput,
   context: ToolContext,
-) {
+): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -58,7 +58,7 @@ export async function analyzeToolHandler(
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: `Unsupported image format: ${ext}. Supported formats: .png, .jpg, .jpeg, .webp`,
           },
         ],
@@ -73,7 +73,7 @@ export async function analyzeToolHandler(
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: "AI analysis not configured on this server. Set the PEEKABOO_AI_PROVIDERS environment variable.",
           },
         ],
@@ -87,7 +87,7 @@ export async function analyzeToolHandler(
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: "No valid AI providers found in PEEKABOO_AI_PROVIDERS configuration.",
           },
         ],
@@ -106,7 +106,7 @@ export async function analyzeToolHandler(
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: "No configured AI providers are currently operational.",
           },
         ],
@@ -126,7 +126,7 @@ export async function analyzeToolHandler(
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: `Failed to read image file: ${error instanceof Error ? error.message : "Unknown error"}`,
           },
         ],
@@ -150,7 +150,7 @@ export async function analyzeToolHandler(
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: `AI analysis failed: ${error instanceof Error ? error.message : "Unknown error"}`,
           },
         ],
@@ -170,11 +170,11 @@ export async function analyzeToolHandler(
     return {
       content: [
         {
-          type: "text",
+          type: "text" as const,
           text: analysisResult,
         },
         {
-          type: "text",
+          type: "text" as const,
           text: analysisTimeMessage, // Add the timing message
         },
       ],
@@ -186,7 +186,7 @@ export async function analyzeToolHandler(
     return {
       content: [
         {
-          type: "text",
+          type: "text" as const,
           text: `Unexpected error: ${error instanceof Error ? error.message : "Unknown error"}`,
         },
       ],

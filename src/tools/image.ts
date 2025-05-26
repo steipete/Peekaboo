@@ -73,10 +73,11 @@ export async function imageToolHandler(
       };
     }
 
+    const imageData = swiftResponse.data as ImageCaptureData | undefined;
     if (
-      !swiftResponse.data ||
-      !swiftResponse.data.saved_files ||
-      swiftResponse.data.saved_files.length === 0
+      !imageData ||
+      !imageData.saved_files ||
+      imageData.saved_files.length === 0
     ) {
       logger.error(
         "Swift CLI reported success but no data/saved_files were returned.",
@@ -93,7 +94,7 @@ export async function imageToolHandler(
       };
     }
 
-    const captureData = swiftResponse.data as ImageCaptureData;
+    const captureData = imageData;
     const imagePathForAnalysis = captureData.saved_files[0].path;
 
     // Determine which files to report as saved
@@ -150,7 +151,7 @@ export async function imageToolHandler(
       }
     }
 
-    const content: Array<{ type: "text" | "image"; text?: string; data?: string; mimeType?: string; metadata?: unknown }> = [];
+    const content: Array<{ type: "text" | "image"; text?: string; data?: string; mimeType?: string; metadata?: Record<string, unknown> }> = [];
     let summary = buildImageSummary(input, captureData, input.question);
     if (analysisAttempted) {
       summary += `\nAnalysis ${analysisSucceeded ? "succeeded" : "failed/skipped"}.`;

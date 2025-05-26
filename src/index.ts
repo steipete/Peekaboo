@@ -23,6 +23,8 @@ import {
 import { generateServerStatusString } from "./utils/server-status.js";
 import { initializeSwiftCliPath } from "./utils/peekaboo-cli.js";
 import { zodToJsonSchema } from "./utils/zod-to-json-schema.js";
+import { ToolResponse } from "./types/index.js";
+import { z } from "zod";
 
 // Get package version and determine package root
 const __filename = fileURLToPath(import.meta.url);
@@ -215,12 +217,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: `Invalid arguments: ${(error as z.ZodError).issues.map((issue) => issue.message).join(", ")}`,
           },
         ],
         isError: true,
-      };
+      } as ToolResponse;
     }
 
     throw error;

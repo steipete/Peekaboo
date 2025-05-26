@@ -4,7 +4,10 @@ import {
   ApplicationListData,
   WindowListData,
   ApplicationInfo,
+  WindowInfo,
+  TargetApplicationInfo,
   SwiftCliResponse,
+  ToolResponse,
 } from "../types/index.js";
 import { executeSwiftCli, execPeekaboo } from "../utils/peekaboo-cli.js";
 import { generateServerStatusString } from "../utils/server-status.js";
@@ -83,7 +86,7 @@ export type ListToolInput = z.infer<typeof listToolSchema>;
 export async function listToolHandler(
   input: ListToolInput,
   context: ToolContext,
-) {
+): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -114,7 +117,7 @@ export async function listToolHandler(
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: `List operation failed: ${swiftResponse.error?.message || "Unknown error"}`,
           },
         ],
@@ -131,7 +134,7 @@ export async function listToolHandler(
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: "List operation failed: Invalid response from list utility (no data).",
           },
         ],
@@ -160,7 +163,7 @@ export async function listToolHandler(
     return {
       content: [
         {
-          type: "text",
+          type: "text" as const,
           text: "List operation completed with unknown item type.",
         },
       ],
@@ -170,7 +173,7 @@ export async function listToolHandler(
     return {
       content: [
         {
-          type: "text",
+          type: "text" as const,
           text: `Unexpected error: ${error instanceof Error ? error.message : "Unknown error"}`,
         },
       ],
@@ -183,7 +186,7 @@ async function handleServerStatus(
   version: string,
   packageRootDir: string,
   logger: Logger,
-): Promise<{ content: { type: string; text: string }[] }> {
+): Promise<ToolResponse> {
   const statusSections: string[] = [];
 
   // 1. Server version and AI providers
@@ -327,7 +330,7 @@ async function handleServerStatus(
   return {
     content: [
       {
-        type: "text",
+        type: "text" as const,
         text: fullStatus,
       },
     ],
@@ -357,7 +360,7 @@ export function buildSwiftCliArgs(input: ListToolInput): string[] {
 function handleApplicationsList(
   data: ApplicationListData,
   swiftResponse: SwiftCliResponse,
-): { content: { type: string; text: string }[]; application_list: ApplicationInfo[] } {
+): ToolResponse & { application_list: ApplicationInfo[] } {
   const apps = data.applications || [];
 
   let summary = `Found ${apps.length} running application${apps.length !== 1 ? "s" : ""}`;
@@ -385,7 +388,7 @@ function handleApplicationsList(
   return {
     content: [
       {
-        type: "text",
+        type: "text" as const,
         text: summary,
       },
     ],
@@ -399,7 +402,7 @@ function handleWindowsList(
   swiftResponse: SwiftCliResponse,
 ): ToolResponse & {
   window_list?: WindowInfo[];
-  target_application_info?: ApplicationInfo;
+  target_application_info?: TargetApplicationInfo;
 } {
   const windows = data.windows || [];
   const appInfo = data.target_application_info;
@@ -409,7 +412,7 @@ function handleWindowsList(
     return {
       content: [
         {
-          type: "text",
+          type: "text" as const,
           text: "List operation failed: Invalid response from list utility (missing application info).",
         },
       ],
@@ -456,7 +459,7 @@ function handleWindowsList(
   return {
     content: [
       {
-        type: "text",
+        type: "text" as const,
         text: summary,
       },
     ],
