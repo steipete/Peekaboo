@@ -9,32 +9,12 @@ export function buildImageSummary(
     return "Image capture completed but no files were saved or available for analysis.";
   }
 
-  // Determine mode and target from app_target
-  let mode = "screen";
-  let target = "screen";
-
-  if (input.app_target) {
-    if (input.app_target.startsWith("screen:")) {
-      mode = "screen";
-      target = input.app_target;
-    } else if (input.app_target === "frontmost") {
-      mode = "screen"; // defaulted to screen
-      target = "frontmost application";
-    } else if (input.app_target.includes(":")) {
-      // Contains window specifier
-      const parts = input.app_target.split(":");
-      target = parts[0]; // app name
-      mode = "window";
-    } else {
-      // Just app name, all windows
-      target = input.app_target;
-      mode = "all windows";
-    }
-  }
+  // Determine mode and target from app_target (removed since we're not using them anymore)
+  // The summary now just shows the count of images captured
 
   // Generate summary matching the expected format
   const imageCount = data.saved_files.length;
-  let summary = `Captured ${imageCount} image${imageCount > 1 ? 's' : ''}`;
+  let summary = `Captured ${imageCount} image${imageCount > 1 ? "s" : ""}`;
 
   if (data.saved_files.length === 1) {
     if (!question || (question && input.path)) {
