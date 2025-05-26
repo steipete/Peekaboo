@@ -203,6 +203,37 @@ function checkSwift() {
   }
   logSuccess('SwiftLint passed');
 
+  // Check for Swift compiler warnings/errors
+  log('Checking for Swift compiler warnings...', colors.cyan);
+  let swiftBuildOutput = '';
+  try {
+    // Capture build output to check for warnings
+    swiftBuildOutput = execSync('cd peekaboo-cli && swift build --arch arm64 -c release 2>&1', {
+      cwd: projectRoot,
+      encoding: 'utf8'
+    });
+  } catch (error) {
+    logError('Swift build failed during analyzer check');
+    if (error.stdout) console.log(error.stdout);
+    if (error.stderr) console.log(error.stderr);
+    return false;
+  }
+  
+  // Check for warnings in the output
+  const warningMatches = swiftBuildOutput.match(/warning:|note:/gi);
+  if (warningMatches && warningMatches.length > 0) {
+    logWarning(`Found ${warningMatches.length} warnings/notes in Swift build`);
+    // Extract and show warning lines
+    const lines = swiftBuildOutput.split('\n');
+    lines.forEach(line => {
+      if (line.includes('warning:') || line.includes('note:')) {
+        console.log(`  ${line.trim()}`);
+      }
+    });
+  } else {
+    logSuccess('No Swift compiler warnings found');
+  }
+
   // Run Swift tests
   if (!execWithOutput('npm run test:swift', 'Swift tests')) {
     logError('Swift tests failed');

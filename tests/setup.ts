@@ -1,29 +1,28 @@
-// Jest setup file
+// Vitest setup file
 // Configure global test environment
 
+import { beforeEach, afterEach, vi } from 'vitest';
+
 // Mock console methods to reduce noise during testing
-const originalConsole = global.console;
+const originalConsole = globalThis.console;
 
 beforeEach(() => {
   // Reset console mocks before each test
-  global.console = {
+  globalThis.console = {
     ...originalConsole,
-    log: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    info: jest.fn(),
-    debug: jest.fn(),
+    log: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
   };
 });
 
 afterEach(() => {
   // Restore original console after each test
-  global.console = originalConsole;
-  jest.clearAllMocks();
+  globalThis.console = originalConsole;
+  vi.clearAllMocks();
 });
-
-// Global test timeout
-jest.setTimeout(10000);
 
 // Mock environment variables for testing
 process.env.NODE_ENV = "test";

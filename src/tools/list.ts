@@ -14,18 +14,29 @@ export const listToolSchema = z
     item_type: z
       .enum(["running_applications", "application_windows", "server_status"])
       .default("running_applications")
-      .describe("What to list. 'server_status' returns Peekaboo server info."),
+      .describe(
+        "Specifies the type of items to list. Valid options are:\n" +
+        "- `running_applications`: Lists all currently running applications with details like name, bundle ID, PID, active status, and window count.\n" +
+        "- `application_windows`: Lists open windows for a specific application. Requires the `app` parameter. Details can be customized with `include_window_details`.\n" +
+        "- `server_status`: Returns information about the Peekaboo MCP server itself, including its version and configured AI providers."
+      ),
     app: z
       .string()
       .optional()
       .describe(
-        "Required if 'item_type' is 'application_windows'. Target application. Uses fuzzy matching.",
+        "Required when `item_type` is `application_windows`. " +
+        "Specifies the target application by its name (e.g., \"Safari\", \"TextEdit\") or bundle ID. " +
+        "Fuzzy matching is used, so partial names may work."
       ),
     include_window_details: z
       .array(z.enum(["off_screen", "bounds", "ids"]))
       .optional()
       .describe(
-        "Optional, for 'application_windows'. Additional window details. Example: ['bounds', 'ids']",
+        "Optional, only applicable when `item_type` is `application_windows`. " +
+        "Specifies additional details to include for each window. Provide an array of strings. Example: `[\"bounds\", \"ids\"]`.\n" +
+        "- `ids`: Include window ID.\n" +
+        "- `bounds`: Include window position and size (x, y, width, height).\n" +
+        "- `off_screen`: Indicate if the window is currently off-screen."
       ),
   })
   .refine(
@@ -54,6 +65,11 @@ export const listToolSchema = z
         "'app' and 'include_window_details' not applicable for 'server_status'.",
       path: ["item_type"],
     },
+  )
+  .describe(
+    "Lists various system items, providing situational awareness. " +
+    "Can retrieve running applications, windows of a specific app, or server status. " +
+    "App identifier uses fuzzy matching for convenience."
   );
 
 export type ListToolInput = z.infer<typeof listToolSchema>;

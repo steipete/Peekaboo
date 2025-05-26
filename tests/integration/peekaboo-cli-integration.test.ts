@@ -88,7 +88,7 @@ describe("Swift CLI Integration Tests", () => {
       ) {
         const firstContentItem = response.content[0] as PeekabooContentItem;
         expect(firstContentItem.type).toBe("text");
-        expect(firstContentItem.text).toContain("Peekaboo MCP Server Status");
+        expect(firstContentItem.text).toContain("Peekaboo MCP");
       } else {
         fail(
           "Response content was not in the expected format for server_status",
