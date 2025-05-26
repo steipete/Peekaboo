@@ -30,17 +30,17 @@ export function buildSwiftCliArgs(
     const screenIndex = parseInt(screenIndexStr, 10);
     if (isNaN(screenIndex) || screenIndex < 0) {
       log.warn(
-        { screenIndexStr },
-        "Invalid screen index, defaulting to screen 0",
+        { screenIndex: screenIndexStr },
+        `Invalid screen index '${screenIndexStr}' in app_target, capturing all screens.`,
       );
-      args.push("--mode", "screen", "--screen-index", "0");
+      args.push("--mode", "screen");
     } else {
       args.push("--mode", "screen", "--screen-index", screenIndex.toString());
     }
   } else if (input.app_target === "frontmost") {
     // 'frontmost': All windows of the frontmost app
     log.warn(
-      "'frontmost' was specified, but is not natively implemented. Defaulting to all screens.",
+      "'frontmost' target requires determining current frontmost app, defaulting to screen mode",
     );
     args.push("--mode", "screen");
   } else if (input.app_target.includes(":")) {
@@ -71,26 +71,26 @@ export function buildSwiftCliArgs(
         "Malformed window specifier, treating as app name",
       );
       args.push("--app", input.app_target);
-      args.push("--mode", "all");
+      args.push("--mode", "multi");
     }
   } else {
     // 'AppName': All windows of that app
     args.push("--app", input.app_target);
-    args.push("--mode", "all");
+    args.push("--mode", "multi");
   }
 
   // Add path if provided
   if (actualPath) {
     args.push("--path", actualPath);
+  } else if (process.env.PEEKABOO_DEFAULT_SAVE_PATH && !input.question) {
+    args.push("--path", process.env.PEEKABOO_DEFAULT_SAVE_PATH);
   }
 
   // Add format
   args.push("--format", actualFormat);
 
-  // Handle capture focus
-  if (input.capture_focus === "foreground") {
-    args.push("--capture-focus", "foreground");
-  }
+  // Add capture focus
+  args.push("--capture-focus", input.capture_focus || "background");
 
   return args;
 }

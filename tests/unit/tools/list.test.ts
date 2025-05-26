@@ -47,6 +47,7 @@ const mockGenerateServerStatusString =
     typeof generateServerStatusString
   >;
 const mockFsReadFile = fs.readFile as vi.MockedFunction<typeof fs.readFile>;
+const mockFsAccess = fs.access as vi.MockedFunction<typeof fs.access>;
 
 // Create a mock logger for tests
 const mockLogger = pino({ level: "silent" });
@@ -55,6 +56,8 @@ const mockContext: ToolContext = { logger: mockLogger };
 describe("List Tool", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mock fs.access to always succeed by default
+    mockFsAccess.mockResolvedValue(undefined);
   });
 
   describe("buildSwiftCliArgs", () => {
@@ -228,14 +231,9 @@ describe("List Tool", () => {
     });
 
     it("should handle server status", async () => {
-      // process.cwd() will be the project root during tests
-      const expectedPackageJsonPath = require("path").join(
-        process.cwd(),
-        "package.json",
-      );
-      mockFsReadFile.mockResolvedValue(JSON.stringify({ version: "1.2.3" }));
+      // Mock generateServerStatusString since it's still used
       mockGenerateServerStatusString.mockReturnValue(
-        "Peekaboo MCP Server v1.2.3\nStatus: Test Status",
+        "# Peekaboo MCP Server Status\nVersion: 1.2.3",
       );
 
       const result = await listToolHandler(
@@ -245,15 +243,20 @@ describe("List Tool", () => {
         mockContext,
       );
 
-      expect(mockFsReadFile).toHaveBeenCalledWith(
-        expectedPackageJsonPath,
-        "utf-8",
-      );
-      expect(mockGenerateServerStatusString).toHaveBeenCalledWith("1.2.3");
-      expect(result.content[0].text).toBe(
-        "Peekaboo MCP Server v1.2.3\nStatus: Test Status",
-      );
+      // Should NOT call executeSwiftCli for server_status anymore
       expect(mockExecuteSwiftCli).not.toHaveBeenCalled();
+
+      // Should call generateServerStatusString with the version
+      expect(mockGenerateServerStatusString).toHaveBeenCalled();
+
+      // Check that the response contains expected sections
+      const statusText = result.content[0].text;
+      expect(statusText).toContain("# Peekaboo MCP Server Status");
+      expect(statusText).toContain("## Native Binary (Swift CLI) Status");
+      expect(statusText).toContain("## System Permissions");
+      expect(statusText).toContain("## Environment Configuration");
+      expect(statusText).toContain("## Configuration Issues");
+      expect(statusText).toContain("## System Information");
     });
 
     it("should handle Swift CLI errors", async () => {

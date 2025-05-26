@@ -1,8 +1,6 @@
 import { vi } from "vitest";
-import {
-  imageToolHandler,
-  buildSwiftCliArgs,
-} from "../../../src/tools/image";
+import { imageToolHandler } from "../../../src/tools/image";
+import { buildSwiftCliArgs } from "../../../src/utils/image-cli-args";
 import {
   executeSwiftCli,
   readImageAsBase64,

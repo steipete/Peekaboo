@@ -5,11 +5,7 @@ export function buildImageSummary(
   data: ImageCaptureData,
   question?: string,
 ): string {
-  if (
-    !data.saved_files ||
-    data.saved_files.length === 0 ||
-    !(input.question && data.saved_files && data.saved_files.length > 0)
-  ) {
+  if (!data.saved_files || data.saved_files.length === 0) {
     return "Image capture completed but no files were saved or available for analysis.";
   }
 
@@ -36,10 +32,9 @@ export function buildImageSummary(
     }
   }
 
-  let summary = `Image captured successfully for ${target}`;
-  if (mode !== "screen") {
-    summary += ` (${mode})`;
-  }
+  // Generate summary matching the expected format
+  const imageCount = data.saved_files.length;
+  let summary = `Captured ${imageCount} image${imageCount > 1 ? 's' : ''}`;
 
   if (data.saved_files.length === 1) {
     if (!question || (question && input.path)) {
