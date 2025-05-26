@@ -76,7 +76,7 @@ Cast powerful spells upon Peekaboo using mystical environment variables:
 {
   "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
   "PEEKABOO_LOG_LEVEL": "debug",
-  "PEEKABOO_LOG_FILE": "/tmp/peekaboo-mcp.log",
+  "PEEKABOO_LOG_FILE": "~/Library/Logs/peekaboo-mcp-debug.log",
   "PEEKABOO_DEFAULT_SAVE_PATH": "~/Pictures/PeekabooCaptures",
   "PEEKABOO_CONSOLE_LOGGING": "true",
   "PEEKABOO_CLI_PATH": "/opt/custom/peekaboo"
@@ -89,7 +89,7 @@ Cast powerful spells upon Peekaboo using mystical environment variables:
 |----------|-------------|---------|
 | `PEEKABOO_AI_PROVIDERS` | Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `\"openai/gpt-4o,ollama/llava:7b\"`). If a model is not specified for a provider (e.g., `\"openai\"`), a default model for that provider will be used. This setting determines which AI backends are available for the `analyze` tool and the `image` tool (when a `question` is provided). **Recommended for Ollama:** `\"ollama/llava:latest\"` for the best vision model. | `\"\"` (none) |
 | `PEEKABOO_LOG_LEVEL` | Logging level (trace, debug, info, warn, error, fatal). | `info` |
-| `PEEKABOO_LOG_FILE` | Path to the server's log file. | `path.join(os.tmpdir(), 'peekaboo-mcp.log')` |
+| `PEEKABOO_LOG_FILE` | Path to the server's log file. If the specified directory is not writable, falls back to the system temp directory. | `~/Library/Logs/peekaboo-mcp.log` |
 | `PEEKABOO_DEFAULT_SAVE_PATH` | Default base absolute path for saving images captured by the `image` tool. If the `path` argument is provided to the `image` tool, it takes precedence. If neither `image.path` nor this environment variable is set, the Swift CLI saves to its default temporary directory. | (none, Swift CLI uses temp paths) |
 | `PEEKABOO_OLLAMA_BASE_URL` | Base URL for the Ollama API server. Only needed if Ollama is running on a non-default address. | `http://localhost:11434` |
 | `PEEKABOO_CONSOLE_LOGGING` | Boolean (`"true"`/`"false"`) for development console logs. | `"false"` |

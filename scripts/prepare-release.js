@@ -161,6 +161,13 @@ function checkTypeScript() {
   log('Cleaning build directory...', colors.cyan);
   rmSync(join(projectRoot, 'dist'), { recursive: true, force: true });
 
+  // Run ESLint
+  if (!execWithOutput('npm run lint', 'ESLint')) {
+    logError('ESLint found violations');
+    return false;
+  }
+  logSuccess('ESLint passed');
+
   // Type check
   if (!execWithOutput('npm run build', 'TypeScript compilation')) {
     logError('TypeScript compilation failed');

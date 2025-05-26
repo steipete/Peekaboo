@@ -4,10 +4,13 @@ import {
   ApplicationListData,
   WindowListData,
 } from "../types/index.js";
-import { executeSwiftCli } from "../utils/peekaboo-cli.js";
+import { executeSwiftCli, execPeekaboo } from "../utils/peekaboo-cli.js";
 import { generateServerStatusString } from "../utils/server-status.js";
 import fs from "fs/promises";
 import path from "path";
+import { existsSync, accessSync, constants } from "fs";
+import os from "os";
+import { fileURLToPath } from "url";
 
 export const listToolSchema = z
   .object({
@@ -85,13 +88,16 @@ export async function listToolHandler(
 
     // Handle server_status directly without calling Swift CLI
     if (input.item_type === "server_status") {
-      // Get package version
-      const packageJsonPath = path.join(process.cwd(), "package.json");
+      // Get package version and root directory
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      const packageRootDir = path.resolve(__dirname, "../..");
+      const packageJsonPath = path.join(packageRootDir, "package.json");
       const packageJson = JSON.parse(
         await fs.readFile(packageJsonPath, "utf-8"),
       );
       const version = packageJson.version || "[unknown]";
-      return await handleServerStatus(version);
+      return await handleServerStatus(version, packageRootDir, logger);
     }
 
     // Build Swift CLI arguments
@@ -172,14 +178,154 @@ export async function listToolHandler(
 
 async function handleServerStatus(
   version: string,
+  packageRootDir: string,
+  logger: any,
 ): Promise<{ content: { type: string; text: string }[] }> {
-  const statusString = generateServerStatusString(version);
-
+  const statusSections: string[] = [];
+  
+  // 1. Server version and AI providers
+  statusSections.push(generateServerStatusString(version));
+  
+  // 2. Native Binary Status
+  statusSections.push("\n## Native Binary (Swift CLI) Status");
+  
+  const cliPath = process.env.PEEKABOO_CLI_PATH || path.join(packageRootDir, "peekaboo");
+  let cliStatus = "❌ Not found";
+  let cliVersion = "Unknown";
+  let cliExecutable = false;
+  
+  if (existsSync(cliPath)) {
+    try {
+      accessSync(cliPath, constants.X_OK);
+      cliExecutable = true;
+      
+      // Try to get CLI version
+      const versionResult = await execPeekaboo(
+        ["--version"],
+        packageRootDir,
+        { expectSuccess: false }
+      );
+      
+      if (versionResult.success && versionResult.data) {
+        cliVersion = versionResult.data.trim();
+        cliStatus = "✅ Found and executable";
+      } else {
+        cliStatus = "⚠️ Found but version check failed";
+      }
+    } catch (error) {
+      cliStatus = "⚠️ Found but not executable";
+    }
+  }
+  
+  statusSections.push(`- Location: ${cliPath}`);
+  statusSections.push(`- Status: ${cliStatus}`);
+  statusSections.push(`- Version: ${cliVersion}`);
+  statusSections.push(`- Executable: ${cliExecutable ? "Yes" : "No"}`);
+  
+  // 3. Permissions Status
+  statusSections.push("\n## System Permissions");
+  
+  if (cliExecutable) {
+    try {
+      const permissionsResult = await execPeekaboo(
+        ["list", "server_status", "--json-output"],
+        packageRootDir,
+        { expectSuccess: false }
+      );
+      
+      if (permissionsResult.success && permissionsResult.data) {
+        const status = JSON.parse(permissionsResult.data);
+        if (status.data?.permissions) {
+          const perms = status.data.permissions;
+          statusSections.push(`- Screen Recording: ${perms.screen_recording ? "✅ Granted" : "❌ Not granted"}`);
+          statusSections.push(`- Accessibility: ${perms.accessibility ? "✅ Granted" : "❌ Not granted"}`);
+        } else {
+          statusSections.push("- Unable to determine permissions status");
+        }
+      } else {
+        statusSections.push("- Unable to check permissions (CLI error)");
+      }
+    } catch (error) {
+      statusSections.push(`- Unable to check permissions: ${error}`);
+    }
+  } else {
+    statusSections.push("- Unable to check permissions (CLI not available)");
+  }
+  
+  // 4. Environment Configuration
+  statusSections.push("\n## Environment Configuration");
+  
+  const logFile = process.env.PEEKABOO_LOG_FILE || path.join(os.homedir(), "Library/Logs/peekaboo-mcp.log");
+  const logLevel = process.env.PEEKABOO_LOG_LEVEL || "info";
+  const consoleLogging = process.env.PEEKABOO_CONSOLE_LOGGING === "true";
+  const aiProviders = process.env.PEEKABOO_AI_PROVIDERS || "None configured";
+  const customCliPath = process.env.PEEKABOO_CLI_PATH;
+  const defaultSavePath = process.env.PEEKABOO_DEFAULT_SAVE_PATH || "Not set";
+  
+  statusSections.push(`- Log File: ${logFile}`);
+  
+  // Check log file accessibility
+  try {
+    const logDir = path.dirname(logFile);
+    await fs.access(logDir, constants.W_OK);
+    statusSections.push(`  Status: ✅ Directory writable`);
+  } catch (error) {
+    statusSections.push(`  Status: ❌ Directory not writable`);
+  }
+  
+  statusSections.push(`- Log Level: ${logLevel}`);
+  statusSections.push(`- Console Logging: ${consoleLogging ? "Enabled" : "Disabled"}`);
+  statusSections.push(`- AI Providers: ${aiProviders}`);
+  statusSections.push(`- Custom CLI Path: ${customCliPath || "Not set (using default)"}`);
+  statusSections.push(`- Default Save Path: ${defaultSavePath}`);
+  
+  // 5. Configuration Issues
+  statusSections.push("\n## Configuration Issues");
+  
+  const issues: string[] = [];
+  
+  if (!cliExecutable) {
+    issues.push("❌ Swift CLI not found or not executable");
+  }
+  
+  if (cliVersion !== version && cliVersion !== "Unknown") {
+    issues.push(`⚠️ Version mismatch: Server ${version} vs CLI ${cliVersion}`);
+  }
+  
+  if (!aiProviders || aiProviders === "None configured") {
+    issues.push("⚠️ No AI providers configured (analysis features will be limited)");
+  }
+  
+  // Check if log directory is writable
+  try {
+    const logDir = path.dirname(logFile);
+    await fs.access(logDir, constants.W_OK);
+  } catch {
+    issues.push(`❌ Log directory not writable: ${path.dirname(logFile)}`);
+  }
+  
+  if (issues.length === 0) {
+    statusSections.push("✅ No configuration issues detected");
+  } else {
+    issues.forEach(issue => statusSections.push(issue));
+  }
+  
+  // 6. System Information
+  statusSections.push("\n## System Information");
+  statusSections.push(`- Platform: ${os.platform()}`);
+  statusSections.push(`- Architecture: ${os.arch()}`);
+  statusSections.push(`- OS Version: ${os.release()}`);
+  statusSections.push(`- Node.js Version: ${process.version}`);
+  
+  const fullStatus = statusSections.join("\n");
+  
+  logger.info({ status: fullStatus }, "Server status info generated");
+  
   return {
     content: [
       {
         type: "text",
-        text: statusString,
+        text: fullStatus,
       },
     ],
   };

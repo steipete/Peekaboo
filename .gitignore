@@ -114,3 +114,6 @@ Thumbs.db
 
 # npm package files
 *.tgz
+
+# Auto-generated version file
+peekaboo-cli/Sources/peekaboo/Version.swift

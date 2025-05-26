@@ -9,7 +9,9 @@
   },
   "files": [
     "dist/",
-    "peekaboo"
+    "peekaboo",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
@@ -26,6 +28,8 @@
     "test:swift": "cd peekaboo-cli && swift test",
     "test:integration": "npm run build && npm run test:swift && vitest run",
     "test:all": "npm run test:integration",
+    "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' 'tests/**/*.ts' --fix",
     "lint:swift": "cd peekaboo-cli && swiftlint",
     "format:swift": "cd peekaboo-cli && swiftformat .",
     "prepare-release": "node ./scripts/prepare-release.js",
@@ -50,6 +54,9 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.21",
+    "@typescript-eslint/eslint-plugin": "^8.19.1",
+    "@typescript-eslint/parser": "^8.19.1",
+    "eslint": "^8.57.1",
     "pino-pretty": "^13.0.0",
     "typescript": "^5.3.0",
     "vitest": "^3.1.4",

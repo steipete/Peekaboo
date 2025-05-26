@@ -37,10 +37,30 @@ initializeSwiftCliPath(packageRootDir);
 
 // No longer need to track initial status display
 
-// Initialize logger
+// Initialize logger with fallback support
 const baseLogLevel = (process.env.PEEKABOO_LOG_LEVEL || "info").toLowerCase();
-const logFile =
-  process.env.PEEKABOO_LOG_FILE || path.join(os.tmpdir(), "peekaboo-mcp.log");
+const defaultLogPath = path.join(os.homedir(), "Library/Logs/peekaboo-mcp.log");
+const fallbackLogPath = path.join(os.tmpdir(), "peekaboo-mcp.log");
+let logFile = process.env.PEEKABOO_LOG_FILE || defaultLogPath;
+
+// Test if the log directory is writable
+const logDir = path.dirname(logFile);
+try {
+  // Try to create the directory if it doesn't exist
+  await fs.mkdir(logDir, { recursive: true });
+  // Test write access by creating a temp file
+  const testFile = path.join(logDir, `.peekaboo-test-${Date.now()}`);
+  await fs.writeFile(testFile, "test");
+  await fs.unlink(testFile);
+} catch (error) {
+  // If we can't write to the configured/default location, fall back to temp directory
+  if (logFile !== fallbackLogPath) {
+    const originalPath = logFile;
+    logFile = fallbackLogPath;
+    // We'll log this error after the logger is initialized
+    console.error(`Unable to write to log directory: ${logDir}. Falling back to: ${fallbackLogPath}`);
+  }
+}
 
 const transportTargets = [];
 
