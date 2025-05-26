@@ -20,7 +20,8 @@
     "node_modules/",
     "coverage/",
     "*.js",
-    "scripts/prepare-release.js"
+    "scripts/prepare-release.js",
+    "tests/**/*.ts"
   ],
   "rules": {
     "@typescript-eslint/no-explicit-any": "warn",

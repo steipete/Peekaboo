@@ -17,7 +17,7 @@ function determineSwiftCliPath(packageRootDirForFallback?: string): string {
         return envPath;
       }
       // If envPath is set but invalid, fall through to use packageRootDirForFallback
-    } catch (err) {
+    } catch (_err) {
       /* Fall through if existsSync fails */
     }
   }
@@ -176,10 +176,10 @@ export async function readImageAsBase64(imagePath: string): Promise<string> {
 export async function execPeekaboo(
   args: string[],
   packageRootDir: string,
-  options: { expectSuccess?: boolean } = {}
+  options: { expectSuccess?: boolean } = {},
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   const cliPath = process.env.PEEKABOO_CLI_PATH || path.resolve(packageRootDir, "peekaboo");
-  
+
   return new Promise((resolve) => {
     const process = spawn(cliPath, args);
     let stdout = "";

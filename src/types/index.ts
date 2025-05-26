@@ -115,17 +115,17 @@ export const imageToolSchema = z.object({
     "Use `'AppName'` (e.g., `'Safari'`) for all windows of that application.\n" +
     "Use `'AppName:WINDOW_TITLE:Title'` (e.g., `'TextEdit:WINDOW_TITLE:My Notes'`) for a window of 'AppName' matching that title.\n" +
     "Use `'AppName:WINDOW_INDEX:Index'` (e.g., `'Preview:WINDOW_INDEX:0'`) for a window of 'AppName' at that index.\n" +
-    "Ensure components are correctly colon-separated."
+    "Ensure components are correctly colon-separated.",
   ),
   path: z.string().optional().describe(
     "Optional. Base absolute path for saving the image.\n" +
     "Relevant if `format` is `'png'`, `'jpg'`, or if `'data'` is used with the intention to also save the file.\n" +
-    "If a `question` is provided and `path` is omitted, a temporary path is used for image capture, and this temporary file is deleted after analysis."
+    "If a `question` is provided and `path` is omitted, a temporary path is used for image capture, and this temporary file is deleted after analysis.",
   ),
   question: z.string().optional().describe(
     "Optional. If provided, the captured image will be analyzed by an AI model.\n" +
     "The server automatically selects an AI provider from the `PEEKABOO_AI_PROVIDERS` environment variable.\n" +
-    "The analysis result (text) is included in the response."
+    "The analysis result (text) is included in the response.",
   ),
   format: z.enum(["png", "jpg", "data"]).optional().describe(
     "Optional. Output format.\n" +
@@ -133,7 +133,7 @@ export const imageToolSchema = z.object({
     "If `'png'` or `'jpg'`, saves the image to the specified `path`.\n" +
     "If `'data'`, returns Base64 encoded PNG data inline in the response.\n" +
     "If `path` is also provided when `format` is `'data'`, the image is saved (as PNG) AND Base64 data is returned.\n" +
-    "Defaults to `'data'` if `path` is not given."
+    "Defaults to `'data'` if `path` is not given.",
   ),
   capture_focus: z.enum(["background", "foreground"])
     .optional()
@@ -141,16 +141,16 @@ export const imageToolSchema = z.object({
     .describe(
       "Optional. Focus behavior.\n" +
       "`'background'` (default): Captures without altering window focus.\n" +
-      "`'foreground'`: Brings the target window(s) to the front before capture."
+      "`'foreground'`: Brings the target window(s) to the front before capture.",
     ),
 })
-.describe(
-  "Captures screen content and optionally analyzes it. " +
+  .describe(
+    "Captures screen content and optionally analyzes it. " +
   "Targets entire screens, specific app windows, or all windows of an app (via `app_target`). " +
   "Supports foreground/background capture. " +
   "Output to file path or inline Base64 data (`format: \"data\"`). " +
   "If a `question` is provided, an AI model analyzes the image. " +
-  "Window shadows/frames excluded."
-);
+  "Window shadows/frames excluded.",
+  );
 
 export type ImageInput = z.infer<typeof imageToolSchema>;

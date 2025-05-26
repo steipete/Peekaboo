@@ -6,14 +6,13 @@ import {
   ImageInput,
 } from "../types/index.js";
 import { executeSwiftCli, readImageAsBase64 } from "../utils/peekaboo-cli.js";
-import {
-  parseAIProviders,
-  analyzeImageWithProvider,
-} from "../utils/ai-providers.js";
+import { performAutomaticAnalysis } from "../utils/image-analysis.js";
+import { buildImageSummary } from "../utils/image-summary.js";
+import { buildSwiftCliArgs } from "../utils/image-cli-args.js";
+import { parseAIProviders } from "../utils/ai-providers.js";
 import * as fs from "fs/promises";
 import * as pathModule from "path";
 import * as os from "os";
-import { Logger } from "pino";
 
 export { imageToolSchema } from "../types/index.js";
 
@@ -35,7 +34,7 @@ export async function imageToolHandler(
     // Determine effective path and format for Swift CLI
     let effectivePath = input.path;
     const swiftFormat = input.format === "data" ? "png" : (input.format || "png");
-    
+
     // Create temporary path if needed for analysis or data return without path
     const needsTempPath = (input.question && !input.path) || (!input.path && input.format === "data") || (!input.path && !input.format);
     if (needsTempPath) {
@@ -96,7 +95,7 @@ export async function imageToolHandler(
 
     const captureData = swiftResponse.data as ImageCaptureData;
     const imagePathForAnalysis = captureData.saved_files[0].path;
-    
+
     // Determine which files to report as saved
     if (input.question && tempImagePathUsed) {
       // Analysis with temp path - don't include in saved_files
@@ -138,7 +137,7 @@ export async function imageToolHandler(
             logger,
             process.env.PEEKABOO_AI_PROVIDERS || "",
           );
-          
+
           if (analysisResult.error) {
             analysisText = analysisResult.error;
           } else {
@@ -151,8 +150,8 @@ export async function imageToolHandler(
       }
     }
 
-    const content: any[] = [];
-    let summary = generateImageCaptureSummary(captureData, input);
+    const content: Array<{ type: "text" | "image"; text?: string; data?: string; mimeType?: string; metadata?: unknown }> = [];
+    let summary = buildImageSummary(input, captureData, input.question);
     if (analysisAttempted) {
       summary += `\nAnalysis ${analysisSucceeded ? "succeeded" : "failed/skipped"}.`;
     }
@@ -164,7 +163,7 @@ export async function imageToolHandler(
 
     // Return base64 data if format is 'data' or path not provided (and no question)
     const shouldReturnData = (input.format === "data" || !input.path) && !input.question;
-    
+
     if (shouldReturnData && captureData.saved_files?.length > 0) {
       for (const savedFile of captureData.saved_files) {
         try {
@@ -245,230 +244,4 @@ export async function imageToolHandler(
       }
     }
   }
-}
-
-export function buildSwiftCliArgs(
-  input: ImageInput,
-  logger?: Logger,
-  effectivePath?: string | undefined,
-  swiftFormat?: string,
-): string[] {
-  const args = ["image"];
-  
-  // Use provided values or derive from input
-  const actualPath = effectivePath !== undefined ? effectivePath : input.path;
-  const actualFormat = swiftFormat || (input.format === "data" ? "png" : input.format) || "png";
-  
-  // Create a logger if not provided (for backward compatibility)
-  const log = logger || { 
-    warn: () => {}, 
-    error: () => {}, 
-    debug: () => {} 
-  } as any;
-
-  // Parse app_target to determine Swift CLI arguments
-  if (!input.app_target || input.app_target === "") {
-    // Omitted/empty: All screens
-    args.push("--mode", "screen");
-  } else if (input.app_target.startsWith("screen:")) {
-    // 'screen:INDEX': Specific display
-    const screenIndex = input.app_target.substring(7);
-    args.push("--mode", "screen");
-    const index = parseInt(screenIndex, 10);
-    if (!isNaN(index)) {
-      args.push("--screen-index", index.toString());
-    } else {
-      log.warn(
-        { screenIndex },
-        `Invalid screen index '${screenIndex}' in app_target, capturing all screens.`,
-      );
-    }
-  } else if (input.app_target === "frontmost") {
-    // 'frontmost': Would need to determine frontmost app
-    // For now, default to screen mode with a warning
-    log.warn(
-      "'frontmost' target requires determining current frontmost app, defaulting to screen mode",
-    );
-    args.push("--mode", "screen");
-  } else if (input.app_target.includes(":")) {
-    // 'AppName:WINDOW_TITLE:Title' or 'AppName:WINDOW_INDEX:Index'
-    const parts = input.app_target.split(":");
-    if (parts.length >= 3) {
-      const appName = parts[0];
-      const specifierType = parts[1];
-      const specifierValue = parts.slice(2).join(":"); // Handle colons in window titles
-      
-      args.push("--app", appName);
-      args.push("--mode", "window");
-      
-      if (specifierType === "WINDOW_TITLE") {
-        args.push("--window-title", specifierValue);
-      } else if (specifierType === "WINDOW_INDEX") {
-        args.push("--window-index", specifierValue);
-      } else {
-        log.warn(
-          { specifierType },
-          "Unknown window specifier type, defaulting to main window",
-        );
-      }
-    } else {
-      log.error(
-        { app_target: input.app_target },
-        "Invalid app_target format",
-      );
-      args.push("--mode", "screen");
-    }
-  } else {
-    // 'AppName': All windows of the app
-    args.push("--app", input.app_target);
-    args.push("--mode", "multi");
-  }
-
-  // Add path if provided
-  if (actualPath) {
-    args.push("--path", actualPath);
-  } else if (process.env.PEEKABOO_DEFAULT_SAVE_PATH) {
-    args.push("--path", process.env.PEEKABOO_DEFAULT_SAVE_PATH);
-  }
-
-  // Add format
-  args.push("--format", actualFormat);
-
-  // Add capture focus
-  args.push("--capture-focus", input.capture_focus || "background");
-
-  if (logger) {
-    logger.debug({ cliArgs: args }, "Built Swift CLI arguments for image tool");
-  }
-  return args;
-}
-
-function generateImageCaptureSummary(
-  data: ImageCaptureData,
-  input: ImageInput,
-): string {
-  const fileCount = data.saved_files?.length || 0;
-
-  if (
-    fileCount === 0 &&
-    !(input.question && data.saved_files && data.saved_files.length > 0)
-  ) {
-    return "Image capture completed but no files were saved or available for analysis.";
-  }
-
-  // Determine mode and target from app_target
-  let mode = "screen";
-  let target = "screen";
-  
-  if (input.app_target) {
-    if (input.app_target.startsWith("screen:")) {
-      mode = "screen";
-      target = input.app_target;
-    } else if (input.app_target === "frontmost") {
-      mode = "screen"; // defaulted to screen
-      target = "frontmost application";
-    } else if (input.app_target.includes(":")) {
-      mode = "window";
-      target = input.app_target.split(":")[0];
-    } else {
-      mode = "multi";
-      target = input.app_target;
-    }
-  }
-
-  let summary = `Captured ${fileCount} image${fileCount > 1 ? "s" : ""} in ${mode} mode`;
-  if (input.app_target && target !== "screen") {
-    summary += ` for ${target}`;
-  }
-  summary += ".";
-
-  if (data.saved_files?.length && !(input.question && !input.path)) {
-    summary += "\n\nSaved files:";
-    data.saved_files.forEach((file, index) => {
-      summary += `\n${index + 1}. ${file.path}`;
-      if (file.item_label) {
-        summary += ` (${file.item_label})`;
-      }
-    });
-  } else if (input.question && input.path && data.saved_files?.length) {
-    summary += `\nImage saved to: ${data.saved_files[0].path}`;
-  } else if (input.question && data.saved_files?.length) {
-    summary += `\nImage captured to temporary location for analysis.`;
-  }
-
-  return summary;
-}
-
-async function performAutomaticAnalysis(
-  base64Image: string,
-  question: string,
-  logger: Logger,
-  availableProvidersEnv: string,
-): Promise<{
-  analysisText?: string;
-  modelUsed?: string;
-  error?: string;
-}> {
-  const providers = parseAIProviders(availableProvidersEnv);
-  
-  if (!providers.length) {
-    return {
-      error: "Analysis skipped: No AI providers configured",
-    };
-  }
-  
-  // Try each provider in order until one succeeds
-  for (const provider of providers) {
-    try {
-      logger.debug(
-        { provider: `${provider.provider}/${provider.model}` },
-        "Attempting analysis with provider",
-      );
-      
-      // Create a temporary file for the provider (some providers need file paths)
-      const tempDir = await fs.mkdtemp(
-        pathModule.join(os.tmpdir(), "peekaboo-analysis-"),
-      );
-      const tempPath = pathModule.join(tempDir, "image.png");
-      const imageBuffer = Buffer.from(base64Image, "base64");
-      await fs.writeFile(tempPath, imageBuffer);
-      
-      try {
-        const analysisText = await analyzeImageWithProvider(
-          provider,
-          tempPath,
-          base64Image,
-          question,
-          logger,
-        );
-        
-        // Clean up temp file
-        await fs.unlink(tempPath);
-        await fs.rmdir(tempDir);
-        
-        return {
-          analysisText,
-          modelUsed: `${provider.provider}/${provider.model}`,
-        };
-      } finally {
-        // Ensure cleanup even if analysis fails
-        try {
-          await fs.unlink(tempPath);
-          await fs.rmdir(tempDir);
-        } catch (cleanupError) {
-          logger.debug({ error: cleanupError }, "Failed to clean up analysis temp file");
-        }
-      }
-    } catch (error) {
-      logger.debug(
-        { error, provider: `${provider.provider}/${provider.model}` },
-        "Provider failed, trying next",
-      );
-      // Continue to next provider
-    }
-  }
-  
-  return {
-    error: "Analysis failed: All configured AI providers failed or are unavailable",
-  };
 }

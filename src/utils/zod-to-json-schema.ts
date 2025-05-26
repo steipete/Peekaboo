@@ -4,16 +4,16 @@ import { z } from "zod";
  * Helper function to recursively unwrap Zod schema wrappers
  * This properly extracts descriptions from nested wrapper types
  */
-function unwrapZodSchema(field: z.ZodTypeAny): { 
-  coreSchema: z.ZodTypeAny; 
+function unwrapZodSchema(field: z.ZodTypeAny): {
+  coreSchema: z.ZodTypeAny;
   description: string | undefined;
   hasDefault: boolean;
   defaultValue?: any;
 } {
-  let description = (field as any)._def?.description || (field as any).description;
+  const description = (field as any)._def?.description || (field as any).description;
   let hasDefault = false;
   let defaultValue: any;
-  
+
   // Handle wrapper types
   if (field instanceof z.ZodOptional) {
     const inner = unwrapZodSchema(field._def.innerType);
@@ -24,7 +24,7 @@ function unwrapZodSchema(field: z.ZodTypeAny): {
       defaultValue: inner.defaultValue,
     };
   }
-  
+
   if (field instanceof z.ZodDefault) {
     hasDefault = true;
     defaultValue = field._def.defaultValue();
@@ -36,7 +36,7 @@ function unwrapZodSchema(field: z.ZodTypeAny): {
       defaultValue,
     };
   }
-  
+
   if (field instanceof z.ZodEffects) {
     const inner = unwrapZodSchema(field._def.schema);
     return {
@@ -46,7 +46,7 @@ function unwrapZodSchema(field: z.ZodTypeAny): {
       defaultValue: inner.defaultValue,
     };
   }
-  
+
   // Return the core schema
   return { coreSchema: field, description, hasDefault, defaultValue };
 }
@@ -57,7 +57,7 @@ function unwrapZodSchema(field: z.ZodTypeAny): {
  */
 export function zodToJsonSchema(schema: z.ZodTypeAny): any {
   const { coreSchema, description: rootDescription, hasDefault, defaultValue } = unwrapZodSchema(schema);
-  
+
   // Handle ZodObject
   if (coreSchema instanceof z.ZodObject) {
     const shape = coreSchema.shape;
@@ -67,25 +67,25 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
     for (const [key, value] of Object.entries(shape)) {
       const fieldSchema = value as z.ZodTypeAny;
       const unwrapped = unwrapZodSchema(fieldSchema);
-      
+
       // Check if field is optional
       const isOptional = fieldSchema instanceof z.ZodOptional;
-      
+
       // Build JSON schema for the property
       const propertySchema = zodToJsonSchema(unwrapped.coreSchema);
-      
+
       // Add description from unwrapping if not already present
       if (unwrapped.description && !propertySchema.description) {
         propertySchema.description = unwrapped.description;
       }
-      
+
       // Add default value if available
       if (unwrapped.hasDefault && unwrapped.defaultValue !== undefined) {
         propertySchema.default = unwrapped.defaultValue;
       }
-      
+
       properties[key] = propertySchema;
-      
+
       // Add to required array if not optional and no default
       if (!isOptional && !unwrapped.hasDefault) {
         required.push(key);
@@ -107,33 +107,33 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
 
     return jsonSchema;
   }
-  
+
   // Handle ZodArray
   if (coreSchema instanceof z.ZodArray) {
     const jsonSchema: any = {
       type: "array",
       items: zodToJsonSchema(coreSchema._def.type),
     };
-    
+
     // Handle array constraints
     const minLength = (coreSchema as any)._def.minLength;
     if (minLength?.value > 0) {
       jsonSchema.minItems = minLength.value;
     }
-    
+
     const maxLength = (coreSchema as any)._def.maxLength;
     if (maxLength?.value !== undefined) {
       jsonSchema.maxItems = maxLength.value;
     }
-    
+
     if (rootDescription) {
       jsonSchema.description = rootDescription;
     }
-    
+
     if (hasDefault && defaultValue !== undefined) {
       jsonSchema.default = defaultValue;
     }
-    
+
     return jsonSchema;
   }
 
