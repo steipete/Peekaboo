@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-beta.10] - 2025-01-27
+
+### 🎉 Major Improvements
+- **Full MCP Best Practices Compliance**: Implemented all requirements from the MCP best practices guide
+- **Enhanced Info Command**: The `server_status` option in the list tool now provides comprehensive diagnostics including:
+  - Native binary (Swift CLI) status and version
+  - System permissions (screen recording, accessibility)
+  - Environment configuration and potential issues
+  - Log file accessibility checks
+- **Dynamic Version Injection**: Swift CLI version is now automatically synchronized with package.json during build
+- **Improved Code Quality**: 
+  - Split large image.ts (472 lines) into smaller, focused modules (<250 lines each)
+  - Added ESLint configuration with TypeScript support
+  - Fixed all critical linting errors and reduced warnings
+  - Improved TypeScript types throughout the codebase
+
+### 🔧 Changed
+- Default log path updated to `~/Library/Logs/peekaboo-mcp.log` (macOS standard location)
+- Updated macOS requirement to v14+ (Sonoma) for better compatibility
+- Pino logger now falls back to temp directory if configured path is not writable
+- LICENSE and README.md now included in npm package
+
+### 🐛 Fixed
+- Swift CLI version synchronization with npm package
+- ESLint errors for unused variables and improper types
+- Test setup converted from Jest to Vitest syntax
+- All trailing spaces and formatting issues
+
+### 📦 Development
+- Added Swift compiler warning checks in release preparation
+- Enhanced prepare-release script with comprehensive validation
+- Added `npm run inspector` for MCP inspector tool
+
 ## [1.0.0-beta.9] - 2025-01-25
 
 ### 🔧 Changed
