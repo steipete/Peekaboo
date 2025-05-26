@@ -132,12 +132,15 @@ Window shadows/frames excluded. ${serverStatus}`,
         description:
 `Analyzes a pre-existing image file from the local filesystem using a configured AI model.
 
-This tool is useful when an image already exists (e.g., previously captured, downloaded, or generated) and you need to understand its content, extract text, or answer specific questions about it.
+This tool is useful when an image already exists (e.g., previously captured, downloaded, or generated) and you 
+need to understand its content, extract text, or answer specific questions about it.
 
 Capabilities:
-- Image Understanding: Provide any question about the image (e.g., "What objects are in this picture?", "Describe the scene.", "Is there a red car?").
+- Image Understanding: Provide any question about the image (e.g., "What objects are in this picture?", 
+  "Describe the scene.", "Is there a red car?").
 - Text Extraction (OCR): Ask the AI to extract text from the image (e.g., "What text is visible in this screenshot?").
-- Flexible AI Configuration: Can use server-default AI providers/models or specify a particular one per call via 'provider_config'.
+- Flexible AI Configuration: Can use server-default AI providers/models or specify a particular one per call 
+  via 'provider_config'.
 
 Example:
 If you have an image '/tmp/chart.png' showing a bar chart, you could ask:
@@ -176,7 +179,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   logger.debug({ toolName: name, args }, "Tool call received");
 
-  let response: any; // To store the raw response from tool handlers
+  let response: ToolResponse; // To store the raw response from tool handlers
 
   try {
     switch (name) {
@@ -213,7 +216,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         content: [
           {
             type: "text",
-            text: `Invalid arguments: ${(error as any).issues.map((issue: any) => issue.message).join(", ")}`,
+            text: `Invalid arguments: ${(error as z.ZodError).issues.map((issue) => issue.message).join(", ")}`,
           },
         ],
         isError: true,

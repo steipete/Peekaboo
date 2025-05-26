@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export interface SwiftCliResponse {
   success: boolean;
-  data?: any;
+  data?: ApplicationListData | WindowListData | ImageCaptureData | ServerStatusData | unknown;
   messages?: string[];
   debug_logs?: string[];
   error?: {
@@ -66,6 +66,14 @@ export interface WindowListData {
   windows: WindowInfo[];
 }
 
+export interface ServerStatusData {
+  cli_version?: string;
+  permissions?: {
+    screen_recording?: boolean;
+    accessibility?: boolean;
+  };
+}
+
 export interface AIProvider {
   provider: string;
   model: string;
@@ -95,14 +103,14 @@ export interface ToolResponse {
     text?: string;
     data?: string;
     mimeType?: string;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
   }>;
   isError?: boolean;
   saved_files?: SavedFile[];
   analysis_text?: string;
   model_used?: string;
-  _meta?: Record<string, any>;
-  [key: string]: any; // Allow additional properties
+  _meta?: Record<string, unknown>;
+  [key: string]: unknown; // Allow additional properties
 }
 
 export const imageToolSchema = z.object({

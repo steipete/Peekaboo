@@ -43,7 +43,9 @@ export function initializeSwiftCliPath(packageRootDir: string): void {
 function getInitializedSwiftCliPath(logger: Logger): string {
   // Logger is now mandatory
   if (!resolvedCliPath || resolvedCliPath === INVALID_PATH_SENTINEL) {
-    const errorMessage = `Peekaboo Swift CLI path is not properly initialized or resolution failed. Resolved path: '${resolvedCliPath}'. Ensure PEEKABOO_CLI_PATH is valid or initializeSwiftCliPath() was called with a correct package root directory at startup.`;
+    const errorMessage = "Peekaboo Swift CLI path is not properly initialized or resolution failed. " +
+      `Resolved path: '${resolvedCliPath}'. Ensure PEEKABOO_CLI_PATH is valid or ` +
+      "initializeSwiftCliPath() was called with a correct package root directory at startup.";
     logger.error(errorMessage);
     // Throw an error to prevent attempting to use an invalid path
     throw new Error(errorMessage);

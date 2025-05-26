@@ -1,5 +1,44 @@
 import { z } from "zod";
 
+// Type for accessing internal Zod definitions
+type ZodDefAny = z.ZodTypeAny & {
+  _def?: {
+    description?: string;
+    checks?: Array<{ kind: string; value?: unknown; message?: string }>;
+    type?: string;
+    values?: readonly unknown[];
+    innerType?: z.ZodTypeAny;
+    schema?: z.ZodTypeAny;
+    typeName?: string;
+    defaultValue?: () => unknown;
+  };
+  description?: string;
+};
+
+// JSON Schema type definition
+interface JSONSchema {
+  type?: string | string[];
+  properties?: Record<string, JSONSchema>;
+  items?: JSONSchema;
+  required?: string[];
+  enum?: unknown[];
+  const?: unknown;
+  description?: string;
+  default?: unknown;
+  additionalProperties?: boolean | JSONSchema;
+  anyOf?: JSONSchema[];
+  allOf?: JSONSchema[];
+  oneOf?: JSONSchema[];
+  not?: JSONSchema;
+  minimum?: number;
+  maximum?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  format?: string;
+  $ref?: string;
+}
+
 /**
  * Helper function to recursively unwrap Zod schema wrappers
  * This properly extracts descriptions from nested wrapper types
@@ -8,11 +47,12 @@ function unwrapZodSchema(field: z.ZodTypeAny): {
   coreSchema: z.ZodTypeAny;
   description: string | undefined;
   hasDefault: boolean;
-  defaultValue?: any;
+  defaultValue?: unknown;
 } {
-  const description = (field as any)._def?.description || (field as any).description;
+  const zodField = field as ZodDefAny;
+  const description = zodField._def?.description || zodField.description;
   let hasDefault = false;
-  let defaultValue: any;
+  let defaultValue: unknown;
 
   // Handle wrapper types
   if (field instanceof z.ZodOptional) {
@@ -55,13 +95,13 @@ function unwrapZodSchema(field: z.ZodTypeAny): {
  * Convert Zod schema to JSON Schema format
  * This is a robust converter for common Zod types used in the tools
  */
-export function zodToJsonSchema(schema: z.ZodTypeAny): any {
+export function zodToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
   const { coreSchema, description: rootDescription, hasDefault, defaultValue } = unwrapZodSchema(schema);
 
   // Handle ZodObject
   if (coreSchema instanceof z.ZodObject) {
     const shape = coreSchema.shape;
-    const properties: any = {};
+    const properties: Record<string, JSONSchema> = {};
     const required: string[] = [];
 
     for (const [key, value] of Object.entries(shape)) {
@@ -92,7 +132,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
       }
     }
 
-    const jsonSchema: any = {
+    const jsonSchema: JSONSchema = {
       type: "object",
       properties,
     };
@@ -110,19 +150,22 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
 
   // Handle ZodArray
   if (coreSchema instanceof z.ZodArray) {
-    const jsonSchema: any = {
+    const jsonSchema: JSONSchema = {
       type: "array",
       items: zodToJsonSchema(coreSchema._def.type),
     };
 
     // Handle array constraints
-    const minLength = (coreSchema as any)._def.minLength;
-    if (minLength?.value > 0) {
+    const zodArray = coreSchema as ZodDefAny;
+    const minLength = zodArray._def?.minLength;
+    if (minLength && typeof minLength === "object" && "value" in minLength &&
+        typeof minLength.value === "number" && minLength.value > 0) {
       jsonSchema.minItems = minLength.value;
     }
 
-    const maxLength = (coreSchema as any)._def.maxLength;
-    if (maxLength?.value !== undefined) {
+    const maxLength = zodArray._def?.maxLength;
+    if (maxLength && typeof maxLength === "object" && "value" in maxLength &&
+        typeof maxLength.value === "number") {
       jsonSchema.maxItems = maxLength.value;
     }
 
@@ -139,7 +182,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
 
   // Handle ZodString
   if (coreSchema instanceof z.ZodString) {
-    const jsonSchema: any = { type: "string" };
+    const jsonSchema: JSONSchema = { type: "string" };
     if (rootDescription) {
       jsonSchema.description = rootDescription;
     }
@@ -151,11 +194,11 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
 
   // Handle ZodNumber
   if (coreSchema instanceof z.ZodNumber) {
-    const jsonSchema: any = { type: "number" };
+    const jsonSchema: JSONSchema = { type: "number" };
     if (rootDescription) {
       jsonSchema.description = rootDescription;
     }
-    if ((coreSchema as any).isInt) {
+    if ((coreSchema as ZodDefAny & { isInt?: boolean }).isInt) {
       jsonSchema.type = "integer";
     }
     if (hasDefault && defaultValue !== undefined) {
@@ -166,7 +209,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
 
   // Handle ZodBoolean
   if (coreSchema instanceof z.ZodBoolean) {
-    const jsonSchema: any = { type: "boolean" };
+    const jsonSchema: JSONSchema = { type: "boolean" };
     if (rootDescription) {
       jsonSchema.description = rootDescription;
     }
@@ -178,9 +221,9 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
 
   // Handle ZodEnum
   if (coreSchema instanceof z.ZodEnum) {
-    const jsonSchema: any = {
+    const jsonSchema: JSONSchema = {
       type: "string",
-      enum: coreSchema._def.values,
+      enum: coreSchema._def.values as unknown[],
     };
     if (rootDescription) {
       jsonSchema.description = rootDescription;
@@ -193,7 +236,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
 
   // Handle ZodUnion
   if (coreSchema instanceof z.ZodUnion) {
-    const jsonSchema: any = {
+    const jsonSchema: JSONSchema = {
       oneOf: coreSchema._def.options.map((option: z.ZodTypeAny) =>
         zodToJsonSchema(option),
       ),
@@ -207,7 +250,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
   // Handle ZodLiteral
   if (coreSchema instanceof z.ZodLiteral) {
     const value = coreSchema._def.value;
-    const jsonSchema: any = {};
+    const jsonSchema: JSONSchema = {};
 
     if (typeof value === "string") {
       jsonSchema.type = "string";
@@ -231,5 +274,5 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): any {
   }
 
   // Fallback
-  return { type: "any" };
+  return { type: "string" }; // Default fallback for unknown types
 }

@@ -396,13 +396,10 @@ function handleApplicationsList(
 function handleWindowsList(
   data: WindowListData,
   input: ListToolInput,
-  swiftResponse: any,
-): {
-  content: { type: string; text: string }[];
-  window_list?: any[];
-  target_application_info?: any;
-  isError?: boolean;
-  _meta?: any;
+  swiftResponse: SwiftCliResponse,
+): ToolResponse & {
+  window_list?: WindowInfo[];
+  target_application_info?: ApplicationInfo;
 } {
   const windows = data.windows || [];
   const appInfo = data.target_application_info;
