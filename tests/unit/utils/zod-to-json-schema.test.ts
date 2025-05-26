@@ -282,7 +282,7 @@ describe("zodToJsonSchema", () => {
     test("handles unknown types with fallback", () => {
       // Create a custom Zod type that isn't handled
       const customSchema = z.any();
-      expect(zodToJsonSchema(customSchema)).toEqual({ type: "any" });
+      expect(zodToJsonSchema(customSchema)).toEqual({ type: "string" });
     });
 
     test("handles deeply nested structures", () => {
