@@ -21,6 +21,14 @@ import {
 vi.mock("../../../src/utils/peekaboo-cli");
 vi.mock("../../../src/utils/server-status");
 vi.mock("fs/promises");
+vi.mock("fs", () => ({
+  existsSync: vi.fn(() => false),
+  accessSync: vi.fn(),
+  constants: {
+    X_OK: 1,
+    W_OK: 2,
+  },
+}));
 
 // Mock path and url functions to avoid import.meta.url issues in test environment
 // jest.mock('url', () => ({ // REMOVED
@@ -58,6 +66,8 @@ describe("List Tool", () => {
     vi.clearAllMocks();
     // Mock fs.access to always succeed by default
     mockFsAccess.mockResolvedValue(undefined);
+    // Mock fs.readFile to return a valid package.json
+    mockFsReadFile.mockResolvedValue(JSON.stringify({ version: "1.0.0" }));
   });
 
   describe("buildSwiftCliArgs", () => {
