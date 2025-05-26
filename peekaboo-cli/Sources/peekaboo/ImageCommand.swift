@@ -283,7 +283,7 @@ struct ImageCommand: ParsableCommand {
         do {
             let semaphore = DispatchSemaphore(value: 0)
             var captureError: Error?
-            
+
             Task {
                 do {
                     try await captureDisplayWithScreenCaptureKit(displayID, to: path)
@@ -292,9 +292,9 @@ struct ImageCommand: ParsableCommand {
                 }
                 semaphore.signal()
             }
-            
+
             semaphore.wait()
-            
+
             if let error = captureError {
                 throw error
             }
@@ -302,19 +302,19 @@ struct ImageCommand: ParsableCommand {
             throw CaptureError.captureCreationFailed
         }
     }
-    
+
     private func captureDisplayWithScreenCaptureKit(_ displayID: CGDirectDisplayID, to path: String) async throws {
         // Get available content
         let availableContent = try await SCShareableContent.current
-        
+
         // Find the display by ID
         guard let scDisplay = availableContent.displays.first(where: { $0.displayID == displayID }) else {
             throw CaptureError.captureCreationFailed
         }
-        
+
         // Create content filter for the entire display
         let filter = SCContentFilter(display: scDisplay, excludingWindows: [])
-        
+
         // Configure capture settings
         let configuration = SCStreamConfiguration()
         configuration.width = scDisplay.width
@@ -322,13 +322,13 @@ struct ImageCommand: ParsableCommand {
         configuration.backgroundColor = .black
         configuration.shouldBeOpaque = true
         configuration.showsCursor = true
-        
+
         // Capture the image
         let image = try await SCScreenshotManager.captureImage(
             contentFilter: filter,
             configuration: configuration
         )
-        
+
         try saveImage(image, to: path)
     }
 
@@ -336,7 +336,7 @@ struct ImageCommand: ParsableCommand {
         do {
             let semaphore = DispatchSemaphore(value: 0)
             var captureError: Error?
-            
+
             Task {
                 do {
                     try await captureWindowWithScreenCaptureKit(window, to: path)
@@ -345,9 +345,9 @@ struct ImageCommand: ParsableCommand {
                 }
                 semaphore.signal()
             }
-            
+
             semaphore.wait()
-            
+
             if let error = captureError {
                 throw error
             }
@@ -355,19 +355,19 @@ struct ImageCommand: ParsableCommand {
             throw CaptureError.windowCaptureFailed
         }
     }
-    
+
     private func captureWindowWithScreenCaptureKit(_ window: WindowData, to path: String) async throws {
         // Get available content
         let availableContent = try await SCShareableContent.current
-        
+
         // Find the window by ID
         guard let scWindow = availableContent.windows.first(where: { $0.windowID == window.windowId }) else {
             throw CaptureError.windowNotFound
         }
-        
+
         // Create content filter for the specific window
         let filter = SCContentFilter(desktopIndependentWindow: scWindow)
-        
+
         // Configure capture settings
         let configuration = SCStreamConfiguration()
         configuration.width = Int(window.bounds.width)
@@ -375,13 +375,13 @@ struct ImageCommand: ParsableCommand {
         configuration.backgroundColor = .clear
         configuration.shouldBeOpaque = true
         configuration.showsCursor = false
-        
+
         // Capture the image
         let image = try await SCScreenshotManager.captureImage(
             contentFilter: filter,
             configuration: configuration
         )
-        
+
         try saveImage(image, to: path)
     }
 
