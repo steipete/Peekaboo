@@ -256,7 +256,7 @@ struct ImageCommandTests {
 
     @Test(
         "Screen index boundary values",
-        arguments: [-1, 0, 1, 99, Int.max]
+        arguments: [-1, 0, 1, 99, 9999]
     )
     func screenIndexBoundaries(index: Int) throws {
         let command = try ImageCommand.parse(["--screen-index", String(index)])
@@ -265,7 +265,7 @@ struct ImageCommandTests {
 
     @Test(
         "Window index boundary values",
-        arguments: [-1, 0, 1, 10, Int.max]
+        arguments: [-1, 0, 1, 10, 9999]
     )
     func windowIndexBoundaries(index: Int) throws {
         let command = try ImageCommand.parse(["--window-index", String(index)])

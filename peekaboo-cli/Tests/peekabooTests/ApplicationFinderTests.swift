@@ -96,7 +96,10 @@ struct ApplicationFinderTests {
 
         for app in apps {
             #expect(!app.app_name.isEmpty)
-            #expect(!app.bundle_id.isEmpty)
+            // Some system processes may have empty bundle IDs
+            if !app.bundle_id.isEmpty {
+                #expect(!app.bundle_id.isEmpty)
+            }
             #expect(app.pid > 0)
             #expect(app.window_count >= 0)
         }

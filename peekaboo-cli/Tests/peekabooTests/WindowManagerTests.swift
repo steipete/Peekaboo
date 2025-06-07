@@ -155,7 +155,7 @@ struct WindowManagerTests {
         let apps = NSWorkspace.shared.runningApplications
         let finder = try #require(apps.first { $0.bundleIdentifier == "com.apple.finder" })
 
-        let windows = try WindowManager.getWindowsForApp(pid: finder.processIdentifier)
+        _ = try WindowManager.getWindowsForApp(pid: finder.processIdentifier)
         // Windows count is always non-negative
     }
 
@@ -292,8 +292,8 @@ struct WindowManagerAdvancedTests {
             #expect(results.count == 5)
             for result in results {
                 switch result {
-                case let .success(windows):
-                    // Windows count is always non-negative
+                case .success:
+                    break // Windows count is always non-negative
                 case let .failure(error):
                     Issue.record("Concurrent query failed: \(error)")
                 }

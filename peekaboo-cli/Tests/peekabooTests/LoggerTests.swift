@@ -173,7 +173,7 @@ struct LoggerTests {
             // Task 3: Log retrieval during operations
             group.addTask {
                 for _ in 0..<10 {
-                    let logs = logger.getDebugLogs()
+                    _ = logger.getDebugLogs()
                     // Logs count is always non-negative
                 }
             }
