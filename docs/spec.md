@@ -97,7 +97,7 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
     *   If `exitCode !== 0` or `stdout` is empty/not parseable as JSON:
         *   Log failure details with Pino (`error` level).
         *   Construct MCP error `ToolResponse` (e.g., `errorCode: "SWIFT_CLI_EXECUTION_ERROR"` or `SWIFT_CLI_INVALID_OUTPUT` in `_meta`). 
-        *   **Error Message Prioritization:** The primary `message` in the error response will be derived from the Swift CLI's `stderr` output if available, prefixed with "Peekaboo CLI Error: ". Otherwise, a generic message like "Swift CLI execution failed (exit code: X)" will be used. The `details` field will contain `stdout` if `stderr` was the source of the main message and `stdout` had content, or further context.
+        *   **Error Message Prioritization:** The primary `message` in the error response will be derived by mapping the Swift CLI's exit code to a specific, user-friendly error message (e.g., "Screen Recording permission is not granted..."). If the exit code is unknown, the message will be derived from the Swift CLI's `stderr` output if available, prefixed with "Peekaboo CLI Error: ". Otherwise, a generic message like "Swift CLI execution failed (exit code: X)" will be used. The `details` field will contain `stdout` or `stderr` for additional context.
     *   If `exitCode === 0`:
         *   Attempt to parse `stdout` as JSON. If parsing fails, treat as error (above).
         *   Let `swiftResponse = JSON.parse(stdout)`.
@@ -307,20 +307,21 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
         }
         ```
     *   **Standardized Swift Error Codes (`error.code` values):**
-        *   `PERMISSION_DENIED_SCREEN_RECORDING`
-        *   `PERMISSION_DENIED_ACCESSIBILITY` (if Accessibility API is attempted for foregrounding)
-        *   `APP_NOT_FOUND` (general app lookup failure)
-        *   `AMBIGUOUS_APP_IDENTIFIER` (fuzzy match yields multiple candidates)
+        *   `PERMISSION_ERROR_SCREEN_RECORDING`
+        *   `PERMISSION_ERROR_ACCESSIBILITY`
+        *   `APP_NOT_FOUND`
+        *   `AMBIGUOUS_APP_IDENTIFIER`
         *   `WINDOW_NOT_FOUND`
-        *   `CAPTURE_FAILED` (general image capture error)
-        *   `FILE_IO_ERROR` (e.g., cannot write to specified path)
-        *   `INVALID_ARGUMENT` (CLI argument validation failure)
-        *   `SIPS_ERROR` (if `sips` is used for PDF fallback and fails)
-        *   `INTERNAL_SWIFT_ERROR` (unexpected Swift runtime errors)
+        *   `CAPTURE_FAILED`
+        *   `FILE_IO_ERROR`
+        *   `INVALID_ARGUMENT`
+        *   `SIPS_ERROR`
+        *   `INTERNAL_SWIFT_ERROR`
+        *   `UNKNOWN_ERROR`
 5.  **Permissions Handling:**
     *   The CLI must proactively check for Screen Recording permission before attempting any capture or window listing that requires it (e.g., reading window titles via `CGWindowListCopyWindowInfo`).
     *   If Accessibility is used for `--capture-focus foreground` window raising, check that permission.
-    *   If permissions are missing, output the specific JSON error (e.g., code `PERMISSION_DENIED_SCREEN_RECORDING`) and exit. Do not hang or prompt interactively.
+    *   If permissions are missing, output the specific JSON error (e.g., code `PERMISSION_ERROR_SCREEN_RECORDING`) and exit with a distinct exit code for that error. Do not hang or prompt interactively.
 6.  **Temporary File Management:**
     *   If the CLI needs to save an image temporarily (e.g., if `screencapture` is used as a fallback for PDF, or if no `--path` is given by Node.js), it uses `FileManager.default.temporaryDirectory` with unique filenames (e.g., `peekaboo_<uuid>_<info>.<format>`).
     *   These self-created temporary files **MUST be deleted by the Swift CLI** after it has successfully generated and flushed its JSON output to `stdout`.

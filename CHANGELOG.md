@@ -5,7 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0-beta.10] - 2025-01-27
+## [Unreleased]
+
+## [1.0.0-beta.11] - 2024-08-01
+
+### Improved
+- Greatly enhanced error handling for the `image` tool. The Swift CLI now returns distinct exit codes for different error conditions, such as missing Screen Recording or Accessibility permissions, instead of a generic failure code.
+- The Node.js server now maps these specific exit codes to clear, user-friendly error messages, guiding the user on how to resolve the issue (e.g., "Screen Recording permission is not granted. Please enable it in System Settings...").
+- This replaces the previous generic "Swift CLI execution failed" error, providing a much better user experience, especially during initial setup and permission granting.
+
+## [1.0.0-beta.10] - 2024-07-28
 
 ### 🎉 Major Improvements
 - **Full MCP Best Practices Compliance**: Implemented all requirements from the MCP best practices guide
@@ -117,3 +126,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🐛 Fixed
 
 - Addressed an issue in `src/tools/image.ts` where `logger.debug()` could be called without checking for logger existence (relevant for `buildSwiftCliArgs` if called in an unexpected context, though typically safe). 
+
+### Added
+- Add support for `PEEKABOO_DEFAULT_SAVE_PATH` to specify a default directory for saving images.
+- The `list` tool now includes a `server_status` item type to retrieve server version and AI provider configuration.
+- The server status is now appended to all tool descriptions on `ListToolsRequest`.
+- Added comprehensive logging with `pino`, with log level and file path configurable via `PEEKABOO_LOG_LEVEL` and `PEEKABOO_LOG_FILE`.
+
+### Changed
+- The `image` tool's `path` argument is now optional. If omitted, the `format` defaults to `"data"` and the image is returned as a Base64 string.
+- If an `image` capture is followed by a `question` for analysis and no `path` is given, a temporary file is created and deleted after analysis.
+
+### Fixed
+- Resolved an issue where the server could crash if the log file directory was not writable. It now falls back to a temporary directory.
+- Ensured the `peekaboo` Swift CLI binary is correctly located when the package is installed globally or used via `npx`. 

@@ -28,9 +28,9 @@ struct ErrorInfo: Codable {
     }
 }
 
-enum ErrorCode: String {
-    case PERMISSION_DENIED_SCREEN_RECORDING
-    case PERMISSION_DENIED_ACCESSIBILITY
+enum ErrorCode: String, Codable {
+    case PERMISSION_ERROR_SCREEN_RECORDING
+    case PERMISSION_ERROR_ACCESSIBILITY
     case APP_NOT_FOUND
     case AMBIGUOUS_APP_IDENTIFIER
     case WINDOW_NOT_FOUND
@@ -39,6 +39,7 @@ enum ErrorCode: String {
     case INVALID_ARGUMENT
     case SIPS_ERROR
     case INTERNAL_SWIFT_ERROR
+    case UNKNOWN_ERROR
 }
 
 // Helper for encoding arbitrary data as JSON

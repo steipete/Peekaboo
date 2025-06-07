@@ -101,7 +101,8 @@ struct WindowData {
 
 enum CaptureError: Error, LocalizedError {
     case noDisplaysAvailable
-    case capturePermissionDenied
+    case screenRecordingPermissionDenied
+    case accessibilityPermissionDenied
     case invalidDisplayID
     case captureCreationFailed
     case windowNotFound
@@ -109,28 +110,52 @@ enum CaptureError: Error, LocalizedError {
     case fileWriteError(String)
     case appNotFound(String)
     case invalidWindowIndex(Int)
+    case invalidArgument(String)
+    case unknownError(String)
 
     var errorDescription: String? {
         switch self {
         case .noDisplaysAvailable:
-            "No displays available for capture"
-        case .capturePermissionDenied:
-            "Screen recording permission denied. Please grant permission in " +
-                "System Preferences > Security & Privacy > Privacy > Screen Recording"
+            "No displays available for capture."
+        case .screenRecordingPermissionDenied:
+            "Screen recording permission is required. Please grant it in System Settings > Privacy & Security > Screen Recording."
+        case .accessibilityPermissionDenied:
+            "Accessibility permission is required for some operations. Please grant it in System Settings > Privacy & Security > Accessibility."
         case .invalidDisplayID:
-            "Invalid display ID"
+            "Invalid display ID provided."
         case .captureCreationFailed:
-            "Failed to create screen capture"
+            "Failed to create the screen capture."
         case .windowNotFound:
-            "Window not found"
+            "The specified window could not be found."
         case .windowCaptureFailed:
-            "Failed to capture window"
+            "Failed to capture the specified window."
         case let .fileWriteError(path):
-            "Failed to write file to: \(path)"
+            "Failed to write capture file to path: \(path)."
         case let .appNotFound(identifier):
-            "Application not found: \(identifier)"
+            "Application with identifier '\(identifier)' not found or is not running."
         case let .invalidWindowIndex(index):
-            "Invalid window index: \(index)"
+            "Invalid window index: \(index)."
+        case let .invalidArgument(message):
+            "Invalid argument: \(message)"
+        case let .unknownError(message):
+            "An unexpected error occurred: \(message)"
+        }
+    }
+
+    var exitCode: Int32 {
+        switch self {
+        case .noDisplaysAvailable: return 10
+        case .screenRecordingPermissionDenied: return 11
+        case .accessibilityPermissionDenied: return 12
+        case .invalidDisplayID: return 13
+        case .captureCreationFailed: return 14
+        case .windowNotFound: return 15
+        case .windowCaptureFailed: return 16
+        case .fileWriteError: return 17
+        case .appNotFound: return 18
+        case .invalidWindowIndex: return 19
+        case .invalidArgument: return 20
+        case .unknownError: return 1
         }
     }
 }

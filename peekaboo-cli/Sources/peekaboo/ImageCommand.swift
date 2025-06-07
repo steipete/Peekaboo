@@ -52,16 +52,14 @@ struct ImageCommand: ParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
-    func run() throws {
+    func run() {
         Logger.shared.setJsonOutputMode(jsonOutput)
-
         do {
             try PermissionsChecker.requireScreenRecordingPermission()
             let savedFiles = try performCapture()
             outputResults(savedFiles)
         } catch {
             handleError(error)
-            throw ExitCode.failure
         }
     }
 
@@ -99,17 +97,43 @@ struct ImageCommand: ParsableCommand {
     }
 
     private func handleError(_ error: Error) {
+        let captureError: CaptureError
+        if let err = error as? CaptureError {
+            captureError = err
+        } else {
+            captureError = .unknownError(error.localizedDescription)
+        }
+
         if jsonOutput {
-            let code: ErrorCode = .CAPTURE_FAILED
+            let code: ErrorCode
+            switch captureError {
+            case .screenRecordingPermissionDenied:
+                code = .PERMISSION_ERROR_SCREEN_RECORDING
+            case .accessibilityPermissionDenied:
+                code = .PERMISSION_ERROR_ACCESSIBILITY
+            case .appNotFound:
+                code = .APP_NOT_FOUND
+            case .windowNotFound:
+                code = .WINDOW_NOT_FOUND
+            case .fileWriteError:
+                code = .FILE_IO_ERROR
+            case .invalidArgument:
+                code = .INVALID_ARGUMENT
+            case .unknownError:
+                code = .UNKNOWN_ERROR
+            default:
+                code = .CAPTURE_FAILED
+            }
             outputError(
-                message: error.localizedDescription,
+                message: captureError.localizedDescription,
                 code: code,
                 details: "Image capture operation failed"
             )
         } else {
             var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
-            print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
+            print("Error: \(captureError.localizedDescription)", to: &localStandardErrorStream)
         }
+        Foundation.exit(captureError.exitCode)
     }
 
     private func determineMode() -> CaptureMode {
