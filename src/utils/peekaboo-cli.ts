@@ -55,23 +55,37 @@ function getInitializedSwiftCliPath(logger: Logger): string {
   return resolvedCliPath;
 }
 
-function mapExitCodeToErrorMessage(exitCode: number, stderr: string): { message: string, code: string } {
-    const defaultMessage = stderr.trim() ? `Peekaboo CLI Error: ${stderr.trim()}` : `Swift CLI execution failed (exit code: ${exitCode})`;
-    const errorCodeMap: { [key: number]: { message: string, code: string } } = {
-        1: { message: `An unknown error occurred in the Swift CLI.`, code: "SWIFT_CLI_UNKNOWN_ERROR" },
-        10: { message: "No displays available for capture.", code: "SWIFT_CLI_NO_DISPLAYS" },
-        11: { message: "Screen Recording permission is not granted. Please enable it in System Settings > Privacy & Security > Screen Recording.", code: "SWIFT_CLI_NO_SCREEN_RECORDING_PERMISSION" },
-        12: { message: "Accessibility permission is not granted. Please enable it in System Settings > Privacy & Security > Accessibility.", code: "SWIFT_CLI_NO_ACCESSIBILITY_PERMISSION" },
-        13: { message: "Invalid display ID provided for capture.", code: "SWIFT_CLI_INVALID_DISPLAY_ID" },
-        14: { message: "The screen capture could not be created.", code: "SWIFT_CLI_CAPTURE_CREATION_FAILED" },
-        15: { message: "The specified window was not found.", code: "SWIFT_CLI_WINDOW_NOT_FOUND" },
-        16: { message: "Failed to capture the specified window.", code: "SWIFT_CLI_WINDOW_CAPTURE_FAILED" },
-        17: { message: "Failed to write the capture to a file.", code: "SWIFT_CLI_FILE_WRITE_ERROR" },
-        18: { message: "The specified application could not be found or is not running.", code: "SWIFT_CLI_APP_NOT_FOUND" },
-        19: { message: "The specified window index is invalid.", code: "SWIFT_CLI_INVALID_WINDOW_INDEX" },
-        20: { message: "Invalid argument provided to the Swift CLI.", code: "SWIFT_CLI_INVALID_ARGUMENT" },
-    };
-    return errorCodeMap[exitCode] || { message: defaultMessage, code: "SWIFT_CLI_EXECUTION_ERROR" };
+function mapExitCodeToErrorMessage(
+  exitCode: number,
+  stderr: string,
+): { message: string, code: string } {
+  const defaultMessage = stderr.trim()
+    ? `Peekaboo CLI Error: ${stderr.trim()}`
+    : `Swift CLI execution failed (exit code: ${exitCode})`;
+  const errorCodeMap: { [key: number]: { message: string, code: string } } = {
+    1: { message: "An unknown error occurred in the Swift CLI.", code: "SWIFT_CLI_UNKNOWN_ERROR" },
+    10: { message: "No displays available for capture.", code: "SWIFT_CLI_NO_DISPLAYS" },
+    11: {
+      message: "Screen Recording permission is not granted. Please enable it in System Settings > Privacy & Security > Screen Recording.",
+      code: "SWIFT_CLI_NO_SCREEN_RECORDING_PERMISSION",
+    },
+    12: {
+      message: "Accessibility permission is not granted. Please enable it in System Settings > Privacy & Security > Accessibility.",
+      code: "SWIFT_CLI_NO_ACCESSIBILITY_PERMISSION",
+    },
+    13: { message: "Invalid display ID provided for capture.", code: "SWIFT_CLI_INVALID_DISPLAY_ID" },
+    14: { message: "The screen capture could not be created.", code: "SWIFT_CLI_CAPTURE_CREATION_FAILED" },
+    15: { message: "The specified window was not found.", code: "SWIFT_CLI_WINDOW_NOT_FOUND" },
+    16: { message: "Failed to capture the specified window.", code: "SWIFT_CLI_WINDOW_CAPTURE_FAILED" },
+    17: { message: "Failed to write the capture to a file.", code: "SWIFT_CLI_FILE_WRITE_ERROR" },
+    18: {
+      message: "The specified application could not be found or is not running.",
+      code: "SWIFT_CLI_APP_NOT_FOUND",
+    },
+    19: { message: "The specified window index is invalid.", code: "SWIFT_CLI_INVALID_WINDOW_INDEX" },
+    20: { message: "Invalid argument provided to the Swift CLI.", code: "SWIFT_CLI_INVALID_ARGUMENT" },
+  };
+  return errorCodeMap[exitCode] || { message: defaultMessage, code: "SWIFT_CLI_EXECUTION_ERROR" };
 }
 
 export async function executeSwiftCli(
