@@ -14,8 +14,29 @@ jobs:
       matrix:
         node-version: [20.x, 22.x]
     
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.3.app/Contents/Developer
+    
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Set up Xcode
+      run: |
+        sudo xcode-select -s $DEVELOPER_DIR
+        xcodebuild -version
+        swift --version
+    
+    - name: Build Swift CLI for tests
+      run: |
+        cd peekaboo-cli
+        swift build -c release
+        # Copy the binary to the expected location
+        cp .build/release/peekaboo ../peekaboo
+        cd ..
+        # Make it executable
+        chmod +x peekaboo
+        # Verify it exists
+        ls -la peekaboo
     
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
