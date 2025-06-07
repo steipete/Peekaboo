@@ -844,7 +844,7 @@ describe("List Tool", () => {
         expect(result.success).toBe(false);
         if (!result.success) {
             expect(result.error.flatten().fieldErrors.app).toEqual([
-                "'app' identifier is required when 'item_type' is 'application_windows'.",
+                "For 'application_windows', 'app' identifier is required.",
             ]);
         }
     });
