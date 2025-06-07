@@ -1,24 +1,29 @@
 import AVFoundation
 import CoreGraphics
 import Foundation
+import ScreenCaptureKit
 
 class PermissionsChecker {
     static func checkScreenRecordingPermission() -> Bool {
-        // Check if we can capture screen content by trying to get display bounds
-        var displayCount: UInt32 = 0
-        let result = CGGetActiveDisplayList(0, nil, &displayCount)
-        if result != .success || displayCount == 0 {
-            return false
+        // ScreenCaptureKit requires screen recording permission
+        // We check by attempting to get shareable content
+        let semaphore = DispatchSemaphore(value: 0)
+        var hasPermission = false
+        
+        Task {
+            do {
+                // This will fail if we don't have screen recording permission
+                _ = try await SCShareableContent.current
+                hasPermission = true
+            } catch {
+                // If we get an error, we don't have permission
+                hasPermission = false
+            }
+            semaphore.signal()
         }
-
-        // Try to capture a small image to test permissions
-        guard let mainDisplayID = CGMainDisplayID() as CGDirectDisplayID? else {
-            return false
-        }
-
-        // Test by trying to get display bounds - this requires screen recording permission
-        let bounds = CGDisplayBounds(mainDisplayID)
-        return bounds != CGRect.zero
+        
+        semaphore.wait()
+        return hasPermission
     }
 
     static func checkAccessibilityPermission() -> Bool {

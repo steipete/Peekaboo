@@ -6,7 +6,7 @@ struct ListCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List running applications or windows",
-        subcommands: [AppsSubcommand.self, WindowsSubcommand.self],
+        subcommands: [AppsSubcommand.self, WindowsSubcommand.self, ServerStatusSubcommand.self],
         defaultSubcommand: AppsSubcommand.self
     )
 }
@@ -176,4 +176,45 @@ struct WindowsSubcommand: ParsableCommand {
             print()
         }
     }
+}
+
+struct ServerStatusSubcommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "server_status",
+        abstract: "Check server permissions status"
+    )
+
+    @Flag(name: .long, help: "Output results in JSON format")
+    var jsonOutput = false
+
+    func run() throws {
+        Logger.shared.setJsonOutputMode(jsonOutput)
+
+        let screenRecording = PermissionsChecker.checkScreenRecordingPermission()
+        let accessibility = PermissionsChecker.checkAccessibilityPermission()
+
+        let permissions = ServerPermissions(
+            screen_recording: screenRecording,
+            accessibility: accessibility
+        )
+
+        let data = ServerStatusData(permissions: permissions)
+
+        if jsonOutput {
+            outputSuccess(data: data)
+        } else {
+            print("Server Permissions Status:")
+            print("  Screen Recording: \(screenRecording ? "✅ Granted" : "❌ Not granted")")
+            print("  Accessibility: \(accessibility ? "✅ Granted" : "❌ Not granted")")
+        }
+    }
+}
+
+struct ServerPermissions: Codable {
+    let screen_recording: Bool
+    let accessibility: Bool
+}
+
+struct ServerStatusData: Codable {
+    let permissions: ServerPermissions
 }

@@ -322,38 +322,55 @@ struct ImageCommand: ParsableCommand {
             if let error = captureError {
                 throw error
             }
+        } catch let error as CaptureError {
+            // Re-throw CaptureError as-is
+            throw error
         } catch {
+            // Check if this is a permission error from ScreenCaptureKit
+            let errorString = error.localizedDescription.lowercased()
+            if errorString.contains("screen recording") || errorString.contains("permission") {
+                throw CaptureError.screenRecordingPermissionDenied
+            }
             throw CaptureError.captureCreationFailed
         }
     }
 
     private func captureDisplayWithScreenCaptureKit(_ displayID: CGDirectDisplayID, to path: String) async throws {
-        // Get available content
-        let availableContent = try await SCShareableContent.current
+        do {
+            // Get available content
+            let availableContent = try await SCShareableContent.current
 
-        // Find the display by ID
-        guard let scDisplay = availableContent.displays.first(where: { $0.displayID == displayID }) else {
-            throw CaptureError.captureCreationFailed
+            // Find the display by ID
+            guard let scDisplay = availableContent.displays.first(where: { $0.displayID == displayID }) else {
+                throw CaptureError.captureCreationFailed
+            }
+
+            // Create content filter for the entire display
+            let filter = SCContentFilter(display: scDisplay, excludingWindows: [])
+
+            // Configure capture settings
+            let configuration = SCStreamConfiguration()
+            configuration.width = scDisplay.width
+            configuration.height = scDisplay.height
+            configuration.backgroundColor = .black
+            configuration.shouldBeOpaque = true
+            configuration.showsCursor = true
+
+            // Capture the image
+            let image = try await SCScreenshotManager.captureImage(
+                contentFilter: filter,
+                configuration: configuration
+            )
+
+            try saveImage(image, to: path)
+        } catch {
+            // Check if this is a permission error
+            let errorString = error.localizedDescription.lowercased()
+            if errorString.contains("screen recording") || errorString.contains("permission") {
+                throw CaptureError.screenRecordingPermissionDenied
+            }
+            throw error
         }
-
-        // Create content filter for the entire display
-        let filter = SCContentFilter(display: scDisplay, excludingWindows: [])
-
-        // Configure capture settings
-        let configuration = SCStreamConfiguration()
-        configuration.width = scDisplay.width
-        configuration.height = scDisplay.height
-        configuration.backgroundColor = .black
-        configuration.shouldBeOpaque = true
-        configuration.showsCursor = true
-
-        // Capture the image
-        let image = try await SCScreenshotManager.captureImage(
-            contentFilter: filter,
-            configuration: configuration
-        )
-
-        try saveImage(image, to: path)
     }
 
     private func captureWindow(_ window: WindowData, to path: String) throws(CaptureError) {
@@ -375,38 +392,55 @@ struct ImageCommand: ParsableCommand {
             if let error = captureError {
                 throw error
             }
+        } catch let error as CaptureError {
+            // Re-throw CaptureError as-is
+            throw error
         } catch {
+            // Check if this is a permission error from ScreenCaptureKit
+            let errorString = error.localizedDescription.lowercased()
+            if errorString.contains("screen recording") || errorString.contains("permission") {
+                throw CaptureError.screenRecordingPermissionDenied
+            }
             throw CaptureError.windowCaptureFailed
         }
     }
 
     private func captureWindowWithScreenCaptureKit(_ window: WindowData, to path: String) async throws {
-        // Get available content
-        let availableContent = try await SCShareableContent.current
+        do {
+            // Get available content
+            let availableContent = try await SCShareableContent.current
 
-        // Find the window by ID
-        guard let scWindow = availableContent.windows.first(where: { $0.windowID == window.windowId }) else {
-            throw CaptureError.windowNotFound
+            // Find the window by ID
+            guard let scWindow = availableContent.windows.first(where: { $0.windowID == window.windowId }) else {
+                throw CaptureError.windowNotFound
+            }
+
+            // Create content filter for the specific window
+            let filter = SCContentFilter(desktopIndependentWindow: scWindow)
+
+            // Configure capture settings
+            let configuration = SCStreamConfiguration()
+            configuration.width = Int(window.bounds.width)
+            configuration.height = Int(window.bounds.height)
+            configuration.backgroundColor = .clear
+            configuration.shouldBeOpaque = true
+            configuration.showsCursor = false
+
+            // Capture the image
+            let image = try await SCScreenshotManager.captureImage(
+                contentFilter: filter,
+                configuration: configuration
+            )
+
+            try saveImage(image, to: path)
+        } catch {
+            // Check if this is a permission error
+            let errorString = error.localizedDescription.lowercased()
+            if errorString.contains("screen recording") || errorString.contains("permission") {
+                throw CaptureError.screenRecordingPermissionDenied
+            }
+            throw error
         }
-
-        // Create content filter for the specific window
-        let filter = SCContentFilter(desktopIndependentWindow: scWindow)
-
-        // Configure capture settings
-        let configuration = SCStreamConfiguration()
-        configuration.width = Int(window.bounds.width)
-        configuration.height = Int(window.bounds.height)
-        configuration.backgroundColor = .clear
-        configuration.shouldBeOpaque = true
-        configuration.showsCursor = false
-
-        // Capture the image
-        let image = try await SCScreenshotManager.captureImage(
-            contentFilter: filter,
-            configuration: configuration
-        )
-
-        try saveImage(image, to: path)
     }
 
     private func saveImage(_ image: CGImage, to path: String) throws(CaptureError) {
