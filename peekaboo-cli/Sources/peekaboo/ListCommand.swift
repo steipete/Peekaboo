@@ -41,22 +41,20 @@ struct AppsSubcommand: ParsableCommand {
     }
 
     private func handleError(_ error: Error) {
-        let captureError: CaptureError
-        if let err = error as? CaptureError {
-            captureError = err
+        let captureError: CaptureError = if let err = error as? CaptureError {
+            err
         } else {
-            captureError = .unknownError(error.localizedDescription)
+            .unknownError(error.localizedDescription)
         }
 
         if jsonOutput {
-            let code: ErrorCode
-            switch captureError {
+            let code: ErrorCode = switch captureError {
             case .screenRecordingPermissionDenied:
-                code = .PERMISSION_ERROR_SCREEN_RECORDING
+                .PERMISSION_ERROR_SCREEN_RECORDING
             case .accessibilityPermissionDenied:
-                code = .PERMISSION_ERROR_ACCESSIBILITY
+                .PERMISSION_ERROR_ACCESSIBILITY
             default:
-                code = .INTERNAL_SWIFT_ERROR
+                .INTERNAL_SWIFT_ERROR
             }
             outputError(
                 message: captureError.localizedDescription,
@@ -142,24 +140,22 @@ struct WindowsSubcommand: ParsableCommand {
     }
 
     private func handleError(_ error: Error) {
-        let captureError: CaptureError
-        if let err = error as? CaptureError {
-            captureError = err
+        let captureError: CaptureError = if let err = error as? CaptureError {
+            err
         } else {
-            captureError = .unknownError(error.localizedDescription)
+            .unknownError(error.localizedDescription)
         }
 
         if jsonOutput {
-            let code: ErrorCode
-            switch captureError {
+            let code: ErrorCode = switch captureError {
             case .screenRecordingPermissionDenied:
-                code = .PERMISSION_ERROR_SCREEN_RECORDING
+                .PERMISSION_ERROR_SCREEN_RECORDING
             case .accessibilityPermissionDenied:
-                code = .PERMISSION_ERROR_ACCESSIBILITY
+                .PERMISSION_ERROR_ACCESSIBILITY
             case .appNotFound:
-                code = .APP_NOT_FOUND
+                .APP_NOT_FOUND
             default:
-                code = .INTERNAL_SWIFT_ERROR
+                .INTERNAL_SWIFT_ERROR
             }
             outputError(
                 message: captureError.localizedDescription,

@@ -3,6 +3,6 @@
 // To use this file for development, copy it to Version.swift:
 // cp Version.swift.development Version.swift
 
-struct Version {
+enum Version {
     static let current = "dev"
 }

@@ -118,9 +118,11 @@ enum CaptureError: Error, LocalizedError {
         case .noDisplaysAvailable:
             "No displays available for capture."
         case .screenRecordingPermissionDenied:
-            "Screen recording permission is required. Please grant it in System Settings > Privacy & Security > Screen Recording."
+            "Screen recording permission is required. " +
+            "Please grant it in System Settings > Privacy & Security > Screen Recording."
         case .accessibilityPermissionDenied:
-            "Accessibility permission is required for some operations. Please grant it in System Settings > Privacy & Security > Accessibility."
+            "Accessibility permission is required for some operations. " +
+            "Please grant it in System Settings > Privacy & Security > Accessibility."
         case .invalidDisplayID:
             "Invalid display ID provided."
         case .captureCreationFailed:

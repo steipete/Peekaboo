@@ -56,8 +56,8 @@ class Logger {
     }
 
     func getDebugLogs() -> [String] {
-        return queue.sync {
-            return self.debugLogs
+        queue.sync {
+            self.debugLogs
         }
     }
 
