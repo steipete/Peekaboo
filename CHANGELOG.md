@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed a bug where calling the `image` tool without a `path` argument would incorrectly result in a "Failed to write to file" error. The tool now correctly captures the image to a temporary location and returns the image data as Base64, as intended by the specification.
+
 ## [1.0.0-beta.11] - 2025-01-06
 
 ### Improved

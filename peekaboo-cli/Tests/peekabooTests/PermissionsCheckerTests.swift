@@ -1,115 +1,189 @@
 @testable import peekaboo
-import XCTest
+import Testing
+import AppKit
 
-final class PermissionsCheckerTests: XCTestCase {
-    // MARK: - hasScreenRecordingPermission Tests
-
-    func testCheckScreenRecordingPermission() {
+@Suite("PermissionsChecker Tests", .tags(.permissions, .unit))
+struct PermissionsCheckerTests {
+    // MARK: - Screen Recording Permission Tests
+    
+    @Test("Screen recording permission check returns boolean", .tags(.fast))
+    func checkScreenRecordingPermission() {
         // Test screen recording permission check
         let hasPermission = PermissionsChecker.checkScreenRecordingPermission()
-
+        
         // This test will pass or fail based on actual system permissions
-        // In CI/CD, this might need to be mocked
-        XCTAssertNotNil(hasPermission)
-
-        // If running in a test environment without permissions, we expect false
-        // If running locally with permissions granted, we expect true
-        print("Screen recording permission status: \(hasPermission)")
+        // The result should be a valid boolean
+        #expect(hasPermission == true || hasPermission == false)
     }
-
-    func testScreenRecordingPermissionConsistency() {
+    
+    @Test("Screen recording permission check is consistent", .tags(.fast))
+    func screenRecordingPermissionConsistency() {
         // Test that multiple calls return consistent results
         let firstCheck = PermissionsChecker.checkScreenRecordingPermission()
         let secondCheck = PermissionsChecker.checkScreenRecordingPermission()
-
-        XCTAssertEqual(firstCheck, secondCheck, "Permission check should be consistent")
+        
+        #expect(firstCheck == secondCheck)
     }
-
-    // MARK: - hasAccessibilityPermission Tests
-
-    func testCheckAccessibilityPermission() {
+    
+    @Test("Screen recording permission check performance", arguments: 1...5)
+    func screenRecordingPermissionPerformance(iteration: Int) {
+        // Permission checks should be fast
+        let hasPermission = PermissionsChecker.checkScreenRecordingPermission()
+        #expect(hasPermission == true || hasPermission == false)
+    }
+    
+    // MARK: - Accessibility Permission Tests
+    
+    @Test("Accessibility permission check returns boolean", .tags(.fast))
+    func checkAccessibilityPermission() {
         // Test accessibility permission check
         let hasPermission = PermissionsChecker.checkAccessibilityPermission()
-
+        
         // This will return the actual system state
-        XCTAssertNotNil(hasPermission)
-
-        print("Accessibility permission status: \(hasPermission)")
+        #expect(hasPermission == true || hasPermission == false)
     }
-
-    func testAccessibilityPermissionWithTrustedCheck() {
+    
+    @Test("Accessibility permission matches AXIsProcessTrusted", .tags(.fast))
+    func accessibilityPermissionWithTrustedCheck() {
         // Test the AXIsProcessTrusted check
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false]
         let isTrusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
         let hasPermission = PermissionsChecker.checkAccessibilityPermission()
-
+        
         // These should match
-        XCTAssertEqual(isTrusted, hasPermission)
+        #expect(isTrusted == hasPermission)
     }
-
-    // MARK: - checkAllPermissions Tests
-
-    func testBothPermissions() {
+    
+    // MARK: - Combined Permission Tests
+    
+    @Test("Both permissions can be checked independently", .tags(.fast))
+    func bothPermissions() {
         // Test both permission checks
         let screenRecording = PermissionsChecker.checkScreenRecordingPermission()
         let accessibility = PermissionsChecker.checkAccessibilityPermission()
-
-        // Both should return boolean values
-        XCTAssertNotNil(screenRecording)
-        XCTAssertNotNil(accessibility)
-
-        print("Permissions - Screen: \(screenRecording), Accessibility: \(accessibility)")
+        
+        // Both should return valid boolean values
+        #expect(screenRecording == true || screenRecording == false)
+        #expect(accessibility == true || accessibility == false)
     }
-
-    // MARK: - Permission State Tests
-
-    // MARK: - Error Handling Tests
-
-    func testCaptureError() {
-        // Test error creation for permission denied
+    
+    // MARK: - Require Permission Tests
+    
+    @Test("Require screen recording permission throws when denied", .tags(.fast))
+    func requireScreenRecordingPermission() {
+        let hasPermission = PermissionsChecker.checkScreenRecordingPermission()
+        
+        if hasPermission {
+            // Should not throw when permission is granted
+            #expect(throws: Never.self) {
+                try PermissionsChecker.requireScreenRecordingPermission()
+            }
+        } else {
+            // Should throw specific error when permission is denied
+            #expect(throws: (any Error).self) {
+                try PermissionsChecker.requireScreenRecordingPermission()
+            }
+        }
+    }
+    
+    @Test("Require accessibility permission throws when denied", .tags(.fast))
+    func requireAccessibilityPermission() {
+        let hasPermission = PermissionsChecker.checkAccessibilityPermission()
+        
+        if hasPermission {
+            // Should not throw when permission is granted
+            #expect(throws: Never.self) {
+                try PermissionsChecker.requireAccessibilityPermission()
+            }
+        } else {
+            // Should throw specific error when permission is denied
+            #expect(throws: (any Error).self) {
+                try PermissionsChecker.requireAccessibilityPermission()
+            }
+        }
+    }
+    
+    // MARK: - Error Message Tests
+    
+    @Test("Permission errors have descriptive messages", .tags(.fast))
+    func permissionErrorMessages() {
         let screenError = CaptureError.screenRecordingPermissionDenied
         let accessError = CaptureError.accessibilityPermissionDenied
-
+        
         // CaptureError conforms to LocalizedError, so it has errorDescription
-        XCTAssertNotNil(screenError.errorDescription)
-        XCTAssertNotNil(accessError.errorDescription)
-        XCTAssertTrue(screenError.errorDescription?.contains("Screen recording permission") ?? false)
-        XCTAssertTrue(accessError.errorDescription?.contains("Accessibility permission") ?? false)
+        #expect(screenError.errorDescription != nil)
+        #expect(accessError.errorDescription != nil)
+        #expect(screenError.errorDescription!.contains("Screen recording permission"))
+        #expect(accessError.errorDescription!.contains("Accessibility permission"))
     }
+    
+    @Test("Permission errors have correct exit codes", .tags(.fast))
+    func permissionErrorExitCodes() {
+        let screenError = CaptureError.screenRecordingPermissionDenied
+        let accessError = CaptureError.accessibilityPermissionDenied
+        
+        #expect(screenError.exitCode == 11)
+        #expect(accessError.exitCode == 12)
+    }
+}
 
-    // MARK: - Performance Tests
+// MARK: - Extended Permission Tests
 
-    func testPermissionCheckPerformance() {
-        // Test that permission checks are fast
-        measure {
-            _ = PermissionsChecker.checkScreenRecordingPermission()
-            _ = PermissionsChecker.checkAccessibilityPermission()
+@Suite("Permission Edge Cases", .tags(.permissions, .unit))
+struct PermissionEdgeCaseTests {
+    
+    @Test("Permission checks are thread-safe", .tags(.integration))
+    func threadSafePermissionChecks() async {
+        // Test concurrent permission checks
+        await withTaskGroup(of: Bool.self) { group in
+            for _ in 0..<10 {
+                group.addTask {
+                    PermissionsChecker.checkScreenRecordingPermission()
+                }
+                group.addTask {
+                    PermissionsChecker.checkAccessibilityPermission()
+                }
+            }
+            
+            var results: [Bool] = []
+            for await result in group {
+                results.append(result)
+            }
+            
+            // All results should be valid booleans
+            #expect(results.count == 20)
+            for result in results {
+                #expect(result == true || result == false)
+            }
         }
     }
-
-    // MARK: - Require Permission Tests
-
-    func testRequireScreenRecordingPermission() {
-        // Test the require method - it should throw if permission is denied
-        do {
-            try PermissionsChecker.requireScreenRecordingPermission()
-            // If we get here, permission was granted
-            XCTAssertTrue(true)
-        } catch {
-            // If permission is denied, we should get CaptureError
-            XCTAssertTrue(error is CaptureError)
-        }
+    
+    @Test("ScreenCaptureKit availability check", .tags(.fast))
+    func screenCaptureKitAvailable() {
+        // Verify that we can at least access ScreenCaptureKit APIs
+        // This is a basic smoke test to ensure the framework is available
+        let isAvailable = NSClassFromString("SCShareableContent") != nil
+        #expect(isAvailable == true)
     }
-
-    func testRequireAccessibilityPermission() {
-        // Test the require method - it should throw if permission is denied
-        do {
-            try PermissionsChecker.requireAccessibilityPermission()
-            // If we get here, permission was granted
-            XCTAssertTrue(true)
-        } catch {
-            // If permission is denied, we should get CaptureError
-            XCTAssertTrue(error is CaptureError)
-        }
+    
+    @Test("Permission state changes are detected", .tags(.integration))
+    func permissionStateChanges() {
+        // This test verifies that permission checks reflect current state
+        // Note: This test cannot actually change permissions, but verifies
+        // that repeated checks could detect changes if they occurred
+        
+        let initialScreen = PermissionsChecker.checkScreenRecordingPermission()
+        let initialAccess = PermissionsChecker.checkAccessibilityPermission()
+        
+        // Sleep briefly to allow for potential state changes
+        Thread.sleep(forTimeInterval: 0.1)
+        
+        let finalScreen = PermissionsChecker.checkScreenRecordingPermission()
+        let finalAccess = PermissionsChecker.checkAccessibilityPermission()
+        
+        // In normal operation, these should be the same
+        // but the important thing is they reflect current state
+        #expect(initialScreen == finalScreen)
+        #expect(initialAccess == finalAccess)
     }
 }

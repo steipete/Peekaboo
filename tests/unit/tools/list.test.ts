@@ -786,4 +786,67 @@ describe("List Tool", () => {
       ]);
     });
   });
+
+  describe("listToolSchema validation", () => {
+    it("should succeed when item_type is 'running_applications' and 'include_window_details' is an empty array", () => {
+      const input = {
+        item_type: "running_applications",
+        include_window_details: [],
+      };
+      const result = listToolSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    });
+
+    it("should fail when item_type is 'running_applications' and 'include_window_details' is not empty", () => {
+      const input = {
+        item_type: "running_applications",
+        include_window_details: ["ids"],
+      };
+      const result = listToolSchema.safeParse(input);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.flatten().fieldErrors.include_window_details).toEqual([
+          "'include_window_details' is only applicable when 'item_type' is 'application_windows'.",
+        ]);
+      }
+    });
+
+    it("should fail when item_type is 'server_status' and 'include_window_details' is provided", () => {
+      const input = {
+        item_type: "server_status",
+        include_window_details: ["ids"],
+      };
+      const result = listToolSchema.safeParse(input);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.flatten().fieldErrors.include_window_details).toEqual([
+          "'include_window_details' is only applicable when 'item_type' is 'application_windows'.",
+        ]);
+      }
+    });
+
+    it("should succeed when item_type is 'application_windows' and 'include_window_details' is provided", () => {
+      const input = {
+        item_type: "application_windows",
+        app: "Finder",
+        include_window_details: ["ids"],
+      };
+      const result = listToolSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    });
+
+    it("should fail when item_type is 'application_windows' and 'app' is missing", () => {
+        const input = {
+            item_type: "application_windows",
+            include_window_details: ["ids"],
+        };
+        const result = listToolSchema.safeParse(input);
+        expect(result.success).toBe(false);
+        if (!result.success) {
+            expect(result.error.flatten().fieldErrors.app).toEqual([
+                "'app' identifier is required when 'item_type' is 'application_windows'.",
+            ]);
+        }
+    });
+  });
 });

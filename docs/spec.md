@@ -133,7 +133,8 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
       ),
       path: z.string().optional().describe(
         "Optional. Base absolute path for saving the image. " +
-        "If 'format' is 'data' and 'path' is also given, image is saved AND Base64 data returned. " +
+        "If omitted and no `question` is asked, the tool returns the image as Base64 data without saving a persistent file. " +
+        "If 'format' is 'data' and 'path' is also given, image is saved AND Base64 data is returned. " +
         "If 'question' is provided and 'path' is omitted, a temporary path is used for capture, and the file is deleted after analysis."
       ),
       question: z.string().optional().describe(
@@ -249,16 +250,15 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
     z.object({
       item_type: z.enum(["running_applications", "application_windows", "server_status"])
         .default("running_applications").describe("What to list. 'server_status' returns Peekaboo server info."),
-      app: z.string().optional().describe("Required if 'item_type' is 'application_windows'. Target application. Uses fuzzy matching."),
+      app: z.string().optional().describe("Required when 'item_type' is 'application_windows'. Specifies the target application by name (e.g., 'Safari') or bundle ID. Fuzzy matching is used."),
       include_window_details: z.array(
-        z.enum(["off_screen", "bounds", "ids"])
-      ).optional().describe("Optional, for 'application_windows'. Additional window details. Example: ['bounds', 'ids']")
+        z.enum(["ids", "bounds", "off_screen"])
+      ).optional().describe("Optional, for 'application_windows' only. Specifies additional details for each window. If provided for other 'item_type' values, it will be ignored only if it is an empty array.")
     }).refine(data => data.item_type !== "application_windows" || (data.app !== undefined && data.app.trim() !== ""), {
-      message: "For 'application_windows', 'app' identifier is required.", path: ["app"],
-    }).refine(data => !data.include_window_details || data.item_type === "application_windows", {
-      message: "'include_window_details' only for 'application_windows'.", path: ["include_window_details"],
-    }).refine(data => data.item_type !== "server_status" || (data.app === undefined && data.include_window_details === undefined), {
-        message: "'app' and 'include_window_details' not applicable for 'server_status'.", path: ["item_type"]
+      message: "'app' identifier is required when 'item_type' is 'application_windows'.", path: ["app"],
+    }).refine(data => !data.include_window_details || data.include_window_details.length === 0 || data.item_type === "application_windows", {
+      message: "'include_window_details' is only applicable when 'item_type' is 'application_windows'.",
+      path: ["include_window_details"]
     })
     ```
 *   **Node.js Handler Logic:**

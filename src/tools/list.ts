@@ -59,9 +59,12 @@ export const listToolSchema = z
   )
   .refine(
     (data) =>
-      !data.include_window_details || data.item_type === "application_windows",
+      !data.include_window_details ||
+      data.include_window_details.length === 0 ||
+      data.item_type === "application_windows",
     {
-      message: "'include_window_details' only for 'application_windows'.",
+      message:
+        "'include_window_details' is only applicable when 'item_type' is 'application_windows'.",
       path: ["include_window_details"],
     },
   )

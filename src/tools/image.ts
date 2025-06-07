@@ -35,8 +35,9 @@ export async function imageToolHandler(
     let effectivePath = input.path;
     const swiftFormat = input.format === "data" ? "png" : (input.format || "png");
 
-    // Create temporary path if needed for analysis or data return without path
-    const needsTempPath = (input.question && !input.path) || (!input.path && input.format === "data") || (!input.path && !input.format);
+    // If no path is provided by the user, we MUST use a temporary path for the Swift CLI to write to.
+    const needsTempPath = !input.path;
+
     if (needsTempPath) {
       const tempDir = await fs.mkdtemp(
         pathModule.join(os.tmpdir(), "peekaboo-img-"),

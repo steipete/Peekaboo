@@ -4,9 +4,19 @@ import { ImageInput } from "../../src/types";
 import { vi } from "vitest";
 import * as fs from "fs/promises";
 import * as os from "os";
-import * as path from "path";
-import { initializeSwiftCliPath, executeSwiftCli } from "../../src/utils/peekaboo-cli";
+import * as pathModule from "path";
+import { initializeSwiftCliPath, executeSwiftCli, readImageAsBase64 } from "../../src/utils/peekaboo-cli";
 import { mockSwiftCli } from "../mocks/peekaboo-cli.mock";
+
+// Mock the fs module to spy on unlink/rmdir for cleanup verification
+vi.mock("fs/promises", async () => {
+  const actual = await vi.importActual("fs/promises");
+  return {
+    ...actual,
+    unlink: vi.fn().mockResolvedValue(undefined),
+    rmdir: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 // Mock the Swift CLI execution
 vi.mock("../../src/utils/peekaboo-cli", async () => {
@@ -47,11 +57,11 @@ describe("Image Tool Integration Tests", () => {
 
   beforeAll(async () => {
     // Initialize Swift CLI path for tests
-    const testPackageRoot = path.resolve(__dirname, "../..");
+    const testPackageRoot = pathModule.resolve(__dirname, "../..");
     initializeSwiftCliPath(testPackageRoot);
     
     // Create a temporary directory for test files
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "peekaboo-test-"));
+    tempDir = await fs.mkdtemp(pathModule.join(os.tmpdir(), "peekaboo-test-"));
   });
 
   beforeEach(() => {
@@ -63,7 +73,7 @@ describe("Image Tool Integration Tests", () => {
     try {
       const files = await fs.readdir(tempDir);
       for (const file of files) {
-        await fs.unlink(path.join(tempDir, file));
+        await fs.unlink(pathModule.join(tempDir, file));
       }
       await fs.rmdir(tempDir);
     } catch (error) {
@@ -71,12 +81,71 @@ describe("Image Tool Integration Tests", () => {
     }
   });
 
+  describe("Output Handling", () => {
+    it("should return base64 data and clean up temp file when no path is provided", async () => {
+      // Spy on fs.promises.unlink and fs.promises.rmdir
+      const unlinkSpy = vi.spyOn(fs, "unlink");
+      const rmdirSpy = vi.spyOn(fs, "rmdir");
+
+      // Mock executeSwiftCli to resolve with a successful capture that includes a temporary file path
+      // We need to capture the actual path that will be created by the handler
+      mockExecuteSwiftCli.mockImplementation(async (args: string[]) => {
+        // Extract the path from the args (it will be after --path)
+        const pathIndex = args.indexOf("--path");
+        const actualPath = pathIndex !== -1 ? args[pathIndex + 1] : "";
+        
+        return {
+          success: true,
+          data: {
+            saved_files: [{ path: actualPath, mime_type: "image/png" }]
+          },
+          messages: ["Captured 1 image"]
+        };
+      });
+
+      // Mock readImageAsBase64 to resolve with a mock base64 string
+      const MOCK_BASE64 = "mock-base64-data-string";
+      (readImageAsBase64 as vi.Mock).mockResolvedValue(MOCK_BASE64);
+
+      // Call imageToolHandler with no path argument
+      const result = await imageToolHandler({}, mockContext);
+
+      // Assert that the result is not an error
+      expect(result.isError).toBeFalsy();
+
+      // Assert that the content contains an image with the mocked base64 data
+      const imageContent = result.content.find(item => item.type === "image");
+      expect(imageContent).toBeDefined();
+      expect(imageContent?.data).toBe(MOCK_BASE64);
+      expect(imageContent?.mimeType).toBe("image/png");
+
+      // Assert that saved_files is empty
+      expect(result.saved_files).toEqual([]);
+
+      // Assert that the unlink and rmdir spies were called with the correct temporary paths
+      // The handler creates a temp path like /tmp/peekaboo-img-XXXXXX/capture.png
+      expect(unlinkSpy).toHaveBeenCalled();
+      expect(rmdirSpy).toHaveBeenCalled();
+      
+      // Verify the paths match the expected pattern
+      const unlinkCall = unlinkSpy.mock.calls[0];
+      const rmdirCall = rmdirSpy.mock.calls[0];
+      
+      expect(unlinkCall[0]).toMatch(/\/peekaboo-img-[^/]+\/capture\.png$/);
+      expect(rmdirCall[0]).toMatch(/\/peekaboo-img-[^/]+$/);
+
+      // Restore the spies
+      unlinkSpy.mockRestore();
+      rmdirSpy.mockRestore();
+    });
+  });
+
   describe("Capture with different app_target values", () => {
     it("should capture screen when app_target is omitted", async () => {
       // Mock successful screen capture
       mockExecuteSwiftCli.mockResolvedValue(
         mockSwiftCli.captureImage("screen", {
-          path: path.join(tempDir, "peekaboo-img-test", "capture.png"),
+          path: pathModule.join(tempDir, "peekaboo-img-test", "capture.png"),
           format: "png"
         })
       );
@@ -96,7 +165,7 @@ describe("Image Tool Integration Tests", () => {
       // Mock successful screen capture
       mockExecuteSwiftCli.mockResolvedValue(
         mockSwiftCli.captureImage("screen", {
-          path: path.join(tempDir, "peekaboo-img-test", "capture.png"),
+          path: pathModule.join(tempDir, "peekaboo-img-test", "capture.png"),
           format: "png"
         })
       );
@@ -113,7 +182,7 @@ describe("Image Tool Integration Tests", () => {
       // Mock successful screen capture with specific screen index
       mockExecuteSwiftCli.mockResolvedValue(
         mockSwiftCli.captureImage("screen", {
-          path: path.join(tempDir, "peekaboo-img-test", "capture.png"),
+          path: pathModule.join(tempDir, "peekaboo-img-test", "capture.png"),
           format: "png",
           item_label: "Display 0 (Index 0)"
         })
@@ -139,7 +208,7 @@ describe("Image Tool Integration Tests", () => {
       // Mock successful screen capture (falls back to all screens)
       mockExecuteSwiftCli.mockResolvedValue(
         mockSwiftCli.captureImage("screen", {
-          path: path.join(tempDir, "peekaboo-img-test", "capture.png"),
+          path: pathModule.join(tempDir, "peekaboo-img-test", "capture.png"),
           format: "png"
         })
       );
@@ -165,7 +234,7 @@ describe("Image Tool Integration Tests", () => {
         success: true,
         data: {
           saved_files: [{
-            path: path.join(tempDir, "peekaboo-img-test", "capture.png"),
+            path: pathModule.join(tempDir, "peekaboo-img-test", "capture.png"),
             mime_type: "image/png",
             item_label: "All Screens"
           }]
@@ -195,7 +264,7 @@ describe("Image Tool Integration Tests", () => {
       // Mock successful screen capture
       mockExecuteSwiftCli.mockResolvedValue(
         mockSwiftCli.captureImage("screen", {
-          path: path.join(tempDir, "peekaboo-img-test", "capture.png"),
+          path: pathModule.join(tempDir, "peekaboo-img-test", "capture.png"),
           format: "png"
         })
       );
@@ -286,7 +355,7 @@ describe("Image Tool Integration Tests", () => {
     });
 
     it("should save file and return base64 when format is 'data' with path", async () => {
-      const testPath = path.join(tempDir, "test-data-format.png");
+      const testPath = pathModule.join(tempDir, "test-data-format.png");
       const input: ImageInput = { format: "data", path: testPath };
       
       // Mock successful capture with specified path
@@ -313,7 +382,7 @@ describe("Image Tool Integration Tests", () => {
     });
 
     it("should save PNG file without base64 in content", async () => {
-      const testPath = path.join(tempDir, "test-png.png");
+      const testPath = pathModule.join(tempDir, "test-png.png");
       const input: ImageInput = { format: "png", path: testPath };
       
       // Mock successful capture with specified path
@@ -340,7 +409,7 @@ describe("Image Tool Integration Tests", () => {
     });
 
     it("should save JPG file", async () => {
-      const testPath = path.join(tempDir, "test-jpg.jpg");
+      const testPath = pathModule.join(tempDir, "test-jpg.jpg");
       const input: ImageInput = { format: "jpg", path: testPath };
       
       // Mock successful capture with specified path
@@ -418,7 +487,7 @@ describe("Image Tool Integration Tests", () => {
     });
 
     it("should analyze image and keep file when path is provided", async () => {
-      const testPath = path.join(tempDir, "test-analysis.png");
+      const testPath = pathModule.join(tempDir, "test-analysis.png");
       const input: ImageInput = { 
         question: "Describe this image",
         path: testPath,
@@ -519,7 +588,7 @@ describe("Image Tool Integration Tests", () => {
 
   describe("Environment variable handling", () => {
     it("should use PEEKABOO_DEFAULT_SAVE_PATH when no path provided and no question", async () => {
-      const defaultPath = path.join(tempDir, "default-save.png");
+      const defaultPath = pathModule.join(tempDir, "default-save.png");
       process.env.PEEKABOO_DEFAULT_SAVE_PATH = defaultPath;
 
       try {
@@ -545,7 +614,7 @@ describe("Image Tool Integration Tests", () => {
     });
 
     it("should NOT use PEEKABOO_DEFAULT_SAVE_PATH when question is provided", async () => {
-      const defaultPath = path.join(tempDir, "should-not-use.png");
+      const defaultPath = pathModule.join(tempDir, "should-not-use.png");
       process.env.PEEKABOO_DEFAULT_SAVE_PATH = defaultPath;
 
       try {
@@ -575,7 +644,7 @@ describe("Image Tool Integration Tests", () => {
 
   describe("Capture focus behavior", () => {
     it("should capture with background focus by default", async () => {
-      const testPath = path.join(tempDir, "test-bg-focus.png");
+      const testPath = pathModule.join(tempDir, "test-bg-focus.png");
       const input: ImageInput = { path: testPath };
       
       // Mock successful capture
@@ -595,7 +664,7 @@ describe("Image Tool Integration Tests", () => {
     });
 
     it("should capture with foreground focus when specified", async () => {
-      const testPath = path.join(tempDir, "test-fg-focus.png");
+      const testPath = pathModule.join(tempDir, "test-fg-focus.png");
       const input: ImageInput = { 
         path: testPath,
         capture_focus: "foreground"
@@ -617,4 +686,5 @@ describe("Image Tool Integration Tests", () => {
       }
     });
   });
+
 });

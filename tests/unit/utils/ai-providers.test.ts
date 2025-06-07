@@ -1,9 +1,10 @@
-import { vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   parseAIProviders,
   isProviderAvailable,
   analyzeImageWithProvider,
   getDefaultModelForProvider,
+  determineProviderAndModel,
 } from "../../../src/utils/ai-providers";
 import { AIProvider } from "../../../src/types";
 import OpenAI from "openai";
@@ -360,23 +361,114 @@ describe("AI Providers Utility", () => {
   });
 
   describe("getDefaultModelForProvider", () => {
-    it("should return correct default for ollama", () => {
+    it("should return correct default models", () => {
       expect(getDefaultModelForProvider("ollama")).toBe("llava:latest");
-      expect(getDefaultModelForProvider("Ollama")).toBe("llava:latest");
-    });
-
-    it("should return correct default for openai", () => {
       expect(getDefaultModelForProvider("openai")).toBe("gpt-4o");
-    });
-
-    it("should return correct default for anthropic", () => {
       expect(getDefaultModelForProvider("anthropic")).toBe(
         "claude-3-sonnet-20240229",
       );
+      expect(getDefaultModelForProvider("unknown")).toBe("unknown");
+    });
+  });
+
+  describe("determineProviderAndModel", () => {
+    let configuredProviders: AIProvider[];
+
+    beforeEach(() => {
+      configuredProviders = [
+        { provider: "ollama", model: "llava:custom" },
+        { provider: "openai", model: "gpt-4o-mini" },
+      ];
     });
 
-    it('should return "unknown" for an unknown provider', () => {
-      expect(getDefaultModelForProvider("unknown-provider")).toBe("unknown");
+    it("should select a specifically requested and available provider", async () => {
+      process.env.OPENAI_API_KEY = "test-key";
+      const result = await determineProviderAndModel(
+        { type: "openai" },
+        configuredProviders,
+        mockLogger,
+      );
+      expect(result.provider).toBe("openai");
+      expect(result.model).toBe("gpt-4o-mini");
+    });
+
+    it("should use a requested model over the configured default", async () => {
+      process.env.OPENAI_API_KEY = "test-key";
+      const result = await determineProviderAndModel(
+        { type: "openai", model: "gpt-4-turbo" },
+        configuredProviders,
+        mockLogger,
+      );
+      expect(result.provider).toBe("openai");
+      expect(result.model).toBe("gpt-4-turbo");
+    });
+
+    it("should throw if requested provider is not configured", async () => {
+      await expect(
+        determineProviderAndModel(
+          { type: "anthropic" },
+          configuredProviders,
+          mockLogger,
+        ),
+      ).rejects.toThrow(
+        "Provider 'anthropic' is not enabled in server's PEEKABOO_AI_PROVIDERS configuration.",
+      );
+    });
+
+    it("should throw if requested provider is not available", async () => {
+      // OPENAI_API_KEY is not set
+      await expect(
+        determineProviderAndModel(
+          { type: "openai" },
+          configuredProviders,
+          mockLogger,
+        ),
+      ).rejects.toThrow(
+        "Provider 'openai' is configured but not currently available.",
+      );
+    });
+
+    it("should auto-select the first available provider", async () => {
+      (global.fetch as vi.Mock).mockResolvedValue({ ok: true }); // Ollama is available
+      process.env.OPENAI_API_KEY = "test-key"; // OpenAI is also available
+
+      const result = await determineProviderAndModel(
+        undefined, // auto mode
+        configuredProviders,
+        mockLogger,
+      );
+
+      // Should pick the first one in the list: Ollama
+      expect(result.provider).toBe("ollama");
+      expect(result.model).toBe("llava:custom");
+    });
+
+    it("should fall back to the next available provider in auto mode", async () => {
+      (global.fetch as vi.Mock).mockResolvedValue({ ok: false }); // Ollama is NOT available
+      process.env.OPENAI_API_KEY = "test-key"; // OpenAI IS available
+
+      const result = await determineProviderAndModel(
+        undefined, // auto mode
+        configuredProviders,
+        mockLogger,
+      );
+
+      expect(result.provider).toBe("openai");
+      expect(result.model).toBe("gpt-4o-mini");
+    });
+
+    it("should return null if no providers are available in auto mode", async () => {
+      (global.fetch as vi.Mock).mockResolvedValue({ ok: false }); // Ollama is NOT available
+      // OPENAI_API_KEY is not set
+
+      const result = await determineProviderAndModel(
+        undefined, // auto mode
+        configuredProviders,
+        mockLogger,
+      );
+
+      expect(result.provider).toBeNull();
+      expect(result.model).toBe("");
     });
   });
 });

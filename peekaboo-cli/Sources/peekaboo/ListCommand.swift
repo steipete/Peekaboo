@@ -20,7 +20,7 @@ struct AppsSubcommand: ParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
-    func run() throws {
+    func run() {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
         do {
@@ -36,14 +36,37 @@ struct AppsSubcommand: ParsableCommand {
             }
 
         } catch {
-            Logger.shared.error("Failed to list applications: \(error)")
-            if jsonOutput {
-                outputError(message: error.localizedDescription, code: .INTERNAL_SWIFT_ERROR)
-            } else {
-                fputs("Error: \(error.localizedDescription)\n", stderr)
-            }
-            throw ExitCode.failure
+            handleError(error)
         }
+    }
+
+    private func handleError(_ error: Error) {
+        let captureError: CaptureError
+        if let err = error as? CaptureError {
+            captureError = err
+        } else {
+            captureError = .unknownError(error.localizedDescription)
+        }
+
+        if jsonOutput {
+            let code: ErrorCode
+            switch captureError {
+            case .screenRecordingPermissionDenied:
+                code = .PERMISSION_ERROR_SCREEN_RECORDING
+            case .accessibilityPermissionDenied:
+                code = .PERMISSION_ERROR_ACCESSIBILITY
+            default:
+                code = .INTERNAL_SWIFT_ERROR
+            }
+            outputError(
+                message: captureError.localizedDescription,
+                code: code,
+                details: "Failed to list applications"
+            )
+        } else {
+            fputs("Error: \(captureError.localizedDescription)\n", stderr)
+        }
+        Foundation.exit(captureError.exitCode)
     }
 
     private func printApplicationList(_ applications: [ApplicationInfo]) {
@@ -76,7 +99,7 @@ struct WindowsSubcommand: ParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
-    func run() throws {
+    func run() {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
         do {
@@ -114,14 +137,39 @@ struct WindowsSubcommand: ParsableCommand {
             }
 
         } catch {
-            Logger.shared.error("Failed to list windows: \(error)")
-            if jsonOutput {
-                outputError(message: error.localizedDescription, code: .INTERNAL_SWIFT_ERROR)
-            } else {
-                fputs("Error: \(error.localizedDescription)\n", stderr)
-            }
-            throw ExitCode.failure
+            handleError(error)
         }
+    }
+
+    private func handleError(_ error: Error) {
+        let captureError: CaptureError
+        if let err = error as? CaptureError {
+            captureError = err
+        } else {
+            captureError = .unknownError(error.localizedDescription)
+        }
+
+        if jsonOutput {
+            let code: ErrorCode
+            switch captureError {
+            case .screenRecordingPermissionDenied:
+                code = .PERMISSION_ERROR_SCREEN_RECORDING
+            case .accessibilityPermissionDenied:
+                code = .PERMISSION_ERROR_ACCESSIBILITY
+            case .appNotFound:
+                code = .APP_NOT_FOUND
+            default:
+                code = .INTERNAL_SWIFT_ERROR
+            }
+            outputError(
+                message: captureError.localizedDescription,
+                code: code,
+                details: "Failed to list windows"
+            )
+        } else {
+            fputs("Error: \(captureError.localizedDescription)\n", stderr)
+        }
+        Foundation.exit(captureError.exitCode)
     }
 
     private func parseIncludeDetails() -> Set<WindowDetailOption> {
@@ -187,7 +235,7 @@ struct ServerStatusSubcommand: ParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
-    func run() throws {
+    func run() {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
         let screenRecording = PermissionsChecker.checkScreenRecordingPermission()

@@ -1,4 +1,4 @@
-import { vi } from "vitest"; // Import vi
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   executeSwiftCli,
   initializeSwiftCliPath,
@@ -283,6 +283,85 @@ describe("Swift CLI Utility", () => {
         { swift_stderr: "Debug warning on stderr" },
         "[SwiftCLI-stderr]",
       );
+    });
+  });
+
+  describe("executeSwiftCli exit code mapping", () => {
+    beforeEach(() => {
+      // Ensure the CLI path is initialized for these tests
+      initializeSwiftCliPath(MOCK_PACKAGE_ROOT);
+    });
+
+    it("should map exit code 11 to screen recording permission error", async () => {
+      mockSpawn.mockReturnValue({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn((event, cb) => {
+          if (event === "close") cb(11);
+        }),
+      });
+
+      const result = await executeSwiftCli([], mockLogger);
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe(
+        "SWIFT_CLI_NO_SCREEN_RECORDING_PERMISSION",
+      );
+      expect(result.error?.message).toContain(
+        "Screen Recording permission is not granted",
+      );
+    });
+
+    it("should map exit code 12 to accessibility permission error", async () => {
+      mockSpawn.mockReturnValue({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn((event, cb) => {
+          if (event === "close") cb(12);
+        }),
+      });
+
+      const result = await executeSwiftCli([], mockLogger);
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe(
+        "SWIFT_CLI_NO_ACCESSIBILITY_PERMISSION",
+      );
+      expect(result.error?.message).toContain(
+        "Accessibility permission is not granted",
+      );
+    });
+
+    it("should map exit code 18 to app not found error", async () => {
+      mockSpawn.mockReturnValue({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn((event, cb) => {
+          if (event === "close") cb(18);
+        }),
+      });
+
+      const result = await executeSwiftCli([], mockLogger);
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe("SWIFT_CLI_APP_NOT_FOUND");
+      expect(result.error?.message).toContain(
+        "The specified application could not be found",
+      );
+    });
+
+    it("should handle an unknown exit code with a generic message", async () => {
+      mockSpawn.mockReturnValue({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn((event, cb) => {
+          if (event === 'data') cb('Some stderr text');
+        })},
+        on: vi.fn((event, cb) => {
+          if (event === "close") cb(99); // Unknown code
+        }),
+      });
+
+      const result = await executeSwiftCli([], mockLogger);
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe("SWIFT_CLI_EXECUTION_ERROR");
+      expect(result.error?.message).toBe("Peekaboo CLI Error: Some stderr text");
     });
   });
 });
