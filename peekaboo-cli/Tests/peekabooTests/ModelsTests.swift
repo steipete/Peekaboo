@@ -217,7 +217,8 @@ final class ModelsTests: XCTestCase {
     func testCaptureErrorDescriptions() {
         XCTAssertEqual(CaptureError.noDisplaysAvailable.errorDescription, "No displays available for capture.")
         XCTAssertTrue(
-            CaptureError.screenRecordingPermissionDenied.errorDescription!.contains("Screen recording permission is required")
+            CaptureError.screenRecordingPermissionDenied.errorDescription!
+                .contains("Screen recording permission is required")
         )
         XCTAssertEqual(CaptureError.invalidDisplayID.errorDescription, "Invalid display ID provided.")
         XCTAssertEqual(CaptureError.captureCreationFailed.errorDescription, "Failed to create the screen capture.")
@@ -227,7 +228,10 @@ final class ModelsTests: XCTestCase {
             CaptureError.fileWriteError("/tmp/test.png").errorDescription,
             "Failed to write capture file to path: /tmp/test.png."
         )
-        XCTAssertEqual(CaptureError.appNotFound("Safari").errorDescription, "Application with identifier 'Safari' not found or is not running.")
+        XCTAssertEqual(
+            CaptureError.appNotFound("Safari").errorDescription,
+            "Application with identifier 'Safari' not found or is not running."
+        )
         XCTAssertEqual(CaptureError.invalidWindowIndex(5).errorDescription, "Invalid window index: 5.")
     }
 
