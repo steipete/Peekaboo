@@ -97,32 +97,30 @@ struct ImageCommand: ParsableCommand {
     }
 
     private func handleError(_ error: Error) {
-        let captureError: CaptureError
-        if let err = error as? CaptureError {
-            captureError = err
+        let captureError: CaptureError = if let err = error as? CaptureError {
+            err
         } else {
-            captureError = .unknownError(error.localizedDescription)
+            .unknownError(error.localizedDescription)
         }
 
         if jsonOutput {
-            let code: ErrorCode
-            switch captureError {
+            let code: ErrorCode = switch captureError {
             case .screenRecordingPermissionDenied:
-                code = .PERMISSION_ERROR_SCREEN_RECORDING
+                .PERMISSION_ERROR_SCREEN_RECORDING
             case .accessibilityPermissionDenied:
-                code = .PERMISSION_ERROR_ACCESSIBILITY
+                .PERMISSION_ERROR_ACCESSIBILITY
             case .appNotFound:
-                code = .APP_NOT_FOUND
+                .APP_NOT_FOUND
             case .windowNotFound:
-                code = .WINDOW_NOT_FOUND
+                .WINDOW_NOT_FOUND
             case .fileWriteError:
-                code = .FILE_IO_ERROR
+                .FILE_IO_ERROR
             case .invalidArgument:
-                code = .INVALID_ARGUMENT
+                .INVALID_ARGUMENT
             case .unknownError:
-                code = .UNKNOWN_ERROR
+                .UNKNOWN_ERROR
             default:
-                code = .CAPTURE_FAILED
+                .CAPTURE_FAILED
             }
             outputError(
                 message: captureError.localizedDescription,

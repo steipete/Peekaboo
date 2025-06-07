@@ -9,7 +9,7 @@ class PermissionsChecker {
         // We check by attempting to get shareable content
         let semaphore = DispatchSemaphore(value: 0)
         var hasPermission = false
-        
+
         Task {
             do {
                 // This will fail if we don't have screen recording permission
@@ -21,7 +21,7 @@ class PermissionsChecker {
             }
             semaphore.signal()
         }
-        
+
         semaphore.wait()
         return hasPermission
     }

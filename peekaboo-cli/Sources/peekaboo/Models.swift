@@ -144,18 +144,18 @@ enum CaptureError: Error, LocalizedError {
 
     var exitCode: Int32 {
         switch self {
-        case .noDisplaysAvailable: return 10
-        case .screenRecordingPermissionDenied: return 11
-        case .accessibilityPermissionDenied: return 12
-        case .invalidDisplayID: return 13
-        case .captureCreationFailed: return 14
-        case .windowNotFound: return 15
-        case .windowCaptureFailed: return 16
-        case .fileWriteError: return 17
-        case .appNotFound: return 18
-        case .invalidWindowIndex: return 19
-        case .invalidArgument: return 20
-        case .unknownError: return 1
+        case .noDisplaysAvailable: 10
+        case .screenRecordingPermissionDenied: 11
+        case .accessibilityPermissionDenied: 12
+        case .invalidDisplayID: 13
+        case .captureCreationFailed: 14
+        case .windowNotFound: 15
+        case .windowCaptureFailed: 16
+        case .fileWriteError: 17
+        case .appNotFound: 18
+        case .invalidWindowIndex: 19
+        case .invalidArgument: 20
+        case .unknownError: 1
         }
     }
 }
