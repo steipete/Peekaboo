@@ -7,8 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.12] - 2025-01-08
+
+### Added
+- Comprehensive Swift Testing framework adoption with enhanced test coverage
+- New test files for JSON output validation, logger thread safety, and image capture logic
+- Centralized test tagging system for better test organization
+
+### Improved
+- CI/CD pipeline now uses macOS-15 runner with Xcode 16.3
+- Swift CLI is now built before TypeScript tests to fix integration test failures
+- Applied SwiftFormat to all Swift files for consistent code style
+- Fixed all SwiftLint violations (31 issues resolved) achieving zero linting issues
+- Enhanced thread safety in Logger implementation
+- Optimized tests with parameterized testing and async/await patterns
+
 ### Fixed
 - Fixed a bug where calling the `image` tool without a `path` argument would incorrectly result in a "Failed to write to file" error. The tool now correctly captures the image to a temporary location and returns the image data as Base64, as intended by the specification.
+- Fixed Swift test compilation errors with proper Swift Testing syntax
+- Fixed TypeScript test expectations after error message improvements
+- Resolved CI integration test failures by ensuring Swift CLI availability
 
 ## [1.0.0-beta.11] - 2025-01-06
 
