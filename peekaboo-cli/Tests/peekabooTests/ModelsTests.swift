@@ -215,20 +215,20 @@ final class ModelsTests: XCTestCase {
     }
 
     func testCaptureErrorDescriptions() {
-        XCTAssertEqual(CaptureError.noDisplaysAvailable.errorDescription, "No displays available for capture")
+        XCTAssertEqual(CaptureError.noDisplaysAvailable.errorDescription, "No displays available for capture.")
         XCTAssertTrue(
-            CaptureError.capturePermissionDenied.errorDescription!.contains("Screen recording permission denied")
+            CaptureError.screenRecordingPermissionDenied.errorDescription!.contains("Screen recording permission is required")
         )
-        XCTAssertEqual(CaptureError.invalidDisplayID.errorDescription, "Invalid display ID")
-        XCTAssertEqual(CaptureError.captureCreationFailed.errorDescription, "Failed to create screen capture")
-        XCTAssertEqual(CaptureError.windowNotFound.errorDescription, "Window not found")
-        XCTAssertEqual(CaptureError.windowCaptureFailed.errorDescription, "Failed to capture window")
+        XCTAssertEqual(CaptureError.invalidDisplayID.errorDescription, "Invalid display ID provided.")
+        XCTAssertEqual(CaptureError.captureCreationFailed.errorDescription, "Failed to create the screen capture.")
+        XCTAssertEqual(CaptureError.windowNotFound.errorDescription, "The specified window could not be found.")
+        XCTAssertEqual(CaptureError.windowCaptureFailed.errorDescription, "Failed to capture the specified window.")
         XCTAssertEqual(
             CaptureError.fileWriteError("/tmp/test.png").errorDescription,
-            "Failed to write file to: /tmp/test.png"
+            "Failed to write capture file to path: /tmp/test.png."
         )
-        XCTAssertEqual(CaptureError.appNotFound("Safari").errorDescription, "Application not found: Safari")
-        XCTAssertEqual(CaptureError.invalidWindowIndex(5).errorDescription, "Invalid window index: 5")
+        XCTAssertEqual(CaptureError.appNotFound("Safari").errorDescription, "Application with identifier 'Safari' not found or is not running.")
+        XCTAssertEqual(CaptureError.invalidWindowIndex(5).errorDescription, "Invalid window index: 5.")
     }
 
     func testWindowData() {

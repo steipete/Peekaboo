@@ -63,6 +63,7 @@ If all checks pass, follow the manual steps below.
 
 2.  **Actual NPM Publish:**
     - If the dry run is satisfactory, proceed with the actual publish command.
+    - Use tag "beta" if the version is a beta, else omit tag to do a release version.
     - `npm publish --access public --tag <your_tag>`
 
 ## Post-Publish Steps

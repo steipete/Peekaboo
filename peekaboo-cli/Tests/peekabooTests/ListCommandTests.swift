@@ -7,9 +7,10 @@ final class ListCommandTests: XCTestCase {
 
     func testListCommandSubcommands() throws {
         // Test that ListCommand has the expected subcommands
-        XCTAssertEqual(ListCommand.configuration.subcommands.count, 2)
+        XCTAssertEqual(ListCommand.configuration.subcommands.count, 3)
         XCTAssertTrue(ListCommand.configuration.subcommands.contains { $0 == AppsSubcommand.self })
         XCTAssertTrue(ListCommand.configuration.subcommands.contains { $0 == WindowsSubcommand.self })
+        XCTAssertTrue(ListCommand.configuration.subcommands.contains { $0 == ServerStatusSubcommand.self })
     }
 
     func testAppsSubcommandParsing() throws {

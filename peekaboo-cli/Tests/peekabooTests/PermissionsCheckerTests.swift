@@ -63,24 +63,18 @@ final class PermissionsCheckerTests: XCTestCase {
 
     // MARK: - Permission State Tests
 
-    func testPermissionErrors() {
-        // Test permission error types
-        let screenError = PermissionError.screenRecordingDenied
-        let accessError = PermissionError.accessibilityDenied
-
-        XCTAssertNotNil(screenError)
-        XCTAssertNotNil(accessError)
-    }
-
     // MARK: - Error Handling Tests
 
     func testCaptureError() {
         // Test error creation for permission denied
-        let error = CaptureError.capturePermissionDenied
+        let screenError = CaptureError.screenRecordingPermissionDenied
+        let accessError = CaptureError.accessibilityPermissionDenied
 
         // CaptureError conforms to LocalizedError, so it has errorDescription
-        XCTAssertNotNil(error.errorDescription)
-        XCTAssertTrue(error.errorDescription?.contains("permission") ?? false)
+        XCTAssertNotNil(screenError.errorDescription)
+        XCTAssertNotNil(accessError.errorDescription)
+        XCTAssertTrue(screenError.errorDescription?.contains("Screen recording permission") ?? false)
+        XCTAssertTrue(accessError.errorDescription?.contains("Accessibility permission") ?? false)
     }
 
     // MARK: - Performance Tests
