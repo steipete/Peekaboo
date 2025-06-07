@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0-beta.11] - 2024-08-01
+## [1.0.0-beta.11] - 2025-01-06
 
 ### Improved
 - Greatly enhanced error handling for the `image` tool. The Swift CLI now returns distinct exit codes for different error conditions, such as missing Screen Recording or Accessibility permissions, instead of a generic failure code.

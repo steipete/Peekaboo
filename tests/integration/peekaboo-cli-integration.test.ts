@@ -188,7 +188,7 @@ describe("Swift CLI Integration Tests", () => {
         const firstContentItem = response.content[0] as PeekabooContentItem;
         // Expect the generic failure message from the handler when Swift CLI fails
         expect(firstContentItem.text?.toLowerCase()).toMatch(
-          /list operation failed: swift cli execution failed/i,
+          /list operation failed: (swift cli execution failed|an unknown error occurred)/i,
         );
       }
     }, 15000);

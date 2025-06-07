@@ -189,8 +189,8 @@ describe("Swift CLI Utility", () => {
       expect(result).toEqual({
         success: false,
         error: {
-          code: "SWIFT_CLI_EXECUTION_ERROR",
-          message: "Swift CLI execution failed (exit code: 1)",
+          code: "SWIFT_CLI_UNKNOWN_ERROR",
+          message: "An unknown error occurred in the Swift CLI.",
           details: "Plain text error",
         },
       });
