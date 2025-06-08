@@ -141,13 +141,24 @@ export const imageToolSchema = z.object({
       if (val === null || val === undefined || val === "") {
         return undefined;
       }
-      // If the value is not a valid format, fall back to 'png'
-      const validFormats = ["png", "jpg", "data"];
-      return validFormats.includes(val as string) ? val : "png";
+      // Convert to lowercase for case-insensitive matching
+      const lowerVal = String(val).toLowerCase();
+      
+      // Map common aliases
+      const formatMap: Record<string, string> = {
+        "jpeg": "jpg",
+        "png": "png",
+        "jpg": "jpg",
+        "data": "data"
+      };
+      
+      // Return mapped value or fall back to 'png'
+      return formatMap[lowerVal] || "png";
     },
     z.enum(["png", "jpg", "data"]).optional().describe(
       "Optional. Output format.\n" +
-      "Can be `'png'`, `'jpg'`, or `'data'`.\n" +
+      "Can be `'png'`, `'jpg'`, `'jpeg'` (alias for jpg), or `'data'`.\n" +
+      "Format is case-insensitive (e.g., 'PNG', 'Png', 'png' are all valid).\n" +
       "If `'png'` or `'jpg'`, saves the image to the specified `path`.\n" +
       "If `'data'`, returns Base64 encoded PNG data inline in the response.\n" +
       "If `path` is also provided when `format` is `'data'`, the image is saved (as PNG) AND Base64 data is returned.\n" +

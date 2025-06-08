@@ -32,13 +32,9 @@ export async function imageToolHandler(
     const isScreenCapture = !input.app_target || input.app_target.startsWith("screen:");
     let formatWarning: string | undefined;
 
-    // Validate format - if invalid, fall back to PNG
-    const validFormats = ["png", "jpg", "data"];
+    // Format validation is now handled by the schema preprocessor
+    // The format here is already normalized (lowercase, jpeg->jpg mapping applied)
     let effectiveFormat = input.format;
-    if (effectiveFormat && !validFormats.includes(effectiveFormat)) {
-      logger.warn(`Invalid format '${effectiveFormat}' provided, falling back to PNG`);
-      effectiveFormat = "png";
-    }
 
     // Auto-fallback to PNG for screen captures with format 'data'
     if (isScreenCapture && effectiveFormat === "data") {

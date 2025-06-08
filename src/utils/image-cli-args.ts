@@ -53,10 +53,9 @@ export function buildSwiftCliArgs(
   const args = ["image"];
 
   // Use provided format or derive from input
-  // If format is invalid (not png, jpg, or data), fall back to png
-  const validFormats = ["png", "jpg", "data"];
-  const inputFormat = input.format && validFormats.includes(input.format) ? input.format : "png";
-  const actualFormat = swiftFormat || (inputFormat === "data" ? "png" : inputFormat) || "png";
+  // Format validation is already handled by the schema preprocessor
+  const inputFormat = input.format || "png";
+  const actualFormat = swiftFormat || (inputFormat === "data" ? "png" : inputFormat);
 
   // Create a logger if not provided (for backward compatibility)
   const log = logger || {
