@@ -30,7 +30,7 @@ export const listToolSchema = z
       },
       z
         .enum(["running_applications", "application_windows", "server_status"])
-        .optional()
+        .optional(),
     )
       .describe(
         "Specifies the type of items to list. If omitted or empty, it defaults to 'application_windows' if 'app' is provided, otherwise 'running_applications'. Valid options are:\n" +
@@ -404,7 +404,7 @@ async function handleServerStatus(
 
 export function buildSwiftCliArgs(input: ListToolInput): string[] {
   const args: string[] = ["list"];
-  
+
   // Determine item type with defensive checks
   let itemType: string;
   if (input.item_type && typeof input.item_type === "string" && input.item_type.trim() !== "") {
