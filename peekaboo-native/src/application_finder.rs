@@ -327,12 +327,14 @@ mod tests {
             ApplicationData {
                 name: "Firefox".to_string(),
                 bundle_id: Some("org.mozilla.firefox".to_string()),
+                path: None,
                 pid: 1234,
                 is_active: true,
             },
             ApplicationData {
                 name: "Chrome".to_string(),
                 bundle_id: Some("com.google.chrome".to_string()),
+                path: None,
                 pid: 5678,
                 is_active: false,
             },
@@ -368,6 +370,7 @@ impl ApplicationFinder {
             let app_data = ApplicationData {
                 name: process.name().to_string(),
                 bundle_id: None, // Windows doesn't have bundle IDs like macOS
+                path: None,
                 path: process.exe().map(|p| p.to_string_lossy().to_string()),
                 pid: pid.as_u32() as i32,
                 is_active: false, // Will be determined by window enumeration

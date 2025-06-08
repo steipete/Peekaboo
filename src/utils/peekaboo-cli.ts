@@ -32,12 +32,12 @@ function determineSwiftCliPath(packageRootDirForFallback?: string): string {
       return path.resolve(packageRootDirForFallback, "peekaboo");
     } else if (platform === "linux") {
       // Linux - use Rust binary
-      const linuxBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-linux", "target", "release", "peekaboo");
+      const linuxBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-native", "target", "release", "peekaboo");
       if (existsSync(linuxBinaryPath)) {
         return linuxBinaryPath;
       }
       // Fallback to debug build if release doesn't exist
-      const debugBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-linux", "target", "debug", "peekaboo");
+      const debugBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-native", "target", "debug", "peekaboo");
       if (existsSync(debugBinaryPath)) {
         return debugBinaryPath;
       }
@@ -45,12 +45,12 @@ function determineSwiftCliPath(packageRootDirForFallback?: string): string {
       return linuxBinaryPath;
     } else if (platform === 'win32') {
       // Windows - use Rust binary
-      const windowsBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-linux", "target", "release", "peekaboo.exe");
+      const windowsBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-native", "target", "release", "peekaboo.exe");
       if (existsSync(windowsBinaryPath)) {
         return windowsBinaryPath;
       }
       // Fallback to debug build if release doesn't exist
-      const debugBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-linux", "target", "debug", "peekaboo.exe");
+      const debugBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-native", "target", "debug", "peekaboo.exe");
       if (existsSync(debugBinaryPath)) {
         return debugBinaryPath;
       }

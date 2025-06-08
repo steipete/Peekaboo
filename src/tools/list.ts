@@ -216,23 +216,31 @@ async function handleServerStatus(
       cliPath = path.join(packageRootDir, "peekaboo");
     } else if (platform === "linux") {
       // Linux - use Rust binary
-      const linuxBinaryPath = path.resolve(packageRootDir, "peekaboo-linux", "target", "release", "peekaboo");
+      const linuxBinaryPath = path.resolve(packageRootDir, "peekaboo-native", "target", "release", "peekaboo");
       if (existsSync(linuxBinaryPath)) {
         cliPath = linuxBinaryPath;
       } else {
         // Fallback to debug build if release doesn't exist
-        const debugBinaryPath = path.resolve(packageRootDir, "peekaboo-linux", "target", "debug", "peekaboo");
-        cliPath = debugBinaryPath;
+        const debugBinaryPath = path.resolve(packageRootDir, "peekaboo-native", "target", "debug", "peekaboo");
+        if (existsSync(debugBinaryPath)) {
+          cliPath = debugBinaryPath;
+        } else {
+          cliPath = linuxBinaryPath; // Use expected path for error reporting
+        }
       }
     } else if (platform === 'win32') {
       // Windows - use Rust binary
-      const windowsBinaryPath = path.resolve(packageRootDir, "peekaboo-linux", "target", "release", "peekaboo.exe");
+      const windowsBinaryPath = path.resolve(packageRootDir, "peekaboo-native", "target", "release", "peekaboo.exe");
       if (existsSync(windowsBinaryPath)) {
         cliPath = windowsBinaryPath;
       } else {
         // Fallback to debug build if release doesn't exist
-        const debugBinaryPath = path.resolve(packageRootDir, "peekaboo-linux", "target", "debug", "peekaboo.exe");
-        cliPath = debugBinaryPath;
+        const debugBinaryPath = path.resolve(packageRootDir, "peekaboo-native", "target", "debug", "peekaboo.exe");
+        if (existsSync(debugBinaryPath)) {
+          cliPath = debugBinaryPath;
+        } else {
+          cliPath = windowsBinaryPath; // Use expected path for error reporting
+        }
       }
     } else {
       // Unsupported platform

@@ -93,6 +93,7 @@ pub struct WindowData {
 pub struct ApplicationData {
     pub name: String,
     pub bundle_id: Option<String>,
+    pub path: Option<String>,
     pub pid: i32,
     pub is_active: bool,
 }

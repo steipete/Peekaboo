@@ -11,10 +11,13 @@ mod application_finder;
 mod window_manager;
 mod permissions;
 mod environment;
+mod traits;
+mod platform;
 
 use cli::{PeekabooCommand, Commands};
 use json_output::JsonOutputMode;
 use logger::Logger;
+use platform::PlatformManager;
 
 #[tokio::main]
 async fn main() {
@@ -22,6 +25,15 @@ async fn main() {
     
     // Initialize logger
     let logger = Logger::new();
+    
+    // Initialize platform manager
+    let platform_manager = match PlatformManager::new() {
+        Ok(manager) => manager,
+        Err(e) => {
+            eprintln!("Failed to initialize platform manager: {}", e);
+            process::exit(1);
+        }
+    };
     
     // Set JSON output mode if specified
     let json_mode = match &args.command {
@@ -36,18 +48,18 @@ async fn main() {
     
     JsonOutputMode::set_global(json_mode);
     
-    // Execute the command
+    // Execute the command with platform manager
     let result = match args.command.unwrap_or(Commands::Image(Default::default())) {
         Commands::Image(cmd) => {
             logger.debug(&format!("Executing image command: {:?}", cmd));
-            cmd.execute().await
+            cmd.execute_with_platform(&platform_manager).await
         }
         Commands::List(list_cmd) => {
             logger.debug(&format!("Executing list command: {:?}", list_cmd));
             match list_cmd {
-                cli::ListCommands::Apps(cmd) => cmd.execute().await,
-                cli::ListCommands::Windows(cmd) => cmd.execute().await,
-                cli::ListCommands::ServerStatus(cmd) => cmd.execute().await,
+                cli::ListCommands::Apps(cmd) => cmd.execute_with_platform(&platform_manager).await,
+                cli::ListCommands::Windows(cmd) => cmd.execute_with_platform(&platform_manager).await,
+                cli::ListCommands::ServerStatus(cmd) => cmd.execute_with_platform(&platform_manager).await,
             }
         }
     };

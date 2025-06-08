@@ -61,14 +61,14 @@ procfs = "0.16"  # Linux-specific process info
 
 [target.'cfg(target_os = "linux")'.dependencies]
 # Linux-specific window management
-x11rb = { version = "0.13", features = ["all-extensions"] }
+x11rb = { version = "0.13", features = ["all-extensions"], optional = true }
 wayland-client = { version = "0.31", optional = true }
 wayland-protocols = { version = "0.31", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 # Windows-specific dependencies
 winapi = { version = "0.3", features = [
-    "winuser", "processthreadsapi", "psapi", "tlhelp32api", 
+    "winuser", "processthreadsapi", "psapi", "tlhelp32", 
     "handleapi", "errhandlingapi", "winnt", "winerror"
 ] }
 windows = { version = "0.52", features = [

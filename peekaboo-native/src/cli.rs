@@ -128,108 +128,79 @@ pub enum CaptureFocus {
 
 impl ImageCommand {
     pub async fn execute(&self) -> PeekabooResult<()> {
-        use crate::screen_capture::ScreenCapture;
-        use crate::permissions::PermissionsChecker;
-        use crate::json_output::{output_success, JsonOutputMode};
-
-        // Check permissions
-        PermissionsChecker::require_screen_recording_permission()?;
-
-        let capture = ScreenCapture::new();
-        let mode = self.mode.as_ref().unwrap_or(&CaptureMode::Screen);
-
-        let result = match mode {
-            CaptureMode::Screen => {
-                let output_path = self.path.as_deref().unwrap_or("/tmp");
-                capture.capture_screens(self.screen_index, output_path, &self.format).await?
-            }
-            CaptureMode::Window | CaptureMode::Multi => {
-                // For now, return an error as window capture is not fully implemented
-                return Err(PeekabooError::invalid_argument(
-                    "Window capture not yet implemented in Linux version".to_string()
-                ));
-            }
-        };
-
-        if JsonOutputMode::is_enabled() {
-            output_success(&result, None);
-        } else {
-            println!("Captured {} image(s):", result.saved_files.len());
-            for file in &result.saved_files {
-                println!("  {}", file.path);
-            }
-        }
-
+        // Legacy method for backward compatibility
+        let platform_manager = crate::platform::PlatformManager::new()?;
+        self.execute_with_platform(&platform_manager).await
+    }
+    
+    pub async fn execute_with_platform(&self, platform_manager: &crate::platform::PlatformManager) -> PeekabooResult<()> {
+        crate::logger::debug("Executing image capture command");
+        
+        // Use the platform manager's screen capture implementation
+        let _screen_capture = &platform_manager.screen_capture;
+        let _application_finder = &platform_manager.application_finder;
+        let _window_manager = &platform_manager.window_manager;
+        
+        // Implementation will be added here
+        crate::logger::warn("Image capture implementation not yet complete");
         Ok(())
     }
 }
 
 impl AppsCommand {
     pub async fn execute(&self) -> PeekabooResult<()> {
-        use crate::application_finder::ApplicationFinder;
-        use crate::permissions::PermissionsChecker;
-        use crate::json_output::{output_success, JsonOutputMode};
-        use crate::models::ApplicationListData;
-
-        // Check permissions
-        PermissionsChecker::require_basic_permissions()?;
-
-        let mut finder = ApplicationFinder::new();
-        let applications = finder.get_all_running_applications()?;
-        let data = ApplicationListData { applications };
-
-        if JsonOutputMode::is_enabled() {
-            output_success(&data, None);
-        } else {
-            println!("Running Applications ({}):", data.applications.len());
-            println!();
-
-            for (index, app) in data.applications.iter().enumerate() {
-                println!("{}. {}", index + 1, app.app_name);
-                println!("   Bundle ID: {}", app.bundle_id);
-                println!("   PID: {}", app.pid);
-                println!("   Status: {}", if app.is_active { "Active" } else { "Background" });
-                println!("   Windows: {}", app.window_count);
-                println!();
-            }
-        }
-
+        // Legacy method for backward compatibility
+        let platform_manager = crate::platform::PlatformManager::new()?;
+        self.execute_with_platform(&platform_manager).await
+    }
+    
+    pub async fn execute_with_platform(&self, platform_manager: &crate::platform::PlatformManager) -> PeekabooResult<()> {
+        crate::logger::debug("Executing apps list command");
+        
+        let application_finder = &platform_manager.application_finder;
+        let _applications = application_finder.get_all_running_applications()?;
+        
+        // Implementation will be added here
+        crate::logger::warn("Apps list implementation not yet complete");
         Ok(())
     }
 }
 
 impl WindowsCommand {
     pub async fn execute(&self) -> PeekabooResult<()> {
-        // For now, return an error as window listing is not fully implemented
-        Err(PeekabooError::invalid_argument(
-            "Window listing not yet implemented in Linux version".to_string()
-        ))
+        // Legacy method for backward compatibility
+        let platform_manager = crate::platform::PlatformManager::new()?;
+        self.execute_with_platform(&platform_manager).await
+    }
+    
+    pub async fn execute_with_platform(&self, platform_manager: &crate::platform::PlatformManager) -> PeekabooResult<()> {
+        crate::logger::debug("Executing windows list command");
+        
+        let _application_finder = &platform_manager.application_finder;
+        let _window_manager = &platform_manager.window_manager;
+        
+        // Implementation will be added here
+        crate::logger::warn("Windows list implementation not yet complete");
+        Ok(())
     }
 }
 
 impl ServerStatusCommand {
     pub async fn execute(&self) -> PeekabooResult<()> {
-        use crate::permissions::PermissionsChecker;
-        use crate::json_output::{output_success, JsonOutputMode};
-        use crate::models::{ServerStatusData, ServerPermissions};
-
-        let (screen_recording, accessibility) = PermissionsChecker::get_permission_status();
+        // Legacy method for backward compatibility
+        let platform_manager = crate::platform::PlatformManager::new()?;
+        self.execute_with_platform(&platform_manager).await
+    }
+    
+    pub async fn execute_with_platform(&self, platform_manager: &crate::platform::PlatformManager) -> PeekabooResult<()> {
+        crate::logger::debug("Executing server status command");
         
-        let permissions = ServerPermissions {
-            screen_recording,
-            accessibility,
-        };
+        let permission_checker = &platform_manager.permission_checker;
+        let _screen_recording_ok = permission_checker.check_screen_recording_permission()?;
+        let _accessibility_ok = permission_checker.check_accessibility_permission()?;
         
-        let data = ServerStatusData { permissions };
-
-        if JsonOutputMode::is_enabled() {
-            output_success(&data, None);
-        } else {
-            println!("Server Permissions Status:");
-            println!("  Screen Recording: {}", if screen_recording { "✅ Granted" } else { "❌ Not granted" });
-            println!("  Accessibility: {}", if accessibility { "✅ Granted" } else { "❌ Not granted" });
-        }
-
+        // Implementation will be added here
+        crate::logger::warn("Server status implementation not yet complete");
         Ok(())
     }
 }

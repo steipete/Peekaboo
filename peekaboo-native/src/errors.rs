@@ -63,6 +63,12 @@ pub enum PeekabooError {
 
     #[error("System information error: {message}")]
     SystemInfoError { message: String },
+
+    #[error("System error: {message}")]
+    SystemError { message: String },
+
+    #[error("Platform '{platform}' is not supported")]
+    UnsupportedPlatform { platform: String },
 }
 
 impl PeekabooError {
@@ -87,6 +93,8 @@ impl PeekabooError {
             Self::ImageError(_) => 25,
             Self::JsonError(_) => 26,
             Self::SystemInfoError { .. } => 27,
+            Self::SystemError { .. } => 28,
+            Self::UnsupportedPlatform { .. } => 29,
             Self::UnknownError { .. } => 1,
         }
     }
@@ -112,6 +120,8 @@ impl PeekabooError {
             Self::ImageError(_) => "IMAGE_ERROR",
             Self::JsonError(_) => "JSON_ERROR",
             Self::SystemInfoError { .. } => "SYSTEM_INFO_ERROR",
+            Self::SystemError { .. } => "SYSTEM_ERROR",
+            Self::UnsupportedPlatform { .. } => "UNSUPPORTED_PLATFORM",
             Self::UnknownError { .. } => "UNKNOWN_ERROR",
         }
     }
@@ -173,5 +183,12 @@ impl PeekabooError {
     pub fn system_info_error(message: String) -> Self {
         Self::SystemInfoError { message }
     }
-}
 
+    pub fn system_error(message: String) -> Self {
+        Self::SystemError { message }
+    }
+
+    pub fn unsupported_platform(platform: String) -> Self {
+        Self::UnsupportedPlatform { platform }
+    }
+}

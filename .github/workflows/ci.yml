@@ -105,14 +105,14 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-          peekaboo-linux/target
+          peekaboo-native/target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
     
     - name: Build Rust CLI for tests
       run: |
-        cd peekaboo-linux
+        cd peekaboo-native
         cargo build --release
         # Verify the binary exists
         ls -la target/release/peekaboo
@@ -171,14 +171,14 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-          peekaboo-linux/target
+          peekaboo-native/target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
     
     - name: Build Rust CLI for tests
       run: |
-        cd peekaboo-linux
+        cd peekaboo-native
         cargo build --release
         # Verify the binary exists
         ls target/release/peekaboo.exe
@@ -283,19 +283,19 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-          peekaboo-linux/target
+          peekaboo-native/target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
     
     - name: Build Rust CLI
       run: |
-        cd peekaboo-linux
+        cd peekaboo-native
         cargo build --release
     
     - name: Test Rust CLI basic functionality
       run: |
-        cd peekaboo-linux
+        cd peekaboo-native
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
           ./target/release/peekaboo.exe --version
         else
@@ -305,7 +305,7 @@ jobs:
     
     - name: Run Rust tests
       run: |
-        cd peekaboo-linux
+        cd peekaboo-native
         cargo test
       env:
         CI: true
@@ -337,4 +337,3 @@ jobs:
         echo "✅ Linux (Rust) support verified" 
         echo "✅ Windows (Rust) support verified"
         echo "🎉 Multi-platform CI setup complete!"
-
