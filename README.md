@@ -41,7 +41,13 @@ Read more about the design philosophy and implementation details in the [blog po
 
 #### For Cursor IDE
 
-Click the install button in the [blog post](https://steipete.com/posts/peekaboo-mcp-screenshots-so-fast-theyre-paranormal/) or add to your Cursor settings:
+<div align="center">
+  <a href="cursor://anysphere.cursor-deeplink/mcp/install?name=peekaboo&config=ewogICJjb21tYW5kIjogIm5weCIsCiAgImFyZ3MiOiBbCiAgICAiLXkiLAogICAgIkBzdGVpcGV0ZS9wZWVrYWJvby1tY3AiCiAgXSwKICAiZW52IjogewogICAgIlBFRUtBQk9PX0FJX1BST1ZJREVSUyI6ICJvbGxhbWEvbGxhdmE6bGF0ZXN0IgogIH0KfQ==">
+    <img src="https://cursor.com/deeplink/mcp-install-dark.png" alt="Install Peekaboo in Cursor IDE" height="40" />
+  </a>
+</div>
+
+Or manually add to your Cursor settings:
 
 ```json
 {
