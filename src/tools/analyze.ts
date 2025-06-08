@@ -11,6 +11,7 @@ import {
 export const analyzeToolSchema = z.object({
   image_path: z
     .string()
+    .optional()
     .describe(
       "Required. Absolute path to image file (.png, .jpg, .webp) to be analyzed.",
     ),
@@ -36,7 +37,15 @@ export const analyzeToolSchema = z.object({
     .describe(
       "Optional. Explicit provider/model. Validated against server's PEEKABOO_AI_PROVIDERS.",
     ),
-});
+  // Silent fallback parameter (not advertised in schema)
+  path: z.string().optional(),
+}).refine(
+  (data) => data.image_path || data.path,
+  {
+    message: "image_path is required",
+    path: ["image_path"],
+  }
+);
 
 export type AnalyzeToolInput = z.infer<typeof analyzeToolSchema>;
 
@@ -47,13 +56,16 @@ export async function analyzeToolHandler(
   const { logger } = context;
 
   try {
+    // Determine the effective image path (prioritize image_path, fallback to path)
+    const effectiveImagePath = input.image_path || input.path!;
+    
     logger.debug(
-      { input: { ...input, image_path: input.image_path.split("/").pop() } },
+      { input: { ...input, effectiveImagePath: effectiveImagePath.split("/").pop() } },
       "Processing peekaboo.analyze tool call",
     );
 
     // Validate image file extension
-    const ext = path.extname(input.image_path).toLowerCase();
+    const ext = path.extname(effectiveImagePath).toLowerCase();
     if (![".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
       return {
         content: [
@@ -117,10 +129,10 @@ export async function analyzeToolHandler(
     // Read image as base64
     let imageBase64: string;
     try {
-      imageBase64 = await readImageAsBase64(input.image_path);
+      imageBase64 = await readImageAsBase64(effectiveImagePath);
     } catch (error) {
       logger.error(
-        { error, path: input.image_path },
+        { error, path: effectiveImagePath },
         "Failed to read image file",
       );
       return {
@@ -140,7 +152,7 @@ export async function analyzeToolHandler(
     try {
       analysisResult = await analyzeImageWithProvider(
         { provider, model },
-        input.image_path,
+        effectiveImagePath,
         imageBase64,
         input.question,
         logger,

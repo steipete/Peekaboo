@@ -2,6 +2,7 @@ import { vi, beforeEach, describe, it, expect } from "vitest";
 import { pino } from "pino";
 import {
   analyzeToolHandler,
+  analyzeToolSchema,
   AnalyzeToolInput,
 } from "../../../src/tools/analyze";
 import { readImageAsBase64 } from "../../../src/utils/peekaboo-cli";
@@ -565,6 +566,84 @@ describe("Analyze Tool", () => {
       );
       expect(result.content[0].text).toBe("Analysis complete");
       expect(result.isError).toBeUndefined();
+    });
+  });
+
+  describe("Schema Validation", () => {
+    it("should validate successfully with image_path", () => {
+      const input = {
+        image_path: "/path/to/image.png",
+        question: "What is this?",
+      };
+      
+      const result = analyzeToolSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    });
+
+    it("should validate successfully with path as silent fallback", () => {
+      const input = {
+        path: "/path/to/image.png",
+        question: "What is this?",
+      };
+      
+      const result = analyzeToolSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    });
+
+    it("should validate successfully when both image_path and path are provided", () => {
+      const input = {
+        image_path: "/priority/image.png",
+        path: "/fallback/image.png",
+        question: "What is this?",
+      };
+      
+      const result = analyzeToolSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    });
+
+    it("should fail validation when neither image_path nor path is provided", () => {
+      const input = {
+        question: "What is this?",
+      };
+      
+      const result = analyzeToolSchema.safeParse(input);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.errors[0].message).toBe("image_path is required");
+        expect(result.error.errors[0].path).toEqual(["image_path"]);
+      }
+    });
+
+    it("should fail validation when question is missing", () => {
+      const input = {
+        image_path: "/path/to/image.png",
+      };
+      
+      const result = analyzeToolSchema.safeParse(input);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.errors[0].message).toBe("Required");
+        expect(result.error.errors[0].path).toEqual(["question"]);
+      }
+    });
+
+    it("should validate optional provider_config correctly", () => {
+      const inputWithoutProvider = {
+        image_path: "/path/to/image.png",
+        question: "What is this?",
+      };
+      
+      const inputWithProvider = {
+        image_path: "/path/to/image.png",
+        question: "What is this?",
+        provider_config: {
+          type: "openai" as const,
+          model: "gpt-4o",
+        },
+      };
+      
+      expect(analyzeToolSchema.safeParse(inputWithoutProvider).success).toBe(true);
+      expect(analyzeToolSchema.safeParse(inputWithProvider).success).toBe(true);
     });
   });
 });
