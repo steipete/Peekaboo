@@ -7,11 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.18] - 2025-06-08
+
 ### Added
-- New "auto" capture focus mode for the `image` tool, which intelligently brings windows to the foreground only when needed. If a target window is already active, screenshots are taken immediately. If the window is in the background, it's automatically brought to the foreground first. This provides the optimal user experience by making screenshots "just work" in most scenarios.
+- Fuzzy matching for application names using Levenshtein distance algorithm
+  - Typos like "Chromee" now correctly match "Google Chrome"
+  - Common misspellings are handled intelligently (e.g., "Finderr" → "Finder")
+  - Multi-word app names are matched word-by-word for better accuracy
+- Smart error messages that suggest similar app names when no exact match is found
+- Window-specific labels in analysis results when capturing multiple windows
+  - Shows window titles instead of repeating app names
+  - Example: 'Analysis for "MCP Inspector":' instead of "Analysis for Google Chrome"
+
+### Fixed
+- Error messages now show specific details instead of generic "unknown error"
+  - Non-existent apps show: "No running applications found matching identifier: AppName"
+  - Properly parses Swift CLI JSON error responses
+- Fixed test failures related to error message format changes
 
 ### Changed
-- The default `capture_focus` behavior for the `image` tool has changed from "background" to "auto". This ensures better screenshot success rates while maintaining efficiency by only activating windows when necessary.
+- Improved application matching scoring to prefer main apps over helper processes
+- Enhanced TypeScript error handling to parse JSON responses even on non-zero exit codes
 
 ## [1.0.0-beta.21] - 2025-01-10
 

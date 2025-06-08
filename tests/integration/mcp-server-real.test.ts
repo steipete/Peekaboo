@@ -1,4 +1,3 @@
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { zodToJsonSchema } from "../../src/utils/zod-to-json-schema";
 import { execSync } from "child_process";

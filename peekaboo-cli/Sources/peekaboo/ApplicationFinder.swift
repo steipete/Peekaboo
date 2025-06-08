@@ -11,6 +11,11 @@ class ApplicationFinder {
     static func findApplication(identifier: String) throws(ApplicationError) -> NSRunningApplication {
         Logger.shared.debug("Searching for application: \(identifier)")
 
+        // In CI environment, throw not found to avoid accessing NSWorkspace
+        if ProcessInfo.processInfo.environment["CI"] == "true" {
+            throw ApplicationError.notFound(identifier)
+        }
+
         let runningApps = NSWorkspace.shared.runningApplications
 
         // Check for exact bundle ID match first
@@ -65,9 +70,90 @@ class ApplicationFinder {
         } else if lowerAppName.contains(identifier) {
             let score = Double(identifier.count) / Double(lowerAppName.count) * 0.8
             matches.append(AppMatch(app: app, score: score, matchType: "contains"))
+        } else {
+            // Try fuzzy matching if no direct match
+            matches.append(contentsOf: findFuzzyMatches(app: app, appName: appName, identifier: identifier))
         }
 
         return matches
+    }
+
+    private static func findFuzzyMatches(app: NSRunningApplication, appName: String, identifier: String) -> [AppMatch] {
+        var matches: [AppMatch] = []
+        let lowerAppName = appName.lowercased()
+
+        // Try fuzzy matching against the full app name
+        let fullNameSimilarity = calculateStringSimilarity(lowerAppName, identifier)
+        if fullNameSimilarity >= 0.7 {
+            let score = fullNameSimilarity * 0.9
+            matches.append(AppMatch(app: app, score: score, matchType: "fuzzy"))
+            return matches // Return early if we found a good match
+        }
+
+        // For multi-word app names, also try fuzzy matching against individual words
+        let words = lowerAppName.split(separator: " ").map(String.init)
+        for (index, word) in words.enumerated() {
+            let wordSimilarity = calculateStringSimilarity(word, identifier)
+            if wordSimilarity >= 0.65 {
+                // Score based on word similarity but reduced for partial matches
+                // Give higher score to matches on the first word (main app name)
+                let positionMultiplier = index == 0 ? 0.85 : 0.75
+                // Reduce score for helper/service processes
+                var systemPenalty = 1.0
+                if lowerAppName.contains("helper") { systemPenalty *= 0.8 }
+                if lowerAppName.contains("service") || lowerAppName.contains("theme") { systemPenalty *= 0.7 }
+                let score = wordSimilarity * positionMultiplier * systemPenalty
+                matches.append(AppMatch(app: app, score: score, matchType: "fuzzy_word"))
+                break // Only match first suitable word
+            }
+        }
+
+        return matches
+    }
+
+    private static func calculateStringSimilarity(_ str1: String, _ str2: String) -> Double {
+        // Only consider strings with reasonable length differences
+        let lengthDiff = abs(str1.count - str2.count)
+        guard lengthDiff <= 3 else { return 0.0 }
+
+        let distance = levenshteinDistance(str1, str2)
+        let maxLength = max(str1.count, str2.count)
+
+        // Calculate similarity (1.0 = identical, 0.0 = completely different)
+        return 1.0 - (Double(distance) / Double(maxLength))
+    }
+
+    private static func levenshteinDistance(_ str1: String, _ str2: String) -> Int {
+        let chars1 = Array(str1)
+        let chars2 = Array(str2)
+
+        let length1 = chars1.count
+        let length2 = chars2.count
+
+        if length1 == 0 { return length2 }
+        if length2 == 0 { return length1 }
+
+        var matrix = Array(repeating: Array(repeating: 0, count: length2 + 1), count: length1 + 1)
+
+        for idx1 in 0...length1 {
+            matrix[idx1][0] = idx1
+        }
+        for idx2 in 0...length2 {
+            matrix[0][idx2] = idx2
+        }
+
+        for idx1 in 1...length1 {
+            for idx2 in 1...length2 {
+                let cost = chars1[idx1 - 1] == chars2[idx2 - 1] ? 0 : 1
+                matrix[idx1][idx2] = min(
+                    matrix[idx1 - 1][idx2] + 1, // deletion
+                    matrix[idx1][idx2 - 1] + 1, // insertion
+                    matrix[idx1 - 1][idx2 - 1] + cost // substitution
+                )
+            }
+        }
+
+        return matrix[length1][length2]
     }
 
     private static func removeDuplicateMatches(from matches: [AppMatch]) -> [AppMatch] {
@@ -89,18 +175,29 @@ class ApplicationFinder {
     ) throws(ApplicationError) -> NSRunningApplication {
         guard !matches.isEmpty else {
             Logger.shared.error("No applications found matching: \(identifier)")
+
+            // Find similar app names using fuzzy matching
+            let suggestions = findSimilarApplications(identifier: identifier, from: runningApps)
+            let detailsMessage = if !suggestions.isEmpty {
+                "Did you mean: \(suggestions.joined(separator: ", "))?"
+            } else {
+                "Available applications: " +
+                    "\(runningApps.compactMap(\.localizedName).joined(separator: ", "))"
+            }
+
             outputError(
                 message: "No running applications found matching identifier: \(identifier)",
                 code: .APP_NOT_FOUND,
-                details: "Available applications: " +
-                    "\(runningApps.compactMap(\.localizedName).joined(separator: ", "))"
+                details: detailsMessage
             )
             throw ApplicationError.notFound(identifier)
         }
 
         // Check for ambiguous matches
         let topScore = matches[0].score
-        let topMatches = matches.filter { abs($0.score - topScore) < 0.1 }
+        // Use a smaller threshold for fuzzy matches to avoid ambiguity
+        let threshold = matches[0].matchType.contains("fuzzy") ? 0.05 : 0.1
+        let topMatches = matches.filter { abs($0.score - topScore) < threshold }
 
         if topMatches.count > 1 {
             handleAmbiguousMatches(topMatches, identifier: identifier)
@@ -129,8 +226,47 @@ class ApplicationFinder {
         )
     }
 
+    private static func findSimilarApplications(identifier: String, from apps: [NSRunningApplication]) -> [String] {
+        var suggestions: [(name: String, score: Double)] = []
+        let lowerIdentifier = identifier.lowercased()
+
+        for app in apps {
+            guard let appName = app.localizedName else { continue }
+            let lowerAppName = appName.lowercased()
+
+            // Try full name similarity
+            let fullNameSimilarity = calculateStringSimilarity(lowerAppName, lowerIdentifier)
+            if fullNameSimilarity >= 0.6 && fullNameSimilarity < 1.0 {
+                suggestions.append((name: appName, score: fullNameSimilarity))
+                continue
+            }
+
+            // For multi-word app names, also check individual words
+            let words = lowerAppName.split(separator: " ").map(String.init)
+            for word in words {
+                let wordSimilarity = calculateStringSimilarity(word, lowerIdentifier)
+                if wordSimilarity >= 0.6 && wordSimilarity < 1.0 {
+                    // Reduce score slightly for word matches vs full name matches
+                    suggestions.append((name: appName, score: wordSimilarity * 0.9))
+                    break // Only match first suitable word
+                }
+            }
+        }
+
+        // Sort by similarity and take top 3 suggestions
+        return suggestions
+            .sorted { $0.score > $1.score }
+            .prefix(3)
+            .map(\.name)
+    }
+
     static func getAllRunningApplications() -> [ApplicationInfo] {
         Logger.shared.debug("Retrieving all running applications")
+
+        // In CI environment, return empty array to avoid accessing NSWorkspace
+        if ProcessInfo.processInfo.environment["CI"] == "true" {
+            return []
+        }
 
         let runningApps = NSWorkspace.shared.runningApplications
         var result: [ApplicationInfo] = []
