@@ -407,7 +407,7 @@ struct ImageCommandPathHandlingTests {
             ("/", false), // Root directory
             ("/tmp/.hidden", true), // Hidden file
             ("/tmp/.hidden/", false), // Hidden directory
-            ("file.tar.gz", true), // Multiple extensions
+            ("file.tar.gz", true) // Multiple extensions
         ]
     )
     func edgeCasePaths(path: String, expectedAsFile: Bool) {
