@@ -1,14 +1,14 @@
-## Peekaboo: Full & Final Detailed Specification v1.1.2
+## Peekaboo: Full & Final Detailed Specification v1.0.0-beta.17
 https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
 
 **Project Vision:** Peekaboo is a macOS utility exposed via a Node.js MCP server, enabling AI agents to perform advanced screen captures, image analysis via user-configured AI providers, and query application/window information. The core macOS interactions are handled by a native Swift command-line interface (CLI) named `peekaboo`, which is called by the Node.js server. All image captures automatically exclude window shadows/frames.
 
 **Core Components:**
 
-1.  **Node.js/TypeScript MCP Server (`peekaboo-mcp`):**
-    *   **NPM Package Name:** `peekaboo-mcp`.
-    *   **GitHub Project Name:** `peekaboo`.
-    *   Implements MCP server logic using the latest stable `@modelcontextprotocol/sdk`.
+1.  **Node.js/TypeScript MCP Server (`@steipete/peekaboo-mcp`):**
+    *   **NPM Package Name:** `@steipete/peekaboo-mcp`.
+    *   **GitHub Project Name:** `Peekaboo`.
+    *   Implements MCP server logic using the latest stable `@modelcontextprotocol/sdk` (v1.12.0+).
     *   Exposes three primary MCP tools: `image`, `analyze`, `list`.
     *   Translates MCP tool calls into commands for the Swift `peekaboo` CLI.
     *   Parses structured JSON output from the Swift `peekaboo` CLI.
@@ -20,69 +20,67 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     *   Handles all direct macOS system interactions: image capture, application/window listing, and fuzzy application matching.
     *   **Does NOT directly interact with any AI providers (Ollama, OpenAI, etc.).**
     *   Outputs all results and errors in a structured JSON format via a global `--json-output` flag. This JSON includes a `debug_logs` array for internal Swift CLI logs, which the Node.js server can relay to its own logger.
-    *   The `peekaboo` binary is bundled at the root of the `peekaboo-mcp` NPM package.
+    *   The `peekaboo` binary is bundled at the root of the `@steipete/peekaboo-mcp` NPM package.
 
 ---
 
-### I. Node.js/TypeScript MCP Server (`peekaboo-mcp`)
+### I. Node.js/TypeScript MCP Server (`@steipete/peekaboo-mcp`)
 
 #### A. Project Setup & Distribution
 
 1.  **Language/Runtime:** Node.js (latest LTS recommended, e.g., v18+ or v20+), TypeScript (latest stable, e.g., v5+).
 2.  **Package Manager:** NPM.
 3.  **`package.json`:**
-    *   `name`: `"peekaboo-mcp"`
-    *   `version`: Semantic versioning (e.g., `1.1.1`).
+    *   `name`: `"@steipete/peekaboo-mcp"`
+    *   `version`: Semantic versioning (e.g., `1.0.0-beta.17`).
     *   `type`: `"module"` (for ES Modules).
     *   `main`: `"dist/index.js"` (compiled server entry point).
     *   `bin`: `{ "peekaboo-mcp": "dist/index.js" }`.
-    *   `files`: `["dist/", "peekaboo"]` (includes compiled JS and the Swift `peekaboo` binary at package root).
+    *   `files`: `["dist/", "peekaboo", "README.md", "LICENSE"]` (includes compiled JS and the Swift `peekaboo` binary at package root).
     *   `scripts`:
         *   `build`: Command to compile TypeScript (e.g., `tsc`).
+        *   `build:swift`: Build Swift CLI (`./scripts/build-swift-universal.sh`).
+        *   `build:all`: Build both Swift CLI and TypeScript (`npm run build:swift && npm run build`).
         *   `start`: `node dist/index.js`.
-        *   `prepublishOnly`: `npm run build`.
-    *   `dependencies`: `@modelcontextprotocol/sdk` (latest stable), `zod` (for input validation), `pino` (for logging), `openai` (for OpenAI API interaction). Support for other AI providers like Anthropic (e.g., using `@anthropic-ai/sdk`) is planned.
-    *   `devDependencies`: `typescript`, `@types/node`, `pino-pretty` (for optional development console logging).
-4.  **Distribution:** Published to NPM. Installable via `npm i -g peekaboo-mcp` or usable with `npx peekaboo-mcp`.
+        *   `prepublishOnly`: `npm run build:all`.
+    *   `dependencies`: `@modelcontextprotocol/sdk` (v1.12.0+), `zod` (for input validation), `pino` (for logging), `openai` (for OpenAI API interaction). Support for other AI providers like Anthropic is planned.
+    *   `devDependencies`: `typescript`, `@types/node`, `pino-pretty` (for optional development console logging), `vitest` (for testing).
+4.  **Distribution:** Published to NPM as `@steipete/peekaboo-mcp`. Installable via `npm i -g @steipete/peekaboo-mcp` or usable with `npx @steipete/peekaboo-mcp`.
 5.  **Swift CLI Location Strategy:**
     *   The Node.js server will first check the environment variable `PEEKABOO_CLI_PATH`. If set and points to a valid executable, that path will be used.
     *   If `PEEKABOO_CLI_PATH` is not set or invalid, the server will fall back to a bundled path, resolved relative to its own script location (e.g., `path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'peekaboo')`, assuming the compiled server script is in `dist/` and `peekaboo` binary is at the package root).
 
 #### B. Server Initialization & Configuration (`src/index.ts`)
 
-1.  **Imports:** `McpServer`, `StdioServerTransport` from `@modelcontextprotocol/sdk`; `pino` from `pino`; `os`, `path` from Node.js built-ins.
-2.  **Server Info:** `name: "PeekabooMCP"`, `version: <package_version from package.json>`.
+1.  **Imports:** `Server`, `StdioServerTransport` from `@modelcontextprotocol/sdk`; `pino` from `pino`; `os`, `path` from Node.js built-ins.
+2.  **Server Info:** `name: "peekaboo-mcp"`, `version: <package_version from package.json>`.
 3.  **Server Capabilities:** Advertise `tools` capability.
 4.  **Logging (Pino):**
-    *   Instantiate `pino` logger.
-    *   **Default Transport:** File transport to `path.join(os.tmpdir(), 'peekaboo-mcp.log')`. Use `mkdir: true` option for destination.
+    *   Instantiate `pino` logger with transport configuration.
+    *   **Default Log Location:** `~/Library/Logs/peekaboo-mcp.log` with fallback to `path.join(os.tmpdir(), 'peekaboo-mcp.log')` if the primary location is not writable.
+    *   **Directory Creation:** Automatically creates log directories with `mkdir: true` option.
+    *   **Fallback Handling:** Tests write access to the configured log directory and falls back to temp directory if needed.
     *   **Log Level:** Controlled by ENV VAR `PEEKABOO_LOG_LEVEL` (standard Pino levels: `trace`, `debug`, `info`, `warn`, `error`, `fatal`). Default: `"info"`.
-    *   **Conditional Console Logging (Development Only):** If ENV VAR `PEEKABOO_MCP_CONSOLE_LOGGING="true"`, add a second Pino transport targeting `process.stderr.fd` (potentially using `pino-pretty` for human-readable output).
+    *   **Conditional Console Logging (Development Only):** If ENV VAR `PEEKABOO_CONSOLE_LOGGING="true"`, add a second Pino transport targeting `process.stderr` using `pino-pretty` for human-readable output.
     *   **Strict Rule:** All server operational logging must use the configured Pino instance. No direct `console.log/warn/error` that might output to `stdout`.
 5.  **Environment Variables (Read by Server):**
-    *   `PEEKABOO_AI_PROVIDERS`: Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `"openai/gpt-4o,ollama/qwen2.5vl:7b"`). Currently, recognized `provider_name` values are `"openai"` and `"ollama"`. Support for `"anthropic"` is planned. If unset/empty, `analyze` tool reports AI not configured.
+    *   `PEEKABOO_AI_PROVIDERS`: Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `"openai/gpt-4o,ollama/llava:latest"`). Currently, recognized `provider_name` values are `"openai"` and `"ollama"`. Support for `"anthropic"` is planned. If unset/empty, `analyze` tool reports AI not configured.
     *   `OPENAI_API_KEY`: API key for OpenAI.
     *   `ANTHROPIC_API_KEY`: API key for Anthropic (used for future planned support).
     *   (Other cloud provider API keys as standard ENV VAR names).
     *   `PEEKABOO_OLLAMA_BASE_URL`: Base URL for local Ollama instance. Default: `"http://localhost:11434"`.
     *   `PEEKABOO_LOG_LEVEL`: For Pino logger. Default: `"info"`.
-    *   `PEEKABOO_LOG_FILE`: Path to the server's log file. Default: `path.join(os.tmpdir(), 'peekaboo-mcp.log')`.
+    *   `PEEKABOO_LOG_FILE`: Path to the server's log file. Default: `~/Library/Logs/peekaboo-mcp.log` with fallback to temp directory.
     *   `PEEKABOO_DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
     *   `PEEKABOO_CONSOLE_LOGGING`: Boolean (`"true"`/`"false"`) for dev console logs. Default: `"false"`.
     *   `PEEKABOO_CLI_PATH`: Optional override for Swift `peekaboo` CLI path.
 6.  **Server Status Reporting Logic:**
-    *   A utility function `generateServerStatusString()` creates a formatted string: `"
-
---- Peekaboo MCP Server Status ---
-Name: PeekabooMCP
-Version: <server_version>
-Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None Configured. Set PEEKABOO_AI_PROVIDERS ENV.'>
----"`.
-    *   **Tool Descriptions:** When the server handles a `ListToolsRequest` (typically at client initialization), it appends the `generateServerStatusString()` output to the `description` field of each advertised tool (`image`, `analyze`, `list`). This provides clients with immediate server status information alongside tool capabilities.
+    *   A utility function `generateServerStatusString()` creates a formatted string with server name, version, and configured AI providers.
+    *   **Tool Descriptions:** When the server handles a `ListToolsRequest`, it appends the server status information to the `description` field of each advertised tool (`image`, `analyze`, `list`).
     *   **Direct Access via `list` tool:** The server status string can also be retrieved directly by calling the `list` tool with `item_type: "server_status"` (see Tool 3 details).
 7.  **Tool Registration:** Register `image`, `analyze`, `list` with their Zod input schemas and handler functions.
 8.  **Transport:** `await server.connect(new StdioServerTransport());`.
-9.  **Shutdown:** Implement graceful shutdown on `SIGINT`, `SIGTERM` (e.g., `await server.close(); logger.flush(); process.exit(0);`).
+9.  **Shutdown:** Implement graceful shutdown on `SIGINT`, `SIGTERM` with proper cleanup and log flushing.
 
 #### C. MCP Tool Specifications & Node.js Handler Logic
 
@@ -116,173 +114,328 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
     *   Augment successful `ToolResponse` with initial server status string if applicable (see B.6).
     *   Send MCP `ToolResponse`.
 
-**Tool 1: `image`**
+**Tool 1: `image` - Screen Capture & Analysis**
 
-*   **MCP Description:** "Captures macOS screen content and optionally analyzes it. Targets can be the entire screen (each display separately), a specific application window, or all windows of an application, controlled by `app_target`. Supports foreground/background capture. Captured image(s) can be saved to a file (`path`), returned as Base64 data (`format: \"data\"`), or both. If a `question` is provided, the captured image is analyzed by an AI model chosen automatically from `PEEKABOO_AI_PROVIDERS`. Window shadows/frames are excluded."
-*   **MCP Input Schema (`ImageInputSchema`):**
-    ```typescript
-    z.object({
-      app_target: z.string().optional().describe(
-        "Optional. Specifies the capture target. Examples:\\n" +
-        "- Omitted/empty: All screens.\\n" +
-        "- 'screen:INDEX': Specific display (e.g., 'screen:0').\\n" +
-        "- 'frontmost': All windows of the current foreground app.\\n" +
-        "- 'AppName': All windows of 'AppName'.\\n" +
-        "- 'AppName:WINDOW_TITLE:Title': Window of 'AppName' with 'Title'.\\n" +
-        "- 'AppName:WINDOW_INDEX:Index': Window of 'AppName' at 'Index'."
-      ),
-      path: z.string().optional().describe(
-        "Optional. Base absolute path for saving captured image(s). If this path points to a directory, the Swift CLI will generate unique filenames inside it. If this path is omitted, a temporary directory is created for the capture. The path(s) of the saved file(s) are always returned in the 'saved_files' output."
-      ),
-      question: z.string().optional().describe(
-        "Optional. If provided, the captured image will be analyzed. " +
-        "The server automatically selects an AI provider from 'PEEKABOO_AI_PROVIDERS'."
-      ),
-      format: z.enum(["png", "jpg", "data"]).optional().default("png").describe(
-        "Output format. 'png' or 'jpg' save to 'path' (if provided). " +
-        "'data' returns Base64 encoded PNG data inline; if 'path' is also given, saves a PNG file to 'path' too. " +
-        "If 'path' is not given, 'format' defaults to 'data' behavior (inline PNG data returned)."
-      ),
-      capture_focus: z.enum(["background", "foreground"])
-        .optional().default("background").describe(
-          "Optional. Focus behavior. 'background' (default): capture without altering window focus. " +
-          "'foreground': bring target to front before capture."
-        )
-    })
-    ```
-    *   **Node.js Handler - `app_target` Parsing:** The handler will parse `app_target` to determine the Swift CLI arguments for `--app`, `--mode`, `--window-title`, or `--window-index`.
-        *   Omitted/empty `app_target`: maps to Swift CLI `--mode screen` (no `--app`).
-        *   `"screen:INDEX"`: maps to Swift CLI `--mode screen --screen-index INDEX` (custom Swift CLI flag might be needed or logic to select from multi-screen capture).
-        *   `"frontmost"`: Node.js determines frontmost app (e.g., via `list` tool logic or new Swift CLI helper), then calls Swift CLI with that app and `--mode multi` (or `window` for main window).
-        *   `"AppName"`: maps to Swift CLI `--app AppName --mode multi`.
-        *   `"AppName:WINDOW_TITLE:Title"`: maps to Swift CLI `--app AppName --mode window --window-title Title`.
-        *   `"AppName:WINDOW_INDEX:Index"`: maps to Swift CLI `--app AppName --mode window --window-index Index`.
-    *   **Node.js Handler - `format` and `path` Logic:**
-        *   If `input.format === "data"`: `return_data` becomes effectively true. If `input.path` is also set, the image is saved to `input.path` (as PNG) AND Base64 PNG data is returned.
-        *   If `input.format` is `"png"` or `"jpg"`:
-            *   If `input.path` is provided, the image is saved to `input.path` with the specified format. No Base64 data is returned unless `input.question` is also provided (for analysis).
-            *   If `input.path` is NOT provided: This implies `format: "data"` behavior; Base64 PNG data is returned.
-        *   If `input.question` is provided:
-            *   An `effectivePath` is determined (user's `input.path` or a temp path).
-            *   Image is captured to `effectivePath`.
-            *   Analysis proceeds as described below.
-            *   Base64 data is NOT returned in `content` due to analysis, but `analysis_text` is.
-    *   **Node.js Handler - Analysis Logic (if `input.question` is provided):**
-        *   An `effectivePath` is determined (user's `input.path` or a temp path).
-        *   Swift CLI is called to capture one or more images and save them to `effectivePath`.
-        *   The handler then iterates through **every** saved image file.
-        *   For each image, the file is read into a base64 string.
-        *   The AI provider and model are determined automatically by iterating through `PEEKABOO_AI_PROVIDERS`.
-        *   The image (base64) and `input.question` are sent to the chosen AI provider for analysis.
-        *   If multiple images are analyzed, the final `analysis_text` in the response is a single formatted string, with each analysis result preceded by a header identifying the corresponding window/display.
-        *   The `analysis_text` and `model_used` are added to the tool's response.
-        *   Base64 image data (`data` field in `ImageContentItem`) is *not* included in the `content` array of the response when a `question` is asked.
-    *   **Node.js Handler - Resilience with `path` and `format: "data"` (No `question`):** If `input.format === "data"`, `input.question` is NOT provided, and `input.path` is specified:
-        *   The handler will still attempt to process and return Base64 image data for successfully captured images even if the Swift CLI (or the handler itself) encounters an error saving to or reading from the user-specified `input.path` (or paths derived from it).
-        *   In such cases where image data is returned despite a save-to-path failure, a `TextContentItem` containing a "Peekaboo Warning:" message detailing the path saving issue will be included in the `ToolResponse.content`.
-*   **MCP Output Schema (`ToolResponse`):**
-    *   `content`: `Array<ImageContentItem | TextContentItem>`
-        *   If `input.format === "data"` (or `path` was omitted, defaulting to "data" behavior) AND `input.question` is NOT provided: Contains one or more `ImageContentItem`(s): `{ type: "image", data: "<base64_png_string_no_prefix>", mimeType: "image/png", metadata?: { item_label?: string, window_title?: string, window_id?: number, source_path?: string } }`.
-        *   If `input.question` IS provided, `ImageContentItem`s with base64 image data are NOT added to `content`.
-        *   Always contains `TextContentItem`(s) (summary, file paths from `saved_files` if applicable and images were saved to persistent paths, Swift CLI `messages`, and analysis results if a `question` was asked).
-    *   `saved_files`: `Array<{ path: string, item_label?: string, window_title?: string, window_id?: number, mime_type: string }>`
-        *   Populated if `input.path` was provided (and not a temporary path for analysis that got deleted). The `mime_type` will reflect `input.format` if it was 'png' or 'jpg' and saved, or 'image/png' if `format: "data"` also saved a file.
-        *   If `input.question` is provided AND `input.path` was NOT specified (temp image used and deleted): This array will be empty.
-    *   `analysis_text?: string`: (Conditionally present if `input.question` was provided) Core AI answer or error/skip message.
-    *   `model_used?: string`: (Conditionally present if analysis was successful) e.g., "ollama/llava:7b", "openai/gpt-4o".
-    *   `isError?: boolean` (Can be true if capture fails, or if analysis is attempted but fails, even if capture succeeded).
-    *   `_meta?: { backend_error_code?: string, analysis_error?: string }` (For relaying Swift CLI error codes or analysis error messages).
+**Purpose:** Captures macOS screen content and optionally analyzes it using AI models.
 
-**Tool 2: `analyze`**
+**Input Schema (Zod):**
+```typescript
+z.object({
+  app_target: z.string().optional().describe(
+    "Optional. Specifies the capture target.\\n" +
+    "For example:\\n" +
+    "Omit or use an empty string (e.g., `''`) for all screens.\\n" +
+    "Use `'screen:INDEX'` (e.g., `'screen:0'`) for a specific display.\\n" +
+    "Use `'frontmost'` for all windows of the current foreground application.\\n" +
+    "Use `'AppName'` (e.g., `'Safari'`) for all windows of that application.\\n" +
+    "Use `'AppName:WINDOW_TITLE:Title'` (e.g., `'TextEdit:WINDOW_TITLE:My Notes'`) for a window of 'AppName' matching that title.\\n" +
+    "Use `'AppName:WINDOW_INDEX:Index'` (e.g., `'Preview:WINDOW_INDEX:0'`) for a window of 'AppName' at that index.\\n" +
+    "Ensure components are correctly colon-separated."
+  ),
+  path: z.string().optional().describe(
+    "Optional. Base absolute path for saving the image.\\n" +
+    "Relevant if `format` is `'png'`, `'jpg'`, or if `'data'` is used with the intention to also save the file.\\n" +
+    "If a `question` is provided and `path` is omitted, a temporary path is used for image capture, and this temporary file is deleted after analysis."
+  ),
+  question: z.string().optional().describe(
+    "Optional. If provided, the captured image will be analyzed by an AI model.\\n" +
+    "The server automatically selects an AI provider from the `PEEKABOO_AI_PROVIDERS` environment variable.\\n" +
+    "The analysis result (text) is included in the response."
+  ),
+  format: z.enum(["png", "jpg", "data"]).optional().describe(
+    "Optional. Output format.\\n" +
+    "Can be `'png'`, `'jpg'`, or `'data'`.\\n" +
+    "If `'png'` or `'jpg'`, saves the image to the specified `path`.\\n" +
+    "If `'data'`, returns Base64 encoded PNG data inline in the response.\\n" +
+    "If `path` is also provided when `format` is `'data'`, the image is saved (as PNG) AND Base64 data is returned.\\n" +
+    "Defaults to `'data'` if `path` is not given."
+  ),
+  capture_focus: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    z.enum(["background", "auto", "foreground"])
+      .optional()
+      .default("auto")
+      .describe(
+        "Optional. Focus behavior. 'auto' (default): bring target to front only if not already active. " +
+        "'background': capture without altering window focus. " +
+        "'foreground': always bring target to front before capture."
+      )
+  ),
+})
+```
 
-*   **MCP Description:** "Analyzes an image file using a configured AI model (local Ollama, cloud OpenAI, etc.) and returns a textual analysis/answer. Requires image path. AI provider selection and model defaults are governed by the server's `AI_PROVIDERS` environment variable and client overrides."
-*   **MCP Input Schema (`AnalyzeInputSchema`):**
-    ```typescript
-    z.object({
-      image_path: z.string().describe("Required. Absolute path to image file (.png, .jpg, .webp) to be analyzed."),
-      question: z.string().describe("Required. Question for the AI about the image."),
-      provider_config: z.object({
-        type: z.enum(["auto", "ollama", "openai" /* "anthropic" is planned */])
-          .default("auto")
-          .describe("AI provider. 'auto' uses server's PEEKABOO_AI_PROVIDERS ENV preference. Specific provider must be one of the currently implemented options ('ollama', 'openai') and enabled in server's PEEKABOO_AI_PROVIDERS."),
-        model: z.string().optional().describe("Optional. Model name. If omitted, uses model from server's AI_PROVIDERS for chosen provider, or an internal default for that provider.")
-      }).optional().describe("Optional. Explicit provider/model. Validated against server's PEEKABOO_AI_PROVIDERS.")
-    })
-    ```
-*   **Node.js Handler Logic:**
-    1.  Validate input. Server pre-checks `image_path` extension (`.png`, `.jpg`, `.jpeg`, `.webp`); return MCP error if not recognized.
-    2.  Read `process.env.PEEKABOO_AI_PROVIDERS`. If unset/empty, return MCP error "AI analysis not configured on this server. Set the PEEKABOO_AI_PROVIDERS environment variable." Log this with Pino (`error` level).
-    3.  Parse `PEEKABOO_AI_PROVIDERS` into `configuredItems = [{provider: string, model: string}]`.
-    4.  **Determine Provider & Model:**
-        *   `requestedProviderType = input.provider_config?.type || "auto"`.
-        *   `requestedModelName = input.provider_config?.model`.
-        *   `chosenProvider: string | null = null`, `chosenModel: string | null = null`.
-        *   If `requestedProviderType !== "auto"`:
-            *   Find entry in `configuredItems` where `provider === requestedProviderType`.
-            *   If not found, MCP error: "Provider '{requestedProviderType}' is not enabled in server's PEEKABOO_AI_PROVIDERS configuration."
-            *   `chosenProvider = requestedProviderType`.
-            *   `chosenModel = requestedModelName || model_from_matching_configuredItem || hardcoded_default_for_chosenProvider`.
-        *   Else (`requestedProviderType === "auto"`):
-            *   Iterate `configuredItems` in order. For each `{provider, modelFromEnv}`:
-                *   Check availability (Ollama up? Cloud API key for `provider` set in `process.env`?).
-                *   If available: `chosenProvider = provider`, `chosenModel = requestedModelName || modelFromEnv`. Break.
-            *   If no provider found after iteration, MCP error: "No configured AI providers in PEEKABOO_AI_PROVIDERS are currently operational."
-    5.  **Execute Analysis (Node.js handles all AI calls):**
-        *   Read `input.image_path` into a `Buffer`. Base64 encode.
-        *   If `chosenProvider` is "ollama": Make direct HTTP POST calls to the Ollama API (e.g., `/api/generate`) using `process.env.PEEKABOO_OLLAMA_BASE_URL`. Handle Ollama API errors.
-        *   If `chosenProvider` is "openai": Use the official `openai` Node.js SDK with Base64 image, `input.question`, `chosenModel`, and API key from `process.env.OPENAI_API_KEY`. Handle OpenAI API errors.
-        *   If `chosenProvider` is "anthropic": (Currently not implemented) This would involve using the Anthropic SDK and API key from `process.env.ANTHROPIC_API_KEY`. For now, attempting to use Anthropic will result in an error.
-    6.  Construct MCP `ToolResponse`.
-*   **MCP Output Schema (`ToolResponse`):**
-    *   `content`: `[{ type: "text", text: "<AI's analysis/answer>" }, { type: "text", text: "👻 Peekaboo: Analyzed image with <provider>/<model> in X.XXs." }]` (The second text item provides feedback on the analysis process).
-    *   `analysis_text`: `string` (Core AI answer).
-    *   `model_used`: `string` (e.g., "ollama/llava:7b", "openai/gpt-4o") - The actual provider/model pair used.
-    *   `isError?: boolean`
-    *   `_meta?: { backend_error_code?: string }` (For AI provider API errors).
+**Input Parameters:**
+1. `app_target` (optional): Specifies capture target with flexible syntax:
+   - Empty/omitted: All screens
+   - `"screen:INDEX"`: Specific display (e.g., `"screen:0"`)
+   - `"frontmost"`: All windows of foreground application
+   - `"AppName"`: All windows of specified application
+   - `"AppName:WINDOW_TITLE:Title"`: Specific window by title
+   - `"AppName:WINDOW_INDEX:Index"`: Specific window by index
+2. `path` (optional): Base absolute path for saving images. Uses temporary path if omitted.
+3. `question` (optional): If provided, captured image is analyzed by AI model.
+4. `format` (optional): Output format ("png", "jpg", "data"). Defaults to "data" if no path.
+5. `capture_focus` (optional): Focus behavior ("background", "auto", "foreground"). Default: "auto".
 
-**Tool 3: `list`**
+**Enhanced Path Handling:**
+- **Smart Path Resolution**: Automatically determines if path is file or directory
+- **Multi-Capture Support**: For multiple captures, appends screen/window identifiers
+- **Directory Auto-Creation**: Creates intermediate directories automatically
+- **Extension Preservation**: Maintains file extensions when appending identifiers
+- **Fallback Logic**: Uses PEEKABOO_DEFAULT_SAVE_PATH or temporary directory if path not specified
 
-*   **MCP Description:** "Lists system items: running applications, all windows of a specific app, or server status. App ID uses fuzzy matching."
-*   **MCP Input Schema (`ListInputSchema`):**
-    ```typescript
-    z.object({
-      item_type: z.enum(["running_applications", "application_windows", "server_status", ""])
-        .optional()
-        .describe(
-          "Specifies the type of items to list. If omitted or empty, it defaults to 'application_windows' if 'app' is provided, otherwise 'running_applications'. Valid options are:\\n" +
-          "- `running_applications`: Lists all currently running applications.\\n" +
-          "- `application_windows`: Lists open windows for a specific application. Requires the `app` parameter.\\n" +
-          "- `server_status`: Returns information about the Peekaboo MCP server."
-        ),
-      app: z.string().optional().describe(
-        "Specifies the target application by name (e.g., \\"Safari\\", \\"TextEdit\\") or bundle ID. " +
-        "Required when `item_type` is explicitly 'application_windows'. " +
-        "Fuzzy matching is used."
-      ),
-      include_window_details: z.array(
-        z.enum(["ids", "bounds", "off_screen"])
-      ).optional().describe("Optional, for 'application_windows' only. Specifies additional details for each window. If provided for other 'item_type' values, it will be ignored only if it is an empty array.")
-    }).refine(data => data.item_type !== "application_windows" || (data.app !== undefined && data.app.trim() !== ""), {
-      message: "'app' identifier is required when 'item_type' is 'application_windows'.", path: ["app"],
-    }).refine(data => !data.include_window_details || data.include_window_details.length === 0 || data.item_type === "application_windows", {
-      message: "'include_window_details' is only applicable when 'item_type' is 'application_windows'.",
-      path: ["include_window_details"]
-    })
-    ```
-*   **Node.js Handler Logic:**
-    1.  **Determine effective `item_type`:** If `input.item_type` is missing or empty, the handler sets a default: if `input.app` is provided, `item_type` becomes `"application_windows"`; otherwise, it becomes `"running_applications"`.
-    2.  Validate the (now effective) input against the tool's Zod schema.
-    3.  If `effective_item_type === "server_status"`, the handler generates and returns the server status string directly without calling the Swift CLI.
-    4.  Otherwise, construct command-line arguments for Swift `peekaboo` CLI based on the effective input.
-    5.  Execute Swift CLI and process the response as described in the general handler pattern.
-*   **MCP Output Schema (`ToolResponse`):**
-    *   `content`: `Array<TextContentItem>` containing a formatted list of the requested items or the server status.
-    *   If `item_type: "running_applications"`: `application_list`: `Array<{ app_name: string; bundle_id: string; pid: number; is_active: boolean; window_count: number }>`.
-    *   If `item_type: "application_windows"`:
-        *   `window_list`: `Array<{ window_title: string; window_id?: number; window_index?: number; bounds?: {x:number,y:number,w:number,h:number}; is_on_screen?: boolean }>`.
-        *   `target_application_info`: `{ app_name: string; bundle_id?: string; pid: number }`.
-    *   `isError?: boolean`
-    *   `_meta?: { backend_error_code?: string }`
+**Node.js Handler Logic:**
+1. Validate input against Zod schema.
+2. **Path Resolution**: Use centralized `resolveImagePath()` logic to determine effective save path.
+3. **Swift CLI Execution**: Build arguments and execute Swift CLI with `--json-output`.
+4. **Response Processing**: Parse JSON response and handle saved files.
+5. **AI Analysis** (if question provided):
+   - Check configured AI providers
+   - Iterate through all saved files for analysis
+   - Use `performAutomaticAnalysis()` with auto-selected provider
+   - Include analysis results and timing information
+6. **Data Return Logic**: Return Base64 data if format is "data" or no path provided (and no question).
+7. **Metadata Enhancement**: Include comprehensive metadata for each saved file.
+
+**Output Schema:**
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Captured 2 images: Screen 0 (Main Display), Screen 1 (External Display). Saved to: /path/to/captures/"
+    },
+    {
+      "type": "text",
+      "text": "Analysis Result: The screenshot shows a desktop with Safari and TextEdit windows open..."
+    },
+    {
+      "type": "image",
+      "data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+      "mimeType": "image/png",
+      "metadata": {
+        "item_label": "Screen 0 (Main Display)",
+        "window_title": null,
+        "window_id": null,
+        "source_path": "/path/to/screen_0.png"
+      }
+    }
+  ],
+  "saved_files": [
+    {
+      "path": "/path/to/screen_0.png",
+      "item_label": "Screen 0 (Main Display)",
+      "window_title": null,
+      "window_id": null,
+      "window_index": null,
+      "mime_type": "image/png"
+    }
+  ],
+  "analysis_text": "The screenshot shows a desktop with Safari and TextEdit windows open...",
+  "model_used": "ollama/llava:latest"
+}
+```
+
+**Key Features:**
+- **Flexible Targeting**: Supports screens, applications, and specific windows
+- **Smart Path Handling**: Automatic directory creation and path resolution
+- **Integrated AI Analysis**: Optional AI-powered image analysis with auto-provider selection
+- **Multiple Output Formats**: File saving and/or Base64 data return
+- **Comprehensive Metadata**: Detailed information about captured content
+- **Non-Intrusive Capture**: Configurable focus behavior to avoid workflow disruption
+- **Error Recovery**: Robust error handling with detailed error messages
+
+**Tool 2: `analyze` - AI-Powered Image Analysis**
+
+**Purpose:** Analyzes a pre-existing image file from the local filesystem using a configured AI model.
+
+**Input Schema (Zod):**
+```typescript
+z.object({
+  image_path: z.string().optional().describe("Required. Absolute path to image file (.png, .jpg, .jpeg, .webp) to be analyzed."),
+  question: z.string().describe("Required. Question for the AI about the image."),
+  provider_config: z.object({
+    type: z.enum(["auto", "ollama", "openai"]).default("auto"),
+    model: z.string().optional(),
+  }).optional(),
+  // Silent fallback parameter (not advertised in schema)
+  path: z.string().optional(),
+}).refine((data) => data.image_path || data.path, {
+  message: "image_path is required",
+  path: ["image_path"],
+})
+```
+
+**Input Parameters:**
+1. `image_path` (required): Absolute path to image file (.png, .jpg, .jpeg, .webp) to be analyzed.
+2. `question` (required): Question for the AI about the image (e.g., "What objects are in this picture?", "Extract text from this screenshot").
+3. `provider_config` (optional): Explicit provider/model configuration:
+   - `type`: AI provider ("auto", "ollama", "openai"). Default: "auto" (uses server's PEEKABOO_AI_PROVIDERS preference).
+   - `model`: Optional model name. If omitted, uses default model for the chosen provider.
+
+**Node.js Handler Logic:**
+1. Validate input against Zod schema with image path requirement.
+2. Validate image file extension (.png, .jpg, .jpeg, .webp).
+3. Check AI providers configuration (PEEKABOO_AI_PROVIDERS environment variable).
+4. Parse configured providers and determine effective provider/model.
+5. Read image file as Base64.
+6. **Performance Tracking**: Record start time before AI analysis.
+7. Call AI provider with image data and question.
+8. **Performance Reporting**: Calculate analysis duration and include timing information in response.
+9. Format response with analysis result and metadata.
+
+**Enhanced Error Handling:**
+- Unsupported image formats with specific format guidance
+- Missing AI provider configuration with setup instructions
+- File read errors with detailed error messages
+- AI provider failures with specific error context
+- Comprehensive validation with helpful error messages
+
+**Output Schema:**
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "[AI analysis result text]"
+    },
+    {
+      "type": "text", 
+      "text": "👻 Peekaboo: Analyzed image with openai/gpt-4o in 2.34s."
+    }
+  ],
+  "analysis_text": "[AI analysis result text]",
+  "model_used": "openai/gpt-4o"
+}
+```
+
+**Key Features:**
+- **Performance Timing**: Includes analysis duration in seconds for performance monitoring
+- **Provider Flexibility**: Supports auto-selection or explicit provider/model specification
+- **Comprehensive Validation**: Validates file formats, paths, and configuration
+- **Detailed Error Messages**: Provides specific guidance for common issues
+- **Fallback Support**: Silent fallback from `image_path` to `path` parameter for compatibility
+
+**Tool 3: `list` - System Information & Status**
+
+**Purpose:** Lists various system items on macOS, providing situational awareness for AI agents.
+
+**Input Schema (Zod):**
+```typescript
+z.object({
+  item_type: z.enum(["running_applications", "application_windows", "server_status", ""]).optional(),
+  app: z.string().optional(),
+  include_window_details: z.array(z.enum(["off_screen", "bounds", "ids"])).optional(),
+})
+```
+
+**Input Parameters:**
+1. `item_type` (optional): Specifies the type of items to list. If omitted or empty, defaults to `"application_windows"` if `app` is provided, otherwise `"running_applications"`.
+   - `"running_applications"`: Lists all currently running applications.
+   - `"application_windows"`: Lists open windows for a specific application. Requires the `app` parameter.
+   - `"server_status"`: Returns comprehensive information about the Peekaboo MCP server, including version, configuration, permissions, and system status.
+2. `app` (optional): Required when `item_type` is `"application_windows"`. Specifies the target application by name or bundle ID. Fuzzy matching is used.
+3. `include_window_details` (optional): Only applicable for `"application_windows"`. Array of additional details to include:
+   - `"ids"`: Include window IDs.
+   - `"bounds"`: Include window position and size (x, y, width, height).
+   - `"off_screen"`: Indicate if windows are currently off-screen.
+
+**Node.js Handler Logic:**
+1. Validate input against Zod schema.
+2. Determine effective item type (with fallback logic).
+3. **Special Case for `server_status`**: If `item_type === "server_status"`, the handler generates comprehensive server status information directly without calling the Swift CLI, including:
+   - Server version and AI provider configuration
+   - Native Swift CLI binary status (location, version, executable status)
+   - System permissions (Screen Recording, Accessibility)
+   - Environment configuration (log files, AI providers, custom paths)
+   - Configuration issues and recommendations
+   - System information (platform, architecture, Node.js version)
+4. For other item types, build Swift CLI arguments and execute the CLI.
+5. Parse Swift CLI JSON response and format for MCP.
+
+**Output Examples:**
+
+*Server Status (comprehensive diagnostics):*
+```
+--- Peekaboo MCP Server Status ---
+Name: peekaboo-mcp
+Version: 1.0.0-beta.17
+Configured AI Providers: ollama/llava:latest, openai/gpt-4o
+---
+
+## Native Binary (Swift CLI) Status
+- Location: /path/to/peekaboo
+- Status: ✅ Found and executable
+- Version: 1.0.0-beta.17
+- Executable: Yes
+
+## System Permissions
+- Screen Recording: ✅ Granted
+- Accessibility: ❌ Not granted
+
+## Environment Configuration
+- Log File: ~/Library/Logs/peekaboo-mcp.log
+  Status: ✅ Directory writable
+- Log Level: info
+- Console Logging: Disabled
+- AI Providers: ollama/llava:latest,openai/gpt-4o
+- Custom CLI Path: Not set (using default)
+- Default Save Path: Not set
+
+## Configuration Issues
+✅ No configuration issues detected
+
+## System Information
+- Platform: darwin
+- Architecture: arm64
+- OS Version: 23.1.0
+- Node.js Version: v20.10.0
+```
+
+*Running Applications:*
+```json
+{
+  "content": [{ "type": "text", "text": "Found 5 running applications:\n\n1. Safari (com.apple.Safari) - PID: 1234 [ACTIVE] - Windows: 3\n2. TextEdit (com.apple.TextEdit) - PID: 5678 - Windows: 1\n..." }],
+  "application_list": [
+    {
+      "app_name": "Safari",
+      "bundle_id": "com.apple.Safari", 
+      "pid": 1234,
+      "is_active": true,
+      "window_count": 3
+    }
+    // ... more applications
+  ]
+}
+```
+
+*Application Windows (with details):*
+```json
+{
+  "content": [{ "type": "text", "text": "Found 2 windows for application: Safari (com.apple.Safari) - PID: 1234\n\nWindows:\n1. \"Welcome to Safari\" [ID: 67] [ON-SCREEN] [0,0 800×600]\n2. \"GitHub\" [ID: 68] [ON-SCREEN] [100,100 1200×800]" }],
+  "window_list": [
+    {
+      "window_title": "Welcome to Safari",
+      "window_id": 67,
+      "window_index": 0,
+      "is_on_screen": true,
+      "bounds": { "x": 0, "y": 0, "width": 800, "height": 600 }
+    },
+    {
+      "window_title": "GitHub", 
+      "window_id": 68,
+      "window_index": 1,
+      "is_on_screen": true,
+      "bounds": { "x": 100, "y": 100, "width": 1200, "height": 800 }
+    }
+  ],
+  "target_application_info": {
+    "app_name": "Safari",
+    "bundle_id": "com.apple.Safari",
+    "pid": 1234
+  }
+}
+```
 
 ---
 
@@ -448,14 +601,14 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
 1.  **Swift CLI (`peekaboo`):**
     *   `Package.swift` defines an executable product named `peekaboo`.
     *   Build process (e.g., part of NPM `prepublishOnly` or a separate build script): `swift build -c release --arch arm64 --arch x86_64`.
-    *   The resulting universal binary (e.g., from `.build/apple/Products/Release/peekaboo`) is copied to the root of the `peekaboo-mcp` NPM package directory before publishing.
+    *   The resulting universal binary (e.g., from `.build/apple/Products/Release/peekaboo`) is copied to the root of the `@steipete/peekaboo-mcp` NPM package directory before publishing.
 2.  **Node.js MCP Server:**
     *   TypeScript is compiled to JavaScript (e.g., into `dist/`) using `tsc`.
     *   The NPM package includes `dist/` and the `peekaboo` Swift binary (at package root).
 
 ---
 
-### IV. Documentation (`README.md` for `peekaboo-mcp` NPM Package)
+### IV. Documentation (`README.md` for `@steipete/peekaboo-mcp` NPM Package)
 
 1.  **Project Overview:** Briefly state vision and components.
 2.  **Prerequisites:**
@@ -463,17 +616,17 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
     *   Xcode Command Line Tools (recommended for a stable development environment on macOS, even if not strictly used by the final Swift binary for all operations).
     *   Ollama (if using local Ollama for analysis) + instructions to pull models.
 3.  **Installation:**
-    *   Primary: `npm install -g peekaboo-mcp`.
-    *   Alternative: `npx peekaboo-mcp`.
+    *   Primary: `npm install -g @steipete/peekaboo-mcp`.
+    *   Alternative: `npx @steipete/peekaboo-mcp`.
 4.  **MCP Client Configuration:**
-    *   Provide example JSON snippets for configuring popular MCP clients (e.g., VS Code, Cursor) to use `peekaboo-mcp`.
+    *   Provide example JSON snippets for configuring popular MCP clients (e.g., VS Code, Cursor) to use `@steipete/peekaboo-mcp`.
     *   Example for VS Code/Cursor using `npx` for robustness:
         ```json
         {
           "mcpServers": {
             "PeekabooMCP": {
               "command": "npx",
-              "args": ["peekaboo-mcp"],
+              "args": ["@steipete/peekaboo-mcp"],
               "env": {
                 "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
                 "OPENAI_API_KEY": "sk-yourkeyhere"
@@ -486,12 +639,12 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
 5.  **Required macOS Permissions:**
     *   **Screen Recording:** Essential for ALL `image` functionalities and for `list` if it needs to read window titles (which it does via `CGWindowListCopyWindowInfo`). Provide clear, step-by-step instructions for System Settings. Include `open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"` command.
     *   **Accessibility:** Required *only* if `image` with `capture_focus: "foreground"` needs to perform specific window raising actions (beyond simple app activation) via the Accessibility API. Explain this nuance. Include `open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"` command.
-6.  **Environment Variables (for Node.js `peekaboo-mcp` server):**
+6.  **Environment Variables (for Node.js `@steipete/peekaboo-mcp` server):**
     *   `PEEKABOO_AI_PROVIDERS`: Crucial for `analyze`. Explain format (`provider/model,provider/model`), effect, and that `analyze` reports "not configured" if unset. List recognized `provider` names ("ollama", "openai").
     *   `OPENAI_API_KEY` (and similar for other cloud providers): How they are used.
     *   `PEEKABOO_OLLAMA_BASE_URL`: Default and purpose.
     *   `PEEKABOO_LOG_LEVEL`: For `pino` logger. Values and default.
-    *   `PEEKABOO_LOG_FILE`: Path to the server's log file. Default: `path.join(os.tmpdir(), 'peekaboo-mcp.log')`.
+    *   `PEEKABOO_LOG_FILE`: Path to the server's log file. Default: `~/Library/Logs/peekaboo-mcp.log` with fallback to temp directory.
     *   `PEEKABOO_DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
     *   `PEEKABOO_CONSOLE_LOGGING`: For development.
     *   `PEEKABOO_CLI_PATH`: For overriding bundled Swift CLI.
@@ -535,7 +688,7 @@ Comprehensive testing is crucial for ensuring the reliability and correctness of
 E2E tests validate the entire system flow from the perspective of an MCP client. They ensure all components work together as expected.
 
 1.  **Setup:**
-    *   The test runner will start an instance of the `peekaboo-mcp` server.
+    *   The test runner will start an instance of the `@steipete/peekaboo-mcp` server.
     *   The environment will be configured appropriately (e.g., `PEEKABOO_AI_PROVIDERS` pointing to mock services or controlled real services, `PEEKABOO_LOG_LEVEL` set for test visibility).
     *   A mock Swift CLI could be used for some scenarios to control its output precisely, or the real Swift CLI for full integration.
 
