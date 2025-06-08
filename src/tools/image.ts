@@ -32,9 +32,16 @@ export async function imageToolHandler(
     const isScreenCapture = !input.app_target || input.app_target.startsWith("screen:");
     let formatWarning: string | undefined;
     
-    // Auto-fallback to PNG for screen captures with format 'data'
+    // Validate format - if invalid, fall back to PNG
+    const validFormats = ["png", "jpg", "data"];
     let effectiveFormat = input.format;
-    if (isScreenCapture && input.format === "data") {
+    if (effectiveFormat && !validFormats.includes(effectiveFormat)) {
+      logger.warn(`Invalid format '${effectiveFormat}' provided, falling back to PNG`);
+      effectiveFormat = "png";
+    }
+    
+    // Auto-fallback to PNG for screen captures with format 'data'
+    if (isScreenCapture && effectiveFormat === "data") {
       logger.warn("Screen capture with format 'data' auto-fallback to PNG due to size constraints");
       effectiveFormat = "png";
       formatWarning = "Note: Screen captures cannot use format 'data' due to large image sizes that cause JavaScript stack overflow. Automatically using PNG format instead.";

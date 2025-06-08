@@ -1086,4 +1086,60 @@ describe("Image Tool", () => {
       ]);
     });
   });
+
+  describe("imageToolHandler - Invalid format handling", () => {
+    it("should fall back to PNG when format is empty string", async () => {
+      // Mock resolveImagePath
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      const mockResponse = mockSwiftCli.captureImage("screen", {
+        path: MOCK_SAVED_FILE_PATH,
+        format: "png",
+      });
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      // Test with empty string format - schema should preprocess to undefined
+      const result = await imageToolHandler(
+        { format: "" as any },
+        mockContext,
+      );
+
+      expect(result.isError).toBeUndefined();
+      // Should use PNG format
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--format", "png"]),
+        mockLogger,
+      );
+    });
+
+    it("should fall back to PNG when format is an invalid value", async () => {
+      // Mock resolveImagePath
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      const mockResponse = mockSwiftCli.captureImage("screen", {
+        path: MOCK_SAVED_FILE_PATH,
+        format: "png",
+      });
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      // Test with invalid format - schema should preprocess to 'png'
+      const result = await imageToolHandler(
+        { format: "invalid" as any },
+        mockContext,
+      );
+
+      expect(result.isError).toBeUndefined();
+      // Should use PNG format
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--format", "png"]),
+        mockLogger,
+      );
+    });
+  });
 });

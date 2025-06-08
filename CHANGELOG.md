@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - A warning message is included in the response explaining why the fallback occurred
   - Application window captures can still use `format: "data"` without restrictions
   - This prevents agents from encountering "Maximum call stack size exceeded" errors when capturing screens
+- Invalid format values now automatically fall back to PNG instead of returning an error
+  - Empty strings, null values, and unrecognized format values are converted to PNG
+  - This provides a better user experience by gracefully handling invalid inputs
 
 ## [1.0.0-beta.18] - 2025-06-08
 

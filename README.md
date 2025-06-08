@@ -499,6 +499,7 @@ Captures macOS screen content and optionally analyzes it. Window shadows/frames 
 *   `format` (string, optional, default: `"png"`): Specifies the output image format or data return type.
     *   `"png"` or `"jpg"`: Saves the image to the specified `path` in the chosen format. If `path` is not provided, this behaves like `"data"`.
     *   `"data"`: Returns Base64 encoded PNG data of the image directly in the MCP response. If `path` is also specified, a PNG file is also saved to that `path`.
+    *   Invalid values (empty strings, null, or unrecognized formats) automatically fall back to `"png"`.
 *   `capture_focus` (string, optional, default: `"background"`): Controls window focus behavior during capture.
     *   `"background"`: Captures without altering the current window focus (default).
     *   `"foreground"`: Attempts to bring the target application/window to the foreground before capture. This might be necessary for certain applications or to ensure a specific window is captured if multiple are open.
