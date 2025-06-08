@@ -143,15 +143,15 @@ export const imageToolSchema = z.object({
       }
       // Convert to lowercase for case-insensitive matching
       const lowerVal = String(val).toLowerCase();
-      
+
       // Map common aliases
       const formatMap: Record<string, string> = {
         "jpeg": "jpg",
         "png": "png",
         "jpg": "jpg",
-        "data": "data"
+        "data": "data",
       };
-      
+
       // Return mapped value or fall back to 'png'
       return formatMap[lowerVal] || "png";
     },
