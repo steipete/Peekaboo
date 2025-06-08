@@ -302,7 +302,14 @@ struct ImageCommand: ParsableCommand {
         let targetWindow: WindowData
         if let windowTitle {
             guard let window = windows.first(where: { $0.title.contains(windowTitle) }) else {
-                throw CaptureError.windowNotFound
+                // Create detailed error message with available window titles for debugging
+                let availableTitles = windows.map { "\"\($0.title)\"" }.joined(separator: ", ")
+                let searchTerm = windowTitle
+                let appName = targetApp.localizedName ?? "Unknown"
+                
+                Logger.shared.debug("Window not found. Searched for '\(searchTerm)' in \(appName). Available windows: \(availableTitles)")
+                
+                throw CaptureError.windowTitleNotFound(searchTerm, appName, availableTitles)
             }
             targetWindow = window
         } else if let windowIndex {
@@ -314,7 +321,9 @@ struct ImageCommand: ParsableCommand {
             targetWindow = windows[0] // frontmost window
         }
 
-        let fileName = FileNameGenerator.generateFileName(appName: targetApp.localizedName, windowTitle: targetWindow.title, format: format)
+        let fileName = FileNameGenerator.generateFileName(
+            appName: targetApp.localizedName, windowTitle: targetWindow.title, format: format
+        )
         let filePath = OutputPathResolver.getOutputPath(basePath: path, fileName: fileName)
 
         try captureWindow(targetWindow, to: filePath)
@@ -463,7 +472,6 @@ struct ImageCommand: ParsableCommand {
         }
     }
 
-
     private func captureWindow(_ window: WindowData, to path: String) throws(CaptureError) {
         do {
             let semaphore = DispatchSemaphore(value: 0)
@@ -494,11 +502,4 @@ struct ImageCommand: ParsableCommand {
             throw CaptureError.windowCaptureFailed(error)
         }
     }
-
-
-
-
-
-
-
 }
