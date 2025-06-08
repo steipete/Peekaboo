@@ -203,7 +203,7 @@ struct ImageCaptureLogicTests {
             (.accessibilityPermissionDenied, .PERMISSION_ERROR_ACCESSIBILITY),
             (.appNotFound("test"), .APP_NOT_FOUND),
             (.windowNotFound, .WINDOW_NOT_FOUND),
-            (.fileWriteError("test"), .FILE_IO_ERROR),
+            (.fileWriteError("test", nil), .FILE_IO_ERROR),
             (.invalidArgument("test"), .INVALID_ARGUMENT),
             (.unknownError("test"), .UNKNOWN_ERROR)
         ]

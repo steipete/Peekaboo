@@ -287,7 +287,7 @@ struct ScreenshotValidationTests {
     private func saveImage(_ image: NSImage, to path: String, format: ImageFormat) throws {
         guard let tiffData = image.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: tiffData) else {
-            throw CaptureError.fileWriteError(path)
+            throw CaptureError.fileWriteError(path, nil)
         }
 
         let data: Data? = switch format {
@@ -298,7 +298,7 @@ struct ScreenshotValidationTests {
         }
 
         guard let imageData = data else {
-            throw CaptureError.fileWriteError(path)
+            throw CaptureError.fileWriteError(path, nil)
         }
 
         try imageData.write(to: URL(fileURLWithPath: path))
