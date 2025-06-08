@@ -335,6 +335,51 @@ describe("AI Providers Utility", () => {
       expect(result).toBe("No response from Ollama");
     });
 
+    it("should use default prompt for empty question with Ollama", async () => {
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ response: "This image shows a window with text content." }),
+      });
+      const result = await analyzeImageWithProvider(
+        { provider: "ollama", model: "llava" },
+        "path/img.png",
+        imageBase64,
+        "", // Empty question
+        mockLogger,
+      );
+      expect(result).toBe("This image shows a window with text content.");
+      const fetchCall = (global.fetch as vi.Mock).mock.calls[0];
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.prompt).toBe("Please describe what you see in this image.");
+    });
+
+    it("should use default prompt for whitespace-only question with OpenAI", async () => {
+      process.env.OPENAI_API_KEY = "test-key";
+      mockChatCompletionsCreate.mockResolvedValueOnce({
+        choices: [{ message: { content: "This image displays a user interface." } }],
+      });
+
+      const result = await analyzeImageWithProvider(
+        { provider: "openai", model: "gpt-4o" },
+        "path/img.png",
+        imageBase64,
+        "   ", // Whitespace-only question
+        mockLogger,
+      );
+      expect(result).toBe("This image displays a user interface.");
+      expect(mockChatCompletionsCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: expect.arrayContaining([
+            expect.objectContaining({
+              content: expect.arrayContaining([
+                { type: "text", text: "Please describe what you see in this image." },
+              ]),
+            }),
+          ]),
+        }),
+      );
+    });
+
     it("should throw error for anthropic provider (not implemented)", async () => {
       await expect(
         analyzeImageWithProvider(

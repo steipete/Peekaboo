@@ -37,7 +37,7 @@ describe("Analyze Tool - Edge Cases", () => {
   });
 
   describe("Empty question handling", () => {
-    it("should handle empty string question", async () => {
+    it("should handle empty string question with default prompt", async () => {
       mockParseAIProviders.mockReturnValue([
         { provider: "ollama", model: "llava:latest" }
       ]);
@@ -49,8 +49,8 @@ describe("Analyze Tool - Edge Cases", () => {
       
       mockReadImageAsBase64.mockResolvedValue("base64imagedata");
       
-      // Mock Ollama returning "No response from Ollama" for empty question
-      mockAnalyzeImageWithProvider.mockResolvedValue("No response from Ollama");
+      // Mock Ollama returning a description of the image
+      mockAnalyzeImageWithProvider.mockResolvedValue("This image shows a desktop window with various UI elements.");
 
       const result = await analyzeToolHandler(
         { 
@@ -69,11 +69,11 @@ describe("Analyze Tool - Edge Cases", () => {
       );
 
       expect(result.content[0].type).toBe("text");
-      expect(result.content[0].text).toBe("No response from Ollama");
+      expect(result.content[0].text).toBe("This image shows a desktop window with various UI elements.");
       expect(result.model_used).toBe("ollama/llava:latest");
     });
 
-    it("should handle whitespace-only question", async () => {
+    it("should handle whitespace-only question with default prompt", async () => {
       mockParseAIProviders.mockReturnValue([
         { provider: "ollama", model: "llava:latest" }
       ]);
@@ -84,7 +84,7 @@ describe("Analyze Tool - Edge Cases", () => {
       });
       
       mockReadImageAsBase64.mockResolvedValue("base64imagedata");
-      mockAnalyzeImageWithProvider.mockResolvedValue("No response from Ollama");
+      mockAnalyzeImageWithProvider.mockResolvedValue("This image shows a screenshot of an application.");
 
       const result = await analyzeToolHandler(
         { 
@@ -102,10 +102,10 @@ describe("Analyze Tool - Edge Cases", () => {
         mockLogger,
       );
 
-      expect(result.content[0].text).toBe("No response from Ollama");
+      expect(result.content[0].text).toBe("This image shows a screenshot of an application.");
     });
 
-    it("should handle question with only newlines", async () => {
+    it("should handle question with only newlines with default prompt", async () => {
       mockParseAIProviders.mockReturnValue([
         { provider: "ollama", model: "llava:latest" }
       ]);
@@ -116,7 +116,7 @@ describe("Analyze Tool - Edge Cases", () => {
       });
       
       mockReadImageAsBase64.mockResolvedValue("base64imagedata");
-      mockAnalyzeImageWithProvider.mockResolvedValue("No response from Ollama");
+      mockAnalyzeImageWithProvider.mockResolvedValue("This image displays a user interface with multiple sections.");
 
       const result = await analyzeToolHandler(
         { 
@@ -134,7 +134,7 @@ describe("Analyze Tool - Edge Cases", () => {
         mockLogger,
       );
 
-      expect(result.content[0].text).toBe("No response from Ollama");
+      expect(result.content[0].text).toBe("This image displays a user interface with multiple sections.");
     });
   });
 

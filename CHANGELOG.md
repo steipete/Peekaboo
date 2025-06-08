@@ -30,7 +30,7 @@ Peekaboo MCP is now production-ready! This release marks the culmination of exte
 - Robust permission handling for Screen Recording and Accessibility
 
 ### Requirements
-- macOS 15.0 or later (Sequoia)
+- macOS 14.0 or later (Sonoma)
 - Node.js 18 or later
 - Screen Recording permission (for capture features)
 - Accessibility permission (optional, for foreground window detection)

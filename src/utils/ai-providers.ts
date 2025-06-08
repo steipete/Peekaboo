@@ -106,6 +106,9 @@ async function analyzeWithOllama(
 
   logger.debug({ model, baseUrl }, "Analyzing image with Ollama");
 
+  // Default to describing the image if no question is provided
+  const prompt = question.trim() || "Please describe what you see in this image.";
+
   const response = await fetch(`${baseUrl}/api/generate`, {
     method: "POST",
     headers: {
@@ -113,7 +116,7 @@ async function analyzeWithOllama(
     },
     body: JSON.stringify({
       model,
-      prompt: question,
+      prompt,
       images: [imageBase64],
       stream: false,
     }),
@@ -147,13 +150,16 @@ async function analyzeWithOpenAI(
 
   const openai = new OpenAI({ apiKey });
 
+  // Default to describing the image if no question is provided
+  const prompt = question.trim() || "Please describe what you see in this image.";
+
   const response = await openai.chat.completions.create({
     model: model || "gpt-4o",
     messages: [
       {
         role: "user",
         content: [
-          { type: "text", text: question },
+          { type: "text", text: prompt },
           {
             type: "image_url",
             image_url: {

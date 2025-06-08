@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 
 @main
-@available(macOS 10.15, *)
+@available(macOS 14.0, *)
 struct PeekabooCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "peekaboo",

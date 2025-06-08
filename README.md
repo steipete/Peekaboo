@@ -4,7 +4,7 @@
 
 [![npm version](https://badge.fury.io/js/%40steipete%2Fpeekaboo-mcp.svg)](https://www.npmjs.com/package/@steipete/peekaboo-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![macOS](https://img.shields.io/badge/macOS-15.0%2B-blue.svg)](https://www.apple.com/macos/)
+[![macOS](https://img.shields.io/badge/macOS-14.0%2B-blue.svg)](https://www.apple.com/macos/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 
 Peekaboo is a macOS-only MCP server that enables AI agents to capture screenshots of applications, windows, or the entire system, with optional visual question answering through local or remote AI models.
@@ -33,7 +33,7 @@ Read more about the design philosophy and implementation details in the [blog po
 
 ### Requirements
 
-- **macOS 15.0+** (Sequoia or later)
+- **macOS 14.0+** (Sonoma or later)
 - **Node.js 20.0+**
 - **Screen Recording Permission** (you'll be prompted on first use)
 
