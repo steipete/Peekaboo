@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: macos-14
+    runs-on: macos-latest
     
     strategy:
       matrix:
@@ -21,13 +21,25 @@ jobs:
     
     - name: Set up Xcode
       run: |
-        # Try to find the best available Xcode version
-        if [ -d "/Applications/Xcode_16.4.app" ]; then
-          DEVELOPER_DIR="/Applications/Xcode_16.4.app/Contents/Developer"
-          echo "Using Xcode 16.4"
-        elif [ -d "/Applications/Xcode_16.3.app" ]; then
-          DEVELOPER_DIR="/Applications/Xcode_16.3.app/Contents/Developer"
-          echo "Using Xcode 16.3"
+        # Try to find the best available Xcode version with Swift 6.0+
+        if [ -d "/Applications/Xcode_16.2.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.2.app/Contents/Developer"
+          echo "Using Xcode 16.2"
+        elif [ -d "/Applications/Xcode_16.1.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.1.app/Contents/Developer"
+          echo "Using Xcode 16.1"
+        elif [ -d "/Applications/Xcode_16.0.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.0.app/Contents/Developer"
+          echo "Using Xcode 16.0"
+        elif [ -d "/Applications/Xcode_15.4.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.4.app/Contents/Developer"
+          echo "Using Xcode 15.4"
+        elif [ -d "/Applications/Xcode_15.3.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.3.app/Contents/Developer"
+          echo "Using Xcode 15.3"
+        elif [ -d "/Applications/Xcode_15.2.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.2.app/Contents/Developer"
+          echo "Using Xcode 15.2"
         elif [ -d "/Applications/Xcode.app" ]; then
           DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
           echo "Using default Xcode"
@@ -95,7 +107,7 @@ jobs:
         fail_ci_if_error: false
 
   build-swift:
-    runs-on: macos-14
+    runs-on: macos-latest
     timeout-minutes: 30
     
     # Xcode will be selected dynamically in the setup step
@@ -105,13 +117,25 @@ jobs:
     
     - name: Set up Xcode
       run: |
-        # Try to find the best available Xcode version
-        if [ -d "/Applications/Xcode_16.4.app" ]; then
-          DEVELOPER_DIR="/Applications/Xcode_16.4.app/Contents/Developer"
-          echo "Using Xcode 16.4"
-        elif [ -d "/Applications/Xcode_16.3.app" ]; then
-          DEVELOPER_DIR="/Applications/Xcode_16.3.app/Contents/Developer"
-          echo "Using Xcode 16.3"
+        # Try to find the best available Xcode version with Swift 6.0+
+        if [ -d "/Applications/Xcode_16.2.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.2.app/Contents/Developer"
+          echo "Using Xcode 16.2"
+        elif [ -d "/Applications/Xcode_16.1.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.1.app/Contents/Developer"
+          echo "Using Xcode 16.1"
+        elif [ -d "/Applications/Xcode_16.0.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.0.app/Contents/Developer"
+          echo "Using Xcode 16.0"
+        elif [ -d "/Applications/Xcode_15.4.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.4.app/Contents/Developer"
+          echo "Using Xcode 15.4"
+        elif [ -d "/Applications/Xcode_15.3.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.3.app/Contents/Developer"
+          echo "Using Xcode 15.3"
+        elif [ -d "/Applications/Xcode_15.2.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.2.app/Contents/Developer"
+          echo "Using Xcode 15.2"
         elif [ -d "/Applications/Xcode.app" ]; then
           DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
           echo "Using default Xcode"
