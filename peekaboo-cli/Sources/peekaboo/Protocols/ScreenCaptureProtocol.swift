@@ -1,24 +1,21 @@
 import Foundation
-
-#if os(macOS)
 import CoreGraphics
-#endif
 
 /// Protocol defining cross-platform screen capture functionality
 protocol ScreenCaptureProtocol: Sendable {
-    /// Captures the entire screen
-    /// - Parameter screenIndex: Index of the screen to capture (0-based)
-    /// - Returns: Captured image data
+    /// Captures a screenshot of the specified screen
+    /// - Parameter screenIndex: Index of the screen to capture (0 for primary)
+    /// - Returns: PNG image data
     func captureScreen(screenIndex: Int) async throws -> Data
     
-    /// Captures a specific window
+    /// Captures a screenshot of a specific window
     /// - Parameters:
     ///   - windowId: Platform-specific window identifier
-    ///   - bounds: Optional bounds to capture within the window
-    /// - Returns: Captured image data
+    ///   - bounds: Optional bounds to crop the capture
+    /// - Returns: PNG image data
     func captureWindow(windowId: String, bounds: CGRect?) async throws -> Data
     
-    /// Gets available screens
+    /// Gets information about available screens
     /// - Returns: Array of screen information
     func getAvailableScreens() async throws -> [ScreenInfo]
     
@@ -28,17 +25,23 @@ protocol ScreenCaptureProtocol: Sendable {
 }
 
 /// Cross-platform screen information
-struct ScreenInfo: Sendable, Codable {
+struct ScreenInfo: Sendable, Codable, Identifiable {
+    let id = UUID()
     let index: Int
     let bounds: CGRect
-    let name: String?
+    let name: String
     let isPrimary: Bool
     
-    init(index: Int, bounds: CGRect, name: String? = nil, isPrimary: Bool = false) {
+    init(index: Int, bounds: CGRect, name: String, isPrimary: Bool) {
         self.index = index
         self.bounds = bounds
         self.name = name
         self.isPrimary = isPrimary
     }
 }
+
+// MARK: - CGRect Sendable Conformance
+extension CGRect: @unchecked Sendable {}
+extension CGPoint: @unchecked Sendable {}
+extension CGSize: @unchecked Sendable {}
 

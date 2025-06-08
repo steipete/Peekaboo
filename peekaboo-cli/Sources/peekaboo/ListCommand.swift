@@ -1,6 +1,9 @@
-import AppKit
 import ArgumentParser
 import Foundation
+
+#if os(macOS)
+import AppKit
+#endif
 
 struct ListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -27,16 +30,53 @@ struct AppsSubcommand: AsyncParsableCommand {
     func run() async throws {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
-        do {
-            try PermissionsChecker.requireScreenRecordingPermission()
+        // Check platform support
+        guard PlatformFactory.isSupported else {
+            let error = CaptureError.platformNotSupported(PlatformFactory.currentPlatform)
+            handleError(error)
+            throw ExitCode(Int32(1))
+        }
+        
+        let capabilities = PlatformFactory.capabilities
+        guard capabilities.applicationFinding else {
+            let error = CaptureError.featureNotSupported("Application listing", PlatformFactory.currentPlatform)
+            handleError(error)
+            throw ExitCode(Int32(1))
+        }
 
-            let applications = ApplicationFinder.getAllRunningApplications()
-            let data = ApplicationListData(applications: applications)
+        do {
+            // Check permissions using platform-specific checker
+            let permissionsChecker = PlatformFactory.createPermissionsChecker()
+            let hasPermission = await permissionsChecker.hasScreenRecordingPermission()
+            
+            if !hasPermission {
+                let instructions = permissionsChecker.getPermissionInstructions()
+                Logger.shared.error("Screen recording permission required. \(instructions)")
+                let error = CaptureError.screenRecordingPermissionDenied
+                handleError(error)
+                throw ExitCode(Int32(1))
+            }
+
+            let applicationFinder = PlatformFactory.createApplicationFinder()
+            let applications = try await applicationFinder.getRunningApplications()
+            
+            // Convert to the expected format
+            let appInfos = applications.map { app in
+                ApplicationInfo(
+                    app_name: app.name,
+                    bundle_id: app.bundleIdentifier ?? "",
+                    pid: Int32(app.processId ?? 0),
+                    is_active: app.isRunning,
+                    window_count: 0 // This would need to be calculated separately
+                )
+            }
+            
+            let data = ApplicationListData(applications: appInfos)
 
             if jsonOutput {
                 outputSuccess(data: data)
             } else {
-                printApplicationList(applications)
+                printApplicationList(appInfos)
             }
 
         } catch {
@@ -48,58 +88,25 @@ struct AppsSubcommand: AsyncParsableCommand {
     private func handleError(_ error: Error) {
         let captureError: CaptureError = if let err = error as? CaptureError {
             err
-        } else if let appError = error as? ApplicationError {
-            switch appError {
-            case let .notFound(identifier):
-                .appNotFound(identifier)
-            case let .ambiguous(identifier, _):
-                .invalidArgument("Ambiguous application identifier: '\(identifier)'")
-            }
         } else {
-            .unknownError(error.localizedDescription)
+            CaptureError.unknownError(error.localizedDescription)
         }
 
-        if jsonOutput {
-            let code: ErrorCode = switch captureError {
-            case .screenRecordingPermissionDenied:
-                .PERMISSION_ERROR_SCREEN_RECORDING
-            case .accessibilityPermissionDenied:
-                .PERMISSION_ERROR_ACCESSIBILITY
-            default:
-                .INTERNAL_SWIFT_ERROR
-            }
-            outputError(
-                message: captureError.localizedDescription,
-                code: code,
-                details: "Failed to list applications"
-            )
-        } else {
-            fputs("Error: \(captureError.localizedDescription)\n", stderr)
-        }
-        // Don't call exit() here - let the caller handle process termination
+        ImageErrorHandler.handleError(captureError, jsonOutput: jsonOutput)
     }
 
-    func printApplicationList(_ applications: [ApplicationInfo]) {
-        let output = formatApplicationList(applications)
-        print(output)
-    }
+    private func printApplicationList(_ applications: [ApplicationInfo]) {
+        print("Running Applications:")
+        print("====================")
 
-    func formatApplicationList(_ applications: [ApplicationInfo]) -> String {
-        var output = "Running Applications (\(applications.count)):\n\n"
-
-        for (index, app) in applications.enumerated() {
-            output += "\(index + 1). \(app.app_name)\n"
-            output += "   Bundle ID: \(app.bundle_id)\n"
-            output += "   PID: \(app.pid)\n"
-            output += "   Status: \(app.is_active ? "Active" : "Background")\n"
-            // Only show window count if it's not 1
-            if app.window_count != 1 {
-                output += "   Windows: \(app.window_count)\n"
-            }
-            output += "\n"
+        for app in applications {
+            let activeStatus = app.is_active ? "●" : "○"
+            let bundleInfo = app.bundle_id.isEmpty ? "" : " (\(app.bundle_id))"
+            print("\(activeStatus) \(app.app_name)\(bundleInfo) [PID: \(app.pid)]")
         }
 
-        return output
+        print("\nTotal: \(applications.count) applications")
+        print("● = Active, ○ = Background")
     }
 }
 
@@ -112,40 +119,80 @@ struct WindowsSubcommand: AsyncParsableCommand {
     @Option(name: .long, help: "Target application identifier")
     var app: String
 
-    @Option(name: .long, help: "Include additional window details (comma-separated: off_screen,bounds,ids)")
-    var includeDetails: String?
-
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
+
+    @Option(name: .long, help: "Window details to include")
+    var details: [WindowDetailOption] = []
 
     func run() async throws {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
+        // Check platform support
+        guard PlatformFactory.isSupported else {
+            let error = CaptureError.platformNotSupported(PlatformFactory.currentPlatform)
+            handleError(error)
+            throw ExitCode(Int32(1))
+        }
+        
+        let capabilities = PlatformFactory.capabilities
+        guard capabilities.windowManagement else {
+            let error = CaptureError.featureNotSupported("Window management", PlatformFactory.currentPlatform)
+            handleError(error)
+            throw ExitCode(Int32(1))
+        }
+
         do {
-            try PermissionsChecker.requireScreenRecordingPermission()
+            // Check permissions
+            let permissionsChecker = PlatformFactory.createPermissionsChecker()
+            let hasAccessibility = await permissionsChecker.hasAccessibilityPermission()
+            
+            if !hasAccessibility {
+                let instructions = permissionsChecker.getPermissionInstructions()
+                Logger.shared.error("Accessibility permission required. \(instructions)")
+                let error = CaptureError.accessibilityPermissionDenied
+                handleError(error)
+                throw ExitCode(Int32(1))
+            }
 
-            // Find the target application
-            let targetApp = try ApplicationFinder.findApplication(identifier: app)
+            // Find the application
+            let applicationFinder = PlatformFactory.createApplicationFinder()
+            let apps = try await applicationFinder.findApplications(matching: app)
+            
+            guard !apps.isEmpty else {
+                throw CaptureError.appNotFound(app)
+            }
+            
+            let targetApp = apps.first!
+            
+            // Get windows for the application
+            let windowManager = PlatformFactory.createWindowManager()
+            let windows = try await windowManager.getWindows(for: targetApp.id)
 
-            // Parse include details options
-            let detailOptions = parseIncludeDetails()
-
-            // Get windows for the app
-            let windows = try WindowManager.getWindowsInfoForApp(
-                pid: targetApp.processIdentifier,
-                includeOffScreen: detailOptions.contains(.off_screen),
-                includeBounds: detailOptions.contains(.bounds),
-                includeIDs: detailOptions.contains(.ids)
-            )
+            // Convert to the expected format
+            let windowInfos = windows.enumerated().map { index, window in
+                WindowInfo(
+                    window_title: window.title,
+                    window_id: UInt32(window.id) ?? nil,
+                    window_index: index,
+                    bounds: details.contains(.bounds) ? WindowBounds(
+                        x_coordinate: Int(window.bounds.minX),
+                        y_coordinate: Int(window.bounds.minY),
+                        width: Int(window.bounds.width),
+                        height: Int(window.bounds.height)
+                    ) : nil,
+                    is_on_screen: details.contains(.off_screen) ? window.isVisible : nil
+                )
+            }
 
             let targetAppInfo = TargetApplicationInfo(
-                app_name: targetApp.localizedName ?? "Unknown",
+                app_name: targetApp.name,
                 bundle_id: targetApp.bundleIdentifier,
-                pid: targetApp.processIdentifier
+                pid: Int32(targetApp.processId ?? 0)
             )
 
             let data = WindowListData(
-                windows: windows,
+                windows: windowInfos,
                 target_application_info: targetAppInfo
             )
 
@@ -164,97 +211,52 @@ struct WindowsSubcommand: AsyncParsableCommand {
     private func handleError(_ error: Error) {
         let captureError: CaptureError = if let err = error as? CaptureError {
             err
-        } else if let appError = error as? ApplicationError {
-            switch appError {
-            case let .notFound(identifier):
-                .appNotFound(identifier)
-            case let .ambiguous(identifier, _):
-                .invalidArgument("Ambiguous application identifier: '\(identifier)'")
-            }
         } else {
-            .unknownError(error.localizedDescription)
+            CaptureError.unknownError(error.localizedDescription)
         }
 
-        if jsonOutput {
-            let code: ErrorCode = switch captureError {
-            case .screenRecordingPermissionDenied:
-                .PERMISSION_ERROR_SCREEN_RECORDING
-            case .accessibilityPermissionDenied:
-                .PERMISSION_ERROR_ACCESSIBILITY
-            case .appNotFound:
-                .APP_NOT_FOUND
-            default:
-                .INTERNAL_SWIFT_ERROR
-            }
-            outputError(
-                message: captureError.localizedDescription,
-                code: code,
-                details: "Failed to list windows"
-            )
-        } else {
-            fputs("Error: \(captureError.localizedDescription)\n", stderr)
-        }
-        // Don't call exit() here - let the caller handle process termination
-    }
-
-    private func parseIncludeDetails() -> Set<WindowDetailOption> {
-        guard let detailsString = includeDetails else {
-            return []
-        }
-
-        let components = detailsString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-        var options: Set<WindowDetailOption> = []
-
-        for component in components {
-            if let option = WindowDetailOption(rawValue: component) {
-                options.insert(option)
-            }
-        }
-
-        return options
+        ImageErrorHandler.handleError(captureError, jsonOutput: jsonOutput)
     }
 
     private func printWindowList(_ data: WindowListData) {
-        let app = data.target_application_info
-        let windows = data.windows
+        let appInfo = data.target_application_info
+        print("Windows for \(appInfo.app_name) [PID: \(appInfo.pid)]:")
+        print("=" + String(repeating: "=", count: appInfo.app_name.count + 20))
 
-        print("Windows for \(app.app_name)")
-        if let bundleId = app.bundle_id {
-            print("Bundle ID: \(bundleId)")
-        }
-        print("PID: \(app.pid)")
-        print("Total Windows: \(windows.count)")
-        print()
-
-        if windows.isEmpty {
+        if data.windows.isEmpty {
             print("No windows found.")
             return
         }
 
-        for (index, window) in windows.enumerated() {
-            print("\(index + 1). \"\(window.window_title)\"")
+        for (index, window) in data.windows.enumerated() {
+            print("[\(index)] \(window.window_title)")
+
+            if let bounds = window.bounds {
+                print("    Position: (\(bounds.x_coordinate), \(bounds.y_coordinate))")
+                print("    Size: \(bounds.width) × \(bounds.height)")
+            }
 
             if let windowId = window.window_id {
-                print("   Window ID: \(windowId)")
+                print("    Window ID: \(windowId)")
             }
 
             if let isOnScreen = window.is_on_screen {
-                print("   On Screen: \(isOnScreen ? "Yes" : "No")")
+                print("    On Screen: \(isOnScreen ? "Yes" : "No")")
             }
 
-            if let bounds = window.bounds {
-                print("   Bounds: (\(bounds.x_coordinate), \(bounds.y_coordinate)) \(bounds.width)×\(bounds.height)")
+            if index < data.windows.count - 1 {
+                print()
             }
-
-            print()
         }
+
+        print("\nTotal: \(data.windows.count) windows")
     }
 }
 
 struct ServerStatusSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "server_status",
-        abstract: "Check server permissions status"
+        commandName: "server-status",
+        abstract: "Show platform and capability status"
     )
 
     @Flag(name: .long, help: "Output results in JSON format")
@@ -263,31 +265,50 @@ struct ServerStatusSubcommand: AsyncParsableCommand {
     func run() async throws {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
-        let screenRecording = PermissionsChecker.checkScreenRecordingPermission()
-        let accessibility = PermissionsChecker.checkAccessibilityPermission()
-
-        let permissions = ServerPermissions(
-            screen_recording: screenRecording,
-            accessibility: accessibility
-        )
-
-        let data = ServerStatusData(permissions: permissions)
+        let capabilities = PlatformFactory.capabilities
+        let permissionsChecker = PlatformFactory.createPermissionsChecker()
+        
+        let screenRecordingPermission = await permissionsChecker.hasScreenRecordingPermission()
+        let accessibilityPermission = await permissionsChecker.hasAccessibilityPermission()
 
         if jsonOutput {
-            outputSuccess(data: data)
+            let status = [
+                "platform": PlatformFactory.currentPlatform,
+                "supported": PlatformFactory.isSupported,
+                "capabilities": [
+                    "screen_capture": capabilities.screenCapture,
+                    "window_management": capabilities.windowManagement,
+                    "application_finding": capabilities.applicationFinding,
+                    "permissions": capabilities.permissions
+                ],
+                "permissions": [
+                    "screen_recording": screenRecordingPermission,
+                    "accessibility": accessibilityPermission
+                ]
+            ] as [String: Any]
+            
+            let jsonData = try JSONSerialization.data(withJSONObject: status, options: .prettyPrinted)
+            print(String(data: jsonData, encoding: .utf8) ?? "{}")
         } else {
-            print("Server Permissions Status:")
-            print("  Screen Recording: \(screenRecording ? "✅ Granted" : "❌ Not granted")")
-            print("  Accessibility: \(accessibility ? "✅ Granted" : "❌ Not granted")")
+            print("🌍 Platform: \(PlatformFactory.currentPlatform)")
+            print("✅ Supported: \(PlatformFactory.isSupported ? "Yes" : "No")")
+            print()
+            print("📋 Capabilities:")
+            print("   Screen Capture: \(capabilities.screenCapture ? "✅" : "❌")")
+            print("   Window Management: \(capabilities.windowManagement ? "✅" : "❌")")
+            print("   Application Finding: \(capabilities.applicationFinding ? "✅" : "❌")")
+            print("   Permissions: \(capabilities.permissions ? "✅" : "❌")")
+            print()
+            print("🔐 Permissions:")
+            print("   Screen Recording: \(screenRecordingPermission ? "✅ Granted" : "❌ Required")")
+            print("   Accessibility: \(accessibilityPermission ? "✅ Granted" : "❌ Required")")
+            
+            if !screenRecordingPermission || !accessibilityPermission {
+                print()
+                print("ℹ️  Permission Instructions:")
+                print(permissionsChecker.getPermissionInstructions())
+            }
         }
     }
 }
 
-struct ServerPermissions: Codable {
-    let screen_recording: Bool
-    let accessibility: Bool
-}
-
-struct ServerStatusData: Codable {
-    let permissions: ServerPermissions
-}
