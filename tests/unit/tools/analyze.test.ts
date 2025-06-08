@@ -645,5 +645,109 @@ describe("Analyze Tool", () => {
       expect(analyzeToolSchema.safeParse(inputWithoutProvider).success).toBe(true);
       expect(analyzeToolSchema.safeParse(inputWithProvider).success).toBe(true);
     });
+
+    it("should accept hidden path parameter for backward compatibility", () => {
+      // Test that the hidden 'path' parameter is accepted and works
+      const inputWithPath = {
+        path: "/path/to/image.png",
+        question: "What is this?",
+      };
+      
+      const inputWithBothPaths = {
+        image_path: "/path/to/primary.png",
+        path: "/path/to/fallback.png",
+        question: "What is this?",
+      };
+      
+      // Both should pass validation
+      expect(analyzeToolSchema.safeParse(inputWithPath).success).toBe(true);
+      expect(analyzeToolSchema.safeParse(inputWithBothPaths).success).toBe(true);
+      
+      // When both are provided, image_path should take precedence
+      const parsedWithBoth = analyzeToolSchema.parse(inputWithBothPaths);
+      expect(parsedWithBoth.image_path).toBe("/path/to/primary.png");
+      expect((parsedWithBoth as any).path).toBe("/path/to/fallback.png");
+    });
+
+    it("should handle hidden path parameter in tool handler", async () => {
+      process.env.PEEKABOO_AI_PROVIDERS = "ollama/llava";
+      mockParseAIProviders.mockReturnValue([
+        { provider: "ollama", model: "llava" },
+      ]);
+      mockDetermineProviderAndModel.mockResolvedValue({
+        provider: "ollama",
+        model: "llava",
+      });
+      mockAnalyzeImageWithProvider.mockResolvedValue("Analysis complete");
+
+      // Test with only path parameter (should use fallback)
+      const inputWithOnlyPath: any = {
+        path: "/path/to/fallback.png",
+        question: "What is this?",
+      };
+
+      const result = await analyzeToolHandler(inputWithOnlyPath, mockContext);
+
+      expect(mockReadImageAsBase64).toHaveBeenCalledWith("/path/to/fallback.png");
+      expect(result.isError).toBeUndefined();
+    });
+
+    it("should handle empty provider_config gracefully", async () => {
+      process.env.PEEKABOO_AI_PROVIDERS = "ollama/llava";
+      mockParseAIProviders.mockReturnValue([
+        { provider: "ollama", model: "llava" },
+      ]);
+      mockDetermineProviderAndModel.mockResolvedValue({
+        provider: "ollama",
+        model: "llava",
+      });
+      mockAnalyzeImageWithProvider.mockResolvedValue("Analysis complete");
+
+      const inputWithEmptyProviderConfig: AnalyzeToolInput = {
+        image_path: "/path/to/image.png",
+        question: "What is this?",
+        provider_config: {} as any, // Empty object should be handled gracefully
+      };
+
+      const result = await analyzeToolHandler(inputWithEmptyProviderConfig, mockContext);
+
+      expect(result.isError).toBeUndefined();
+      expect(result.analysis_text).toBe("Analysis complete");
+      // Should call determineProviderAndModel with empty object that gets treated as "auto"
+      expect(mockDetermineProviderAndModel).toHaveBeenCalledWith(
+        {},
+        expect.arrayContaining([{ provider: "ollama", model: "llava" }]),
+        mockLogger,
+      );
+    });
+
+    it("should handle null provider_config gracefully", async () => {
+      process.env.PEEKABOO_AI_PROVIDERS = "ollama/llava";
+      mockParseAIProviders.mockReturnValue([
+        { provider: "ollama", model: "llava" },
+      ]);
+      mockDetermineProviderAndModel.mockResolvedValue({
+        provider: "ollama",
+        model: "llava",
+      });
+      mockAnalyzeImageWithProvider.mockResolvedValue("Analysis complete");
+
+      const inputWithNullProviderConfig: AnalyzeToolInput = {
+        image_path: "/path/to/image.png",
+        question: "What is this?",
+        provider_config: null as any, // null should be handled gracefully
+      };
+
+      const result = await analyzeToolHandler(inputWithNullProviderConfig, mockContext);
+
+      expect(result.isError).toBeUndefined();
+      expect(result.analysis_text).toBe("Analysis complete");
+      // Should call determineProviderAndModel with null
+      expect(mockDetermineProviderAndModel).toHaveBeenCalledWith(
+        null,
+        expect.arrayContaining([{ provider: "ollama", model: "llava" }]),
+        mockLogger,
+      );
+    });
   });
 });

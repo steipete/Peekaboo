@@ -10,6 +10,7 @@ import { performAutomaticAnalysis } from "../utils/image-analysis.js";
 import { buildImageSummary } from "../utils/image-summary.js";
 import { buildSwiftCliArgs, resolveImagePath } from "../utils/image-cli-args.js";
 import { parseAIProviders } from "../utils/ai-providers.js";
+import * as path from "path";
 
 export { imageToolSchema } from "../types/index.js";
 
@@ -36,6 +37,18 @@ export async function imageToolHandler(
     // The format here is already normalized (lowercase, jpeg->jpg mapping applied)
     let effectiveFormat = input.format;
 
+    // Defensive validation: ensure format is one of the valid values
+    // This should not be necessary due to schema preprocessing, but provides extra safety
+    const validFormats = ["png", "jpg", "data"];
+    if (effectiveFormat && !validFormats.includes(effectiveFormat)) {
+      logger.warn(
+        { originalFormat: effectiveFormat, fallbackFormat: "png" },
+        `Invalid format '${effectiveFormat}' detected, falling back to PNG`,
+      );
+      effectiveFormat = "png";
+      formatWarning = `Invalid format '${input.format}' was provided. Automatically using PNG format instead.`;
+    }
+
     // Auto-fallback to PNG for screen captures with format 'data'
     if (isScreenCapture && effectiveFormat === "data") {
       logger.warn("Screen capture with format 'data' auto-fallback to PNG due to size constraints");
@@ -46,11 +59,38 @@ export async function imageToolHandler(
     // Determine effective path and format for Swift CLI
     const swiftFormat = effectiveFormat === "data" ? "png" : (effectiveFormat || "png");
 
+    // Create a corrected input object if format or path needs to be adjusted
+    let correctedInput = input;
+
+    // If format was corrected and we have a path, update the file extension to match the actual format
+    if (input.format && input.format !== effectiveFormat && input.path) {
+      const originalPath = input.path;
+      const parsedPath = path.parse(originalPath);
+
+      // Map format to appropriate extension
+      const extensionMap: { [key: string]: string } = {
+        "png": ".png",
+        "jpg": ".jpg",
+        "jpeg": ".jpg",
+        "data": ".png", // data format saves as PNG
+      };
+
+      const newExtension = extensionMap[effectiveFormat || "png"] || ".png";
+      const correctedPath = path.join(parsedPath.dir, parsedPath.name + newExtension);
+
+      logger.debug(
+        { originalPath, correctedPath, originalFormat: input.format, correctedFormat: effectiveFormat },
+        "Correcting file extension to match format",
+      );
+
+      correctedInput = { ...input, path: correctedPath };
+    }
+
     // Resolve the effective path using the centralized logic
-    const { effectivePath, tempDirUsed: tempDir } = await resolveImagePath(input, logger);
+    const { effectivePath, tempDirUsed: tempDir } = await resolveImagePath(correctedInput, logger);
     _tempDirUsed = tempDir;
 
-    const args = buildSwiftCliArgs(input, effectivePath, swiftFormat, logger);
+    const args = buildSwiftCliArgs(correctedInput, effectivePath, swiftFormat, logger);
 
     const swiftResponse = await executeSwiftCli(args, logger, { timeout: 30000 });
 
@@ -257,7 +297,7 @@ export async function imageToolHandler(
     }
     if (!analysisSucceeded && analysisAttempted) {
       result.isError = true;
-      result._meta = { ...result._meta, analysis_error: analysisText };
+      result._meta = { ...(result._meta || {}), analysis_error: analysisText };
     }
 
     return result;

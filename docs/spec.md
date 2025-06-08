@@ -145,9 +145,9 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
       format: z.enum(["png", "jpg", "data"]).optional().default("png").describe(
         "Output format. 'png' or 'jpg' save to 'path' (if provided). " +
         "'data' returns Base64 encoded PNG data inline; if 'path' is also given, saves a PNG file to 'path' too. " +
-        "If 'path' is not given, 'format' defaults to 'data' behavior (inline PNG data returned). " +
-        "Note: Screen captures cannot use 'data' format due to large image sizes causing JavaScript stack overflow. " +
-        "The tool will automatically fall back to PNG format for screen captures."
+        "For application window captures: If 'path' is not given, 'format' defaults to 'data' behavior (inline PNG data returned). " +
+        "For screen captures: Cannot use 'data' format due to large image sizes causing JavaScript stack overflow. " +
+        "Screen captures always save to files (temp directory if no path specified) with automatic PNG format fallback."
       ),
       capture_focus: z.enum(["background", "foreground"])
         .optional().default("background").describe(
@@ -365,7 +365,7 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
     *   `--format <FormatEnum?>`: `FormatEnum` is `png, jpg`. Default `png`.
     *   `--capture-focus <FocusEnum?>`: `FocusEnum` is `background, foreground`. Default `background`.
 *   **Behavior:**
-    *   Implements fuzzy app matching. On ambiguity, returns JSON error with `code: "AMBIGUOUS_APP_IDENTIFIER"` and lists potential matches in `error.details` or `error.message`.
+    *   Implements fuzzy app matching. When multiple exact matches exist (e.g., "claude" and "Claude"), captures all windows from all matching applications rather than returning an error. Only truly ambiguous fuzzy matches return JSON errors with `code: "AMBIGUOUS_APP_IDENTIFIER"`.
     *   Always attempts to exclude window shadow/frame (`CGWindowImageOption.boundsIgnoreFraming` or `screencapture -o` if shelled out for PDF). No cursor is captured.
     *   **Background Capture (`--capture-focus background` or default):**
         *   Primary method: Uses `CGWindowListCopyWindowInfo` to identify target window(s)/screen(s).
@@ -404,7 +404,7 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
 *   **Behavior:**
     *   `apps`: Uses `NSWorkspace.shared.runningApplications`. For each app, retrieves `localizedName`, `bundleIdentifier`, `processIdentifier` (pid), `isActive`. To get `window_count`, it performs a `CGWindowListCopyWindowInfo` call filtered by the app's PID and counts on-screen windows.
     *   `windows`:
-        *   Resolves `app_identifier` using fuzzy matching. If ambiguous, returns JSON error.
+        *   Resolves `app_identifier` using fuzzy matching. If multiple exact matches exist, captures all windows from all matching applications.
         *   Uses `CGWindowListCopyWindowInfo` filtered by the target app's PID.
         *   If `--include-details` contains `"off_screen"`, uses `CGWindowListOption.optionAllScreenWindows` (and includes `kCGWindowIsOnscreen` boolean in output). Otherwise, uses `CGWindowListOption.optionOnScreenOnly`.
         *   Extracts `kCGWindowName` (title).

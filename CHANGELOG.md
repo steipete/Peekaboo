@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.21] - 2025-06-08
+
+### Security
+- **Critical security fix for malformed app targets**
+  - Fixed vulnerability where malformed app targets with multiple leading colons (e.g., "::::::::::::::::Finder") created empty app names that would match ALL system processes
+  - Enhanced input validation to prevent unintended broad process matching
+  - Added defensive parsing logic with fallback to screen mode for invalid inputs
+  - Comprehensive test coverage for edge cases and malformed inputs
+
+### Changed
+- **Multiple exact app matches now capture all windows instead of erroring**
+  - When multiple applications have exact matches (e.g., "claude" and "Claude"), the system now captures all windows from all matching applications
+  - This replaces the previous behavior of throwing an ambiguous match error
+  - Window indices are sequential across all matched applications
+  - Each saved file preserves the original application name in `item_label`
+  - Only truly ambiguous fuzzy matches still return errors
+  - Comprehensive test coverage for various multiple match scenarios
+
+### Fixed
+- **Enhanced error handling and user experience**
+  - Improved window title matching error messages with available window titles and URL guidance
+  - Fixed path traversal error reporting to show correct file system errors instead of permission errors
+  - Added case-insensitive handling for window specifiers (WINDOW_TITLE, window_title, etc.)
+  - Enhanced backward compatibility with hidden path parameters in analyze tool
+- **Format validation improvements**
+  - Added defensive format validation with automatic PNG fallback for invalid formats
+  - Improved file extension correction when format is changed
+  - Better handling of edge cases in image processing
+
 ## [1.0.0-beta.20] - 2025-06-08
 
 ### Added

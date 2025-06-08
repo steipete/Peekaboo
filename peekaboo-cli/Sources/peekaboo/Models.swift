@@ -150,6 +150,7 @@ enum CaptureError: Error, LocalizedError {
     case invalidDisplayID
     case captureCreationFailed(Error?)
     case windowNotFound
+    case windowTitleNotFound(String, String, String) // searchTerm, appName, availableTitles
     case windowCaptureFailed(Error?)
     case fileWriteError(String, Error?)
     case appNotFound(String)
@@ -178,6 +179,13 @@ enum CaptureError: Error, LocalizedError {
             return message
         case .windowNotFound:
             return "The specified window could not be found."
+        case let .windowTitleNotFound(searchTerm, appName, availableTitles):
+            var message = "Window with title containing '\(searchTerm)' not found in \(appName)."
+            if !availableTitles.isEmpty {
+                message += " Available windows: \(availableTitles)."
+            }
+            message += " Note: For URLs, try without the protocol (e.g., 'example.com:8080' instead of 'http://example.com:8080')."
+            return message
         case let .windowCaptureFailed(underlyingError):
             var message = "Failed to capture the specified window."
             if let error = underlyingError {
@@ -225,6 +233,7 @@ enum CaptureError: Error, LocalizedError {
         case .invalidDisplayID: 13
         case .captureCreationFailed: 14
         case .windowNotFound: 15
+        case .windowTitleNotFound: 21
         case .windowCaptureFailed: 16
         case .fileWriteError: 17
         case .appNotFound: 18

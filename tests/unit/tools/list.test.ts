@@ -896,4 +896,91 @@ describe("List Tool", () => {
       expect(result.content[0].text).toContain("Matches found: Calendar (com.apple.iCal), Console (com.apple.Console), Cursor (com.todesktop.230313mzl4w4u92)");
     });
   });
+
+  describe("include_window_details array parsing", () => {
+    it("should parse JSON string array correctly", () => {
+      const input = {
+        item_type: "application_windows" as const,
+        app: "chrome",
+        include_window_details: '["ids", "bounds", "off_screen"]'
+      };
+      
+      const result = listToolSchema.parse(input);
+      expect(result.include_window_details).toEqual(["ids", "bounds", "off_screen"]);
+    });
+
+    it("should handle comma-separated string", () => {
+      const input = {
+        item_type: "application_windows" as const,
+        app: "chrome", 
+        include_window_details: "ids,bounds,off_screen"
+      };
+      
+      const result = listToolSchema.parse(input);
+      expect(result.include_window_details).toEqual(["ids", "bounds", "off_screen"]);
+    });
+
+    it("should handle single string value", () => {
+      const input = {
+        item_type: "application_windows" as const,
+        app: "chrome",
+        include_window_details: "ids"
+      };
+      
+      const result = listToolSchema.parse(input);
+      expect(result.include_window_details).toEqual(["ids"]);
+    });
+
+    it("should handle empty string as undefined", () => {
+      const input = {
+        item_type: "application_windows" as const,
+        app: "chrome",
+        include_window_details: ""
+      };
+      
+      const result = listToolSchema.parse(input);
+      expect(result.include_window_details).toBeUndefined();
+    });
+
+    it("should handle proper array as-is", () => {
+      const input = {
+        item_type: "application_windows" as const,
+        app: "chrome",
+        include_window_details: ["ids", "bounds", "off_screen"]
+      };
+      
+      const result = listToolSchema.parse(input);
+      expect(result.include_window_details).toEqual(["ids", "bounds", "off_screen"]);
+    });
+
+    it("should handle undefined/null values", () => {
+      const input1 = {
+        item_type: "application_windows" as const,
+        app: "chrome",
+        include_window_details: undefined
+      };
+      
+      const input2 = {
+        item_type: "application_windows" as const,
+        app: "chrome",
+        include_window_details: null
+      };
+      
+      const result1 = listToolSchema.parse(input1);
+      const result2 = listToolSchema.parse(input2);
+      
+      expect(result1.include_window_details).toBeUndefined();
+      expect(result2.include_window_details).toBeUndefined();
+    });
+
+    it("should validate enum values after parsing", () => {
+      const input = {
+        item_type: "application_windows" as const,
+        app: "chrome",
+        include_window_details: '["ids", "invalid_option", "bounds"]'
+      };
+      
+      expect(() => listToolSchema.parse(input)).toThrow();
+    });
+  });
 });

@@ -125,7 +125,16 @@ export const imageToolSchema = z.object({
     "Use `'AppName:WINDOW_INDEX:Index'` (e.g., `'Preview:WINDOW_INDEX:0'`) for a window of 'AppName' at that index.\n" +
     "Ensure components are correctly colon-separated.",
   ),
-  path: z.string().optional().describe(
+  path: z.preprocess(
+    (val) => {
+      // Handle null, undefined, empty string, or literal "null" string by returning undefined
+      if (val === null || val === undefined || val === "" || val === "null") {
+        return undefined;
+      }
+      return val;
+    },
+    z.string().optional(),
+  ).describe(
     "Optional. Base absolute path for saving the image.\n" +
     "Relevant if `format` is `'png'`, `'jpg'`, or if `'data'` is used with the intention to also save the file.\n" +
     "If a `question` is provided and `path` is omitted, a temporary path is used for image capture, and this temporary file is deleted after analysis.",
