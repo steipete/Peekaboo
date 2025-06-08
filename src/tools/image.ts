@@ -31,7 +31,7 @@ export async function imageToolHandler(
     // Check if this is a screen capture
     const isScreenCapture = !input.app_target || input.app_target.startsWith("screen:");
     let formatWarning: string | undefined;
-    
+
     // Validate format - if invalid, fall back to PNG
     const validFormats = ["png", "jpg", "data"];
     let effectiveFormat = input.format;
@@ -39,7 +39,7 @@ export async function imageToolHandler(
       logger.warn(`Invalid format '${effectiveFormat}' provided, falling back to PNG`);
       effectiveFormat = "png";
     }
-    
+
     // Auto-fallback to PNG for screen captures with format 'data'
     if (isScreenCapture && effectiveFormat === "data") {
       logger.warn("Screen capture with format 'data' auto-fallback to PNG due to size constraints");
@@ -65,10 +65,10 @@ export async function imageToolHandler(
       );
       const errorMessage = swiftResponse.error?.message || "Unknown error";
       const errorDetails = swiftResponse.error?.details;
-      const fullErrorMessage = errorDetails 
+      const fullErrorMessage = errorDetails
         ? `${errorMessage}\n${errorDetails}`
         : errorMessage;
-        
+
       return {
         content: [
           {
@@ -204,7 +204,7 @@ export async function imageToolHandler(
       summary += `\nAnalysis ${analysisSucceeded ? "succeeded" : "failed/skipped"}.`;
     }
     content.push({ type: "text", text: summary });
-    
+
     // Add format warning if applicable
     if (formatWarning) {
       content.push({ type: "text", text: formatWarning });

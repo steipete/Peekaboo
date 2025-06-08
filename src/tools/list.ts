@@ -121,10 +121,10 @@ export async function listToolHandler(
       logger.error({ error: swiftResponse.error }, "Swift CLI returned error");
       const errorMessage = swiftResponse.error?.message || "Unknown error";
       const errorDetails = swiftResponse.error?.details;
-      const fullErrorMessage = errorDetails 
+      const fullErrorMessage = errorDetails
         ? `${errorMessage}\n${errorDetails}`
         : errorMessage;
-        
+
       return {
         content: [
           {

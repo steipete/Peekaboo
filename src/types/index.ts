@@ -138,7 +138,9 @@ export const imageToolSchema = z.object({
   format: z.preprocess(
     (val) => {
       // Handle null, undefined, or empty string by returning undefined (will use default)
-      if (val === null || val === undefined || val === "") return undefined;
+      if (val === null || val === undefined || val === "") {
+        return undefined;
+      }
       // If the value is not a valid format, fall back to 'png'
       const validFormats = ["png", "jpg", "data"];
       return validFormats.includes(val as string) ? val : "png";
