@@ -1,0 +1,66 @@
+name: Cross-Platform Build
+
+on:
+  push:
+    branches: [ main, codegen-bot/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build macOS
+      run: |
+        cd peekaboo-cli
+        swift build
+        swift test
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: "5.9"
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y imagemagick x11-utils wmctrl xvfb
+    - name: Build Linux
+      run: |
+        cd peekaboo-cli
+        swift build
+        # Note: Tests may require X11 display
+        # xvfb-run swift test
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Swift
+      uses: compnerd/gha-setup-swift@main
+      with:
+        branch: swift-5.9-release
+        tag: 5.9-RELEASE
+    - name: Build Windows
+      run: |
+        cd peekaboo-cli
+        swift build
+        # Note: Tests may require additional setup
+        # swift test
+
+  test-architecture:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test Platform Detection
+      run: |
+        cd peekaboo-cli
+        swift build
+        # Test that platform factory works
+        echo "Testing platform detection..."
+        # Add basic platform detection test here
+

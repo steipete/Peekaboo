@@ -1,6 +1,9 @@
-import AppKit
 import ArgumentParser
 import Foundation
+
+#if os(macOS)
+import AppKit
+#endif
 
 struct ListCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -23,10 +26,21 @@ struct AppsSubcommand: ParsableCommand {
     func run() {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
-        do {
-            try PermissionsChecker.requireScreenRecordingPermission()
+        // Check platform support
+        guard PlatformFactory.isPlatformSupported() else {
+            handleError(CaptureError.unknownError("Platform not supported"))
+            return
+        }
 
-            let applications = ApplicationFinder.getAllRunningApplications()
+        do {
+            // Use platform factory to get implementations
+            let permissionsManager = PlatformFactory.createPermissionsManager()
+            let applicationFinder = PlatformFactory.createApplicationFinder()
+            
+            // Check permissions
+            try permissionsManager.requireScreenCapturePermission()
+
+            let applications = applicationFinder.getRunningApplications(includeBackground: false)
             let data = ApplicationListData(applications: applications)
 
             if jsonOutput {
@@ -116,32 +130,55 @@ struct WindowsSubcommand: ParsableCommand {
     func run() {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
+        // Check platform support
+        guard PlatformFactory.isPlatformSupported() else {
+            handleError(CaptureError.unknownError("Platform not supported"))
+            return
+        }
+
         do {
-            try PermissionsChecker.requireScreenRecordingPermission()
+            // Use platform factory to get implementations
+            let permissionsManager = PlatformFactory.createPermissionsManager()
+            let applicationFinder = PlatformFactory.createApplicationFinder()
+            let windowManager = PlatformFactory.createWindowManager()
+            
+            // Check permissions
+            try permissionsManager.requireScreenCapturePermission()
 
             // Find the target application
-            let targetApp = try ApplicationFinder.findApplication(identifier: app)
+            let targetApp = try applicationFinder.findApplication(identifier: app)
 
             // Parse include details options
             let detailOptions = parseIncludeDetails()
 
-            // Get windows for the app
-            let windows = try WindowManager.getWindowsInfoForApp(
+            // Get windows for the app - use cross-platform method
+            let windowData = try windowManager.getWindowsForApp(
                 pid: targetApp.processIdentifier,
-                includeOffScreen: detailOptions.contains(.off_screen),
-                includeBounds: detailOptions.contains(.bounds),
-                includeIDs: detailOptions.contains(.ids)
+                includeOffScreen: detailOptions.contains(.off_screen)
             )
-
-            let targetAppInfo = TargetApplicationInfo(
-                app_name: targetApp.localizedName ?? "Unknown",
-                bundle_id: targetApp.bundleIdentifier,
-                pid: targetApp.processIdentifier
-            )
+            
+            // Convert to the expected format for backward compatibility
+            let windows = windowData.map { window in
+                WindowInfo(
+                    window_title: window.title,
+                    window_id: detailOptions.contains(.ids) ? window.windowId : nil,
+                    window_index: window.windowIndex,
+                    bounds: detailOptions.contains(.bounds) ? WindowBounds(
+                        xCoordinate: Int(window.bounds.origin.x),
+                        yCoordinate: Int(window.bounds.origin.y),
+                        width: Int(window.bounds.size.width),
+                        height: Int(window.bounds.size.height)
+                    ) : nil,
+                    is_on_screen: detailOptions.contains(.off_screen) ? window.isOnScreen : nil,
+                    application_name: targetApp.localizedName,
+                    process_id: targetApp.processIdentifier
+                )
+            }
 
             let data = WindowListData(
-                windows: windows,
-                target_application_info: targetAppInfo
+                application_name: targetApp.localizedName ?? app,
+                process_id: targetApp.processIdentifier,
+                windows: windows
             )
 
             if jsonOutput {
