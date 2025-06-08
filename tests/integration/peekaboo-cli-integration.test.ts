@@ -70,7 +70,10 @@ const mockLogger: Logger = {
   levels: { values: { info: 30 }, labels: { "30": "info" } },
 } as unknown as Logger; // Still using unknown for simplicity if full mock is too verbose
 
-describe("Swift CLI Integration Tests", () => {
+// Conditionally skip Swift-dependent tests on non-macOS platforms
+const describeSwiftTests = globalThis.shouldSkipSwiftTests ? describe.skip : describe;
+
+describeSwiftTests("Swift CLI Integration Tests", () => {
   describe("listToolHandler", () => {
     it("should return server_status correctly", async () => {
       const args = listToolSchema.parse({ item_type: "server_status" });

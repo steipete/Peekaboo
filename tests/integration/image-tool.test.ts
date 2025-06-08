@@ -56,7 +56,10 @@ vi.mock("../../src/utils/image-analysis", () => ({
 // Import SwiftCliResponse type
 import { SwiftCliResponse } from "../../src/types";
 
-describe("Image Tool Integration Tests", () => {
+// Conditionally skip Swift-dependent tests on non-macOS platforms
+const describeSwiftTests = globalThis.shouldSkipSwiftTests ? describe.skip : describe;
+
+describeSwiftTests("Image Tool Integration Tests", () => {
   let tempDir: string;
 
   beforeAll(async () => {
@@ -1004,3 +1007,4 @@ describe("Image Tool Integration Tests", () => {
   });
 
 });
+

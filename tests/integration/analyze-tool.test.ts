@@ -73,7 +73,10 @@ const MOCK_IMAGE_PATH = "/mock/path/to/image.png";
 const MOCK_IMAGE_BASE64 = "mockbase64string";
 const MOCK_QUESTION = "What is in this image?";
 
-describe("analyzeToolHandler Integration Tests", () => {
+// Conditionally skip Swift-dependent tests on non-macOS platforms
+const describeSwiftTests = globalThis.shouldSkipSwiftTests ? describe.skip : describe;
+
+describeSwiftTests("analyzeToolHandler Integration Tests", () => {
   let originalReadFileMock: vi.Mock;
 
   beforeEach(async () => {

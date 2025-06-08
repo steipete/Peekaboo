@@ -362,6 +362,51 @@ await use_mcp_tool("peekaboo", "analyze", {
 });
 ```
 
+## Testing
+
+Peekaboo includes comprehensive test suites for both TypeScript and Swift components:
+
+### TypeScript Tests
+
+- **Unit Tests**: Test individual functions and modules in isolation
+- **Integration Tests**: Test tool handlers with mocked Swift CLI
+- **Platform-Specific Tests**: Some integration tests require macOS and Swift binary
+
+```bash
+# Run all tests (requires macOS and Swift binary for integration tests)
+npm test
+
+# Run only unit tests (works on any platform)
+npm run test:unit
+
+# Run TypeScript-only tests (skips Swift-dependent tests, works on Linux)
+npm run test:typescript
+
+# Watch mode for TypeScript-only tests
+npm run test:typescript:watch
+
+# Run with coverage
+npm run test:coverage
+```
+
+### Swift Tests
+
+```bash
+# Run Swift CLI tests (macOS only)
+npm run test:swift
+
+# Run full integration tests (TypeScript + Swift)
+npm run test:integration
+```
+
+### Platform Support
+
+- **macOS**: All tests run (unit, integration, Swift)
+- **Linux/CI**: Only TypeScript tests run (Swift-dependent tests are automatically skipped)
+- **Environment Variables**:
+  - `SKIP_SWIFT_TESTS=true`: Force skip Swift-dependent tests
+  - `CI=true`: Automatically skips Swift-dependent tests
+
 ## Troubleshooting
 
 ### Common Issues
