@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import ScreenCaptureKit
 @testable import peekaboo
 import Testing
 
@@ -26,7 +27,7 @@ struct ScreenshotValidationTests {
         let outputPath = "/tmp/peekaboo-content-test.png"
         defer { try? FileManager.default.removeItem(atPath: outputPath) }
 
-        let captureData = try captureWindowToFile(windowID: windowID, path: outputPath, format: .png)
+        _ = try captureWindowToFile(windowID: windowID, path: outputPath, format: .png)
 
         // Load and analyze the image
         guard let image = NSImage(contentsOfFile: outputPath) else {
@@ -94,7 +95,7 @@ struct ScreenshotValidationTests {
             let path = "/tmp/peekaboo-format-test.\(format.rawValue)"
             defer { try? FileManager.default.removeItem(atPath: path) }
 
-            let captureData = try captureWindowToFile(windowID: windowID, path: path, format: format)
+            _ = try captureWindowToFile(windowID: windowID, path: path, format: format)
 
             #expect(FileManager.default.fileExists(atPath: path))
 
@@ -234,16 +235,9 @@ struct ScreenshotValidationTests {
         path: String,
         format: ImageFormat
     ) throws -> ImageCaptureData {
-        // Create image from window
-        guard let image = CGWindowListCreateImage(
-            .null,
-            .optionIncludingWindow,
-            windowID,
-            [.boundsIgnoreFraming, .nominalResolution]
-        ) else {
-            throw CaptureError.windowCaptureFailed
-        }
-
+        // Use modern ScreenCaptureKit API instead of deprecated CGWindowListCreateImage
+        let image = try captureWindowWithScreenCaptureKit(windowID: windowID)
+        
         // Save to file
         let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
         try saveImage(nsImage, to: path, format: format)
@@ -258,6 +252,57 @@ struct ScreenshotValidationTests {
                 mime_type: format == .png ? "image/png" : "image/jpeg"
             )
         ])
+    }
+    
+    private func captureWindowWithScreenCaptureKit(windowID: CGWindowID) throws -> CGImage {
+        // This needs to be async, so we'll use a semaphore to make it synchronous for the test
+        var capturedImage: CGImage?
+        var captureError: Error?
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        Task {
+            do {
+                // Get available content
+                let availableContent = try await SCShareableContent.current
+                
+                // Find the window by ID
+                guard let scWindow = availableContent.windows.first(where: { $0.windowID == windowID }) else {
+                    throw CaptureError.windowNotFound
+                }
+                
+                // Create content filter for the specific window
+                let filter = SCContentFilter(desktopIndependentWindow: scWindow)
+                
+                // Configure capture settings
+                let configuration = SCStreamConfiguration()
+                configuration.backgroundColor = .clear
+                configuration.shouldBeOpaque = true
+                configuration.showsCursor = false
+                
+                // Capture the image
+                let image = try await SCScreenshotManager.captureImage(
+                    contentFilter: filter,
+                    configuration: configuration
+                )
+                
+                capturedImage = image
+            } catch {
+                captureError = error
+            }
+            semaphore.signal()
+        }
+        
+        semaphore.wait()
+        
+        if let error = captureError {
+            throw error
+        }
+        
+        guard let image = capturedImage else {
+            throw CaptureError.windowCaptureFailed
+        }
+        
+        return image
     }
 
     private func captureDisplayToFile(

@@ -24,7 +24,7 @@ struct LocalIntegrationTests {
         // Check if test host is already running
         let runningApps = NSWorkspace.shared.runningApplications
         if let existingApp = runningApps.first(where: { $0.bundleIdentifier == Self.testHostBundleId }) {
-            existingApp.activate(options: .activateIgnoringOtherApps)
+            existingApp.activate()
             try await Task.sleep(nanoseconds: 500_000_000) // 0.5s
             return existingApp
         }
@@ -36,11 +36,9 @@ struct LocalIntegrationTests {
             throw TestError.invalidPath(testHostPath)
         }
 
-        let app = try NSWorkspace.shared.launchApplication(
-            at: url,
-            options: .default,
-            configuration: [:]
-        )
+        // Use modern NSWorkspace API
+        let configuration = NSWorkspace.OpenConfiguration()
+        let app = try await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
 
         // Wait for app to be ready
         try await Task.sleep(nanoseconds: 1_000_000_000) // 1s
@@ -80,7 +78,7 @@ struct LocalIntegrationTests {
 
     @Test("Capture test host window screenshot", .tags(.screenshot))
     func captureTestHostWindow() async throws {
-        let app = try await launchTestHost()
+        _ = try await launchTestHost()
         defer { terminateTestHost() }
 
         // Wait for window to be visible
@@ -138,7 +136,7 @@ struct LocalIntegrationTests {
         defer { terminateTestHost() }
 
         // Ensure test host is in foreground
-        app.activate(options: .activateIgnoringOtherApps)
+        app.activate()
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5s
 
         // Capture the main screen
@@ -172,7 +170,7 @@ struct LocalIntegrationTests {
 
     @Test("Test permission dialogs", .tags(.permissions))
     func permissionDialogs() async throws {
-        let app = try await launchTestHost()
+        _ = try await launchTestHost()
         defer { terminateTestHost() }
 
         // Check current permissions
@@ -242,14 +240,13 @@ struct LocalIntegrationTests {
         defer { terminateTestHost() }
 
         // Make sure test host is in foreground
-        app.activate(options: .activateIgnoringOtherApps)
+        app.activate()
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5s
 
         // Capture with foreground focus
-        let command = ImageCommand()
+        _ = ImageCommand()
         // Set properties as needed
         // command.app = Self.testHostAppName
-        // command.captureFocus = .foreground
 
         // This would test the actual foreground capture logic
         print("Test host should now be in foreground")
