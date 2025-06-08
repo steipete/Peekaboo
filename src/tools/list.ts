@@ -20,9 +20,18 @@ import { Logger } from "pino";
 
 export const listToolSchema = z
   .object({
-    item_type: z
-      .enum(["running_applications", "application_windows", "server_status"])
-      .optional()
+    item_type: z.preprocess(
+      (val) => {
+        // Convert empty string to undefined
+        if (val === "" || val === null) {
+          return undefined;
+        }
+        return val;
+      },
+      z
+        .enum(["running_applications", "application_windows", "server_status"])
+        .optional()
+    )
       .describe(
         "Specifies the type of items to list. If omitted or empty, it defaults to 'application_windows' if 'app' is provided, otherwise 'running_applications'. Valid options are:\n" +
           "- `running_applications`: Lists all currently running applications.\n" +
