@@ -74,18 +74,27 @@ struct AppsSubcommand: ParsableCommand {
         Foundation.exit(captureError.exitCode)
     }
 
-    private func printApplicationList(_ applications: [ApplicationInfo]) {
-        print("Running Applications (\(applications.count)):")
-        print()
-
+    internal func printApplicationList(_ applications: [ApplicationInfo]) {
+        let output = formatApplicationList(applications)
+        print(output)
+    }
+    
+    internal func formatApplicationList(_ applications: [ApplicationInfo]) -> String {
+        var output = "Running Applications (\(applications.count)):\n\n"
+        
         for (index, app) in applications.enumerated() {
-            print("\(index + 1). \(app.app_name)")
-            print("   Bundle ID: \(app.bundle_id)")
-            print("   PID: \(app.pid)")
-            print("   Status: \(app.is_active ? "Active" : "Background")")
-            print("   Windows: \(app.window_count)")
-            print()
+            output += "\(index + 1). \(app.app_name)\n"
+            output += "   Bundle ID: \(app.bundle_id)\n"
+            output += "   PID: \(app.pid)\n"
+            output += "   Status: \(app.is_active ? "Active" : "Background")\n"
+            // Only show window count if it's not 1
+            if app.window_count != 1 {
+                output += "   Windows: \(app.window_count)\n"
+            }
+            output += "\n"
         }
+        
+        return output
     }
 }
 

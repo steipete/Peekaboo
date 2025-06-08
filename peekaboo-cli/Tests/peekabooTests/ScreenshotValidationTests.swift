@@ -299,7 +299,7 @@ struct ScreenshotValidationTests {
         }
 
         guard let image = capturedImage else {
-            throw CaptureError.windowCaptureFailed
+            throw CaptureError.windowCaptureFailed(nil)
         }
 
         return image
@@ -311,7 +311,7 @@ struct ScreenshotValidationTests {
         format: ImageFormat
     ) throws -> ImageCaptureData {
         guard let image = CGDisplayCreateImage(displayID) else {
-            throw CaptureError.captureCreationFailed
+            throw CaptureError.captureCreationFailed(nil)
         }
 
         let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))

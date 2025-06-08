@@ -102,6 +102,27 @@ struct ImageCommand: ParsableCommand {
         } else {
             .unknownError(error.localizedDescription)
         }
+        
+        // Log the full error details for debugging
+        Logger.shared.debug("Image capture error: \(error)")
+        
+        // If it's a CaptureError with an underlying error, log that too
+        switch captureError {
+        case let .captureCreationFailed(underlyingError):
+            if let underlying = underlyingError {
+                Logger.shared.debug("Underlying capture creation error: \(underlying)")
+            }
+        case let .windowCaptureFailed(underlyingError):
+            if let underlying = underlyingError {
+                Logger.shared.debug("Underlying window capture error: \(underlying)")
+            }
+        case let .fileWriteError(_, underlyingError):
+            if let underlying = underlyingError {
+                Logger.shared.debug("Underlying file write error: \(underlying)")
+            }
+        default:
+            break
+        }
 
         if jsonOutput {
             let code: ErrorCode = switch captureError {
@@ -122,10 +143,22 @@ struct ImageCommand: ParsableCommand {
             default:
                 .CAPTURE_FAILED
             }
+            
+            // Provide additional details for app not found errors
+            var details: String? = nil
+            if case .appNotFound = captureError {
+                let runningApps = NSWorkspace.shared.runningApplications
+                    .filter { $0.activationPolicy == .regular }
+                    .compactMap(\.localizedName)
+                    .sorted()
+                    .joined(separator: ", ")
+                details = "Available applications: \(runningApps)"
+            }
+            
             outputError(
                 message: captureError.localizedDescription,
                 code: code,
-                details: "Image capture operation failed"
+                details: details ?? "Image capture operation failed"
             )
         } else {
             var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
@@ -214,7 +247,15 @@ struct ImageCommand: ParsableCommand {
     }
 
     private func captureApplicationWindow(_ appIdentifier: String) throws -> [SavedFile] {
-        let targetApp = try ApplicationFinder.findApplication(identifier: appIdentifier)
+        let targetApp: NSRunningApplication
+        do {
+            targetApp = try ApplicationFinder.findApplication(identifier: appIdentifier)
+        } catch ApplicationError.notFound(let identifier) {
+            throw CaptureError.appNotFound(identifier)
+        } catch ApplicationError.ambiguous(let identifier, let matches) {
+            let appNames = matches.map { $0.localizedName ?? $0.bundleIdentifier ?? "Unknown" }
+            throw CaptureError.unknownError("Multiple applications match '\(identifier)': \(appNames.joined(separator: ", "))")
+        }
 
         if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
             try PermissionsChecker.requireAccessibilityPermission()
@@ -260,7 +301,15 @@ struct ImageCommand: ParsableCommand {
     }
 
     private func captureAllApplicationWindows(_ appIdentifier: String) throws -> [SavedFile] {
-        let targetApp = try ApplicationFinder.findApplication(identifier: appIdentifier)
+        let targetApp: NSRunningApplication
+        do {
+            targetApp = try ApplicationFinder.findApplication(identifier: appIdentifier)
+        } catch ApplicationError.notFound(let identifier) {
+            throw CaptureError.appNotFound(identifier)
+        } catch ApplicationError.ambiguous(let identifier, let matches) {
+            let appNames = matches.map { $0.localizedName ?? $0.bundleIdentifier ?? "Unknown" }
+            throw CaptureError.unknownError("Multiple applications match '\(identifier)': \(appNames.joined(separator: ", "))")
+        }
 
         if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
             try PermissionsChecker.requireAccessibilityPermission()
@@ -324,7 +373,7 @@ struct ImageCommand: ParsableCommand {
             if isScreenRecordingPermissionError(error) {
                 throw CaptureError.screenRecordingPermissionDenied
             }
-            throw CaptureError.captureCreationFailed
+            throw CaptureError.captureCreationFailed(error)
         }
     }
 
@@ -335,7 +384,7 @@ struct ImageCommand: ParsableCommand {
 
             // Find the display by ID
             guard let scDisplay = availableContent.displays.first(where: { $0.displayID == displayID }) else {
-                throw CaptureError.captureCreationFailed
+                throw CaptureError.captureCreationFailed(nil)
             }
 
             // Create content filter for the entire display
@@ -392,7 +441,7 @@ struct ImageCommand: ParsableCommand {
             if isScreenRecordingPermissionError(error) {
                 throw CaptureError.screenRecordingPermissionDenied
             }
-            throw CaptureError.windowCaptureFailed
+            throw CaptureError.windowCaptureFailed(error)
         }
     }
 

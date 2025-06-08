@@ -272,9 +272,9 @@ struct ModelsTests {
             .contains("Screen recording permission is required")
         )
         #expect(CaptureError.invalidDisplayID.errorDescription == "Invalid display ID provided.")
-        #expect(CaptureError.captureCreationFailed.errorDescription == "Failed to create the screen capture.")
+        #expect(CaptureError.captureCreationFailed(nil).errorDescription == "Failed to create the screen capture.")
         #expect(CaptureError.windowNotFound.errorDescription == "The specified window could not be found.")
-        #expect(CaptureError.windowCaptureFailed.errorDescription == "Failed to capture the specified window.")
+        #expect(CaptureError.windowCaptureFailed(nil).errorDescription == "Failed to capture the specified window.")
         let fileError = CaptureError.fileWriteError("/tmp/test.png", nil)
         #expect(fileError.errorDescription?
             .starts(with: "Failed to write capture file to path: /tmp/test.png.") == true
@@ -292,9 +292,9 @@ struct ModelsTests {
             (.screenRecordingPermissionDenied, 11),
             (.accessibilityPermissionDenied, 12),
             (.invalidDisplayID, 13),
-            (.captureCreationFailed, 14),
+            (.captureCreationFailed(nil), 14),
             (.windowNotFound, 15),
-            (.windowCaptureFailed, 16),
+            (.windowCaptureFailed(nil), 16),
             (.fileWriteError("test", nil), 17),
             (.appNotFound("test"), 18),
             (.invalidWindowIndex(0), 19),
