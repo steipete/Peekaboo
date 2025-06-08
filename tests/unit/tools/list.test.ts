@@ -146,6 +146,7 @@ describe("List Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         ["list", "apps"],
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       expect(result.content[0].text).toContain("Found 2 running applications");
       expect(result.content[0].text).toContain(
@@ -205,6 +206,7 @@ describe("List Tool", () => {
           "ids,bounds,off_screen",
         ],
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       expect(result.content[0].text).toContain(
         "Found 2 windows for application: Safari (com.apple.Safari) - PID: 1234",
@@ -767,6 +769,7 @@ describe("List Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         ["list", "windows", "--app", "TestApp"],
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       expect(result.content[0].text).toContain('"Test Window"');
     });
