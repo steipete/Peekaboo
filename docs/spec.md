@@ -1,4 +1,4 @@
-## Peekaboo: Full & Final Detailed Specification v1.1.2
+## Peekaboo: Full & Final Detailed Specification v1.0.0-beta.17
 https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
 
 **Project Vision:** Peekaboo is a macOS utility exposed via a Node.js MCP server, enabling AI agents to perform advanced screen captures, image analysis via user-configured AI providers, and query application/window information. The core macOS interactions are handled by a native Swift command-line interface (CLI) named `peekaboo`, which is called by the Node.js server. All image captures automatically exclude window shadows/frames.
