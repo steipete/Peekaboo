@@ -153,37 +153,37 @@ struct ImageCommand: ParsableCommand {
 
         return savedFiles
     }
-    
+
     private func getActiveDisplays() throws(CaptureError) -> [CGDirectDisplayID] {
         var displayCount: UInt32 = 0
         let result = CGGetActiveDisplayList(0, nil, &displayCount)
         guard result == .success && displayCount > 0 else {
             throw CaptureError.noDisplaysAvailable
         }
-        
+
         var displays = [CGDirectDisplayID](repeating: 0, count: Int(displayCount))
         let listResult = CGGetActiveDisplayList(displayCount, &displays, nil)
         guard listResult == .success else {
             throw CaptureError.noDisplaysAvailable
         }
-        
+
         return displays
     }
-    
+
     private func captureSpecificScreen(
-        displays: [CGDirectDisplayID], 
+        displays: [CGDirectDisplayID],
         screenIndex: Int
     ) throws(CaptureError) -> [SavedFile] {
         if screenIndex >= 0 && screenIndex < displays.count {
             let displayID = displays[screenIndex]
             let labelSuffix = " (Index \(screenIndex))"
-            return [try captureSingleDisplay(displayID: displayID, index: screenIndex, labelSuffix: labelSuffix)]
+            return try [captureSingleDisplay(displayID: displayID, index: screenIndex, labelSuffix: labelSuffix)]
         } else {
             Logger.shared.debug("Screen index \(screenIndex) is out of bounds. Capturing all screens instead.")
             return try captureAllScreens(displays: displays)
         }
     }
-    
+
     private func captureAllScreens(displays: [CGDirectDisplayID]) throws(CaptureError) -> [SavedFile] {
         var savedFiles: [SavedFile] = []
         for (index, displayID) in displays.enumerated() {
@@ -192,17 +192,17 @@ struct ImageCommand: ParsableCommand {
         }
         return savedFiles
     }
-    
+
     private func captureSingleDisplay(
-        displayID: CGDirectDisplayID, 
-        index: Int, 
+        displayID: CGDirectDisplayID,
+        index: Int,
         labelSuffix: String
     ) throws(CaptureError) -> SavedFile {
         let fileName = generateFileName(displayIndex: index)
         let filePath = getOutputPath(fileName)
-        
+
         try captureDisplay(displayID, to: filePath)
-        
+
         return SavedFile(
             path: filePath,
             item_label: "Display \(index + 1)\(labelSuffix)",
