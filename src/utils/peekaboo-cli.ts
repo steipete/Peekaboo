@@ -102,6 +102,7 @@ function mapExitCodeToErrorMessage(
 export async function executeSwiftCli(
   args: string[],
   logger: Logger,
+  options: { timeout?: number } = {},
 ): Promise<SwiftCliResponse> {
   let cliPath: string;
   try {
@@ -121,13 +122,59 @@ export async function executeSwiftCli(
   // Always add --json-output flag
   const fullArgs = [...args, "--json-output"];
 
-  logger.debug({ command: cliPath, args: fullArgs }, "Executing Swift CLI");
+  // Default timeout of 30 seconds, configurable via options or environment variable
+  const defaultTimeout = parseInt(process.env.PEEKABOO_CLI_TIMEOUT || "30000", 10);
+  const timeoutMs = options.timeout || defaultTimeout;
+
+  logger.debug({ command: cliPath, args: fullArgs, timeoutMs }, "Executing Swift CLI");
 
   return new Promise((resolve) => {
     const process = spawn(cliPath, fullArgs);
 
     let stdout = "";
     let stderr = "";
+    let isResolved = false;
+
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      if (!isResolved) {
+        isResolved = true;
+        
+        // Kill the process with SIGTERM first
+        try {
+          try {
+          process.kill('SIGTERM');
+        } catch (err) {
+          // Process might already be dead
+        }
+        } catch (err) {
+          // Process might already be dead
+        }
+        
+        // Give it a moment to terminate gracefully, then force kill
+        setTimeout(() => {
+          try {
+            // Check if process is still running by trying to send signal 0
+            process.kill(0);
+            // If we get here, process is still alive, so force kill it
+            process.kill('SIGKILL');
+          } catch (err) {
+            // Process is already dead, which is what we want
+          }
+        }, 1000);
+
+        resolve({ 
+          success: false, 
+          error: `Command timed out after ${timeoutMs}ms: ${cliPath} ${args.join(' ')}` 
+        });
+      }
+    }, timeoutMs);
+
+    const cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
 
     process.stdout.on("data", (data: Buffer | string) => {
       stdout += data.toString();
@@ -141,6 +188,13 @@ export async function executeSwiftCli(
     });
 
     process.on("close", (exitCode: number | null) => {
+      cleanup();
+      
+      if (isResolved) {
+        return; // Already resolved due to timeout
+      }
+      isResolved = true;
+
       logger.debug(
         { exitCode, stdout: stdout.slice(0, 200) },
         "Swift CLI completed",
@@ -219,6 +273,13 @@ export async function executeSwiftCli(
     });
 
     process.on("error", (error: Error) => {
+      cleanup();
+      
+      if (isResolved) {
+        return; // Already resolved due to timeout
+      }
+      isResolved = true;
+
       logger.error({ error }, "Failed to spawn Swift CLI process");
       resolve({
         success: false,
@@ -241,14 +302,53 @@ export async function readImageAsBase64(imagePath: string): Promise<string> {
 export async function execPeekaboo(
   args: string[],
   packageRootDir: string,
-  options: { expectSuccess?: boolean } = {},
+  options: { expectSuccess?: boolean; timeout?: number } = {},
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   const cliPath = process.env.PEEKABOO_CLI_PATH || path.resolve(packageRootDir, "peekaboo");
+  const timeoutMs = options.timeout || 15000; // Default 15 seconds for simple commands
 
   return new Promise((resolve) => {
     const process = spawn(cliPath, args);
     let stdout = "";
     let stderr = "";
+    let isResolved = false;
+
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      if (!isResolved) {
+        isResolved = true;
+        
+        // Kill the process
+        try {
+          process.kill('SIGTERM');
+        } catch (err) {
+          // Process might already be dead
+        }
+        
+        // Give it a moment to terminate gracefully, then force kill
+        setTimeout(() => {
+          try {
+            // Check if process is still running by trying to send signal 0
+            process.kill(0);
+            // If we get here, process is still alive, so force kill it
+            process.kill('SIGKILL');
+          } catch (err) {
+            // Process is already dead, which is what we want
+          }
+        }, 1000);
+
+        resolve({ 
+          success: false, 
+          error: `Command timed out after ${timeoutMs}ms: ${cliPath} ${args.join(' ')}` 
+        });
+      }
+    }, timeoutMs);
+
+    const cleanup = () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
 
     process.stdout.on("data", (data) => {
       stdout += data.toString();
@@ -259,6 +359,13 @@ export async function execPeekaboo(
     });
 
     process.on("close", (code) => {
+      cleanup();
+      
+      if (isResolved) {
+        return; // Already resolved due to timeout
+      }
+      isResolved = true;
+
       const success = code === 0;
       if (options.expectSuccess !== false && !success) {
         resolve({ success: false, error: stderr || stdout });
@@ -268,6 +375,13 @@ export async function execPeekaboo(
     });
 
     process.on("error", (err) => {
+      cleanup();
+      
+      if (isResolved) {
+        return; // Already resolved due to timeout
+      }
+      isResolved = true;
+
       resolve({ success: false, error: err.message });
     });
   });
