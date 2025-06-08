@@ -33,7 +33,7 @@ struct AppsSubcommand: ParsableCommand {
         }
 
         do {
-            let applicationFinder = PlatformFactory.shared.createApplicationFinder()
+            let applicationFinder = PlatformFactory.createApplicationFinder()
 
             let applications = applicationFinder.getRunningApplications(includeBackground: false)
             let applicationInfos = applications.map { ApplicationInfo(from: $0) }
