@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
     - uses: actions/checkout@v4
     - name: Set up Xcode
@@ -71,7 +71,7 @@ jobs:
         if exist .build\release\peekaboo.exe (echo Build successful) else (echo Build failed && exit 1)
 
   test-architecture:
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
     - uses: actions/checkout@v4
     - name: Set up Xcode
@@ -86,4 +86,3 @@ jobs:
         echo "Testing platform detection..."
         # Create a simple test to verify platform factory works
         swift run peekaboo --help || echo "Help command test completed"
-
