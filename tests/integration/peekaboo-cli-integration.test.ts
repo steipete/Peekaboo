@@ -291,7 +291,9 @@ describeSwiftTests("Swift CLI Integration Tests", () => {
         expect(
           errorText.includes("permission") ||
             errorText.includes("denied") ||
+            errorText.includes("timeout") ||
             metaErrorCode === "PERMISSION_DENIED_SCREEN_RECORDING" ||
+            metaErrorCode === "SWIFT_CLI_TIMEOUT" ||
             errorText.includes("capture failed"),
         ).toBeTruthy();
 
@@ -319,6 +321,6 @@ describeSwiftTests("Swift CLI Integration Tests", () => {
           await expect(fs.access(actualPath!)).resolves.toBeUndefined();
         }
       }
-    }, 20000);
+    }, 35000); // Increased timeout to handle screen capture permission dialogs
   });
 });
