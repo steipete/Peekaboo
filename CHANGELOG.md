@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.24] - 2025-01-08
+
+### Changed
+- **Complete Swift 6 migration with strict concurrency**
+  - Migrated to Swift 6.0 toolchain with StrictConcurrency enabled
+  - All data models and types now conform to Sendable protocol
+  - Replaced AsyncParsableCommand with ParsableCommand + async adapter pattern
+  - Implemented proper async/sync bridging using DispatchSemaphore for ArgumentParser compatibility
+  - Fixed CLI execution issue where commands were showing help instead of executing
+
+### Improved
+- Enhanced thread safety with @unchecked Sendable for synchronized state
+- Better separation of concerns between async operations and CLI interface
+- More robust error handling in async contexts
+
+## [1.0.0-beta.23] - 2025-01-08
+
+### Changed
+- Initial Swift 6 migration attempt (had execution issues, fixed in beta.24)
+
 ## [1.0.0-beta.22] - 2025-01-08
 
 ### Fixed
