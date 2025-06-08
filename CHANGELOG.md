@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Only errors containing both "permission" and capture-related terms are now considered screen recording issues
 - Enhanced file write error handling with pre-emptive directory checks
 - Added debug logging to permission checker for diagnosing intermittent failures
+- Improved error propagation from deep system APIs
+  - Underlying errors from ScreenCaptureKit and file operations are now captured and logged
+  - Debug logs include full error details for better troubleshooting
+  - Error messages include the original system error descriptions
+- Fixed duplicate error output when ApplicationFinder throws errors
+- Enhanced error details for app not found errors to include list of available applications
 
 ## [1.0.0-beta.19] - 2025-06-08
 

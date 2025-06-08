@@ -189,7 +189,7 @@ describe("Swift CLI Integration Tests", () => {
         const firstContentItem = response.content[0] as PeekabooContentItem;
         // Expect the specific failure message from the handler when Swift CLI fails
         expect(firstContentItem.text?.toLowerCase()).toMatch(
-          /list operation failed: (swift cli execution failed|an unknown error occurred|.*could not be found|no running applications found matching identifier)/i,
+          /list operation failed: (swift cli execution failed|an unknown error occurred|.*could not be found|no running applications found matching identifier|application with identifier.*not found or is not running)/i,
         );
       }
     }, 15000);

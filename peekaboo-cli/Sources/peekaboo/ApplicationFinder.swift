@@ -178,18 +178,10 @@ class ApplicationFinder {
 
             // Find similar app names using fuzzy matching
             let suggestions = findSimilarApplications(identifier: identifier, from: runningApps)
-            let detailsMessage = if !suggestions.isEmpty {
-                "Did you mean: \(suggestions.joined(separator: ", "))?"
-            } else {
-                "Available applications: " +
-                    "\(runningApps.compactMap(\.localizedName).joined(separator: ", "))"
+            if !suggestions.isEmpty {
+                Logger.shared.debug("Did you mean: \(suggestions.joined(separator: ", "))?")
             }
 
-            outputError(
-                message: "No running applications found matching identifier: \(identifier)",
-                code: .APP_NOT_FOUND,
-                details: detailsMessage
-            )
             throw ApplicationError.notFound(identifier)
         }
 
@@ -219,11 +211,7 @@ class ApplicationFinder {
         }
 
         Logger.shared.error("Ambiguous application identifier: \(identifier)")
-        outputError(
-            message: "Multiple applications match identifier '\(identifier)'. Please be more specific.",
-            code: .AMBIGUOUS_APP_IDENTIFIER,
-            details: "Matches found: \(matchDescriptions.joined(separator: ", "))"
-        )
+        Logger.shared.error("Matches found: \(matchDescriptions.joined(separator: ", "))")
     }
 
     private static func findSimilarApplications(identifier: String, from apps: [NSRunningApplication]) -> [String] {

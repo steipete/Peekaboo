@@ -105,9 +105,9 @@ enum CaptureError: Error, LocalizedError {
     case screenRecordingPermissionDenied
     case accessibilityPermissionDenied
     case invalidDisplayID
-    case captureCreationFailed
+    case captureCreationFailed(Error?)
     case windowNotFound
-    case windowCaptureFailed
+    case windowCaptureFailed(Error?)
     case fileWriteError(String, Error?)
     case appNotFound(String)
     case invalidWindowIndex(Int)
@@ -127,12 +127,20 @@ enum CaptureError: Error, LocalizedError {
                 "Please grant it in System Settings > Privacy & Security > Accessibility."
         case .invalidDisplayID:
             return "Invalid display ID provided."
-        case .captureCreationFailed:
-            return "Failed to create the screen capture."
+        case let .captureCreationFailed(underlyingError):
+            var message = "Failed to create the screen capture."
+            if let error = underlyingError {
+                message += " \(error.localizedDescription)"
+            }
+            return message
         case .windowNotFound:
             return "The specified window could not be found."
-        case .windowCaptureFailed:
-            return "Failed to capture the specified window."
+        case let .windowCaptureFailed(underlyingError):
+            var message = "Failed to capture the specified window."
+            if let error = underlyingError {
+                message += " \(error.localizedDescription)"
+            }
+            return message
         case let .fileWriteError(path, underlyingError):
             var message = "Failed to write capture file to path: \(path)."
 
