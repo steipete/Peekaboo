@@ -86,14 +86,8 @@ export async function imageToolHandler(
 
     const captureData = imageData;
 
-    // Determine which files to report as saved
-    if (tempDirUsed) {
-      // Temporary directory was used - don't include in saved_files
-      finalSavedFiles = [];
-    } else {
-      // User provided path or default save behavior - include in saved_files
-      finalSavedFiles = captureData.saved_files || [];
-    }
+    // Always report all saved files
+    finalSavedFiles = captureData.saved_files || [];
 
     if (input.question) {
       analysisAttempted = true;
@@ -231,25 +225,5 @@ export async function imageToolHandler(
       isError: true,
       _meta: { backend_error_code: "UNEXPECTED_HANDLER_ERROR" },
     };
-  } finally {
-    // If we used a temporary directory, we need to clean up all files inside it and the directory itself.
-    if (tempDirUsed) {
-      logger.debug(
-        { tempDir: tempDirUsed },
-        "Attempting to delete temporary capture directory.",
-      );
-      try {
-        await fs.rm(tempDirUsed, { recursive: true, force: true });
-        logger.info(
-          { tempDir: tempDirUsed },
-          "Temporary capture directory deleted.",
-        );
-      } catch (cleanupError) {
-        logger.warn(
-          { error: cleanupError, path: tempDirUsed },
-          "Failed to delete temporary capture directory.",
-        );
-      }
-    }
   }
 }

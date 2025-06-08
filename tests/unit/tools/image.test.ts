@@ -104,12 +104,12 @@ describe("Image Tool", () => {
           expect.objectContaining({ type: "image", data: "base64imagedata" }),
         ]),
       );
-      expect(result.saved_files).toEqual([]);
+      expect(result.saved_files).toEqual(mockResponse.data.saved_files);
       expect(result.analysis_text).toBeUndefined();
       expect(result.model_used).toBeUndefined();
       
-      // Verify cleanup with fs.rm
-      expect(mockFsRm).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR, { recursive: true, force: true });
+      // Verify no cleanup - files are preserved
+      expect(mockFsRm).not.toHaveBeenCalled();
     });
 
     it("should capture screen with format: 'data'", async () => {
@@ -137,10 +137,10 @@ describe("Image Tool", () => {
           expect.objectContaining({ type: "image", data: "base64imagedata" }),
         ]),
       );
-      expect(result.saved_files).toEqual([]);
+      expect(result.saved_files).toEqual(mockResponse.data.saved_files);
       
-      // Verify cleanup
-      expect(mockFsRm).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR, { recursive: true, force: true });
+      // Verify no cleanup - files are preserved
+      expect(mockFsRm).not.toHaveBeenCalled();
     });
 
     it("should save file and return base64 when format: 'data' with path", async () => {
@@ -420,7 +420,7 @@ describe("Image Tool", () => {
       process.env.PEEKABOO_AI_PROVIDERS = "ollama/llava:latest";
     });
 
-    it("should capture, analyze, and delete temp image if no path provided", async () => {
+    it("should capture, analyze, and PRESERVE temp image if no path provided", async () => {
       // Mock resolveImagePath to return temp directory when question is asked
       mockResolveImagePath.mockResolvedValue({
         effectivePath: MOCK_TEMP_IMAGE_DIR,
@@ -464,12 +464,13 @@ describe("Image Tool", () => {
           }),
         ]),
       );
-      expect(result.saved_files).toEqual([]);
+      expect(result.saved_files).toEqual(mockCliResponse.data.saved_files);
       // No base64 in content when question is asked
       expect(
         result.content.some((item) => item.type === "image" && item.data),
       ).toBe(false);
-      expect(mockFsRm).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR, { recursive: true, force: true });
+      // File is no longer removed even when no path provided
+      expect(mockFsRm).not.toHaveBeenCalled();
       expect(result.isError).toBeUndefined();
     });
 
@@ -540,7 +541,8 @@ describe("Image Tool", () => {
       );
       expect(result.isError).toBe(true);
       expect(result.model_used).toBeUndefined();
-      expect(mockFsRm).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR, { recursive: true, force: true });
+      // File is no longer removed on analysis failure
+      expect(mockFsRm).not.toHaveBeenCalled();
     });
 
     it("should handle when AI analysis is not configured", async () => {
@@ -697,8 +699,8 @@ describe("Image Tool", () => {
         "Analysis for Window 1:\nAnalysis for window 1.\n\nAnalysis for Window 2:\nAnalysis for window 2."
       );
       
-      // Verify that the temporary directory is cleaned up
-      expect(mockFsRm).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR, { recursive: true, force: true });
+      // Verify that the temporary directory is no longer cleaned up (files preserved)
+      expect(mockFsRm).not.toHaveBeenCalled();
     });
   });
 

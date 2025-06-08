@@ -505,5 +505,66 @@ describe("Analyze Tool", () => {
         expect(result.isError).toBe(true);
       }
     });
+
+    it("should work with 'path' parameter as alias for 'image_path'", async () => {
+      process.env.PEEKABOO_AI_PROVIDERS = "ollama/llava";
+      mockParseAIProviders.mockReturnValue([
+        { provider: "ollama", model: "llava" },
+      ]);
+      mockDetermineProviderAndModel.mockResolvedValue({
+        provider: "ollama",
+        model: "llava",
+      });
+      mockAnalyzeImageWithProvider.mockResolvedValue("Analysis complete");
+
+      const inputWithPath: AnalyzeToolInput = {
+        path: "/path/to/image.png",
+        question: "What is this?",
+      };
+
+      const result = await analyzeToolHandler(inputWithPath, mockContext);
+
+      expect(mockReadImageAsBase64).toHaveBeenCalledWith("/path/to/image.png");
+      expect(mockAnalyzeImageWithProvider).toHaveBeenCalledWith(
+        { provider: "ollama", model: "llava" },
+        "/path/to/image.png",
+        MOCK_IMAGE_BASE64,
+        "What is this?",
+        mockLogger,
+      );
+      expect(result.content[0].text).toBe("Analysis complete");
+      expect(result.isError).toBeUndefined();
+    });
+
+    it("should prioritize 'image_path' over 'path' when both are provided", async () => {
+      process.env.PEEKABOO_AI_PROVIDERS = "ollama/llava";
+      mockParseAIProviders.mockReturnValue([
+        { provider: "ollama", model: "llava" },
+      ]);
+      mockDetermineProviderAndModel.mockResolvedValue({
+        provider: "ollama",
+        model: "llava",
+      });
+      mockAnalyzeImageWithProvider.mockResolvedValue("Analysis complete");
+
+      const inputWithBoth: AnalyzeToolInput = {
+        image_path: "/priority/image.png",
+        path: "/fallback/image.png",
+        question: "What is this?",
+      };
+
+      const result = await analyzeToolHandler(inputWithBoth, mockContext);
+
+      expect(mockReadImageAsBase64).toHaveBeenCalledWith("/priority/image.png");
+      expect(mockAnalyzeImageWithProvider).toHaveBeenCalledWith(
+        { provider: "ollama", model: "llava" },
+        "/priority/image.png",
+        MOCK_IMAGE_BASE64,
+        "What is this?",
+        mockLogger,
+      );
+      expect(result.content[0].text).toBe("Analysis complete");
+      expect(result.isError).toBeUndefined();
+    });
   });
 });

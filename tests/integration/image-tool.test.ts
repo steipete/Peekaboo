@@ -82,7 +82,6 @@ describe("Image Tool Integration Tests", () => {
   describe("Output Handling", () => {
     it("should capture screen and return base64 data when no arguments are provided", async () => {
       // This test covers the user-reported bug where calling 'image' with no args caused a 'failed to write' error.
-      const rmSpy = vi.spyOn(fs, "rm");
       
       // Mock resolveImagePath to return a temp directory
       mockResolveImagePath.mockResolvedValue({
@@ -112,14 +111,10 @@ describe("Image Tool Integration Tests", () => {
 
       // Verify the result is correct
       expect(result.isError).toBeUndefined();
-      expect(result.saved_files).toEqual([]); // No persistent files
+      // Now returns the temp file in saved_files
+      expect(result.saved_files).toEqual([{ path: MOCK_SAVED_FILE_PATH, mime_type: "image/png" }]);
       const imageContent = result.content.find(c => c.type === "image");
       expect(imageContent?.data).toBe("base64-no-args-test");
-
-      // Verify cleanup using the new method
-      expect(rmSpy).toHaveBeenCalledWith(MOCK_TEMP_DIR, { recursive: true, force: true });
-
-      rmSpy.mockRestore();
     });
 
     it("should return an error if the Swift CLI fails", async () => {
@@ -204,8 +199,13 @@ describe("Image Tool Integration Tests", () => {
         expect.arrayContaining(["image", "--mode", "screen", "--screen-index", "0"]),
         mockContext.logger
       );
-      // Since temp dir was used, saved_files should be empty
-      expect(result.saved_files).toEqual([]);
+      // Since temp dir was used, saved_files now contains the temp file
+      const mockResponse = mockSwiftCli.captureImage("screen", {
+        path: MOCK_SAVED_FILE_PATH,
+        format: "png",
+        item_label: "Display 0 (Index 0)"
+      });
+      expect(result.saved_files).toEqual(mockResponse.data.saved_files);
     });
 
     it("should handle screen:INDEX format (invalid index)", async () => {
@@ -270,8 +270,12 @@ describe("Image Tool Integration Tests", () => {
         expect.arrayContaining(["image", "--mode", "screen", "--screen-index", "99"]),
         mockContext.logger
       );
-      // Since temp dir was used, saved_files should be empty
-      expect(result.saved_files).toEqual([]);
+      // Since temp dir was used, saved_files now contains the temp file
+      expect(result.saved_files).toEqual([{
+        path: MOCK_SAVED_FILE_PATH,
+        mime_type: "image/png",
+        item_label: "All Screens"
+      }]);
     });
 
     it("should handle frontmost app_target (with warning)", async () => {
@@ -536,7 +540,7 @@ describe("Image Tool Integration Tests", () => {
       vi.clearAllMocks();
     });
 
-    it("should analyze image and delete temp file when no path provided", async () => {
+    it("should analyze image and PRESERVE temp file when no path provided", async () => {
       const input: ImageInput = { question: "What is in this image?" };
       
       // Mock resolveImagePath to return temp directory when question is asked
@@ -562,8 +566,12 @@ describe("Image Tool Integration Tests", () => {
       const imageContent = result.content.find((item) => item.type === "image");
       expect(imageContent).toBeUndefined();
       
-      // saved_files should be empty (temp file was deleted)
-      expect(result.saved_files).toEqual([]);
+      // saved_files should now contain the temp file (preserved)
+      const MOCK_SAVED_FILES = mockSwiftCli.captureImage("screen", {
+        path: MOCK_SAVED_FILE_PATH,
+        format: "png"
+      });
+      expect(result.saved_files).toEqual(MOCK_SAVED_FILES.data.saved_files);
     });
 
     it("should analyze image and keep file when path is provided", async () => {
@@ -684,11 +692,69 @@ describe("Image Tool Integration Tests", () => {
       const expectedAnalysisText = "Analysis for Window 1:\nFirst analysis.\n\nAnalysis for Window 2:\nSecond analysis.";
       expect(result.analysis_text).toBe(expectedAnalysisText);
       
-      // Verify that fs.rm was called to clean up the temporary directory
-      expect(fs.rm).toHaveBeenCalledWith(MOCK_TEMP_DIR, { recursive: true, force: true });
+      // Verify saved files now contain all captured files
+      expect(result.saved_files).toEqual([
+        {
+          path: `${MOCK_TEMP_DIR}/window1.png`,
+          mime_type: "image/png",
+          item_label: "Window 1"
+        },
+        {
+          path: `${MOCK_TEMP_DIR}/window2.png`,
+          mime_type: "image/png",
+          item_label: "Window 2"
+        }
+      ]);
+    });
+
+    it("should NOT delete the temporary file when a question is asked", async () => {
+      const input: ImageInput = { question: "What is in this image?" };
       
-      // Verify no saved files (temp files were cleaned up)
-      expect(result.saved_files).toEqual([]);
+      // Mock resolveImagePath to return a temporary directory path
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_DIR,
+        tempDirUsed: MOCK_TEMP_DIR,
+      });
+      
+      // Mock successful screen capture with one or more files
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: {
+          saved_files: [
+            {
+              path: `${MOCK_TEMP_DIR}/captured_image.png`,
+              mime_type: "image/png",
+              item_label: "Screen Capture"
+            }
+          ],
+        },
+        messages: ["Captured 1 image"]
+      });
+      
+      // Mock performAutomaticAnalysis with a successful response
+      mockPerformAutomaticAnalysis.mockResolvedValue({
+        analysisText: "This is a mock analysis of the captured screen.",
+        modelUsed: "mock/test"
+      });
+      
+      // Call imageToolHandler with a question but no path
+      const result = await imageToolHandler(input, mockContext);
+      
+      // Most important assertion: Verify that fs.rm was NOT called
+      expect(fs.rm).not.toHaveBeenCalled();
+      
+      // Verify that result.saved_files is populated with the saved files from Swift CLI
+      expect(result.saved_files).toEqual([
+        {
+          path: `${MOCK_TEMP_DIR}/captured_image.png`,
+          mime_type: "image/png",
+          item_label: "Screen Capture"
+        }
+      ]);
+      
+      // Additional verification: analysis was performed
+      expect(mockPerformAutomaticAnalysis).toHaveBeenCalled();
+      expect(result.analysis_text).toBe("This is a mock analysis of the captured screen.");
     });
   });
 
@@ -810,7 +876,6 @@ describe("Image Tool Integration Tests", () => {
     it("should NOT use PEEKABOO_DEFAULT_SAVE_PATH when question is provided", async () => {
       const MOCK_DEFAULT_PATH = "/default/save/path/for/question/test";
       process.env.PEEKABOO_DEFAULT_SAVE_PATH = MOCK_DEFAULT_PATH;
-      const rmSpy = vi.spyOn(fs, "rm");
       
       // Mock resolveImagePath to return temp directory when question is asked
       mockResolveImagePath.mockResolvedValue({
@@ -827,8 +892,8 @@ describe("Image Tool Integration Tests", () => {
 
       const result = await imageToolHandler({ question: "analyze this" }, mockContext);
 
-      // It should NOT have saved any files permanently
-      expect(result.saved_files).toEqual([]);
+      // It should now save files even with a question (files are preserved)
+      expect(result.saved_files).toEqual([{ path: MOCK_SAVED_FILE_PATH, mime_type: "image/png" }]);
 
       // The handler should not have used the default path
       // We can verify this by checking that the Swift CLI was called with the temp dir, not the default path
@@ -836,12 +901,8 @@ describe("Image Tool Integration Tests", () => {
         expect.arrayContaining(["--path", MOCK_TEMP_DIR]),
         mockContext.logger
       );
-      
-      // And the temp directory should have been cleaned up
-      expect(rmSpy).toHaveBeenCalledWith(MOCK_TEMP_DIR, { recursive: true, force: true });
 
       delete process.env.PEEKABOO_DEFAULT_SAVE_PATH;
-      rmSpy.mockRestore();
     });
   });
 
