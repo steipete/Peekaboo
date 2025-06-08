@@ -5,33 +5,10 @@ import ScreenCaptureKit
 
 class PermissionsChecker {
     static func checkScreenRecordingPermission() -> Bool {
-        // ScreenCaptureKit requires screen recording permission
-        // We check by attempting to get shareable content using RunLoop to avoid semaphore deadlock
-        var result: Result<Bool, Error>?
-        let runLoop = RunLoop.current
-
-        Task {
-            do {
-                // This will fail if we don't have screen recording permission
-                _ = try await SCShareableContent.current
-                result = .success(true)
-            } catch {
-                // If we get an error, we don't have permission
-                Logger.shared.debug("Screen recording permission check failed: \(error)")
-                result = .success(false)
-            }
-            // Stop the run loop
-            CFRunLoopStop(runLoop.getCFRunLoop())
-        }
-
-        // Run the event loop until the task completes
-        runLoop.run()
-
-        guard let result = result else {
-            return false
-        }
-        
-        return (try? result.get()) ?? false
+        // Use a simpler approach - check CGWindowListCreateImage which doesn't require async
+        // This is the traditional way to check screen recording permission
+        let windowList = CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID)
+        return windowList != nil && CFArrayGetCount(windowList) > 0
     }
 
     static func checkAccessibilityPermission() -> Bool {

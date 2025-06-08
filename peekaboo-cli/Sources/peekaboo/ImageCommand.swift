@@ -56,36 +56,14 @@ struct ImageCommand: ParsableCommand {
         Logger.shared.setJsonOutputMode(jsonOutput)
         do {
             try PermissionsChecker.requireScreenRecordingPermission()
-            let savedFiles = try runAsyncCapture()
+            // Use Task.runBlocking pattern for proper async-to-sync bridge
+            let savedFiles = try Task.runBlocking {
+                try await performCapture()
+            }
             outputResults(savedFiles)
         } catch {
             handleError(error)
         }
-    }
-    
-    private func runAsyncCapture() throws -> [SavedFile] {
-        // Create a new event loop using RunLoop to handle async properly
-        var result: Result<[SavedFile], Error>?
-        let runLoop = RunLoop.current
-        
-        Task {
-            do {
-                let savedFiles = try await performCapture()
-                result = .success(savedFiles)
-            } catch {
-                result = .failure(error)
-            }
-            // Stop the run loop
-            CFRunLoopStop(runLoop.getCFRunLoop())
-        }
-        
-        // Run the event loop until the task completes
-        runLoop.run()
-        
-        guard let result = result else {
-            throw CaptureError.captureCreationFailed(nil)
-        }
-        return try result.get()
     }
 
     private func performCapture() async throws -> [SavedFile] {
