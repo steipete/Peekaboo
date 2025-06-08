@@ -1,4 +1,4 @@
-## Peekaboo: Full & Final Detailed Specification v1.1.1
+## Peekaboo: Full & Final Detailed Specification v1.1.2
 https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
 
 **Project Vision:** Peekaboo is a macOS utility exposed via a Node.js MCP server, enabling AI agents to perform advanced screen captures, image analysis via user-configured AI providers, and query application/window information. The core macOS interactions are handled by a native Swift command-line interface (CLI) named `peekaboo`, which is called by the Node.js server. All image captures automatically exclude window shadows/frames.
@@ -132,10 +132,7 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
         "- 'AppName:WINDOW_INDEX:Index': Window of 'AppName' at 'Index'."
       ),
       path: z.string().optional().describe(
-        "Optional. Base absolute path for saving the image. " +
-        "If omitted and no `question` is asked, the tool returns the image as Base64 data without saving a persistent file. " +
-        "If 'format' is 'data' and 'path' is also given, image is saved AND Base64 data is returned. " +
-        "If 'question' is provided and 'path' is omitted, a temporary path is used for capture, and the file is deleted after analysis."
+        "Optional. Base absolute path for saving captured image(s). If this path points to a directory, the Swift CLI will generate unique filenames inside it. If this path is omitted, behavior depends on other parameters: if a 'question' is asked or 'format' is 'data', a temporary directory is created for the capture and cleaned up afterward. Otherwise, if the 'PEEKABOO_DEFAULT_SAVE_PATH' environment variable is set, it will be used. As a final fallback, a temporary directory will be created and the saved file path(s) will be returned in the 'saved_files' output."
       ),
       question: z.string().optional().describe(
         "Optional. If provided, the captured image will be analyzed. " +
@@ -171,12 +168,14 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
             *   Analysis proceeds as described below.
             *   Base64 data is NOT returned in `content` due to analysis, but `analysis_text` is.
     *   **Node.js Handler - Analysis Logic (if `input.question` is provided):**
-        *   An `effectivePath` is determined: if `input.path` is set, it's used. Otherwise, a temporary file path is generated.
-        *   Swift CLI is called to capture the image and save it to `effectivePath`.
-        *   The image file at `effectivePath` is read into a base64 string.
-        *   The AI provider and model are determined automatically by iterating through `PEEKABOO_AI_PROVIDERS` and selecting the first available/operational one (similar to `analyze` tool's "auto" mode, but without client `provider_config` override).
-        *   The image (base64) and `input.question` are sent to the chosen AI provider.
-        *   If a temporary path was used for capture (because `input.path` was omitted), the temporary image file is deleted after analysis.
+        *   An `effectivePath` is determined (user's `input.path` or a temp path).
+        *   Swift CLI is called to capture one or more images and save them to `effectivePath`.
+        *   The handler then iterates through **every** saved image file.
+        *   For each image, the file is read into a base64 string.
+        *   The AI provider and model are determined automatically by iterating through `PEEKABOO_AI_PROVIDERS`.
+        *   The image (base64) and `input.question` are sent to the chosen AI provider for analysis.
+        *   If multiple images are analyzed, the final `analysis_text` in the response is a single formatted string, with each analysis result preceded by a header identifying the corresponding window/display.
+        *   If a temporary path was used, all captured image files and the directory are deleted after all analyses are complete.
         *   The `analysis_text` and `model_used` are added to the tool's response.
         *   Base64 image data (`data` field in `ImageContentItem`) is *not* included in the `content` array of the response when a `question` is asked.
     *   **Node.js Handler - Resilience with `path` and `format: "data"` (No `question`):** If `input.format === "data"`, `input.question` is NOT provided, and `input.path` is specified:
@@ -326,7 +325,7 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
         *   `AMBIGUOUS_APP_IDENTIFIER`
         *   `WINDOW_NOT_FOUND`
         *   `CAPTURE_FAILED`
-        *   `FILE_IO_ERROR`
+        *   `FILE_IO_ERROR`: Enhanced with detailed context about the specific failure (permission denied, directory missing, disk space, etc.)
         *   `INVALID_ARGUMENT`
         *   `SIPS_ERROR`
         *   `INTERNAL_SWIFT_ERROR`
@@ -347,7 +346,13 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
 
 *   **Options (defined using `swift-argument-parser`):**
     *   `--app <String?>`: App identifier.
-    *   `--path <String?>`: Base output directory or file prefix/path.
+    *   `--path <String?>`: Output path for the captured image(s). Can be either a file path or directory path.
+        *   **File Path Logic**: If the path appears to be a file (contains an extension and doesn't end with `/`), the CLI intelligently handles it:
+            *   For single screen capture (`--screen-index` specified): Uses the exact file path provided.
+            *   For multiple screen/window capture: Appends screen/window identifiers to avoid overwriting (e.g., `/tmp/capture.png` becomes `/tmp/capture_1_timestamp.png`, `/tmp/capture_2_timestamp.png`).
+        *   **Directory Path Logic**: If the path appears to be a directory (no extension or ends with `/`), generated filenames are placed in that directory.
+        *   **Auto-Creation**: The CLI automatically creates intermediate directories as needed for both file and directory paths.
+        *   **Edge Cases**: Special directory indicators like `.` and `..` are handled correctly.
     *   `--mode <ModeEnum?>`: `ModeEnum` is `screen, window, multi`. Default logic: if `--app` then `window`, else `screen`.
     *   `--window-title <String?>`: For `mode window`.
     *   `--window-index <Int?>`: For `mode window`.
@@ -512,7 +517,21 @@ Comprehensive testing is crucial for ensuring the reliability and correctness of
 *   **Node.js Server & Swift CLI**: Tests that verify the correct interaction between the Node.js server and the Swift CLI. This involves the Node.js server actually spawning the Swift CLI process and validating that arguments are passed correctly and JSON responses are parsed as expected. These tests might use a real (but controlled) Swift CLI binary.
 *   **Node.js Server & AI Providers**: Tests that verify the interaction with AI providers. These would typically involve mocking the AI provider SDKs/APIs to simulate various responses (success, error, specific content) and ensure the Node.js server handles them correctly.
 
-#### C. End-to-End (E2E) Tests
+#### C. Path Handling & Error Message Tests
+
+*   **Path Logic Testing**: Comprehensive tests for the enhanced Swift CLI path handling:
+    *   **File vs Directory Detection**: Tests validating the logic that determines whether a path is intended as a file or directory.
+    *   **Single vs Multiple Capture**: Tests ensuring single screen captures use exact file paths, while multiple captures append identifiers appropriately.
+    *   **Auto-Creation**: Tests verifying automatic creation of intermediate directories for both file and directory paths.
+    *   **Special Cases**: Tests for edge cases like `.`, `..`, hidden files, unicode characters, and paths with spaces.
+    *   **Extension Preservation**: Tests ensuring file extensions are preserved correctly when appending screen/window identifiers.
+
+*   **Enhanced Error Messages**: Tests for the improved error reporting system:
+    *   **File Write Errors**: Tests validating detailed error messages for permission denied, missing directories, disk space issues, and generic I/O errors.
+    *   **Error Context**: Tests ensuring error messages include helpful guidance for common issues.
+    *   **Error Code Consistency**: Tests verifying error codes remain stable and exit codes are consistent.
+
+#### D. End-to-End (E2E) Tests
 
 E2E tests validate the entire system flow from the perspective of an MCP client. They ensure all components work together as expected.
 

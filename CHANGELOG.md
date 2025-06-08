@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.18] - 2025-01-08
+
+### Fixed
+- Fixed a bug where providing an empty string for the `capture_focus` parameter in the `image` tool would cause a validation error. The schema now correctly handles this case and applies the default value ('background'), making the parameter truly optional.
+
+## [1.0.0-beta.17] - 2025-01-08
+
+### Added
+- The `image` tool's analysis capability has been significantly enhanced. When a capture results in multiple images (e.g., targeting an application with multiple windows) and a `question` is provided, the tool will now perform an AI analysis for **every single captured image**.
+- The analysis results are returned in a single, clearly formatted text block, with each window's analysis presented under a descriptive header.
+
+## [1.0.0-beta.16] - 2025-01-08
+
+### Enhanced
+- **Smart Path Handling**: The Swift CLI now intelligently detects whether a provided path is intended as a file or directory:
+  - **File paths** (with extensions): Uses exact path for single screen captures, appends screen identifiers for multiple captures
+  - **Directory paths** (no extension or trailing `/`): Places generated filenames inside the directory
+  - **Auto-Creation**: Automatically creates intermediate directories as needed for both file and directory paths
+  - **Edge Cases**: Properly handles special directory indicators (`.`, `..`), hidden files, unicode characters, and paths with spaces
+
+### Improved
+- **Enhanced Error Messages**: File write errors now provide detailed, actionable guidance:
+  - Permission denied errors include specific directory permission checks
+  - Missing directory errors suggest ensuring parent directories exist  
+  - Disk space errors clearly indicate insufficient storage
+  - Generic I/O errors include underlying system error details
+
+### Added
+- **Comprehensive Test Coverage**: Added 52+ new tests covering path handling, error scenarios, and edge cases
+- **Path Logic Validation**: Tests for file vs directory detection, multiple format support, and special character handling
+
+### Fixed
+- Fixed original issue where `/tmp/screenshot.png` was incorrectly treated as a directory instead of a filename
+- Improved file extension preservation when appending screen/window identifiers to filenames
+- Enhanced path validation for complex nested directory structures
+
 ## [1.0.0-beta.15] - 2025-01-08
 
 ### Improved
