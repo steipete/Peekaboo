@@ -83,7 +83,10 @@ struct AppsSubcommand: ParsableCommand {
             print("   Bundle ID: \(app.bundle_id)")
             print("   PID: \(app.pid)")
             print("   Status: \(app.is_active ? "Active" : "Background")")
-            print("   Windows: \(app.window_count)")
+            // Only show window count if it's not 1
+            if app.window_count != 1 {
+                print("   Windows: \(app.window_count)")
+            }
             print()
         }
     }
