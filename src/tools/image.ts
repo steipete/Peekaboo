@@ -63,11 +63,17 @@ export async function imageToolHandler(
         { error: swiftResponse.error },
         "Swift CLI returned error for image capture",
       );
+      const errorMessage = swiftResponse.error?.message || "Unknown error";
+      const errorDetails = swiftResponse.error?.details;
+      const fullErrorMessage = errorDetails 
+        ? `${errorMessage}\n${errorDetails}`
+        : errorMessage;
+        
       return {
         content: [
           {
             type: "text",
-            text: `Image capture failed: ${swiftResponse.error?.message || "Unknown error"}`,
+            text: `Image capture failed: ${fullErrorMessage}`,
           },
         ],
         isError: true,

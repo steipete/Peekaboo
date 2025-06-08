@@ -1142,4 +1142,62 @@ describe("Image Tool", () => {
       );
     });
   });
+
+  describe("imageToolHandler - Error message handling", () => {
+    it("should include error details for ambiguous app identifier", async () => {
+      // Mock resolveImagePath
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      // Mock Swift CLI returning ambiguous app error with details
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: false,
+        error: {
+          message: "Multiple applications match identifier 'C'. Please be more specific.",
+          code: "AMBIGUOUS_APP_IDENTIFIER",
+          details: "Matches found: Calendar (com.apple.iCal), Console (com.apple.Console), Cursor (com.todesktop.230313mzl4w4u92)"
+        }
+      });
+
+      const result = await imageToolHandler(
+        { app_target: "C" },
+        mockContext,
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].type).toBe("text");
+      // Should include both the main message and the details
+      expect(result.content[0].text).toContain("Multiple applications match identifier 'C'");
+      expect(result.content[0].text).toContain("Matches found: Calendar (com.apple.iCal), Console (com.apple.Console), Cursor (com.todesktop.230313mzl4w4u92)");
+    });
+
+    it("should handle errors without details gracefully", async () => {
+      // Mock resolveImagePath
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      // Mock Swift CLI returning error without details
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: false,
+        error: {
+          message: "Application not found",
+          code: "APP_NOT_FOUND"
+        }
+      });
+
+      const result = await imageToolHandler(
+        { app_target: "NonExistent" },
+        mockContext,
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].type).toBe("text");
+      // Should only include the main message
+      expect(result.content[0].text).toBe("Image capture failed: Application not found");
+    });
+  });
 });

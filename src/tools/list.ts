@@ -119,11 +119,17 @@ export async function listToolHandler(
 
     if (!swiftResponse.success) {
       logger.error({ error: swiftResponse.error }, "Swift CLI returned error");
+      const errorMessage = swiftResponse.error?.message || "Unknown error";
+      const errorDetails = swiftResponse.error?.details;
+      const fullErrorMessage = errorDetails 
+        ? `${errorMessage}\n${errorDetails}`
+        : errorMessage;
+        
       return {
         content: [
           {
             type: "text" as const,
-            text: `List operation failed: ${swiftResponse.error?.message || "Unknown error"}`,
+            text: `List operation failed: ${fullErrorMessage}`,
           },
         ],
         isError: true,
