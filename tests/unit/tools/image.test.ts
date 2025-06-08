@@ -741,6 +741,128 @@ describe("Image Tool", () => {
       // Verify that the temporary directory is no longer cleaned up (files preserved)
       expect(mockFsRm).not.toHaveBeenCalled();
     });
+
+    it("should use window titles for analysis labels when capturing multiple windows", async () => {
+      // Mock resolveImagePath to return a temporary directory path
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      // Mock executeSwiftCli with two saved files that have window titles
+      const mockFile1: SavedFile = {
+        path: "/tmp/peekaboo-img-XXXXXX/chrome_window1.png",
+        mime_type: "image/png",
+        item_label: "Google Chrome",
+        window_title: "MCP Inspector",
+        window_index: 0,
+        window_id: 123,
+      };
+      const mockFile2: SavedFile = {
+        path: "/tmp/peekaboo-img-XXXXXX/chrome_window2.png", 
+        mime_type: "image/png",
+        item_label: "Google Chrome",
+        window_title: "(9) Home / X",
+        window_index: 1,
+        window_id: 124,
+      };
+      const mockResponse = {
+        success: true,
+        data: { saved_files: [mockFile1, mockFile2] },
+        messages: ["Captured 2 Chrome windows"],
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+      
+      // Mock readImageAsBase64 to return different base64 strings
+      mockReadImageAsBase64
+        .mockResolvedValueOnce("base64dataforwindow1")
+        .mockResolvedValueOnce("base64dataforwindow2");
+      
+      // Mock performAutomaticAnalysis to return different analysis for each call
+      mockPerformAutomaticAnalysis
+        .mockResolvedValueOnce({
+          analysisText: "This shows the MCP Inspector interface.",
+          modelUsed: MOCK_MODEL_USED,
+        })
+        .mockResolvedValueOnce({
+          analysisText: "This shows the X (Twitter) home page.",
+          modelUsed: MOCK_MODEL_USED,
+        });
+
+      // Call imageToolHandler with a question
+      const result = await imageToolHandler(
+        { question: "What is shown in each window?" },
+        mockContext,
+      );
+
+      // Verify the final analysis_text uses window titles instead of app names
+      expect(result.analysis_text).toBe(
+        'Analysis for "MCP Inspector":\nThis shows the MCP Inspector interface.\n\nAnalysis for "(9) Home / X":\nThis shows the X (Twitter) home page.'
+      );
+      
+      // Verify that the temporary directory is no longer cleaned up (files preserved)
+      expect(mockFsRm).not.toHaveBeenCalled();
+    });
+
+    it("should fallback to window index when no window title is available", async () => {
+      // Mock resolveImagePath to return a temporary directory path
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      // Mock executeSwiftCli with two saved files without window titles
+      const mockFile1: SavedFile = {
+        path: "/tmp/peekaboo-img-XXXXXX/app_window1.png",
+        mime_type: "image/png",
+        item_label: "Some App",
+        window_index: 0,
+        window_id: 123,
+      };
+      const mockFile2: SavedFile = {
+        path: "/tmp/peekaboo-img-XXXXXX/app_window2.png", 
+        mime_type: "image/png",
+        item_label: "Some App",
+        window_index: 1,
+        window_id: 124,
+      };
+      const mockResponse = {
+        success: true,
+        data: { saved_files: [mockFile1, mockFile2] },
+        messages: ["Captured 2 app windows"],
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+      
+      // Mock readImageAsBase64 to return different base64 strings
+      mockReadImageAsBase64
+        .mockResolvedValueOnce("base64dataforwindow1")
+        .mockResolvedValueOnce("base64dataforwindow2");
+      
+      // Mock performAutomaticAnalysis to return different analysis for each call
+      mockPerformAutomaticAnalysis
+        .mockResolvedValueOnce({
+          analysisText: "Analysis for first window.",
+          modelUsed: MOCK_MODEL_USED,
+        })
+        .mockResolvedValueOnce({
+          analysisText: "Analysis for second window.",
+          modelUsed: MOCK_MODEL_USED,
+        });
+
+      // Call imageToolHandler with a question
+      const result = await imageToolHandler(
+        { question: "What is shown in each window?" },
+        mockContext,
+      );
+
+      // Verify the final analysis_text uses window index fallback
+      expect(result.analysis_text).toBe(
+        "Analysis for Some App (Window 1):\nAnalysis for first window.\n\nAnalysis for Some App (Window 2):\nAnalysis for second window."
+      );
+      
+      // Verify that the temporary directory is no longer cleaned up (files preserved)
+      expect(mockFsRm).not.toHaveBeenCalled();
+    });
   });
 
   describe("buildSwiftCliArgs", () => {

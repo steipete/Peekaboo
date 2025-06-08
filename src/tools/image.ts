@@ -92,6 +92,26 @@ export async function imageToolHandler(
       analysisAttempted = true;
       const analysisResults: Array<{ label: string; text: string }> = [];
 
+      // Helper function to generate descriptive labels for analysis
+      const getAnalysisLabel = (savedFile: SavedFile, isMultipleFiles: boolean): string => {
+        if (!isMultipleFiles) {
+          // For single files, use the item_label (app name or screen description)
+          return savedFile.item_label || "Unknown";
+        }
+        
+        // For multiple files, prefer window_title if available
+        if (savedFile.window_title) {
+          return `"${savedFile.window_title}"`;
+        }
+        
+        // Fall back to item_label with window index if available
+        if (savedFile.window_index !== undefined) {
+          return `${savedFile.item_label || "Unknown"} (Window ${savedFile.window_index + 1})`;
+        }
+        
+        return savedFile.item_label || "Unknown";
+      };
+
       const configuredProviders = parseAIProviders(
         process.env.PEEKABOO_AI_PROVIDERS || "",
       );
@@ -101,7 +121,10 @@ export async function imageToolHandler(
         logger.warn(analysisText);
       } else {
         // Iterate through all saved files for analysis
+        const isMultipleFiles = captureData.saved_files.length > 1;
         for (const savedFile of captureData.saved_files) {
+          const analysisLabel = getAnalysisLabel(savedFile, isMultipleFiles);
+          
           try {
             const imageBase64 = await readImageAsBase64(savedFile.path);
             logger.debug({ path: savedFile.path }, "Image read successfully for analysis.");
@@ -115,12 +138,12 @@ export async function imageToolHandler(
 
             if (analysisResult.error) {
               analysisResults.push({
-                label: savedFile.item_label || "Unknown",
+                label: analysisLabel,
                 text: analysisResult.error,
               });
             } else {
               analysisResults.push({
-                label: savedFile.item_label || "Unknown",
+                label: analysisLabel,
                 text: analysisResult.analysisText || "",
               });
               modelUsed = analysisResult.modelUsed;
@@ -133,7 +156,7 @@ export async function imageToolHandler(
               "Failed to read captured image for analysis",
             );
             analysisResults.push({
-              label: savedFile.item_label || "Unknown",
+              label: analysisLabel,
               text: `Analysis skipped: Failed to read captured image at ${savedFile.path}. Error: ${readError instanceof Error ? readError.message : "Unknown read error"}`,
             });
           }
