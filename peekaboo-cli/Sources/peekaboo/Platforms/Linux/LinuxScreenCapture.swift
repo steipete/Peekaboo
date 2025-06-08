@@ -85,7 +85,7 @@ class LinuxScreenCapture: ScreenCaptureProtocol {
         return displayServer != .unknown
     }
     
-    func getPreferredImageFormat() -> ImageFormat {
+    func getPreferredImageFormat() -> PlatformImageFormat {
         return .png
     }
     
@@ -415,4 +415,3 @@ private struct CommandResult {
     let stderr: String
 }
 #endif
-

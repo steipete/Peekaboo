@@ -47,21 +47,17 @@ struct RunningApplication {
 }
 
 /// Detailed application information
-struct ApplicationInfo {
+struct PlatformApplicationInfo {
     let processIdentifier: pid_t
     let bundleIdentifier: String?
     let localizedName: String?
     let executablePath: String?
-    let bundlePath: String?
-    let version: String?
     let isActive: Bool
     let activationPolicy: ApplicationActivationPolicy
     let launchDate: Date?
-    let memoryUsage: UInt64?
-    let cpuUsage: Double?
-    let windowCount: Int?
-    let icon: Data?
-    let architecture: ProcessArchitecture?
+    let architecture: ApplicationArchitecture
+    let isHidden: Bool
+    let ownsMenuBar: Bool
 }
 
 /// Application activation policy
@@ -73,7 +69,7 @@ enum ApplicationActivationPolicy {
 }
 
 /// Process architecture information
-enum ProcessArchitecture {
+enum ApplicationArchitecture {
     case x86_64
     case arm64
     case x86
@@ -81,7 +77,7 @@ enum ProcessArchitecture {
 }
 
 /// Errors that can occur during application discovery and management
-enum ApplicationError: Error, LocalizedError {
+enum PlatformApplicationError: Error, LocalizedError {
     case notFound(String)
     case ambiguous(String, [RunningApplication])
     case notSupported
@@ -98,9 +94,9 @@ enum ApplicationError: Error, LocalizedError {
             let names = matches.compactMap { $0.localizedName ?? $0.bundleIdentifier }.joined(separator: ", ")
             return "Multiple applications match '\(identifier)': \(names)"
         case .notSupported:
-            return "Application management is not supported on this platform"
+            return "Application management not supported on this platform"
         case .permissionDenied:
-            return "Permission denied for application management"
+            return "Permission denied for application access"
         case .activationFailed(let pid):
             return "Failed to activate application with PID \(pid)"
         case .systemError(let error):
@@ -110,4 +106,3 @@ enum ApplicationError: Error, LocalizedError {
         }
     }
 }
-

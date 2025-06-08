@@ -30,9 +30,9 @@ class WindowsApplicationFinder: ApplicationFinderProtocol {
         }
         
         if matches.isEmpty {
-            throw ApplicationError.notFound(identifier)
+            throw PlatformApplicationError.notFound(identifier)
         } else if matches.count > 1 {
-            throw ApplicationError.ambiguous(identifier, matches)
+            throw PlatformApplicationError.ambiguous(identifier, matches)
         }
         
         return matches[0]
@@ -361,4 +361,3 @@ private extension String {
     }
 }
 #endif
-

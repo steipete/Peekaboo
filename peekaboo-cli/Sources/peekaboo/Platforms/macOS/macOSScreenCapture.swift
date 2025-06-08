@@ -155,7 +155,7 @@ class macOSScreenCapture: ScreenCaptureProtocol {
         return true
     }
     
-    func getPreferredImageFormat() -> ImageFormat {
+    func getPreferredImageFormat() -> PlatformImageFormat {
         return .png
     }
     
@@ -258,7 +258,7 @@ class macOSScreenCapture: ScreenCaptureProtocol {
 
 extension macOSScreenCapture {
     /// Save a CGImage to a file path with the specified format
-    func saveImage(_ image: CGImage, to path: String, format: ImageFormat = .png) throws {
+    func saveImage(_ image: CGImage, to path: String, format: PlatformImageFormat = .png) throws {
         let url = URL(fileURLWithPath: path)
         
         // Check if the parent directory exists
@@ -273,7 +273,15 @@ extension macOSScreenCapture {
             throw ScreenCaptureError.systemError(error)
         }
         
-        let utType: UTType = format == .png ? .png : .jpeg
+        let utType: UTType = {
+            switch format {
+            case .png: return .png
+            case .jpeg: return .jpeg
+            case .bmp: return .bmp
+            case .tiff: return .tiff
+            }
+        }()
+        
         guard let destination = CGImageDestinationCreateWithURL(
             url as CFURL,
             utType.identifier as CFString,
@@ -300,4 +308,3 @@ extension macOSScreenCapture {
     }
 }
 #endif
-

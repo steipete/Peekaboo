@@ -30,7 +30,7 @@ protocol ScreenCaptureProtocol {
     
     /// Get the preferred image format for this platform
     /// - Returns: The preferred image format
-    func getPreferredImageFormat() -> ImageFormat
+    func getPreferredImageFormat() -> PlatformImageFormat
 }
 
 /// Represents a captured image with associated metadata
@@ -64,7 +64,7 @@ struct DisplayInfo {
 }
 
 /// Cross-platform image format enumeration
-enum ImageFormat: String, CaseIterable {
+enum PlatformImageFormat: String, CaseIterable {
     case png = "png"
     case jpeg = "jpeg"
     case bmp = "bmp"
@@ -80,7 +80,7 @@ enum ImageFormat: String, CaseIterable {
     }
     
     var fileExtension: String {
-        return rawValue
+        return self.rawValue
     }
 }
 
@@ -113,4 +113,3 @@ enum ScreenCaptureError: Error, LocalizedError {
         }
     }
 }
-

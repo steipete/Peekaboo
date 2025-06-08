@@ -194,7 +194,7 @@ class WindowsScreenCapture: ScreenCaptureProtocol {
         return true
     }
     
-    func getPreferredImageFormat() -> ImageFormat {
+    func getPreferredImageFormat() -> PlatformImageFormat {
         return .png
     }
     
@@ -337,4 +337,3 @@ class WindowsScreenCapture: ScreenCaptureProtocol {
     }
 }
 #endif
-

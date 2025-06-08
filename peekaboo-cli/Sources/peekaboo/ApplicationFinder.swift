@@ -310,7 +310,3 @@ class ApplicationFinder {
     }
 }
 
-enum ApplicationError: Error {
-    case notFound(String)
-    case ambiguous(String, [NSRunningApplication])
-}
