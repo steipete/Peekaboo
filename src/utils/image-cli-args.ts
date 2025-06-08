@@ -81,7 +81,7 @@ export function buildSwiftCliArgs(
     } else {
       args.push("--mode", "screen", "--screen-index", screenIndex.toString());
     }
-  } else if (input.app_target === "frontmost") {
+  } else if (input.app_target.toLowerCase() === "frontmost") {
     // 'frontmost': All windows of the frontmost app
     log.warn(
       "'frontmost' target requires determining current frontmost app, defaulting to screen mode",
@@ -91,31 +91,60 @@ export function buildSwiftCliArgs(
     // 'AppName:WINDOW_TITLE:Title' or 'AppName:WINDOW_INDEX:Index'
     const parts = input.app_target.split(":");
     if (parts.length >= 3) {
-      const appName = parts[0];
-      const specifierType = parts[1];
+      const appName = parts[0].trim();
+      const specifierType = parts[1].trim();
       const specifierValue = parts.slice(2).join(":"); // Handle colons in window titles
 
-      args.push("--app", appName.trim());
-      args.push("--mode", "window");
-
-      if (specifierType === "WINDOW_TITLE") {
-        args.push("--window-title", specifierValue);
-      } else if (specifierType === "WINDOW_INDEX") {
-        args.push("--window-index", specifierValue);
-      } else {
+      // Validate that we have a non-empty app name
+      if (!appName) {
         log.warn(
-          { specifierType },
-          "Unknown window specifier type, defaulting to main window",
+          { app_target: input.app_target },
+          "Empty app name detected in app_target, treating as malformed",
         );
+        // Try to find the first non-empty part as the app name
+        const nonEmptyParts = parts.filter(part => part.trim());
+        if (nonEmptyParts.length > 0) {
+          args.push("--app", nonEmptyParts[0].trim());
+          args.push("--mode", "multi");
+        } else {
+          // All parts are empty, default to screen mode
+          log.warn("All parts of app_target are empty, defaulting to screen mode");
+          args.push("--mode", "screen");
+        }
+      } else {
+        args.push("--app", appName);
+        args.push("--mode", "window");
+
+        if (specifierType.toUpperCase() === "WINDOW_TITLE") {
+          args.push("--window-title", specifierValue);
+        } else if (specifierType.toUpperCase() === "WINDOW_INDEX") {
+          args.push("--window-index", specifierValue);
+        } else {
+          log.warn(
+            { specifierType },
+            "Unknown window specifier type, defaulting to main window",
+          );
+        }
       }
     } else {
-      // Malformed: treat as app name
-      log.warn(
-        { app_target: input.app_target },
-        "Malformed window specifier, treating as app name",
-      );
-      args.push("--app", input.app_target.trim());
-      args.push("--mode", "multi");
+      // Malformed: treat as app name, but validate it's not empty
+      const cleanAppTarget = input.app_target.trim();
+      if (!cleanAppTarget || cleanAppTarget === ":".repeat(cleanAppTarget.length)) {
+        log.warn(
+          { app_target: input.app_target },
+          "Malformed app_target with only colons or empty, defaulting to screen mode",
+        );
+        args.push("--mode", "screen");
+      } else {
+        log.warn(
+          { app_target: input.app_target },
+          "Malformed window specifier, treating as app name",
+        );
+        // Remove trailing colons from app name
+        const appName = cleanAppTarget.replace(/:+$/, "");
+        args.push("--app", appName);
+        args.push("--mode", "multi");
+      }
     }
   } else {
     // 'AppName': All windows of that app

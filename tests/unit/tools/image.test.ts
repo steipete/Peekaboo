@@ -1044,6 +1044,48 @@ describe("Image Tool", () => {
       expect(loggerWarnSpy).toHaveBeenCalled();
     });
 
+    it("should handle app_target: 'frontmost' case-insensitively", () => {
+      const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
+      
+      // Test uppercase
+      const argsUpper = buildSwiftCliArgs({ app_target: "FRONTMOST" }, undefined, undefined, mockLogger);
+      expect(argsUpper).toEqual(
+        expect.arrayContaining(["--mode", "screen"]),
+      );
+      expect(argsUpper).not.toContain("--app");
+      
+      // Test mixed case
+      const argsMixed = buildSwiftCliArgs({ app_target: "Frontmost" }, undefined, undefined, mockLogger);
+      expect(argsMixed).toEqual(
+        expect.arrayContaining(["--mode", "screen"]),
+      );
+      expect(argsMixed).not.toContain("--app");
+      
+      expect(loggerWarnSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("should handle window specifiers case-insensitively", () => {
+      // Test lowercase window_title
+      const argsLowerTitle = buildSwiftCliArgs({ app_target: "Safari:window_title:Apple Website" }, undefined);
+      expect(argsLowerTitle).toEqual(
+        expect.arrayContaining([
+          "--app", "Safari",
+          "--mode", "window",
+          "--window-title", "Apple Website"
+        ]),
+      );
+      
+      // Test mixed case Window_Index
+      const argsMixedIndex = buildSwiftCliArgs({ app_target: "Terminal:Window_Index:2" }, undefined);
+      expect(argsMixedIndex).toEqual(
+        expect.arrayContaining([
+          "--app", "Terminal",
+          "--mode", "window",
+          "--window-index", "2"
+        ]),
+      );
+    });
+
     it("should handle simple app name", () => {
       const args = buildSwiftCliArgs({ app_target: "Safari" }, undefined);
       expect(args).toEqual(

@@ -43,7 +43,7 @@ export async function imageToolHandler(
     if (effectiveFormat && !validFormats.includes(effectiveFormat)) {
       logger.warn(
         { originalFormat: effectiveFormat, fallbackFormat: "png" },
-        `Invalid format '${effectiveFormat}' detected, falling back to PNG`
+        `Invalid format '${effectiveFormat}' detected, falling back to PNG`,
       );
       effectiveFormat = "png";
       formatWarning = `Invalid format '${input.format}' was provided. Automatically using PNG format instead.`;
@@ -61,28 +61,28 @@ export async function imageToolHandler(
 
     // Create a corrected input object if format or path needs to be adjusted
     let correctedInput = input;
-    
+
     // If format was corrected and we have a path, update the file extension to match the actual format
     if (input.format && input.format !== effectiveFormat && input.path) {
       const originalPath = input.path;
       const parsedPath = path.parse(originalPath);
-      
+
       // Map format to appropriate extension
       const extensionMap: { [key: string]: string } = {
         "png": ".png",
-        "jpg": ".jpg", 
+        "jpg": ".jpg",
         "jpeg": ".jpg",
-        "data": ".png" // data format saves as PNG
+        "data": ".png", // data format saves as PNG
       };
-      
+
       const newExtension = extensionMap[effectiveFormat || "png"] || ".png";
       const correctedPath = path.join(parsedPath.dir, parsedPath.name + newExtension);
-      
+
       logger.debug(
         { originalPath, correctedPath, originalFormat: input.format, correctedFormat: effectiveFormat },
-        "Correcting file extension to match format"
+        "Correcting file extension to match format",
       );
-      
+
       correctedInput = { ...input, path: correctedPath };
     }
 
@@ -297,7 +297,7 @@ export async function imageToolHandler(
     }
     if (!analysisSucceeded && analysisAttempted) {
       result.isError = true;
-      result._meta = { ...result._meta, analysis_error: analysisText };
+      result._meta = { ...(result._meta || {}), analysis_error: analysisText };
     }
 
     return result;

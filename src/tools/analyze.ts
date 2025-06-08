@@ -37,17 +37,22 @@ export const analyzeToolSchema = z.object({
     .describe(
       "Optional. Explicit provider/model. Validated against server's PEEKABOO_AI_PROVIDERS.",
     ),
-  // Silent fallback parameter (not advertised in schema)
-  path: z.string().optional(),
-}).refine(
-  (data) => data.image_path || data.path,
-  {
-    message: "image_path is required",
-    path: ["image_path"],
-  },
-);
+})
+  .passthrough() // Allow unknown properties (for the hidden `path` parameter)
+  .refine(
+    (data: unknown) => {
+      const typedData = data as { image_path?: string; path?: string };
+      return typedData.image_path || typedData.path;
+    },
+    {
+      message: "image_path is required",
+      path: ["image_path"],
+    },
+  );
 
-export type AnalyzeToolInput = z.infer<typeof analyzeToolSchema>;
+export type AnalyzeToolInput = z.infer<typeof analyzeToolSchema> & {
+  path?: string; // Hidden parameter for backward compatibility
+};
 
 export async function analyzeToolHandler(
   input: AnalyzeToolInput,

@@ -43,12 +43,12 @@ export const listToolSchema = z
         if (val === "" || val === null || val === undefined) {
           return undefined;
         }
-        
+
         // If it's already an array, return as-is
         if (Array.isArray(val)) {
           return val;
         }
-        
+
         // If it's a string that looks like JSON, try to parse it
         if (typeof val === "string") {
           try {
@@ -59,16 +59,16 @@ export const listToolSchema = z
           } catch {
             // Not valid JSON, treat as single item
           }
-          
+
           // If it's a comma-separated string, split it
           if (val.includes(",")) {
             return val.split(",").map(s => s.trim());
           }
-          
+
           // Single string value, wrap in array
           return [val.trim()];
         }
-        
+
         return val;
       },
       z
