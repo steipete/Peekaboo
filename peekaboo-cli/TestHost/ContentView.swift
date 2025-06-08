@@ -85,12 +85,15 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach(Array(logMessages.enumerated()), id: \.offset) { _, message in
                             Text(message)
-                                .font(.system(size: 11, design: .monospaced))
+                                .font(.system(size: 12, design: .monospaced))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
+                    .padding(8)
                 }
-                .frame(maxHeight: 150)
+                .frame(minHeight: 200, maxHeight: 300)
+                .background(Color(NSColor.textBackgroundColor))
+                .cornerRadius(6)
             }
 
             Spacer()
@@ -119,8 +122,7 @@ struct ContentView: View {
     }
 
     private func checkAccessibilityPermission() {
-        let options: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false]
-        accessibilityPermission = AXIsProcessTrustedWithOptions(options)
+        accessibilityPermission = AXIsProcessTrusted()
         addLog("Accessibility permission: \(accessibilityPermission)")
     }
 

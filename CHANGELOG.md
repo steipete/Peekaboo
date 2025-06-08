@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Smart browser helper filtering for improved Chrome/Safari matching**
+  - Automatically filters out browser helper processes when searching for common browsers (chrome, safari, firefox, edge, brave, arc, opera)
+  - Prevents confusing "no capturable windows" errors when helper processes like "Google Chrome Helper (Renderer)" are matched instead of the main browser
+  - Provides browser-specific error messages: "Chrome browser is not running or not found" instead of generic app not found errors
+  - Only applies filtering to browser identifiers - other application searches work normally
+  - Comprehensive test coverage for browser filtering scenarios
+
+- **Proper frontmost window capture implementation**
+  - Added dedicated `frontmost` capture mode that captures the frontmost window of the frontmost application
+  - Replaces previous fallback behavior that incorrectly captured all screens
+  - Uses `NSWorkspace.shared.frontmostApplication` to detect the currently active application
+  - Returns exactly one image with proper metadata (app name, window title, window ID)
+  - Generates descriptive filenames like `frontmost_Safari_20250608_083230.png`
+
+### Fixed
+- **List tool empty string parameter handling**
+  - Fixed issue where `item_type: ""` was not properly defaulting to the correct operation
+  - Empty strings and whitespace-only strings now fall back to proper default logic
+  - Added comprehensive test coverage for edge cases
+
 ## [1.0.0-beta.21] - 2025-06-08
 
 ### Security

@@ -313,7 +313,34 @@ await use_mcp_tool("peekaboo", "image", {
   app_target: "Notes:WINDOW_TITLE:Meeting Notes",
   path: "~/Desktop/notes.png"
 });
+
+// Capture frontmost window of currently active application
+await use_mcp_tool("peekaboo", "image", {
+  app_target: "frontmost",
+  format: "png"
+});
 ```
+
+#### Browser Helper Filtering
+
+Peekaboo automatically filters out browser helper processes when searching for common browsers (Chrome, Safari, Firefox, Edge, Brave, Arc, Opera). This prevents confusing errors when helper processes like "Google Chrome Helper (Renderer)" are matched instead of the main browser application.
+
+**Examples:**
+```javascript
+// ✅ Finds main Chrome browser, not helpers
+await use_mcp_tool("peekaboo", "image", {
+  app_target: "Chrome"
+});
+
+// ❌ Old behavior: Could match "Google Chrome Helper (Renderer)"
+//     Result: "no capturable windows were found" 
+// ✅ New behavior: Finds "Google Chrome" or shows "Chrome browser is not running"
+```
+
+**Browser-Specific Error Messages:**
+- Instead of generic "Application not found"
+- Shows clear messages like "Chrome browser is not running or not found"
+- Only applies to browser identifiers - other apps work normally
 
 ### 2. `list` - System Information
 

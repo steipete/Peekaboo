@@ -8,30 +8,36 @@ struct JSONOutputTests {
 
     @Test("AnyCodable encoding with various types", .tags(.fast))
     func anyCodableEncodingVariousTypes() throws {
+        // Test by wrapping in a container structure since JSONSerialization needs complete documents
+        struct TestWrapper: Codable {
+            let value: AnyCodable
+        }
+        
         // Test string
-        let stringValue = AnyCodable("test string")
-        let stringData = try JSONEncoder().encode(stringValue)
-        let stringResult = try JSONSerialization.jsonObject(with: stringData) as? String
-        #expect(stringResult == "test string")
+        let stringWrapper = TestWrapper(value: AnyCodable("test string"))
+        let stringData = try JSONEncoder().encode(stringWrapper)
+        let stringDict = try JSONSerialization.jsonObject(with: stringData) as? [String: Any]
+        #expect(stringDict?["value"] as? String == "test string")
 
         // Test number
-        let numberValue = AnyCodable(42)
-        let numberData = try JSONEncoder().encode(numberValue)
-        let numberResult = try JSONSerialization.jsonObject(with: numberData) as? Int
-        #expect(numberResult == 42)
+        let numberWrapper = TestWrapper(value: AnyCodable(42))
+        let numberData = try JSONEncoder().encode(numberWrapper)
+        let numberDict = try JSONSerialization.jsonObject(with: numberData) as? [String: Any]
+        #expect(numberDict?["value"] as? Int == 42)
 
         // Test boolean
-        let boolValue = AnyCodable(true)
-        let boolData = try JSONEncoder().encode(boolValue)
-        let boolResult = try JSONSerialization.jsonObject(with: boolData) as? Bool
-        #expect(boolResult == true)
+        let boolWrapper = TestWrapper(value: AnyCodable(true))
+        let boolData = try JSONEncoder().encode(boolWrapper)
+        let boolDict = try JSONSerialization.jsonObject(with: boolData) as? [String: Any]
+        #expect(boolDict?["value"] as? Bool == true)
 
         // Test null (using optional nil)
         let nilValue: String? = nil
-        let nilAnyCodable = AnyCodable(nilValue as Any)
-        let nilData = try JSONEncoder().encode(nilAnyCodable)
-        let nilString = String(data: nilData, encoding: .utf8)
-        #expect(nilString == "null")
+        let nilWrapper = TestWrapper(value: AnyCodable(nilValue as Any))
+        let nilData = try JSONEncoder().encode(nilWrapper)
+        let nilDict = try JSONSerialization.jsonObject(with: nilData) as? [String: Any]
+        // nil values are encoded as NSNull in JSON, which becomes <null> in dictionary
+        #expect(nilDict?["value"] is NSNull)
     }
 
     @Test("AnyCodable with nested structures", .tags(.fast))
@@ -60,7 +66,8 @@ struct JSONOutputTests {
         #expect(decoded["string"]?.value as? String == "test")
         #expect(decoded["number"]?.value as? Int == 42)
         #expect(decoded["bool"]?.value as? Bool == true)
-        #expect(decoded["null"]?.value == nil)
+        // Check that null value is properly handled (decoded as NSNull)
+        #expect(decoded["null"]?.value is NSNull)
     }
 
     // MARK: - AnyEncodable Tests

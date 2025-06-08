@@ -8,12 +8,12 @@ struct TestHostApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .frame(minWidth: 400, minHeight: 300)
-                .frame(width: 600, height: 400)
+                .frame(minWidth: 600, minHeight: 500)
+                .frame(width: 800, height: 600)
         }
         .windowResizability(.contentSize)
         .windowStyle(.titleBar)
-        .defaultSize(width: 600, height: 400)
+        .defaultSize(width: 800, height: 600)
     }
 }
 

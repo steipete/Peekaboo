@@ -54,28 +54,41 @@ struct AnyCodable: Codable {
         var container = encoder.singleValueContainer()
 
         if let codable = value as? Codable {
-            // Handle Codable types by encoding them directly as JSON
-            let jsonEncoder = JSONEncoder()
-            let jsonData = try jsonEncoder.encode(AnyEncodable(codable))
-            let jsonObject = try JSONSerialization.jsonObject(with: jsonData)
-            try container.encode(AnyCodable(jsonObject))
+            // Handle Codable types by encoding them directly
+            try AnyEncodable(codable).encode(to: encoder)
         } else {
             switch value {
             case let bool as Bool:
                 try container.encode(bool)
             case let int as Int:
                 try container.encode(int)
+            case let int32 as Int32:
+                try container.encode(int32)
+            case let int64 as Int64:
+                try container.encode(int64)
             case let double as Double:
                 try container.encode(double)
+            case let float as Float:
+                try container.encode(float)
             case let string as String:
                 try container.encode(string)
             case let array as [Any]:
                 try container.encode(array.map(AnyCodable.init))
             case let dict as [String: Any]:
                 try container.encode(dict.mapValues(AnyCodable.init))
+            case is NSNull:
+                try container.encodeNil()
+            case Optional<Any>.none:
+                try container.encodeNil()
             default:
-                // Try to encode as a string representation
-                try container.encode(String(describing: value))
+                // Check if it's an optional with nil value
+                let mirror = Mirror(reflecting: value)
+                if mirror.displayStyle == .optional && mirror.children.isEmpty {
+                    try container.encodeNil()
+                } else {
+                    // Try to encode as a string representation
+                    try container.encode(String(describing: value))
+                }
             }
         }
     }
@@ -83,7 +96,9 @@ struct AnyCodable: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
 
-        if let bool = try? container.decode(Bool.self) {
+        if container.decodeNil() {
+            value = NSNull()
+        } else if let bool = try? container.decode(Bool.self) {
             value = bool
         } else if let int = try? container.decode(Int.self) {
             value = int

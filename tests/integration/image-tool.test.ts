@@ -287,9 +287,8 @@ describeSwiftTests("Image Tool Integration Tests", () => {
       }]);
     });
 
-    it("should handle frontmost app_target (with warning)", async () => {
+    it("should handle frontmost app_target (with frontmost mode)", async () => {
       const input: ImageInput = { app_target: "frontmost" };
-      const loggerWarnSpy = vi.spyOn(mockContext.logger, "warn");
       
       // Mock resolveImagePath
       mockResolveImagePath.mockResolvedValue({
@@ -297,19 +296,19 @@ describeSwiftTests("Image Tool Integration Tests", () => {
         tempDirUsed: MOCK_TEMP_DIR,
       });
       
-      // Mock successful screen capture
+      // Mock successful frontmost capture
       mockExecuteSwiftCli.mockResolvedValue(
-        mockSwiftCli.captureImage("screen", {
-          path: MOCK_SAVED_FILE_PATH,
-          format: "png"
-        })
+        mockSwiftCli.captureFrontmostWindow()
       );
       
       const result = await imageToolHandler(input, mockContext);
 
       expect(result.isError).toBeFalsy();
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "'frontmost' target requires determining current frontmost app, defaulting to screen mode",
+      // Should use frontmost mode instead of warning about screen mode
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--mode", "frontmost"]),
+        expect.any(Object),
+        expect.any(Object)
       );
     });
 

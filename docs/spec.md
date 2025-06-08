@@ -159,10 +159,15 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
     *   **Node.js Handler - `app_target` Parsing:** The handler will parse `app_target` to determine the Swift CLI arguments for `--app`, `--mode`, `--window-title`, or `--window-index`.
         *   Omitted/empty `app_target`: maps to Swift CLI `--mode screen` (no `--app`).
         *   `"screen:INDEX"`: maps to Swift CLI `--mode screen --screen-index INDEX` (custom Swift CLI flag might be needed or logic to select from multi-screen capture).
-        *   `"frontmost"`: Node.js determines frontmost app (e.g., via `list` tool logic or new Swift CLI helper), then calls Swift CLI with that app and `--mode multi` (or `window` for main window).
+        *   `"frontmost"`: maps to Swift CLI `--mode frontmost` which uses `NSWorkspace.shared.frontmostApplication` to detect the currently active application and captures its frontmost window.
         *   `"AppName"`: maps to Swift CLI `--app AppName --mode multi`.
         *   `"AppName:WINDOW_TITLE:Title"`: maps to Swift CLI `--app AppName --mode window --window-title Title`.
         *   `"AppName:WINDOW_INDEX:Index"`: maps to Swift CLI `--app AppName --mode window --window-index Index`.
+    *   **Browser Helper Filtering:** The Swift CLI automatically filters out browser helper processes when searching for common browsers (chrome, safari, firefox, edge, brave, arc, opera). This prevents matching helper processes like "Google Chrome Helper (Renderer)" instead of the main browser application, which would result in confusing "no capturable windows" errors. The filtering:
+        *   Only applies to browser identifiers - other application searches work normally
+        *   Filters out processes containing: helper, renderer, utility, plugin, service, crashpad, gpu, background
+        *   Provides browser-specific error messages: "Chrome browser is not running or not found" instead of generic "Application not found"
+        *   Falls back to original matches if all matches are filtered to prevent false negatives
     *   **Node.js Handler - `format` and `path` Logic:**
         *   **Screen Capture Auto-fallback**: If the capture target is a screen (no `app_target`, empty `app_target`, or `app_target` starts with `"screen:"`), and `input.format === "data"`, the handler automatically changes the effective format to `"png"` and includes a warning message in the response explaining why screen captures cannot use the `"data"` format.
         *   If `input.format === "data"`: `return_data` becomes effectively true. If `input.path` is also set, the image is saved to `input.path` (as PNG) AND Base64 PNG data is returned.
