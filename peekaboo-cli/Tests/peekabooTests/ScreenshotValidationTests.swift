@@ -26,7 +26,7 @@ struct ScreenshotValidationTests {
         let outputPath = "/tmp/peekaboo-content-test.png"
         defer { try? FileManager.default.removeItem(atPath: outputPath) }
 
-        let captureData = try captureWindowToFile(windowID: windowID, path: outputPath, format: .png)
+        _ = try captureWindowToFile(windowID: windowID, path: outputPath, format: .png)
 
         // Load and analyze the image
         guard let image = NSImage(contentsOfFile: outputPath) else {
@@ -94,7 +94,7 @@ struct ScreenshotValidationTests {
             let path = "/tmp/peekaboo-format-test.\(format.rawValue)"
             defer { try? FileManager.default.removeItem(atPath: path) }
 
-            let captureData = try captureWindowToFile(windowID: windowID, path: path, format: format)
+            _ = try captureWindowToFile(windowID: windowID, path: path, format: format)
 
             #expect(FileManager.default.fileExists(atPath: path))
 
@@ -235,6 +235,8 @@ struct ScreenshotValidationTests {
         format: ImageFormat
     ) throws -> ImageCaptureData {
         // Create image from window
+        // Note: CGWindowListCreateImage is deprecated in favor of ScreenCaptureKit,
+        // but ScreenCaptureKit requires significant changes and may not be suitable for test code
         guard let image = CGWindowListCreateImage(
             .null,
             .optionIncludingWindow,
