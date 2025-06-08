@@ -1,6 +1,6 @@
 {
   "name": "@steipete/peekaboo-mcp",
-  "version": "1.0.0-beta.16",
+  "version": "1.0.0-beta.17",
   "description": "A macOS utility exposed via Node.js MCP server for advanced screen captures, image analysis, and window management",
   "type": "module",
   "main": "dist/index.js",
