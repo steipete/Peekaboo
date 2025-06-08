@@ -195,13 +195,14 @@ export async function executeSwiftCli(
         "Swift CLI completed",
       );
 
-      if (exitCode !== 0 || !stdout.trim()) {
+      // Always try to parse JSON first, even on non-zero exit codes
+      if (!stdout.trim()) {
         logger.error(
           { exitCode, stdout, stderr },
-          "Swift CLI execution failed",
+          "Swift CLI execution failed with no output",
         );
 
-        // Determine command and app target from args
+        // Determine command and app target from args for fallback error message
         const command = args[0] as "image" | "list";
         let appTarget: string | undefined;
 
@@ -212,10 +213,7 @@ export async function executeSwiftCli(
         }
 
         const { message, code } = mapExitCodeToErrorMessage(exitCode || 1, stderr, command, appTarget);
-        const errorDetails =
-          stderr.trim() && stdout.trim()
-            ? `Stdout: ${stdout.trim()}`
-            : stderr.trim() || stdout.trim() || "No output received";
+        const errorDetails = stderr.trim() || "No output received";
 
         resolve({
           success: false,
@@ -229,7 +227,50 @@ export async function executeSwiftCli(
       }
 
       try {
-        const response = JSON.parse(stdout) as SwiftCliResponse;
+        // Handle multiple JSON objects by taking the first valid one
+        let jsonResponse: SwiftCliResponse;
+        const trimmedOutput = stdout.trim();
+
+        // Try to parse as single JSON first
+        try {
+          jsonResponse = JSON.parse(trimmedOutput);
+        } catch (firstParseError) {
+          // If that fails, try to extract the first complete JSON object
+          // This handles cases where Swift CLI outputs multiple JSON objects
+          const lines = trimmedOutput.split("\n");
+          let braceCount = 0;
+          let firstJsonEnd = -1;
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            for (let j = 0; j < line.length; j++) {
+              if (line[j] === "{") {
+                braceCount++;
+              } else if (line[j] === "}") {
+                braceCount--;
+              }
+
+              if (braceCount === 0 && line[j] === "}") {
+                firstJsonEnd = i;
+                break;
+              }
+            }
+            if (firstJsonEnd !== -1) {
+              break;
+            }
+          }
+
+          if (firstJsonEnd !== -1) {
+            const firstJsonLines = lines.slice(0, firstJsonEnd + 1);
+            const firstJsonStr = firstJsonLines.join("\n");
+            jsonResponse = JSON.parse(firstJsonStr);
+            logger.debug("Extracted first JSON object from multi-object output");
+          } else {
+            throw firstParseError; // Re-throw original error if extraction fails
+          }
+        }
+
+        const response = jsonResponse;
 
         // Log debug messages from Swift CLI
         if (response.debug_logs && Array.isArray(response.debug_logs)) {
@@ -241,15 +282,28 @@ export async function executeSwiftCli(
         resolve(response);
       } catch (parseError) {
         logger.error(
-          { parseError, stdout },
-          "Failed to parse Swift CLI JSON output",
+          { parseError, stdout, exitCode },
+          "Failed to parse Swift CLI JSON output, falling back to exit code mapping",
         );
+
+        // Determine command and app target from args for fallback error message
+        const command = args[0] as "image" | "list";
+        let appTarget: string | undefined;
+
+        // Find app target in args
+        const appIndex = args.indexOf("--app");
+        if (appIndex !== -1 && appIndex < args.length - 1) {
+          appTarget = args[appIndex + 1];
+        }
+
+        const { message, code } = mapExitCodeToErrorMessage(exitCode || 1, stderr, command, appTarget);
+
         resolve({
           success: false,
           error: {
-            message: "Invalid JSON response from Swift CLI",
-            code: "SWIFT_CLI_INVALID_OUTPUT",
-            details: stdout.slice(0, 500),
+            message,
+            code,
+            details: `Failed to parse JSON response. Raw output: ${stdout.slice(0, 500)}`,
           },
         });
       }
