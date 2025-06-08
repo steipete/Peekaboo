@@ -139,7 +139,8 @@ enum CaptureError: Error, LocalizedError {
             if let error = underlyingError {
                 let errorString = error.localizedDescription
                 if errorString.lowercased().contains("permission") {
-                    message += " Permission denied - check that the directory is writable and the application has necessary permissions."
+                    message +=
+                        " Permission denied - check that the directory is writable and the application has necessary permissions."
                 } else if errorString.lowercased().contains("no such file") {
                     message += " Directory does not exist - ensure the parent directory exists."
                 } else if errorString.lowercased().contains("no space") {

@@ -98,17 +98,17 @@ export async function imageToolHandler(
           // For single files, use the item_label (app name or screen description)
           return savedFile.item_label || "Unknown";
         }
-        
+
         // For multiple files, prefer window_title if available
         if (savedFile.window_title) {
           return `"${savedFile.window_title}"`;
         }
-        
+
         // Fall back to item_label with window index if available
         if (savedFile.window_index !== undefined) {
           return `${savedFile.item_label || "Unknown"} (Window ${savedFile.window_index + 1})`;
         }
-        
+
         return savedFile.item_label || "Unknown";
       };
 
@@ -124,7 +124,7 @@ export async function imageToolHandler(
         const isMultipleFiles = captureData.saved_files.length > 1;
         for (const savedFile of captureData.saved_files) {
           const analysisLabel = getAnalysisLabel(savedFile, isMultipleFiles);
-          
+
           try {
             const imageBase64 = await readImageAsBase64(savedFile.path);
             logger.debug({ path: savedFile.path }, "Image read successfully for analysis.");

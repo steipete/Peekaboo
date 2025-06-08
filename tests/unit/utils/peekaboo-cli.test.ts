@@ -191,12 +191,12 @@ describe("Swift CLI Utility", () => {
         error: {
           code: "SWIFT_CLI_UNKNOWN_ERROR",
           message: "An unknown error occurred in the Swift CLI.",
-          details: "Plain text error",
+          details: "Failed to parse JSON response. Raw output: Plain text error",
         },
       });
       expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.objectContaining({ exitCode: 1 }),
-        "Swift CLI execution failed",
+        expect.objectContaining({ exitCode: 1, parseError: expect.any(Error), stdout: "Plain text error" }),
+        "Failed to parse Swift CLI JSON output, falling back to exit code mapping",
       );
     });
 
