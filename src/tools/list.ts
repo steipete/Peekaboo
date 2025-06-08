@@ -200,10 +200,40 @@ async function handleServerStatus(
   statusSections.push(generateServerStatusString(version));
 
   // 2. Native Binary Status
-  statusSections.push("\n## Native Binary (Swift CLI) Status");
+  statusSections.push("\n## Native Binary Status");
 
-  const cliPath = process.env.PEEKABOO_CLI_PATH || path.join(packageRootDir, "peekaboo");
-  let cliStatus = "❌ Not found";
+  // Use the same platform detection logic as the main CLI path determination
+  let cliPath: string;
+  const envPath = process.env.PEEKABOO_CLI_PATH;
+  if (envPath) {
+    cliPath = envPath;
+  } else {
+    // Detect platform and use appropriate binary
+    const platform = process.platform;
+    
+    if (platform === 'darwin') {
+      // macOS - use Swift binary
+      cliPath = path.join(packageRootDir, "peekaboo");
+    } else if (platform === 'linux') {
+      // Linux - use Rust binary
+      const linuxBinaryPath = path.resolve(packageRootDir, "peekaboo-linux", "target", "release", "peekaboo");
+      if (existsSync(linuxBinaryPath)) {
+        cliPath = linuxBinaryPath;
+      } else {
+        // Fallback to debug build if release doesn't exist
+        const debugBinaryPath = path.resolve(packageRootDir, "peekaboo-linux", "target", "debug", "peekaboo");
+        cliPath = debugBinaryPath;
+      }
+    } else {
+      // Unsupported platform
+      cliPath = path.join(packageRootDir, "peekaboo");
+    }
+  }
+
+  const binaryType = process.platform === 'linux' ? 'Rust' : 'Swift';
+  statusSections.push(`\n## Native Binary (${binaryType} CLI) Status`);
+
+  let cliStatus = "\u274c Not found";
   let cliVersion = "Unknown";
   let cliExecutable = false;
 
@@ -221,12 +251,17 @@ async function handleServerStatus(
 
       if (versionResult.success && versionResult.data) {
         cliVersion = versionResult.data.trim();
-        cliStatus = "✅ Found and executable";
+        // Extract just the version number if it includes the binary name
+        const versionMatch = cliVersion.match(/(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?)/);
+        if (versionMatch) {
+          cliVersion = versionMatch[1];
+        }
+        cliStatus = "\u2714 Found and executable";
       } else {
-        cliStatus = "⚠️ Found but version check failed";
+        cliStatus = "\u26a0 Found but version check failed";
       }
     } catch (_error) {
-      cliStatus = "⚠️ Found but not executable";
+      cliStatus = "\u26a0 Found but not executable";
     }
   }
 
@@ -250,8 +285,8 @@ async function handleServerStatus(
         const status = JSON.parse(permissionsResult.data);
         if (status.data?.permissions) {
           const perms = status.data.permissions;
-          statusSections.push(`- Screen Recording: ${perms.screen_recording ? "✅ Granted" : "❌ Not granted"}`);
-          statusSections.push(`- Accessibility: ${perms.accessibility ? "✅ Granted" : "❌ Not granted"}`);
+          statusSections.push(`- Screen Recording: ${perms.screen_recording ? "\u2714 Granted" : "\u274c Not granted"}`);
+          statusSections.push(`- Accessibility: ${perms.accessibility ? "\u2714 Granted" : "\u274c Not granted"}`);
         } else {
           statusSections.push("- Unable to determine permissions status");
         }

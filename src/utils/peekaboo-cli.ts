@@ -2,7 +2,6 @@
 
 import { spawn } from "child_process";
 import path from "path";
-// import { fileURLToPath } from 'url'; // No longer needed here
 import { Logger } from "pino";
 import fsPromises from "fs/promises";
 import { existsSync } from "fs";
@@ -25,7 +24,29 @@ function determineSwiftCliPath(packageRootDirForFallback?: string): string {
   }
 
   if (packageRootDirForFallback) {
-    return path.resolve(packageRootDirForFallback, "peekaboo");
+    // Detect platform and use appropriate binary
+    const platform = process.platform;
+    
+    if (platform === 'darwin') {
+      // macOS - use Swift binary
+      return path.resolve(packageRootDirForFallback, "peekaboo");
+    } else if (platform === 'linux') {
+      // Linux - use Rust binary
+      const linuxBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-linux", "target", "release", "peekaboo");
+      if (existsSync(linuxBinaryPath)) {
+        return linuxBinaryPath;
+      }
+      // Fallback to debug build if release doesn't exist
+      const debugBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-linux", "target", "debug", "peekaboo");
+      if (existsSync(debugBinaryPath)) {
+        return debugBinaryPath;
+      }
+      // If neither exists, return the expected release path for error reporting
+      return linuxBinaryPath;
+    } else {
+      // Unsupported platform
+      return INVALID_PATH_SENTINEL;
+    }
   }
 
   // If neither PEEKABOO_CLI_PATH is valid nor packageRootDirForFallback is provided,
@@ -285,7 +306,7 @@ export async function execPeekaboo(
   packageRootDir: string,
   options: { expectSuccess?: boolean } = {},
 ): Promise<{ success: boolean; data?: string; error?: string }> {
-  const cliPath = process.env.PEEKABOO_CLI_PATH || path.resolve(packageRootDir, "peekaboo");
+  const cliPath = determineSwiftCliPath(packageRootDir);
 
   return new Promise((resolve) => {
     const process = spawn(cliPath, args);
