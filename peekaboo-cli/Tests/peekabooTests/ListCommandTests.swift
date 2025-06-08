@@ -301,12 +301,10 @@ struct ListCommandTests {
             )
         ]
 
-        // Capture stdout output
+        // Capture stdout output using the real implementation
         let output = captureStdout {
             let command = AppsSubcommand()
-            // We need to access the private method, so we'll test the logic indirectly
-            // by creating a mock that uses the same logic
-            printApplicationListForTesting(applications)
+            command.printApplicationList(applications)
         }
 
         // Verify that "Windows: 1" is NOT present for single window app
@@ -346,7 +344,8 @@ struct ListCommandTests {
         ]
 
         let output = captureStdout {
-            printApplicationListForTesting(applications)
+            let command = AppsSubcommand()
+            command.printApplicationList(applications)
         }
 
         // All these should show window counts since they're not 1
@@ -368,7 +367,8 @@ struct ListCommandTests {
         ]
 
         let output = captureStdout {
-            printApplicationListForTesting(applications)
+            let command = AppsSubcommand()
+            command.printApplicationList(applications)
         }
 
         // Verify basic formatting is present
@@ -402,7 +402,8 @@ struct ListCommandTests {
         ]
 
         let output = captureStdout {
-            printApplicationListForTesting(applications)
+            let command = AppsSubcommand()
+            command.printApplicationList(applications)
         }
 
         // Both apps have 1 window, so neither should show "Windows: 1"
@@ -425,7 +426,8 @@ struct ListCommandTests {
         ]
 
         let output = captureStdout {
-            printApplicationListForTesting(applications)
+            let command = AppsSubcommand()
+            command.printApplicationList(applications)
         }
 
         // Should show window counts for 0, 2, and 3, but NOT for 1
@@ -572,22 +574,4 @@ func captureStdout<T>(_ closure: () throws -> T) rethrows -> String {
     // Read the captured output
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
     return String(data: data, encoding: .utf8) ?? ""
-}
-
-/// Test version of printApplicationList that uses the same logic as the actual implementation
-func printApplicationListForTesting(_ applications: [ApplicationInfo]) {
-    print("Running Applications (\(applications.count)):")
-    print()
-
-    for (index, app) in applications.enumerated() {
-        print("\(index + 1). \(app.app_name)")
-        print("   Bundle ID: \(app.bundle_id)")
-        print("   PID: \(app.pid)")
-        print("   Status: \(app.is_active ? "Active" : "Background")")
-        // Only show window count if it's not 1 - this matches our implementation
-        if app.window_count != 1 {
-            print("   Windows: \(app.window_count)")
-        }
-        print()
-    }
 }

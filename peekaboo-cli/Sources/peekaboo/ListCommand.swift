@@ -74,7 +74,7 @@ struct AppsSubcommand: ParsableCommand {
         Foundation.exit(captureError.exitCode)
     }
 
-    private func printApplicationList(_ applications: [ApplicationInfo]) {
+    internal func printApplicationList(_ applications: [ApplicationInfo]) {
         print("Running Applications (\(applications.count)):")
         print()
 
