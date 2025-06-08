@@ -145,7 +145,7 @@ struct ImageCommand: ParsableCommand {
             }
 
             // Provide additional details for app not found errors
-            var details: String? = nil
+            var details: String?
             if case .appNotFound = captureError {
                 let runningApps = NSWorkspace.shared.runningApplications
                     .filter { $0.activationPolicy == .regular }
@@ -226,7 +226,7 @@ struct ImageCommand: ParsableCommand {
         }
         return savedFiles
     }
-    
+
     private func captureAllScreensWithFallback(displays: [CGDirectDisplayID]) throws(CaptureError) -> [SavedFile] {
         var savedFiles: [SavedFile] = []
         for (index, displayID) in displays.enumerated() {
@@ -241,8 +241,8 @@ struct ImageCommand: ParsableCommand {
         index: Int,
         labelSuffix: String
     ) throws(CaptureError) -> SavedFile {
-        let fileName = generateFileName(displayIndex: index)
-        let filePath = getOutputPath(fileName)
+        let fileName = FileNameGenerator.generateFileName(displayIndex: index, format: format)
+        let filePath = OutputPathResolver.getOutputPath(basePath: path, fileName: fileName)
 
         try captureDisplay(displayID, to: filePath)
 
@@ -255,14 +255,14 @@ struct ImageCommand: ParsableCommand {
             mime_type: format == .png ? "image/png" : "image/jpeg"
         )
     }
-    
+
     private func captureSingleDisplayWithFallback(
         displayID: CGDirectDisplayID,
         index: Int,
         labelSuffix: String
     ) throws(CaptureError) -> SavedFile {
-        let fileName = generateFileName(displayIndex: index)
-        let filePath = getOutputPathWithFallback(fileName)
+        let fileName = FileNameGenerator.generateFileName(displayIndex: index, format: format)
+        let filePath = OutputPathResolver.getOutputPathWithFallback(basePath: path, fileName: fileName)
 
         try captureDisplay(displayID, to: filePath)
 
@@ -283,9 +283,9 @@ struct ImageCommand: ParsableCommand {
         } catch let ApplicationError.notFound(identifier) {
             throw CaptureError.appNotFound(identifier)
         } catch let ApplicationError.ambiguous(identifier, matches) {
-            let appNames = matches.map { $0.localizedName ?? $0.bundleIdentifier ?? "Unknown" }
-            throw CaptureError
-                .unknownError("Multiple applications match '\(identifier)': \(appNames.joined(separator: ", "))")
+            // For ambiguous matches, capture all windows from all matching applications
+            Logger.shared.debug("Multiple applications match '\(identifier)', capturing all windows from all matches")
+            return try captureWindowsFromMultipleApps(matches, appIdentifier: identifier)
         }
 
         if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
@@ -314,8 +314,8 @@ struct ImageCommand: ParsableCommand {
             targetWindow = windows[0] // frontmost window
         }
 
-        let fileName = generateFileName(appName: targetApp.localizedName, windowTitle: targetWindow.title)
-        let filePath = getOutputPath(fileName)
+        let fileName = FileNameGenerator.generateFileName(appName: targetApp.localizedName, windowTitle: targetWindow.title, format: format)
+        let filePath = OutputPathResolver.getOutputPath(basePath: path, fileName: fileName)
 
         try captureWindow(targetWindow, to: filePath)
 
@@ -338,9 +338,9 @@ struct ImageCommand: ParsableCommand {
         } catch let ApplicationError.notFound(identifier) {
             throw CaptureError.appNotFound(identifier)
         } catch let ApplicationError.ambiguous(identifier, matches) {
-            let appNames = matches.map { $0.localizedName ?? $0.bundleIdentifier ?? "Unknown" }
-            throw CaptureError
-                .unknownError("Multiple applications match '\(identifier)': \(appNames.joined(separator: ", "))")
+            // For ambiguous matches, capture all windows from all matching applications
+            Logger.shared.debug("Multiple applications match '\(identifier)', capturing all windows from all matches")
+            return try captureWindowsFromMultipleApps(matches, appIdentifier: identifier)
         }
 
         if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
@@ -357,10 +357,10 @@ struct ImageCommand: ParsableCommand {
         var savedFiles: [SavedFile] = []
 
         for (index, window) in windows.enumerated() {
-            let fileName = generateFileName(
-                appName: targetApp.localizedName, windowIndex: index, windowTitle: window.title
+            let fileName = FileNameGenerator.generateFileName(
+                appName: targetApp.localizedName, windowIndex: index, windowTitle: window.title, format: format
             )
-            let filePath = getOutputPath(fileName)
+            let filePath = OutputPathResolver.getOutputPath(basePath: path, fileName: fileName)
 
             try captureWindow(window, to: filePath)
 
@@ -378,6 +378,60 @@ struct ImageCommand: ParsableCommand {
         return savedFiles
     }
 
+    private func captureWindowsFromMultipleApps(
+        _ apps: [NSRunningApplication], appIdentifier: String
+    ) throws -> [SavedFile] {
+        var allSavedFiles: [SavedFile] = []
+        var totalWindowIndex = 0
+
+        for targetApp in apps {
+            // Log which app we're processing
+            Logger.shared.debug("Capturing windows for app: \(targetApp.localizedName ?? "Unknown")")
+
+            // Handle focus behavior for each app (if needed)
+            if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
+                try PermissionsChecker.requireAccessibilityPermission()
+                targetApp.activate()
+                Thread.sleep(forTimeInterval: 0.2)
+            }
+
+            let windows = try WindowManager.getWindowsForApp(pid: targetApp.processIdentifier)
+            if windows.isEmpty {
+                Logger.shared.debug("No windows found for app: \(targetApp.localizedName ?? "Unknown")")
+                continue
+            }
+
+            for window in windows {
+                let fileName = FileNameGenerator.generateFileName(
+                    appName: targetApp.localizedName,
+                    windowIndex: totalWindowIndex,
+                    windowTitle: window.title,
+                    format: format
+                )
+                let filePath = OutputPathResolver.getOutputPath(basePath: path, fileName: fileName)
+
+                try captureWindow(window, to: filePath)
+
+                let savedFile = SavedFile(
+                    path: filePath,
+                    item_label: targetApp.localizedName,
+                    window_title: window.title,
+                    window_id: window.windowId,
+                    window_index: totalWindowIndex,
+                    mime_type: format == .png ? "image/png" : "image/jpeg"
+                )
+                allSavedFiles.append(savedFile)
+                totalWindowIndex += 1
+            }
+        }
+
+        guard !allSavedFiles.isEmpty else {
+            throw CaptureError.noWindowsFound("No windows found for any matching applications of '\(appIdentifier)'")
+        }
+
+        return allSavedFiles
+    }
+
     private func captureDisplay(_ displayID: CGDirectDisplayID, to path: String) throws(CaptureError) {
         do {
             let semaphore = DispatchSemaphore(value: 0)
@@ -385,7 +439,7 @@ struct ImageCommand: ParsableCommand {
 
             Task {
                 do {
-                    try await captureDisplayWithScreenCaptureKit(displayID, to: path)
+                    try await ScreenCapture.captureDisplay(displayID, to: path, format: format)
                 } catch {
                     captureError = error
                 }
@@ -402,49 +456,13 @@ struct ImageCommand: ParsableCommand {
             throw error
         } catch {
             // Check if this is a permission error from ScreenCaptureKit
-            if isScreenRecordingPermissionError(error) {
+            if PermissionErrorDetector.isScreenRecordingPermissionError(error) {
                 throw CaptureError.screenRecordingPermissionDenied
             }
             throw CaptureError.captureCreationFailed(error)
         }
     }
 
-    private func captureDisplayWithScreenCaptureKit(_ displayID: CGDirectDisplayID, to path: String) async throws {
-        do {
-            // Get available content
-            let availableContent = try await SCShareableContent.current
-
-            // Find the display by ID
-            guard let scDisplay = availableContent.displays.first(where: { $0.displayID == displayID }) else {
-                throw CaptureError.captureCreationFailed(nil)
-            }
-
-            // Create content filter for the entire display
-            let filter = SCContentFilter(display: scDisplay, excludingWindows: [])
-
-            // Configure capture settings
-            let configuration = SCStreamConfiguration()
-            configuration.width = scDisplay.width
-            configuration.height = scDisplay.height
-            configuration.backgroundColor = .black
-            configuration.shouldBeOpaque = true
-            configuration.showsCursor = true
-
-            // Capture the image
-            let image = try await SCScreenshotManager.captureImage(
-                contentFilter: filter,
-                configuration: configuration
-            )
-
-            try saveImage(image, to: path)
-        } catch {
-            // Check if this is a permission error
-            if isScreenRecordingPermissionError(error) {
-                throw CaptureError.screenRecordingPermissionDenied
-            }
-            throw error
-        }
-    }
 
     private func captureWindow(_ window: WindowData, to path: String) throws(CaptureError) {
         do {
@@ -453,7 +471,7 @@ struct ImageCommand: ParsableCommand {
 
             Task {
                 do {
-                    try await captureWindowWithScreenCaptureKit(window, to: path)
+                    try await ScreenCapture.captureWindow(window, to: path, format: format)
                 } catch {
                     captureError = error
                 }
@@ -470,270 +488,17 @@ struct ImageCommand: ParsableCommand {
             throw error
         } catch {
             // Check if this is a permission error from ScreenCaptureKit
-            if isScreenRecordingPermissionError(error) {
+            if PermissionErrorDetector.isScreenRecordingPermissionError(error) {
                 throw CaptureError.screenRecordingPermissionDenied
             }
             throw CaptureError.windowCaptureFailed(error)
         }
     }
 
-    private func captureWindowWithScreenCaptureKit(_ window: WindowData, to path: String) async throws {
-        do {
-            // Get available content
-            let availableContent = try await SCShareableContent.current
 
-            // Find the window by ID
-            guard let scWindow = availableContent.windows.first(where: { $0.windowID == window.windowId }) else {
-                throw CaptureError.windowNotFound
-            }
 
-            // Create content filter for the specific window
-            let filter = SCContentFilter(desktopIndependentWindow: scWindow)
 
-            // Configure capture settings
-            let configuration = SCStreamConfiguration()
-            configuration.width = Int(window.bounds.width)
-            configuration.height = Int(window.bounds.height)
-            configuration.backgroundColor = .clear
-            configuration.shouldBeOpaque = true
-            configuration.showsCursor = false
 
-            // Capture the image
-            let image = try await SCScreenshotManager.captureImage(
-                contentFilter: filter,
-                configuration: configuration
-            )
 
-            try saveImage(image, to: path)
-        } catch {
-            // Check if this is a permission error
-            if isScreenRecordingPermissionError(error) {
-                throw CaptureError.screenRecordingPermissionDenied
-            }
-            throw error
-        }
-    }
 
-    private func isScreenRecordingPermissionError(_ error: Error) -> Bool {
-        let errorString = error.localizedDescription.lowercased()
-
-        // Check for specific screen recording related errors
-        if errorString.contains("screen recording") {
-            return true
-        }
-
-        // Check for NSError codes specific to screen capture permissions
-        if let nsError = error as NSError? {
-            // ScreenCaptureKit specific error codes
-            if nsError.domain == "com.apple.screencapturekit" && nsError.code == -3801 {
-                // SCStreamErrorUserDeclined = -3801
-                return true
-            }
-
-            // CoreGraphics error codes for screen capture
-            if nsError.domain == "com.apple.coregraphics" && nsError.code == 1002 {
-                // kCGErrorCannotComplete when permissions are denied
-                return true
-            }
-        }
-
-        // Only consider it a permission error if it mentions both "permission" and capture-related terms
-        if errorString.contains("permission") &&
-            (errorString.contains("capture") || errorString.contains("recording") || errorString.contains("screen")) {
-            return true
-        }
-
-        return false
-    }
-
-    private func saveImage(_ image: CGImage, to path: String) throws(CaptureError) {
-        let url = URL(fileURLWithPath: path)
-
-        // Check if the parent directory exists
-        let directory = url.deletingLastPathComponent()
-        var isDirectory: ObjCBool = false
-        if !FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory) {
-            let error = NSError(
-                domain: NSCocoaErrorDomain,
-                code: NSFileNoSuchFileError,
-                userInfo: [NSLocalizedDescriptionKey: "No such file or directory"]
-            )
-            throw CaptureError.fileWriteError(path, error)
-        }
-
-        let utType: UTType = format == .png ? .png : .jpeg
-        guard let destination = CGImageDestinationCreateWithURL(
-            url as CFURL,
-            utType.identifier as CFString,
-            1,
-            nil
-        ) else {
-            // Try to create a more specific error for common cases
-            if !FileManager.default.isWritableFile(atPath: directory.path) {
-                let error = NSError(
-                    domain: NSPOSIXErrorDomain,
-                    code: Int(EACCES),
-                    userInfo: [NSLocalizedDescriptionKey: "Permission denied"]
-                )
-                throw CaptureError.fileWriteError(path, error)
-            }
-            throw CaptureError.fileWriteError(path, nil)
-        }
-
-        CGImageDestinationAddImage(destination, image, nil)
-
-        guard CGImageDestinationFinalize(destination) else {
-            throw CaptureError.fileWriteError(path, nil)
-        }
-    }
-
-    private func generateFileName(
-        displayIndex: Int? = nil,
-        appName: String? = nil,
-        windowIndex: Int? = nil,
-        windowTitle: String? = nil
-    ) -> String {
-        let timestamp = DateFormatter.timestamp.string(from: Date())
-        let ext = format.rawValue
-
-        if let displayIndex {
-            return "screen_\(displayIndex + 1)_\(timestamp).\(ext)"
-        } else if let appName {
-            let cleanAppName = appName.replacingOccurrences(of: " ", with: "_")
-            if let windowIndex {
-                return "\(cleanAppName)_window_\(windowIndex)_\(timestamp).\(ext)"
-            } else if let windowTitle {
-                let cleanTitle = windowTitle.replacingOccurrences(of: " ", with: "_").prefix(20)
-                return "\(cleanAppName)_\(cleanTitle)_\(timestamp).\(ext)"
-            } else {
-                return "\(cleanAppName)_\(timestamp).\(ext)"
-            }
-        } else {
-            return "capture_\(timestamp).\(ext)"
-        }
-    }
-
-    func getOutputPath(_ fileName: String) -> String {
-        if let basePath = path {
-            determineOutputPath(basePath: basePath, fileName: fileName)
-        } else {
-            "/tmp/\(fileName)"
-        }
-    }
-    
-    func getOutputPathWithFallback(_ fileName: String) -> String {
-        if let basePath = path {
-            determineOutputPathWithFallback(basePath: basePath, fileName: fileName)
-        } else {
-            "/tmp/\(fileName)"
-        }
-    }
-
-    func determineOutputPath(basePath: String, fileName: String) -> String {
-        // Check if basePath looks like a file (has extension and doesn't end with /)
-        // Exclude special directory cases like "." and ".."
-        let isLikelyFile = basePath.contains(".") && !basePath.hasSuffix("/") &&
-            basePath != "." && basePath != ".."
-
-        if isLikelyFile {
-            // Create parent directory if needed
-            let parentDir = (basePath as NSString).deletingLastPathComponent
-            if !parentDir.isEmpty && parentDir != "/" {
-                do {
-                    try FileManager.default.createDirectory(
-                        atPath: parentDir,
-                        withIntermediateDirectories: true,
-                        attributes: nil
-                    )
-                } catch {
-                    // Log but don't fail - maybe directory already exists
-                    // Logger.debug("Could not create parent directory \(parentDir): \(error)")
-                }
-            }
-
-            // For multiple screens, append screen index to avoid overwriting
-            if screenIndex == nil {
-                // Multiple screens - modify filename to include screen info
-                let pathExtension = (basePath as NSString).pathExtension
-                let pathWithoutExtension = (basePath as NSString).deletingPathExtension
-
-                // Extract screen info from fileName (e.g., "screen_1_20250608_120000.png" -> "1_20250608_120000")
-                let fileNameWithoutExt = (fileName as NSString).deletingPathExtension
-                let screenSuffix = fileNameWithoutExt.replacingOccurrences(of: "screen_", with: "")
-
-                return "\(pathWithoutExtension)_\(screenSuffix).\(pathExtension)"
-            }
-
-            return basePath
-        } else {
-            // Treat as directory - ensure it exists
-            do {
-                try FileManager.default.createDirectory(
-                    atPath: basePath,
-                    withIntermediateDirectories: true,
-                    attributes: nil
-                )
-            } catch {
-                // Log but don't fail - maybe directory already exists
-                // Logger.debug("Could not create directory \(basePath): \(error)")
-            }
-            return "\(basePath)/\(fileName)"
-        }
-    }
-    
-    func determineOutputPathWithFallback(basePath: String, fileName: String) -> String {
-        // Check if basePath looks like a file (has extension and doesn't end with /)
-        // Exclude special directory cases like "." and ".."
-        let isLikelyFile = basePath.contains(".") && !basePath.hasSuffix("/") &&
-            basePath != "." && basePath != ".."
-
-        if isLikelyFile {
-            // Create parent directory if needed
-            let parentDir = (basePath as NSString).deletingLastPathComponent
-            if !parentDir.isEmpty && parentDir != "/" {
-                do {
-                    try FileManager.default.createDirectory(
-                        atPath: parentDir,
-                        withIntermediateDirectories: true,
-                        attributes: nil
-                    )
-                } catch {
-                    // Log but don't fail - maybe directory already exists
-                    // Logger.debug("Could not create parent directory \(parentDir): \(error)")
-                }
-            }
-
-            // For fallback mode (invalid screen index that fell back to all screens),
-            // always treat as multiple screens to avoid overwriting
-            let pathExtension = (basePath as NSString).pathExtension
-            let pathWithoutExtension = (basePath as NSString).deletingPathExtension
-
-            // Extract screen info from fileName (e.g., "screen_1_20250608_120000.png" -> "1_20250608_120000")
-            let fileNameWithoutExt = (fileName as NSString).deletingPathExtension
-            let screenSuffix = fileNameWithoutExt.replacingOccurrences(of: "screen_", with: "")
-
-            return "\(pathWithoutExtension)_\(screenSuffix).\(pathExtension)"
-        } else {
-            // Treat as directory - ensure it exists
-            do {
-                try FileManager.default.createDirectory(
-                    atPath: basePath,
-                    withIntermediateDirectories: true,
-                    attributes: nil
-                )
-            } catch {
-                // Log but don't fail - maybe directory already exists
-                // Logger.debug("Could not create directory \(basePath): \(error)")
-            }
-            return "\(basePath)/\(fileName)"
-        }
-    }
-}
-
-extension DateFormatter {
-    static let timestamp: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd_HHmmss"
-        return formatter
-    }()
 }

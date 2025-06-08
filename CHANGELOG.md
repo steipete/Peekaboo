@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Multiple exact app matches now capture all windows instead of erroring**
+  - When multiple applications have exact matches (e.g., "claude" and "Claude"), the system now captures all windows from all matching applications
+  - This replaces the previous behavior of throwing an ambiguous match error
+  - Window indices are sequential across all matched applications
+  - Each saved file preserves the original application name in `item_label`
+  - Only truly ambiguous fuzzy matches still return errors
+  - Comprehensive test coverage for various multiple match scenarios
+
 ## [1.0.0-beta.20] - 2025-06-08
 
 ### Added
