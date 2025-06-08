@@ -133,7 +133,7 @@ export const imageToolSchema = z.object({
       }
       return val;
     },
-    z.string().optional()
+    z.string().optional(),
   ).describe(
     "Optional. Base absolute path for saving the image.\n" +
     "Relevant if `format` is `'png'`, `'jpg'`, or if `'data'` is used with the intention to also save the file.\n" +

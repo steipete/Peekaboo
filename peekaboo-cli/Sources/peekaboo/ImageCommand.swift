@@ -213,7 +213,8 @@ struct ImageCommand: ParsableCommand {
             return try [captureSingleDisplay(displayID: displayID, index: screenIndex, labelSuffix: labelSuffix)]
         } else {
             Logger.shared.debug("Screen index \(screenIndex) is out of bounds. Capturing all screens instead.")
-            return try captureAllScreens(displays: displays)
+            // When falling back to all screens, use fallback-aware capture to prevent filename conflicts
+            return try captureAllScreensWithFallback(displays: displays)
         }
     }
 
@@ -221,6 +222,15 @@ struct ImageCommand: ParsableCommand {
         var savedFiles: [SavedFile] = []
         for (index, displayID) in displays.enumerated() {
             let savedFile = try captureSingleDisplay(displayID: displayID, index: index, labelSuffix: "")
+            savedFiles.append(savedFile)
+        }
+        return savedFiles
+    }
+    
+    private func captureAllScreensWithFallback(displays: [CGDirectDisplayID]) throws(CaptureError) -> [SavedFile] {
+        var savedFiles: [SavedFile] = []
+        for (index, displayID) in displays.enumerated() {
+            let savedFile = try captureSingleDisplayWithFallback(displayID: displayID, index: index, labelSuffix: "")
             savedFiles.append(savedFile)
         }
         return savedFiles
@@ -233,6 +243,26 @@ struct ImageCommand: ParsableCommand {
     ) throws(CaptureError) -> SavedFile {
         let fileName = generateFileName(displayIndex: index)
         let filePath = getOutputPath(fileName)
+
+        try captureDisplay(displayID, to: filePath)
+
+        return SavedFile(
+            path: filePath,
+            item_label: "Display \(index + 1)\(labelSuffix)",
+            window_title: nil,
+            window_id: nil,
+            window_index: nil,
+            mime_type: format == .png ? "image/png" : "image/jpeg"
+        )
+    }
+    
+    private func captureSingleDisplayWithFallback(
+        displayID: CGDirectDisplayID,
+        index: Int,
+        labelSuffix: String
+    ) throws(CaptureError) -> SavedFile {
+        let fileName = generateFileName(displayIndex: index)
+        let filePath = getOutputPathWithFallback(fileName)
 
         try captureDisplay(displayID, to: filePath)
 
@@ -590,6 +620,14 @@ struct ImageCommand: ParsableCommand {
             "/tmp/\(fileName)"
         }
     }
+    
+    func getOutputPathWithFallback(_ fileName: String) -> String {
+        if let basePath = path {
+            determineOutputPathWithFallback(basePath: basePath, fileName: fileName)
+        } else {
+            "/tmp/\(fileName)"
+        }
+    }
 
     func determineOutputPath(basePath: String, fileName: String) -> String {
         // Check if basePath looks like a file (has extension and doesn't end with /)
@@ -627,6 +665,54 @@ struct ImageCommand: ParsableCommand {
             }
 
             return basePath
+        } else {
+            // Treat as directory - ensure it exists
+            do {
+                try FileManager.default.createDirectory(
+                    atPath: basePath,
+                    withIntermediateDirectories: true,
+                    attributes: nil
+                )
+            } catch {
+                // Log but don't fail - maybe directory already exists
+                // Logger.debug("Could not create directory \(basePath): \(error)")
+            }
+            return "\(basePath)/\(fileName)"
+        }
+    }
+    
+    func determineOutputPathWithFallback(basePath: String, fileName: String) -> String {
+        // Check if basePath looks like a file (has extension and doesn't end with /)
+        // Exclude special directory cases like "." and ".."
+        let isLikelyFile = basePath.contains(".") && !basePath.hasSuffix("/") &&
+            basePath != "." && basePath != ".."
+
+        if isLikelyFile {
+            // Create parent directory if needed
+            let parentDir = (basePath as NSString).deletingLastPathComponent
+            if !parentDir.isEmpty && parentDir != "/" {
+                do {
+                    try FileManager.default.createDirectory(
+                        atPath: parentDir,
+                        withIntermediateDirectories: true,
+                        attributes: nil
+                    )
+                } catch {
+                    // Log but don't fail - maybe directory already exists
+                    // Logger.debug("Could not create parent directory \(parentDir): \(error)")
+                }
+            }
+
+            // For fallback mode (invalid screen index that fell back to all screens),
+            // always treat as multiple screens to avoid overwriting
+            let pathExtension = (basePath as NSString).pathExtension
+            let pathWithoutExtension = (basePath as NSString).deletingPathExtension
+
+            // Extract screen info from fileName (e.g., "screen_1_20250608_120000.png" -> "1_20250608_120000")
+            let fileNameWithoutExt = (fileName as NSString).deletingPathExtension
+            let screenSuffix = fileNameWithoutExt.replacingOccurrences(of: "screen_", with: "")
+
+            return "\(pathWithoutExtension)_\(screenSuffix).\(pathExtension)"
         } else {
             // Treat as directory - ensure it exists
             do {
