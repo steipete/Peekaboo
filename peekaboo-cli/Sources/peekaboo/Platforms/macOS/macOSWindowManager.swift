@@ -6,15 +6,15 @@ import AppKit
 /// macOS implementation of window management using AppKit and Core Graphics
 struct macOSWindowManager: WindowManagerProtocol {
     
-    func getWindows(for applicationId: String) async throws -> [WindowInfo] {
+    func getWindows(for applicationId: String) async throws -> [PlatformWindowInfo] {
         let allWindows = try await getAllWindows()
         return allWindows.filter { $0.applicationId == applicationId }
     }
     
-    func getAllWindows() async throws -> [WindowInfo] {
+    func getAllWindows() async throws -> [PlatformWindowInfo] {
         let windowList = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
         
-        var windows: [WindowInfo] = []
+        var windows: [PlatformWindowInfo] = []
         
         for windowDict in windowList {
             guard let windowNumber = windowDict[kCGWindowNumber as String] as? Int,
@@ -37,7 +37,7 @@ struct macOSWindowManager: WindowManagerProtocol {
                 continue
             }
             
-            let windowInfo = WindowInfo(
+            let windowInfo = PlatformWindowInfo(
                 id: String(windowNumber),
                 title: windowTitle,
                 bounds: bounds,
@@ -54,7 +54,7 @@ struct macOSWindowManager: WindowManagerProtocol {
         return windows
     }
     
-    func getWindow(by windowId: String) async throws -> WindowInfo? {
+    func getWindow(by windowId: String) async throws -> PlatformWindowInfo? {
         guard let windowNumber = Int(windowId) else {
             return nil
         }
@@ -69,4 +69,3 @@ struct macOSWindowManager: WindowManagerProtocol {
 }
 
 #endif
-

@@ -30,13 +30,13 @@ jobs:
         echo "✅ macOS CLI working"
 
   test-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     
     steps:
     - uses: actions/checkout@v4
     
     - name: Install Swift
-      uses: swift-actions/setup-swift@v1
+      uses: swift-actions/setup-swift@v2
       with:
         swift-version: '6.0'
     
@@ -86,14 +86,14 @@ jobs:
         echo "✅ Windows CLI working"
 
   integration-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [test-macos, test-linux, test-windows]
     
     steps:
     - uses: actions/checkout@v4
     
     - name: Install Swift
-      uses: swift-actions/setup-swift@v1
+      uses: swift-actions/setup-swift@v2
       with:
         swift-version: '6.0'
     
@@ -103,4 +103,3 @@ jobs:
         # Verify that the platform factory works correctly
         swift test --filter PlatformFactoryTests
         echo "✅ Cross-platform integration verified"
-

@@ -42,13 +42,12 @@ jobs:
         path: artifacts/macos/peekaboo
 
   build-linux:
-    runs-on: ubuntu-latest
-    
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     
     - name: Install Swift
-      uses: swift-actions/setup-swift@v1
+      uses: swift-actions/setup-swift@v2
       with:
         swift-version: '6.0'
     
@@ -146,4 +145,3 @@ jobs:
         # Test that all platform-specific code compiles
         swift build -c release
         echo "✅ Cross-platform architecture verified"
-

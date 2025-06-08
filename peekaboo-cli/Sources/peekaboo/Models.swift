@@ -21,17 +21,29 @@ enum CaptureMode: String, CaseIterable, ExpressibleByArgument, Sendable {
     case window
     case multi
     case frontmost
+    
+    init?(argument: String) {
+        self.init(rawValue: argument)
+    }
 }
 
 enum ImageFormat: String, CaseIterable, ExpressibleByArgument, Sendable {
     case png
     case jpg
+    
+    init?(argument: String) {
+        self.init(rawValue: argument)
+    }
 }
 
 enum CaptureFocus: String, CaseIterable, ExpressibleByArgument, Sendable {
     case background
     case auto
     case foreground
+    
+    init?(argument: String) {
+        self.init(rawValue: argument)
+    }
 }
 
 // MARK: - Application & Window Models

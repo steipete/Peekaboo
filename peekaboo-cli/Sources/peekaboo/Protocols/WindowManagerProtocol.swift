@@ -9,24 +9,24 @@ protocol WindowManagerProtocol: Sendable {
     /// Gets all windows for a specific application
     /// - Parameter applicationId: Platform-specific application identifier
     /// - Returns: Array of window information
-    func getWindows(for applicationId: String) async throws -> [WindowInfo]
+    func getWindows(for applicationId: String) async throws -> [PlatformWindowInfo]
     
     /// Gets all visible windows on the system
     /// - Returns: Array of all visible windows
-    func getAllWindows() async throws -> [WindowInfo]
+    func getAllWindows() async throws -> [PlatformWindowInfo]
     
     /// Gets window information by window ID
     /// - Parameter windowId: Platform-specific window identifier
     /// - Returns: Window information if found
-    func getWindow(by windowId: String) async throws -> WindowInfo?
+    func getWindow(by windowId: String) async throws -> PlatformWindowInfo?
     
     /// Checks if window management is available on this platform
     /// - Returns: True if window management is supported
     static func isSupported() -> Bool
 }
 
-/// Cross-platform window information
-struct WindowInfo: Sendable, Codable, Identifiable {
+/// Cross-platform window information for internal use
+struct PlatformWindowInfo: Sendable, Codable, Identifiable {
     let id: String
     let title: String
     let bounds: CGRect
