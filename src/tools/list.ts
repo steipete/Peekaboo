@@ -21,7 +21,7 @@ import { Logger } from "pino";
 export const listToolSchema = z
   .object({
     item_type: z
-      .enum(["running_applications", "application_windows", "server_status", ""])
+      .enum(["running_applications", "application_windows", "server_status"])
       .optional()
       .describe(
         "Specifies the type of items to list. If omitted or empty, it defaults to 'application_windows' if 'app' is provided, otherwise 'running_applications'. Valid options are:\n" +
@@ -148,6 +148,7 @@ export async function listToolHandler(
 
     // Build Swift CLI arguments
     const args = buildSwiftCliArgs(input);
+    logger.debug({ args }, "Swift CLI arguments built");
 
     // Execute Swift CLI
     const swiftResponse = await executeSwiftCli(args, logger, { timeout: 15000 });
@@ -192,7 +193,14 @@ export async function listToolHandler(
     }
 
     // Process the response based on item type
-    const effective_item_type = (input.item_type && typeof input.item_type === "string" && input.item_type.trim() !== "") ? input.item_type : (input.app ? "application_windows" : "running_applications");
+    let effective_item_type: string;
+    if (input.item_type && typeof input.item_type === "string" && input.item_type.trim() !== "") {
+      effective_item_type = input.item_type.trim();
+    } else if (input.app) {
+      effective_item_type = "application_windows";
+    } else {
+      effective_item_type = "running_applications";
+    }
 
     if (effective_item_type === "running_applications") {
       return handleApplicationsList(
@@ -386,27 +394,46 @@ async function handleServerStatus(
 }
 
 export function buildSwiftCliArgs(input: ListToolInput): string[] {
-  const args = ["list"];
-  const itemType = (input.item_type && typeof input.item_type === "string" && input.item_type.trim() !== "") ? input.item_type : (input.app ? "application_windows" : "running_applications");
-
-  if (itemType === "running_applications") {
-    args.push("apps");
-  } else if (itemType === "application_windows") {
-    args.push("windows");
-    if (input.app) {
-      args.push("--app", input.app);
-    }
-    if (
-      input.include_window_details &&
-      input.include_window_details.length > 0
-    ) {
-      args.push("--include-details", input.include_window_details.join(","));
-    }
-  } else if (itemType === "server_status") {
-    args.push("server_status");
+  const args: string[] = ["list"];
+  
+  // Determine item type with defensive checks
+  let itemType: string;
+  if (input.item_type && typeof input.item_type === "string" && input.item_type.trim() !== "") {
+    itemType = input.item_type.trim();
+  } else if (input.app) {
+    itemType = "application_windows";
+  } else {
+    itemType = "running_applications";
   }
 
-  return args;
+  // Add appropriate subcommand
+  switch (itemType) {
+    case "running_applications":
+      args.push("apps");
+      break;
+    case "application_windows":
+      args.push("windows");
+      if (input.app && input.app.trim()) {
+        args.push("--app", input.app.trim());
+      }
+      if (input.include_window_details && input.include_window_details.length > 0) {
+        const details = input.include_window_details.filter(d => d && d.trim()).join(",");
+        if (details) {
+          args.push("--include-details", details);
+        }
+      }
+      break;
+    case "server_status":
+      args.push("server_status");
+      break;
+    default:
+      // Fallback to apps if unknown type
+      args.push("apps");
+      break;
+  }
+
+  // Filter out any undefined or empty values
+  return args.filter(arg => arg !== undefined && arg !== null && arg !== "");
 }
 
 function handleApplicationsList(

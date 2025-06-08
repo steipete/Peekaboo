@@ -7,134 +7,102 @@ protocol AsyncRunnable {
     func runAsync() async throws
 }
 
+// Thread-safe result container
+private final class ResultBox<T>: @unchecked Sendable {
+    private var _result: Result<T, Error>?
+    private let lock = NSLock()
+    
+    var result: Result<T, Error>? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _result
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _result = newValue
+        }
+    }
+}
+
+// Helper to run async code synchronously
+private func runAsyncBlocking<T: Sendable>(_ asyncWork: @escaping @Sendable () async throws -> T) throws -> T {
+    let resultBox = ResultBox<T>()
+    let semaphore = DispatchSemaphore(value: 0)
+    
+    Task.detached {
+        do {
+            let value = try await asyncWork()
+            resultBox.result = .success(value)
+        } catch {
+            resultBox.result = .failure(error)
+        }
+        semaphore.signal()
+    }
+    
+    semaphore.wait()
+    
+    switch resultBox.result {
+    case .success(let value):
+        return value
+    case .failure(let error):
+        throw error
+    case .none:
+        fatalError("Async operation did not complete")
+    }
+}
+
 extension PeekabooCommand {
     func run() throws {
-        let box = ErrorBox()
-        let sem = DispatchSemaphore(value: 0)
-        Task {
-            defer { sem.signal() }
-            do {
-                try await (self as AsyncRunnable).runAsync()
-            } catch {
-                box.error = error
-            }
-        }
-        sem.wait()
-        if let error = box.error {
-            throw error
+        try runAsyncBlocking {
+            try await (self as AsyncRunnable).runAsync()
+            return ()
         }
     }
 }
 
 extension ImageCommand {
     func run() throws {
-        let box = ErrorBox()
-        let sem = DispatchSemaphore(value: 0)
-        Task {
-            defer { sem.signal() }
-            do {
-                try await (self as AsyncRunnable).runAsync()
-            } catch {
-                box.error = error
-            }
-        }
-        sem.wait()
-        if let error = box.error {
-            throw error
+        try runAsyncBlocking {
+            try await (self as AsyncRunnable).runAsync()
+            return ()
         }
     }
 }
 
 extension ListCommand {
     func run() throws {
-        let box = ErrorBox()
-        let sem = DispatchSemaphore(value: 0)
-        Task {
-            defer { sem.signal() }
-            do {
-                try await (self as AsyncRunnable).runAsync()
-            } catch {
-                box.error = error
-            }
-        }
-        sem.wait()
-        if let error = box.error {
-            throw error
+        try runAsyncBlocking {
+            try await (self as AsyncRunnable).runAsync()
+            return ()
         }
     }
 }
 
 extension AppsSubcommand {
     func run() throws {
-        let box = ErrorBox()
-        let sem = DispatchSemaphore(value: 0)
-        Task {
-            defer { sem.signal() }
-            do {
-                try await (self as AsyncRunnable).runAsync()
-            } catch {
-                box.error = error
-            }
-        }
-        sem.wait()
-        if let error = box.error {
-            throw error
+        try runAsyncBlocking {
+            try await (self as AsyncRunnable).runAsync()
+            return ()
         }
     }
 }
 
 extension WindowsSubcommand {
     func run() throws {
-        let box = ErrorBox()
-        let sem = DispatchSemaphore(value: 0)
-        Task {
-            defer { sem.signal() }
-            do {
-                try await (self as AsyncRunnable).runAsync()
-            } catch {
-                box.error = error
-            }
-        }
-        sem.wait()
-        if let error = box.error {
-            throw error
+        try runAsyncBlocking {
+            try await (self as AsyncRunnable).runAsync()
+            return ()
         }
     }
 }
 
 extension ServerStatusSubcommand {
     func run() throws {
-        let box = ErrorBox()
-        let sem = DispatchSemaphore(value: 0)
-        Task {
-            defer { sem.signal() }
-            do {
-                try await (self as AsyncRunnable).runAsync()
-            } catch {
-                box.error = error
-            }
-        }
-        sem.wait()
-        if let error = box.error {
-            throw error
-        }
-    }
-}
-
-private final class ErrorBox: @unchecked Sendable {
-    private var _error: Error? = nil
-    private let lock = NSLock()
-    
-    var error: Error? {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            return _error
-        }
-        set {
-            lock.lock()
-            defer { lock.unlock() }
-            _error = newValue
+        try runAsyncBlocking {
+            try await (self as AsyncRunnable).runAsync()
+            return ()
         }
     }
 }
