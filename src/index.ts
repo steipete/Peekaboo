@@ -225,7 +225,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       } as ToolResponse;
     }
 
-    throw error;
+    // For any other error, return a proper error response instead of throwing
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
+      isError: true,
+    } as ToolResponse;
   }
 });
 
