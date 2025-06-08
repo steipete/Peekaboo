@@ -1,0 +1,35 @@
+name: 'Setup Swift for Linux'
+description: 'Setup Swift development environment for Linux'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Swift
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: "5.10"
+    
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libx11-dev \
+          libxcomposite-dev \
+          libxrandr-dev \
+          libxdamage-dev \
+          libxfixes-dev \
+          libwayland-dev \
+          libwayland-client0 \
+          libwayland-cursor0 \
+          libwayland-egl1 \
+          pkg-config
+    
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: .build
+        key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
+

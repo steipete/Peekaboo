@@ -1,0 +1,20 @@
+name: 'Setup Swift for Windows'
+description: 'Setup Swift development environment for Windows'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Swift
+      uses: compnerd/gha-setup-swift@main
+      with:
+        branch: swift-5.10-release
+        tag: 5.10-RELEASE
+    
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: .build
+        key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
+
