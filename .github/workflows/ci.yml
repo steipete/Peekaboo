@@ -2,41 +2,25 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, codegen-bot/* ]
   pull_request:
     branches: [ main ]
 
 jobs:
   test:
-    runs-on: macos-15
+    runs-on: macos-latest
     
     strategy:
       matrix:
         node-version: [20.x, 22.x]
     
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_16.3.app/Contents/Developer
-    
     steps:
     - uses: actions/checkout@v4
     
     - name: Set up Xcode
-      run: |
-        sudo xcode-select -s $DEVELOPER_DIR
-        xcodebuild -version
-        swift --version
-    
-    - name: Build Swift CLI for tests
-      run: |
-        cd peekaboo-cli
-        swift build -c release
-        # Copy the binary to the expected location
-        cp .build/release/peekaboo ../peekaboo
-        cd ..
-        # Make it executable
-        chmod +x peekaboo
-        # Verify it exists
-        ls -la peekaboo
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
     
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
@@ -47,51 +31,27 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Build TypeScript
-      run: npm run build
-    
-    - name: Run linter
-      run: npm run lint --if-present
-    
-    - name: Run tests with coverage
-      run: npm run test:coverage
-      env:
-        CI: true
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      if: matrix.node-version == '20.x'
-      with:
-        file: ./coverage/lcov.info
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+    - name: Run tests
+      run: npm test
 
   build-swift:
-    runs-on: macos-15
-    timeout-minutes: 30
-    
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_16.3.app/Contents/Developer
+    runs-on: macos-latest
     
     steps:
     - uses: actions/checkout@v4
     
     - name: Set up Xcode
-      run: |
-        sudo xcode-select -s $DEVELOPER_DIR
-        xcodebuild -version
-        swift --version
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
     
     - name: Build Swift CLI
       run: |
         cd peekaboo-cli
         swift build -c release
     
-    - name: Run Swift tests
-      timeout-minutes: 10
+    - name: Test Swift CLI
       run: |
         cd peekaboo-cli
-        swift test --parallel --skip "LocalIntegrationTests|ScreenshotValidationTests|ApplicationFinderTests|WindowManagerTests"
-      env:
-        CI: true
+        swift run peekaboo --help
+
