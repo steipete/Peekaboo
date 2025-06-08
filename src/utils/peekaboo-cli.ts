@@ -142,11 +142,7 @@ export async function executeSwiftCli(
         
         // Kill the process with SIGTERM first
         try {
-          try {
           process.kill('SIGTERM');
-        } catch (err) {
-          // Process might already be dead
-        }
         } catch (err) {
           // Process might already be dead
         }
@@ -165,7 +161,11 @@ export async function executeSwiftCli(
 
         resolve({ 
           success: false, 
-          error: `Command timed out after ${timeoutMs}ms: ${cliPath} ${args.join(' ')}` 
+          error: {
+            message: `Swift CLI execution timed out after ${timeoutMs}ms. This may indicate a permission dialog is waiting for user input, or the process is stuck.`,
+            code: "SWIFT_CLI_TIMEOUT",
+            details: `Command: ${cliPath} ${fullArgs.join(' ')}`
+          }
         });
       }
     }, timeoutMs);

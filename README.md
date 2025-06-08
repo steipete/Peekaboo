@@ -80,6 +80,7 @@ Peekaboo can be configured using environment variables:
 
 ```json
 {
+  "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
   "PEEKABOO_LOG_LEVEL": "debug",
   "PEEKABOO_LOG_FILE": "~/Library/Logs/peekaboo-mcp-debug.log",
   "PEEKABOO_DEFAULT_SAVE_PATH": "~/Pictures/PeekabooCaptures",

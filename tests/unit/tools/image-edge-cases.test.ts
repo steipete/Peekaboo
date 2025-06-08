@@ -103,6 +103,7 @@ describe("Image Tool - Edge Cases", () => {
           "--window-title", "Apple"
         ]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
   });
@@ -128,6 +129,7 @@ describe("Image Tool - Edge Cases", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--format", "png"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -151,6 +153,7 @@ describe("Image Tool - Edge Cases", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--format", "jpg"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -174,6 +177,7 @@ describe("Image Tool - Edge Cases", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--format", "jpg"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -197,6 +201,7 @@ describe("Image Tool - Edge Cases", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--format", "jpg"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -222,6 +227,7 @@ describe("Image Tool - Edge Cases", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--format", "png"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
   });
@@ -369,6 +375,7 @@ describe("Image Tool - Edge Cases", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", pathWithPipe]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -393,6 +400,7 @@ describe("Image Tool - Edge Cases", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", pathWithColon]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -417,6 +425,7 @@ describe("Image Tool - Edge Cases", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", pathWithAsterisk]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -441,6 +450,7 @@ describe("Image Tool - Edge Cases", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", complexPath]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -465,6 +475,7 @@ describe("Image Tool - Edge Cases", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", pathWithSpaces]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
   });

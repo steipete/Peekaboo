@@ -92,6 +92,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["image", "--mode", "screen", "--path", MOCK_TEMP_IMAGE_DIR, "--format", "png"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       
       // When format is omitted, it defaults to "png", not "data"
@@ -139,6 +140,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--format", "png"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       
       // Should NOT return base64 data for screen captures
@@ -205,6 +207,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", userPath, "--format", "png"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       expect(result.content).toEqual(
         expect.arrayContaining([
@@ -283,6 +286,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--mode", "screen", "--screen-index", "1"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -310,10 +314,12 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--mode", "screen"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.not.arrayContaining(["--screen-index"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -343,6 +349,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--format", "png"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -372,6 +379,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--format", "jpg"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -398,6 +406,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--mode", "screen"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -419,6 +428,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--app", "Safari", "--mode", "multi"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -444,6 +454,7 @@ describe("Image Tool", () => {
           "--window-title", "Apple"
         ]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -469,6 +480,7 @@ describe("Image Tool", () => {
           "--window-index", "2"
         ]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -490,6 +502,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--capture-focus", "foreground"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -511,6 +524,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--capture-focus", "auto"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -532,6 +546,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--capture-focus", "background"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
   });
@@ -574,6 +589,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", MOCK_TEMP_IMAGE_DIR]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       expect(mockPerformAutomaticAnalysis).toHaveBeenCalledWith(
         "base64dataforanalysis",
@@ -633,6 +649,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", USER_PATH, "--format", "jpg"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       expect(mockPerformAutomaticAnalysis).toHaveBeenCalledWith(
         "base64dataforanalysis",
@@ -1170,6 +1187,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--format", "png"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -1201,6 +1219,7 @@ describe("Image Tool", () => {
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--format", "png"]),
         mockLogger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
   });

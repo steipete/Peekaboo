@@ -109,7 +109,8 @@ describeSwiftTests("Image Tool Integration Tests", () => {
       // The CLI should be called with the DIRECTORY, not a full file path
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", MOCK_TEMP_DIR]),
-        mockContext.logger
+        mockContext.logger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
 
       // Verify the result is correct
@@ -149,7 +150,8 @@ describeSwiftTests("Image Tool Integration Tests", () => {
       expect(mockResolveImagePath).toHaveBeenCalledWith({}, mockContext.logger);
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", MOCK_TEMP_DIR]),
-        mockContext.logger
+        mockContext.logger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
   });
@@ -201,7 +203,8 @@ describeSwiftTests("Image Tool Integration Tests", () => {
       expect(result.isError).toBeFalsy();
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["image", "--mode", "screen", "--screen-index", "0"]),
-        mockContext.logger
+        mockContext.logger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       // Since temp dir was used, saved_files now contains the temp file
       const mockResponse = mockSwiftCli.captureImage("screen", {
@@ -239,7 +242,8 @@ describeSwiftTests("Image Tool Integration Tests", () => {
       );
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.not.arrayContaining(["--screen-index"]),
-        mockContext.logger
+        mockContext.logger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
     });
 
@@ -272,7 +276,8 @@ describeSwiftTests("Image Tool Integration Tests", () => {
       expect(result.isError).toBeFalsy();
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["image", "--mode", "screen", "--screen-index", "99"]),
-        mockContext.logger
+        mockContext.logger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       // Since temp dir was used, saved_files now contains the temp file
       expect(result.saved_files).toEqual([{
@@ -900,7 +905,8 @@ describeSwiftTests("Image Tool Integration Tests", () => {
       // It should have used the default path
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", MOCK_DEFAULT_PATH]),
-        mockContext.logger
+        mockContext.logger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
       
       // No cleanup should have occurred
@@ -942,7 +948,8 @@ describeSwiftTests("Image Tool Integration Tests", () => {
       // We can verify this by checking that the Swift CLI was called with the temp dir, not the default path
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", MOCK_TEMP_DIR]),
-        mockContext.logger
+        mockContext.logger,
+        expect.objectContaining({ timeout: expect.any(Number) })
       );
 
       delete process.env.PEEKABOO_DEFAULT_SAVE_PATH;
