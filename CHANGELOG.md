@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.19] - 2025-06-08
+
 ### Added
 - Automatic format fallback for screen captures to prevent JavaScript stack overflow errors
   - When `format: "data"` is specified for screen captures, the tool automatically falls back to PNG format
