@@ -5,12 +5,8 @@ import Testing
 
 @Suite("PID Targeting Tests")
 struct PIDTargetingTests {
-    @Test("Find application by valid PID")
+    @Test("Find application by valid PID", .enabled(if: ProcessInfo.processInfo.environment["CI"] == nil))
     func findByValidPID() throws {
-        // Skip in CI environment
-        guard ProcessInfo.processInfo.environment["CI"] == nil else {
-            return
-        }
         
         // Get any running application
         let runningApps = NSWorkspace.shared.runningApplications
@@ -43,12 +39,8 @@ struct PIDTargetingTests {
         ]
         
         for invalidPID in invalidPIDs {
-            do {
+            #expect(throws: ApplicationError.self) {
                 _ = try ApplicationFinder.findApplication(identifier: invalidPID)
-                Issue.record("Expected error for invalid PID: \(invalidPID)")
-            } catch {
-                // Expected error
-                #expect(error is ApplicationError)
             }
         }
     }
@@ -61,14 +53,10 @@ struct PIDTargetingTests {
         do {
             _ = try ApplicationFinder.findApplication(identifier: identifier)
             Issue.record("Expected error for non-existent PID")
-        } catch let error as ApplicationError {
-            if case .notFound(let message) = error {
-                #expect(message.contains("No application found with PID: 99999"))
-            } else {
-                Issue.record("Expected notFound error, got: \(error)")
-            }
+        } catch ApplicationError.notFound(let message) {
+            #expect(message.contains("No application found with PID: 99999"))
         } catch {
-            Issue.record("Unexpected error type: \(error)")
+            Issue.record("Unexpected error: \(error)")
         }
     }
 }
