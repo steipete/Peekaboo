@@ -1,6 +1,6 @@
 import Foundation
 import CoreGraphics
-import ScreenCaptureKit
+@preconcurrency import ScreenCaptureKit
 
 struct ScreenCapture: Sendable {
     static func captureDisplay(

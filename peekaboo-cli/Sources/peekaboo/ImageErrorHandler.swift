@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 
 struct ImageErrorHandler {
-    static func handleError(_ error: Error, jsonOutput: Bool) -> Never {
+    static func handleError(_ error: Error, jsonOutput: Bool) {
         let captureError: CaptureError = if let err = error as? CaptureError {
             err
         } else {
@@ -70,6 +70,6 @@ struct ImageErrorHandler {
             var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
             print("Error: \(captureError.localizedDescription)", to: &localStandardErrorStream)
         }
-        Foundation.exit(captureError.exitCode)
+        // Don't call exit() here - let the caller handle process termination
     }
 }

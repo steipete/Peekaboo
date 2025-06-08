@@ -60,6 +60,8 @@ struct ImageCommand: AsyncParsableCommand {
             outputResults(savedFiles)
         } catch {
             handleError(error)
+            // Throw a special exit error that AsyncParsableCommand can handle
+            throw ExitCode(Int32(1))
         }
     }
 
@@ -98,7 +100,7 @@ struct ImageCommand: AsyncParsableCommand {
         }
     }
 
-    private func handleError(_ error: Error) -> Never {
+    private func handleError(_ error: Error) {
         ImageErrorHandler.handleError(error, jsonOutput: jsonOutput)
     }
 

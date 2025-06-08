@@ -41,10 +41,11 @@ struct AppsSubcommand: AsyncParsableCommand {
 
         } catch {
             handleError(error)
+            throw ExitCode(Int32(1))
         }
     }
 
-    private func handleError(_ error: Error) -> Never {
+    private func handleError(_ error: Error) {
         let captureError: CaptureError = if let err = error as? CaptureError {
             err
         } else if let appError = error as? ApplicationError {
@@ -75,7 +76,7 @@ struct AppsSubcommand: AsyncParsableCommand {
         } else {
             fputs("Error: \(captureError.localizedDescription)\n", stderr)
         }
-        Foundation.exit(captureError.exitCode)
+        // Don't call exit() here - let the caller handle process termination
     }
 
     func printApplicationList(_ applications: [ApplicationInfo]) {
@@ -156,10 +157,11 @@ struct WindowsSubcommand: AsyncParsableCommand {
 
         } catch {
             handleError(error)
+            throw ExitCode(Int32(1))
         }
     }
 
-    private func handleError(_ error: Error) -> Never {
+    private func handleError(_ error: Error) {
         let captureError: CaptureError = if let err = error as? CaptureError {
             err
         } else if let appError = error as? ApplicationError {
@@ -192,7 +194,7 @@ struct WindowsSubcommand: AsyncParsableCommand {
         } else {
             fputs("Error: \(captureError.localizedDescription)\n", stderr)
         }
-        Foundation.exit(captureError.exitCode)
+        // Don't call exit() here - let the caller handle process termination
     }
 
     private func parseIncludeDetails() -> Set<WindowDetailOption> {
