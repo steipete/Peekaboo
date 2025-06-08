@@ -96,7 +96,7 @@ export function buildSwiftCliArgs(
       const specifierType = parts[1];
       const specifierValue = parts.slice(2).join(":"); // Handle colons in window titles
 
-      args.push("--app", appName);
+      args.push("--app", appName.trim());
       args.push("--mode", "window");
 
       if (specifierType === "WINDOW_TITLE") {
@@ -115,12 +115,12 @@ export function buildSwiftCliArgs(
         { app_target: input.app_target },
         "Malformed window specifier, treating as app name",
       );
-      args.push("--app", input.app_target);
+      args.push("--app", input.app_target.trim());
       args.push("--mode", "multi");
     }
   } else {
     // 'AppName': All windows of that app
-    args.push("--app", input.app_target);
+    args.push("--app", input.app_target.trim());
     args.push("--mode", "multi");
   }
 

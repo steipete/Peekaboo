@@ -317,6 +317,64 @@ describe("Image Tool", () => {
       );
     });
 
+    it("should handle case-insensitive format values", async () => {
+      // Import schema to test preprocessing
+      const { imageToolSchema } = await import("../../../src/types/index.js");
+      
+      // Mock resolveImagePath for minimal case
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: "/tmp/test.png",
+        tempDirUsed: undefined,
+      });
+      
+      const mockResponse = mockSwiftCli.captureImage("screen", {
+        path: "/tmp/test.png",
+        format: "png",
+      });
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      // Test uppercase PNG - parse through schema first
+      const parsedInput = imageToolSchema.parse({ format: "PNG", path: "/tmp/test.png" });
+      await imageToolHandler(
+        parsedInput,
+        mockContext,
+      );
+
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--format", "png"]),
+        mockLogger,
+      );
+    });
+
+    it("should handle jpeg alias for jpg format", async () => {
+      // Import schema to test preprocessing
+      const { imageToolSchema } = await import("../../../src/types/index.js");
+      
+      // Mock resolveImagePath for minimal case
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: "/tmp/test.jpg",
+        tempDirUsed: undefined,
+      });
+      
+      const mockResponse = mockSwiftCli.captureImage("screen", {
+        path: "/tmp/test.jpg",
+        format: "jpg",
+      });
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      // Test jpeg alias - parse through schema first
+      const parsedInput = imageToolSchema.parse({ format: "jpeg", path: "/tmp/test.jpg" });
+      await imageToolHandler(
+        parsedInput,
+        mockContext,
+      );
+
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--format", "jpg"]),
+        mockLogger,
+      );
+    });
+
     it("should handle app_target: 'frontmost' with warning", async () => {
       // Mock resolveImagePath for minimal case
       mockResolveImagePath.mockResolvedValue({
@@ -1116,6 +1174,9 @@ describe("Image Tool", () => {
     });
 
     it("should fall back to PNG when format is an invalid value", async () => {
+      // Import schema to test preprocessing
+      const { imageToolSchema } = await import("../../../src/types/index.js");
+      
       // Mock resolveImagePath
       mockResolveImagePath.mockResolvedValue({
         effectivePath: MOCK_TEMP_IMAGE_DIR,
@@ -1129,8 +1190,9 @@ describe("Image Tool", () => {
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
 
       // Test with invalid format - schema should preprocess to 'png'
+      const parsedInput = imageToolSchema.parse({ format: "invalid" });
       const result = await imageToolHandler(
-        { format: "invalid" as any },
+        parsedInput,
         mockContext,
       );
 
@@ -1198,6 +1260,31 @@ describe("Image Tool", () => {
       expect(result.content[0].type).toBe("text");
       // Should only include the main message
       expect(result.content[0].text).toBe("Image capture failed: Application not found");
+    });
+  });
+
+  describe("imageToolHandler - Whitespace trimming", () => {
+    it("should trim leading and trailing whitespace from app_target", async () => {
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      const mockResponse = mockSwiftCli.captureImage("Spotify", {
+        path: MOCK_SAVED_FILE_PATH,
+        format: "png",
+      });
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      await imageToolHandler(
+        { app_target: "   Spotify   " },
+        mockContext,
+      );
+
+      // Check that the Swift CLI was called with trimmed app name
+      const callArgs = mockExecuteSwiftCli.mock.calls[0][0];
+      const appIndex = callArgs.indexOf("--app");
+      expect(callArgs[appIndex + 1]).toBe("Spotify"); // Should be trimmed
     });
   });
 });
