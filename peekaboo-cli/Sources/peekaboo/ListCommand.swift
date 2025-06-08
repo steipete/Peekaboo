@@ -2,7 +2,7 @@ import AppKit
 import ArgumentParser
 import Foundation
 
-struct ListCommand: ParsableCommand, AsyncRunnable {
+struct ListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List running applications or windows",
@@ -10,12 +10,12 @@ struct ListCommand: ParsableCommand, AsyncRunnable {
         defaultSubcommand: AppsSubcommand.self
     )
     
-    func runAsync() async throws {
+    func run() async throws {
         // Root command doesn't do anything, subcommands handle everything
     }
 }
 
-struct AppsSubcommand: ParsableCommand, AsyncRunnable {
+struct AppsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "apps",
         abstract: "List all running applications"
@@ -24,7 +24,7 @@ struct AppsSubcommand: ParsableCommand, AsyncRunnable {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
-    func runAsync() async throws {
+    func run() async throws {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
         do {
@@ -102,7 +102,7 @@ struct AppsSubcommand: ParsableCommand, AsyncRunnable {
     }
 }
 
-struct WindowsSubcommand: ParsableCommand, AsyncRunnable {
+struct WindowsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "windows",
         abstract: "List windows for a specific application"
@@ -117,7 +117,7 @@ struct WindowsSubcommand: ParsableCommand, AsyncRunnable {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
-    func runAsync() async throws {
+    func run() async throws {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
         do {
@@ -249,7 +249,7 @@ struct WindowsSubcommand: ParsableCommand, AsyncRunnable {
     }
 }
 
-struct ServerStatusSubcommand: ParsableCommand, AsyncRunnable {
+struct ServerStatusSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "server_status",
         abstract: "Check server permissions status"
@@ -258,7 +258,7 @@ struct ServerStatusSubcommand: ParsableCommand, AsyncRunnable {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
-    func runAsync() async throws {
+    func run() async throws {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
         let screenRecording = PermissionsChecker.checkScreenRecordingPermission()

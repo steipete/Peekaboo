@@ -22,7 +22,8 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
             swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
+                .enableExperimentalFeature("StrictConcurrency"),
+                .unsafeFlags(["-parse-as-library"])
             ]
         ),
         .testTarget(
