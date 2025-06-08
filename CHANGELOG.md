@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.26] - 2025-01-08
+
+### Changed
+- **Lowered macOS requirement from 15.0 to 14.0 (Sonoma)**
+  - Analysis showed that all APIs used by Peekaboo are available in macOS 14.0
+  - Key APIs: SCScreenshotManager.captureImage, configuration.shouldBeOpaque
+  - Makes Peekaboo available to more users who haven't upgraded to Sequoia
+  - Updated Package.swift, documentation, and availability annotations
+
+### Fixed
+- Fixed TypeScript warning about undefined modelName in AI providers
+
 ## [1.0.0] - 2025-01-08
 
 ### 🎉 First Stable Release
