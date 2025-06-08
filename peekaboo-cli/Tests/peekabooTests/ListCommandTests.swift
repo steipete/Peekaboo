@@ -308,7 +308,10 @@ struct ListCommandTests {
         }
 
         // Verify that "Windows: 1" is NOT present for single window app
-        #expect(!output.contains("Single Window App") || !output.contains("Windows: 1"))
+        #expect(!output.contains("Windows: 1"))
+        
+        // Verify that the single window app is listed but without window count
+        #expect(output.contains("Single Window App"))
         
         // Verify that "Windows: 5" IS present for multi window app
         #expect(output.contains("Windows: 5"))
