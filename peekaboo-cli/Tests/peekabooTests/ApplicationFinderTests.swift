@@ -386,8 +386,14 @@ struct ApplicationFinderEdgeCaseTests {
     @Test("Non-existent app throws error", .tags(.fast))
     func nonExistentAppThrowsError() {
         // Test with a completely non-existent app name
-        #expect(throws: ApplicationError.notFound("XyzNonExistentApp123")) {
+        #expect {
             _ = try ApplicationFinder.findApplication(identifier: "XyzNonExistentApp123")
+        } throws: { error in
+            guard let appError = error as? ApplicationError,
+                  case let .notFound(identifier) = appError else {
+                return false
+            }
+            return identifier == "XyzNonExistentApp123"
         }
     }
 
