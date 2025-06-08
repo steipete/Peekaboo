@@ -11,9 +11,9 @@ struct PermissionsCheckerTests {
         // Test screen recording permission check
         let hasPermission = PermissionsChecker.checkScreenRecordingPermission()
 
-        // This test will pass or fail based on actual system permissions
-        // The result should be a valid boolean
-        #expect(hasPermission == true || hasPermission == false)
+        // Just verify we got a valid boolean result (the API works)
+        // The actual value depends on system permissions
+        _ = hasPermission
     }
 
     @Test("Screen recording permission check is consistent", .tags(.fast))
@@ -28,8 +28,8 @@ struct PermissionsCheckerTests {
     @Test("Screen recording permission check performance", arguments: 1...5)
     func screenRecordingPermissionPerformance(iteration: Int) {
         // Permission checks should be fast
-        let hasPermission = PermissionsChecker.checkScreenRecordingPermission()
-        #expect(hasPermission == true || hasPermission == false)
+        _ = PermissionsChecker.checkScreenRecordingPermission()
+        // Performance is measured by the test framework's execution time
     }
 
     // MARK: - Accessibility Permission Tests
@@ -39,8 +39,9 @@ struct PermissionsCheckerTests {
         // Test accessibility permission check
         let hasPermission = PermissionsChecker.checkAccessibilityPermission()
 
-        // This will return the actual system state
-        #expect(hasPermission == true || hasPermission == false)
+        // Just verify we got a valid boolean result (the API works)
+        // The actual value depends on system permissions
+        _ = hasPermission
     }
 
     @Test("Accessibility permission matches AXIsProcessTrusted", .tags(.fast))

@@ -210,7 +210,8 @@ struct WindowManagerAdvancedTests {
         let apps = NSWorkspace.shared.runningApplications
 
         guard let app = apps.first(where: { $0.bundleIdentifier == bundleId }) else {
-            return // Skip test if app not running
+            // Use Swift Testing's conditional execution instead of return
+            throw XCTSkip("App with bundle ID \(bundleId) is not running")
         }
 
         let windows = try WindowManager.getWindowsForApp(pid: app.processIdentifier)

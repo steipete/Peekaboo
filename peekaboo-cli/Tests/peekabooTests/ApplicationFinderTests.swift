@@ -96,10 +96,7 @@ struct ApplicationFinderTests {
 
         for app in apps {
             #expect(!app.app_name.isEmpty)
-            // Some system processes may have empty bundle IDs
-            if !app.bundle_id.isEmpty {
-                #expect(!app.bundle_id.isEmpty)
-            }
+            // Some system processes may have empty bundle IDs - no need to check twice
             #expect(app.pid > 0)
             #expect(app.window_count >= 0)
         }
@@ -118,8 +115,8 @@ struct ApplicationFinderTests {
                 #expect(result.localizedName != nil)
                 #expect(!result.localizedName!.isEmpty)
             } catch {
-                // Expected if app is not installed
-                #expect(Bool(true))
+                // Expected if app is not installed - no assertion needed
+                continue
             }
         }
     }
@@ -379,27 +376,18 @@ struct ApplicationFinderEdgeCaseTests {
     }
 
     @Test("Fuzzy matching finds similar apps", .tags(.fast))
-    func fuzzyMatchingFindsSimilarApps() {
+    func fuzzyMatchingFindsSimilarApps() throws {
         // Test that fuzzy matching can find apps with typos
-        do {
-            let result = try ApplicationFinder.findApplication(identifier: "Finderr")
-            // Should find "Finder" despite the typo
-            #expect(result.localizedName?.lowercased().contains("finder") == true)
-        } catch {
-            Issue.record("Fuzzy matching should have found Finder for 'Finderr', got error: \(error)")
-        }
+        let result = try ApplicationFinder.findApplication(identifier: "Finderr")
+        // Should find "Finder" despite the typo
+        #expect(result.localizedName?.lowercased().contains("finder") == true)
     }
 
     @Test("Non-existent app throws error", .tags(.fast))
     func nonExistentAppThrowsError() {
         // Test with a completely non-existent app name
-        do {
+        #expect(throws: ApplicationError.notFound("XyzNonExistentApp123")) {
             _ = try ApplicationFinder.findApplication(identifier: "XyzNonExistentApp123")
-            Issue.record("Expected error for non-existent app 'XyzNonExistentApp123'")
-        } catch let ApplicationError.notFound(identifier) {
-            #expect(identifier == "XyzNonExistentApp123")
-        } catch {
-            Issue.record("Expected ApplicationError.notFound, got \(error)")
         }
     }
 
