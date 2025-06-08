@@ -64,12 +64,12 @@ class macOSApplicationFinder: ApplicationFinderProtocol {
     
     func activateApplication(pid: pid_t) throws {
         guard let nsApp = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == pid }) else {
-            throw ApplicationError.notFound("PID \(pid)")
+            throw PlatformApplicationError.notFound("PID \(pid)")
         }
         
         let success = nsApp.activate()
         if !success {
-            throw ApplicationError.activationFailed(pid)
+            throw PlatformApplicationError.activationFailed(pid)
         }
     }
     
@@ -84,7 +84,7 @@ class macOSApplicationFinder: ApplicationFinderProtocol {
     
     func getApplicationInfo(pid: pid_t) throws -> ApplicationInfo {
         guard let nsApp = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == pid }) else {
-            throw ApplicationError.notFound("PID \(pid)")
+            throw PlatformApplicationError.notFound("PID \(pid)")
         }
         
         // Get additional info

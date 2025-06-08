@@ -105,7 +105,7 @@ class WindowsApplicationFinder: ApplicationFinderProtocol {
         }
         
         guard let window = mainWindow else {
-            throw ApplicationError.activationFailed(pid)
+            throw PlatformApplicationError.activationFailed(pid)
         }
         
         // Bring window to foreground
@@ -127,7 +127,7 @@ class WindowsApplicationFinder: ApplicationFinderProtocol {
     
     func getApplicationInfo(pid: pid_t) throws -> ApplicationInfo {
         guard let basicInfo = getProcessInfo(pid: pid, includeBackground: true) else {
-            throw ApplicationError.notFound("PID \(pid)")
+            throw PlatformApplicationError.notFound("PID \(pid)")
         }
         
         // Get additional detailed information

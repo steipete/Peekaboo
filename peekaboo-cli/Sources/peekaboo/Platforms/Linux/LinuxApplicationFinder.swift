@@ -62,7 +62,7 @@ class LinuxApplicationFinder: ApplicationFinderProtocol {
         let windows = try windowManager.getWindowsForApp(pid: pid, includeOffScreen: false)
         
         guard let mainWindow = windows.first else {
-            throw ApplicationError.activationFailed(pid)
+            throw PlatformApplicationError.activationFailed(pid)
         }
         
         // Try different activation methods based on display server
@@ -71,7 +71,7 @@ class LinuxApplicationFinder: ApplicationFinderProtocol {
         } else if ProcessInfo.processInfo.environment["DISPLAY"] != nil {
             try activateWindowX11(windowId: mainWindow.windowId)
         } else {
-            throw ApplicationError.activationFailed(pid)
+            throw PlatformApplicationError.activationFailed(pid)
         }
     }
     
@@ -86,7 +86,7 @@ class LinuxApplicationFinder: ApplicationFinderProtocol {
     
     func getApplicationInfo(pid: pid_t) throws -> ApplicationInfo {
         guard let basicInfo = getProcessInfo(pid: pid, includeBackground: true) else {
-            throw ApplicationError.notFound("PID \(pid)")
+            throw PlatformApplicationError.notFound("PID \(pid)")
         }
         
         // Get additional detailed information
@@ -396,7 +396,7 @@ class LinuxApplicationFinder: ApplicationFinderProtocol {
             result = try? runCommandSync(["xdotool", "windowactivate", String(windowId)])
             
             if result?.exitCode != 0 {
-                throw ApplicationError.activationFailed(0) // Don't have PID here
+                throw PlatformApplicationError.activationFailed(0) // Don't have PID here
             }
         }
     }
@@ -407,13 +407,13 @@ class LinuxApplicationFinder: ApplicationFinderProtocol {
         let result = try? runCommandSync(["swaymsg", "[con_id=\(windowId)]", "focus"])
         
         if result?.exitCode != 0 {
-            throw ApplicationError.activationFailed(0) // Don't have PID here
+            throw PlatformApplicationError.activationFailed(0) // Don't have PID here
         }
     }
     
     private func runCommandSync(_ arguments: [String]) throws -> CommandResult {
         guard !arguments.isEmpty else {
-            throw ApplicationError.systemError(NSError(
+            throw PlatformApplicationError.systemError(NSError(
                 domain: "LinuxApplicationFinder",
                 code: 1,
                 userInfo: [NSLocalizedDescriptionKey: "Invalid command arguments"]

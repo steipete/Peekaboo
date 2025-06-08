@@ -1,5 +1,26 @@
-import AppKit
 import Foundation
+import AppKit
+import OSLog
+
+enum ApplicationError: Error, LocalizedError {
+    case notFound(String)
+    case ambiguous(String, [NSRunningApplication])
+    case activationFailed(pid_t)
+    case systemError(Error)
+    
+    var errorDescription: String? {
+        switch self {
+        case .notFound(let identifier):
+            return "Application not found: \(identifier)"
+        case .ambiguous(let identifier, let matches):
+            return "Multiple applications found for '\(identifier)': \(matches.map { $0.localizedName ?? "Unknown" }.joined(separator: ", "))"
+        case .activationFailed(let pid):
+            return "Failed to activate application with PID: \(pid)"
+        case .systemError(let error):
+            return "System error: \(error.localizedDescription)"
+        }
+    }
+}
 
 struct AppMatch {
     let app: NSRunningApplication
@@ -8,7 +29,7 @@ struct AppMatch {
 }
 
 class ApplicationFinder {
-    static func findApplication(identifier: String) throws(ApplicationError) -> NSRunningApplication {
+    static func findApplication(identifier: String) throws -> NSRunningApplication {
         Logger.shared.debug("Searching for application: \(identifier)")
 
         // In CI environment, throw not found to avoid accessing NSWorkspace
@@ -172,7 +193,7 @@ class ApplicationFinder {
         _ matches: [AppMatch],
         identifier: String,
         runningApps: [NSRunningApplication]
-    ) throws(ApplicationError) -> NSRunningApplication {
+    ) throws -> NSRunningApplication {
         guard !matches.isEmpty else {
             Logger.shared.error("No applications found matching: \(identifier)")
 
@@ -309,4 +330,3 @@ class ApplicationFinder {
         return count
     }
 }
-
