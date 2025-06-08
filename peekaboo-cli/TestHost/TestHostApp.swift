@@ -1,10 +1,10 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 @main
 struct TestHostApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -21,12 +21,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Make sure the app appears in foreground
         NSApp.activate(ignoringOtherApps: true)
-        
+
         // Set activation policy to regular app
         NSApp.setActivationPolicy(.regular)
     }
-    
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        return true
+        true
     }
 }

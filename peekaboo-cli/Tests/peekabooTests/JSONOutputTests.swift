@@ -283,7 +283,7 @@ struct JSONOutputTests {
 
         for errorCode in errorCodes {
             #expect(!errorCode.rawValue.isEmpty)
-            #expect(errorCode.rawValue.allSatisfy { $0.isASCII })
+            #expect(errorCode.rawValue.allSatisfy(\.isASCII))
         }
     }
 }
@@ -304,7 +304,7 @@ struct JSONOutputFormatValidationTests {
         )
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // Properties are already in snake_case, no conversion needed
         let data = try encoder.encode(response)
 
         // Verify it's valid JSON
@@ -327,7 +327,7 @@ struct JSONOutputFormatValidationTests {
         )
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // Properties are already in snake_case, no conversion needed
         let data = try encoder.encode(appInfo)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
 

@@ -96,7 +96,7 @@ struct ListCommandTests {
         )
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // Properties are already in snake_case, no conversion needed
 
         let data = try encoder.encode(appInfo)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -132,7 +132,7 @@ struct ListCommandTests {
         )
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // Properties are already in snake_case, no conversion needed
 
         let data = try encoder.encode(appData)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -154,7 +154,7 @@ struct ListCommandTests {
         )
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // Properties are already in snake_case, no conversion needed
 
         let data = try encoder.encode(windowInfo)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -192,7 +192,7 @@ struct ListCommandTests {
         )
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // Properties are already in snake_case, no conversion needed
 
         let data = try encoder.encode(windowData)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -265,7 +265,7 @@ struct ListCommandTests {
 
         let appData = ApplicationListData(applications: apps)
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // Properties are already in snake_case, no conversion needed
 
         // Ensure encoding works correctly
         let data = try encoder.encode(appData)
@@ -319,11 +319,11 @@ struct ListCommandAdvancedTests {
         )
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // No need for convertToSnakeCase since properties are already in snake_case
         let data = try encoder.encode(windowInfo)
 
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // No need for convertFromSnakeCase since properties are already in snake_case
         let decoded = try decoder.decode(WindowInfo.self, from: data)
 
         #expect(decoded.window_title == title)
@@ -369,7 +369,7 @@ struct ListCommandAdvancedTests {
         let statusData = ServerStatusData(permissions: permissions)
 
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // Properties are already in snake_case, no conversion needed
         let data = try encoder.encode(statusData)
 
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]

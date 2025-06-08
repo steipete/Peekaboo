@@ -185,14 +185,14 @@ struct ImageCommandTests {
 
         // Test JSON encoding
         let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
+        // Properties are already in snake_case, no conversion needed
         let data = try encoder.encode(captureData)
 
         #expect(!data.isEmpty)
 
         // Test decoding
         let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        // Properties are already in snake_case, no conversion needed
         let decoded = try decoder.decode(ImageCaptureData.self, from: data)
 
         #expect(decoded.saved_files.count == 1)
@@ -463,9 +463,8 @@ struct ImageCommandAdvancedTests {
     )
     func commandOptionCombinations(args: [String], shouldParse: Bool) {
         do {
-            let command = try ImageCommand.parse(args)
+            _ = try ImageCommand.parse(args)
             #expect(shouldParse == true)
-            #expect(true) // Command parsed successfully
         } catch {
             #expect(shouldParse == false)
         }

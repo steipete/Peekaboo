@@ -47,7 +47,15 @@ If all checks pass, follow the manual steps below.
     - Run `npm run prepare-release` to ensure everything is ready.
     - Fix any issues identified by the script.
 
-5.  **Commit Changes:**
+5.  **Test Local Compilation:**
+    - **MANDATORY**: Compile and run local tests to ensure they build correctly.
+    - Run `cd peekaboo-cli && swift test` to verify all CI-compatible Swift tests compile and pass.
+    - Optionally, test local-only functionality with the test host app:
+      - `cd peekaboo-cli/TestHost && swift run` (start test host)
+      - `cd peekaboo-cli && RUN_LOCAL_TESTS=true swift test --filter LocalIntegration`
+    - This step is critical as local tests may have compilation issues not caught by CI.
+
+6.  **Commit Changes:**
     - Commit all changes related to the version bump, documentation, and changelog.
     - `git add .`
     - `git commit -m "Prepare release vX.Y.Z"`

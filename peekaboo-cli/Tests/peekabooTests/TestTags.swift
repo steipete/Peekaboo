@@ -14,10 +14,14 @@ extension Tag {
     @Tag static var performance: Self
     @Tag static var concurrency: Self
     @Tag static var memory: Self
-    
+
     // Local-only test tags
     @Tag static var localOnly: Self
     @Tag static var screenshot: Self
     @Tag static var multiWindow: Self
     @Tag static var focus: Self
+    @Tag static var imageAnalysis: Self
+    @Tag static var regression: Self
+    @Tag static var formats: Self
+    @Tag static var multiDisplay: Self
 }

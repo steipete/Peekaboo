@@ -142,79 +142,75 @@ struct ImageCommand: ParsableCommand {
     }
 
     private func captureScreens() throws(CaptureError) -> [SavedFile] {
+        let displays = try getActiveDisplays()
         var savedFiles: [SavedFile] = []
 
+        if let screenIndex {
+            savedFiles = try captureSpecificScreen(displays: displays, screenIndex: screenIndex)
+        } else {
+            savedFiles = try captureAllScreens(displays: displays)
+        }
+
+        return savedFiles
+    }
+    
+    private func getActiveDisplays() throws(CaptureError) -> [CGDirectDisplayID] {
         var displayCount: UInt32 = 0
         let result = CGGetActiveDisplayList(0, nil, &displayCount)
         guard result == .success && displayCount > 0 else {
             throw CaptureError.noDisplaysAvailable
         }
-
+        
         var displays = [CGDirectDisplayID](repeating: 0, count: Int(displayCount))
         let listResult = CGGetActiveDisplayList(displayCount, &displays, nil)
         guard listResult == .success else {
             throw CaptureError.noDisplaysAvailable
         }
-
-        // If screenIndex is specified, capture only that screen
-        if let screenIndex {
-            if screenIndex >= 0 && screenIndex < displays.count {
-                let displayID = displays[screenIndex]
-                let fileName = generateFileName(displayIndex: screenIndex)
-                let filePath = getOutputPath(fileName)
-
-                try captureDisplay(displayID, to: filePath)
-
-                let savedFile = SavedFile(
-                    path: filePath,
-                    item_label: "Display \(screenIndex + 1) (Index \(screenIndex))",
-                    window_title: nil,
-                    window_id: nil,
-                    window_index: nil,
-                    mime_type: format == .png ? "image/png" : "image/jpeg"
-                )
-                savedFiles.append(savedFile)
-            } else {
-                Logger.shared.debug("Screen index \(screenIndex) is out of bounds. Capturing all screens instead.")
-                // Fall through to capture all screens
-                for (index, displayID) in displays.enumerated() {
-                    let fileName = generateFileName(displayIndex: index)
-                    let filePath = getOutputPath(fileName)
-
-                    try captureDisplay(displayID, to: filePath)
-
-                    let savedFile = SavedFile(
-                        path: filePath,
-                        item_label: "Display \(index + 1)",
-                        window_title: nil,
-                        window_id: nil,
-                        window_index: nil,
-                        mime_type: format == .png ? "image/png" : "image/jpeg"
-                    )
-                    savedFiles.append(savedFile)
-                }
-            }
+        
+        return displays
+    }
+    
+    private func captureSpecificScreen(
+        displays: [CGDirectDisplayID], 
+        screenIndex: Int
+    ) throws(CaptureError) -> [SavedFile] {
+        if screenIndex >= 0 && screenIndex < displays.count {
+            let displayID = displays[screenIndex]
+            let labelSuffix = " (Index \(screenIndex))"
+            return [try captureSingleDisplay(displayID: displayID, index: screenIndex, labelSuffix: labelSuffix)]
         } else {
-            // Capture all screens
-            for (index, displayID) in displays.enumerated() {
-                let fileName = generateFileName(displayIndex: index)
-                let filePath = getOutputPath(fileName)
-
-                try captureDisplay(displayID, to: filePath)
-
-                let savedFile = SavedFile(
-                    path: filePath,
-                    item_label: "Display \(index + 1)",
-                    window_title: nil,
-                    window_id: nil,
-                    window_index: nil,
-                    mime_type: format == .png ? "image/png" : "image/jpeg"
-                )
-                savedFiles.append(savedFile)
-            }
+            Logger.shared.debug("Screen index \(screenIndex) is out of bounds. Capturing all screens instead.")
+            return try captureAllScreens(displays: displays)
         }
-
+    }
+    
+    private func captureAllScreens(displays: [CGDirectDisplayID]) throws(CaptureError) -> [SavedFile] {
+        var savedFiles: [SavedFile] = []
+        for (index, displayID) in displays.enumerated() {
+            let savedFile = try captureSingleDisplay(displayID: displayID, index: index, labelSuffix: "")
+            savedFiles.append(savedFile)
+        }
         return savedFiles
+    }
+    
+    private func captureSingleDisplay(
+        displayID: CGDirectDisplayID, 
+        index: Int, 
+        labelSuffix: String
+    ) throws(CaptureError) -> SavedFile {
+        let fileName = generateFileName(displayIndex: index)
+        let filePath = getOutputPath(fileName)
+        
+        try captureDisplay(displayID, to: filePath)
+        
+        return SavedFile(
+            path: filePath,
+            item_label: "Display \(index + 1)\(labelSuffix)",
+            window_title: nil,
+            window_id: nil,
+            window_index: nil,
+            mime_type: format == .png ? "image/png" : "image/jpeg"
+        )
     }
 
     private func captureApplicationWindow(_ appIdentifier: String) throws -> [SavedFile] {

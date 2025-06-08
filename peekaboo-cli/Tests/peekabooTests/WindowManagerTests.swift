@@ -128,7 +128,8 @@ struct WindowManagerTests {
 
         // Verify options are respected
         for info in windowInfos {
-            #expect(!info.window_title.isEmpty)
+            // Note: window_title can be empty for system windows, this is expected
+            // Just verify the property exists (it's a String, not optional)
 
             if includeIDs {
                 #expect(info.window_id != nil)
@@ -171,7 +172,7 @@ struct WindowManagerTests {
         case .windowListFailed:
             #expect(Bool(true)) // This is the expected case
         case .noWindowsFound:
-            #expect(Bool(false)) // Should not happen for this specific test
+            Issue.record("Unexpected error case")
         }
     }
 }

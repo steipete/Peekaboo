@@ -444,19 +444,8 @@ struct AdvancedImageCaptureLogicTests {
 
     @Test("Command execution readiness matrix", .tags(.fast))
     func commandExecutionReadinessMatrix() {
-        // Define test scenarios
-        let scenarios: [(args: [String], shouldBeReady: Bool, description: String)] = [
-            (["--mode", "screen"], true, "Basic screen capture"),
-            (["--mode", "screen", "--screen-index", "0"], true, "Screen with index"),
-            (["--mode", "window", "--app", "Finder"], true, "Basic window capture"),
-            (["--mode", "window", "--app", "Safari", "--window-title", "Main"], true, "Window with title"),
-            (["--mode", "window", "--app", "Terminal", "--window-index", "0"], true, "Window with index"),
-            (["--mode", "multi"], true, "Multi-screen capture"),
-            (["--mode", "multi", "--app", "Xcode"], true, "Multi-window capture"),
-            (["--app", "Finder"], true, "Implicit window mode"),
-            ([], true, "Default screen capture")
-        ]
-
+        let scenarios = createTestScenarios()
+        
         for scenario in scenarios {
             do {
                 let command = try ImageCommand.parse(scenario.args)
@@ -510,5 +499,63 @@ struct AdvancedImageCaptureLogicTests {
                 #expect(Bool(true))
             }
         }
+    }
+    
+    // MARK: - Helper Functions
+    
+    private struct TestScenario {
+        let args: [String]
+        let shouldBeReady: Bool
+        let description: String
+    }
+    
+    private func createTestScenarios() -> [TestScenario] {
+        return [
+            TestScenario(
+                args: ["--mode", "screen"], 
+                shouldBeReady: true, 
+                description: "Basic screen capture"
+            ),
+            TestScenario(
+                args: ["--mode", "screen", "--screen-index", "0"], 
+                shouldBeReady: true, 
+                description: "Screen with index"
+            ),
+            TestScenario(
+                args: ["--mode", "window", "--app", "Finder"], 
+                shouldBeReady: true, 
+                description: "Basic window capture"
+            ),
+            TestScenario(
+                args: ["--mode", "window", "--app", "Safari", "--window-title", "Main"], 
+                shouldBeReady: true, 
+                description: "Window with title"
+            ),
+            TestScenario(
+                args: ["--mode", "window", "--app", "Terminal", "--window-index", "0"], 
+                shouldBeReady: true, 
+                description: "Window with index"
+            ),
+            TestScenario(
+                args: ["--mode", "multi"], 
+                shouldBeReady: true, 
+                description: "Multi-screen capture"
+            ),
+            TestScenario(
+                args: ["--mode", "multi", "--app", "Xcode"], 
+                shouldBeReady: true, 
+                description: "Multi-window capture"
+            ),
+            TestScenario(
+                args: ["--app", "Finder"], 
+                shouldBeReady: true, 
+                description: "Implicit window mode"
+            ),
+            TestScenario(
+                args: [], 
+                shouldBeReady: true, 
+                description: "Default screen capture"
+            )
+        ]
     }
 }

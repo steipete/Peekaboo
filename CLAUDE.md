@@ -34,12 +34,45 @@ npm run test:coverage
 # Run tests in watch mode
 npm run test:watch
 
-# Run Swift tests
+# Run Swift tests (CI-compatible tests only)
 npm run test:swift
+
+# Run Swift tests with local-only tests (requires test host app)
+cd peekaboo-cli
+RUN_LOCAL_TESTS=true swift test
 
 # Full integration test suite
 npm run test:integration
 ```
+
+#### Local Testing with Test Host App
+
+For comprehensive testing including actual screenshot functionality:
+
+1. **Open the test host app:**
+   ```bash
+   cd peekaboo-cli/TestHost
+   swift run
+   ```
+
+2. **The test host app provides:**
+   - Real-time permission status (Screen Recording, Accessibility, CLI availability)
+   - Interactive permission prompts
+   - Test pattern windows for screenshot validation
+   - Log output for debugging
+
+3. **Run local-only tests with the test host running:**
+   ```bash
+   cd peekaboo-cli
+   RUN_LOCAL_TESTS=true swift test --filter LocalIntegration
+   ```
+
+4. **Or use Xcode for better debugging:**
+   - Open `Package.swift` in Xcode
+   - Run the test host app target first
+   - Run tests with local environment variable: `RUN_LOCAL_TESTS=true`
+
+**Note:** Local tests require actual system permissions and are designed to work with the test host application for controlled testing scenarios.
 
 ### Development
 ```bash
