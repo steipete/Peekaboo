@@ -113,8 +113,9 @@ describe("Image Tool Integration Tests", () => {
       expect(result.isError).toBeUndefined();
       // Now returns the temp file in saved_files
       expect(result.saved_files).toEqual([{ path: MOCK_SAVED_FILE_PATH, mime_type: "image/png" }]);
+      // Screen captures no longer return base64 data due to auto-fallback
       const imageContent = result.content.find(c => c.type === "image");
-      expect(imageContent?.data).toBe("base64-no-args-test");
+      expect(imageContent).toBeUndefined();
     });
 
     it("should return an error if the Swift CLI fails", async () => {
@@ -378,7 +379,7 @@ describe("Image Tool Integration Tests", () => {
   });
 
   describe("Format and data return behavior", () => {
-    it("should return base64 data when format is 'data'", async () => {
+    it("should auto-fallback to PNG for screen capture when format is 'data'", async () => {
       const input: ImageInput = { format: "data" };
       
       // Mock resolveImagePath to return temp directory for format: "data"
@@ -398,11 +399,15 @@ describe("Image Tool Integration Tests", () => {
       
       const result = await imageToolHandler(input, mockContext);
 
-      if (!result.isError) {
-        const imageContent = result.content.find((item) => item.type === "image");
-        expect(imageContent).toBeDefined();
-        expect(imageContent?.data).toBe("base64-data-format-test");
-      }
+      expect(result.isError).toBeUndefined();
+      // Should NOT return base64 data for screen captures
+      const imageContent = result.content.find((item) => item.type === "image");
+      expect(imageContent).toBeUndefined();
+      // Should have format warning
+      const warningContent = result.content.find(item => 
+        item.type === "text" && item.text?.includes("Screen captures cannot use format 'data'")
+      );
+      expect(warningContent).toBeDefined();
     });
 
     it("should save file and return base64 when format is 'data' with path", async () => {
@@ -426,18 +431,20 @@ describe("Image Tool Integration Tests", () => {
       
       const result = await imageToolHandler(input, mockContext);
 
-      if (!result.isError) {
-        // Should have base64 data in content
-        const imageContent = result.content.find((item) => item.type === "image");
-        expect(imageContent).toBeDefined();
-        expect(imageContent?.data).toBe("base64-data-with-path-test");
-        
-        // Should have saved file
-        expect(result.saved_files).toHaveLength(1);
-        expect(result.saved_files[0].path).toBe(testPath);
-        
-        // In integration tests with mocked CLI, we don't check file existence
-      }
+      expect(result.isError).toBeUndefined();
+      // Should NOT have base64 data in content for screen captures
+      const imageContent = result.content.find((item) => item.type === "image");
+      expect(imageContent).toBeUndefined();
+      
+      // Should have format warning
+      const warningContent = result.content.find(item => 
+        item.type === "text" && item.text?.includes("Screen captures cannot use format 'data'")
+      );
+      expect(warningContent).toBeDefined();
+      
+      // Should have saved file
+      expect(result.saved_files).toHaveLength(1);
+      expect(result.saved_files[0].path).toBe(testPath);
     });
 
     it("should save PNG file without base64 in content", async () => {
@@ -525,12 +532,20 @@ describe("Image Tool Integration Tests", () => {
       
       const result = await imageToolHandler(input, mockContext);
 
-      if (!result.isError) {
-        // Check for image content with metadata
-        const imageContent = result.content.find((item) => item.type === "image");
-        expect(imageContent).toBeDefined();
-        expect(imageContent?.metadata?.item_label).toBe("Display 1 (Index 1)");
-      }
+      expect(result.isError).toBeUndefined();
+      // Should NOT have image content for screen captures with format: "data"
+      const imageContent = result.content.find((item) => item.type === "image");
+      expect(imageContent).toBeUndefined();
+      
+      // Should have format warning
+      const warningContent = result.content.find(item => 
+        item.type === "text" && item.text?.includes("Screen captures cannot use format 'data'")
+      );
+      expect(warningContent).toBeDefined();
+      
+      // Should still have saved files with metadata
+      expect(result.saved_files).toHaveLength(1);
+      expect(result.saved_files[0].item_label).toBe("Display 1 (Index 1)");
     });
   });
 
@@ -888,9 +903,9 @@ describe("Image Tool Integration Tests", () => {
       // No cleanup should have occurred
       expect(fs.rm).not.toHaveBeenCalled();
 
-      // Result should include base64 data in content
+      // Screen captures should NOT include base64 data in content
       const imageContent = result.content.find(c => c.type === "image");
-      expect(imageContent?.data).toBe("base64-default-path-test");
+      expect(imageContent).toBeUndefined();
 
       // And the result should reflect the saved files
       expect(result.saved_files).toEqual([{ path: `${MOCK_DEFAULT_PATH}/file.png`, mime_type: "image/png" }]);

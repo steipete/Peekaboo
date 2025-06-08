@@ -135,13 +135,25 @@ export const imageToolSchema = z.object({
     "The server automatically selects an AI provider from the `PEEKABOO_AI_PROVIDERS` environment variable.\n" +
     "The analysis result (text) is included in the response.",
   ),
-  format: z.enum(["png", "jpg", "data"]).optional().describe(
-    "Optional. Output format.\n" +
-    "Can be `'png'`, `'jpg'`, or `'data'`.\n" +
-    "If `'png'` or `'jpg'`, saves the image to the specified `path`.\n" +
-    "If `'data'`, returns Base64 encoded PNG data inline in the response.\n" +
-    "If `path` is also provided when `format` is `'data'`, the image is saved (as PNG) AND Base64 data is returned.\n" +
-    "Defaults to `'data'` if `path` is not given.",
+  format: z.preprocess(
+    (val) => {
+      // Handle null, undefined, or empty string by returning undefined (will use default)
+      if (val === null || val === undefined || val === "") {
+        return undefined;
+      }
+      // If the value is not a valid format, fall back to 'png'
+      const validFormats = ["png", "jpg", "data"];
+      return validFormats.includes(val as string) ? val : "png";
+    },
+    z.enum(["png", "jpg", "data"]).optional().describe(
+      "Optional. Output format.\n" +
+      "Can be `'png'`, `'jpg'`, or `'data'`.\n" +
+      "If `'png'` or `'jpg'`, saves the image to the specified `path`.\n" +
+      "If `'data'`, returns Base64 encoded PNG data inline in the response.\n" +
+      "If `path` is also provided when `format` is `'data'`, the image is saved (as PNG) AND Base64 data is returned.\n" +
+      "Defaults to `'data'` if `path` is not given.\n" +
+      "Invalid format values automatically fall back to 'png'.",
+    ),
   ),
   capture_focus: z.preprocess(
     (val) => (val === "" || val === null ? undefined : val),

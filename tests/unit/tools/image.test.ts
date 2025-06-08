@@ -94,13 +94,9 @@ describe("Image Tool", () => {
         mockLogger,
       );
       
-      // When format is omitted and path is omitted, behaves like format: "data"
-      expect(result.content).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ type: "text" }),
-          expect.objectContaining({ type: "image", data: "base64imagedata" }),
-        ]),
-      );
+      // When format is omitted, it defaults to "png", not "data"
+      // So no warning is shown and no base64 data is returned for screen captures
+      expect(result.content.some((item) => item.type === "image")).toBe(false);
       expect(result.saved_files).toEqual(mockResponse.data.saved_files);
       expect(result.analysis_text).toBeUndefined();
       expect(result.model_used).toBeUndefined();
@@ -109,8 +105,8 @@ describe("Image Tool", () => {
       expect(mockFsRm).not.toHaveBeenCalled();
     });
 
-    it("should capture screen with format: 'data'", async () => {
-      // Mock resolveImagePath to return a temp directory for format: "data"
+    it("should auto-fallback screen capture with format: 'data' to PNG", async () => {
+      // Mock resolveImagePath to return a temp directory
       mockResolveImagePath.mockResolvedValue({
         effectivePath: MOCK_TEMP_IMAGE_DIR,
         tempDirUsed: MOCK_TEMP_IMAGE_DIR,
@@ -121,10 +117,50 @@ describe("Image Tool", () => {
         format: "png",
       });
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
-      mockReadImageAsBase64.mockResolvedValue("base64imagedata");
 
       const result = await imageToolHandler(
         { format: "data" },
+        mockContext,
+      );
+
+      // Should succeed but with a warning
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].type).toBe("text");
+      expect(result.content[0].text).toContain("Captured 1 image");
+      
+      // Should have format warning
+      const warningContent = result.content.find(item => 
+        item.type === "text" && item.text?.includes("Screen captures cannot use format 'data'")
+      );
+      expect(warningContent).toBeDefined();
+      expect(warningContent?.text).toContain("Automatically using PNG format instead");
+      
+      // Should have called Swift CLI with PNG format
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--format", "png"]),
+        mockLogger,
+      );
+      
+      // Should NOT return base64 data for screen captures
+      expect(result.content.some((item) => item.type === "image")).toBe(false);
+    });
+
+    it("should allow app capture with format: 'data'", async () => {
+      // Mock resolveImagePath to return a temp directory for format: "data"
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      const mockResponse = mockSwiftCli.captureImage("Safari", {
+        path: MOCK_SAVED_FILE_PATH,
+        format: "png",
+      });
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+      mockReadImageAsBase64.mockResolvedValue("base64imagedata");
+
+      const result = await imageToolHandler(
+        { app_target: "Safari", format: "data" },
         mockContext,
       );
 
@@ -140,7 +176,7 @@ describe("Image Tool", () => {
       expect(mockFsRm).not.toHaveBeenCalled();
     });
 
-    it("should save file and return base64 when format: 'data' with path", async () => {
+    it("should save file and return base64 when format: 'data' with path for app capture", async () => {
       const userPath = "/user/test.png";
       // Mock resolveImagePath to return the user path (no temp dir)
       mockResolveImagePath.mockResolvedValue({
@@ -151,7 +187,7 @@ describe("Image Tool", () => {
       const mockSavedFile: SavedFile = {
         path: userPath,
         mime_type: "image/png",
-        item_label: "Screen 1",
+        item_label: "Safari",
       };
       const mockResponse = {
         success: true,
@@ -162,7 +198,7 @@ describe("Image Tool", () => {
       mockReadImageAsBase64.mockResolvedValue("base64imagedata");
 
       const result = await imageToolHandler(
-        { format: "data", path: userPath },
+        { app_target: "Safari", format: "data", path: userPath },
         mockContext,
       );
 
@@ -644,7 +680,7 @@ describe("Image Tool", () => {
         tempDirUsed: MOCK_TEMP_IMAGE_DIR,
       });
       
-      const mockCliResponse = mockSwiftCli.captureImage("screen", {
+      const mockCliResponse = mockSwiftCli.captureImage("Safari", {
         path: MOCK_SAVED_FILE_PATH,
         format: "png",
       });
@@ -652,6 +688,7 @@ describe("Image Tool", () => {
 
       const result = await imageToolHandler(
         {
+          app_target: "Safari", // Use app capture to allow format: "data"
           question: MOCK_QUESTION,
           format: "data", // Even with format: "data"
         },
@@ -1047,6 +1084,120 @@ describe("Image Tool", () => {
         "--capture-focus",
         "foreground",
       ]);
+    });
+  });
+
+  describe("imageToolHandler - Invalid format handling", () => {
+    it("should fall back to PNG when format is empty string", async () => {
+      // Mock resolveImagePath
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      const mockResponse = mockSwiftCli.captureImage("screen", {
+        path: MOCK_SAVED_FILE_PATH,
+        format: "png",
+      });
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      // Test with empty string format - schema should preprocess to undefined
+      const result = await imageToolHandler(
+        { format: "" as any },
+        mockContext,
+      );
+
+      expect(result.isError).toBeUndefined();
+      // Should use PNG format
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--format", "png"]),
+        mockLogger,
+      );
+    });
+
+    it("should fall back to PNG when format is an invalid value", async () => {
+      // Mock resolveImagePath
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      const mockResponse = mockSwiftCli.captureImage("screen", {
+        path: MOCK_SAVED_FILE_PATH,
+        format: "png",
+      });
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      // Test with invalid format - schema should preprocess to 'png'
+      const result = await imageToolHandler(
+        { format: "invalid" as any },
+        mockContext,
+      );
+
+      expect(result.isError).toBeUndefined();
+      // Should use PNG format
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--format", "png"]),
+        mockLogger,
+      );
+    });
+  });
+
+  describe("imageToolHandler - Error message handling", () => {
+    it("should include error details for ambiguous app identifier", async () => {
+      // Mock resolveImagePath
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      // Mock Swift CLI returning ambiguous app error with details
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: false,
+        error: {
+          message: "Multiple applications match identifier 'C'. Please be more specific.",
+          code: "AMBIGUOUS_APP_IDENTIFIER",
+          details: "Matches found: Calendar (com.apple.iCal), Console (com.apple.Console), Cursor (com.todesktop.230313mzl4w4u92)"
+        }
+      });
+
+      const result = await imageToolHandler(
+        { app_target: "C" },
+        mockContext,
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].type).toBe("text");
+      // Should include both the main message and the details
+      expect(result.content[0].text).toContain("Multiple applications match identifier 'C'");
+      expect(result.content[0].text).toContain("Matches found: Calendar (com.apple.iCal), Console (com.apple.Console), Cursor (com.todesktop.230313mzl4w4u92)");
+    });
+
+    it("should handle errors without details gracefully", async () => {
+      // Mock resolveImagePath
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      // Mock Swift CLI returning error without details
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: false,
+        error: {
+          message: "Application not found",
+          code: "APP_NOT_FOUND"
+        }
+      });
+
+      const result = await imageToolHandler(
+        { app_target: "NonExistent" },
+        mockContext,
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].type).toBe("text");
+      // Should only include the main message
+      expect(result.content[0].text).toBe("Image capture failed: Application not found");
     });
   });
 });

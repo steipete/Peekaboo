@@ -28,8 +28,27 @@ export async function imageToolHandler(
   try {
     logger.debug({ input }, "Processing peekaboo.image tool call");
 
+    // Check if this is a screen capture
+    const isScreenCapture = !input.app_target || input.app_target.startsWith("screen:");
+    let formatWarning: string | undefined;
+
+    // Validate format - if invalid, fall back to PNG
+    const validFormats = ["png", "jpg", "data"];
+    let effectiveFormat = input.format;
+    if (effectiveFormat && !validFormats.includes(effectiveFormat)) {
+      logger.warn(`Invalid format '${effectiveFormat}' provided, falling back to PNG`);
+      effectiveFormat = "png";
+    }
+
+    // Auto-fallback to PNG for screen captures with format 'data'
+    if (isScreenCapture && effectiveFormat === "data") {
+      logger.warn("Screen capture with format 'data' auto-fallback to PNG due to size constraints");
+      effectiveFormat = "png";
+      formatWarning = "Note: Screen captures cannot use format 'data' due to large image sizes that cause JavaScript stack overflow. Automatically using PNG format instead.";
+    }
+
     // Determine effective path and format for Swift CLI
-    const swiftFormat = input.format === "data" ? "png" : (input.format || "png");
+    const swiftFormat = effectiveFormat === "data" ? "png" : (effectiveFormat || "png");
 
     // Resolve the effective path using the centralized logic
     const { effectivePath, tempDirUsed: tempDir } = await resolveImagePath(input, logger);
@@ -44,11 +63,17 @@ export async function imageToolHandler(
         { error: swiftResponse.error },
         "Swift CLI returned error for image capture",
       );
+      const errorMessage = swiftResponse.error?.message || "Unknown error";
+      const errorDetails = swiftResponse.error?.details;
+      const fullErrorMessage = errorDetails
+        ? `${errorMessage}\n${errorDetails}`
+        : errorMessage;
+
       return {
         content: [
           {
             type: "text",
-            text: `Image capture failed: ${swiftResponse.error?.message || "Unknown error"}`,
+            text: `Image capture failed: ${fullErrorMessage}`,
           },
         ],
         isError: true,
@@ -180,14 +205,19 @@ export async function imageToolHandler(
     }
     content.push({ type: "text", text: summary });
 
+    // Add format warning if applicable
+    if (formatWarning) {
+      content.push({ type: "text", text: formatWarning });
+    }
+
     if (analysisText) {
       content.push({ type: "text", text: `Analysis Result: ${analysisText}` });
     }
 
     // Return base64 data if:
-    // 1. Format is explicitly 'data', OR
+    // 1. Format is explicitly 'data' (but not for screen captures which auto-fallback), OR
     // 2. No path was provided AND no question is asked
-    const shouldReturnData = (input.format === "data" || !input.path) && !input.question;
+    const shouldReturnData = (effectiveFormat === "data" || !input.path) && !input.question && !isScreenCapture;
 
     if (shouldReturnData && captureData.saved_files?.length > 0) {
       for (const savedFile of captureData.saved_files) {

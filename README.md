@@ -289,15 +289,17 @@ Peekaboo provides three main tools for AI agents:
 
 Captures macOS screen content with automatic shadow/frame removal.
 
+**Important:** Screen captures with `format: "data"` automatically fall back to PNG format due to the large size of screen images causing JavaScript stack overflow errors. When this happens, the tool saves the image to a file and includes a warning message explaining the fallback.
+
 **Examples:**
 ```javascript
-// Capture entire screen
+// Capture entire screen (must save to file)
 await use_mcp_tool("peekaboo", "image", {
   app_target: "screen:0",
   path: "~/Desktop/screenshot.png"
 });
 
-// Capture specific app window with analysis
+// Capture specific app window with analysis (can use format: "data")
 await use_mcp_tool("peekaboo", "image", {
   app_target: "Safari",
   question: "What website is currently open?",
@@ -497,6 +499,7 @@ Captures macOS screen content and optionally analyzes it. Window shadows/frames 
 *   `format` (string, optional, default: `"png"`): Specifies the output image format or data return type.
     *   `"png"` or `"jpg"`: Saves the image to the specified `path` in the chosen format. If `path` is not provided, this behaves like `"data"`.
     *   `"data"`: Returns Base64 encoded PNG data of the image directly in the MCP response. If `path` is also specified, a PNG file is also saved to that `path`.
+    *   Invalid values (empty strings, null, or unrecognized formats) automatically fall back to `"png"`.
 *   `capture_focus` (string, optional, default: `"background"`): Controls window focus behavior during capture.
     *   `"background"`: Captures without altering the current window focus (default).
     *   `"foreground"`: Attempts to bring the target application/window to the foreground before capture. This might be necessary for certain applications or to ensure a specific window is captured if multiple are open.

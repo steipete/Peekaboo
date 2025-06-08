@@ -288,7 +288,7 @@ describe("List Tool", () => {
       // Assert
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toBe(
-        "List operation failed: The specified application ('Ciursor') is not running or could not be found."
+        "List operation failed: The specified application ('Ciursor') is not running or could not be found.\nError: Application with name 'Ciursor' not found."
       );
     });
 
@@ -863,6 +863,34 @@ describe("List Tool", () => {
                 "For 'application_windows', 'app' identifier is required.",
             ]);
         }
+    });
+  });
+
+  describe("listToolHandler - Error message handling", () => {
+    it("should include error details for ambiguous app identifier", async () => {
+      // Mock Swift CLI returning ambiguous app error with details
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: false,
+        error: {
+          message: "Multiple applications match identifier 'C'. Please be more specific.",
+          code: "AMBIGUOUS_APP_IDENTIFIER",
+          details: "Matches found: Calendar (com.apple.iCal), Console (com.apple.Console), Cursor (com.todesktop.230313mzl4w4u92)"
+        }
+      });
+
+      const result = await listToolHandler(
+        { 
+          item_type: "application_windows",
+          app: "C" 
+        },
+        mockContext,
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].type).toBe("text");
+      // Should include both the main message and the details
+      expect(result.content[0].text).toContain("Multiple applications match identifier 'C'");
+      expect(result.content[0].text).toContain("Matches found: Calendar (com.apple.iCal), Console (com.apple.Console), Cursor (com.todesktop.230313mzl4w4u92)");
     });
   });
 });
