@@ -1,0 +1,218 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-and-release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            platform: macos
+            arch: arm64
+            binary_name: peekaboo
+            archive_ext: tar.gz
+          - os: macos-13
+            platform: macos
+            arch: x86_64
+            binary_name: peekaboo
+            archive_ext: tar.gz
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+            binary_name: peekaboo
+            archive_ext: tar.gz
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
+            binary_name: peekaboo.exe
+            archive_ext: zip
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Swift (macOS)
+      if: matrix.platform == 'macos'
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    - name: Setup Swift (Linux)
+      if: matrix.platform == 'linux'
+      uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: "5.10"
+    
+    - name: Setup Swift (Windows)
+      if: matrix.platform == 'windows'
+      uses: compnerd/gha-setup-swift@main
+      with:
+        branch: swift-5.10-release
+        tag: 5.10-RELEASE
+    
+    - name: Install Linux dependencies
+      if: matrix.platform == 'linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libx11-dev \
+          libxcomposite-dev \
+          libxrandr-dev \
+          libxdamage-dev \
+          libxfixes-dev \
+          libwayland-dev \
+          pkg-config
+    
+    - name: Get version
+      id: version
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Build release binary
+      shell: bash
+      run: |
+        cd peekaboo-cli
+        swift build -c release --arch ${{ matrix.arch }}
+    
+    - name: Create distribution directory
+      shell: bash
+      run: |
+        cd peekaboo-cli
+        mkdir -p dist
+        cp .build/release/${{ matrix.binary_name }} dist/
+        
+        # Create README for distribution
+        cat > dist/README.txt << EOF
+        Peekaboo ${{ steps.version.outputs.version }}
+        
+        A cross-platform screenshot and screen capture tool.
+        
+        Platform: ${{ matrix.platform }}
+        Architecture: ${{ matrix.arch }}
+        
+        Usage:
+          ./peekaboo --help
+          ./peekaboo list-displays
+          ./peekaboo list-apps
+          ./peekaboo capture-screen
+          ./peekaboo capture-window --window-id <id>
+        
+        For more information, visit:
+        https://github.com/steipete/Peekaboo
+        EOF
+    
+    - name: Create archive (Unix)
+      if: matrix.archive_ext == 'tar.gz'
+      shell: bash
+      run: |
+        cd peekaboo-cli/dist
+        tar -czf ../peekaboo-${{ steps.version.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz *
+    
+    - name: Create archive (Windows)
+      if: matrix.archive_ext == 'zip'
+      shell: powershell
+      run: |
+        cd peekaboo-cli/dist
+        Compress-Archive -Path * -DestinationPath ../peekaboo-${{ steps.version.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
+    
+    - name: Upload release artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: peekaboo-${{ steps.version.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}
+        path: peekaboo-cli/peekaboo-${{ steps.version.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}.*
+        retention-days: 90
+
+  create-release:
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Get version
+      id: version
+      run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: release-artifacts
+    
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: Peekaboo ${{ steps.version.outputs.version }}
+        draft: false
+        prerelease: ${{ contains(steps.version.outputs.version, 'beta') || contains(steps.version.outputs.version, 'alpha') }}
+        generate_release_notes: true
+        files: |
+          release-artifacts/*/peekaboo-*
+        body: |
+          ## Peekaboo ${{ steps.version.outputs.version }}
+          
+          Cross-platform screenshot and screen capture tool supporting macOS, Windows, and Linux.
+          
+          ### Downloads
+          
+          Choose the appropriate binary for your platform:
+          
+          - **macOS (Apple Silicon)**: `peekaboo-${{ steps.version.outputs.version }}-macos-arm64.tar.gz`
+          - **macOS (Intel)**: `peekaboo-${{ steps.version.outputs.version }}-macos-x86_64.tar.gz`
+          - **Linux (x86_64)**: `peekaboo-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz`
+          - **Windows (x86_64)**: `peekaboo-${{ steps.version.outputs.version }}-windows-x86_64.zip`
+          
+          ### Installation
+          
+          1. Download the appropriate archive for your platform
+          2. Extract the archive
+          3. Run `./peekaboo --help` to see available commands
+          
+          ### Features
+          
+          - Cross-platform screen capture (macOS, Windows, Linux)
+          - Window-specific capture
+          - Application discovery and capture
+          - Multiple image formats (PNG, JPEG, BMP, TIFF)
+          - MCP (Model Context Protocol) server integration
+          - Command-line interface
+          
+          ### Requirements
+          
+          - **macOS**: macOS 14.0 or later
+          - **Windows**: Windows 10 or later
+          - **Linux**: X11 or Wayland display server
+          
+          For detailed usage instructions, see the [README](https://github.com/steipete/Peekaboo/blob/main/README.md).
+
+  homebrew-update:
+    needs: create-release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && !contains(github.ref, 'beta') && !contains(github.ref, 'alpha')
+    
+    steps:
+    - name: Update Homebrew formula
+      uses: dawidd6/action-homebrew-bump-formula@v3
+      with:
+        token: ${{ secrets.HOMEBREW_TOKEN }}
+        formula: peekaboo
+        tag: ${{ github.ref_name }}
+        revision: ${{ github.sha }}
+        force: false
+

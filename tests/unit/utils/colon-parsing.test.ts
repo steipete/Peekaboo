@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildSwiftCliArgs } from "../../../src/utils/image-cli-args";
+import { buildSwiftCliArgs, parseAppTarget } from "../../../src/utils/image-cli-args";
 
 describe("App Target Colon Parsing", () => {
   it("should correctly parse window title with URLs containing ports", () => {
@@ -28,7 +28,7 @@ describe("App Target Colon Parsing", () => {
   
   it("should handle URLs with multiple colons correctly", () => {
     const input = {
-      app_target: "Safari:WINDOW_TITLE:https://user:pass@example.com:8443/path?param=value",
+      app_target: "Safari:WINDOW_TITLE:https://api.example.com:8443/secure/path?token=abc123",
       format: "png" as const
     };
     
@@ -36,7 +36,7 @@ describe("App Target Colon Parsing", () => {
     
     expect(args).toContain("--window-title");
     const titleIndex = args.indexOf("--window-title");
-    expect(args[titleIndex + 1]).toBe("https://user:pass@example.com:8443/path?param=value");
+    expect(args[titleIndex + 1]).toBe("https://api.example.com:8443/secure/path?token=abc123");
   });
   
   it("should handle window titles with colons in file paths", () => {
@@ -112,5 +112,19 @@ describe("App Target Colon Parsing", () => {
     expect(args).toContain("--window-title");
     const titleIndex = args.indexOf("--window-title");
     expect(args[titleIndex + 1]).toBe("2023-01-01 12:30:45");
+  });
+
+  it("should handle URLs with authentication in window titles", () => {
+    const result = parseAppTarget(
+      "Safari:WINDOW_TITLE:https://api.example.com:8443/secure/path?token=abc123"
+    );
+
+    expect(result.app).toBe("Safari");
+    expect(result.windowTitle).toBe("https://api.example.com:8443/secure/path?token=abc123");
+
+    const args = buildImageCliArgs(result);
+    const titleIndex = args.indexOf("--window-title");
+    expect(titleIndex).toBeGreaterThan(-1);
+    expect(args[titleIndex + 1]).toBe("https://api.example.com:8443/secure/path?token=abc123");
   });
 });

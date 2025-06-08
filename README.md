@@ -1,13 +1,31 @@
-# Peekaboo MCP: Lightning-fast macOS Screenshots for AI Agents
+# Peekaboo MCP: Lightning-fast Cross-Platform Screenshots for AI Agents
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
 [![npm version](https://badge.fury.io/js/%40steipete%2Fpeekaboo-mcp.svg)](https://www.npmjs.com/package/@steipete/peekaboo-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![macOS](https://img.shields.io/badge/macOS-14.0%2B-blue.svg)](https://www.apple.com/macos/)
+[![Cross-Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue.svg)](https://github.com/steipete/Peekaboo)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 
-Peekaboo is a macOS-only MCP server that enables AI agents to capture screenshots of applications, windows, or the entire system, with optional visual question answering through local or remote AI models.
+Peekaboo is a cross-platform MCP server that enables AI agents to capture screenshots of applications, windows, or the entire system, with optional visual question answering through local or remote AI models.
+
+## Cross-Platform Support 🌍
+
+Peekaboo now supports multiple platforms:
+
+- **macOS** (14.0+): Full native support with ScreenCaptureKit
+- **Windows** (10/11): DXGI Desktop Duplication API support  
+- **Linux**: X11 and Wayland support with automatic detection
+
+### Platform-Specific Features
+
+| Feature | macOS | Windows | Linux |
+|---------|-------|---------|-------|
+| Screen Capture | ✅ | ✅ | ✅ |
+| Window Capture | ✅ | ✅ | ✅ |
+| Multi-Display | ✅ | ✅ | ✅ |
+| Permission Management | ✅ | ✅ | ✅ |
+| High DPI Support | ✅ | ✅ | ✅ |
 
 ## What is Peekaboo?
 
@@ -18,16 +36,84 @@ Peekaboo bridges the gap between AI assistants and visual content on your screen
 - **List running applications** and their windows for targeted captures
 - **Work non-intrusively** without changing window focus or interrupting your workflow
 
-## Key Features
+## Installation
 
-- **🚀 Fast & Non-intrusive**: Uses Apple's ScreenCaptureKit for instant captures without focus changes
-- **🎯 Smart Window Targeting**: Fuzzy matching finds the right window even with partial names
-- **🤖 AI-Powered Analysis**: Ask questions about screenshots using GPT-4o, Claude, or local models
-- **🔒 Privacy-First**: Run entirely locally with Ollama, or use cloud providers when needed
-- **📦 Easy Installation**: One-click install via Cursor or simple npm/npx commands
-- **🛠️ Developer-Friendly**: Clean JSON API, TypeScript support, comprehensive logging
+### Quick Install (Recommended)
 
-Read more about the design philosophy and implementation details in the [blog post](https://steipete.com/posts/peekaboo-mcp-screenshots-so-fast-theyre-paranormal/).
+**macOS/Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/steipete/Peekaboo/main/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+iwr -useb https://raw.githubusercontent.com/steipete/Peekaboo/main/scripts/install.ps1 | iex
+```
+
+### Manual Installation
+
+1. Download the latest release for your platform from [GitHub Releases](https://github.com/steipete/Peekaboo/releases)
+2. Extract the binary to a directory in your PATH
+3. Make it executable (macOS/Linux): `chmod +x peekaboo`
+
+### Build from Source
+
+```bash
+git clone https://github.com/steipete/Peekaboo.git
+cd Peekaboo/peekaboo-cli
+swift build -c release
+```
+
+## Usage
+
+### Basic Commands
+
+```bash
+# Capture all screens
+peekaboo image
+
+# Capture specific application windows
+peekaboo image --app "Safari"
+
+# List running applications
+peekaboo list
+
+# Capture with custom output path
+peekaboo image --path ~/Screenshots/capture.png
+
+# JSON output for automation
+peekaboo image --json-output
+```
+
+### Advanced Usage
+
+```bash
+# Capture specific screen by index
+peekaboo image --screen-index 1
+
+# Capture specific window by title
+peekaboo image --app "Safari" --window-title "GitHub"
+
+# Multiple formats supported
+peekaboo image --format jpeg --path ~/capture.jpg
+```
+
+## Platform Requirements
+
+### macOS
+- macOS 14.0 (Sonoma) or later
+- Screen Recording permission (automatically requested)
+- Accessibility permission (for window management)
+
+### Windows  
+- Windows 10 version 1903 or later
+- Windows 11 (recommended)
+- No special permissions required
+
+### Linux
+- X11 or Wayland display server
+- Required libraries: libX11, libXcomposite, libXrandr, libXfixes
+- Desktop environment: GNOME, KDE, XFCE, or compatible
 
 ## Installation
 

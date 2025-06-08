@@ -1,0 +1,76 @@
+name: Cross-Platform CI
+
+on:
+  push:
+    branches: [ main, codegen-bot/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-macos:
+    runs-on: macos-15
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    - name: Build for macOS
+      run: |
+        cd peekaboo-cli
+        swift build -c release
+    
+    - name: Test CLI functionality
+      run: |
+        cd peekaboo-cli
+        swift run peekaboo --help
+
+  test-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: "5.10"
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libx11-dev libxrandr-dev libxinerama-dev
+    
+    - name: Build for Linux
+      run: |
+        cd peekaboo-cli
+        swift build -c release
+    
+    - name: Test CLI functionality
+      run: |
+        cd peekaboo-cli
+        swift run peekaboo --help
+
+  test-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Swift
+      uses: compnerd/gha-setup-swift@main
+      with:
+        branch: swift-5.10-release
+        tag: 5.10-RELEASE
+    
+    - name: Build for Windows
+      shell: cmd
+      run: |
+        cd peekaboo-cli
+        swift build -c release
+    
+    - name: Test CLI functionality
+      shell: cmd
+      run: |
+        cd peekaboo-cli
+        swift run peekaboo --help

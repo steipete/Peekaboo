@@ -1,6 +1,9 @@
-import AppKit
 import ArgumentParser
 import Foundation
+
+#if os(macOS)
+import AppKit
+#endif
 
 struct ListCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -23,16 +26,23 @@ struct AppsSubcommand: ParsableCommand {
     func run() {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
-        do {
-            try PermissionsChecker.requireScreenRecordingPermission()
+        // Check platform support
+        guard PlatformFactory.isPlatformSupported() else {
+            handleError(CaptureError.unknownError("Platform not supported"))
+            return
+        }
 
-            let applications = ApplicationFinder.getAllRunningApplications()
-            let data = ApplicationListData(applications: applications)
+        do {
+            let applicationFinder = PlatformFactory.createApplicationFinder()
+
+            let applications = applicationFinder.getRunningApplications(includeBackground: false)
+            let applicationInfos = applications.map { ApplicationInfo(from: $0) }
+            let data = ApplicationListData(applications: applicationInfos)
 
             if jsonOutput {
                 outputSuccess(data: data)
             } else {
-                printApplicationList(applications)
+                printApplicationList(applicationInfos)
             }
 
         } catch {
@@ -47,8 +57,10 @@ struct AppsSubcommand: ParsableCommand {
             switch appError {
             case let .notFound(identifier):
                 .appNotFound(identifier)
-            case let .ambiguous(identifier, _):
-                .invalidArgument("Ambiguous application identifier: '\(identifier)'")
+            case .activationFailed(let reason):
+                .unknownError("Application activation failed: \(reason)")
+            case .systemError(let reason):
+                .unknownError("System error: \(reason)")
             }
         } else {
             .unknownError(error.localizedDescription)
@@ -116,32 +128,53 @@ struct WindowsSubcommand: ParsableCommand {
     func run() {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
+        // Check platform support
+        guard PlatformFactory.isPlatformSupported() else {
+            handleError(CaptureError.unknownError("Platform not supported"))
+            return
+        }
+
         do {
-            try PermissionsChecker.requireScreenRecordingPermission()
+            // Use platform factory to get implementations
+            let permissionsManager = PlatformFactory.createPermissionsManager()
+            let applicationFinder = PlatformFactory.createApplicationFinder()
+            let windowManager = PlatformFactory.createWindowManager()
+            
+            // Check permissions
+            try permissionsManager.requireScreenCapturePermission()
 
             // Find the target application
-            let targetApp = try ApplicationFinder.findApplication(identifier: app)
+            let targetApp = try applicationFinder.findApplication(identifier: app)
 
             // Parse include details options
             let detailOptions = parseIncludeDetails()
 
-            // Get windows for the app
-            let windows = try WindowManager.getWindowsInfoForApp(
+            // Get windows for the app - use cross-platform method
+            let windowData = try windowManager.getWindowsForApp(
                 pid: targetApp.processIdentifier,
-                includeOffScreen: detailOptions.contains(.off_screen),
-                includeBounds: detailOptions.contains(.bounds),
-                includeIDs: detailOptions.contains(.ids)
+                includeOffScreen: detailOptions.contains(.off_screen)
             )
-
-            let targetAppInfo = TargetApplicationInfo(
-                app_name: targetApp.localizedName ?? "Unknown",
-                bundle_id: targetApp.bundleIdentifier,
-                pid: targetApp.processIdentifier
-            )
+            
+            // Convert to the expected format for backward compatibility
+            let windows = windowData.map { window in
+                WindowInfoData(
+                    window_title: window.title,
+                    window_id: detailOptions.contains(.ids) ? window.windowId : nil,
+                    window_index: detailOptions.contains(.indices) ? window.index : nil,
+                    bounds: detailOptions.contains(.bounds) ? WindowBoundsData(
+                        xCoordinate: window.bounds?.xCoordinate ?? 0,
+                        yCoordinate: window.bounds?.yCoordinate ?? 0,
+                        width: window.bounds?.width ?? 0,
+                        height: window.bounds?.height ?? 0
+                    ) : nil,
+                    is_on_screen: detailOptions.contains(.onScreen) ? window.isOnScreen : nil
+                )
+            }
 
             let data = WindowListData(
-                windows: windows,
-                target_application_info: targetAppInfo
+                application_name: targetApp.localizedName ?? app,
+                process_id: targetApp.processIdentifier,
+                windows: windows
             )
 
             if jsonOutput {
@@ -162,8 +195,10 @@ struct WindowsSubcommand: ParsableCommand {
             switch appError {
             case let .notFound(identifier):
                 .appNotFound(identifier)
-            case let .ambiguous(identifier, _):
-                .invalidArgument("Ambiguous application identifier: '\(identifier)'")
+            case .activationFailed(let reason):
+                .unknownError("Application activation failed: \(reason)")
+            case .systemError(let reason):
+                .unknownError("System error: \(reason)")
             }
         } else {
             .unknownError(error.localizedDescription)

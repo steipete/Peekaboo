@@ -1,203 +1,263 @@
-import ArgumentParser
 import Foundation
 
-// MARK: - Image Capture Models
+// MARK: - Application Models
 
-struct SavedFile: Codable {
-    let path: String
-    let item_label: String?
-    let window_title: String?
-    let window_id: UInt32?
-    let window_index: Int?
-    let mime_type: String
-}
-
-struct ImageCaptureData: Codable {
-    let saved_files: [SavedFile]
-}
-
-enum CaptureMode: String, CaseIterable, ExpressibleByArgument {
-    case screen
-    case window
-    case multi
-}
-
-enum ImageFormat: String, CaseIterable, ExpressibleByArgument {
-    case png
-    case jpg
-}
-
-enum CaptureFocus: String, CaseIterable, ExpressibleByArgument {
-    case background
-    case auto
-    case foreground
-}
-
-// MARK: - Application & Window Models
-
+/// Information about a running application
 struct ApplicationInfo: Codable {
-    let app_name: String
-    let bundle_id: String
-    let pid: Int32
+    let name: String
+    let bundle_id: String?
+    let process_id: Int32
     let is_active: Bool
     let window_count: Int
 }
 
+/// Data structure for application list output
 struct ApplicationListData: Codable {
     let applications: [ApplicationInfo]
 }
 
-struct WindowInfo: Codable {
-    let window_title: String
-    let window_id: UInt32?
-    let window_index: Int?
-    let bounds: WindowBounds?
-    let is_on_screen: Bool?
+/// Information about a target application
+struct TargetApplicationInfo: Codable {
+    let name: String
+    let bundle_id: String?
+    let process_id: Int32?
+    let window_count: Int?
 }
 
-struct WindowBounds: Codable {
+// MARK: - Window Models
+
+/// Window bounds information for JSON output
+struct WindowBoundsData: Codable {
     let xCoordinate: Int
     let yCoordinate: Int
     let width: Int
     let height: Int
 }
 
-struct TargetApplicationInfo: Codable {
-    let app_name: String
-    let bundle_id: String?
-    let pid: Int32
+/// Window information for JSON output
+struct WindowInfoData: Codable {
+    let window_title: String
+    let window_id: UInt32?
+    let window_index: Int?
+    let bounds: WindowBoundsData?
+    let is_on_screen: Bool?
 }
 
+/// Data structure for window list output
 struct WindowListData: Codable {
-    let windows: [WindowInfo]
+    let windows: [WindowInfoData]
     let target_application_info: TargetApplicationInfo
 }
 
-// MARK: - Window Specifier
+// MARK: - Image Models
 
-enum WindowSpecifier {
-    case title(String)
-    case index(Int)
+/// Saved file information
+struct SavedFile: Codable {
+    let path: String
+    let size_bytes: Int?
+    let width: Int?
+    let height: Int?
+    let format: String
 }
 
-// MARK: - Window Details Options
-
-enum WindowDetailOption: String, CaseIterable {
-    case off_screen
-    case bounds
-    case ids
+/// Image capture result data
+struct ImageCaptureData: Codable {
+    let saved_files: [SavedFile]
+    let file_path: String
+    let file_size_bytes: Int?
+    let image_width: Int?
+    let image_height: Int?
+    let format: String
+    let timestamp: String
+    let target_application_info: TargetApplicationInfo?
+    let captured_windows: [WindowInfoData]?
+    
+    init(saved_files: [SavedFile]) {
+        self.saved_files = saved_files
+        // Use first file for backward compatibility
+        if let firstFile = saved_files.first {
+            self.file_path = firstFile.path
+            self.file_size_bytes = firstFile.size_bytes
+            self.image_width = firstFile.width
+            self.image_height = firstFile.height
+            self.format = firstFile.format
+        } else {
+            self.file_path = ""
+            self.file_size_bytes = nil
+            self.image_width = nil
+            self.image_height = nil
+            self.format = "png"
+        }
+        self.timestamp = ISO8601DateFormatter().string(from: Date())
+        self.target_application_info = nil
+        self.captured_windows = nil
+    }
 }
 
-// MARK: - Window Management
+// MARK: - Error Models
 
-struct WindowData {
-    let windowId: UInt32
-    let title: String
-    let bounds: CGRect
-    let isOnScreen: Bool
-    let windowIndex: Int
+/// Error information for JSON output
+struct ErrorData: Codable {
+    let error_type: String
+    let error_message: String
+    let error_code: Int?
 }
 
-// MARK: - Error Types
+// MARK: - Success Response Models
 
-enum CaptureError: Error, LocalizedError {
-    case noDisplaysAvailable
-    case screenRecordingPermissionDenied
-    case accessibilityPermissionDenied
-    case invalidDisplayID
-    case captureCreationFailed(Error?)
-    case windowNotFound
-    case windowTitleNotFound(String, String, String) // searchTerm, appName, availableTitles
-    case windowCaptureFailed(Error?)
-    case fileWriteError(String, Error?)
-    case appNotFound(String)
-    case invalidWindowIndex(Int)
-    case invalidArgument(String)
+/// Generic success response wrapper
+struct SuccessResponse<T: Codable>: Codable {
+    let success: Bool
+    let data: T
+    let timestamp: String
+    
+    init(data: T) {
+        self.success = true
+        self.data = data
+        self.timestamp = ISO8601DateFormatter().string(from: Date())
+    }
+}
+
+/// Generic error response wrapper
+struct ErrorResponse: Codable {
+    let success: Bool
+    let error: ErrorData
+    let timestamp: String
+    
+    init(error: ErrorData) {
+        self.success = false
+        self.error = error
+        self.timestamp = ISO8601DateFormatter().string(from: Date())
+    }
+}
+
+// MARK: - Enums
+
+/// Capture mode options
+enum CaptureMode: String, CaseIterable, Codable {
+    case screen = "screen"
+    case window = "window"
+    case application = "application"
+}
+
+/// Image format options
+enum ImageFormat: String, CaseIterable, Codable {
+    case png = "png"
+    case jpeg = "jpeg"
+    case jpg = "jpg"
+    case tiff = "tiff"
+    case bmp = "bmp"
+    case gif = "gif"
+}
+
+/// Capture focus behavior
+enum CaptureFocus: String, CaseIterable, Codable {
+    case auto = "auto"
+    case foreground = "foreground"
+    case background = "background"
+}
+
+/// Capture errors
+enum CaptureError: Error, Codable {
     case unknownError(String)
-    case noWindowsFound(String)
-
-    var errorDescription: String? {
+    case appNotFound(String)
+    case windowNotFound
+    case screenRecordingPermissionDenied
+    case invalidArgument(String)
+    case systemError(String)
+    
+    var localizedDescription: String {
         switch self {
-        case .noDisplaysAvailable:
-            return "No displays available for capture."
-        case .screenRecordingPermissionDenied:
-            return "Screen recording permission is required. " +
-                "Please grant it in System Settings > Privacy & Security > Screen Recording."
-        case .accessibilityPermissionDenied:
-            return "Accessibility permission is required for some operations. " +
-                "Please grant it in System Settings > Privacy & Security > Accessibility."
-        case .invalidDisplayID:
-            return "Invalid display ID provided."
-        case let .captureCreationFailed(underlyingError):
-            var message = "Failed to create the screen capture."
-            if let error = underlyingError {
-                message += " \(error.localizedDescription)"
-            }
-            return message
+        case .unknownError(let message):
+            return "Unknown error: \(message)"
+        case .appNotFound(let app):
+            return "Application not found: \(app)"
         case .windowNotFound:
-            return "The specified window could not be found."
-        case let .windowTitleNotFound(searchTerm, appName, availableTitles):
-            var message = "Window with title containing '\(searchTerm)' not found in \(appName)."
-            if !availableTitles.isEmpty {
-                message += " Available windows: \(availableTitles)."
-            }
-            message += " Note: For URLs, try without the protocol (e.g., 'example.com:8080' instead of 'http://example.com:8080')."
-            return message
-        case let .windowCaptureFailed(underlyingError):
-            var message = "Failed to capture the specified window."
-            if let error = underlyingError {
-                message += " \(error.localizedDescription)"
-            }
-            return message
-        case let .fileWriteError(path, underlyingError):
-            var message = "Failed to write capture file to path: \(path)."
-
-            if let error = underlyingError {
-                let errorString = error.localizedDescription
-                if errorString.lowercased().contains("permission") {
-                    message += " Permission denied - check that the directory is " +
-                        "writable and the application has necessary permissions."
-                } else if errorString.lowercased().contains("no such file") {
-                    message += " Directory does not exist - ensure the parent directory exists."
-                } else if errorString.lowercased().contains("no space") {
-                    message += " Insufficient disk space available."
-                } else {
-                    message += " \(errorString)"
-                }
-            } else {
-                message += " This may be due to insufficient permissions, missing directory, or disk space issues."
-            }
-
-            return message
-        case let .appNotFound(identifier):
-            return "Application with identifier '\(identifier)' not found or is not running."
-        case let .invalidWindowIndex(index):
-            return "Invalid window index: \(index)."
-        case let .invalidArgument(message):
-            return "Invalid argument: \(message)"
-        case let .unknownError(message):
-            return "An unexpected error occurred: \(message)"
-        case let .noWindowsFound(appName):
-            return "The '\(appName)' process is running, but no capturable windows were found."
-        }
-    }
-
-    var exitCode: Int32 {
-        switch self {
-        case .noDisplaysAvailable: 10
-        case .screenRecordingPermissionDenied: 11
-        case .accessibilityPermissionDenied: 12
-        case .invalidDisplayID: 13
-        case .captureCreationFailed: 14
-        case .windowNotFound: 15
-        case .windowTitleNotFound: 21
-        case .windowCaptureFailed: 16
-        case .fileWriteError: 17
-        case .appNotFound: 18
-        case .invalidWindowIndex: 19
-        case .invalidArgument: 20
-        case .unknownError: 1
-        case .noWindowsFound: 7
+            return "Window not found"
+        case .screenRecordingPermissionDenied:
+            return "Screen recording permission denied"
+        case .invalidArgument(let arg):
+            return "Invalid argument: \(arg)"
+        case .systemError(let error):
+            return "System error: \(error)"
         }
     }
 }
+
+// MARK: - Platform Image Format
+
+/// Supported image formats across platforms
+enum PlatformImageFormat: String, CaseIterable {
+    case png = "png"
+    case jpeg = "jpeg"
+    case jpg = "jpg"
+    case tiff = "tiff"
+    case bmp = "bmp"
+    case gif = "gif"
+    
+    /// Get the appropriate UTType identifier for the format
+    var utType: String {
+        switch self {
+        case .png:
+            return "public.png"
+        case .jpeg, .jpg:
+            return "public.jpeg"
+        case .tiff:
+            return "public.tiff"
+        case .bmp:
+            return "com.microsoft.bmp"
+        case .gif:
+            return "com.compuserve.gif"
+        }
+    }
+    
+    /// Get file extension for the format
+    var fileExtension: String {
+        return self.rawValue
+    }
+    
+    /// Create from string, with fallback to PNG
+    static func from(string: String) -> PlatformImageFormat {
+        return PlatformImageFormat(rawValue: string.lowercased()) ?? .png
+    }
+    
+    /// Convert from ImageFormat
+    static func from(imageFormat: ImageFormat) -> PlatformImageFormat {
+        return PlatformImageFormat(rawValue: imageFormat.rawValue) ?? .png
+    }
+}
+
+// MARK: - Conversion Extensions
+
+extension ApplicationInfo {
+    /// Convert from RunningApplication
+    init(from app: RunningApplication) {
+        self.name = app.name
+        self.bundle_id = app.bundleIdentifier
+        self.process_id = app.processIdentifier
+        self.is_active = app.isActive
+        self.window_count = app.windowCount ?? 0
+    }
+}
+
+extension WindowInfoData {
+    /// Convert from WindowInfo protocol
+    init(from window: WindowInfo, includeDetails: Bool = false) {
+        self.window_title = window.window_title
+        self.window_id = includeDetails ? window.window_id : nil
+        self.window_index = includeDetails ? window.window_index : nil
+        self.is_on_screen = includeDetails ? window.is_on_screen : nil
+        
+        if includeDetails, let bounds = window.bounds {
+            self.bounds = WindowBoundsData(
+                xCoordinate: bounds.xCoordinate,
+                yCoordinate: bounds.yCoordinate,
+                width: bounds.width,
+                height: bounds.height
+            )
+        } else {
+            self.bounds = nil
+        }
+    }
+}
+
