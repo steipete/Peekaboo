@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.20] - 2025-06-08
+
 ### Added
 - **Window count display optimization**: Single-window apps no longer show "Windows: 1" in list output ([#6](https://github.com/steipete/Peekaboo/pull/6))
   - Reduces visual clutter for the common case of apps with only one window
