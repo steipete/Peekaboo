@@ -148,16 +148,25 @@ struct ContentView: View {
     }
 
     private func runLocalTests() {
-        testStatus = "Running tests..."
-        addLog("Starting local test suite")
-
-        // This is where the Swift tests can interact with the host app
-        // The tests can find this window by its identifier and perform actions
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            testStatus = "Tests can now interact with this window"
-            addLog("Window is ready for test interactions")
-            addLog("Run: swift test --enable-test-discovery --filter LocalIntegration")
+        testStatus = "Running embedded tests..."
+        addLog("Starting test execution from within app")
+        
+        // Set environment for tests
+        setenv("RUN_LOCAL_TESTS", "true", 1)
+        
+        // Run the XCTest tests
+        DispatchQueue.global(qos: .userInitiated).async {
+            let testSuite = XCTestSuite(forTestCaseClass: LocalIntegrationTests.self)
+            let testRun = testSuite.run()
+            
+            DispatchQueue.main.async {
+                self.testStatus = "Tests completed: \(testRun.testCaseCount - testRun.failureCount)/\(testRun.testCaseCount) passed"
+                self.addLog("Test execution finished")
+                self.addLog("Total: \(testRun.testCaseCount) tests")
+                self.addLog("Passed: \(testRun.testCaseCount - testRun.failureCount)")
+                self.addLog("Failed: \(testRun.failureCount)")
+                self.addLog("Duration: \(String(format: "%.2f", testRun.testDuration))s")
+            }
         }
     }
 }

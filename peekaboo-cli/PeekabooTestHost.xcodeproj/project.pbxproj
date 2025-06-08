@@ -1,0 +1,523 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		784E50882DF5FAE600E70CFB /* peekaboo in Frameworks */ = {isa = PBXBuildFile; productRef = 784E50872DF5FAE600E70CFB /* peekaboo */; };
+		784E50982DF5FC6F00E70CFB /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 784E50972DF5FC6F00E70CFB /* XCTest.framework */; };
+		784E50992DF5FC6F00E70CFB /* XCTest.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 784E50972DF5FC6F00E70CFB /* XCTest.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		785D645D2DF5F044000FB427 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 785D64462DF5F042000FB427 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 785D644D2DF5F042000FB427;
+			remoteInfo = PeekabooTestHost;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		784E509A2DF5FC6F00E70CFB /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				784E50992DF5FC6F00E70CFB /* XCTest.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		784E50972DF5FC6F00E70CFB /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
+		785D644E2DF5F042000FB427 /* PeekabooTestHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PeekabooTestHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		785D645C2DF5F044000FB427 /* PeekabooTestHostTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PeekabooTestHostTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		784E509E2DF5FD1200E70CFB /* Exceptions for "TestHost" folder in "PeekabooTestHost" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				BasicTest.swift,
+				LocalOnlyTests.swift,
+				PeekabooTestHostApp.swift,
+				ScreenshotValidationTests.swift,
+				TestTags.swift,
+			);
+			target = 785D644D2DF5F042000FB427 /* PeekabooTestHost */;
+		};
+		784E50A02DF5FD1400E70CFB /* Exceptions for "TestHost" folder in "PeekabooTestHostTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				BasicTest.swift,
+				LocalOnlyTests.swift,
+				PeekabooTestHostApp.swift,
+				ScreenshotValidationTests.swift,
+				TestTags.swift,
+			);
+			target = 785D645B2DF5F044000FB427 /* PeekabooTestHostTests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		785D64502DF5F042000FB427 /* TestHost */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				784E509E2DF5FD1200E70CFB /* Exceptions for "TestHost" folder in "PeekabooTestHost" target */,
+				784E50A02DF5FD1400E70CFB /* Exceptions for "TestHost" folder in "PeekabooTestHostTests" target */,
+			);
+			path = TestHost;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		785D644B2DF5F042000FB427 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		785D64592DF5F044000FB427 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				784E50882DF5FAE600E70CFB /* peekaboo in Frameworks */,
+				784E50982DF5FC6F00E70CFB /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		7835A4972DF5F249001C9A47 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		784E50512DF5F28E00E70CFB /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				784E50972DF5FC6F00E70CFB /* XCTest.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		785D64452DF5F042000FB427 = {
+			isa = PBXGroup;
+			children = (
+				7835A4972DF5F249001C9A47 /* Tests */,
+				785D64502DF5F042000FB427 /* TestHost */,
+				784E50512DF5F28E00E70CFB /* Frameworks */,
+				785D644F2DF5F042000FB427 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		785D644F2DF5F042000FB427 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				785D644E2DF5F042000FB427 /* PeekabooTestHost.app */,
+				785D645C2DF5F044000FB427 /* PeekabooTestHostTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		785D644D2DF5F042000FB427 /* PeekabooTestHost */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 785D64702DF5F045000FB427 /* Build configuration list for PBXNativeTarget "PeekabooTestHost" */;
+			buildPhases = (
+				785D644A2DF5F042000FB427 /* Sources */,
+				785D644B2DF5F042000FB427 /* Frameworks */,
+				785D644C2DF5F042000FB427 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				785D64502DF5F042000FB427 /* TestHost */,
+			);
+			name = PeekabooTestHost;
+			packageProductDependencies = (
+			);
+			productName = PeekabooTestHost;
+			productReference = 785D644E2DF5F042000FB427 /* PeekabooTestHost.app */;
+			productType = "com.apple.product-type.application";
+		};
+		785D645B2DF5F044000FB427 /* PeekabooTestHostTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 785D64732DF5F045000FB427 /* Build configuration list for PBXNativeTarget "PeekabooTestHostTests" */;
+			buildPhases = (
+				785D64582DF5F044000FB427 /* Sources */,
+				785D64592DF5F044000FB427 /* Frameworks */,
+				785D645A2DF5F044000FB427 /* Resources */,
+				784E509A2DF5FC6F00E70CFB /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				785D645E2DF5F044000FB427 /* PBXTargetDependency */,
+			);
+			name = PeekabooTestHostTests;
+			packageProductDependencies = (
+				784E50872DF5FAE600E70CFB /* peekaboo */,
+			);
+			productName = PeekabooTestHostTests;
+			productReference = 785D645C2DF5F044000FB427 /* PeekabooTestHostTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		785D64462DF5F042000FB427 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					785D644D2DF5F042000FB427 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					785D645B2DF5F044000FB427 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 785D644D2DF5F042000FB427;
+					};
+				};
+			};
+			buildConfigurationList = 785D64492DF5F042000FB427 /* Build configuration list for PBXProject "PeekabooTestHost" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 785D64452DF5F042000FB427;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				784E50862DF5FAE600E70CFB /* XCLocalSwiftPackageReference "../peekaboo-cli" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 785D644F2DF5F042000FB427 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				785D644D2DF5F042000FB427 /* PeekabooTestHost */,
+				785D645B2DF5F044000FB427 /* PeekabooTestHostTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		785D644C2DF5F042000FB427 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		785D645A2DF5F044000FB427 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		785D644A2DF5F042000FB427 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		785D64582DF5F044000FB427 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		785D645E2DF5F044000FB427 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 785D644D2DF5F042000FB427 /* PeekabooTestHost */;
+			targetProxy = 785D645D2DF5F044000FB427 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		785D646E2DF5F045000FB427 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		785D646F2DF5F045000FB427 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		785D64712DF5F045000FB427 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TestHost/PeekabooTestHost.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = "$(SYSTEM_LIBRARY_DIR)/Frameworks";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = me.steipete.PeekabooTestHost;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		785D64722DF5F045000FB427 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PeekabooTestHost/PeekabooTestHost.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = "$(SYSTEM_LIBRARY_DIR)/Frameworks";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = me.steipete.PeekabooTestHost;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		785D64742DF5F045000FB427 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = "$(SYSTEM_LIBRARY_DIR)/Frameworks";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = me.steipete.PeekabooTestHostTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PeekabooTestHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PeekabooTestHost";
+			};
+			name = Debug;
+		};
+		785D64752DF5F045000FB427 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = "$(SYSTEM_LIBRARY_DIR)/Frameworks";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = me.steipete.PeekabooTestHostTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PeekabooTestHost.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PeekabooTestHost";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		785D64492DF5F042000FB427 /* Build configuration list for PBXProject "PeekabooTestHost" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				785D646E2DF5F045000FB427 /* Debug */,
+				785D646F2DF5F045000FB427 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		785D64702DF5F045000FB427 /* Build configuration list for PBXNativeTarget "PeekabooTestHost" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				785D64712DF5F045000FB427 /* Debug */,
+				785D64722DF5F045000FB427 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		785D64732DF5F045000FB427 /* Build configuration list for PBXNativeTarget "PeekabooTestHostTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				785D64742DF5F045000FB427 /* Debug */,
+				785D64752DF5F045000FB427 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		784E50862DF5FAE600E70CFB /* XCLocalSwiftPackageReference "../peekaboo-cli" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../peekaboo-cli";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		784E50872DF5FAE600E70CFB /* peekaboo */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = peekaboo;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 785D64462DF5F042000FB427 /* Project object */;
+}
