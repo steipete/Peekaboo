@@ -250,7 +250,7 @@ struct ImageCommand: AsyncParsableCommand {
             throw CaptureError.noWindowsFound(targetApp.name)
         }
 
-        let targetWindow: WindowInfo
+        let targetWindow: PlatformWindowInfo
         if let windowTitle {
             guard let window = windows.first(where: { $0.title.contains(windowTitle) }) else {
                 let availableTitles = windows.map { "\"\($0.title)\"" }.joined(separator: ", ")
@@ -347,7 +347,7 @@ struct ImageCommand: AsyncParsableCommand {
         }
     }
 
-    private func captureWindow(_ window: WindowInfo, to path: String) async throws {
+    private func captureWindow(_ window: PlatformWindowInfo, to path: String) async throws {
         let screenCapture = PlatformFactory.createScreenCapture()
         
         do {
@@ -427,4 +427,3 @@ struct ImageCommand: AsyncParsableCommand {
         #endif
     }
 }
-
