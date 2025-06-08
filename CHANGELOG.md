@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Restriction on using `format: "data"` for screen captures to prevent JavaScript stack overflow errors
+  - Screen captures must use `format: "png"` or omit the format parameter
+  - Application window captures can still use `format: "data"`
+
 ## [1.0.0-beta.18] - 2025-06-08
 
 ### Added

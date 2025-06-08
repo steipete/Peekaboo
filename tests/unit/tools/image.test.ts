@@ -109,14 +109,26 @@ describe("Image Tool", () => {
       expect(mockFsRm).not.toHaveBeenCalled();
     });
 
-    it("should capture screen with format: 'data'", async () => {
+    it("should reject screen capture with format: 'data'", async () => {
+      const result = await imageToolHandler(
+        { format: "data" },
+        mockContext,
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Screen captures cannot use format 'data'");
+      expect(result._meta?.backend_error_code).toBe("FORMAT_NOT_ALLOWED_FOR_SCREEN");
+      expect(mockExecuteSwiftCli).not.toHaveBeenCalled();
+    });
+
+    it("should allow app capture with format: 'data'", async () => {
       // Mock resolveImagePath to return a temp directory for format: "data"
       mockResolveImagePath.mockResolvedValue({
         effectivePath: MOCK_TEMP_IMAGE_DIR,
         tempDirUsed: MOCK_TEMP_IMAGE_DIR,
       });
       
-      const mockResponse = mockSwiftCli.captureImage("screen", {
+      const mockResponse = mockSwiftCli.captureImage("Safari", {
         path: MOCK_SAVED_FILE_PATH,
         format: "png",
       });
@@ -124,7 +136,7 @@ describe("Image Tool", () => {
       mockReadImageAsBase64.mockResolvedValue("base64imagedata");
 
       const result = await imageToolHandler(
-        { format: "data" },
+        { app_target: "Safari", format: "data" },
         mockContext,
       );
 
@@ -140,7 +152,7 @@ describe("Image Tool", () => {
       expect(mockFsRm).not.toHaveBeenCalled();
     });
 
-    it("should save file and return base64 when format: 'data' with path", async () => {
+    it("should save file and return base64 when format: 'data' with path for app capture", async () => {
       const userPath = "/user/test.png";
       // Mock resolveImagePath to return the user path (no temp dir)
       mockResolveImagePath.mockResolvedValue({
@@ -151,7 +163,7 @@ describe("Image Tool", () => {
       const mockSavedFile: SavedFile = {
         path: userPath,
         mime_type: "image/png",
-        item_label: "Screen 1",
+        item_label: "Safari",
       };
       const mockResponse = {
         success: true,
@@ -162,7 +174,7 @@ describe("Image Tool", () => {
       mockReadImageAsBase64.mockResolvedValue("base64imagedata");
 
       const result = await imageToolHandler(
-        { format: "data", path: userPath },
+        { app_target: "Safari", format: "data", path: userPath },
         mockContext,
       );
 
@@ -644,7 +656,7 @@ describe("Image Tool", () => {
         tempDirUsed: MOCK_TEMP_IMAGE_DIR,
       });
       
-      const mockCliResponse = mockSwiftCli.captureImage("screen", {
+      const mockCliResponse = mockSwiftCli.captureImage("Safari", {
         path: MOCK_SAVED_FILE_PATH,
         format: "png",
       });
@@ -652,6 +664,7 @@ describe("Image Tool", () => {
 
       const result = await imageToolHandler(
         {
+          app_target: "Safari", // Use app capture to allow format: "data"
           question: MOCK_QUESTION,
           format: "data", // Even with format: "data"
         },

@@ -28,6 +28,23 @@ export async function imageToolHandler(
   try {
     logger.debug({ input }, "Processing peekaboo.image tool call");
 
+    // Validate format restrictions for screen captures
+    const isScreenCapture = !input.app_target || input.app_target.startsWith("screen:");
+    if (isScreenCapture && input.format === "data") {
+      logger.warn("Screen capture with format 'data' is not allowed due to size constraints");
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Screen captures cannot use format 'data' because they produce images too large for base64 encoding. " +
+                  "Please use format 'png' to save to a file instead.",
+          },
+        ],
+        isError: true,
+        _meta: { backend_error_code: "FORMAT_NOT_ALLOWED_FOR_SCREEN" },
+      };
+    }
+
     // Determine effective path and format for Swift CLI
     const swiftFormat = input.format === "data" ? "png" : (input.format || "png");
 

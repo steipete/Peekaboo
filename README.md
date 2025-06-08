@@ -289,15 +289,17 @@ Peekaboo provides three main tools for AI agents:
 
 Captures macOS screen content with automatic shadow/frame removal.
 
+**Important:** Screen captures cannot use `format: "data"` due to the large size of screen images causing JavaScript stack overflow errors. Always use `format: "png"` (or omit format) with a `path` for screen captures.
+
 **Examples:**
 ```javascript
-// Capture entire screen
+// Capture entire screen (must save to file)
 await use_mcp_tool("peekaboo", "image", {
   app_target: "screen:0",
   path: "~/Desktop/screenshot.png"
 });
 
-// Capture specific app window with analysis
+// Capture specific app window with analysis (can use format: "data")
 await use_mcp_tool("peekaboo", "image", {
   app_target: "Safari",
   question: "What website is currently open?",
