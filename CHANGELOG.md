@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-01-08
+
+### 🎉 First Stable Release
+
+Peekaboo MCP is now production-ready! This release marks the culmination of extensive development, testing, and refinement to create a robust macOS screen capture and window management tool for AI agents.
+
+### Key Features
+- **Advanced Screen Capture**: Capture entire screens, specific windows, or all windows of an application
+- **AI-Powered Image Analysis**: Analyze captured or existing images using multiple AI providers (Ollama, OpenAI)
+- **Window Management**: List running applications and their windows with detailed metadata
+- **Flexible Output Options**: Save to file or return Base64-encoded data inline
+- **Swift 6 Compatibility**: Fully migrated to Swift 6 with strict concurrency for maximum reliability
+- **Universal Binary**: Supports both Apple Silicon and Intel Macs
+
+### Recent Improvements (from beta releases)
+- Fixed critical MCP server error handling for edge cases
+- Complete Swift 6 migration with proper async/await patterns
+- Enhanced error messages and debugging capabilities
+- Improved window matching with fuzzy search
+- Better handling of multi-display setups
+- Robust permission handling for Screen Recording and Accessibility
+
+### Requirements
+- macOS 13.0 or later
+- Node.js 18 or later
+- Screen Recording permission (for capture features)
+- Accessibility permission (optional, for foreground window detection)
+
+### Getting Started
+```bash
+npm install -g @steipete/peekaboo-mcp
+```
+
+For detailed documentation, visit: https://github.com/steipete/Peekaboo
+
 ## [1.0.0-beta.25] - 2025-01-08
 
 ### Fixed
