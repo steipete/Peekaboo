@@ -93,10 +93,10 @@ class WindowsScreenCapture: ScreenCaptureProtocol {
             displayIndex: nil,
             windowId: windowId,
             windowTitle: title,
-            applicationName: nil, // TODO: Get application name
+            applicationName: getApplicationNameForWindow(hwnd),
             bounds: CGRect(x: CGFloat(rect.left), y: CGFloat(rect.top), 
                           width: CGFloat(width), height: CGFloat(height)),
-            scaleFactor: 1.0,
+            scaleFactor: getDPIScaling(),
             colorSpace: CGColorSpaceCreateDeviceRGB()
         )
         
@@ -168,7 +168,7 @@ class WindowsScreenCapture: ScreenCaptureProtocol {
                     index: displays.count,
                     bounds: bounds,
                     workArea: workArea,
-                    scaleFactor: 1.0, // TODO: Get actual DPI scaling
+                    scaleFactor: getDPIScaling(),
                     isPrimary: isPrimary,
                     name: "Display \(displays.count + 1)",
                     colorSpace: CGColorSpaceCreateDeviceRGB()
@@ -334,6 +334,16 @@ class WindowsScreenCapture: ScreenCaptureProtocol {
         EnumWindows(enumProc, UInt(bitPattern: context))
         
         return windowsArray.compactMap { $0 as? UInt32 }
+    }
+    
+    private func getDPIScaling() -> CGFloat {
+        // Implement DPI scaling logic here
+        return 1.0
+    }
+    
+    private func getApplicationNameForWindow(_ hwnd: HWND) -> String? {
+        // Implement application name retrieval logic here
+        return nil
     }
 }
 #endif

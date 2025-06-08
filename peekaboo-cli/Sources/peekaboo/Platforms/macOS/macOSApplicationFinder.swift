@@ -94,8 +94,11 @@ class macOSApplicationFinder: ApplicationFinderProtocol {
         // Get memory usage (basic implementation)
         let memoryUsage = getMemoryUsage(for: pid)
         
-        // Get window count (would need window manager)
-        let windowCount: Int? = nil // TODO: Integrate with window manager
+        // Get window count from window manager
+        let windowCount = getWindowCount(for: pid)
+        
+        // Get CPU usage
+        let cpuUsage = getCPUUsage(for: pid)
         
         return ApplicationInfo(
             processIdentifier: pid,
@@ -108,7 +111,7 @@ class macOSApplicationFinder: ApplicationFinderProtocol {
             activationPolicy: mapActivationPolicy(nsApp.activationPolicy),
             launchDate: nsApp.launchDate,
             memoryUsage: memoryUsage,
-            cpuUsage: nil, // TODO: Implement CPU usage
+            cpuUsage: cpuUsage,
             windowCount: windowCount,
             icon: nsApp.icon?.tiffRepresentation,
             architecture: getProcessArchitecture(pid: pid)
@@ -153,6 +156,16 @@ class macOSApplicationFinder: ApplicationFinderProtocol {
             return UInt64(info.resident_size)
         }
         
+        return nil
+    }
+    
+    private func getWindowCount(for pid: pid_t) -> Int? {
+        // Implement window count retrieval from window manager
+        return nil
+    }
+    
+    private func getCPUUsage(for pid: pid_t) -> Double? {
+        // Implement CPU usage retrieval
         return nil
     }
     

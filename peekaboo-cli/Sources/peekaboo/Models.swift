@@ -1,5 +1,8 @@
-import ArgumentParser
 import Foundation
+import ArgumentParser
+#if os(macOS)
+import UniformTypeIdentifiers
+#endif
 
 // MARK: - Image Capture Models
 
@@ -23,8 +26,48 @@ enum CaptureMode: String, CaseIterable, ExpressibleByArgument {
 }
 
 enum ImageFormat: String, CaseIterable, ExpressibleByArgument {
-    case png
-    case jpg
+    case png = "png"
+    case jpeg = "jpeg"
+    case jpg = "jpg"
+    case bmp = "bmp"
+    case tiff = "tiff"
+    
+    var mimeType: String {
+        switch self {
+        case .png: return "image/png"
+        case .jpeg, .jpg: return "image/jpeg"
+        case .bmp: return "image/bmp"
+        case .tiff: return "image/tiff"
+        }
+    }
+    
+    var fileExtension: String {
+        switch self {
+        case .jpg: return "jpeg" // Normalize jpg to jpeg for file extension
+        default: return rawValue
+        }
+    }
+    
+    #if os(macOS)
+    
+    var utType: UTType {
+        switch self {
+        case .png: return .png
+        case .jpeg, .jpg: return .jpeg
+        case .bmp: return .bmp
+        case .tiff: return .tiff
+        }
+    }
+    #endif
+    
+    var coreGraphicsType: String {
+        switch self {
+        case .png: return "public.png"
+        case .jpeg, .jpg: return "public.jpeg"
+        case .bmp: return "public.bmp"
+        case .tiff: return "public.tiff"
+        }
+    }
 }
 
 enum CaptureFocus: String, CaseIterable, ExpressibleByArgument {

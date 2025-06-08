@@ -233,7 +233,7 @@ struct ImageCommand: ParsableCommand {
                         window_title: nil,
                         window_id: nil,
                         window_index: nil,
-                        mime_type: format == .png ? "image/png" : "image/jpeg"
+                        mime_type: format.mimeType
                     )
                     savedFiles.append(savedFile)
                 }
@@ -316,7 +316,7 @@ struct ImageCommand: ParsableCommand {
                     window_title: targetWindow.title,
                     window_id: targetWindow.windowId,
                     window_index: targetWindow.windowIndex,
-                    mime_type: format == .png ? "image/png" : "image/jpeg"
+                    mime_type: format.mimeType
                 )
             } catch let error as ScreenCaptureError {
                 throw mapScreenCaptureError(error)
@@ -382,7 +382,7 @@ struct ImageCommand: ParsableCommand {
                         window_title: capturedImage.metadata.windowTitle,
                         window_id: capturedImage.metadata.windowId,
                         window_index: index,
-                        mime_type: format == .png ? "image/png" : "image/jpeg"
+                        mime_type: format.mimeType
                     )
                     savedFiles.append(savedFile)
                 }
@@ -449,7 +449,7 @@ struct ImageCommand: ParsableCommand {
             throw CaptureError.fileWriteError(path, error)
         }
 
-        let utType: UTType = format == .png ? .png : .jpeg
+        let utType: UTType = format.utType
         guard let destination = CGImageDestinationCreateWithURL(
             url as CFURL,
             utType.identifier as CFString,
@@ -503,7 +503,7 @@ struct ImageCommand: ParsableCommand {
         }
         
         // Create image destination
-        let utType = format == .png ? "public.png" : "public.jpeg"
+        let utType = format.coreGraphicsType
         guard let destination = CGImageDestinationCreateWithURL(
             url as CFURL,
             utType as CFString,

@@ -8,6 +8,7 @@ let package = Package(
         .iOS(.v13), // For potential future iOS support
         .watchOS(.v6), // For potential future watchOS support
         .tvOS(.v13) // For potential future tvOS support
+        // Note: Windows and Linux support is handled through conditional compilation
     ],
     products: [
         .executable(
@@ -66,4 +67,3 @@ let package = Package(
         )
     ]
 )
-

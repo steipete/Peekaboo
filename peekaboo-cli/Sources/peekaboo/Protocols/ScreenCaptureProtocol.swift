@@ -30,7 +30,7 @@ protocol ScreenCaptureProtocol {
     
     /// Get the preferred image format for this platform
     /// - Returns: The preferred image format
-    func getPreferredImageFormat() -> PlatformImageFormat
+    func getPreferredImageFormat() -> ImageFormat
 }
 
 /// Represents a captured image with associated metadata
@@ -63,26 +63,6 @@ struct DisplayInfo {
     let colorSpace: CGColorSpace?
 }
 
-/// Cross-platform image format enumeration
-enum PlatformImageFormat: String, CaseIterable {
-    case png = "png"
-    case jpeg = "jpeg"
-    case bmp = "bmp"
-    case tiff = "tiff"
-    
-    var mimeType: String {
-        switch self {
-        case .png: return "image/png"
-        case .jpeg: return "image/jpeg"
-        case .bmp: return "image/bmp"
-        case .tiff: return "image/tiff"
-        }
-    }
-    
-    var fileExtension: String {
-        return self.rawValue
-    }
-}
 
 /// Errors that can occur during screen capture operations
 enum ScreenCaptureError: Error, LocalizedError {
