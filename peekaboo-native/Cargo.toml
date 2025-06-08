@@ -1,0 +1,74 @@
+[package]
+name = "peekaboo"
+version = "1.0.0-beta.21"
+edition = "2021"
+authors = ["Codegen Bot <codegen@example.com>"]
+description = "A cross-platform utility for screen capture, application listing, and window management"
+license = "MIT"
+repository = "https://github.com/steipete/Peekaboo"
+
+[[bin]]
+name = "peekaboo"
+path = "src/main.rs"
+
+[lib]
+name = "peekaboo"
+path = "src/lib.rs"
+
+[dependencies]
+# CLI and argument parsing
+clap = { version = "4.4", features = ["derive", "env"] }
+
+# JSON serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+# Cross-platform utilities
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+once_cell = "1.19"
+
+# Platform-specific dependencies
+[target.'cfg(unix)'.dependencies]
+# Linux dependencies
+x11 = "2.21"
+xcb = "1.2"
+libc = "0.2"
+nix = "0.27"
+
+[target.'cfg(windows)'.dependencies]
+# Windows dependencies
+windows = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi",
+    "Win32_Graphics_Dwm",
+    "Win32_System_SystemInformation",
+    "Win32_Security",
+    "Win32_System_Diagnostics_ToolHelp",
+] }
+
+[dev-dependencies]
+tempfile = "3.8"
+assert_cmd = "2.0"
+predicates = "3.0"
+
+[build-dependencies]
+# Build script dependencies if needed
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
