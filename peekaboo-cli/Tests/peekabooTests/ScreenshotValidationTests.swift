@@ -13,6 +13,7 @@ struct ScreenshotValidationTests {
     // MARK: - Image Analysis Tests
 
     @Test("Validate screenshot contains expected content", .tags(.imageAnalysis))
+    @MainActor
     func validateScreenshotContent() async throws {
         // Create a temporary test window with known content
         let testWindow = createTestWindow(withContent: .text("PEEKABOO_TEST_12345"))
@@ -44,6 +45,7 @@ struct ScreenshotValidationTests {
     }
 
     @Test("Compare screenshots for visual regression", .tags(.regression))
+    @MainActor
     func visualRegressionTest() async throws {
         // Create test window with specific visual pattern
         let testWindow = createTestWindow(withContent: .grid)
@@ -81,6 +83,7 @@ struct ScreenshotValidationTests {
     }
 
     @Test("Test different image formats", .tags(.formats))
+    @MainActor
     func imageFormats() async throws {
         let testWindow = createTestWindow(withContent: .gradient)
         defer { testWindow.close() }
@@ -151,6 +154,7 @@ struct ScreenshotValidationTests {
     // MARK: - Performance Tests
 
     @Test("Screenshot capture performance", .tags(.performance))
+    @MainActor
     func capturePerformance() async throws {
         let testWindow = createTestWindow(withContent: .solid(.white))
         defer { testWindow.close() }
@@ -185,6 +189,7 @@ struct ScreenshotValidationTests {
 
     // MARK: - Helper Functions
 
+    @MainActor
     private func createTestWindow(withContent content: TestContent) -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(x: 100, y: 100, width: 400, height: 300),

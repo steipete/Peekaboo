@@ -3,7 +3,7 @@ import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
 
-struct ImageSaver {
+struct ImageSaver: Sendable {
     static func saveImage(_ image: CGImage, to path: String, format: ImageFormat) throws(CaptureError) {
         let url = URL(fileURLWithPath: path)
 

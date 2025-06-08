@@ -194,7 +194,7 @@ struct LocalIntegrationTests {
         // Try to trigger accessibility permission if not granted
         if !hasAccessibility {
             print("Attempting to trigger accessibility permission dialog...")
-            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+            let options = ["AXTrustedCheckOptionPrompt": true]
             _ = AXIsProcessTrustedWithOptions(options as CFDictionary)
         }
 

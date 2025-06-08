@@ -1,6 +1,6 @@
 import Foundation
 
-class Logger {
+final class Logger: @unchecked Sendable {
     static let shared = Logger()
     private var debugLogs: [String] = []
     private var isJsonOutputMode = false

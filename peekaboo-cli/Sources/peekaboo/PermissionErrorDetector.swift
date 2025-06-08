@@ -1,6 +1,6 @@
 import Foundation
 
-struct PermissionErrorDetector {
+struct PermissionErrorDetector: Sendable {
     static func isScreenRecordingPermissionError(_ error: Error) -> Bool {
         let errorString = error.localizedDescription.lowercased()
 

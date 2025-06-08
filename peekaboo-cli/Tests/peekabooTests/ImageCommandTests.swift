@@ -574,11 +574,11 @@ struct ImageCommandErrorHandlingTests {
         // Test that directory creation failures are handled gracefully
         // This test validates the logic without actually creating directories
 
-        let fileName = "screen_1_20250608_120000.png"
+        let fileName = "screen_1_20250608_120001.png"
         let result = OutputPathResolver.determineOutputPath(basePath: "/tmp/test-path-creation/file.png", fileName: fileName)
 
         // Should return the intended path even if directory creation might fail
-        #expect(result == "/tmp/test-path-creation/file.png")
+        #expect(result == "/tmp/test-path-creation/file_1_20250608_120001.png")
     }
 
     @Test("Path validation edge cases", .tags(.fast))

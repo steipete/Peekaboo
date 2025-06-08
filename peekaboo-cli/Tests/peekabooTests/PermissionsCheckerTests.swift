@@ -46,7 +46,7 @@ struct PermissionsCheckerTests {
     @Test("Accessibility permission matches AXIsProcessTrusted", .tags(.fast))
     func accessibilityPermissionWithTrustedCheck() {
         // Test the AXIsProcessTrusted check
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false]
+        let options = ["AXTrustedCheckOptionPrompt": false]
         let isTrusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
         let hasPermission = PermissionsChecker.checkAccessibilityPermission()
 

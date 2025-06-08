@@ -1,15 +1,15 @@
 import AppKit
 import Foundation
 
-struct AppMatch {
+struct AppMatch: Sendable {
     let app: NSRunningApplication
     let score: Double
     let matchType: String
 }
 
-class ApplicationFinder {
+final class ApplicationFinder: Sendable {
     static func findApplication(identifier: String) throws(ApplicationError) -> NSRunningApplication {
-        Logger.shared.debug("Searching for application: \(identifier)")
+        // Logger.shared.debug("Searching for application: \(identifier)")
 
         // In CI environment, throw not found to avoid accessing NSWorkspace
         if ProcessInfo.processInfo.environment["CI"] == "true" {
@@ -20,7 +20,7 @@ class ApplicationFinder {
 
         // Check for exact bundle ID match first
         if let exactMatch = runningApps.first(where: { $0.bundleIdentifier == identifier }) {
-            Logger.shared.debug("Found exact bundle ID match: \(exactMatch.localizedName ?? "Unknown")")
+            // Logger.shared.debug("Found exact bundle ID match: \(exactMatch.localizedName ?? "Unknown")")
             return exactMatch
         }
 
@@ -182,15 +182,15 @@ class ApplicationFinder {
             let lowerIdentifier = identifier.lowercased()
             
             if browserIdentifiers.contains(lowerIdentifier) {
-                Logger.shared.error("\(identifier.capitalized) browser is not running or not found")
+                // Logger.shared.error("\(identifier.capitalized) browser is not running or not found")
             } else {
-                Logger.shared.error("No applications found matching: \(identifier)")
+                // Logger.shared.error("No applications found matching: \(identifier)")
             }
 
             // Find similar app names using fuzzy matching
             let suggestions = findSimilarApplications(identifier: identifier, from: runningApps)
             if !suggestions.isEmpty {
-                Logger.shared.debug("Did you mean: \(suggestions.joined(separator: ", "))?")
+                // Logger.shared.debug("Did you mean: \(suggestions.joined(separator: ", "))?")
             }
 
             throw ApplicationError.notFound(identifier)
@@ -208,10 +208,10 @@ class ApplicationFinder {
         }
 
         let bestMatch = matches[0]
-        Logger.shared.debug(
-            "Found application: \(bestMatch.app.localizedName ?? "Unknown") " +
-                "(score: \(bestMatch.score), type: \(bestMatch.matchType))"
-        )
+        // Logger.shared.debug(
+        //     "Found application: \(bestMatch.app.localizedName ?? "Unknown") " +
+        //         "(score: \(bestMatch.score), type: \(bestMatch.matchType))"
+        // )
 
         return bestMatch.app
     }
@@ -260,7 +260,7 @@ class ApplicationFinder {
     }
 
     static func getAllRunningApplications() -> [ApplicationInfo] {
-        Logger.shared.debug("Retrieving all running applications")
+        // Logger.shared.debug("Retrieving all running applications")
 
         // In CI environment, return empty array to avoid accessing NSWorkspace
         if ProcessInfo.processInfo.environment["CI"] == "true" {
@@ -298,7 +298,7 @@ class ApplicationFinder {
         // Sort by name for consistent output
         result.sort { $0.app_name.lowercased() < $1.app_name.lowercased() }
 
-        Logger.shared.debug("Found \(result.count) running applications")
+        // Logger.shared.debug("Found \(result.count) running applications")
         return result
     }
 
@@ -330,7 +330,7 @@ class ApplicationFinder {
             return matches // No filtering for non-browser searches
         }
         
-        Logger.shared.debug("Filtering browser helpers for '\(identifier)' search")
+        // Logger.shared.debug("Filtering browser helpers for '\(identifier)' search")
         
         // Filter out helper processes for browser searches
         let filteredMatches = matches.filter { match in
@@ -347,7 +347,7 @@ class ApplicationFinder {
                           appName.contains("background")
             
             if isHelper {
-                Logger.shared.debug("Filtering out helper process: \(appName)")
+                // Logger.shared.debug("Filtering out helper process: \(appName)")
                 return false
             }
             
@@ -357,16 +357,16 @@ class ApplicationFinder {
         // If we filtered out all matches, return the original matches to avoid "not found" errors
         // But log a warning about this case
         if filteredMatches.isEmpty && !matches.isEmpty {
-            Logger.shared.debug("All matches were filtered as helpers, returning original matches to avoid 'not found' error")
+            // Logger.shared.debug("All matches were filtered as helpers, returning original matches to avoid 'not found' error")
             return matches
         }
         
-        Logger.shared.debug("After browser helper filtering: \(filteredMatches.count) matches remaining")
+        // Logger.shared.debug("After browser helper filtering: \(filteredMatches.count) matches remaining")
         return filteredMatches
     }
 }
 
-enum ApplicationError: Error {
+enum ApplicationError: Error, Sendable {
     case notFound(String)
     case ambiguous(String, [NSRunningApplication])
 }

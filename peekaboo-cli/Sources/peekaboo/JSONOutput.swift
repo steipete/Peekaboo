@@ -7,11 +7,11 @@ struct JSONResponse: Codable {
     let debug_logs: [String]
     let error: ErrorInfo?
 
-    init(success: Bool, data: Any? = nil, messages: [String]? = nil, error: ErrorInfo? = nil) {
+    init(success: Bool, data: Any? = nil, messages: [String]? = nil, debugLogs: [String] = [], error: ErrorInfo? = nil) {
         self.success = success
         self.data = data.map(AnyCodable.init)
         self.messages = messages
-        debug_logs = Logger.shared.getDebugLogs()
+        self.debug_logs = debugLogs
         self.error = error
     }
 }
@@ -160,13 +160,15 @@ func outputSuccess(data: Any? = nil, messages: [String]? = nil) {
     if let codableData = data as? Codable {
         outputSuccessCodable(data: codableData, messages: messages)
     } else {
-        outputJSON(JSONResponse(success: true, data: data, messages: messages))
+        let debugLogs = Logger.shared.getDebugLogs()
+        outputJSON(JSONResponse(success: true, data: data, messages: messages, debugLogs: debugLogs))
     }
 }
 
 func outputSuccessCodable(data: some Codable, messages: [String]? = nil) {
+    let debugLogs = Logger.shared.getDebugLogs()
     let response = CodableJSONResponse(
-        success: true, data: data, messages: messages, debug_logs: Logger.shared.getDebugLogs()
+        success: true, data: data, messages: messages, debug_logs: debugLogs
     )
     outputJSONCodable(response)
 }
@@ -204,5 +206,6 @@ struct CodableJSONResponse<T: Codable>: Codable {
 
 func outputError(message: String, code: ErrorCode, details: String? = nil) {
     let error = ErrorInfo(message: message, code: code, details: details)
-    outputJSON(JSONResponse(success: false, error: error))
+    let debugLogs = Logger.shared.getDebugLogs()
+    outputJSON(JSONResponse(success: false, data: nil, messages: nil, debugLogs: debugLogs, error: error))
 }

@@ -3,7 +3,7 @@ import Foundation
 
 // MARK: - Image Capture Models
 
-struct SavedFile: Codable {
+struct SavedFile: Codable, Sendable {
     let path: String
     let item_label: String?
     let window_title: String?
@@ -12,23 +12,23 @@ struct SavedFile: Codable {
     let mime_type: String
 }
 
-struct ImageCaptureData: Codable {
+struct ImageCaptureData: Codable, Sendable {
     let saved_files: [SavedFile]
 }
 
-enum CaptureMode: String, CaseIterable, ExpressibleByArgument {
+enum CaptureMode: String, CaseIterable, ExpressibleByArgument, Sendable {
     case screen
     case window
     case multi
     case frontmost
 }
 
-enum ImageFormat: String, CaseIterable, ExpressibleByArgument {
+enum ImageFormat: String, CaseIterable, ExpressibleByArgument, Sendable {
     case png
     case jpg
 }
 
-enum CaptureFocus: String, CaseIterable, ExpressibleByArgument {
+enum CaptureFocus: String, CaseIterable, ExpressibleByArgument, Sendable {
     case background
     case auto
     case foreground
@@ -36,7 +36,7 @@ enum CaptureFocus: String, CaseIterable, ExpressibleByArgument {
 
 // MARK: - Application & Window Models
 
-struct ApplicationInfo: Codable {
+struct ApplicationInfo: Codable, Sendable {
     let app_name: String
     let bundle_id: String
     let pid: Int32
@@ -44,11 +44,11 @@ struct ApplicationInfo: Codable {
     let window_count: Int
 }
 
-struct ApplicationListData: Codable {
+struct ApplicationListData: Codable, Sendable {
     let applications: [ApplicationInfo]
 }
 
-struct WindowInfo: Codable {
+struct WindowInfo: Codable, Sendable {
     let window_title: String
     let window_id: UInt32?
     let window_index: Int?
@@ -56,34 +56,41 @@ struct WindowInfo: Codable {
     let is_on_screen: Bool?
 }
 
-struct WindowBounds: Codable {
-    let xCoordinate: Int
-    let yCoordinate: Int
+struct WindowBounds: Codable, Sendable {
+    let x_coordinate: Int
+    let y_coordinate: Int
     let width: Int
     let height: Int
+    
+    private enum CodingKeys: String, CodingKey {
+        case x_coordinate = "x_coordinate"
+        case y_coordinate = "y_coordinate"
+        case width
+        case height
+    }
 }
 
-struct TargetApplicationInfo: Codable {
+struct TargetApplicationInfo: Codable, Sendable {
     let app_name: String
     let bundle_id: String?
     let pid: Int32
 }
 
-struct WindowListData: Codable {
+struct WindowListData: Codable, Sendable {
     let windows: [WindowInfo]
     let target_application_info: TargetApplicationInfo
 }
 
 // MARK: - Window Specifier
 
-enum WindowSpecifier {
+enum WindowSpecifier: Sendable {
     case title(String)
     case index(Int)
 }
 
 // MARK: - Window Details Options
 
-enum WindowDetailOption: String, CaseIterable {
+enum WindowDetailOption: String, CaseIterable, Sendable {
     case off_screen
     case bounds
     case ids
@@ -91,7 +98,7 @@ enum WindowDetailOption: String, CaseIterable {
 
 // MARK: - Window Management
 
-struct WindowData {
+struct WindowData: Sendable {
     let windowId: UInt32
     let title: String
     let bounds: CGRect
@@ -101,7 +108,7 @@ struct WindowData {
 
 // MARK: - Error Types
 
-enum CaptureError: Error, LocalizedError {
+enum CaptureError: Error, LocalizedError, Sendable {
     case noDisplaysAvailable
     case screenRecordingPermissionDenied
     case accessibilityPermissionDenied

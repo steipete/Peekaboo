@@ -3,7 +3,7 @@ import CoreGraphics
 import Foundation
 import ScreenCaptureKit
 
-class PermissionsChecker {
+final class PermissionsChecker: Sendable {
     static func checkScreenRecordingPermission() -> Bool {
         // Use a simpler approach - check CGWindowListCreateImage which doesn't require async
         // This is the traditional way to check screen recording permission
@@ -13,8 +13,9 @@ class PermissionsChecker {
 
     static func checkAccessibilityPermission() -> Bool {
         // Check if we have accessibility permission
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false]
-        return AXIsProcessTrustedWithOptions(options as CFDictionary)
+        // Create options dictionary without using the global constant directly
+        let options = ["AXTrustedCheckOptionPrompt": false] as CFDictionary
+        return AXIsProcessTrustedWithOptions(options)
     }
 
     static func requireScreenRecordingPermission() throws {

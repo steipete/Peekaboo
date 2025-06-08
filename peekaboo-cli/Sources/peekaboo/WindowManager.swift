@@ -2,9 +2,9 @@ import AppKit
 import CoreGraphics
 import Foundation
 
-class WindowManager {
+final class WindowManager: Sendable {
     static func getWindowsForApp(pid: pid_t, includeOffScreen: Bool = false) throws(WindowError) -> [WindowData] {
-        Logger.shared.debug("Getting windows for PID: \(pid)")
+        // Logger.shared.debug("Getting windows for PID: \(pid)")
 
         // In CI environment, return empty array to avoid accessing window server
         if ProcessInfo.processInfo.environment["CI"] == "true" {
@@ -14,7 +14,7 @@ class WindowManager {
         let windowList = try fetchWindowList(includeOffScreen: includeOffScreen)
         let windows = extractWindowsForPID(pid, from: windowList)
 
-        Logger.shared.debug("Found \(windows.count) windows for PID \(pid)")
+        // Logger.shared.debug("Found \(windows.count) windows for PID \(pid)")
         return windows.sorted { $0.windowIndex < $1.windowIndex }
     }
 
@@ -91,8 +91,8 @@ class WindowManager {
                 window_id: includeIDs ? windowData.windowId : nil,
                 window_index: windowData.windowIndex,
                 bounds: includeBounds ? WindowBounds(
-                    xCoordinate: Int(windowData.bounds.origin.x),
-                    yCoordinate: Int(windowData.bounds.origin.y),
+                    x_coordinate: Int(windowData.bounds.origin.x),
+                    y_coordinate: Int(windowData.bounds.origin.y),
                     width: Int(windowData.bounds.size.width),
                     height: Int(windowData.bounds.size.height)
                 ) : nil,
@@ -109,7 +109,7 @@ extension ImageCommand {
     }
 }
 
-enum WindowError: Error, LocalizedError {
+enum WindowError: Error, LocalizedError, Sendable {
     case windowListFailed
     case noWindowsFound
 

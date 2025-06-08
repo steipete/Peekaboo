@@ -363,7 +363,7 @@ struct JSONOutputFormatValidationTests {
                 window_title: "Window \(index)",
                 window_id: UInt32(1000 + index),
                 window_index: index,
-                bounds: WindowBounds(xCoordinate: index * 10, yCoordinate: index * 10, width: 800, height: 600),
+                bounds: WindowBounds(x_coordinate: index * 10, y_coordinate: index * 10, width: 800, height: 600),
                 is_on_screen: index.isMultiple(of: 2)
             )
             windows.append(window)

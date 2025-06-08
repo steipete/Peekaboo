@@ -1,6 +1,6 @@
 import Foundation
 
-struct FileNameGenerator {
+struct FileNameGenerator: Sendable {
     static func generateFileName(
         displayIndex: Int? = nil,
         appName: String? = nil,

@@ -90,10 +90,10 @@ struct ModelsTests {
 
     @Test("WindowBounds initialization and properties", .tags(.fast))
     func windowBounds() {
-        let bounds = WindowBounds(xCoordinate: 100, yCoordinate: 200, width: 1200, height: 800)
+        let bounds = WindowBounds(x_coordinate: 100, y_coordinate: 200, width: 1200, height: 800)
 
-        #expect(bounds.xCoordinate == 100)
-        #expect(bounds.yCoordinate == 200)
+        #expect(bounds.x_coordinate == 100)
+        #expect(bounds.y_coordinate == 200)
         #expect(bounds.width == 1200)
         #expect(bounds.height == 800)
     }
@@ -155,7 +155,7 @@ struct ModelsTests {
 
     @Test("WindowInfo with bounds", .tags(.fast))
     func windowInfo() {
-        let bounds = WindowBounds(xCoordinate: 100, yCoordinate: 100, width: 1200, height: 800)
+        let bounds = WindowBounds(x_coordinate: 100, y_coordinate: 100, width: 1200, height: 800)
         let windowInfo = WindowInfo(
             window_title: "Safari - Main Window",
             window_id: 12345,
@@ -168,8 +168,8 @@ struct ModelsTests {
         #expect(windowInfo.window_id == 12345)
         #expect(windowInfo.window_index == 0)
         #expect(windowInfo.bounds != nil)
-        #expect(windowInfo.bounds?.xCoordinate == 100)
-        #expect(windowInfo.bounds?.yCoordinate == 100)
+        #expect(windowInfo.bounds?.x_coordinate == 100)
+        #expect(windowInfo.bounds?.y_coordinate == 100)
         #expect(windowInfo.bounds?.width == 1200)
         #expect(windowInfo.bounds?.height == 800)
         #expect(windowInfo.is_on_screen == true)
@@ -217,7 +217,7 @@ struct ModelsTests {
 
     @Test("WindowListData with target application", .tags(.fast))
     func windowListData() {
-        let bounds = WindowBounds(xCoordinate: 100, yCoordinate: 100, width: 1200, height: 800)
+        let bounds = WindowBounds(x_coordinate: 100, y_coordinate: 100, width: 1200, height: 800)
         let window = WindowInfo(
             window_title: "Safari - Main Window",
             window_id: 12345,
@@ -363,10 +363,10 @@ struct ModelEdgeCaseTests {
             (x: Int.max, y: Int.max, width: 1, height: 1)
         ]
     )
-    func windowBoundsEdgeCases(x xCoordinate: Int, y yCoordinate: Int, width: Int, height: Int) {
-        let bounds = WindowBounds(xCoordinate: xCoordinate, yCoordinate: yCoordinate, width: width, height: height)
-        #expect(bounds.xCoordinate == xCoordinate)
-        #expect(bounds.yCoordinate == yCoordinate)
+    func windowBoundsEdgeCases(x x_coordinate: Int, y y_coordinate: Int, width: Int, height: Int) {
+        let bounds = WindowBounds(x_coordinate: x_coordinate, y_coordinate: y_coordinate, width: width, height: height)
+        #expect(bounds.x_coordinate == x_coordinate)
+        #expect(bounds.y_coordinate == y_coordinate)
         #expect(bounds.width == width)
         #expect(bounds.height == height)
     }

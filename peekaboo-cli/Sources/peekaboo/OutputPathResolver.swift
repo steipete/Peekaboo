@@ -1,6 +1,6 @@
 import Foundation
 
-struct OutputPathResolver {
+struct OutputPathResolver: Sendable {
     static func getOutputPath(basePath: String?, fileName: String, screenIndex: Int? = nil) -> String {
         if let basePath = basePath {
             validatePath(basePath)
@@ -122,7 +122,7 @@ struct OutputPathResolver {
     private static func validatePath(_ path: String) {
         // Check for path traversal attempts
         if path.contains("../") || path.contains("..\\") {
-            Logger.shared.debug("Potential path traversal detected in path: \(path)")
+            // Logger.shared.debug("Potential path traversal detected in path: \(path)")
         }
         
         // Check for system-sensitive paths
@@ -130,7 +130,7 @@ struct OutputPathResolver {
         let normalizedPath = (path as NSString).standardizingPath
         
         for prefix in sensitivePathPrefixes where normalizedPath.hasPrefix(prefix) {
-            Logger.shared.debug("Path points to system directory: \(path) -> \(normalizedPath)")
+            // Logger.shared.debug("Path points to system directory: \(path) -> \(normalizedPath)")
             break
         }
     }

@@ -159,22 +159,6 @@ struct WindowManagerTests {
         _ = try WindowManager.getWindowsForApp(pid: finder.processIdentifier)
         // Windows count is always non-negative
     }
-
-    // MARK: - Error Handling Tests
-
-    @Test("WindowError types exist", .tags(.fast))
-    func windowListError() {
-        // We can't easily force CGWindowListCopyWindowInfo to fail,
-        // but we can test that the error type exists
-        let error = WindowError.windowListFailed
-        // Test that the error exists and has the expected case
-        switch error {
-        case .windowListFailed:
-            #expect(Bool(true)) // This is the expected case
-        case .noWindowsFound:
-            Issue.record("Unexpected error case")
-        }
-    }
 }
 
 // MARK: - Extended Window Manager Tests

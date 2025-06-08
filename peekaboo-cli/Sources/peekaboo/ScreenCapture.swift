@@ -2,7 +2,7 @@ import Foundation
 import CoreGraphics
 import ScreenCaptureKit
 
-struct ScreenCapture {
+struct ScreenCapture: Sendable {
     static func captureDisplay(
         _ displayID: CGDirectDisplayID, to path: String, format: ImageFormat = .png
     ) async throws {

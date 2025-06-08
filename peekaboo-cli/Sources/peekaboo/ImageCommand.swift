@@ -19,7 +19,7 @@ struct FileHandleTextOutputStream: TextOutputStream {
     }
 }
 
-struct ImageCommand: ParsableCommand {
+struct ImageCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "image",
         abstract: "Capture screen or window images"
@@ -52,14 +52,11 @@ struct ImageCommand: ParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
-    func run() {
+    func run() async throws {
         Logger.shared.setJsonOutputMode(jsonOutput)
         do {
             try PermissionsChecker.requireScreenRecordingPermission()
-            // Use Task.runBlocking pattern for proper async-to-sync bridge
-            let savedFiles = try Task.runBlocking {
-                try await performCapture()
-            }
+            let savedFiles = try await performCapture()
             outputResults(savedFiles)
         } catch {
             handleError(error)

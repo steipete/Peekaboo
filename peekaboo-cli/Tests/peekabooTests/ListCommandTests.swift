@@ -149,7 +149,7 @@ struct ListCommandTests {
             window_title: "Documents",
             window_id: 1001,
             window_index: 0,
-            bounds: WindowBounds(xCoordinate: 100, yCoordinate: 200, width: 800, height: 600),
+            bounds: WindowBounds(x_coordinate: 100, y_coordinate: 200, width: 800, height: 600),
             is_on_screen: true
         )
 
@@ -180,7 +180,7 @@ struct ListCommandTests {
                     window_title: "Documents",
                     window_id: 1001,
                     window_index: 0,
-                    bounds: WindowBounds(xCoordinate: 100, yCoordinate: 200, width: 800, height: 600),
+                    bounds: WindowBounds(x_coordinate: 100, y_coordinate: 200, width: 800, height: 600),
                     is_on_screen: true
                 )
             ],

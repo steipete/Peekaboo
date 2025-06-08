@@ -2,16 +2,20 @@ import AppKit
 import ArgumentParser
 import Foundation
 
-struct ListCommand: ParsableCommand {
+struct ListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List running applications or windows",
         subcommands: [AppsSubcommand.self, WindowsSubcommand.self, ServerStatusSubcommand.self],
         defaultSubcommand: AppsSubcommand.self
     )
+    
+    func run() async throws {
+        // Root command doesn't do anything, subcommands handle everything
+    }
 }
 
-struct AppsSubcommand: ParsableCommand {
+struct AppsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "apps",
         abstract: "List all running applications"
@@ -20,7 +24,7 @@ struct AppsSubcommand: ParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
-    func run() {
+    func run() async throws {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
         do {
@@ -40,7 +44,7 @@ struct AppsSubcommand: ParsableCommand {
         }
     }
 
-    private func handleError(_ error: Error) {
+    private func handleError(_ error: Error) -> Never {
         let captureError: CaptureError = if let err = error as? CaptureError {
             err
         } else if let appError = error as? ApplicationError {
@@ -98,7 +102,7 @@ struct AppsSubcommand: ParsableCommand {
     }
 }
 
-struct WindowsSubcommand: ParsableCommand {
+struct WindowsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "windows",
         abstract: "List windows for a specific application"
@@ -113,7 +117,7 @@ struct WindowsSubcommand: ParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
-    func run() {
+    func run() async throws {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
         do {
@@ -155,7 +159,7 @@ struct WindowsSubcommand: ParsableCommand {
         }
     }
 
-    private func handleError(_ error: Error) {
+    private func handleError(_ error: Error) -> Never {
         let captureError: CaptureError = if let err = error as? CaptureError {
             err
         } else if let appError = error as? ApplicationError {
@@ -237,7 +241,7 @@ struct WindowsSubcommand: ParsableCommand {
             }
 
             if let bounds = window.bounds {
-                print("   Bounds: (\(bounds.xCoordinate), \(bounds.yCoordinate)) \(bounds.width)×\(bounds.height)")
+                print("   Bounds: (\(bounds.x_coordinate), \(bounds.y_coordinate)) \(bounds.width)×\(bounds.height)")
             }
 
             print()
@@ -245,7 +249,7 @@ struct WindowsSubcommand: ParsableCommand {
     }
 }
 
-struct ServerStatusSubcommand: ParsableCommand {
+struct ServerStatusSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "server_status",
         abstract: "Check server permissions status"
@@ -254,7 +258,7 @@ struct ServerStatusSubcommand: ParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
 
-    func run() {
+    func run() async throws {
         Logger.shared.setJsonOutputMode(jsonOutput)
 
         let screenRecording = PermissionsChecker.checkScreenRecordingPermission()
