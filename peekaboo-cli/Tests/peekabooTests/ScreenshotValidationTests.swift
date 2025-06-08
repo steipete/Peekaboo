@@ -116,7 +116,7 @@ struct ScreenshotValidationTests {
     // MARK: - Multi-Display Tests
 
     @Test("Capture from multiple displays", .tags(.multiDisplay))
-    func multiDisplayCapture() throws {
+    func multiDisplayCapture() async throws {
         let screens = NSScreen.screens
         print("Found \(screens.count) display(s)")
 
@@ -126,7 +126,7 @@ struct ScreenshotValidationTests {
             defer { try? FileManager.default.removeItem(atPath: outputPath) }
 
             do {
-                _ = try captureDisplayToFile(displayID: displayID, path: outputPath, format: .png)
+                _ = try await captureDisplayToFile(displayID: displayID, path: outputPath, format: .png)
 
                 #expect(FileManager.default.fileExists(atPath: outputPath))
 
@@ -283,10 +283,24 @@ struct ScreenshotValidationTests {
         displayID: CGDirectDisplayID,
         path: String,
         format: ImageFormat
-    ) throws -> ImageCaptureData {
-        guard let image = CGDisplayCreateImage(displayID) else {
+    ) async throws -> ImageCaptureData {
+        let availableContent = try await SCShareableContent.current
+        
+        guard let scDisplay = availableContent.displays.first(where: { $0.displayID == displayID }) else {
             throw CaptureError.captureCreationFailed(nil)
         }
+        
+        let filter = SCContentFilter(display: scDisplay, excludingWindows: [])
+        
+        let configuration = SCStreamConfiguration()
+        configuration.backgroundColor = .clear
+        configuration.shouldBeOpaque = true
+        configuration.showsCursor = false
+        
+        let image = try await SCScreenshotManager.captureImage(
+            contentFilter: filter,
+            configuration: configuration
+        )
 
         let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
         try saveImage(nsImage, to: path, format: format)
