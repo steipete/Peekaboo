@@ -8,11 +8,9 @@ import {
 import { executeSwiftCli, readImageAsBase64 } from "../utils/peekaboo-cli.js";
 import { performAutomaticAnalysis } from "../utils/image-analysis.js";
 import { buildImageSummary } from "../utils/image-summary.js";
-import { buildSwiftCliArgs } from "../utils/image-cli-args.js";
+import { buildSwiftCliArgs, resolveImagePath } from "../utils/image-cli-args.js";
 import { parseAIProviders } from "../utils/ai-providers.js";
 import * as fs from "fs/promises";
-import * as pathModule from "path";
-import * as os from "os";
 
 export { imageToolSchema } from "../types/index.js";
 
@@ -21,7 +19,7 @@ export async function imageToolHandler(
   context: ToolContext,
 ): Promise<ToolResponse> {
   const { logger } = context;
-  let tempImagePathUsed: string | undefined = undefined;
+  let tempDirUsed: string | undefined = undefined;
   let finalSavedFiles: SavedFile[] = [];
   let analysisAttempted = false;
   let analysisSucceeded = false;
@@ -32,28 +30,13 @@ export async function imageToolHandler(
     logger.debug({ input }, "Processing peekaboo.image tool call");
 
     // Determine effective path and format for Swift CLI
-    let effectivePath = input.path;
     const swiftFormat = input.format === "data" ? "png" : (input.format || "png");
 
-    // If no path is provided by the user, we MUST use a temporary path for the Swift CLI to write to.
-    const needsTempPath = !input.path;
+    // Resolve the effective path using the centralized logic
+    const { effectivePath, tempDirUsed: tempDir } = await resolveImagePath(input, logger);
+    tempDirUsed = tempDir;
 
-    if (needsTempPath) {
-      const tempDir = await fs.mkdtemp(
-        pathModule.join(os.tmpdir(), "peekaboo-img-"),
-      );
-      tempImagePathUsed = pathModule.join(
-        tempDir,
-        `capture.${swiftFormat}`,
-      );
-      effectivePath = tempImagePathUsed;
-      logger.debug(
-        { tempPath: tempImagePathUsed },
-        "Using temporary path for capture.",
-      );
-    }
-
-    const args = buildSwiftCliArgs(input, logger, effectivePath, swiftFormat);
+    const args = buildSwiftCliArgs(input, effectivePath, swiftFormat, logger);
 
     const swiftResponse = await executeSwiftCli(args, logger);
 
@@ -102,58 +85,74 @@ export async function imageToolHandler(
     }
 
     const captureData = imageData;
-    const imagePathForAnalysis = captureData.saved_files[0].path;
 
     // Determine which files to report as saved
-    if (input.question && tempImagePathUsed) {
-      // Analysis with temp path - don't include in saved_files
-      finalSavedFiles = [];
-    } else if (!input.path && (input.format === "data" || !input.format)) {
-      // Data format without path - don't include in saved_files
+    if (tempDirUsed) {
+      // Temporary directory was used - don't include in saved_files
       finalSavedFiles = [];
     } else {
       // User provided path or default save behavior - include in saved_files
       finalSavedFiles = captureData.saved_files || [];
     }
 
-    let imageBase64ForAnalysis: string | undefined;
     if (input.question) {
       analysisAttempted = true;
-      try {
-        imageBase64ForAnalysis = await readImageAsBase64(imagePathForAnalysis);
-        logger.debug("Image read successfully for analysis.");
-      } catch (readError) {
-        logger.error(
-          { error: readError, path: imagePathForAnalysis },
-          "Failed to read captured image for analysis",
-        );
-        analysisText = `Analysis skipped: Failed to read captured image at ${imagePathForAnalysis}. Error: ${readError instanceof Error ? readError.message : "Unknown read error"}`;
-      }
+      const analysisResults: Array<{ label: string; text: string }> = [];
+      
+      const configuredProviders = parseAIProviders(
+        process.env.PEEKABOO_AI_PROVIDERS || "",
+      );
+      if (!configuredProviders.length) {
+        analysisText =
+          "Analysis skipped: AI analysis not configured on this server (PEEKABOO_AI_PROVIDERS is not set or empty).";
+        logger.warn(analysisText);
+      } else {
+        // Iterate through all saved files for analysis
+        for (const savedFile of captureData.saved_files) {
+          try {
+            const imageBase64 = await readImageAsBase64(savedFile.path);
+            logger.debug({ path: savedFile.path }, "Image read successfully for analysis.");
+            
+            const analysisResult = await performAutomaticAnalysis(
+              imageBase64,
+              input.question,
+              logger,
+              process.env.PEEKABOO_AI_PROVIDERS || "",
+            );
 
-      if (imageBase64ForAnalysis) {
-        const configuredProviders = parseAIProviders(
-          process.env.PEEKABOO_AI_PROVIDERS || "",
-        );
-        if (!configuredProviders.length) {
-          analysisText =
-            "Analysis skipped: AI analysis not configured on this server (PEEKABOO_AI_PROVIDERS is not set or empty).";
-          logger.warn(analysisText);
-        } else {
-          const analysisResult = await performAutomaticAnalysis(
-            imageBase64ForAnalysis,
-            input.question,
-            logger,
-            process.env.PEEKABOO_AI_PROVIDERS || "",
-          );
-
-          if (analysisResult.error) {
-            analysisText = analysisResult.error;
-          } else {
-            analysisText = analysisResult.analysisText;
-            modelUsed = analysisResult.modelUsed;
-            analysisSucceeded = true;
-            logger.info({ provider: modelUsed }, "Image analysis successful");
+            if (analysisResult.error) {
+              analysisResults.push({
+                label: savedFile.item_label || "Unknown",
+                text: analysisResult.error,
+              });
+            } else {
+              analysisResults.push({
+                label: savedFile.item_label || "Unknown",
+                text: analysisResult.analysisText || "",
+              });
+              modelUsed = analysisResult.modelUsed;
+              analysisSucceeded = true;
+              logger.info({ provider: modelUsed, path: savedFile.path }, "Image analysis successful");
+            }
+          } catch (readError) {
+            logger.error(
+              { error: readError, path: savedFile.path },
+              "Failed to read captured image for analysis",
+            );
+            analysisResults.push({
+              label: savedFile.item_label || "Unknown",
+              text: `Analysis skipped: Failed to read captured image at ${savedFile.path}. Error: ${readError instanceof Error ? readError.message : "Unknown read error"}`,
+            });
           }
+        }
+        
+        // Format the analysis results
+        if (analysisResults.length === 1) {
+          analysisText = analysisResults[0].text;
+        } else if (analysisResults.length > 1) {
+          analysisText = analysisResults
+            .map(result => `Analysis for ${result.label}:\n${result.text}`)
+            .join("\n\n");
         }
       }
     }
@@ -169,7 +168,9 @@ export async function imageToolHandler(
       content.push({ type: "text", text: `Analysis Result: ${analysisText}` });
     }
 
-    // Return base64 data if format is 'data' or path not provided (and no question)
+    // Return base64 data if:
+    // 1. Format is explicitly 'data', OR
+    // 2. No path was provided AND no question is asked
     const shouldReturnData = (input.format === "data" || !input.path) && !input.question;
 
     if (shouldReturnData && captureData.saved_files?.length > 0) {
@@ -231,23 +232,22 @@ export async function imageToolHandler(
       _meta: { backend_error_code: "UNEXPECTED_HANDLER_ERROR" },
     };
   } finally {
-    if (tempImagePathUsed) {
+    // If we used a temporary directory, we need to clean up all files inside it and the directory itself.
+    if (tempDirUsed) {
       logger.debug(
-        { tempPath: tempImagePathUsed },
-        "Attempting to delete temporary image file.",
+        { tempDir: tempDirUsed },
+        "Attempting to delete temporary capture directory.",
       );
       try {
-        await fs.unlink(tempImagePathUsed);
-        const tempDir = pathModule.dirname(tempImagePathUsed);
-        await fs.rmdir(tempDir);
+        await fs.rm(tempDirUsed, { recursive: true, force: true });
         logger.info(
-          { tempPath: tempImagePathUsed },
-          "Temporary image file and directory deleted.",
+          { tempDir: tempDirUsed },
+          "Temporary capture directory deleted.",
         );
       } catch (cleanupError) {
         logger.warn(
-          { error: cleanupError, path: tempImagePathUsed },
-          "Failed to delete temporary image file or directory.",
+          { error: cleanupError, path: tempDirUsed },
+          "Failed to delete temporary capture directory.",
         );
       }
     }
