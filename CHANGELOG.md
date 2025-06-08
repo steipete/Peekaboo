@@ -8,9 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Restriction on using `format: "data"` for screen captures to prevent JavaScript stack overflow errors
-  - Screen captures must use `format: "png"` or omit the format parameter
-  - Application window captures can still use `format: "data"`
+- Automatic format fallback for screen captures to prevent JavaScript stack overflow errors
+  - When `format: "data"` is specified for screen captures, the tool automatically falls back to PNG format
+  - A warning message is included in the response explaining why the fallback occurred
+  - Application window captures can still use `format: "data"` without restrictions
+  - This prevents agents from encountering "Maximum call stack size exceeded" errors when capturing screens
 
 ## [1.0.0-beta.18] - 2025-06-08
 

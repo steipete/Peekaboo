@@ -141,7 +141,9 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
       format: z.enum(["png", "jpg", "data"]).optional().default("png").describe(
         "Output format. 'png' or 'jpg' save to 'path' (if provided). " +
         "'data' returns Base64 encoded PNG data inline; if 'path' is also given, saves a PNG file to 'path' too. " +
-        "If 'path' is not given, 'format' defaults to 'data' behavior (inline PNG data returned)."
+        "If 'path' is not given, 'format' defaults to 'data' behavior (inline PNG data returned). " +
+        "Note: Screen captures cannot use 'data' format due to large image sizes causing JavaScript stack overflow. " +
+        "The tool will automatically fall back to PNG format for screen captures."
       ),
       capture_focus: z.enum(["background", "foreground"])
         .optional().default("background").describe(
@@ -158,6 +160,7 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
         *   `"AppName:WINDOW_TITLE:Title"`: maps to Swift CLI `--app AppName --mode window --window-title Title`.
         *   `"AppName:WINDOW_INDEX:Index"`: maps to Swift CLI `--app AppName --mode window --window-index Index`.
     *   **Node.js Handler - `format` and `path` Logic:**
+        *   **Screen Capture Auto-fallback**: If the capture target is a screen (no `app_target`, empty `app_target`, or `app_target` starts with `"screen:"`), and `input.format === "data"`, the handler automatically changes the effective format to `"png"` and includes a warning message in the response explaining why screen captures cannot use the `"data"` format.
         *   If `input.format === "data"`: `return_data` becomes effectively true. If `input.path` is also set, the image is saved to `input.path` (as PNG) AND Base64 PNG data is returned.
         *   If `input.format` is `"png"` or `"jpg"`:
             *   If `input.path` is provided, the image is saved to `input.path` with the specified format. No Base64 data is returned unless `input.question` is also provided (for analysis).
@@ -182,9 +185,9 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
         *   In such cases where image data is returned despite a save-to-path failure, a `TextContentItem` containing a "Peekaboo Warning:" message detailing the path saving issue will be included in the `ToolResponse.content`.
 *   **MCP Output Schema (`ToolResponse`):**
     *   `content`: `Array<ImageContentItem | TextContentItem>`
-        *   If `input.format === "data"` (or `path` was omitted, defaulting to "data" behavior) AND `input.question` is NOT provided: Contains one or more `ImageContentItem`(s): `{ type: "image", data: "<base64_png_string_no_prefix>", mimeType: "image/png", metadata?: { item_label?: string, window_title?: string, window_id?: number, source_path?: string } }`.
+        *   If `input.format === "data"` (or `path` was omitted, defaulting to "data" behavior) AND `input.question` is NOT provided: Contains one or more `ImageContentItem`(s): `{ type: "image", data: "<base64_png_string_no_prefix>", mimeType: "image/png", metadata?: { item_label?: string, window_title?: string, window_id?: number, source_path?: string } }`. **Note**: For screen captures, `format: "data"` automatically falls back to PNG file format, and a warning message is included instead of image data.
         *   If `input.question` IS provided, `ImageContentItem`s with base64 image data are NOT added to `content`.
-        *   Always contains `TextContentItem`(s) (summary, file paths from `saved_files` if applicable and images were saved to persistent paths, Swift CLI `messages`, and analysis results if a `question` was asked).
+        *   Always contains `TextContentItem`(s) (summary, file paths from `saved_files` if applicable and images were saved to persistent paths, Swift CLI `messages`, analysis results if a `question` was asked, and format fallback warnings for screen captures).
     *   `saved_files`: `Array<{ path: string, item_label?: string, window_title?: string, window_id?: number, mime_type: string }>`
         *   Populated if `input.path` was provided (and not a temporary path for analysis that got deleted). The `mime_type` will reflect `input.format` if it was 'png' or 'jpg' and saved, or 'image/png' if `format: "data"` also saved a file.
         *   If `input.question` is provided AND `input.path` was NOT specified (temp image used and deleted): This array will be empty.

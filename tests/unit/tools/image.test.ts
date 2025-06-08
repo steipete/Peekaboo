@@ -94,13 +94,9 @@ describe("Image Tool", () => {
         mockLogger,
       );
       
-      // When format is omitted and path is omitted, behaves like format: "data"
-      expect(result.content).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ type: "text" }),
-          expect.objectContaining({ type: "image", data: "base64imagedata" }),
-        ]),
-      );
+      // When format is omitted, it defaults to "png", not "data"
+      // So no warning is shown and no base64 data is returned for screen captures
+      expect(result.content.some((item) => item.type === "image")).toBe(false);
       expect(result.saved_files).toEqual(mockResponse.data.saved_files);
       expect(result.analysis_text).toBeUndefined();
       expect(result.model_used).toBeUndefined();
@@ -109,16 +105,44 @@ describe("Image Tool", () => {
       expect(mockFsRm).not.toHaveBeenCalled();
     });
 
-    it("should reject screen capture with format: 'data'", async () => {
+    it("should auto-fallback screen capture with format: 'data' to PNG", async () => {
+      // Mock resolveImagePath to return a temp directory
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      const mockResponse = mockSwiftCli.captureImage("screen", {
+        path: MOCK_SAVED_FILE_PATH,
+        format: "png",
+      });
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
       const result = await imageToolHandler(
         { format: "data" },
         mockContext,
       );
 
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("Screen captures cannot use format 'data'");
-      expect(result._meta?.backend_error_code).toBe("FORMAT_NOT_ALLOWED_FOR_SCREEN");
-      expect(mockExecuteSwiftCli).not.toHaveBeenCalled();
+      // Should succeed but with a warning
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].type).toBe("text");
+      expect(result.content[0].text).toContain("Captured 1 image");
+      
+      // Should have format warning
+      const warningContent = result.content.find(item => 
+        item.type === "text" && item.text?.includes("Screen captures cannot use format 'data'")
+      );
+      expect(warningContent).toBeDefined();
+      expect(warningContent?.text).toContain("Automatically using PNG format instead");
+      
+      // Should have called Swift CLI with PNG format
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--format", "png"]),
+        mockLogger,
+      );
+      
+      // Should NOT return base64 data for screen captures
+      expect(result.content.some((item) => item.type === "image")).toBe(false);
     });
 
     it("should allow app capture with format: 'data'", async () => {
