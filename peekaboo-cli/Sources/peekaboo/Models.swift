@@ -107,7 +107,7 @@ enum CaptureError: Error, LocalizedError {
     case captureCreationFailed
     case windowNotFound
     case windowCaptureFailed
-    case fileWriteError(String)
+    case fileWriteError(String, Error?)
     case appNotFound(String)
     case invalidWindowIndex(Int)
     case invalidArgument(String)
@@ -116,31 +116,48 @@ enum CaptureError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noDisplaysAvailable:
-            "No displays available for capture."
+            return "No displays available for capture."
         case .screenRecordingPermissionDenied:
-            "Screen recording permission is required. " +
+            return "Screen recording permission is required. " +
                 "Please grant it in System Settings > Privacy & Security > Screen Recording."
         case .accessibilityPermissionDenied:
-            "Accessibility permission is required for some operations. " +
+            return "Accessibility permission is required for some operations. " +
                 "Please grant it in System Settings > Privacy & Security > Accessibility."
         case .invalidDisplayID:
-            "Invalid display ID provided."
+            return "Invalid display ID provided."
         case .captureCreationFailed:
-            "Failed to create the screen capture."
+            return "Failed to create the screen capture."
         case .windowNotFound:
-            "The specified window could not be found."
+            return "The specified window could not be found."
         case .windowCaptureFailed:
-            "Failed to capture the specified window."
-        case let .fileWriteError(path):
-            "Failed to write capture file to path: \(path)."
+            return "Failed to capture the specified window."
+        case let .fileWriteError(path, underlyingError):
+            var message = "Failed to write capture file to path: \(path)."
+            
+            if let error = underlyingError {
+                let errorString = error.localizedDescription
+                if errorString.lowercased().contains("permission") {
+                    message += " Permission denied - check that the directory is writable and the application has necessary permissions."
+                } else if errorString.lowercased().contains("no such file") {
+                    message += " Directory does not exist - ensure the parent directory exists."
+                } else if errorString.lowercased().contains("no space") {
+                    message += " Insufficient disk space available."
+                } else {
+                    message += " \(errorString)"
+                }
+            } else {
+                message += " This may be due to insufficient permissions, missing directory, or disk space issues."
+            }
+            
+            return message
         case let .appNotFound(identifier):
-            "Application with identifier '\(identifier)' not found or is not running."
+            return "Application with identifier '\(identifier)' not found or is not running."
         case let .invalidWindowIndex(index):
-            "Invalid window index: \(index)."
+            return "Invalid window index: \(index)."
         case let .invalidArgument(message):
-            "Invalid argument: \(message)"
+            return "Invalid argument: \(message)"
         case let .unknownError(message):
-            "An unexpected error occurred: \(message)"
+            return "An unexpected error occurred: \(message)"
         }
     }
 
@@ -153,7 +170,7 @@ enum CaptureError: Error, LocalizedError {
         case .captureCreationFailed: 14
         case .windowNotFound: 15
         case .windowCaptureFailed: 16
-        case .fileWriteError: 17
+        case .fileWriteError(_, _): 17
         case .appNotFound: 18
         case .invalidWindowIndex: 19
         case .invalidArgument: 20
