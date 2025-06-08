@@ -283,7 +283,10 @@ struct JSONOutputTests {
 
         for errorCode in errorCodes {
             #expect(!errorCode.rawValue.isEmpty)
-            #expect(errorCode.rawValue.allSatisfy(\.isASCII))
+            let isAllASCII = errorCode.rawValue.allSatisfy { character in
+                character.isASCII
+            }
+            #expect(isAllASCII)
         }
     }
 }
