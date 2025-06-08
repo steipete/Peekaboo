@@ -111,49 +111,49 @@ class ApplicationFinder {
         return matches
     }
 
-    private static func calculateStringSimilarity(_ s1: String, _ s2: String) -> Double {
+    private static func calculateStringSimilarity(_ str1: String, _ str2: String) -> Double {
         // Only consider strings with reasonable length differences
-        let lengthDiff = abs(s1.count - s2.count)
+        let lengthDiff = abs(str1.count - str2.count)
         guard lengthDiff <= 3 else { return 0.0 }
 
-        let distance = levenshteinDistance(s1, s2)
-        let maxLength = max(s1.count, s2.count)
+        let distance = levenshteinDistance(str1, str2)
+        let maxLength = max(str1.count, str2.count)
 
         // Calculate similarity (1.0 = identical, 0.0 = completely different)
         return 1.0 - (Double(distance) / Double(maxLength))
     }
 
-    private static func levenshteinDistance(_ s1: String, _ s2: String) -> Int {
-        let a = Array(s1)
-        let b = Array(s2)
+    private static func levenshteinDistance(_ str1: String, _ str2: String) -> Int {
+        let chars1 = Array(str1)
+        let chars2 = Array(str2)
 
-        let n = a.count
-        let m = b.count
+        let length1 = chars1.count
+        let length2 = chars2.count
 
-        if n == 0 { return m }
-        if m == 0 { return n }
+        if length1 == 0 { return length2 }
+        if length2 == 0 { return length1 }
 
-        var matrix = Array(repeating: Array(repeating: 0, count: m + 1), count: n + 1)
+        var matrix = Array(repeating: Array(repeating: 0, count: length2 + 1), count: length1 + 1)
 
-        for i in 0...n {
-            matrix[i][0] = i
+        for idx1 in 0...length1 {
+            matrix[idx1][0] = idx1
         }
-        for j in 0...m {
-            matrix[0][j] = j
+        for idx2 in 0...length2 {
+            matrix[0][idx2] = idx2
         }
 
-        for i in 1...n {
-            for j in 1...m {
-                let cost = a[i - 1] == b[j - 1] ? 0 : 1
-                matrix[i][j] = min(
-                    matrix[i - 1][j] + 1, // deletion
-                    matrix[i][j - 1] + 1, // insertion
-                    matrix[i - 1][j - 1] + cost // substitution
+        for idx1 in 1...length1 {
+            for idx2 in 1...length2 {
+                let cost = chars1[idx1 - 1] == chars2[idx2 - 1] ? 0 : 1
+                matrix[idx1][idx2] = min(
+                    matrix[idx1 - 1][idx2] + 1, // deletion
+                    matrix[idx1][idx2 - 1] + 1, // insertion
+                    matrix[idx1 - 1][idx2 - 1] + cost // substitution
                 )
             }
         }
 
-        return matrix[n][m]
+        return matrix[length1][length2]
     }
 
     private static func removeDuplicateMatches(from matches: [AppMatch]) -> [AppMatch] {
