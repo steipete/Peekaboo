@@ -67,7 +67,8 @@
     "node": ">=18.0.0"
   },
   "os": [
-    "darwin"
+    "darwin",
+    "linux"
   ],
   "repository": {
     "type": "git",
