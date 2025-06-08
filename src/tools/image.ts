@@ -37,7 +37,7 @@ export async function imageToolHandler(
 
     const args = buildSwiftCliArgs(input, effectivePath, swiftFormat, logger);
 
-    const swiftResponse = await executeSwiftCli(args, logger);
+    const swiftResponse = await executeSwiftCli(args, logger, { timeout: 30000 });
 
     if (!swiftResponse.success) {
       logger.error(

@@ -115,7 +115,7 @@ export async function listToolHandler(
     const args = buildSwiftCliArgs(input);
 
     // Execute Swift CLI
-    const swiftResponse = await executeSwiftCli(args, logger);
+    const swiftResponse = await executeSwiftCli(args, logger, { timeout: 15000 });
 
     if (!swiftResponse.success) {
       logger.error({ error: swiftResponse.error }, "Swift CLI returned error");
