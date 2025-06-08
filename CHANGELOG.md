@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.22] - 2025-01-08
+
+### Fixed
+- **Critical deadlock fix in Swift CLI image capture**
+  - Removed DispatchSemaphore usage that violated Swift concurrency rules and caused infinite hangs
+  - Implemented RunLoop-based async-to-sync bridging for proper concurrency handling
+  - Converted all capture methods to async/await patterns while maintaining CLI compatibility
+  - Replaced Thread.sleep with Task.sleep in async contexts
+  - Fixed test timeouts by eliminating blocking operations
+  - No macOS version requirements added - solution uses standard Foundation APIs
+
 ### Added
 - **Smart browser helper filtering for improved Chrome/Safari matching**
   - Automatically filters out browser helper processes when searching for common browsers (chrome, safari, firefox, edge, brave, arc, opera)
