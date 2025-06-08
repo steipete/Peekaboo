@@ -291,7 +291,7 @@ struct ImageCommandTests {
 @Suite("ImageCommand Path Handling Tests", .tags(.imageCapture, .unit))
 struct ImageCommandPathHandlingTests {
     // MARK: - Helper Methods
-    
+
     private func createTestImageCommand(path: String?, screenIndex: Int? = nil) -> ImageCommand {
         var command = ImageCommand()
         command.path = path
@@ -299,12 +299,11 @@ struct ImageCommandPathHandlingTests {
         command.format = .png
         return command
     }
-    
+
     // MARK: - Path Detection Tests
-    
+
     @Test("File vs directory path detection", .tags(.fast))
     func pathDetection() {
-        
         // Test file-like paths (have extension, no trailing slash)
         let filePaths = [
             "/tmp/screenshot.png",
@@ -313,7 +312,7 @@ struct ImageCommandPathHandlingTests {
             "./relative/file.png",
             "simple.png"
         ]
-        
+
         // Test directory-like paths (no extension or trailing slash)
         let directoryPaths = [
             "/tmp/",
@@ -321,67 +320,67 @@ struct ImageCommandPathHandlingTests {
             "/path/with spaces/",
             "simple-dir"
         ]
-        
+
         // File paths should be detected correctly
         for filePath in filePaths {
             let isLikelyFile = filePath.contains(".") && !filePath.hasSuffix("/")
             #expect(isLikelyFile == true, "Path '\(filePath)' should be detected as file")
         }
-        
+
         // Directory paths should be detected correctly
         for dirPath in directoryPaths {
             let isLikelyFile = dirPath.contains(".") && !dirPath.hasSuffix("/")
             #expect(isLikelyFile == false, "Path '\(dirPath)' should be detected as directory")
         }
     }
-    
+
     @Test("Single screen file path handling", .tags(.fast))
     func singleScreenFilePath() {
         let command = createTestImageCommand(path: "/tmp/my-screenshot.png", screenIndex: 0)
-        
+
         // For single screen, should use exact path
         let fileName = "screen_1_20250608_120000.png"
         let result = command.determineOutputPath(basePath: "/tmp/my-screenshot.png", fileName: fileName)
-        
+
         #expect(result == "/tmp/my-screenshot.png")
     }
-    
+
     @Test("Multiple screens file path handling", .tags(.fast))
     func multipleScreensFilePath() {
         let command = createTestImageCommand(path: "/tmp/screenshot.png", screenIndex: nil)
-        
+
         // For multiple screens, should append screen info
         let fileName = "screen_1_20250608_120000.png"
         let result = command.determineOutputPath(basePath: "/tmp/screenshot.png", fileName: fileName)
-        
+
         #expect(result == "/tmp/screenshot_1_20250608_120000.png")
     }
-    
+
     @Test("Directory path handling", .tags(.fast))
     func directoryPathHandling() {
         let command = createTestImageCommand(path: "/tmp/screenshots", screenIndex: nil)
-        
+
         let fileName = "screen_1_20250608_120000.png"
         let result = command.determineOutputPath(basePath: "/tmp/screenshots", fileName: fileName)
-        
+
         #expect(result == "/tmp/screenshots/screen_1_20250608_120000.png")
     }
-    
+
     @Test("Directory with trailing slash handling", .tags(.fast))
     func directoryWithTrailingSlashHandling() {
         let command = createTestImageCommand(path: "/tmp/screenshots/", screenIndex: nil)
-        
+
         let fileName = "screen_1_20250608_120000.png"
         let result = command.determineOutputPath(basePath: "/tmp/screenshots/", fileName: fileName)
-        
+
         #expect(result == "/tmp/screenshots//screen_1_20250608_120000.png")
     }
-    
+
     @Test(
         "Various file extensions",
         arguments: [
             "/tmp/image.png",
-            "/tmp/photo.jpg", 
+            "/tmp/photo.jpg",
             "/tmp/picture.jpeg",
             "/tmp/screen.PNG",
             "/tmp/capture.JPG"
@@ -391,15 +390,15 @@ struct ImageCommandPathHandlingTests {
         let command = createTestImageCommand(path: path, screenIndex: nil)
         let fileName = "screen_1_20250608_120000.png"
         let result = command.determineOutputPath(basePath: path, fileName: fileName)
-        
+
         // Should modify the filename for multiple screens, keeping original extension
         let pathExtension = (path as NSString).pathExtension
         let pathWithoutExtension = (path as NSString).deletingPathExtension
         let expected = "\(pathWithoutExtension)_1_20250608_120000.\(pathExtension)"
-        
+
         #expect(result == expected)
     }
-    
+
     @Test(
         "Edge case paths",
         arguments: [
@@ -415,24 +414,24 @@ struct ImageCommandPathHandlingTests {
         let isLikelyFile = path.contains(".") && !path.hasSuffix("/")
         #expect(isLikelyFile == expectedAsFile, "Path '\(path)' detection failed")
     }
-    
+
     @Test("Filename generation with screen suffix extraction", .tags(.fast))
     func filenameSuffixExtraction() {
         let command = createTestImageCommand(path: "/tmp/shot.png", screenIndex: nil)
-        
+
         // Test various filename patterns
         let testCases = [
             (fileName: "screen_1_20250608_120000.png", expected: "/tmp/shot_1_20250608_120000.png"),
             (fileName: "screen_2_20250608_120001.png", expected: "/tmp/shot_2_20250608_120001.png"),
             (fileName: "screen_10_20250608_120002.png", expected: "/tmp/shot_10_20250608_120002.png")
         ]
-        
+
         for testCase in testCases {
             let result = command.determineOutputPath(basePath: "/tmp/shot.png", fileName: testCase.fileName)
             #expect(result == testCase.expected, "Failed for fileName: \(testCase.fileName)")
         }
     }
-    
+
     @Test("Path with special characters", .tags(.fast))
     func pathWithSpecialCharacters() {
         let specialPaths = [
@@ -441,17 +440,17 @@ struct ImageCommandPathHandlingTests {
             "/tmp/screen-shot_v2.png",
             "/tmp/my file (1).png"
         ]
-        
+
         for path in specialPaths {
             let command = createTestImageCommand(path: path, screenIndex: 0)
             let fileName = "screen_1_20250608_120000.png"
             let result = command.determineOutputPath(basePath: path, fileName: fileName)
-            
+
             // For single screen, should use exact path
             #expect(result == path, "Failed for special path: \(path)")
         }
     }
-    
+
     @Test("Nested directory path creation logic", .tags(.fast))
     func nestedDirectoryPathCreation() {
         let nestedPaths = [
@@ -459,36 +458,36 @@ struct ImageCommandPathHandlingTests {
             "/home/user/Documents/Screenshots/test.jpg",
             "./relative/deep/path/image.png"
         ]
-        
+
         for path in nestedPaths {
             let command = createTestImageCommand(path: path, screenIndex: 0)
             let fileName = "screen_1_20250608_120000.png"
             let result = command.determineOutputPath(basePath: path, fileName: fileName)
-            
+
             #expect(result == path, "Should return exact path for nested file: \(path)")
-            
+
             // Test parent directory extraction
             let parentDir = (path as NSString).deletingLastPathComponent
             #expect(!parentDir.isEmpty, "Parent directory should be extractable from: \(path)")
         }
     }
-    
+
     @Test("Default path behavior (nil path)", .tags(.fast))
     func defaultPathBehavior() {
         let command = createTestImageCommand(path: nil)
         let fileName = "screen_1_20250608_120000.png"
         let result = command.getOutputPath(fileName)
-        
+
         #expect(result == "/tmp/\(fileName)")
     }
-    
+
     @Test("getOutputPath method delegation", .tags(.fast))
     func getOutputPathDelegation() {
         // Test that getOutputPath properly delegates to determineOutputPath
         let command = createTestImageCommand(path: "/tmp/test.png")
         let fileName = "screen_1_20250608_120000.png"
         let result = command.getOutputPath(fileName)
-        
+
         // Should call determineOutputPath and return its result
         #expect(result.contains("/tmp/test"))
         #expect(result.hasSuffix(".png"))
@@ -499,117 +498,118 @@ struct ImageCommandPathHandlingTests {
 
 @Suite("ImageCommand Error Handling Tests", .tags(.imageCapture, .unit))
 struct ImageCommandErrorHandlingTests {
-    
     @Test("Improved file write error messages", .tags(.fast))
     func improvedFileWriteErrorMessages() {
         // Test enhanced error messages with different underlying errors
-        
+
         // Test with permission error
         let permissionError = NSError(domain: NSCocoaErrorDomain, code: NSFileWriteNoPermissionError, userInfo: [
             NSLocalizedDescriptionKey: "Permission denied"
         ])
         let fileErrorWithPermission = CaptureError.fileWriteError("/tmp/test.png", permissionError)
         let permissionMessage = fileErrorWithPermission.errorDescription ?? ""
-        
+
         #expect(permissionMessage.contains("Failed to write capture file to path: /tmp/test.png."))
         #expect(permissionMessage.contains("Permission denied - check that the directory is writable"))
-        
+
         // Test with no such file error
         let noFileError = NSError(domain: NSCocoaErrorDomain, code: NSFileNoSuchFileError, userInfo: [
             NSLocalizedDescriptionKey: "No such file or directory"
         ])
         let fileErrorWithNoFile = CaptureError.fileWriteError("/tmp/nonexistent/test.png", noFileError)
         let noFileMessage = fileErrorWithNoFile.errorDescription ?? ""
-        
+
         #expect(noFileMessage.contains("Failed to write capture file to path: /tmp/nonexistent/test.png."))
         #expect(noFileMessage.contains("Directory does not exist - ensure the parent directory exists"))
-        
+
         // Test with disk space error
         let spaceError = NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError, userInfo: [
             NSLocalizedDescriptionKey: "No space left on device"
         ])
         let fileErrorWithSpace = CaptureError.fileWriteError("/tmp/test.png", spaceError)
         let spaceMessage = fileErrorWithSpace.errorDescription ?? ""
-        
+
         #expect(spaceMessage.contains("Failed to write capture file to path: /tmp/test.png."))
         #expect(spaceMessage.contains("Insufficient disk space available"))
-        
+
         // Test with generic error
         let genericError = NSError(domain: "TestDomain", code: 999, userInfo: [
             NSLocalizedDescriptionKey: "Some generic error"
         ])
         let fileErrorWithGeneric = CaptureError.fileWriteError("/tmp/test.png", genericError)
         let genericMessage = fileErrorWithGeneric.errorDescription ?? ""
-        
+
         #expect(genericMessage.contains("Failed to write capture file to path: /tmp/test.png."))
         #expect(genericMessage.contains("Some generic error"))
-        
+
         // Test with no underlying error
         let fileErrorWithoutUnderlying = CaptureError.fileWriteError("/tmp/test.png", nil)
         let noUnderlyingMessage = fileErrorWithoutUnderlying.errorDescription ?? ""
-        
+
         #expect(noUnderlyingMessage.contains("Failed to write capture file to path: /tmp/test.png."))
-        #expect(noUnderlyingMessage.contains("This may be due to insufficient permissions, missing directory, or disk space issues"))
+        #expect(noUnderlyingMessage
+            .contains("This may be due to insufficient permissions, missing directory, or disk space issues")
+        )
     }
-    
+
     @Test("Error message formatting consistency", .tags(.fast))
     func errorMessageFormattingConsistency() {
         // Test that all error messages end with proper punctuation and format
         let testPath = "/tmp/test/path/file.png"
         let testError = NSError(domain: "Test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Test error"])
-        
+
         let fileError = CaptureError.fileWriteError(testPath, testError)
         let message = fileError.errorDescription ?? ""
-        
+
         // Should contain the path
         #expect(message.contains(testPath))
-        
+
         // Should be properly formatted
         #expect(message.starts(with: "Failed to write capture file to path:"))
-        
+
         // Should have additional context
         #expect(message.count > "Failed to write capture file to path: \(testPath).".count)
     }
-    
+
     @Test("Error exit codes consistency", .tags(.fast))
     func errorExitCodesConsistency() {
         // Test that file write errors maintain proper exit codes
         let fileError1 = CaptureError.fileWriteError("/tmp/test1.png", nil)
         let fileError2 = CaptureError.fileWriteError("/tmp/test2.png", NSError(domain: "Test", code: 1))
-        
+
         #expect(fileError1.exitCode == 17)
         #expect(fileError2.exitCode == 17)
         #expect(fileError1.exitCode == fileError2.exitCode)
     }
-    
+
     @Test("Directory creation error handling", .tags(.fast))
     func directoryCreationErrorHandling() {
         // Test that directory creation failures are handled gracefully
         // This test validates the logic without actually creating directories
-        
+
         var command = ImageCommand()
         command.path = "/tmp/test-path-creation/file.png"
         command.screenIndex = 0
-        
+
         let fileName = "screen_1_20250608_120000.png"
         let result = command.determineOutputPath(basePath: "/tmp/test-path-creation/file.png", fileName: fileName)
-        
+
         // Should return the intended path even if directory creation might fail
         #expect(result == "/tmp/test-path-creation/file.png")
     }
-    
+
     @Test("Path validation edge cases", .tags(.fast))
     func pathValidationEdgeCases() throws {
         let command = try ImageCommand.parse([])
-        
+
         // Test empty path components
         let emptyResult = command.determineOutputPath(basePath: "", fileName: "test.png")
         #expect(emptyResult == "/test.png")
-        
+
         // Test root path
         let rootResult = command.determineOutputPath(basePath: "/", fileName: "test.png")
         #expect(rootResult == "//test.png")
-        
+
         // Test current directory
         let currentResult = command.determineOutputPath(basePath: ".", fileName: "test.png")
         #expect(currentResult == "./test.png")

@@ -483,28 +483,28 @@ struct ImageCommand: ParsableCommand {
         }
     }
 
-    internal func getOutputPath(_ fileName: String) -> String {
+    func getOutputPath(_ fileName: String) -> String {
         if let basePath = path {
-            return determineOutputPath(basePath: basePath, fileName: fileName)
+            determineOutputPath(basePath: basePath, fileName: fileName)
         } else {
-            return "/tmp/\(fileName)"
+            "/tmp/\(fileName)"
         }
     }
-    
-    internal func determineOutputPath(basePath: String, fileName: String) -> String {
+
+    func determineOutputPath(basePath: String, fileName: String) -> String {
         // Check if basePath looks like a file (has extension and doesn't end with /)
         // Exclude special directory cases like "." and ".."
-        let isLikelyFile = basePath.contains(".") && !basePath.hasSuffix("/") && 
-                          basePath != "." && basePath != ".."
-        
+        let isLikelyFile = basePath.contains(".") && !basePath.hasSuffix("/") &&
+            basePath != "." && basePath != ".."
+
         if isLikelyFile {
             // Create parent directory if needed
             let parentDir = (basePath as NSString).deletingLastPathComponent
             if !parentDir.isEmpty && parentDir != "/" {
                 do {
                     try FileManager.default.createDirectory(
-                        atPath: parentDir, 
-                        withIntermediateDirectories: true, 
+                        atPath: parentDir,
+                        withIntermediateDirectories: true,
                         attributes: nil
                     )
                 } catch {
@@ -512,27 +512,27 @@ struct ImageCommand: ParsableCommand {
                     // Logger.debug("Could not create parent directory \(parentDir): \(error)")
                 }
             }
-            
+
             // For multiple screens, append screen index to avoid overwriting
             if screenIndex == nil {
                 // Multiple screens - modify filename to include screen info
                 let pathExtension = (basePath as NSString).pathExtension
                 let pathWithoutExtension = (basePath as NSString).deletingPathExtension
-                
+
                 // Extract screen info from fileName (e.g., "screen_1_20250608_120000.png" -> "1_20250608_120000")
                 let fileNameWithoutExt = (fileName as NSString).deletingPathExtension
                 let screenSuffix = fileNameWithoutExt.replacingOccurrences(of: "screen_", with: "")
-                
+
                 return "\(pathWithoutExtension)_\(screenSuffix).\(pathExtension)"
             }
-            
+
             return basePath
         } else {
             // Treat as directory - ensure it exists
             do {
                 try FileManager.default.createDirectory(
-                    atPath: basePath, 
-                    withIntermediateDirectories: true, 
+                    atPath: basePath,
+                    withIntermediateDirectories: true,
                     attributes: nil
                 )
             } catch {

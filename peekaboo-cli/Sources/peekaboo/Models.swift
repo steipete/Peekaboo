@@ -135,11 +135,12 @@ enum CaptureError: Error, LocalizedError {
             return "Failed to capture the specified window."
         case let .fileWriteError(path, underlyingError):
             var message = "Failed to write capture file to path: \(path)."
-            
+
             if let error = underlyingError {
                 let errorString = error.localizedDescription
                 if errorString.lowercased().contains("permission") {
-                    message += " Permission denied - check that the directory is writable and the application has necessary permissions."
+                    message +=
+                        " Permission denied - check that the directory is writable and the application has necessary permissions."
                 } else if errorString.lowercased().contains("no such file") {
                     message += " Directory does not exist - ensure the parent directory exists."
                 } else if errorString.lowercased().contains("no space") {
@@ -150,7 +151,7 @@ enum CaptureError: Error, LocalizedError {
             } else {
                 message += " This may be due to insufficient permissions, missing directory, or disk space issues."
             }
-            
+
             return message
         case let .appNotFound(identifier):
             return "Application with identifier '\(identifier)' not found or is not running."
@@ -174,7 +175,7 @@ enum CaptureError: Error, LocalizedError {
         case .captureCreationFailed: 14
         case .windowNotFound: 15
         case .windowCaptureFailed: 16
-        case .fileWriteError(_, _): 17
+        case .fileWriteError: 17
         case .appNotFound: 18
         case .invalidWindowIndex: 19
         case .invalidArgument: 20

@@ -45,9 +45,9 @@ struct AppsSubcommand: ParsableCommand {
             err
         } else if let appError = error as? ApplicationError {
             switch appError {
-            case .notFound(let identifier):
+            case let .notFound(identifier):
                 .appNotFound(identifier)
-            case .ambiguous(let identifier, _):
+            case let .ambiguous(identifier, _):
                 .invalidArgument("Ambiguous application identifier: '\(identifier)'")
             }
         } else {
@@ -151,9 +151,9 @@ struct WindowsSubcommand: ParsableCommand {
             err
         } else if let appError = error as? ApplicationError {
             switch appError {
-            case .notFound(let identifier):
+            case let .notFound(identifier):
                 .appNotFound(identifier)
-            case .ambiguous(let identifier, _):
+            case let .ambiguous(identifier, _):
                 .invalidArgument("Ambiguous application identifier: '\(identifier)'")
             }
         } else {

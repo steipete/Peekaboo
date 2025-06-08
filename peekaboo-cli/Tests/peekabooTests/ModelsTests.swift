@@ -276,7 +276,9 @@ struct ModelsTests {
         #expect(CaptureError.windowNotFound.errorDescription == "The specified window could not be found.")
         #expect(CaptureError.windowCaptureFailed.errorDescription == "Failed to capture the specified window.")
         let fileError = CaptureError.fileWriteError("/tmp/test.png", nil)
-        #expect(fileError.errorDescription?.starts(with: "Failed to write capture file to path: /tmp/test.png.") == true)
+        #expect(fileError.errorDescription?
+            .starts(with: "Failed to write capture file to path: /tmp/test.png.") == true
+        )
         #expect(CaptureError.appNotFound("Safari")
             .errorDescription == "Application with identifier 'Safari' not found or is not running."
         )
