@@ -43,8 +43,8 @@ export const listToolSchema = z
       .optional()
       .describe(
         "Required when `item_type` is `application_windows`. " +
-        "Specifies the target application by its name (e.g., \"Safari\", \"TextEdit\") or bundle ID. " +
-        "Fuzzy matching is used, so partial names may work.",
+        "Specifies the target application by its name (e.g., \"Safari\", \"TextEdit\"), bundle ID, or process ID (e.g., \"PID:663\"). " +
+        "Fuzzy matching is used for names, so partial names may work.",
       ),
     include_window_details: z.preprocess(
       (val) => {

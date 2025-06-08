@@ -121,6 +121,7 @@ export const imageToolSchema = z.object({
     "Use `'screen:INDEX'` (e.g., `'screen:0'`) for a specific display.\n" +
     "Use `'frontmost'` for all windows of the current foreground application.\n" +
     "Use `'AppName'` (e.g., `'Safari'`) for all windows of that application.\n" +
+    "Use `'PID:PROCESS_ID'` (e.g., `'PID:663'`) to target a specific process by its PID.\n" +
     "Use `'AppName:WINDOW_TITLE:Title'` (e.g., `'TextEdit:WINDOW_TITLE:My Notes'`) for a window of 'AppName' matching that title.\n" +
     "Use `'AppName:WINDOW_INDEX:Index'` (e.g., `'Preview:WINDOW_INDEX:0'`) for a window of 'AppName' at that index.\n" +
     "Ensure components are correctly colon-separated.",
