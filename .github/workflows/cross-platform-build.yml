@@ -1,0 +1,149 @@
+name: Cross-Platform Build
+
+on:
+  push:
+    branches: [ main, develop, 'codegen-bot/**' ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-macos:
+    runs-on: macos-15
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    - name: Build for macOS
+      run: |
+        cd peekaboo-cli
+        swift build -c release
+    
+    - name: Test macOS build
+      run: |
+        cd peekaboo-cli
+        swift test
+    
+    - name: Create macOS binary
+      run: |
+        cd peekaboo-cli
+        swift build -c release
+        mkdir -p ../artifacts/macos
+        cp .build/release/peekaboo ../artifacts/macos/
+    
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: peekaboo-macos
+        path: artifacts/macos/peekaboo
+
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: '6.0'
+    
+    - name: Install Linux dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libx11-dev \
+          libxcomposite-dev \
+          libxrandr-dev \
+          libxfixes-dev \
+          imagemagick \
+          wmctrl \
+          grim \
+          sway
+    
+    - name: Build for Linux
+      run: |
+        cd peekaboo-cli
+        swift build -c release
+    
+    - name: Test Linux build
+      run: |
+        cd peekaboo-cli
+        swift test
+    
+    - name: Create Linux binary
+      run: |
+        cd peekaboo-cli
+        swift build -c release
+        mkdir -p ../artifacts/linux
+        cp .build/release/peekaboo ../artifacts/linux/
+    
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: peekaboo-linux
+        path: artifacts/linux/peekaboo
+
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Swift
+      uses: compnerd/gha-setup-swift@main
+      with:
+        branch: swift-6.0-release
+        tag: 6.0-RELEASE
+    
+    - name: Build for Windows
+      run: |
+        cd peekaboo-cli
+        swift build -c release
+    
+    - name: Test Windows build
+      run: |
+        cd peekaboo-cli
+        swift test
+    
+    - name: Create Windows binary
+      run: |
+        cd peekaboo-cli
+        swift build -c release
+        mkdir -p ../artifacts/windows
+        cp .build/release/peekaboo.exe ../artifacts/windows/
+    
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: peekaboo-windows
+        path: artifacts/windows/peekaboo.exe
+
+  test-architecture:
+    runs-on: macos-15
+    needs: [build-macos, build-linux, build-windows]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    - name: Test platform factory
+      run: |
+        cd peekaboo-cli
+        swift test --filter PlatformFactoryTests
+    
+    - name: Verify cross-platform compilation
+      run: |
+        cd peekaboo-cli
+        # Test that all platform-specific code compiles
+        swift build -c release
+        echo "✅ Cross-platform architecture verified"
+

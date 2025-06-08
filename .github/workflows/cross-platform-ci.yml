@@ -1,0 +1,106 @@
+name: Cross-Platform CI
+
+on:
+  push:
+    branches: [ main, develop, 'codegen-bot/**' ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test-macos:
+    runs-on: macos-15
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    - name: Run macOS tests
+      run: |
+        cd peekaboo-cli
+        swift test --parallel
+    
+    - name: Test macOS-specific functionality
+      run: |
+        cd peekaboo-cli
+        swift run peekaboo --help
+        echo "✅ macOS CLI working"
+
+  test-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: '6.0'
+    
+    - name: Install Linux dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libx11-dev \
+          libxcomposite-dev \
+          libxrandr-dev \
+          libxfixes-dev \
+          imagemagick \
+          wmctrl
+    
+    - name: Run Linux tests
+      run: |
+        cd peekaboo-cli
+        swift test --parallel
+    
+    - name: Test Linux-specific functionality
+      run: |
+        cd peekaboo-cli
+        swift run peekaboo --help
+        echo "✅ Linux CLI working"
+
+  test-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Swift
+      uses: compnerd/gha-setup-swift@main
+      with:
+        branch: swift-6.0-release
+        tag: 6.0-RELEASE
+    
+    - name: Run Windows tests
+      run: |
+        cd peekaboo-cli
+        swift test --parallel
+    
+    - name: Test Windows-specific functionality
+      run: |
+        cd peekaboo-cli
+        swift run peekaboo --help
+        echo "✅ Windows CLI working"
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: [test-macos, test-linux, test-windows]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: '6.0'
+    
+    - name: Test cross-platform compatibility
+      run: |
+        cd peekaboo-cli
+        # Verify that the platform factory works correctly
+        swift test --filter PlatformFactoryTests
+        echo "✅ Cross-platform integration verified"
+
