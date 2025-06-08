@@ -606,7 +606,7 @@ For detailed parameter documentation, see [docs/spec.md](./docs/spec.md).
 ### Window Management  
 - **Application listing**: Complete list of running applications
 - **Window enumeration**: List all windows for specific apps
-- **Flexible matching**: Find apps by partial name, bundle ID, or PID
+- **Flexible matching**: Find apps by partial name or bundle ID
 - **Status monitoring**: Active/inactive status, window counts
 
 ### AI Integration
@@ -705,6 +705,7 @@ cd peekaboo-cli && swift build
 
 - **FileHandle warning**: Non-critical Swift warning about TextOutputStream conformance
 - **AI Provider Config**: Requires `PEEKABOO_AI_PROVIDERS` environment variable for analysis features
+- **PID-based targeting not supported**: Although PIDs are shown in the application list (e.g., "Ghostty - PID: 663"), you cannot target applications using `PID:XXX` syntax. Use application names or bundle IDs instead
 
 
 ## License
