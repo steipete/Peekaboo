@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs/promises";
 import os from "os";
 import { Logger } from "pino";
-import { vi } from "vitest";
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 
 import {
   imageToolHandler,
@@ -90,9 +90,10 @@ describe("Swift CLI Integration Tests", () => {
         expect(firstContentItem.type).toBe("text");
         expect(firstContentItem.text).toContain("Peekaboo MCP");
       } else {
-        fail(
+        expect(
+          false,
           "Response content was not in the expected format for server_status",
-        );
+        ).toBe(true);
       }
     });
 
@@ -192,6 +193,54 @@ describe("Swift CLI Integration Tests", () => {
         );
       }
     }, 15000);
+
+    describe("List Tool Leniency", () => {
+      it("should default to 'running_applications' when item_type is empty", async () => {
+        const args = listToolSchema.parse({ item_type: "" });
+        const response: Result = await listToolHandler(args, { logger: mockLogger });
+        expect(response.isError).not.toBe(true);
+        expect((response as any).application_list).toBeInstanceOf(Array);
+      });
+
+      it("should default to 'running_applications' when no args are provided", async () => {
+        const args = listToolSchema.parse({});
+        const response: Result = await listToolHandler(args, { logger: mockLogger });
+        expect(response.isError).not.toBe(true);
+        expect((response as any).application_list).toBeInstanceOf(Array);
+      });
+
+      it("should default to 'application_windows' when only 'app' is provided", async () => {
+        const args = listToolSchema.parse({ app: "Finder" });
+        const response: Result = await listToolHandler(args, { logger: mockLogger });
+        expect(response.isError).not.toBe(true);
+        expect((response as any).window_list).toBeInstanceOf(Array);
+        expect((response as any).target_application_info.app_name).toBe("Finder");
+      });
+
+      it("should default to 'application_windows' when item_type is empty and 'app' is provided", async () => {
+        const args = listToolSchema.parse({ item_type: "", app: "Finder" });
+        const response: Result = await listToolHandler(args, { logger: mockLogger });
+        expect(response.isError).not.toBe(true);
+        expect((response as any).window_list).toBeInstanceOf(Array);
+        expect((response as any).target_application_info.app_name).toBe("Finder");
+      });
+
+      it("should default to 'application_windows' and accept details when only 'app' and 'details' are provided", async () => {
+        const args = listToolSchema.parse({
+          app: "Finder",
+          include_window_details: ["bounds", "ids"],
+        });
+        const response: Result = await listToolHandler(args, { logger: mockLogger });
+
+        expect(response.isError).not.toBe(true);
+        const windowList = (response as any).window_list;
+        expect(windowList).toBeInstanceOf(Array);
+        if (windowList.length > 0) {
+          expect(windowList[0]).toHaveProperty("bounds");
+          expect(windowList[0]).toHaveProperty("window_id");
+        }
+      });
+    });
   });
 
   describe("imageToolHandler", () => {

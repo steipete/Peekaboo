@@ -21,13 +21,13 @@ import { Logger } from "pino";
 export const listToolSchema = z
   .object({
     item_type: z
-      .enum(["running_applications", "application_windows", "server_status"])
-      .default("running_applications")
+      .enum(["running_applications", "application_windows", "server_status", ""])
+      .optional()
       .describe(
-        "Specifies the type of items to list. Valid options are:\n" +
-        "- `running_applications`: Lists all currently running applications with details like name, bundle ID, PID, active status, and window count.\n" +
-        "- `application_windows`: Lists open windows for a specific application. Requires the `app` parameter. Details can be customized with `include_window_details`.\n" +
-        "- `server_status`: Returns information about the Peekaboo MCP server itself, including its version and configured AI providers.",
+        "Specifies the type of items to list. If omitted or empty, it defaults to 'application_windows' if 'app' is provided, otherwise 'running_applications'. Valid options are:\n" +
+          "- `running_applications`: Lists all currently running applications.\n" +
+          "- `application_windows`: Lists open windows for a specific application. Requires the `app` parameter.\n" +
+          "- `server_status`: Returns information about the Peekaboo MCP server.",
       ),
     app: z
       .string()
@@ -61,10 +61,11 @@ export const listToolSchema = z
     (data) =>
       !data.include_window_details ||
       data.include_window_details.length === 0 ||
-      data.item_type === "application_windows",
+      data.item_type === "application_windows" ||
+      (data.app !== undefined && data.app.trim() !== ""),
     {
       message:
-        "'include_window_details' is only applicable when 'item_type' is 'application_windows'.",
+        "'include_window_details' is only applicable when 'item_type' is 'application_windows' or when 'app' is provided.",
       path: ["include_window_details"],
     },
   )
@@ -80,7 +81,7 @@ export const listToolSchema = z
   )
   .describe(
     "Lists various system items, providing situational awareness. " +
-    "Can retrieve running applications, windows of a specific app, or server status. " +
+    "The `item_type` is optional and will be inferred if omitted (defaults to 'application_windows' if 'app' is provided, else 'running_applications'). " +
     "App identifier uses fuzzy matching for convenience.",
   );
 
@@ -93,10 +94,17 @@ export async function listToolHandler(
   const { logger } = context;
 
   try {
-    logger.debug({ input }, "Processing peekaboo.list tool call");
+    // Determine the effective item_type
+    let effective_item_type = input.item_type;
+    if (!effective_item_type) {
+      effective_item_type = input.app ? "application_windows" : "running_applications";
+    }
+
+    const new_input = { ...input, item_type: effective_item_type };
+    logger.debug({ input: new_input }, "Processing peekaboo.list tool call");
 
     // Handle server_status directly without calling Swift CLI
-    if (input.item_type === "server_status") {
+    if (new_input.item_type === "server_status") {
       // Get package version and root directory
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = path.dirname(__filename);
@@ -110,7 +118,7 @@ export async function listToolHandler(
     }
 
     // Build Swift CLI arguments
-    const args = buildSwiftCliArgs(input);
+    const args = buildSwiftCliArgs(new_input);
 
     // Execute Swift CLI
     const swiftResponse = await executeSwiftCli(args, logger);
@@ -149,15 +157,15 @@ export async function listToolHandler(
     }
 
     // Process the response based on item type
-    if (input.item_type === "running_applications") {
+    if (new_input.item_type === "running_applications") {
       return handleApplicationsList(
         swiftResponse.data as ApplicationListData,
         swiftResponse,
       );
-    } else if (input.item_type === "application_windows") {
+    } else if (new_input.item_type === "application_windows") {
       return handleWindowsList(
         swiftResponse.data as WindowListData,
-        input,
+        new_input,
         swiftResponse,
       );
     }

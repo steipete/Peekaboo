@@ -244,13 +244,23 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
 
 **Tool 3: `list`**
 
-*   **MCP Description:** "Lists system items: running applications with one or more windows, all windows of a specific app, or server status. App ID uses fuzzy matching."
+*   **MCP Description:** "Lists system items: running applications, all windows of a specific app, or server status. App ID uses fuzzy matching."
 *   **MCP Input Schema (`ListInputSchema`):**
     ```typescript
     z.object({
-      item_type: z.enum(["running_applications", "application_windows", "server_status"])
-        .default("running_applications").describe("What to list. 'server_status' returns Peekaboo server info."),
-      app: z.string().optional().describe("Required when 'item_type' is 'application_windows'. Specifies the target application by name (e.g., 'Safari') or bundle ID. Fuzzy matching is used."),
+      item_type: z.enum(["running_applications", "application_windows", "server_status", ""])
+        .optional()
+        .describe(
+          "Specifies the type of items to list. If omitted or empty, it defaults to 'application_windows' if 'app' is provided, otherwise 'running_applications'. Valid options are:\\n" +
+          "- `running_applications`: Lists all currently running applications.\\n" +
+          "- `application_windows`: Lists open windows for a specific application. Requires the `app` parameter.\\n" +
+          "- `server_status`: Returns information about the Peekaboo MCP server."
+        ),
+      app: z.string().optional().describe(
+        "Specifies the target application by name (e.g., \\"Safari\\", \\"TextEdit\\") or bundle ID. " +
+        "Required when `item_type` is explicitly 'application_windows'. " +
+        "Fuzzy matching is used."
+      ),
       include_window_details: z.array(
         z.enum(["ids", "bounds", "off_screen"])
       ).optional().describe("Optional, for 'application_windows' only. Specifies additional details for each window. If provided for other 'item_type' values, it will be ignored only if it is an empty array.")
@@ -262,10 +272,13 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
     })
     ```
 *   **Node.js Handler Logic:**
-    *   If `input.item_type === "server_status"`: Handler directly calls `generateServerStatusString()` (after retrieving the server version) and returns the resulting string in `ToolResponse.content[{type:"text"}]`. Does NOT call Swift CLI.
-    *   Else (for "running_applications", "application_windows"): Call Swift `peekaboo list ...` with mapped args (including joining `include_window_details` array to comma-separated string for Swift CLI flag). Parse Swift JSON. Format MCP `ToolResponse`.
+    1.  **Determine effective `item_type`:** If `input.item_type` is missing or empty, the handler sets a default: if `input.app` is provided, `item_type` becomes `"application_windows"`; otherwise, it becomes `"running_applications"`.
+    2.  Validate the (now effective) input against the tool's Zod schema.
+    3.  If `effective_item_type === "server_status"`, the handler generates and returns the server status string directly without calling the Swift CLI.
+    4.  Otherwise, construct command-line arguments for Swift `peekaboo` CLI based on the effective input.
+    5.  Execute Swift CLI and process the response as described in the general handler pattern.
 *   **MCP Output Schema (`ToolResponse`):**
-    *   `content`: `[{ type: "text", text: "<Summary or Status String>" }]`
+    *   `content`: `Array<TextContentItem>` containing a formatted list of the requested items or the server status.
     *   If `item_type: "running_applications"`: `application_list`: `Array<{ app_name: string; bundle_id: string; pid: number; is_active: boolean; window_count: number }>`.
     *   If `item_type: "application_windows"`:
         *   `window_list`: `Array<{ window_title: string; window_id?: number; window_index?: number; bounds?: {x:number,y:number,w:number,h:number}; is_on_screen?: boolean }>`.

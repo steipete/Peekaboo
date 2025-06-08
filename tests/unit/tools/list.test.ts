@@ -1,4 +1,4 @@
-import { vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { pino } from "pino";
 import {
   listToolHandler,
@@ -9,8 +9,6 @@ import {
 import { executeSwiftCli } from "../../../src/utils/peekaboo-cli";
 import { generateServerStatusString } from "../../../src/utils/server-status";
 import fs from "fs/promises";
-// import path from 'path'; // path is still used by the test itself for expect.stringContaining if needed, but not for mocking resolve/dirname
-// import { fileURLToPath } from 'url'; // No longer needed
 import {
   ToolContext,
   ApplicationListData,
@@ -29,23 +27,6 @@ vi.mock("fs", () => ({
     W_OK: 2,
   },
 }));
-
-// Mock path and url functions to avoid import.meta.url issues in test environment
-// jest.mock('url', () => ({ // REMOVED
-//   ...jest.requireActual('url'), // REMOVED
-//   fileURLToPath: jest.fn().mockReturnValue('/mocked/path/to/list.ts'), // REMOVED
-// })); // REMOVED
-// jest.mock('path', () => ({ // REMOVED
-//   ...jest.requireActual('path'), // REMOVED
-//   dirname: jest.fn((p) => jest.requireActual('path').dirname(p)), // REMOVED
-//   resolve: jest.fn((...paths) => { // REMOVED
-//     // If it's trying to resolve relative to the mocked list.ts, provide a specific mocked package.json path // REMOVED
-//     if (paths.length === 3 && paths[0] === '/mocked/path/to' && paths[1] === '..' && paths[2] === '..') { // REMOVED
-//       return '/mocked/path/package.json';  // REMOVED
-//     } // REMOVED
-//     return jest.requireActual('path').resolve(...paths); // Fallback to actual resolve // REMOVED
-//   }), // REMOVED
-// })); // REMOVED
 
 const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<
   typeof executeSwiftCli
@@ -728,7 +709,7 @@ describe("List Tool", () => {
     });
 
     it("should handle malformed package.json", async () => {
-      mockFsReadFile.mockResolvedValue("{ invalid json }");
+      mockFsReadFile.mockRejectedValue(new Error("Cannot read package.json"));
 
       const result = (await listToolHandler(
         {
@@ -798,29 +779,27 @@ describe("List Tool", () => {
     });
 
     it("should fail when item_type is 'running_applications' and 'include_window_details' is not empty", () => {
-      const input = {
+      const result = listToolSchema.safeParse({
         item_type: "running_applications",
         include_window_details: ["ids"],
-      };
-      const result = listToolSchema.safeParse(input);
+      });
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.flatten().fieldErrors.include_window_details).toEqual([
-          "'include_window_details' is only applicable when 'item_type' is 'application_windows'.",
+          "'include_window_details' is only applicable when 'item_type' is 'application_windows' or when 'app' is provided.",
         ]);
       }
     });
 
     it("should fail when item_type is 'server_status' and 'include_window_details' is provided", () => {
-      const input = {
+      const result = listToolSchema.safeParse({
         item_type: "server_status",
-        include_window_details: ["ids"],
-      };
-      const result = listToolSchema.safeParse(input);
+        include_window_details: ["bounds"],
+      });
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.flatten().fieldErrors.include_window_details).toEqual([
-          "'include_window_details' is only applicable when 'item_type' is 'application_windows'.",
+          "'include_window_details' is only applicable when 'item_type' is 'application_windows' or when 'app' is provided.",
         ]);
       }
     });

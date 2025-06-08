@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.15] - 2025-01-08
+
+### Improved
+- The `list` tool is now more lenient. `item_type` is optional and defaults to `running_applications`. If an `app` is specified without an `item_type`, it intelligently defaults to `application_windows`.
+
+### Fixed
+- Fixed a bug where the `list` tool would crash if called with an empty `item_type`.
+- Fixed a bug where the `image` tool would fail silently if no path was provided, resulting in a generic "Failed to write file" error. The logic for handling temporary paths is now more robust.
+
 ## [1.0.0-beta.14] - 2025-01-08
 
 ### Added

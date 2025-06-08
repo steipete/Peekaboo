@@ -77,7 +77,10 @@ function mapExitCodeToErrorMessage(
     14: { message: "The screen capture could not be created.", code: "SWIFT_CLI_CAPTURE_CREATION_FAILED" },
     15: { message: "The specified window was not found.", code: "SWIFT_CLI_WINDOW_NOT_FOUND" },
     16: { message: "Failed to capture the specified window.", code: "SWIFT_CLI_WINDOW_CAPTURE_FAILED" },
-    17: { message: "Failed to write the capture to a file.", code: "SWIFT_CLI_FILE_WRITE_ERROR" },
+    17: {
+      message: "Failed to write the capture to a file. This is often a file permissions issue. Please ensure the application has permissions to write to the destination directory.",
+      code: "SWIFT_CLI_FILE_WRITE_ERROR",
+    },
     18: {
       message: "The specified application could not be found or is not running.",
       code: "SWIFT_CLI_APP_NOT_FOUND",
