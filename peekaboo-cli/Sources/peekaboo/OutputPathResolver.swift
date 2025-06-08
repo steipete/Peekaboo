@@ -2,7 +2,7 @@ import Foundation
 
 struct OutputPathResolver: Sendable {
     static func getOutputPath(basePath: String?, fileName: String, screenIndex: Int? = nil) -> String {
-        if let basePath = basePath {
+        if let basePath {
             validatePath(basePath)
             return determineOutputPath(basePath: basePath, fileName: fileName, screenIndex: screenIndex)
         } else {
@@ -11,7 +11,7 @@ struct OutputPathResolver: Sendable {
     }
 
     static func getOutputPathWithFallback(basePath: String?, fileName: String) -> String {
-        if let basePath = basePath {
+        if let basePath {
             validatePath(basePath)
             return determineOutputPathWithFallback(basePath: basePath, fileName: fileName)
         } else {
@@ -118,17 +118,17 @@ struct OutputPathResolver: Sendable {
             return "\(basePath)/\(fileName)"
         }
     }
-    
+
     private static func validatePath(_ path: String) {
         // Check for path traversal attempts
         if path.contains("../") || path.contains("..\\") {
             // Logger.shared.debug("Potential path traversal detected in path: \(path)")
         }
-        
+
         // Check for system-sensitive paths
         let sensitivePathPrefixes = ["/etc/", "/usr/", "/bin/", "/sbin/", "/System/", "/Library/System/"]
         let normalizedPath = (path as NSString).standardizingPath
-        
+
         for prefix in sensitivePathPrefixes where normalizedPath.hasPrefix(prefix) {
             // Logger.shared.debug("Path points to system directory: \(path) -> \(normalizedPath)")
             break

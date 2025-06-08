@@ -11,7 +11,7 @@ struct PeekabooCommand: AsyncParsableCommand {
         subcommands: [ImageCommand.self, ListCommand.self],
         defaultSubcommand: ImageCommand.self
     )
-    
+
     func run() async throws {
         // Root command doesn't do anything, subcommands handle everything
     }

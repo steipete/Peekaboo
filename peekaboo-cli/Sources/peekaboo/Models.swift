@@ -61,10 +61,10 @@ struct WindowBounds: Codable, Sendable {
     let y_coordinate: Int
     let width: Int
     let height: Int
-    
+
     private enum CodingKeys: String, CodingKey {
-        case x_coordinate = "x_coordinate"
-        case y_coordinate = "y_coordinate"
+        case x_coordinate
+        case y_coordinate
         case width
         case height
     }
@@ -149,7 +149,8 @@ enum CaptureError: Error, LocalizedError, Sendable {
             if !availableTitles.isEmpty {
                 message += " Available windows: \(availableTitles)."
             }
-            message += " Note: For URLs, try without the protocol (e.g., 'example.com:8080' instead of 'http://example.com:8080')."
+            message +=
+                " Note: For URLs, try without the protocol (e.g., 'example.com:8080' instead of 'http://example.com:8080')."
             return message
         case let .windowCaptureFailed(underlyingError):
             var message = "Failed to capture the specified window."

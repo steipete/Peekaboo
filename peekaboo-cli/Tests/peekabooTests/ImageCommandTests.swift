@@ -263,7 +263,6 @@ struct ImageCommandTests {
         #expect(command.screenIndex == index)
     }
 
-
     @Test(
         "Window index boundary values",
         arguments: [0, 1, 10, 9999]
@@ -272,7 +271,6 @@ struct ImageCommandTests {
         let command = try ImageCommand.parse(["--window-index", String(index)])
         #expect(command.windowIndex == index)
     }
-
 
     @Test("Error handling for invalid combinations", .tags(.fast))
     func invalidCombinations() {
@@ -340,7 +338,11 @@ struct ImageCommandPathHandlingTests {
     func singleScreenFilePath() {
         // For single screen, should use exact path
         let fileName = "screen_1_20250608_120000.png"
-        let result = OutputPathResolver.determineOutputPath(basePath: "/tmp/my-screenshot.png", fileName: fileName, screenIndex: 0)
+        let result = OutputPathResolver.determineOutputPath(
+            basePath: "/tmp/my-screenshot.png",
+            fileName: fileName,
+            screenIndex: 0
+        )
 
         #expect(result == "/tmp/my-screenshot.png")
     }
@@ -575,7 +577,10 @@ struct ImageCommandErrorHandlingTests {
         // This test validates the logic without actually creating directories
 
         let fileName = "screen_1_20250608_120001.png"
-        let result = OutputPathResolver.determineOutputPath(basePath: "/tmp/test-path-creation/file.png", fileName: fileName)
+        let result = OutputPathResolver.determineOutputPath(
+            basePath: "/tmp/test-path-creation/file.png",
+            fileName: fileName
+        )
 
         // Should return the intended path even if directory creation might fail
         #expect(result == "/tmp/test-path-creation/file_1_20250608_120001.png")

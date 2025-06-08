@@ -7,11 +7,17 @@ struct JSONResponse: Codable {
     let debug_logs: [String]
     let error: ErrorInfo?
 
-    init(success: Bool, data: Any? = nil, messages: [String]? = nil, debugLogs: [String] = [], error: ErrorInfo? = nil) {
+    init(
+        success: Bool,
+        data: Any? = nil,
+        messages: [String]? = nil,
+        debugLogs: [String] = [],
+        error: ErrorInfo? = nil
+    ) {
         self.success = success
         self.data = data.map(AnyCodable.init)
         self.messages = messages
-        self.debug_logs = debugLogs
+        debug_logs = debugLogs
         self.error = error
     }
 }

@@ -12,7 +12,7 @@ struct JSONOutputTests {
         struct TestWrapper: Codable {
             let value: AnyCodable
         }
-        
+
         // Test string
         let stringWrapper = TestWrapper(value: AnyCodable("test string"))
         let stringData = try JSONEncoder().encode(stringWrapper)

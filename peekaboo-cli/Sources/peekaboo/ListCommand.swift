@@ -9,7 +9,7 @@ struct ListCommand: AsyncParsableCommand {
         subcommands: [AppsSubcommand.self, WindowsSubcommand.self, ServerStatusSubcommand.self],
         defaultSubcommand: AppsSubcommand.self
     )
-    
+
     func run() async throws {
         // Root command doesn't do anything, subcommands handle everything
     }

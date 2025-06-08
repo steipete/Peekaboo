@@ -423,14 +423,14 @@ struct ApplicationFinderEdgeCaseTests {
             }
         }
     }
-    
+
     // MARK: - Browser Helper Filtering Tests
-    
+
     @Test("Browser helper filtering for Chrome searches", .tags(.browserFiltering))
     func browserHelperFilteringChrome() {
         // Test that Chrome helper processes are filtered out when searching for "chrome"
         // Note: This test documents expected behavior even when Chrome isn't running
-        
+
         do {
             let result = try ApplicationFinder.findApplication(identifier: "chrome")
             // If found, should be the main Chrome app, not a helper
@@ -446,11 +446,11 @@ struct ApplicationFinderEdgeCaseTests {
             print("Chrome not found, which is acceptable for browser helper filtering test")
         }
     }
-    
+
     @Test("Browser helper filtering for Safari searches", .tags(.browserFiltering))
     func browserHelperFilteringSafari() {
         // Test that Safari helper processes are filtered out when searching for "safari"
-        
+
         do {
             let result = try ApplicationFinder.findApplication(identifier: "safari")
             // If found, should be the main Safari app, not a helper
@@ -465,14 +465,14 @@ struct ApplicationFinderEdgeCaseTests {
             print("Safari not found, which is acceptable for browser helper filtering test")
         }
     }
-    
+
     @Test("Non-browser searches should not filter helpers", .tags(.browserFiltering))
     func nonBrowserSearchesPreserveHelpers() {
         // Test that non-browser searches still find helper processes if that's what's being searched for
-        
+
         // This tests that helper filtering only applies to browser identifiers
         let nonBrowserIdentifiers = ["finder", "textedit", "calculator", "activity monitor"]
-        
+
         for identifier in nonBrowserIdentifiers {
             do {
                 let result = try ApplicationFinder.findApplication(identifier: identifier)
@@ -484,13 +484,13 @@ struct ApplicationFinderEdgeCaseTests {
             }
         }
     }
-    
+
     @Test("Browser error messages are more specific", .tags(.browserFiltering))
     func browserSpecificErrorMessages() {
         // Test that browser-specific error messages are provided when browsers aren't found
-        
+
         let browserIdentifiers = ["chrome", "firefox", "edge"]
-        
+
         for browser in browserIdentifiers {
             do {
                 _ = try ApplicationFinder.findApplication(identifier: browser)

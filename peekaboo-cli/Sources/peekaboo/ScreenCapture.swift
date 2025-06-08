@@ -1,5 +1,5 @@
-import Foundation
 import CoreGraphics
+import Foundation
 @preconcurrency import ScreenCaptureKit
 
 struct ScreenCapture: Sendable {

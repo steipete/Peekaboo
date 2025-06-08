@@ -164,10 +164,15 @@ struct ImageCommand: AsyncParsableCommand {
         return savedFiles
     }
 
-    private func captureAllScreensWithFallback(displays: [CGDirectDisplayID]) async throws(CaptureError) -> [SavedFile] {
+    private func captureAllScreensWithFallback(displays: [CGDirectDisplayID]) async throws(CaptureError)
+        -> [SavedFile] {
         var savedFiles: [SavedFile] = []
         for (index, displayID) in displays.enumerated() {
-            let savedFile = try await captureSingleDisplayWithFallback(displayID: displayID, index: index, labelSuffix: "")
+            let savedFile = try await captureSingleDisplayWithFallback(
+                displayID: displayID,
+                index: index,
+                labelSuffix: ""
+            )
             savedFiles.append(savedFile)
         }
         return savedFiles
@@ -243,12 +248,12 @@ struct ImageCommand: AsyncParsableCommand {
                 let availableTitles = windows.map { "\"\($0.title)\"" }.joined(separator: ", ")
                 let searchTerm = windowTitle
                 let appName = targetApp.localizedName ?? "Unknown"
-                
+
                 Logger.shared.debug(
                     "Window not found. Searched for '\(searchTerm)' in \(appName). " +
-                    "Available windows: \(availableTitles)"
+                        "Available windows: \(availableTitles)"
                 )
-                
+
                 throw CaptureError.windowTitleNotFound(searchTerm, appName, availableTitles)
             }
             targetWindow = window
@@ -410,38 +415,38 @@ struct ImageCommand: AsyncParsableCommand {
             throw CaptureError.windowCaptureFailed(error)
         }
     }
-    
+
     private func captureFrontmostWindow() async throws -> [SavedFile] {
         Logger.shared.debug("Capturing frontmost window")
-        
+
         // Get the frontmost (active) application
         guard let frontmostApp = NSWorkspace.shared.frontmostApplication else {
             throw CaptureError.appNotFound("No frontmost application found")
         }
-        
+
         Logger.shared.debug("Frontmost app: \(frontmostApp.localizedName ?? "Unknown")")
-        
+
         // Get windows for the frontmost app
         let windows = try WindowManager.getWindowsForApp(pid: frontmostApp.processIdentifier)
         guard !windows.isEmpty else {
             throw CaptureError.noWindowsFound(frontmostApp.localizedName ?? "frontmost application")
         }
-        
+
         // Get the frontmost window (index 0)
         let frontmostWindow = windows[0]
-        
+
         Logger.shared.debug("Capturing frontmost window: '\(frontmostWindow.title)'")
-        
+
         // Generate output path
         let timestamp = DateFormatter.timestamp.string(from: Date())
         let appName = frontmostApp.localizedName ?? "UnknownApp"
         let safeName = appName.replacingOccurrences(of: " ", with: "_")
         let fileName = "frontmost_\(safeName)_\(timestamp).\(format.rawValue)"
         let filePath = OutputPathResolver.getOutputPathWithFallback(basePath: path, fileName: fileName)
-        
+
         // Capture the window
         try await captureWindow(frontmostWindow, to: filePath)
-        
+
         return [SavedFile(
             path: filePath,
             item_label: appName,

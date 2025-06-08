@@ -1,7 +1,7 @@
-import Foundation
 import AppKit
+import Foundation
 
-struct ImageErrorHandler {
+enum ImageErrorHandler {
     static func handleError(_ error: Error, jsonOutput: Bool) {
         let captureError: CaptureError = if let err = error as? CaptureError {
             err
