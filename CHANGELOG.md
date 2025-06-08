@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed overly broad permission error detection that incorrectly reported file I/O errors as screen recording permission issues
+  - File permission errors (e.g., writing to `/System/`) now correctly report as `FILE_IO_ERROR`
+  - Directory not found errors provide clear messages about missing parent directories
+  - Added specific error code checking for ScreenCaptureKit and CoreGraphics APIs
+  - Only errors containing both "permission" and capture-related terms are now considered screen recording issues
+- Enhanced file write error handling with pre-emptive directory checks
+- Added debug logging to permission checker for diagnosing intermittent failures
+
 ## [1.0.0-beta.19] - 2025-06-08
 
 ### Added
