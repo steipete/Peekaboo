@@ -37,16 +37,51 @@ export const listToolSchema = z
         "Specifies the target application by its name (e.g., \"Safari\", \"TextEdit\") or bundle ID. " +
         "Fuzzy matching is used, so partial names may work.",
       ),
-    include_window_details: z
-      .array(z.enum(["off_screen", "bounds", "ids"]))
-      .optional()
-      .describe(
-        "Optional, only applicable when `item_type` is `application_windows`. " +
-        "Specifies additional details to include for each window. Provide an array of strings. Example: `[\"bounds\", \"ids\"]`.\n" +
-        "- `ids`: Include window ID.\n" +
-        "- `bounds`: Include window position and size (x, y, width, height).\n" +
-        "- `off_screen`: Indicate if the window is currently off-screen.",
-      ),
+    include_window_details: z.preprocess(
+      (val) => {
+        // Handle empty string or null/undefined
+        if (val === "" || val === null || val === undefined) {
+          return undefined;
+        }
+        
+        // If it's already an array, return as-is
+        if (Array.isArray(val)) {
+          return val;
+        }
+        
+        // If it's a string that looks like JSON, try to parse it
+        if (typeof val === "string") {
+          try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) {
+              return parsed;
+            }
+          } catch {
+            // Not valid JSON, treat as single item
+          }
+          
+          // If it's a comma-separated string, split it
+          if (val.includes(",")) {
+            return val.split(",").map(s => s.trim());
+          }
+          
+          // Single string value, wrap in array
+          return [val.trim()];
+        }
+        
+        return val;
+      },
+      z
+        .array(z.enum(["off_screen", "bounds", "ids"]))
+        .optional()
+        .describe(
+          "Optional, only applicable when `item_type` is `application_windows`. " +
+          "Specifies additional details to include for each window. Provide an array of strings. Example: `[\"bounds\", \"ids\"]`.\n" +
+          "- `ids`: Include window ID.\n" +
+          "- `bounds`: Include window position and size (x, y, width, height).\n" +
+          "- `off_screen`: Indicate if the window is currently off-screen.",
+        ),
+    ),
   })
   .refine(
     (data) =>
