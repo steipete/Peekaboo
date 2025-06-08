@@ -109,7 +109,7 @@ impl ApplicationFinder {
             let mut seen_names = HashMap::new();
 
             for (pid, process) in self.system.processes() {
-                let process_name = process.name().to_string_lossy();
+                let process_name = process.name().to_string();
                 
                 // Skip system processes and processes without names
                 if process_name.is_empty() || self.is_system_process(&process_name) {
@@ -367,8 +367,9 @@ impl ApplicationFinder {
         // First, get all processes using sysinfo (cross-platform)
         self.refresh();
         for (pid, process) in self.system.processes() {
+            let process_name = process.name().to_string();
             let app_data = ApplicationData {
-                name: process.name().to_string(),
+                name: process_name,
                 bundle_id: None, // Windows doesn't have bundle IDs like macOS
                 path: None,
                 path: process.exe().map(|p| p.to_string_lossy().to_string()),

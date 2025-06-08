@@ -13,7 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 # CLI argument parsing - matches Swift ArgumentParser functionality
-clap = { version = "4.4", features = ["derive", "color", "help", "usage", "error-context"] }
+clap = { version = "4.0", features = ["derive"] }
 
 # JSON serialization - for compatibility with Swift JSON output
 serde = { version = "1.0", features = ["derive"] }
@@ -21,10 +21,10 @@ serde_json = "1.0"
 
 # Cross-platform screen capture
 screenshots = "0.8"  # Works on Linux, Windows, and macOS
-image = { version = "0.24", features = ["png", "jpeg"] }
+image = "0.24"
 
 # System information for process discovery (cross-platform)
-sysinfo = "0.35"
+sysinfo = "0.30"
 
 # Error handling
 anyhow = "1.0"
@@ -60,10 +60,12 @@ libc = "0.2"
 procfs = "0.16"  # Linux-specific process info
 
 [target.'cfg(target_os = "linux")'.dependencies]
-# Linux-specific window management
+# Additional Linux-specific dependencies
 x11rb = { version = "0.13", features = ["all-extensions"], optional = true }
 wayland-client = { version = "0.31", optional = true }
 wayland-protocols = { version = "0.31", optional = true }
+xcb = "1.2"
+x11 = "2.21"
 
 [target.'cfg(windows)'.dependencies]
 # Windows-specific dependencies
@@ -92,4 +94,3 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
-

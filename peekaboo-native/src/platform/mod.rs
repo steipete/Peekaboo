@@ -38,12 +38,30 @@ impl PlatformManager {
             })
         }
         
-        #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+        #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
         {
-            Err(crate::errors::PeekabooError::unsupported_platform(
-                std::env::consts::OS.to_string()
-            ))
+            Err(PeekabooError::unsupported_platform(std::env::consts::OS.to_string()))
         }
+    }
+    
+    /// Get the window manager implementation
+    pub fn get_window_manager(&self) -> PeekabooResult<&dyn WindowManager> {
+        Ok(self.window_manager.as_ref())
+    }
+    
+    /// Get the application finder implementation
+    pub fn get_application_finder(&self) -> PeekabooResult<&dyn ApplicationFinder> {
+        Ok(self.application_finder.as_ref())
+    }
+    
+    /// Get the screen capture implementation
+    pub fn get_screen_capture(&self) -> PeekabooResult<&dyn ScreenCapture> {
+        Ok(self.screen_capture.as_ref())
+    }
+    
+    /// Get the permission checker implementation
+    pub fn get_permission_checker(&self) -> PeekabooResult<&dyn PermissionChecker> {
+        Ok(self.permission_checker.as_ref())
     }
 }
 
@@ -56,4 +74,3 @@ pub fn get_platform_name() -> &'static str {
 pub fn is_platform_supported() -> bool {
     matches!(std::env::consts::OS, "linux" | "windows")
 }
-

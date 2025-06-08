@@ -6,6 +6,12 @@ use std::process::Command;
 use std::fs;
 use std::path::Path;
 
+// X11 imports for native screen capture
+use x11::xlib::{self, Display, XOpenDisplay, XCloseDisplay, XDefaultRootWindow, XGetWindowAttributes, XWindowAttributes};
+use x11::xlib::{XGetImage, XDestroyImage, ZPixmap, XImage};
+use std::ptr;
+use std::ffi::CString;
+
 /// Linux-specific window manager using X11/Wayland
 pub struct LinuxWindowManager {
     display_server: DisplayServer,
@@ -313,37 +319,197 @@ impl ApplicationFinder for LinuxApplicationFinder {
 }
 
 /// Linux-specific screen capture
-pub struct LinuxScreenCapture;
+pub struct LinuxScreenCapture {
+    display_server: DisplayServer,
+}
 
 impl LinuxScreenCapture {
     pub fn new() -> PeekabooResult<Self> {
-        Ok(Self)
+        let display_server = detect_display_server();
+        Ok(Self { display_server })
     }
-}
 
-impl ScreenCapture for LinuxScreenCapture {
-    fn capture_screen(&self, screen_index: Option<i32>, output_path: &str) -> PeekabooResult<String> {
-        let mut cmd = Command::new("gnome-screenshot");
-        cmd.arg("-f").arg(output_path);
-        
-        if let Some(_index) = screen_index {
-            // gnome-screenshot doesn't support specific screen selection easily
-            // We could use other tools like scrot or import (ImageMagick)
-            crate::logger::warn("Screen index selection not implemented for gnome-screenshot");
-        }
-        
-        let output = cmd.output()
-            .map_err(|e| PeekabooError::system_error(format!("Failed to run gnome-screenshot: {}", e)))?;
+    fn capture_screen_x11(&self, _screen_index: Option<i32>, output_path: &str) -> PeekabooResult<String> {
+        unsafe {
+            // Open connection to X server
+            let display = XOpenDisplay(ptr::null());
+            if display.is_null() {
+                return Err(PeekabooError::system_error("Failed to open X11 display".to_string()));
+            }
+
+            // Get root window
+            let root = XDefaultRootWindow(display);
             
-        if output.status.success() {
-            Ok(output_path.to_string())
-        } else {
-            // Try alternative screenshot tools
-            self.capture_screen_fallback(output_path)
+            // Get window attributes to determine screen size
+            let mut attrs: XWindowAttributes = std::mem::zeroed();
+            let result = XGetWindowAttributes(display, root, &mut attrs);
+            if result == 0 {
+                XCloseDisplay(display);
+                return Err(PeekabooError::system_error("Failed to get window attributes".to_string()));
+            }
+
+            // Capture the screen
+            let image = XGetImage(
+                display,
+                root,
+                0, 0,
+                attrs.width as u32,
+                attrs.height as u32,
+                0xFFFFFFFF, // AllPlanes equivalent
+                ZPixmap
+            );
+
+            if image.is_null() {
+                XCloseDisplay(display);
+                return Err(PeekabooError::system_error("Failed to capture screen image".to_string()));
+            }
+
+            // Convert X11 image to RGB data
+            let result = self.save_x11_image_to_file(image, output_path, attrs.width as u32, attrs.height as u32);
+            
+            // Cleanup
+            XDestroyImage(image);
+            XCloseDisplay(display);
+            
+            result
         }
     }
-    
-    fn capture_window(&self, _window_data: &WindowData, output_path: &str) -> PeekabooResult<String> {
+
+    fn save_x11_image_to_file(&self, x_image: *mut XImage, output_path: &str, width: u32, height: u32) -> PeekabooResult<String> {
+        unsafe {
+            let image_ref = &*x_image;
+            let data_ptr = image_ref.data as *const u8;
+            let bytes_per_pixel = (image_ref.bits_per_pixel / 8) as usize;
+            let total_bytes = (width * height) as usize * bytes_per_pixel;
+            
+            // Convert X11 image data to RGB
+            let mut rgb_data = Vec::with_capacity((width * height * 3) as usize);
+            
+            for y in 0..height {
+                for x in 0..width {
+                    let offset = ((y * width + x) as usize) * bytes_per_pixel;
+                    if offset + 2 < total_bytes {
+                        let pixel_data = std::slice::from_raw_parts(data_ptr.add(offset), bytes_per_pixel);
+                        
+                        // X11 typically uses BGRA format, convert to RGB
+                        if bytes_per_pixel >= 3 {
+                            rgb_data.push(pixel_data[2]); // R
+                            rgb_data.push(pixel_data[1]); // G  
+                            rgb_data.push(pixel_data[0]); // B
+                        }
+                    }
+                }
+            }
+
+            // Save as PNG using image crate
+            let img = image::RgbImage::from_raw(width, height, rgb_data)
+                .ok_or_else(|| PeekabooError::system_error("Failed to create image from raw data".to_string()))?;
+                
+            img.save(output_path)
+                .map_err(|e| PeekabooError::system_error(format!("Failed to save image: {}", e)))?;
+                
+            Ok(output_path.to_string())
+        }
+    }
+
+    fn capture_screen_wayland(&self, output_path: &str) -> PeekabooResult<String> {
+        // For Wayland, we'll use grim if available, otherwise fall back to other methods
+        let output = Command::new("grim")
+            .arg(output_path)
+            .output();
+            
+        if let Ok(output) = output {
+            if output.status.success() {
+                return Ok(output_path.to_string());
+            }
+        }
+        
+        // Fallback to other methods
+        self.capture_screen_fallback(output_path)
+    }
+
+    fn capture_screen_fallback(&self, output_path: &str) -> PeekabooResult<String> {
+        // Try scrot as fallback
+        let output = Command::new("scrot")
+            .arg(output_path)
+            .output();
+            
+        if let Ok(output) = output {
+            if output.status.success() {
+                return Ok(output_path.to_string());
+            }
+        }
+        
+        // Try import (ImageMagick) as another fallback
+        let output = Command::new("import")
+            .args(["-window", "root", output_path])
+            .output();
+            
+        if let Ok(output) = output {
+            if output.status.success() {
+                return Ok(output_path.to_string());
+            }
+        }
+        
+        Err(PeekabooError::system_error("No suitable screenshot tool found".to_string()))
+    }
+
+    fn capture_window(&self, window_data: &WindowData, output_path: &str) -> PeekabooResult<String> {
+        match self.display_server {
+            DisplayServer::X11 => self.capture_window_x11(window_data, output_path),
+            DisplayServer::Wayland => self.capture_window_wayland(window_data, output_path),
+            DisplayServer::Unknown => self.capture_window_fallback(window_data, output_path),
+        }
+    }
+
+    fn capture_window_x11(&self, window_data: &WindowData, output_path: &str) -> PeekabooResult<String> {
+        unsafe {
+            let display = XOpenDisplay(ptr::null());
+            if display.is_null() {
+                return Err(PeekabooError::system_error("Failed to open X11 display".to_string()));
+            }
+
+            let window_id = window_data.window_id as u64;
+            
+            // Get window attributes
+            let mut attrs: XWindowAttributes = std::mem::zeroed();
+            let result = XGetWindowAttributes(display, window_id, &mut attrs);
+            if result == 0 {
+                XCloseDisplay(display);
+                return Err(PeekabooError::system_error("Failed to get window attributes".to_string()));
+            }
+
+            // Capture the window
+            let image = XGetImage(
+                display,
+                window_id,
+                0, 0,
+                attrs.width as u32,
+                attrs.height as u32,
+                0xFFFFFFFF, // AllPlanes equivalent
+                ZPixmap
+            );
+
+            if image.is_null() {
+                XCloseDisplay(display);
+                return Err(PeekabooError::system_error("Failed to capture window image".to_string()));
+            }
+
+            let result = self.save_x11_image_to_file(image, output_path, attrs.width as u32, attrs.height as u32);
+            
+            XDestroyImage(image);
+            XCloseDisplay(display);
+            
+            result
+        }
+    }
+
+    fn capture_window_wayland(&self, _window_data: &WindowData, output_path: &str) -> PeekabooResult<String> {
+        // Wayland window capture is more complex, fall back to tools for now
+        self.capture_window_fallback(_window_data, output_path)
+    }
+
+    fn capture_window_fallback(&self, _window_data: &WindowData, output_path: &str) -> PeekabooResult<String> {
         let output = Command::new("gnome-screenshot")
             .args(["-w", "-f", output_path])
             .output()
@@ -409,31 +575,21 @@ impl ScreenCapture for LinuxScreenCapture {
     }
 }
 
-impl LinuxScreenCapture {
-    fn capture_screen_fallback(&self, output_path: &str) -> PeekabooResult<String> {
-        // Try scrot as fallback
-        let output = Command::new("scrot")
-            .arg(output_path)
-            .output();
-            
-        if let Ok(output) = output {
-            if output.status.success() {
-                return Ok(output_path.to_string());
-            }
+impl ScreenCapture for LinuxScreenCapture {
+    fn capture_screen(&self, screen_index: Option<i32>, output_path: &str) -> PeekabooResult<String> {
+        match self.display_server {
+            DisplayServer::X11 => self.capture_screen_x11(screen_index, output_path),
+            DisplayServer::Wayland => self.capture_screen_wayland(output_path),
+            DisplayServer::Unknown => self.capture_screen_fallback(output_path),
         }
-        
-        // Try import (ImageMagick) as another fallback
-        let output = Command::new("import")
-            .args(["-window", "root", output_path])
-            .output();
-            
-        if let Ok(output) = output {
-            if output.status.success() {
-                return Ok(output_path.to_string());
-            }
-        }
-        
-        Err(PeekabooError::system_error("No suitable screenshot tool found".to_string()))
+    }
+    
+    fn capture_window(&self, window_data: &WindowData, output_path: &str) -> PeekabooResult<String> {
+        self.capture_window(window_data, output_path)
+    }
+    
+    fn get_available_screens(&self) -> PeekabooResult<Vec<ScreenInfo>> {
+        self.get_available_screens()
     }
 }
 
