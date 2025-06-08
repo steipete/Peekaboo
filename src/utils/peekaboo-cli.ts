@@ -160,8 +160,6 @@ export async function executeSwiftCli(
             process.kill('SIGKILL');
           } catch (err) {
             // Process is already dead, which is what we want
-          } catch (err) {
-            // Process is already dead, which is what we want
           }
         }, 1000);
 
