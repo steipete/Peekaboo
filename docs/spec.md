@@ -70,6 +70,7 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     *   `PEEKABOO_DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
     *   `PEEKABOO_CONSOLE_LOGGING`: Boolean (`"true"`/`"false"`) for dev console logs. Default: `"false"`.
     *   `PEEKABOO_CLI_PATH`: Optional override for Swift `peekaboo` CLI path.
+    *   `PEEKABOO_CLI_TIMEOUT`: Timeout in milliseconds for Swift CLI operations. Default: `"30000"` (30 seconds). Prevents operations from hanging indefinitely.
 6.  **Server Status Reporting Logic:**
     *   A utility function `generateServerStatusString()` creates a formatted string: `"
 
@@ -91,9 +92,12 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
 1.  Validate MCP `input` against the tool's Zod schema. If invalid, log error with Pino and return MCP error `ToolResponse`.
 2.  Construct command-line arguments for Swift `peekaboo` CLI based on MCP `input`. **Always include `--json-output`**.
 3.  Log the constructed Swift command with Pino at `debug` level.
-4.  Execute Swift `peekaboo` CLI using `child_process.spawn`, capturing `stdout`, `stderr`, and `exitCode`.
+4.  Execute Swift `peekaboo` CLI using `child_process.spawn`, capturing `stdout`, `stderr`, and `exitCode`. Apply timeout from `PEEKABOO_CLI_TIMEOUT` environment variable (default: 30000ms). If timeout is exceeded, terminate the process with SIGTERM, followed by SIGKILL after 1 second if needed.
 5.  If any data is received on Swift CLI's `stderr`, log it immediately with Pino at `warn` level, prefixed (e.g., `[SwiftCLI-stderr]`).
-6.  On Swift CLI process close:
+6.  On Swift CLI process close or timeout:
+    *   If process was terminated due to timeout:
+        *   Log timeout with Pino (`error` level).
+        *   Return MCP error `ToolResponse` with `errorCode: "SWIFT_CLI_TIMEOUT"` and message indicating the timeout duration.
     *   If `exitCode !== 0` or `stdout` is empty/not parseable as JSON:
         *   Log failure details with Pino (`error` level).
         *   Construct MCP error `ToolResponse` (e.g., `errorCode: "SWIFT_CLI_EXECUTION_ERROR"` or `SWIFT_CLI_INVALID_OUTPUT` in `_meta`). 

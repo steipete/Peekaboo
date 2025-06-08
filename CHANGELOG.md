@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reduces visual clutter for the common case of apps with only one window
   - Apps with 0, 2, or more windows still display the count
   - Improves readability of the `list apps` command output
+- **Timeout handling for Swift CLI operations** ([#2](https://github.com/steipete/Peekaboo/pull/2))
+  - Prevents test suite and operations from hanging indefinitely
+  - Default timeout of 30 seconds, configurable via `PEEKABOO_CLI_TIMEOUT` environment variable
+  - Graceful process termination with SIGTERM followed by SIGKILL if needed
+  - Clear timeout error messages indicating when operations exceed time limits
 
 ### Fixed
 - **Input validation improvements**:
@@ -39,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed duplicate error output when ApplicationFinder throws errors
 - Enhanced error details for app not found errors to include list of available applications
 - Removed complex multi-JSON parsing logic from TypeScript that was only needed due to duplicate error output
+- Fixed all test assertions to match the new `executeSwiftCli` signature with timeout parameter
 
 ## [1.0.0-beta.19] - 2025-06-08
 
