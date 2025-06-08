@@ -51,8 +51,18 @@ struct WindowListData: Codable {
 
 // MARK: - Image Models
 
+/// Saved file information
+struct SavedFile: Codable {
+    let path: String
+    let size_bytes: Int?
+    let width: Int?
+    let height: Int?
+    let format: String
+}
+
 /// Image capture result data
 struct ImageCaptureData: Codable {
+    let saved_files: [SavedFile]
     let file_path: String
     let file_size_bytes: Int?
     let image_width: Int?
@@ -61,6 +71,27 @@ struct ImageCaptureData: Codable {
     let timestamp: String
     let target_application_info: TargetApplicationInfo?
     let captured_windows: [WindowInfoData]?
+    
+    init(saved_files: [SavedFile]) {
+        self.saved_files = saved_files
+        // Use first file for backward compatibility
+        if let firstFile = saved_files.first {
+            self.file_path = firstFile.path
+            self.file_size_bytes = firstFile.size_bytes
+            self.image_width = firstFile.width
+            self.image_height = firstFile.height
+            self.format = firstFile.format
+        } else {
+            self.file_path = ""
+            self.file_size_bytes = nil
+            self.image_width = nil
+            self.image_height = nil
+            self.format = "png"
+        }
+        self.timestamp = ISO8601DateFormatter().string(from: Date())
+        self.target_application_info = nil
+        self.captured_windows = nil
+    }
 }
 
 // MARK: - Error Models
@@ -100,6 +131,59 @@ struct ErrorResponse: Codable {
     }
 }
 
+// MARK: - Enums
+
+/// Capture mode options
+enum CaptureMode: String, CaseIterable, Codable {
+    case screen = "screen"
+    case window = "window"
+    case application = "application"
+}
+
+/// Image format options
+enum ImageFormat: String, CaseIterable, Codable {
+    case png = "png"
+    case jpeg = "jpeg"
+    case jpg = "jpg"
+    case tiff = "tiff"
+    case bmp = "bmp"
+    case gif = "gif"
+}
+
+/// Capture focus behavior
+enum CaptureFocus: String, CaseIterable, Codable {
+    case auto = "auto"
+    case foreground = "foreground"
+    case background = "background"
+}
+
+/// Capture errors
+enum CaptureError: Error, Codable {
+    case unknownError(String)
+    case appNotFound(String)
+    case windowNotFound
+    case screenRecordingPermissionDenied
+    case invalidArgument(String)
+    case systemError(String)
+    
+    var localizedDescription: String {
+        switch self {
+        case .unknownError(let message):
+            return "Unknown error: \(message)"
+        case .appNotFound(let app):
+            return "Application not found: \(app)"
+        case .windowNotFound:
+            return "Window not found"
+        case .screenRecordingPermissionDenied:
+            return "Screen recording permission denied"
+        case .invalidArgument(let arg):
+            return "Invalid argument: \(arg)"
+        case .systemError(let error):
+            return "System error: \(error)"
+        }
+    }
+}
+
 // MARK: - Platform Image Format
 
 /// Supported image formats across platforms
@@ -135,6 +219,11 @@ enum PlatformImageFormat: String, CaseIterable {
     /// Create from string, with fallback to PNG
     static func from(string: String) -> PlatformImageFormat {
         return PlatformImageFormat(rawValue: string.lowercased()) ?? .png
+    }
+    
+    /// Convert from ImageFormat
+    static func from(imageFormat: ImageFormat) -> PlatformImageFormat {
+        return PlatformImageFormat(rawValue: imageFormat.rawValue) ?? .png
     }
 }
 

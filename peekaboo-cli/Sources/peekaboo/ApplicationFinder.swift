@@ -295,9 +295,9 @@ class ApplicationFinder {
             }
 
             let appInfo = ApplicationInfo(
-                app_name: appName,
+                name: appName,
                 bundle_id: app.bundleIdentifier ?? "",
-                pid: app.processIdentifier,
+                process_id: app.processIdentifier,
                 is_active: app.isActive,
                 window_count: windowCount
             )
@@ -306,7 +306,9 @@ class ApplicationFinder {
         }
 
         // Sort by name for consistent output
-        result.sort { $0.app_name.lowercased() < $1.app_name.lowercased() }
+        result.sort { (app1: ApplicationInfo, app2: ApplicationInfo) -> Bool in
+            app1.name.lowercased() < app2.name.lowercased()
+        }
 
         Logger.shared.debug("Found \(result.count) running applications")
         return result
