@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 
 @available(macOS 10.15, *)
-struct PeekabooCommand: AsyncParsableCommand {
+struct PeekabooCommand: ParsableCommand, AsyncRunnable {
     static let configuration = CommandConfiguration(
         commandName: "peekaboo",
         abstract: "A macOS utility for screen capture, application listing, and window management",
@@ -11,7 +11,7 @@ struct PeekabooCommand: AsyncParsableCommand {
         defaultSubcommand: ImageCommand.self
     )
     
-    func run() async throws {
+    func runAsync() async throws {
         // Root command doesn't do anything, subcommands handle everything
     }
 }
