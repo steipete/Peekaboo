@@ -143,14 +143,16 @@ export const imageToolSchema = z.object({
     "If `path` is also provided when `format` is `'data'`, the image is saved (as PNG) AND Base64 data is returned.\n" +
     "Defaults to `'data'` if `path` is not given.",
   ),
-  capture_focus: z.enum(["background", "foreground"])
-    .optional()
-    .default("background")
-    .describe(
-      "Optional. Focus behavior.\n" +
-      "`'background'` (default): Captures without altering window focus.\n" +
-      "`'foreground'`: Brings the target window(s) to the front before capture.",
-    ),
+  capture_focus: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    z.enum(["background", "foreground"])
+      .optional()
+      .default("background")
+      .describe(
+        "Optional. Focus behavior. 'background' (default): capture without altering window focus. " +
+        "'foreground': bring target to front before capture."
+      )
+  ),
 })
   .describe(
     "Captures screen content and optionally analyzes it. " +

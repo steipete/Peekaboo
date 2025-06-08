@@ -94,17 +94,10 @@ export async function listToolHandler(
   const { logger } = context;
 
   try {
-    // Determine the effective item_type
-    let effective_item_type = input.item_type;
-    if (!effective_item_type) {
-      effective_item_type = input.app ? "application_windows" : "running_applications";
-    }
-
-    const new_input = { ...input, item_type: effective_item_type };
-    logger.debug({ input: new_input }, "Processing peekaboo.list tool call");
+    logger.debug({ input }, "Processing peekaboo.list tool call");
 
     // Handle server_status directly without calling Swift CLI
-    if (new_input.item_type === "server_status") {
+    if (input.item_type === "server_status") {
       // Get package version and root directory
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = path.dirname(__filename);
@@ -118,7 +111,7 @@ export async function listToolHandler(
     }
 
     // Build Swift CLI arguments
-    const args = buildSwiftCliArgs(new_input);
+    const args = buildSwiftCliArgs(input);
 
     // Execute Swift CLI
     const swiftResponse = await executeSwiftCli(args, logger);
@@ -157,15 +150,17 @@ export async function listToolHandler(
     }
 
     // Process the response based on item type
-    if (new_input.item_type === "running_applications") {
+    const effective_item_type = input.item_type || (input.app ? "application_windows" : "running_applications");
+
+    if (effective_item_type === "running_applications") {
       return handleApplicationsList(
         swiftResponse.data as ApplicationListData,
         swiftResponse,
       );
-    } else if (new_input.item_type === "application_windows") {
+    } else if (effective_item_type === "application_windows") {
       return handleWindowsList(
         swiftResponse.data as WindowListData,
-        new_input,
+        input,
         swiftResponse,
       );
     }
@@ -350,19 +345,23 @@ async function handleServerStatus(
 
 export function buildSwiftCliArgs(input: ListToolInput): string[] {
   const args = ["list"];
+  const itemType = input.item_type || (input.app ? "application_windows" : "running_applications");
 
-  if (input.item_type === "running_applications") {
+  if (itemType === "running_applications") {
     args.push("apps");
-  } else if (input.item_type === "application_windows") {
+  } else if (itemType === "application_windows") {
     args.push("windows");
-    args.push("--app", input.app as string);
-
+    if (input.app) {
+      args.push("--app", input.app);
+    }
     if (
       input.include_window_details &&
       input.include_window_details.length > 0
     ) {
       args.push("--include-details", input.include_window_details.join(","));
     }
+  } else if (itemType === "server_status") {
+    args.push("server_status");
   }
 
   return args;
