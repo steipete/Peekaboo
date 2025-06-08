@@ -178,50 +178,8 @@ export async function executeSwiftCli(
       }
 
       try {
-        // Handle multiple JSON objects by taking the first valid one
-        let jsonResponse: SwiftCliResponse;
         const trimmedOutput = stdout.trim();
-
-        // Try to parse as single JSON first
-        try {
-          jsonResponse = JSON.parse(trimmedOutput);
-        } catch (firstParseError) {
-          // If that fails, try to extract the first complete JSON object
-          // This handles cases where Swift CLI outputs multiple JSON objects
-          const lines = trimmedOutput.split("\n");
-          let braceCount = 0;
-          let firstJsonEnd = -1;
-
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            for (let j = 0; j < line.length; j++) {
-              if (line[j] === "{") {
-                braceCount++;
-              } else if (line[j] === "}") {
-                braceCount--;
-              }
-
-              if (braceCount === 0 && line[j] === "}") {
-                firstJsonEnd = i;
-                break;
-              }
-            }
-            if (firstJsonEnd !== -1) {
-              break;
-            }
-          }
-
-          if (firstJsonEnd !== -1) {
-            const firstJsonLines = lines.slice(0, firstJsonEnd + 1);
-            const firstJsonStr = firstJsonLines.join("\n");
-            jsonResponse = JSON.parse(firstJsonStr);
-            logger.debug("Extracted first JSON object from multi-object output");
-          } else {
-            throw firstParseError; // Re-throw original error if extraction fails
-          }
-        }
-
-        const response = jsonResponse;
+        const response: SwiftCliResponse = JSON.parse(trimmedOutput);
 
         // Log debug messages from Swift CLI
         if (response.debug_logs && Array.isArray(response.debug_logs)) {

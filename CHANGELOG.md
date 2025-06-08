@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Window count display optimization**: Single-window apps no longer show "Windows: 1" in list output ([#6](https://github.com/steipete/Peekaboo/pull/6))
+  - Reduces visual clutter for the common case of apps with only one window
+  - Apps with 0, 2, or more windows still display the count
+  - Improves readability of the `list apps` command output
+
 ### Fixed
+- **Input validation improvements**:
+  - Whitespace is now trimmed from `app_target` parameter (e.g., `"   Spotify   "` now works correctly)
+  - Format parameter is now case-insensitive (`"PNG"` and `"png"` both work)
+  - Added support for `"jpeg"` as an alias for `"jpg"` format
+- **Edge case handling**:
+  - Float and hex screen indices now parse correctly (e.g., `screen:1.5` → `screen:1`, `screen:0x1` → `screen:0`)
+  - Special filesystem characters (|, :, *) in filenames are preserved as-is
+  - Empty questions to analyze tool are handled gracefully (analysis is skipped)
+- **Swift error handling improvements**:
+  - Fixed CaptureError enum compatibility issues in tests
+  - Improved error messages with better context for ApplicationFinder errors
 - Fixed overly broad permission error detection that incorrectly reported file I/O errors as screen recording permission issues
   - File permission errors (e.g., writing to `/System/`) now correctly report as `FILE_IO_ERROR`
   - Directory not found errors provide clear messages about missing parent directories
@@ -21,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Error messages include the original system error descriptions
 - Fixed duplicate error output when ApplicationFinder throws errors
 - Enhanced error details for app not found errors to include list of available applications
+- Removed complex multi-JSON parsing logic from TypeScript that was only needed due to duplicate error output
 
 ## [1.0.0-beta.19] - 2025-06-08
 
