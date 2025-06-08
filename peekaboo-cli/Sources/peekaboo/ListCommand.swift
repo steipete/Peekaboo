@@ -74,14 +74,14 @@ struct AppsSubcommand: ParsableCommand {
         Foundation.exit(captureError.exitCode)
     }
 
-    internal func printApplicationList(_ applications: [ApplicationInfo]) {
+    func printApplicationList(_ applications: [ApplicationInfo]) {
         let output = formatApplicationList(applications)
         print(output)
     }
-    
-    internal func formatApplicationList(_ applications: [ApplicationInfo]) -> String {
+
+    func formatApplicationList(_ applications: [ApplicationInfo]) -> String {
         var output = "Running Applications (\(applications.count)):\n\n"
-        
+
         for (index, app) in applications.enumerated() {
             output += "\(index + 1). \(app.app_name)\n"
             output += "   Bundle ID: \(app.bundle_id)\n"
@@ -93,7 +93,7 @@ struct AppsSubcommand: ParsableCommand {
             }
             output += "\n"
         }
-        
+
         return output
     }
 }

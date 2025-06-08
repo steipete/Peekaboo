@@ -25,11 +25,11 @@ class PermissionsChecker {
         }
 
         semaphore.wait()
-        
+
         if let error = capturedError {
             Logger.shared.debug("Screen recording permission check failed: \(error)")
         }
-        
+
         return hasPermission
     }
 

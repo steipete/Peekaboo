@@ -102,10 +102,10 @@ struct ImageCommand: ParsableCommand {
         } else {
             .unknownError(error.localizedDescription)
         }
-        
+
         // Log the full error details for debugging
         Logger.shared.debug("Image capture error: \(error)")
-        
+
         // If it's a CaptureError with an underlying error, log that too
         switch captureError {
         case let .captureCreationFailed(underlyingError):
@@ -143,7 +143,7 @@ struct ImageCommand: ParsableCommand {
             default:
                 .CAPTURE_FAILED
             }
-            
+
             // Provide additional details for app not found errors
             var details: String? = nil
             if case .appNotFound = captureError {
@@ -154,7 +154,7 @@ struct ImageCommand: ParsableCommand {
                     .joined(separator: ", ")
                 details = "Available applications: \(runningApps)"
             }
-            
+
             outputError(
                 message: captureError.localizedDescription,
                 code: code,
@@ -250,11 +250,12 @@ struct ImageCommand: ParsableCommand {
         let targetApp: NSRunningApplication
         do {
             targetApp = try ApplicationFinder.findApplication(identifier: appIdentifier)
-        } catch ApplicationError.notFound(let identifier) {
+        } catch let ApplicationError.notFound(identifier) {
             throw CaptureError.appNotFound(identifier)
-        } catch ApplicationError.ambiguous(let identifier, let matches) {
+        } catch let ApplicationError.ambiguous(identifier, matches) {
             let appNames = matches.map { $0.localizedName ?? $0.bundleIdentifier ?? "Unknown" }
-            throw CaptureError.unknownError("Multiple applications match '\(identifier)': \(appNames.joined(separator: ", "))")
+            throw CaptureError
+                .unknownError("Multiple applications match '\(identifier)': \(appNames.joined(separator: ", "))")
         }
 
         if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
@@ -304,11 +305,12 @@ struct ImageCommand: ParsableCommand {
         let targetApp: NSRunningApplication
         do {
             targetApp = try ApplicationFinder.findApplication(identifier: appIdentifier)
-        } catch ApplicationError.notFound(let identifier) {
+        } catch let ApplicationError.notFound(identifier) {
             throw CaptureError.appNotFound(identifier)
-        } catch ApplicationError.ambiguous(let identifier, let matches) {
+        } catch let ApplicationError.ambiguous(identifier, matches) {
             let appNames = matches.map { $0.localizedName ?? $0.bundleIdentifier ?? "Unknown" }
-            throw CaptureError.unknownError("Multiple applications match '\(identifier)': \(appNames.joined(separator: ", "))")
+            throw CaptureError
+                .unknownError("Multiple applications match '\(identifier)': \(appNames.joined(separator: ", "))")
         }
 
         if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
@@ -484,12 +486,12 @@ struct ImageCommand: ParsableCommand {
 
     private func isScreenRecordingPermissionError(_ error: Error) -> Bool {
         let errorString = error.localizedDescription.lowercased()
-        
+
         // Check for specific screen recording related errors
         if errorString.contains("screen recording") {
             return true
         }
-        
+
         // Check for NSError codes specific to screen capture permissions
         if let nsError = error as NSError? {
             // ScreenCaptureKit specific error codes
@@ -497,20 +499,20 @@ struct ImageCommand: ParsableCommand {
                 // SCStreamErrorUserDeclined = -3801
                 return true
             }
-            
+
             // CoreGraphics error codes for screen capture
             if nsError.domain == "com.apple.coregraphics" && nsError.code == 1002 {
                 // kCGErrorCannotComplete when permissions are denied
                 return true
             }
         }
-        
+
         // Only consider it a permission error if it mentions both "permission" and capture-related terms
-        if errorString.contains("permission") && 
-           (errorString.contains("capture") || errorString.contains("recording") || errorString.contains("screen")) {
+        if errorString.contains("permission") &&
+            (errorString.contains("capture") || errorString.contains("recording") || errorString.contains("screen")) {
             return true
         }
-        
+
         return false
     }
 

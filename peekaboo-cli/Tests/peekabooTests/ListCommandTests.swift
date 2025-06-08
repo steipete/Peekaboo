@@ -307,13 +307,13 @@ struct ListCommandTests {
 
         // Verify that "Windows: 1" is NOT present for single window app
         #expect(!output.contains("Windows: 1"))
-        
+
         // Verify that the single window app is listed but without window count
         #expect(output.contains("Single Window App"))
-        
+
         // Verify that "Windows: 5" IS present for multi window app
         #expect(output.contains("Windows: 5"))
-        
+
         // Verify that "Windows: 0" IS present for no windows app
         #expect(output.contains("Windows: 0"))
     }
@@ -374,7 +374,7 @@ struct ListCommandTests {
         #expect(output.contains("Bundle ID: com.test.app"))
         #expect(output.contains("PID: 12345"))
         #expect(output.contains("Status: Active"))
-        
+
         // Verify "Windows: 1" is NOT present
         #expect(!output.contains("Windows: 1"))
     }
@@ -403,7 +403,7 @@ struct ListCommandTests {
 
         // Both apps have 1 window, so neither should show "Windows: 1"
         #expect(!output.contains("Windows: 1"))
-        
+
         // But both apps should be listed
         #expect(output.contains("Edge Case 1"))
         #expect(output.contains("Edge Case 2"))
@@ -428,7 +428,7 @@ struct ListCommandTests {
         #expect(!output.contains("Windows: 1"))
         #expect(output.contains("Windows: 2"))
         #expect(output.contains("Windows: 3"))
-        
+
         // All apps should be listed
         #expect(output.contains("App A"))
         #expect(output.contains("App B"))
