@@ -210,11 +210,11 @@ async function handleServerStatus(
   } else {
     // Detect platform and use appropriate binary
     const platform = process.platform;
-    
-    if (platform === 'darwin') {
+
+    if (platform === "darwin") {
       // macOS - use Swift binary
       cliPath = path.join(packageRootDir, "peekaboo");
-    } else if (platform === 'linux') {
+    } else if (platform === "linux") {
       // Linux - use Rust binary
       const linuxBinaryPath = path.resolve(packageRootDir, "peekaboo-linux", "target", "release", "peekaboo");
       if (existsSync(linuxBinaryPath)) {
@@ -230,7 +230,7 @@ async function handleServerStatus(
     }
   }
 
-  const binaryType = process.platform === 'linux' ? 'Rust' : 'Swift';
+  const binaryType = process.platform === "linux" ? "Rust" : "Swift";
   statusSections.push(`\n## Native Binary (${binaryType} CLI) Status`);
 
   let cliStatus = "\u274c Not found";
