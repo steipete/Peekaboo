@@ -58,22 +58,22 @@ function getInitializedSwiftCliPath(logger: Logger): string {
 function mapExitCodeToErrorMessage(
   exitCode: number,
   stderr: string,
-  command: 'image' | 'list',
+  command: "image" | "list",
   appTarget?: string,
-): { message: string, code: string } {
+): { message: string; code: string } {
   const defaultMessage = stderr.trim()
-    ? `Peekaboo CLI Error: ${stderr.trim()}`
-    : `Swift CLI execution failed (exit code: ${exitCode})`;
-  
+    ? "Peekaboo CLI Error: " + stderr.trim()
+    : "Swift CLI execution failed (exit code: " + exitCode + ")";
+
   // Handle exit code 18 specially with command context
   if (exitCode === 18) {
     return {
-      message: `The specified application ('${appTarget || 'unknown'}') is not running or could not be found.`,
+      message: "The specified application ('" + (appTarget || "unknown") + "') is not running or could not be found.",
       code: "SWIFT_CLI_APP_NOT_FOUND",
     };
   }
-  
-  const errorCodeMap: { [key: number]: { message: string, code: string } } = {
+
+  const errorCodeMap: { [key: number]: { message: string; code: string } } = {
     1: { message: "An unknown error occurred in the Swift CLI.", code: "SWIFT_CLI_UNKNOWN_ERROR" },
     7: { message: "The specified application is running but has no capturable windows. Try setting 'capture_focus' to 'foreground' to un-hide application windows.", code: "SWIFT_CLI_NO_WINDOWS_FOUND" },
     10: { message: "No displays available for capture.", code: "SWIFT_CLI_NO_DISPLAYS" },
@@ -153,11 +153,11 @@ export async function executeSwiftCli(
         );
 
         // Determine command and app target from args
-        const command = args[0] as 'image' | 'list';
+        const command = args[0] as "image" | "list";
         let appTarget: string | undefined;
-        
+
         // Find app target in args
-        const appIndex = args.indexOf('--app');
+        const appIndex = args.indexOf("--app");
         if (appIndex !== -1 && appIndex < args.length - 1) {
           appTarget = args[appIndex + 1];
         }

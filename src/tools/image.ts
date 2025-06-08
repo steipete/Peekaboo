@@ -10,7 +10,6 @@ import { performAutomaticAnalysis } from "../utils/image-analysis.js";
 import { buildImageSummary } from "../utils/image-summary.js";
 import { buildSwiftCliArgs, resolveImagePath } from "../utils/image-cli-args.js";
 import { parseAIProviders } from "../utils/ai-providers.js";
-import * as fs from "fs/promises";
 
 export { imageToolSchema } from "../types/index.js";
 
@@ -19,7 +18,7 @@ export async function imageToolHandler(
   context: ToolContext,
 ): Promise<ToolResponse> {
   const { logger } = context;
-  let tempDirUsed: string | undefined = undefined;
+  let _tempDirUsed: string | undefined = undefined;
   let finalSavedFiles: SavedFile[] = [];
   let analysisAttempted = false;
   let analysisSucceeded = false;
@@ -34,7 +33,7 @@ export async function imageToolHandler(
 
     // Resolve the effective path using the centralized logic
     const { effectivePath, tempDirUsed: tempDir } = await resolveImagePath(input, logger);
-    tempDirUsed = tempDir;
+    _tempDirUsed = tempDir;
 
     const args = buildSwiftCliArgs(input, effectivePath, swiftFormat, logger);
 
@@ -92,7 +91,7 @@ export async function imageToolHandler(
     if (input.question) {
       analysisAttempted = true;
       const analysisResults: Array<{ label: string; text: string }> = [];
-      
+
       const configuredProviders = parseAIProviders(
         process.env.PEEKABOO_AI_PROVIDERS || "",
       );
@@ -106,7 +105,7 @@ export async function imageToolHandler(
           try {
             const imageBase64 = await readImageAsBase64(savedFile.path);
             logger.debug({ path: savedFile.path }, "Image read successfully for analysis.");
-            
+
             const analysisResult = await performAutomaticAnalysis(
               imageBase64,
               input.question,
@@ -139,7 +138,7 @@ export async function imageToolHandler(
             });
           }
         }
-        
+
         // Format the analysis results
         if (analysisResults.length === 1) {
           analysisText = analysisResults[0].text;

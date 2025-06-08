@@ -151,8 +151,8 @@ export const imageToolSchema = z.object({
       .describe(
         "Optional. Focus behavior. 'auto' (default): bring target to front only if not already active. " +
         "'background': capture without altering window focus. " +
-        "'foreground': always bring target to front before capture."
-      )
+        "'foreground': always bring target to front before capture.",
+      ),
   ),
 })
   .describe(

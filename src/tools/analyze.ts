@@ -44,7 +44,7 @@ export const analyzeToolSchema = z.object({
   {
     message: "image_path is required",
     path: ["image_path"],
-  }
+  },
 );
 
 export type AnalyzeToolInput = z.infer<typeof analyzeToolSchema>;
@@ -57,8 +57,8 @@ export async function analyzeToolHandler(
 
   try {
     // Determine the effective image path (prioritize image_path, fallback to path)
-    const effectiveImagePath = input.image_path || input.path!;
-    
+    const effectiveImagePath = input.image_path || input.path || "";
+
     logger.debug(
       { input: { ...input, effectiveImagePath: effectiveImagePath.split("/").pop() } },
       "Processing peekaboo.analyze tool call",
