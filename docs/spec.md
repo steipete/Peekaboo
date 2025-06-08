@@ -145,9 +145,9 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
       format: z.enum(["png", "jpg", "data"]).optional().default("png").describe(
         "Output format. 'png' or 'jpg' save to 'path' (if provided). " +
         "'data' returns Base64 encoded PNG data inline; if 'path' is also given, saves a PNG file to 'path' too. " +
-        "If 'path' is not given, 'format' defaults to 'data' behavior (inline PNG data returned). " +
-        "Note: Screen captures cannot use 'data' format due to large image sizes causing JavaScript stack overflow. " +
-        "The tool will automatically fall back to PNG format for screen captures."
+        "For application window captures: If 'path' is not given, 'format' defaults to 'data' behavior (inline PNG data returned). " +
+        "For screen captures: Cannot use 'data' format due to large image sizes causing JavaScript stack overflow. " +
+        "Screen captures always save to files (temp directory if no path specified) with automatic PNG format fallback."
       ),
       capture_focus: z.enum(["background", "foreground"])
         .optional().default("background").describe(

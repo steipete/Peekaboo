@@ -291,7 +291,7 @@ Peekaboo provides three main tools for AI agents:
 
 Captures macOS screen content with automatic shadow/frame removal.
 
-**Important:** Screen captures with `format: "data"` automatically fall back to PNG format due to the large size of screen images causing JavaScript stack overflow errors. When this happens, the tool saves the image to a file and includes a warning message explaining the fallback.
+**Important:** Screen captures **cannot use `format: "data"`** due to the large size of screen images causing JavaScript stack overflow errors. Screen captures always save to files, either to a specified path or a temporary directory. When `format: "data"` is requested for screen captures, the tool automatically falls back to PNG format and saves to a file with a warning message explaining the fallback.
 
 **Examples:**
 ```javascript
@@ -544,8 +544,8 @@ Captures macOS screen content and optionally analyzes it. Window shadows/frames 
 *   `path` (string, optional): Base absolute path for saving the captured image(s). If `format` is `"data"` and `path` is also provided, the image is saved to this path (as a PNG) AND Base64 data is returned. If a `question` is provided and `path` is omitted, a temporary path is used for capture, and the file is deleted after analysis.
 *   `question` (string, optional): If provided, the captured image will be analyzed. The server automatically selects an AI provider from those configured in the `PEEKABOO_AI_PROVIDERS` environment variable.
 *   `format` (string, optional, default: `"png"`): Specifies the output image format or data return type.
-    *   `"png"` or `"jpg"`: Saves the image to the specified `path` in the chosen format. If `path` is not provided, this behaves like `"data"`.
-    *   `"data"`: Returns Base64 encoded PNG data of the image directly in the MCP response. If `path` is also specified, a PNG file is also saved to that `path`.
+    *   `"png"` or `"jpg"`: Saves the image to the specified `path` in the chosen format. For application captures: if `path` is not provided, behaves like `"data"`. For screen captures: always saves to file.
+    *   `"data"`: Returns Base64 encoded PNG data of the image directly in the MCP response. If `path` is also specified, a PNG file is also saved to that `path`. **Note: Screen captures cannot use this format and will automatically fall back to PNG file format.**
     *   Invalid values (empty strings, null, or unrecognized formats) automatically fall back to `"png"`.
 *   `capture_focus` (string, optional, default: `"background"`): Controls window focus behavior during capture.
     *   `"background"`: Captures without altering the current window focus (default).
