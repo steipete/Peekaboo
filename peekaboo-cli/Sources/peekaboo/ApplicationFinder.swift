@@ -25,7 +25,10 @@ class ApplicationFinder {
         }
 
         // Find all possible matches
-        let matches = findAllMatches(for: identifier, in: runningApps)
+        let allMatches = findAllMatches(for: identifier, in: runningApps)
+        
+        // Filter out browser helpers for common browser searches
+        let matches = filterBrowserHelpers(matches: allMatches, identifier: identifier)
 
         // Get unique matches
         let uniqueMatches = removeDuplicateMatches(from: matches)
@@ -174,7 +177,15 @@ class ApplicationFinder {
         runningApps: [NSRunningApplication]
     ) throws(ApplicationError) -> NSRunningApplication {
         guard !matches.isEmpty else {
-            Logger.shared.error("No applications found matching: \(identifier)")
+            // Provide browser-specific error messages
+            let browserIdentifiers = ["chrome", "safari", "firefox", "edge", "brave", "arc", "opera"]
+            let lowerIdentifier = identifier.lowercased()
+            
+            if browserIdentifiers.contains(lowerIdentifier) {
+                Logger.shared.error("\(identifier.capitalized) browser is not running or not found")
+            } else {
+                Logger.shared.error("No applications found matching: \(identifier)")
+            }
 
             // Find similar app names using fuzzy matching
             let suggestions = findSimilarApplications(identifier: identifier, from: runningApps)
@@ -307,6 +318,51 @@ class ApplicationFinder {
         }
 
         return count
+    }
+    
+    private static func filterBrowserHelpers(matches: [AppMatch], identifier: String) -> [AppMatch] {
+        // Define common browser identifiers that should filter out helpers
+        let browserIdentifiers = ["chrome", "safari", "firefox", "edge", "brave", "arc", "opera"]
+        let lowerIdentifier = identifier.lowercased()
+        
+        // Check if the search is for a common browser
+        guard browserIdentifiers.contains(lowerIdentifier) else {
+            return matches // No filtering for non-browser searches
+        }
+        
+        Logger.shared.debug("Filtering browser helpers for '\(identifier)' search")
+        
+        // Filter out helper processes for browser searches
+        let filteredMatches = matches.filter { match in
+            guard let appName = match.app.localizedName?.lowercased() else { return true }
+            
+            // Exclude obvious helper processes
+            let isHelper = appName.contains("helper") || 
+                          appName.contains("renderer") ||
+                          appName.contains("utility") ||
+                          appName.contains("plugin") ||
+                          appName.contains("service") ||
+                          appName.contains("crashpad") ||
+                          appName.contains("gpu") ||
+                          appName.contains("background")
+            
+            if isHelper {
+                Logger.shared.debug("Filtering out helper process: \(appName)")
+                return false
+            }
+            
+            return true
+        }
+        
+        // If we filtered out all matches, return the original matches to avoid "not found" errors
+        // But log a warning about this case
+        if filteredMatches.isEmpty && !matches.isEmpty {
+            Logger.shared.debug("All matches were filtered as helpers, returning original matches to avoid 'not found' error")
+            return matches
+        }
+        
+        Logger.shared.debug("After browser helper filtering: \(filteredMatches.count) matches remaining")
+        return filteredMatches
     }
 }
 

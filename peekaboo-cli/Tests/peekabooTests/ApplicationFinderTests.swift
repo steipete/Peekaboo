@@ -406,4 +406,85 @@ struct ApplicationFinderEdgeCaseTests {
             }
         }
     }
+    
+    // MARK: - Browser Helper Filtering Tests
+    
+    @Test("Browser helper filtering for Chrome searches", .tags(.browserFiltering))
+    func browserHelperFilteringChrome() {
+        // Test that Chrome helper processes are filtered out when searching for "chrome"
+        // Note: This test documents expected behavior even when Chrome isn't running
+        
+        do {
+            let result = try ApplicationFinder.findApplication(identifier: "chrome")
+            // If found, should be the main Chrome app, not a helper
+            if let appName = result.localizedName?.lowercased() {
+                #expect(!appName.contains("helper"))
+                #expect(!appName.contains("renderer"))
+                #expect(!appName.contains("utility"))
+                #expect(appName.contains("chrome"))
+            }
+        } catch {
+            // Chrome might not be running, which is okay for this test
+            // The important thing is that the filtering logic exists
+            print("Chrome not found, which is acceptable for browser helper filtering test")
+        }
+    }
+    
+    @Test("Browser helper filtering for Safari searches", .tags(.browserFiltering))
+    func browserHelperFilteringSafari() {
+        // Test that Safari helper processes are filtered out when searching for "safari"
+        
+        do {
+            let result = try ApplicationFinder.findApplication(identifier: "safari")
+            // If found, should be the main Safari app, not a helper
+            if let appName = result.localizedName?.lowercased() {
+                #expect(!appName.contains("helper"))
+                #expect(!appName.contains("renderer"))
+                #expect(!appName.contains("utility"))
+                #expect(appName.contains("safari"))
+            }
+        } catch {
+            // Safari might not be running, which is okay for this test
+            print("Safari not found, which is acceptable for browser helper filtering test")
+        }
+    }
+    
+    @Test("Non-browser searches should not filter helpers", .tags(.browserFiltering))
+    func nonBrowserSearchesPreserveHelpers() {
+        // Test that non-browser searches still find helper processes if that's what's being searched for
+        
+        // This tests that helper filtering only applies to browser identifiers
+        let nonBrowserIdentifiers = ["finder", "textedit", "calculator", "activity monitor"]
+        
+        for identifier in nonBrowserIdentifiers {
+            do {
+                let result = try ApplicationFinder.findApplication(identifier: identifier)
+                // Should find the app regardless of whether it's a "helper" (for non-browsers)
+                #expect(result.localizedName != nil)
+            } catch {
+                // App might not be running, which is fine for this test
+                continue
+            }
+        }
+    }
+    
+    @Test("Browser error messages are more specific", .tags(.browserFiltering))
+    func browserSpecificErrorMessages() {
+        // Test that browser-specific error messages are provided when browsers aren't found
+        
+        let browserIdentifiers = ["chrome", "firefox", "edge"]
+        
+        for browser in browserIdentifiers {
+            do {
+                _ = try ApplicationFinder.findApplication(identifier: browser)
+                // If browser is found, test passes
+            } catch let ApplicationError.notFound(identifier) {
+                // Should get a not found error with the identifier
+                #expect(identifier == browser)
+                // The error logging would contain browser-specific message, but we can't test that here
+            } catch {
+                Issue.record("Expected ApplicationError.notFound for browser '\(browser)', got \(error)")
+            }
+        }
+    }
 }

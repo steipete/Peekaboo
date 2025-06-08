@@ -14,6 +14,7 @@ extension Tag {
     @Tag static var performance: Self
     @Tag static var concurrency: Self
     @Tag static var memory: Self
+    @Tag static var browserFiltering: Self
 
     // Local-only test tags
     @Tag static var localOnly: Self
