@@ -153,13 +153,17 @@ struct ImageCaptureLogicTests {
 
     @Test("Capture focus modes", .tags(.fast))
     func captureFocusModes() throws {
-        // Default background mode
+        // Default auto mode
         let defaultCmd = try ImageCommand.parse([])
-        #expect(defaultCmd.captureFocus == .background)
+        #expect(defaultCmd.captureFocus == .auto)
 
         // Explicit background mode
         let backgroundCmd = try ImageCommand.parse(["--capture-focus", "background"])
         #expect(backgroundCmd.captureFocus == .background)
+
+        // Auto mode
+        let autoCmd = try ImageCommand.parse(["--capture-focus", "auto"])
+        #expect(autoCmd.captureFocus == .auto)
 
         // Foreground mode
         let foregroundCmd = try ImageCommand.parse(["--capture-focus", "foreground"])
@@ -411,12 +415,12 @@ struct AdvancedImageCaptureLogicTests {
         ])
         #expect(foregroundWindow.captureFocus == .foreground)
 
-        // Background focus (default) should work without additional permissions
-        let backgroundCapture = try ImageCommand.parse([
+        // Auto focus (default) should work intelligently
+        let autoCapture = try ImageCommand.parse([
             "--mode", "window",
             "--app", "Finder"
         ])
-        #expect(backgroundCapture.captureFocus == .background)
+        #expect(autoCapture.captureFocus == .auto)
     }
 
     @Test("Path handling edge cases", .tags(.fast))
@@ -452,7 +456,7 @@ struct AdvancedImageCaptureLogicTests {
                 if scenario.shouldBeReady {
                     // Verify basic readiness
                     #expect(command.format == .png)
-                    #expect(command.captureFocus == .background)
+                    #expect(command.captureFocus == .auto)
                 }
             } catch {
                 if scenario.shouldBeReady {

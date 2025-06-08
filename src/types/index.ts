@@ -145,12 +145,13 @@ export const imageToolSchema = z.object({
   ),
   capture_focus: z.preprocess(
     (val) => (val === "" || val === null ? undefined : val),
-    z.enum(["background", "foreground"])
+    z.enum(["background", "auto", "foreground"])
       .optional()
-      .default("background")
+      .default("auto")
       .describe(
-        "Optional. Focus behavior. 'background' (default): capture without altering window focus. " +
-        "'foreground': bring target to front before capture."
+        "Optional. Focus behavior. 'auto' (default): bring target to front only if not already active. " +
+        "'background': capture without altering window focus. " +
+        "'foreground': always bring target to front before capture."
       )
   ),
 })

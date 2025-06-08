@@ -1,10 +1,7 @@
-import { vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { imageToolHandler } from "../../../src/tools/image";
 import { buildSwiftCliArgs, resolveImagePath } from "../../../src/utils/image-cli-args";
-import {
-  executeSwiftCli,
-  readImageAsBase64,
-} from "../../../src/utils/peekaboo-cli";
+import { executeSwiftCli, readImageAsBase64 } from "../../../src/utils/peekaboo-cli";
 import { mockSwiftCli } from "../../mocks/peekaboo-cli.mock";
 import { pino } from "pino";
 import {
@@ -44,16 +41,16 @@ vi.mock("../../../src/utils/ai-providers", () => ({
   analyzeImageWithProvider: vi.fn(),
 }));
 
+import { performAutomaticAnalysis } from "../../../src/utils/image-analysis";
+import { parseAIProviders } from "../../../src/utils/ai-providers";
+
 const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<
   typeof executeSwiftCli
 >;
 const mockReadImageAsBase64 = readImageAsBase64 as vi.MockedFunction<
   typeof readImageAsBase64
 >;
-import { performAutomaticAnalysis } from "../../../src/utils/image-analysis";
 const mockPerformAutomaticAnalysis = performAutomaticAnalysis as vi.MockedFunction<typeof performAutomaticAnalysis>;
-
-import { parseAIProviders } from "../../../src/utils/ai-providers";
 const mockParseAIProviders = parseAIProviders as vi.MockedFunction<typeof parseAIProviders>;
 
 const mockFsRm = fs.rm as vi.MockedFunction<typeof fs.rm>;
@@ -398,6 +395,48 @@ describe("Image Tool", () => {
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--capture-focus", "foreground"]),
+        mockLogger,
+      );
+    });
+
+    it("should handle capture_focus auto mode", async () => {
+      // Mock resolveImagePath for minimal case
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      const mockResponse = mockSwiftCli.captureImage("screen", {});
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      await imageToolHandler(
+        { capture_focus: "auto" },
+        mockContext,
+      );
+
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--capture-focus", "auto"]),
+        mockLogger,
+      );
+    });
+
+    it("should default to background capture_focus when not specified", async () => {
+      // Mock resolveImagePath for minimal case
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      const mockResponse = mockSwiftCli.captureImage("screen", {});
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+
+      await imageToolHandler(
+        {},
+        mockContext,
+      );
+
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--capture-focus", "background"]),
         mockLogger,
       );
     });
@@ -826,6 +865,26 @@ describe("Image Tool", () => {
 
     it("should default to background focus when capture_focus is an empty string", () => {
       const args = buildSwiftCliArgs({ capture_focus: "" }, undefined);
+      expect(args).toEqual([
+        "image",
+        "--mode",
+        "screen",
+        "--format",
+        "png",
+        "--capture-focus",
+        "background"
+      ]);
+    });
+
+    it("should include capture_focus auto mode", () => {
+      const args = buildSwiftCliArgs({ capture_focus: "auto" }, undefined);
+      expect(args).toEqual(
+        expect.arrayContaining(["--capture-focus", "auto"]),
+      );
+    });
+
+    it("should default to background focus when capture_focus is not provided", () => {
+      const args = buildSwiftCliArgs({}, undefined);
       expect(args).toEqual(
         expect.arrayContaining(["--capture-focus", "background"]),
       );

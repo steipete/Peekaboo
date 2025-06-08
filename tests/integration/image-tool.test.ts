@@ -829,6 +829,31 @@ describe("Image Tool Integration Tests", () => {
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("Window index 999 is out of bounds for Finder");
     });
+
+    it("should return a specific error when app is running but has no windows", async () => {
+      // Arrange
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: '/mock/path',
+        tempDirUsed: undefined,
+      });
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: false,
+        error: {
+          message: "The specified application is running but has no capturable windows. Try setting 'capture_focus' to 'foreground' to un-hide application windows.",
+          code: "SWIFT_CLI_NO_WINDOWS_FOUND"
+        },
+      });
+      const args = { app_target: "Xcode", capture_focus: "background" };
+
+      // Act
+      const result = await imageToolHandler(args, mockContext);
+
+      // Assert
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toBe(
+        "Image capture failed: The specified application is running but has no capturable windows. Try setting 'capture_focus' to 'foreground' to un-hide application windows."
+      );
+    });
   });
 
   describe("Environment variable handling", () => {

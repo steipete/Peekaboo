@@ -27,7 +27,7 @@ struct ImageCommandTests {
         #expect(command.format == .png)
         #expect(command.path == nil)
         #expect(command.app == nil)
-        #expect(command.captureFocus == .background)
+        #expect(command.captureFocus == .auto)
         #expect(command.jsonOutput == false)
     }
 
@@ -250,7 +250,7 @@ struct ImageCommandTests {
         #expect(command.windowTitle == nil)
         #expect(command.windowIndex == nil)
         #expect(command.screenIndex == nil)
-        #expect(command.captureFocus == .background)
+        #expect(command.captureFocus == .auto)
         #expect(command.jsonOutput == false)
     }
 

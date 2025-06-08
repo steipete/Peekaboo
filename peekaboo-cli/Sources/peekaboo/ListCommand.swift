@@ -43,6 +43,13 @@ struct AppsSubcommand: ParsableCommand {
     private func handleError(_ error: Error) {
         let captureError: CaptureError = if let err = error as? CaptureError {
             err
+        } else if let appError = error as? ApplicationError {
+            switch appError {
+            case .notFound(let identifier):
+                .appNotFound(identifier)
+            case .ambiguous(let identifier, _):
+                .invalidArgument("Ambiguous application identifier: '\(identifier)'")
+            }
         } else {
             .unknownError(error.localizedDescription)
         }
@@ -142,6 +149,13 @@ struct WindowsSubcommand: ParsableCommand {
     private func handleError(_ error: Error) {
         let captureError: CaptureError = if let err = error as? CaptureError {
             err
+        } else if let appError = error as? ApplicationError {
+            switch appError {
+            case .notFound(let identifier):
+                .appNotFound(identifier)
+            case .ambiguous(let identifier, _):
+                .invalidArgument("Ambiguous application identifier: '\(identifier)'")
+            }
         } else {
             .unknownError(error.localizedDescription)
         }

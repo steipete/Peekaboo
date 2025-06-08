@@ -47,7 +47,7 @@ struct ImageCommand: ParsableCommand {
     var format: ImageFormat = .png
 
     @Option(name: .long, help: "Capture focus behavior")
-    var captureFocus: CaptureFocus = .background
+    var captureFocus: CaptureFocus = .auto
 
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
@@ -216,7 +216,7 @@ struct ImageCommand: ParsableCommand {
     private func captureApplicationWindow(_ appIdentifier: String) throws -> [SavedFile] {
         let targetApp = try ApplicationFinder.findApplication(identifier: appIdentifier)
 
-        if captureFocus == .foreground {
+        if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
             try PermissionsChecker.requireAccessibilityPermission()
             targetApp.activate()
             Thread.sleep(forTimeInterval: 0.2) // Brief delay for activation
@@ -262,7 +262,7 @@ struct ImageCommand: ParsableCommand {
     private func captureAllApplicationWindows(_ appIdentifier: String) throws -> [SavedFile] {
         let targetApp = try ApplicationFinder.findApplication(identifier: appIdentifier)
 
-        if captureFocus == .foreground {
+        if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
             try PermissionsChecker.requireAccessibilityPermission()
             targetApp.activate()
             Thread.sleep(forTimeInterval: 0.2)

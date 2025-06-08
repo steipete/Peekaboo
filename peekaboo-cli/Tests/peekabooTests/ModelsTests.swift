@@ -36,10 +36,12 @@ struct ModelsTests {
     func captureFocus() {
         // Test CaptureFocus enum values
         #expect(CaptureFocus.background.rawValue == "background")
+        #expect(CaptureFocus.auto.rawValue == "auto")
         #expect(CaptureFocus.foreground.rawValue == "foreground")
 
         // Test CaptureFocus from string
         #expect(CaptureFocus(rawValue: "background") == .background)
+        #expect(CaptureFocus(rawValue: "auto") == .auto)
         #expect(CaptureFocus(rawValue: "foreground") == .foreground)
         #expect(CaptureFocus(rawValue: "invalid") == nil)
     }
@@ -78,7 +80,7 @@ struct ModelsTests {
 
     @Test("CaptureFocus raw values are valid", .tags(.fast))
     func captureFocusRawValuesValid() {
-        let validValues = ["background", "foreground"]
+        let validValues = ["background", "auto", "foreground"]
         for rawValue in validValues {
             #expect(CaptureFocus(rawValue: rawValue) != nil)
         }

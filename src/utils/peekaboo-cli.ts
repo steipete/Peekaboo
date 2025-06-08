@@ -58,10 +58,21 @@ function getInitializedSwiftCliPath(logger: Logger): string {
 function mapExitCodeToErrorMessage(
   exitCode: number,
   stderr: string,
+  command: 'image' | 'list',
+  appTarget?: string,
 ): { message: string, code: string } {
   const defaultMessage = stderr.trim()
     ? `Peekaboo CLI Error: ${stderr.trim()}`
     : `Swift CLI execution failed (exit code: ${exitCode})`;
+  
+  // Handle exit code 18 specially with command context
+  if (exitCode === 18) {
+    return {
+      message: `The specified application ('${appTarget || 'unknown'}') is not running or could not be found.`,
+      code: "SWIFT_CLI_APP_NOT_FOUND",
+    };
+  }
+  
   const errorCodeMap: { [key: number]: { message: string, code: string } } = {
     1: { message: "An unknown error occurred in the Swift CLI.", code: "SWIFT_CLI_UNKNOWN_ERROR" },
     7: { message: "The specified application is running but has no capturable windows. Try setting 'capture_focus' to 'foreground' to un-hide application windows.", code: "SWIFT_CLI_NO_WINDOWS_FOUND" },
@@ -81,10 +92,6 @@ function mapExitCodeToErrorMessage(
     17: {
       message: "Failed to write the capture to a file. This is often a file permissions issue. Please ensure the application has permissions to write to the destination directory.",
       code: "SWIFT_CLI_FILE_WRITE_ERROR",
-    },
-    18: {
-      message: "The specified application could not be found or is not running.",
-      code: "SWIFT_CLI_APP_NOT_FOUND",
     },
     19: { message: "The specified window index is invalid.", code: "SWIFT_CLI_INVALID_WINDOW_INDEX" },
     20: { message: "Invalid argument provided to the Swift CLI.", code: "SWIFT_CLI_INVALID_ARGUMENT" },
@@ -145,7 +152,17 @@ export async function executeSwiftCli(
           "Swift CLI execution failed",
         );
 
-        const { message, code } = mapExitCodeToErrorMessage(exitCode || 1, stderr);
+        // Determine command and app target from args
+        const command = args[0] as 'image' | 'list';
+        let appTarget: string | undefined;
+        
+        // Find app target in args
+        const appIndex = args.indexOf('--app');
+        if (appIndex !== -1 && appIndex < args.length - 1) {
+          appTarget = args[appIndex + 1];
+        }
+
+        const { message, code } = mapExitCodeToErrorMessage(exitCode || 1, stderr, command, appTarget);
         const errorDetails =
           stderr.trim() && stdout.trim()
             ? `Stdout: ${stdout.trim()}`

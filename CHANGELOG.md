@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- New "auto" capture focus mode for the `image` tool, which intelligently brings windows to the foreground only when needed. If a target window is already active, screenshots are taken immediately. If the window is in the background, it's automatically brought to the foreground first. This provides the optimal user experience by making screenshots "just work" in most scenarios.
+
+### Changed
+- The default `capture_focus` behavior for the `image` tool has changed from "background" to "auto". This ensures better screenshot success rates while maintaining efficiency by only activating windows when necessary.
+
+## [1.0.0-beta.21] - 2025-01-10
+
+### Fixed
+- The `list` tool no longer returns a generic "unknown error" when a non-existent `app` is specified. It now returns a clear error message: `"List operation failed: The specified application ('AppName') is not running or could not be found."`, improving usability and error diagnosis.
+
+## [1.0.0-beta.20] - 2025-01-09
+
+### Changed
+- Improved error message for the `image` tool. When an `app_target` is specified for a running application that has no visible windows, the tool now returns a specific error (`"Image capture failed: The 'AppName' process is running, but it has no capturable windows..."`) instead of a generic "window not found" error. This provides clearer feedback and suggests using `capture_focus: 'foreground'` as a remedy.
+
+## [1.0.0-beta.19] - 2025-01-08
+
+### Changed
+- The `image` tool's behavior has been updated. When a `question` is provided for analysis and no `path` is specified, the tool now preserves the captured image(s) in their temporary directory instead of deleting them. The paths to these saved files are now correctly returned in the `saved_files` array, making them accessible after the tool run completes.
+
 ## [1.0.0-beta.18] - 2025-01-08
 
 ### Fixed
@@ -222,25 +243,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Replaced `app`, `mode`, and `window_specifier` parameters with a single `app_target` string (e.g., `"AppName"`, `"AppName:WINDOW_TITLE:Title"`, `"screen:0"`).
     - `format` parameter now includes `"data"` option to return Base64 PNG data directly. If `path` is also given with `format: "data"`, file is saved (as PNG) AND data is returned.
     - If `path` is omitted, `image` tool now defaults to `format: "data"` behavior (returns Base64 PNG data).
-    - `return_data` parameter removed (behavior now implied by `format` and `path`).
-    - `provider_config` parameter removed. AI provider for analysis (when `question` is supplied) is now automatically selected from `PEEKABOO_AI_PROVIDERS` environment variable.
-- **Node.js `imageToolHandler` and `buildSwiftCliArgs`:** Refactored to support the new `image` tool API and `--screen-index`.
-- **Tests:** Unit and Integration tests for the `image` tool were extensively updated to reflect the API changes and new functionalities.
-
-### 🐛 Fixed
-
-- Addressed an issue in `src/tools/image.ts` where `logger.debug()` could be called without checking for logger existence (relevant for `buildSwiftCliArgs` if called in an unexpected context, though typically safe). 
-
-### Added
-- Add support for `PEEKABOO_DEFAULT_SAVE_PATH` to specify a default directory for saving images.
-- The `list` tool now includes a `server_status` item type to retrieve server version and AI provider configuration.
-- The server status is now appended to all tool descriptions on `ListToolsRequest`.
-- Added comprehensive logging with `pino`, with log level and file path configurable via `PEEKABOO_LOG_LEVEL` and `PEEKABOO_LOG_FILE`.
-
-### Changed
-- The `image` tool's `path` argument is now optional. If omitted, the `format` defaults to `"data"` and the image is returned as a Base64 string.
-- If an `image` capture is followed by a `question` for analysis and no `path` is given, a temporary file is created and deleted after analysis.
-
-### Fixed
-- Resolved an issue where the server could crash if the log file directory was not writable. It now falls back to a temporary directory.
-- Ensured the `peekaboo` Swift CLI binary is correctly located when the package is installed globally or used via `npx`. 
+    - `

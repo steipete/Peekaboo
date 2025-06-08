@@ -29,6 +29,7 @@ enum ImageFormat: String, CaseIterable, ExpressibleByArgument {
 
 enum CaptureFocus: String, CaseIterable, ExpressibleByArgument {
     case background
+    case auto
     case foreground
 }
 

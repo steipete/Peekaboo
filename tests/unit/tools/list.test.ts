@@ -270,6 +270,28 @@ describe("List Tool", () => {
       expect((result as any)._meta.backend_error_code).toBe("APP_NOT_FOUND");
     });
 
+    it("should return a specific error if the app is not found", async () => {
+      // Arrange
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: false,
+        error: {
+          message: "The specified application ('Ciursor') is not running or could not be found.",
+          code: "SWIFT_CLI_APP_NOT_FOUND",
+          details: "Error: Application with name 'Ciursor' not found.",
+        },
+      });
+      const args = { item_type: "application_windows", app: "Ciursor" } as ListToolInput;
+
+      // Act
+      const result = await listToolHandler(args, mockContext);
+
+      // Assert
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toBe(
+        "List operation failed: The specified application ('Ciursor') is not running or could not be found."
+      );
+    });
+
     it("should handle Swift CLI errors with no message or code", async () => {
       mockExecuteSwiftCli.mockResolvedValue({
         success: false,
@@ -791,17 +813,32 @@ describe("List Tool", () => {
       }
     });
 
-    it("should fail when item_type is 'server_status' and 'include_window_details' is provided", () => {
+    it("should fail when item_type is 'server_status' and 'include_window_details' has values", () => {
       const result = listToolSchema.safeParse({
         item_type: "server_status",
         include_window_details: ["bounds"],
       });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.flatten().fieldErrors.include_window_details).toEqual([
-          "'include_window_details' is only applicable when 'item_type' is 'application_windows' or when 'app' is provided.",
+        expect(result.error.flatten().fieldErrors.item_type).toEqual([
+          "'app' and 'include_window_details' not applicable for 'server_status'.",
         ]);
       }
+    });
+
+    it("should succeed when item_type is 'server_status' and 'include_window_details' is empty", () => {
+      const result = listToolSchema.safeParse({
+        item_type: "server_status",
+        include_window_details: [],
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("should succeed when item_type is 'server_status' without extra parameters", () => {
+      const result = listToolSchema.safeParse({
+        item_type: "server_status",
+      });
+      expect(result.success).toBe(true);
     });
 
     it("should succeed when item_type is 'application_windows' and 'include_window_details' is provided", () => {

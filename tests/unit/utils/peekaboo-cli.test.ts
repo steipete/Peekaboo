@@ -343,7 +343,7 @@ describe("Swift CLI Utility", () => {
       expect(result.success).toBe(false);
       expect(result.error?.code).toBe("SWIFT_CLI_APP_NOT_FOUND");
       expect(result.error?.message).toContain(
-        "The specified application could not be found",
+        "could not be found",
       );
     });
 

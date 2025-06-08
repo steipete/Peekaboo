@@ -132,7 +132,7 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
         "- 'AppName:WINDOW_INDEX:Index': Window of 'AppName' at 'Index'."
       ),
       path: z.string().optional().describe(
-        "Optional. Base absolute path for saving captured image(s). If this path points to a directory, the Swift CLI will generate unique filenames inside it. If this path is omitted, behavior depends on other parameters: if a 'question' is asked or 'format' is 'data', a temporary directory is created for the capture and cleaned up afterward. Otherwise, if the 'PEEKABOO_DEFAULT_SAVE_PATH' environment variable is set, it will be used. As a final fallback, a temporary directory will be created and the saved file path(s) will be returned in the 'saved_files' output."
+        "Optional. Base absolute path for saving captured image(s). If this path points to a directory, the Swift CLI will generate unique filenames inside it. If this path is omitted, a temporary directory is created for the capture. The path(s) of the saved file(s) are always returned in the 'saved_files' output."
       ),
       question: z.string().optional().describe(
         "Optional. If provided, the captured image will be analyzed. " +
@@ -175,7 +175,6 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
         *   The AI provider and model are determined automatically by iterating through `PEEKABOO_AI_PROVIDERS`.
         *   The image (base64) and `input.question` are sent to the chosen AI provider for analysis.
         *   If multiple images are analyzed, the final `analysis_text` in the response is a single formatted string, with each analysis result preceded by a header identifying the corresponding window/display.
-        *   If a temporary path was used, all captured image files and the directory are deleted after all analyses are complete.
         *   The `analysis_text` and `model_used` are added to the tool's response.
         *   Base64 image data (`data` field in `ImageContentItem`) is *not* included in the `content` array of the response when a `question` is asked.
     *   **Node.js Handler - Resilience with `path` and `format: "data"` (No `question`):** If `input.format === "data"`, `input.question` is NOT provided, and `input.path` is specified:

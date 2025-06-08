@@ -72,7 +72,8 @@ export const listToolSchema = z
   .refine(
     (data) =>
       data.item_type !== "server_status" ||
-      (data.app === undefined && data.include_window_details === undefined),
+      (data.app === undefined && 
+       (data.include_window_details === undefined || data.include_window_details.length === 0)),
     {
       message:
         "'app' and 'include_window_details' not applicable for 'server_status'.",
