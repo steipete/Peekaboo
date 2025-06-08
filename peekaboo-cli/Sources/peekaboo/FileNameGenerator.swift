@@ -1,38 +1,39 @@
 import Foundation
 
+/// Generates unique file names for screenshots
 struct FileNameGenerator {
-    static func generateFileName(
-        displayIndex: Int? = nil,
-        appName: String? = nil,
-        windowIndex: Int? = nil,
-        windowTitle: String? = nil,
-        format: ImageFormat
-    ) -> String {
-        let timestamp = DateFormatter.timestamp.string(from: Date())
-        let ext = format.rawValue
-
-        if let displayIndex {
-            return "screen_\(displayIndex + 1)_\(timestamp).\(ext)"
-        } else if let appName {
-            let cleanAppName = appName.replacingOccurrences(of: " ", with: "_")
-            if let windowIndex {
-                return "\(cleanAppName)_window_\(windowIndex)_\(timestamp).\(ext)"
-            } else if let windowTitle {
-                let cleanTitle = windowTitle.replacingOccurrences(of: " ", with: "_").prefix(20)
-                return "\(cleanAppName)_\(cleanTitle)_\(timestamp).\(ext)"
-            } else {
-                return "\(cleanAppName)_\(timestamp).\(ext)"
-            }
-        } else {
-            return "capture_\(timestamp).\(ext)"
-        }
+    
+    /// Generate a unique filename with timestamp
+    static func generateUniqueFileName(baseName: String = "peekaboo", extension: String = "png") -> String {
+        let timestamp = DateFormatter.timestampFormatter.string(from: Date())
+        return "\(baseName)_\(timestamp).\(`extension`)"
+    }
+    
+    /// Generate a filename with custom prefix and timestamp
+    static func generateFileName(prefix: String, extension: String = "png") -> String {
+        let timestamp = DateFormatter.timestampFormatter.string(from: Date())
+        return "\(prefix)_\(timestamp).\(`extension`)"
+    }
+    
+    /// Generate a filename based on application name
+    static func generateAppFileName(appName: String, extension: String = "png") -> String {
+        let sanitizedAppName = sanitizeFileName(appName)
+        return generateFileName(prefix: sanitizedAppName, extension: `extension`)
+    }
+    
+    /// Sanitize a string to be safe for use as a filename
+    private static func sanitizeFileName(_ name: String) -> String {
+        let invalidChars = CharacterSet(charactersIn: "\\/:*?\"<>|")
+        return name.components(separatedBy: invalidChars).joined(separator: "_")
     }
 }
 
 extension DateFormatter {
-    static let timestamp: DateFormatter = {
+    static let timestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd_HHmmss"
+        formatter.timeZone = TimeZone.current
         return formatter
     }()
 }
+

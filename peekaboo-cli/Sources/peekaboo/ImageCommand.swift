@@ -637,7 +637,7 @@ struct ImageCommand: ParsableCommand {
             return .screenRecordingPermissionDenied
         case .displayNotFound(let index):
             return .unknownError("Display \(index) not found")
-        case .windowNotFound(let id):
+        case .windowNotFound(_):
             return .windowNotFound
         case .captureFailure(let reason):
             return .unknownError(reason)

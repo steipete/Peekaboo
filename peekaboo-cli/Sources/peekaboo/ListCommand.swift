@@ -33,20 +33,16 @@ struct AppsSubcommand: ParsableCommand {
         }
 
         do {
-            // Use platform factory to get implementations
-            let permissionsManager = PlatformFactory.createPermissionsManager()
-            let applicationFinder = PlatformFactory.createApplicationFinder()
-            
-            // Check permissions
-            try permissionsManager.requireScreenCapturePermission()
+            let applicationFinder = PlatformFactory.shared.createApplicationFinder()
 
             let applications = applicationFinder.getRunningApplications(includeBackground: false)
-            let data = ApplicationListData(applications: applications)
+            let applicationInfos = applications.map { ApplicationInfo(from: $0) }
+            let data = ApplicationListData(applications: applicationInfos)
 
             if jsonOutput {
                 outputSuccess(data: data)
             } else {
-                printApplicationList(applications)
+                printApplicationList(applicationInfos)
             }
 
         } catch {
@@ -61,8 +57,10 @@ struct AppsSubcommand: ParsableCommand {
             switch appError {
             case let .notFound(identifier):
                 .appNotFound(identifier)
-            case let .ambiguous(identifier, _):
-                .invalidArgument("Ambiguous application identifier: '\(identifier)'")
+            case .activationFailed(let reason):
+                .unknownError("Application activation failed: \(reason)")
+            case .systemError(let reason):
+                .unknownError("System error: \(reason)")
             }
         } else {
             .unknownError(error.localizedDescription)
@@ -159,19 +157,17 @@ struct WindowsSubcommand: ParsableCommand {
             
             // Convert to the expected format for backward compatibility
             let windows = windowData.map { window in
-                WindowInfo(
+                WindowInfoData(
                     window_title: window.title,
                     window_id: detailOptions.contains(.ids) ? window.windowId : nil,
-                    window_index: window.windowIndex,
-                    bounds: detailOptions.contains(.bounds) ? WindowBounds(
-                        xCoordinate: Int(window.bounds.origin.x),
-                        yCoordinate: Int(window.bounds.origin.y),
-                        width: Int(window.bounds.size.width),
-                        height: Int(window.bounds.size.height)
+                    window_index: detailOptions.contains(.indices) ? window.index : nil,
+                    bounds: detailOptions.contains(.bounds) ? WindowBoundsData(
+                        xCoordinate: window.bounds?.xCoordinate ?? 0,
+                        yCoordinate: window.bounds?.yCoordinate ?? 0,
+                        width: window.bounds?.width ?? 0,
+                        height: window.bounds?.height ?? 0
                     ) : nil,
-                    is_on_screen: detailOptions.contains(.off_screen) ? window.isOnScreen : nil,
-                    application_name: targetApp.localizedName,
-                    process_id: targetApp.processIdentifier
+                    is_on_screen: detailOptions.contains(.onScreen) ? window.isOnScreen : nil
                 )
             }
 
@@ -199,8 +195,10 @@ struct WindowsSubcommand: ParsableCommand {
             switch appError {
             case let .notFound(identifier):
                 .appNotFound(identifier)
-            case let .ambiguous(identifier, _):
-                .invalidArgument("Ambiguous application identifier: '\(identifier)'")
+            case .activationFailed(let reason):
+                .unknownError("Application activation failed: \(reason)")
+            case .systemError(let reason):
+                .unknownError("System error: \(reason)")
             }
         } else {
             .unknownError(error.localizedDescription)

@@ -261,49 +261,14 @@ extension macOSScreenCapture {
     func saveImage(_ image: CGImage, to path: String, format: PlatformImageFormat = .png) throws {
         let url = URL(fileURLWithPath: path)
         
-        // Check if the parent directory exists
-        let directory = url.deletingLastPathComponent()
-        var isDirectory: ObjCBool = false
-        if !FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory) {
-            let error = NSError(
-                domain: NSCocoaErrorDomain,
-                code: NSFileNoSuchFileError,
-                userInfo: [NSLocalizedDescriptionKey: "No such file or directory"]
-            )
-            throw ScreenCaptureError.systemError(error)
-        }
-        
-        let utType: UTType = {
-            switch format {
-            case .png: return .png
-            case .jpeg: return .jpeg
-            case .bmp: return .bmp
-            case .tiff: return .tiff
-            }
-        }()
-        
-        guard let destination = CGImageDestinationCreateWithURL(
-            url as CFURL,
-            utType.identifier as CFString,
-            1,
-            nil
-        ) else {
-            // Try to create a more specific error for common cases
-            if !FileManager.default.isWritableFile(atPath: directory.path) {
-                let error = NSError(
-                    domain: NSPOSIXErrorDomain,
-                    code: Int(EACCES),
-                    userInfo: [NSLocalizedDescriptionKey: "Permission denied"]
-                )
-                throw ScreenCaptureError.systemError(error)
-            }
+        guard let destination = CGImageDestinationCreateWithURL(url as CFURL, format.utType as CFString, 1, nil) else {
             throw ScreenCaptureError.captureFailure("Failed to create image destination")
         }
         
         CGImageDestinationAddImage(destination, image, nil)
         
         guard CGImageDestinationFinalize(destination) else {
-            throw ScreenCaptureError.captureFailure("Failed to write image to file")
+            throw ScreenCaptureError.captureFailure("Failed to save image")
         }
     }
 }
