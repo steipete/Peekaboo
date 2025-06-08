@@ -21,17 +21,29 @@ enum CaptureMode: String, CaseIterable, ExpressibleByArgument, Sendable {
     case window
     case multi
     case frontmost
+    
+    init?(argument: String) {
+        self.init(rawValue: argument)
+    }
 }
 
 enum ImageFormat: String, CaseIterable, ExpressibleByArgument, Sendable {
     case png
     case jpg
+    
+    init?(argument: String) {
+        self.init(rawValue: argument)
+    }
 }
 
 enum CaptureFocus: String, CaseIterable, ExpressibleByArgument, Sendable {
     case background
     case auto
     case foreground
+    
+    init?(argument: String) {
+        self.init(rawValue: argument)
+    }
 }
 
 // MARK: - Application & Window Models
@@ -123,6 +135,9 @@ enum CaptureError: Error, LocalizedError, Sendable {
     case invalidArgument(String)
     case unknownError(String)
     case noWindowsFound(String)
+    // Cross-platform errors
+    case platformNotSupported(String)
+    case featureNotSupported(String, String) // feature, platform
 
     var errorDescription: String? {
         switch self {
@@ -188,6 +203,10 @@ enum CaptureError: Error, LocalizedError, Sendable {
             return "An unexpected error occurred: \(message)"
         case let .noWindowsFound(appName):
             return "The '\(appName)' process is running, but no capturable windows were found."
+        case let .platformNotSupported(platform):
+            return "Peekaboo is not supported on \(platform). Supported platforms: macOS, Windows, Linux."
+        case let .featureNotSupported(feature, platform):
+            return "\(feature) is not supported on \(platform)."
         }
     }
 
@@ -207,6 +226,8 @@ enum CaptureError: Error, LocalizedError, Sendable {
         case .invalidArgument: 20
         case .unknownError: 1
         case .noWindowsFound: 7
+        case .platformNotSupported: 22
+        case .featureNotSupported: 23
         }
     }
 }

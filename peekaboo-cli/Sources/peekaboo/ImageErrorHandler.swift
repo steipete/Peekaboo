@@ -1,5 +1,8 @@
-import AppKit
 import Foundation
+
+#if os(macOS)
+import AppKit
+#endif
 
 enum ImageErrorHandler {
     static func handleError(_ error: Error, jsonOutput: Bool) {
