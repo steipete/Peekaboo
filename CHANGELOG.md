@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **PID-based application targeting**: You can now target applications by their Process ID using the `PID:XXXX` syntax
+  - Works with both `image` and `list` tools
+  - Example: `app_target: "PID:663"` to capture windows from process 663
+  - Provides clear error messages for invalid PIDs or non-existent processes
+  - Useful for targeting specific instances when multiple copies of an app are running
+
 ## [1.0.1] - 2025-01-08
 
 ### Fixed

@@ -319,6 +319,12 @@ await use_mcp_tool("peekaboo", "image", {
   app_target: "frontmost",
   format: "png"
 });
+
+// Capture by Process ID (useful for multiple instances)
+await use_mcp_tool("peekaboo", "image", {
+  app_target: "PID:663",
+  path: "~/Desktop/process.png"
+});
 ```
 
 #### Browser Helper Filtering
@@ -358,6 +364,12 @@ await use_mcp_tool("peekaboo", "list", {
 await use_mcp_tool("peekaboo", "list", {
   item_type: "application_windows",
   app: "Preview"
+});
+
+// List windows by Process ID
+await use_mcp_tool("peekaboo", "list", {
+  item_type: "application_windows",
+  app: "PID:663"
 });
 
 // Check server status
@@ -564,8 +576,9 @@ Captures macOS screen content and optionally analyzes it. Window shadows/frames 
 *   `app_target` (string, optional): Specifies the capture target. If omitted or empty, captures all screens.
     *   Examples:
         *   `"screen:INDEX"`: Captures the screen at the specified zero-based index (e.g., `"screen:0"`). (Note: Index selection from multiple screens is planned for full support in the Swift CLI).
-        *   `"frontmost"`: Aims to capture all windows of the current foreground application. (Note: This is a complex scenario; current implementation may default to screen capture if the exact foreground app cannot be reliably determined by the Node.js layer alone).
+        *   `"frontmost"`: Captures the frontmost window of the currently active application.
         *   `"AppName"`: Captures all windows of the application named `AppName` (e.g., `"Safari"`, `"com.apple.Safari"`). Fuzzy matching is used.
+        *   `"PID:ProcessID"`: Captures all windows of the application with the specified process ID (e.g., `"PID:663"`). Useful when multiple instances of the same app are running.
         *   `"AppName:WINDOW_TITLE:Title"`: Captures the window of `AppName` that has the specified `Title` (e.g., `"Notes:WINDOW_TITLE:My Important Note"`).
         *   `"AppName:WINDOW_INDEX:Index"`: Captures the window of `AppName` at the specified zero-based `Index` (e.g., `"Preview:WINDOW_INDEX:0"` for the frontmost window of Preview).
 *   `path` (string, optional): Base absolute path for saving the captured image(s). If `format` is `"data"` and `path` is also provided, the image is saved to this path (as a PNG) AND Base64 data is returned. If a `question` is provided and `path` is omitted, a temporary path is used for capture, and the file is deleted after analysis.
@@ -604,9 +617,10 @@ For detailed parameter documentation, see [docs/spec.md](./docs/spec.md).
 - **Permission checking**: Automatic verification of required permissions
 
 ### Window Management  
-- **Application listing**: Complete list of running applications
+- **Application listing**: Complete list of running applications with PIDs
 - **Window enumeration**: List all windows for specific apps
-- **Flexible matching**: Find apps by partial name, bundle ID, or PID
+- **Flexible matching**: Find apps by partial name, bundle ID, or Process ID
+- **PID targeting**: Target specific processes using `PID:XXX` syntax
 - **Status monitoring**: Active/inactive status, window counts
 
 ### AI Integration

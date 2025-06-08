@@ -17,6 +17,21 @@ final class ApplicationFinder: Sendable {
         }
 
         let runningApps = NSWorkspace.shared.runningApplications
+        
+        // Check if identifier is a PID
+        if identifier.hasPrefix("PID:") {
+            let pidString = String(identifier.dropFirst(4))
+            guard let pid = Int32(pidString) else {
+                throw ApplicationError.notFound("Invalid PID format: \(identifier)")
+            }
+            
+            if let app = runningApps.first(where: { $0.processIdentifier == pid }) {
+                // Logger.shared.debug("Found application by PID: \(app.localizedName ?? "Unknown") (PID: \(pid))")
+                return app
+            } else {
+                throw ApplicationError.notFound("No application found with PID: \(pid)")
+            }
+        }
 
         // Check for exact bundle ID match first
         if let exactMatch = runningApps.first(where: { $0.bundleIdentifier == identifier }) {

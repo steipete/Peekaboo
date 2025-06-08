@@ -132,6 +132,7 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
         "- 'screen:INDEX': Specific display (e.g., 'screen:0').\\n" +
         "- 'frontmost': All windows of the current foreground app.\\n" +
         "- 'AppName': All windows of 'AppName'.\\n" +
+        "- 'PID:ProcessID': All windows of the application with the specified process ID (e.g., 'PID:663').\\n" +
         "- 'AppName:WINDOW_TITLE:Title': Window of 'AppName' with 'Title'.\\n" +
         "- 'AppName:WINDOW_INDEX:Index': Window of 'AppName' at 'Index'."
       ),
@@ -161,6 +162,7 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
         *   `"screen:INDEX"`: maps to Swift CLI `--mode screen --screen-index INDEX` (custom Swift CLI flag might be needed or logic to select from multi-screen capture).
         *   `"frontmost"`: maps to Swift CLI `--mode frontmost` which uses `NSWorkspace.shared.frontmostApplication` to detect the currently active application and captures its frontmost window.
         *   `"AppName"`: maps to Swift CLI `--app AppName --mode multi`.
+        *   `"PID:ProcessID"`: maps to Swift CLI `--app PID:ProcessID --mode multi` (the Swift CLI's ApplicationFinder handles PID parsing).
         *   `"AppName:WINDOW_TITLE:Title"`: maps to Swift CLI `--app AppName --mode window --window-title Title`.
         *   `"AppName:WINDOW_INDEX:Index"`: maps to Swift CLI `--app AppName --mode window --window-index Index`.
     *   **Browser Helper Filtering:** The Swift CLI automatically filters out browser helper processes when searching for common browsers (chrome, safari, firefox, edge, brave, arc, opera). This prevents matching helper processes like "Google Chrome Helper (Renderer)" instead of the main browser application, which would result in confusing "no capturable windows" errors. The filtering:
