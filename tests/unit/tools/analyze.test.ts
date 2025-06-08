@@ -691,5 +691,63 @@ describe("Analyze Tool", () => {
       expect(mockReadImageAsBase64).toHaveBeenCalledWith("/path/to/fallback.png");
       expect(result.isError).toBeUndefined();
     });
+
+    it("should handle empty provider_config gracefully", async () => {
+      process.env.PEEKABOO_AI_PROVIDERS = "ollama/llava";
+      mockParseAIProviders.mockReturnValue([
+        { provider: "ollama", model: "llava" },
+      ]);
+      mockDetermineProviderAndModel.mockResolvedValue({
+        provider: "ollama",
+        model: "llava",
+      });
+      mockAnalyzeImageWithProvider.mockResolvedValue("Analysis complete");
+
+      const inputWithEmptyProviderConfig: AnalyzeToolInput = {
+        image_path: "/path/to/image.png",
+        question: "What is this?",
+        provider_config: {} as any, // Empty object should be handled gracefully
+      };
+
+      const result = await analyzeToolHandler(inputWithEmptyProviderConfig, mockContext);
+
+      expect(result.isError).toBeUndefined();
+      expect(result.analysis_text).toBe("Analysis complete");
+      // Should call determineProviderAndModel with empty object that gets treated as "auto"
+      expect(mockDetermineProviderAndModel).toHaveBeenCalledWith(
+        {},
+        expect.arrayContaining([{ provider: "ollama", model: "llava" }]),
+        mockLogger,
+      );
+    });
+
+    it("should handle null provider_config gracefully", async () => {
+      process.env.PEEKABOO_AI_PROVIDERS = "ollama/llava";
+      mockParseAIProviders.mockReturnValue([
+        { provider: "ollama", model: "llava" },
+      ]);
+      mockDetermineProviderAndModel.mockResolvedValue({
+        provider: "ollama",
+        model: "llava",
+      });
+      mockAnalyzeImageWithProvider.mockResolvedValue("Analysis complete");
+
+      const inputWithNullProviderConfig: AnalyzeToolInput = {
+        image_path: "/path/to/image.png",
+        question: "What is this?",
+        provider_config: null as any, // null should be handled gracefully
+      };
+
+      const result = await analyzeToolHandler(inputWithNullProviderConfig, mockContext);
+
+      expect(result.isError).toBeUndefined();
+      expect(result.analysis_text).toBe("Analysis complete");
+      // Should call determineProviderAndModel with null
+      expect(mockDetermineProviderAndModel).toHaveBeenCalledWith(
+        null,
+        expect.arrayContaining([{ provider: "ollama", model: "llava" }]),
+        mockLogger,
+      );
+    });
   });
 });
