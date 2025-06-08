@@ -49,6 +49,17 @@ struct ImageCommandTests {
         #expect(command.mode == nil) // mode is optional
         #expect(command.app == "Finder")
     }
+    
+    @Test("Command with PID specifier", .tags(.fast))
+    func imageCommandWithPIDSpecifier() throws {
+        // Test PID-specific capture
+        let command = try ImageCommand.parse([
+            "--app", "PID:1234"
+        ])
+
+        #expect(command.mode == nil) // mode is optional
+        #expect(command.app == "PID:1234")
+    }
 
     @Test("Command with window title", .tags(.fast))
     func imageCommandWithWindowTitle() throws {
