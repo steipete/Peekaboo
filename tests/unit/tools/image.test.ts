@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 import { imageToolHandler } from "../../../src/tools/image";
-import { buildSwiftCliArgs } from "../../../src/utils/image-cli-args";
+import { buildSwiftCliArgs, resolveImagePath } from "../../../src/utils/image-cli-args";
 import {
   executeSwiftCli,
   readImageAsBase64,
@@ -24,13 +24,21 @@ vi.mock("../../../src/utils/peekaboo-cli");
 // Mock fs/promises
 vi.mock("fs/promises");
 
-// Mock os
-vi.mock("os");
+// Mock image-cli-args module
+vi.mock("../../../src/utils/image-cli-args", async () => {
+  const actual = await vi.importActual("../../../src/utils/image-cli-args");
+  return {
+    ...actual,
+    resolveImagePath: vi.fn(),
+  };
+});
 
-// Mock path
-vi.mock("path");
+// Mock image-analysis module
+vi.mock("../../../src/utils/image-analysis", () => ({
+  performAutomaticAnalysis: vi.fn(),
+}));
 
-// Mock AI providers instead of performAutomaticAnalysis
+// Mock AI providers
 vi.mock("../../../src/utils/ai-providers", () => ({
   parseAIProviders: vi.fn(),
   analyzeImageWithProvider: vi.fn(),
@@ -42,56 +50,39 @@ const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<
 const mockReadImageAsBase64 = readImageAsBase64 as vi.MockedFunction<
   typeof readImageAsBase64
 >;
-import { parseAIProviders, analyzeImageWithProvider } from "../../../src/utils/ai-providers";
-const mockParseAIProviders = parseAIProviders as vi.MockedFunction<typeof parseAIProviders>;
-const mockAnalyzeImageWithProvider = analyzeImageWithProvider as vi.MockedFunction<typeof analyzeImageWithProvider>;
+import { performAutomaticAnalysis } from "../../../src/utils/image-analysis";
+const mockPerformAutomaticAnalysis = performAutomaticAnalysis as vi.MockedFunction<typeof performAutomaticAnalysis>;
 
-const mockFsReadFile = fs.readFile as vi.MockedFunction<typeof fs.readFile>;
-const mockFsUnlink = fs.unlink as vi.MockedFunction<typeof fs.unlink>;
-const mockFsMkdtemp = fs.mkdtemp as vi.MockedFunction<typeof fs.mkdtemp>;
-const mockFsRmdir = fs.rmdir as vi.MockedFunction<typeof fs.rmdir>;
-const mockFsWriteFile = fs.writeFile as vi.MockedFunction<typeof fs.writeFile>;
-const mockOsTmpdir = os.tmpdir as vi.MockedFunction<typeof os.tmpdir>;
-const mockPathJoin = path.join as vi.MockedFunction<typeof path.join>;
-const mockPathDirname = path.dirname as vi.MockedFunction<typeof path.dirname>;
+import { parseAIProviders } from "../../../src/utils/ai-providers";
+const mockParseAIProviders = parseAIProviders as vi.MockedFunction<typeof parseAIProviders>;
+
+const mockFsRm = fs.rm as vi.MockedFunction<typeof fs.rm>;
+const mockResolveImagePath = resolveImagePath as vi.MockedFunction<typeof resolveImagePath>;
 
 const mockLogger = pino({ level: "silent" });
 const mockContext = { logger: mockLogger };
 
 const MOCK_TEMP_DIR = "/tmp";
 const MOCK_TEMP_IMAGE_DIR = "/tmp/peekaboo-img-XXXXXX";
-const MOCK_TEMP_IMAGE_PATH = "/tmp/peekaboo-img-XXXXXX/capture.png";
-const MOCK_TEMP_ANALYSIS_DIR = "/tmp/peekaboo-analysis-XXXXXX";
-const MOCK_TEMP_ANALYSIS_PATH = "/tmp/peekaboo-analysis-XXXXXX/image.png";
+const MOCK_SAVED_FILE_PATH = "/tmp/peekaboo-img-XXXXXX/capture.png";
 
 describe("Image Tool", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockOsTmpdir.mockReturnValue(MOCK_TEMP_DIR);
-    mockPathJoin.mockImplementation((...paths) => paths.join("/"));
-    mockPathDirname.mockImplementation((p) => {
-      const lastSlash = p.lastIndexOf("/");
-      return lastSlash === -1 ? "." : p.substring(0, lastSlash);
-    });
-    mockFsUnlink.mockResolvedValue(undefined);
-    mockFsRmdir.mockResolvedValue(undefined);
-    mockFsWriteFile.mockResolvedValue(undefined);
-    mockFsReadFile.mockResolvedValue(Buffer.from("fake-image-data"));
-    mockFsMkdtemp.mockImplementation((prefix) => {
-      if (prefix.includes("peekaboo-img-")) {
-        return Promise.resolve(MOCK_TEMP_IMAGE_DIR);
-      } else if (prefix.includes("peekaboo-analysis-")) {
-        return Promise.resolve(MOCK_TEMP_ANALYSIS_DIR);
-      }
-      return Promise.resolve(prefix + "XXXXXX");
-    });
+    mockFsRm.mockResolvedValue(undefined);
     process.env.PEEKABOO_AI_PROVIDERS = "";
   });
 
   describe("imageToolHandler - Capture Only", () => {
     it("should capture screen with minimal parameters (format omitted, path omitted)", async () => {
+      // Mock resolveImagePath to return a temp directory
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
       const mockResponse = mockSwiftCli.captureImage("screen", {
-        path: MOCK_TEMP_IMAGE_PATH,
+        path: MOCK_SAVED_FILE_PATH,
         format: "png",
       });
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
@@ -102,7 +93,7 @@ describe("Image Tool", () => {
       expect(result.content[0].type).toBe("text");
       expect(result.content[0].text).toContain("Captured 1 image");
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        expect.arrayContaining(["image", "--mode", "screen", "--path", MOCK_TEMP_IMAGE_PATH, "--format", "png"]),
+        expect.arrayContaining(["image", "--mode", "screen", "--path", MOCK_TEMP_IMAGE_DIR, "--format", "png"]),
         mockLogger,
       );
       
@@ -116,11 +107,20 @@ describe("Image Tool", () => {
       expect(result.saved_files).toEqual([]);
       expect(result.analysis_text).toBeUndefined();
       expect(result.model_used).toBeUndefined();
+      
+      // Verify cleanup with fs.rm
+      expect(mockFsRm).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR, { recursive: true, force: true });
     });
 
     it("should capture screen with format: 'data'", async () => {
+      // Mock resolveImagePath to return a temp directory for format: "data"
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
       const mockResponse = mockSwiftCli.captureImage("screen", {
-        path: MOCK_TEMP_IMAGE_PATH,
+        path: MOCK_SAVED_FILE_PATH,
         format: "png",
       });
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
@@ -138,10 +138,19 @@ describe("Image Tool", () => {
         ]),
       );
       expect(result.saved_files).toEqual([]);
+      
+      // Verify cleanup
+      expect(mockFsRm).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR, { recursive: true, force: true });
     });
 
     it("should save file and return base64 when format: 'data' with path", async () => {
       const userPath = "/user/test.png";
+      // Mock resolveImagePath to return the user path (no temp dir)
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: userPath,
+        tempDirUsed: undefined,
+      });
+      
       const mockSavedFile: SavedFile = {
         path: userPath,
         mime_type: "image/png",
@@ -171,10 +180,19 @@ describe("Image Tool", () => {
         ]),
       );
       expect(result.saved_files).toEqual([mockSavedFile]);
+      
+      // No cleanup when path is provided
+      expect(mockFsRm).not.toHaveBeenCalled();
     });
 
     it("should save file without base64 when format: 'png' with path", async () => {
       const userPath = "/user/test.png";
+      // Mock resolveImagePath to return the user path (no temp dir)
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: userPath,
+        tempDirUsed: undefined,
+      });
+      
       const mockSavedFile: SavedFile = {
         path: userPath,
         mime_type: "image/png",
@@ -213,6 +231,12 @@ describe("Image Tool", () => {
     });
 
     it("should handle app_target: 'screen:1' with --screen-index", async () => {
+      // Mock resolveImagePath for minimal case
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
       const mockResponse = mockSwiftCli.captureImage("screen", {
         item_label: "Display 0 (Index 1)",
       });
@@ -230,6 +254,12 @@ describe("Image Tool", () => {
     });
 
     it("should handle app_target: 'screen:abc' with warning about invalid index", async () => {
+      // Mock resolveImagePath for minimal case
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
       const mockResponse = mockSwiftCli.captureImage("screen", {});
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
 
@@ -255,6 +285,12 @@ describe("Image Tool", () => {
     });
 
     it("should handle app_target: 'frontmost' with warning", async () => {
+      // Mock resolveImagePath for minimal case
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
       const mockResponse = mockSwiftCli.captureImage("screen", {});
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
 
@@ -275,6 +311,12 @@ describe("Image Tool", () => {
     });
 
     it("should handle app_target: 'AppName'", async () => {
+      // Mock resolveImagePath for minimal case
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
       const mockResponse = mockSwiftCli.captureImage("Safari", {});
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
 
@@ -290,6 +332,12 @@ describe("Image Tool", () => {
     });
 
     it("should handle app_target: 'AppName:WINDOW_TITLE:Title'", async () => {
+      // Mock resolveImagePath for minimal case
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
       const mockResponse = mockSwiftCli.captureImage("Safari", {});
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
 
@@ -309,6 +357,12 @@ describe("Image Tool", () => {
     });
 
     it("should handle app_target: 'AppName:WINDOW_INDEX:2'", async () => {
+      // Mock resolveImagePath for minimal case
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
       const mockResponse = mockSwiftCli.captureImage("Safari", {});
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
 
@@ -328,6 +382,12 @@ describe("Image Tool", () => {
     });
 
     it("should handle capture_focus parameter", async () => {
+      // Mock resolveImagePath for minimal case
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
       const mockResponse = mockSwiftCli.captureImage("screen", {});
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
 
@@ -352,14 +412,23 @@ describe("Image Tool", () => {
       mockParseAIProviders.mockReturnValue([
         { provider: "ollama", model: "llava:latest" }
       ]);
-      mockAnalyzeImageWithProvider.mockResolvedValue(MOCK_ANALYSIS_RESPONSE);
+      mockPerformAutomaticAnalysis.mockResolvedValue({
+        analysisText: MOCK_ANALYSIS_RESPONSE,
+        modelUsed: MOCK_MODEL_USED,
+      });
       mockReadImageAsBase64.mockResolvedValue("base64dataforanalysis");
       process.env.PEEKABOO_AI_PROVIDERS = "ollama/llava:latest";
     });
 
     it("should capture, analyze, and delete temp image if no path provided", async () => {
+      // Mock resolveImagePath to return temp directory when question is asked
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
       const mockCliResponse = mockSwiftCli.captureImage("screen", {
-        path: MOCK_TEMP_IMAGE_PATH,
+        path: MOCK_SAVED_FILE_PATH,
         format: "png",
       });
       mockExecuteSwiftCli.mockResolvedValue(mockCliResponse);
@@ -369,21 +438,15 @@ describe("Image Tool", () => {
         mockContext,
       );
 
-      // The new implementation creates a temp dir first, then joins with capture.png
-      expect(mockPathJoin).toHaveBeenCalledWith(
-        expect.stringMatching(/^\/tmp\/peekaboo-img-/),
-        "capture.png",
-      );
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        expect.arrayContaining(["--path", MOCK_TEMP_IMAGE_PATH]),
+        expect.arrayContaining(["--path", MOCK_TEMP_IMAGE_DIR]),
         mockLogger,
       );
-      expect(mockAnalyzeImageWithProvider).toHaveBeenCalledWith(
-        expect.objectContaining({ provider: "ollama", model: "llava:latest" }),
-        MOCK_TEMP_ANALYSIS_PATH,
+      expect(mockPerformAutomaticAnalysis).toHaveBeenCalledWith(
         "base64dataforanalysis",
         MOCK_QUESTION,
         mockLogger,
+        "ollama/llava:latest",
       );
 
       expect(result.analysis_text).toBe(MOCK_ANALYSIS_RESPONSE);
@@ -406,13 +469,18 @@ describe("Image Tool", () => {
       expect(
         result.content.some((item) => item.type === "image" && item.data),
       ).toBe(false);
-      expect(mockFsUnlink).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_PATH);
-      expect(mockFsRmdir).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR);
+      expect(mockFsRm).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR, { recursive: true, force: true });
       expect(result.isError).toBeUndefined();
     });
 
     it("should capture, analyze, and keep image if path IS provided", async () => {
       const USER_PATH = "/user/specified/path.jpg";
+      // Mock resolveImagePath to return the user-provided path (no temp dir)
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: USER_PATH,
+        tempDirUsed: undefined,
+      });
+      
       const mockCliResponse = mockSwiftCli.captureImage("screen", {
         path: USER_PATH,
         format: "jpg",
@@ -428,37 +496,36 @@ describe("Image Tool", () => {
         mockContext,
       );
 
-      // Path.join is called for the analysis temp path
-      expect(mockPathJoin).toHaveBeenCalledWith(
-        expect.stringMatching(/^\/tmp\/peekaboo-analysis-/),
-        "image.png",
-      );
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["--path", USER_PATH, "--format", "jpg"]),
         mockLogger,
       );
-      expect(mockAnalyzeImageWithProvider).toHaveBeenCalledWith(
-        expect.objectContaining({ provider: "ollama", model: "llava:latest" }),
-        MOCK_TEMP_ANALYSIS_PATH,
+      expect(mockPerformAutomaticAnalysis).toHaveBeenCalledWith(
         "base64dataforanalysis",
         MOCK_QUESTION,
         mockLogger,
+        "ollama/llava:latest",
       );
 
       expect(result.analysis_text).toBe(MOCK_ANALYSIS_RESPONSE);
       expect(result.saved_files).toEqual(mockCliResponse.data?.saved_files);
-      // Analysis temp file is cleaned up
-      expect(mockFsUnlink).toHaveBeenCalledWith(MOCK_TEMP_ANALYSIS_PATH);
-      expect(mockFsRmdir).toHaveBeenCalledWith(MOCK_TEMP_ANALYSIS_DIR);
+      // No cleanup when path is provided
+      expect(mockFsRm).not.toHaveBeenCalled();
       expect(result.isError).toBeUndefined();
     });
 
     it("should handle failure in AI provider", async () => {
-      mockAnalyzeImageWithProvider.mockRejectedValue(
-        new Error("AI analysis failed"),
-      );
+      // Mock resolveImagePath to return temp directory when question is asked
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      mockPerformAutomaticAnalysis.mockResolvedValue({
+        error: "Analysis failed: All configured AI providers failed or are unavailable",
+      });
       const mockCliResponse = mockSwiftCli.captureImage("screen", {
-        path: MOCK_TEMP_IMAGE_PATH,
+        path: MOCK_SAVED_FILE_PATH,
         format: "png",
       });
       mockExecuteSwiftCli.mockResolvedValue(mockCliResponse);
@@ -468,19 +535,53 @@ describe("Image Tool", () => {
         mockContext,
       );
 
-      expect(result.analysis_text).toContain(
+      expect(result.analysis_text).toBe(
         "Analysis failed: All configured AI providers failed or are unavailable",
       );
       expect(result.isError).toBe(true);
       expect(result.model_used).toBeUndefined();
-      expect(mockFsUnlink).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_PATH);
-      expect(mockFsRmdir).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR);
+      expect(mockFsRm).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR, { recursive: true, force: true });
+    });
+
+    it("should handle when AI analysis is not configured", async () => {
+      // Mock resolveImagePath to return temp directory when question is asked
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      mockParseAIProviders.mockReturnValue([]);
+      process.env.PEEKABOO_AI_PROVIDERS = "";
+      const mockCliResponse = mockSwiftCli.captureImage("screen", {
+        path: MOCK_SAVED_FILE_PATH,
+        format: "png",
+      });
+      mockExecuteSwiftCli.mockResolvedValue(mockCliResponse);
+
+      const result = await imageToolHandler(
+        { question: MOCK_QUESTION },
+        mockContext,
+      );
+
+      expect(result.analysis_text).toBe(
+        "Analysis skipped: AI analysis not configured on this server (PEEKABOO_AI_PROVIDERS is not set or empty).",
+      );
+      expect(result.isError).toBe(true);
     });
 
     it("should handle when AI provider returns empty analysisText", async () => {
-      mockAnalyzeImageWithProvider.mockResolvedValue("");
+      // Mock resolveImagePath to return temp directory when question is asked
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      mockPerformAutomaticAnalysis.mockResolvedValue({
+        analysisText: "",
+        modelUsed: MOCK_MODEL_USED,
+      });
       const mockCliResponse = mockSwiftCli.captureImage("screen", {
-        path: MOCK_TEMP_IMAGE_PATH,
+        path: MOCK_SAVED_FILE_PATH,
         format: "png",
       });
       mockExecuteSwiftCli.mockResolvedValue(mockCliResponse);
@@ -496,8 +597,14 @@ describe("Image Tool", () => {
     });
 
     it("should NOT return base64 data in content if question is asked", async () => {
+      // Mock resolveImagePath to return temp directory when question is asked
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
       const mockCliResponse = mockSwiftCli.captureImage("screen", {
-        path: MOCK_TEMP_IMAGE_PATH,
+        path: MOCK_SAVED_FILE_PATH,
         format: "png",
       });
       mockExecuteSwiftCli.mockResolvedValue(mockCliResponse);
@@ -515,11 +622,89 @@ describe("Image Tool", () => {
       ).toBe(false);
       expect(result.analysis_text).toBe(MOCK_ANALYSIS_RESPONSE);
     });
+
+    it("should analyze all images when capture results in multiple files", async () => {
+      // Mock resolveImagePath to return a temporary directory path
+      mockResolveImagePath.mockResolvedValue({
+        effectivePath: MOCK_TEMP_IMAGE_DIR,
+        tempDirUsed: MOCK_TEMP_IMAGE_DIR,
+      });
+      
+      // Mock executeSwiftCli with two saved files
+      const mockFile1: SavedFile = {
+        path: "/tmp/peekaboo-img-XXXXXX/window1.png",
+        mime_type: "image/png",
+        item_label: "Window 1",
+      };
+      const mockFile2: SavedFile = {
+        path: "/tmp/peekaboo-img-XXXXXX/window2.png",
+        mime_type: "image/png",
+        item_label: "Window 2",
+      };
+      const mockResponse = {
+        success: true,
+        data: { saved_files: [mockFile1, mockFile2] },
+        messages: ["Captured 2 windows"],
+      };
+      mockExecuteSwiftCli.mockResolvedValue(mockResponse);
+      
+      // Mock readImageAsBase64 to return different base64 strings
+      mockReadImageAsBase64
+        .mockResolvedValueOnce("base64dataforwindow1")
+        .mockResolvedValueOnce("base64dataforwindow2");
+      
+      // Mock performAutomaticAnalysis to return different analysis for each call
+      mockPerformAutomaticAnalysis
+        .mockResolvedValueOnce({
+          analysisText: "Analysis for window 1.",
+          modelUsed: MOCK_MODEL_USED,
+        })
+        .mockResolvedValueOnce({
+          analysisText: "Analysis for window 2.",
+          modelUsed: MOCK_MODEL_USED,
+        });
+
+      // Call imageToolHandler with a question
+      const result = await imageToolHandler(
+        { question: MOCK_QUESTION },
+        mockContext,
+      );
+
+      // Verify performAutomaticAnalysis was called twice
+      expect(mockPerformAutomaticAnalysis).toHaveBeenCalledTimes(2);
+      expect(mockPerformAutomaticAnalysis).toHaveBeenNthCalledWith(
+        1,
+        "base64dataforwindow1",
+        MOCK_QUESTION,
+        mockLogger,
+        "ollama/llava:latest",
+      );
+      expect(mockPerformAutomaticAnalysis).toHaveBeenNthCalledWith(
+        2,
+        "base64dataforwindow2",
+        MOCK_QUESTION,
+        mockLogger,
+        "ollama/llava:latest",
+      );
+      
+      // Verify readImageAsBase64 was called twice
+      expect(mockReadImageAsBase64).toHaveBeenCalledTimes(2);
+      expect(mockReadImageAsBase64).toHaveBeenNthCalledWith(1, mockFile1.path);
+      expect(mockReadImageAsBase64).toHaveBeenNthCalledWith(2, mockFile2.path);
+      
+      // Verify the final analysis_text contains both results with headers
+      expect(result.analysis_text).toBe(
+        "Analysis for Window 1:\nAnalysis for window 1.\n\nAnalysis for Window 2:\nAnalysis for window 2."
+      );
+      
+      // Verify that the temporary directory is cleaned up
+      expect(mockFsRm).toHaveBeenCalledWith(MOCK_TEMP_IMAGE_DIR, { recursive: true, force: true });
+    });
   });
 
   describe("buildSwiftCliArgs", () => {
     it("should default to screen mode if no app_target", () => {
-      const args = buildSwiftCliArgs({});
+      const args = buildSwiftCliArgs({}, undefined);
       expect(args).toEqual([
         "image",
         "--mode",
@@ -532,7 +717,7 @@ describe("Image Tool", () => {
     });
 
     it("should handle empty app_target", () => {
-      const args = buildSwiftCliArgs({ app_target: "" });
+      const args = buildSwiftCliArgs({ app_target: "" }, undefined);
       expect(args).toEqual([
         "image",
         "--mode",
@@ -545,7 +730,7 @@ describe("Image Tool", () => {
     });
 
     it("should handle app_target: 'screen:1' with --screen-index", () => {
-      const args = buildSwiftCliArgs({ app_target: "screen:1" }, mockLogger);
+      const args = buildSwiftCliArgs({ app_target: "screen:1" }, undefined, undefined, mockLogger);
       expect(args).toEqual(
         expect.arrayContaining(["--mode", "screen", "--screen-index", "1"]),
       );
@@ -553,7 +738,7 @@ describe("Image Tool", () => {
     });
 
     it("should handle app_target: 'screen:0' with --screen-index", () => {
-      const args = buildSwiftCliArgs({ app_target: "screen:0" }, mockLogger);
+      const args = buildSwiftCliArgs({ app_target: "screen:0" }, undefined, undefined, mockLogger);
       expect(args).toEqual(
         expect.arrayContaining(["--mode", "screen", "--screen-index", "0"]),
       );
@@ -562,7 +747,7 @@ describe("Image Tool", () => {
 
     it("should handle app_target: 'screen:abc' with warning", () => {
       const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
-      const args = buildSwiftCliArgs({ app_target: "screen:abc" }, mockLogger);
+      const args = buildSwiftCliArgs({ app_target: "screen:abc" }, undefined, undefined, mockLogger);
       expect(args).toEqual(
         expect.arrayContaining(["--mode", "screen"]),
       );
@@ -576,7 +761,7 @@ describe("Image Tool", () => {
 
     it("should handle app_target: 'frontmost'", () => {
       const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
-      const args = buildSwiftCliArgs({ app_target: "frontmost" }, mockLogger);
+      const args = buildSwiftCliArgs({ app_target: "frontmost" }, undefined, undefined, mockLogger);
       expect(args).toEqual(
         expect.arrayContaining(["--mode", "screen"]),
       );
@@ -585,14 +770,14 @@ describe("Image Tool", () => {
     });
 
     it("should handle simple app name", () => {
-      const args = buildSwiftCliArgs({ app_target: "Safari" });
+      const args = buildSwiftCliArgs({ app_target: "Safari" }, undefined);
       expect(args).toEqual(
         expect.arrayContaining(["--app", "Safari", "--mode", "multi"]),
       );
     });
 
     it("should handle app with window title", () => {
-      const args = buildSwiftCliArgs({ app_target: "Safari:WINDOW_TITLE:Apple Website" });
+      const args = buildSwiftCliArgs({ app_target: "Safari:WINDOW_TITLE:Apple Website" }, undefined);
       expect(args).toEqual(
         expect.arrayContaining([
           "--app", "Safari",
@@ -603,7 +788,7 @@ describe("Image Tool", () => {
     });
 
     it("should handle app with window index", () => {
-      const args = buildSwiftCliArgs({ app_target: "Terminal:WINDOW_INDEX:2" });
+      const args = buildSwiftCliArgs({ app_target: "Terminal:WINDOW_INDEX:2" }, undefined);
       expect(args).toEqual(
         expect.arrayContaining([
           "--app", "Terminal",
@@ -614,45 +799,46 @@ describe("Image Tool", () => {
     });
 
     it("should include path when provided", () => {
-      const args = buildSwiftCliArgs({ path: "/tmp/image.jpg" });
+      const args = buildSwiftCliArgs({ path: "/tmp/image.jpg" }, "/tmp/image.jpg");
       expect(args).toEqual(
         expect.arrayContaining(["--path", "/tmp/image.jpg"]),
       );
     });
 
     it("should handle format: 'data' as png for Swift CLI", () => {
-      const args = buildSwiftCliArgs({ format: "data" });
+      const args = buildSwiftCliArgs({ format: "data" }, undefined);
       expect(args).toEqual(expect.arrayContaining(["--format", "png"]));
     });
 
     it("should include format jpg", () => {
-      const args = buildSwiftCliArgs({ format: "jpg" });
+      const args = buildSwiftCliArgs({ format: "jpg" }, undefined);
       expect(args).toEqual(expect.arrayContaining(["--format", "jpg"]));
     });
 
     it("should include capture_focus", () => {
-      const args = buildSwiftCliArgs({ capture_focus: "foreground" });
+      const args = buildSwiftCliArgs({ capture_focus: "foreground" }, undefined);
       expect(args).toEqual(
         expect.arrayContaining(["--capture-focus", "foreground"]),
       );
     });
 
-    it("should use PEEKABOO_DEFAULT_SAVE_PATH if no path and no question", () => {
-      process.env.PEEKABOO_DEFAULT_SAVE_PATH = "/default/env.png";
-      const args = buildSwiftCliArgs({});
-      expect(args).toContain("--path");
-      expect(args).toContain("/default/env.png");
-      delete process.env.PEEKABOO_DEFAULT_SAVE_PATH;
+    it("should default to background focus when capture_focus is an empty string", () => {
+      const args = buildSwiftCliArgs({ capture_focus: "" }, undefined);
+      expect(args).toEqual(
+        expect.arrayContaining(["--capture-focus", "background"]),
+      );
     });
 
-    it("should NOT use PEEKABOO_DEFAULT_SAVE_PATH if effectivePath is provided", () => {
-      process.env.PEEKABOO_DEFAULT_SAVE_PATH = "/default/env.png";
-      // When effectivePath is provided (which happens when question is asked), it overrides PEEKABOO_DEFAULT_SAVE_PATH
-      const args = buildSwiftCliArgs({}, undefined, "/tmp/temp-path.png");
+    it("should include effectivePath when provided", () => {
+      const args = buildSwiftCliArgs({ format: "png" }, "/some/path.png");
       expect(args).toContain("--path");
-      expect(args).toContain("/tmp/temp-path.png");
-      expect(args).not.toContain("/default/env.png");
-      delete process.env.PEEKABOO_DEFAULT_SAVE_PATH;
+      expect(args).toContain("/some/path.png");
+    });
+
+    it("should handle effectivePath for temp directory", () => {
+      const args = buildSwiftCliArgs({}, "/tmp/temp-path");
+      expect(args).toContain("--path");
+      expect(args).toContain("/tmp/temp-path");
     });
 
     it("should handle all options together", () => {
@@ -662,7 +848,7 @@ describe("Image Tool", () => {
         format: "png",
         capture_focus: "foreground",
       };
-      const args = buildSwiftCliArgs(input);
+      const args = buildSwiftCliArgs(input, "/users/test/file.png");
       expect(args).toEqual([
         "image",
         "--app",

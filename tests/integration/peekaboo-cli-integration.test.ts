@@ -304,9 +304,17 @@ describe("Swift CLI Integration Tests", () => {
           successResponse.saved_files &&
           successResponse.saved_files.length > 0
         ) {
-          expect(successResponse.saved_files[0]?.path).toBe(tempImagePath);
+          // With new path handling, the CLI appends screen identifiers for multiple screen capture
+          // The actual path will be something like tempImagePath with _1_timestamp added
+          const actualPath = successResponse.saved_files[0]?.path;
+          expect(actualPath).toBeDefined();
+          // Check that the path starts with the base path (without extension) and ends with .png
+          const basePath = tempImagePath.replace(/\.png$/, '');
+          expect(actualPath).toMatch(new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_\\d+_\\d{8}_\\d{6}\\.png$`));
+          
+          // Verify the actual file exists at the returned path
+          await expect(fs.access(actualPath!)).resolves.toBeUndefined();
         }
-        await expect(fs.access(tempImagePath)).resolves.toBeUndefined();
       }
     }, 20000);
   });
