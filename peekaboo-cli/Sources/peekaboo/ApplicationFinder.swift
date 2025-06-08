@@ -144,6 +144,11 @@ class ApplicationFinder {
             // Count windows for this app
             let windowCount = countWindowsForApp(pid: app.processIdentifier)
 
+            // Only include applications that have one or more windows.
+            guard windowCount > 0 else {
+                continue
+            }
+
             let appInfo = ApplicationInfo(
                 app_name: appName,
                 bundle_id: app.bundleIdentifier ?? "",

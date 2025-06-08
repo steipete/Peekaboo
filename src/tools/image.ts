@@ -80,14 +80,20 @@ export async function imageToolHandler(
       !imageData.saved_files ||
       imageData.saved_files.length === 0
     ) {
+      const errorMessage = [
+        `Image capture failed. The tool tried to save the image to "${effectivePath}".`,
+        "The operation did not complete successfully.",
+        "Please check if you have write permissions for this location.",
+      ].join(" ");
       logger.error(
+        { path: effectivePath },
         "Swift CLI reported success but no data/saved_files were returned.",
       );
       return {
         content: [
           {
             type: "text",
-            text: "Image capture failed: Invalid response from capture utility (no saved files data).",
+            text: errorMessage,
           },
         ],
         isError: true,

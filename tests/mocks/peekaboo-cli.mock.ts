@@ -28,13 +28,6 @@ export const mockSwiftCli = {
             is_active: false,
             window_count: 1,
           },
-          {
-            app_name: "Terminal",
-            bundle_id: "com.apple.Terminal",
-            pid: 9012,
-            is_active: false,
-            window_count: 3,
-          },
         ],
       } as ApplicationListData,
       messages: [],

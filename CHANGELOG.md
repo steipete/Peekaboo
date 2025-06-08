@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.13] - 2025-01-08
+
+### Added
+- Comprehensive local-only test framework for testing actual screenshot functionality
+- SwiftUI test host application for controlled testing environment
+- Screenshot validation tests including content validation and visual regression
+- Performance benchmarking tests for capture operations
+- Multi-display capture tests
+- Test infrastructure for permission dialog testing
+
+### Improved
+- The `list` tool with `item_type: 'running_applications'` now intelligently filters its results to only show applications that have one or more windows. This provides a cleaner, more relevant list for a screenshot utility by default, hiding background processes that have no user interface.
+- Test coverage with local-only tests that can validate actual capture functionality
+- Test organization with new tags: `localOnly`, `screenshot`, `multiWindow`, `focus`
+
+### Fixed
+- Fixed a bug where calling the `image` tool without any arguments would incorrectly result in a "Failed to write to file" error. The tool now correctly creates and uses a temporary file, returning the capture as Base64 data as intended.
+- The `list` tool's input validation is now more lenient. It will no longer error when an empty `include_window_details: []` array is provided for an `item_type` other than `application_windows`.
+
 ## [1.0.0-beta.12] - 2025-01-08
 
 ### Added

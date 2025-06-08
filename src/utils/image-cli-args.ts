@@ -79,7 +79,7 @@ export function buildSwiftCliArgs(
     args.push("--mode", "multi");
   }
 
-  // Add path if provided
+  // Add path if provided. This is crucial for temporary files.
   if (actualPath) {
     args.push("--path", actualPath);
   } else if (process.env.PEEKABOO_DEFAULT_SAVE_PATH && !input.question) {

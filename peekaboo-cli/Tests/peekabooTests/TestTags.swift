@@ -14,4 +14,10 @@ extension Tag {
     @Tag static var performance: Self
     @Tag static var concurrency: Self
     @Tag static var memory: Self
+    
+    // Local-only test tags
+    @Tag static var localOnly: Self
+    @Tag static var screenshot: Self
+    @Tag static var multiWindow: Self
+    @Tag static var focus: Self
 }

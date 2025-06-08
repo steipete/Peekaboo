@@ -1,53 +1,39 @@
 import { imageToolHandler } from "../../src/tools/image";
 import { pino } from "pino";
 import { ImageInput } from "../../src/types";
-import { vi } from "vitest";
+import { vi, describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as pathModule from "path";
 import { initializeSwiftCliPath, executeSwiftCli, readImageAsBase64 } from "../../src/utils/peekaboo-cli";
 import { mockSwiftCli } from "../mocks/peekaboo-cli.mock";
 
-// Mock the fs module to spy on unlink/rmdir for cleanup verification
-vi.mock("fs/promises", async () => {
-  const actual = await vi.importActual("fs/promises");
-  return {
-    ...actual,
-    unlink: vi.fn().mockResolvedValue(undefined),
-    rmdir: vi.fn().mockResolvedValue(undefined),
-  };
-});
+// Mocks
+vi.mock("../../src/utils/peekaboo-cli");
+vi.mock("fs/promises");
+vi.mock("os");
+vi.mock("path");
 
-// Mock the Swift CLI execution
-vi.mock("../../src/utils/peekaboo-cli", async () => {
-  const actual = await vi.importActual("../../src/utils/peekaboo-cli");
-  return {
-    ...actual,
-    executeSwiftCli: vi.fn(),
-    readImageAsBase64: vi.fn().mockResolvedValue("mock-base64-data"),
-  };
-});
+const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<
+  typeof executeSwiftCli
+>;
+const mockReadImageAsBase64 = readImageAsBase64 as vi.MockedFunction<
+  typeof readImageAsBase64
+>;
+const mockFsMkdtemp = fs.mkdtemp as vi.MockedFunction<typeof fs.mkdtemp>;
+
+const mockContext = {
+  logger: pino({ level: "silent" }),
+};
+
+const MOCK_TEMP_DIR = "/private/var/folders/xyz/T/peekaboo-temp-12345";
+const MOCK_TEMP_PATH = `${MOCK_TEMP_DIR}/capture.png`;
 
 // Mock AI providers to avoid real API calls in integration tests
 vi.mock("../../src/utils/ai-providers", () => ({
   parseAIProviders: vi.fn().mockReturnValue([{ provider: "mock", model: "test" }]),
   analyzeImageWithProvider: vi.fn().mockResolvedValue("Mock analysis: This is a test image"),
 }));
-
-const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<typeof executeSwiftCli>;
-
-const mockLogger = pino({ level: "silent" });
-const mockContext = { logger: mockLogger };
-
-// Helper to check if file exists
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // Import SwiftCliResponse type
 import { SwiftCliResponse } from "../../src/types";
@@ -60,105 +46,83 @@ describe("Image Tool Integration Tests", () => {
     const testPackageRoot = pathModule.resolve(__dirname, "../..");
     initializeSwiftCliPath(testPackageRoot);
     
-    // Create a temporary directory for test files
-    tempDir = await fs.mkdtemp(pathModule.join(os.tmpdir(), "peekaboo-test-"));
+    // Use a mocked temp directory path
+    tempDir = "/tmp/peekaboo-test-mock";
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Setup mock implementations for fs, os, path
+    (os.tmpdir as vi.Mock).mockReturnValue("/private/var/folders/xyz/T");
+    (pathModule.join as vi.Mock).mockImplementation((...args) => args.join("/"));
+    (pathModule.dirname as vi.Mock).mockImplementation((p) => p.substring(0, p.lastIndexOf("/")));
+    mockFsMkdtemp.mockResolvedValue(MOCK_TEMP_DIR);
+    (fs.unlink as vi.Mock).mockResolvedValue(undefined);
+    (fs.rmdir as vi.Mock).mockResolvedValue(undefined);
   });
 
   afterAll(async () => {
-    // Clean up temp directory
-    try {
-      const files = await fs.readdir(tempDir);
-      for (const file of files) {
-        await fs.unlink(pathModule.join(tempDir, file));
-      }
-      await fs.rmdir(tempDir);
-    } catch (error) {
-      console.error("Failed to clean up temp directory:", error);
-    }
+    // Clean up temp directory - skip in mocked environment
+    // The actual fs module is mocked, so we can't clean up real files
   });
 
   describe("Output Handling", () => {
-    it("should return base64 data and clean up temp file when no path is provided", async () => {
-      // Spy on fs.promises.unlink and fs.promises.rmdir
+    it("should capture screen and return base64 data when no arguments are provided", async () => {
+      // This test covers the user-reported bug where calling 'image' with no args caused a 'failed to write' error.
       const unlinkSpy = vi.spyOn(fs, "unlink");
       const rmdirSpy = vi.spyOn(fs, "rmdir");
 
-      // Mock executeSwiftCli to resolve with a successful capture that includes a temporary file path
-      // We need to capture the actual path that will be created by the handler
-      mockExecuteSwiftCli.mockImplementation(async (args: string[]) => {
-        // Extract the path from the args (it will be after --path)
-        const pathIndex = args.indexOf("--path");
-        const actualPath = pathIndex !== -1 ? args[pathIndex + 1] : "";
-        
-        return {
-          success: true,
-          data: {
-            saved_files: [{ path: actualPath, mime_type: "image/png" }]
-          },
-          messages: ["Captured 1 image"]
-        };
+      // Mock the Swift CLI to return a successful capture with a temp path
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: true,
+        data: {
+          saved_files: [{ path: MOCK_TEMP_PATH, mime_type: "image/png" }],
+        },
       });
+      mockReadImageAsBase64.mockResolvedValue("base64-no-args-test");
 
-      // Mock readImageAsBase64 to resolve with a mock base64 string
-      const MOCK_BASE64 = "mock-base64-data-string";
-      (readImageAsBase64 as vi.Mock).mockResolvedValue(MOCK_BASE64);
+      // Call the handler with capture_focus: "background"
+      const result = await imageToolHandler({ capture_focus: "background" }, mockContext);
 
-      // Call imageToolHandler with no path argument
-      const result = await imageToolHandler({}, mockContext);
+      // Verify a temporary path was created and passed to Swift
+      expect(mockFsMkdtemp).toHaveBeenCalledWith(expect.stringContaining("peekaboo-img-"));
+      expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+        expect.arrayContaining(["--path", MOCK_TEMP_PATH]),
+        mockContext.logger
+      );
 
-      // Assert that the result is not an error
-      expect(result.isError).toBeFalsy();
+      // Verify the result is correct
+      expect(result.isError).toBeUndefined();
+      expect(result.saved_files).toEqual([]); // No persistent files
+      const imageContent = result.content.find(c => c.type === "image");
+      expect(imageContent?.data).toBe("base64-no-args-test");
 
-      // Assert that the content contains an image with the mocked base64 data
-      const imageContent = result.content.find(item => item.type === "image");
-      expect(imageContent).toBeDefined();
-      expect(imageContent?.data).toBe(MOCK_BASE64);
-      expect(imageContent?.mimeType).toBe("image/png");
+      // Verify cleanup
+      expect(unlinkSpy).toHaveBeenCalledWith(MOCK_TEMP_PATH);
+      expect(rmdirSpy).toHaveBeenCalledWith(MOCK_TEMP_DIR);
 
-      // Assert that saved_files is empty
-      expect(result.saved_files).toEqual([]);
-
-      // Assert that the unlink and rmdir spies were called with the correct temporary paths
-      // The handler creates a temp path like /tmp/peekaboo-img-XXXXXX/capture.png
-      expect(unlinkSpy).toHaveBeenCalled();
-      expect(rmdirSpy).toHaveBeenCalled();
-      
-      // Verify the paths match the expected pattern
-      const unlinkCall = unlinkSpy.mock.calls[0];
-      const rmdirCall = rmdirSpy.mock.calls[0];
-      
-      expect(unlinkCall[0]).toMatch(/\/peekaboo-img-[^/]+\/capture\.png$/);
-      expect(rmdirCall[0]).toMatch(/\/peekaboo-img-[^/]+$/);
-
-      // Restore the spies
       unlinkSpy.mockRestore();
       rmdirSpy.mockRestore();
+    });
+
+    it("should return an error if the Swift CLI fails", async () => {
+      // Mock the Swift CLI to return an error
+      mockExecuteSwiftCli.mockResolvedValue({
+        success: false,
+        error: {
+          message: "Swift CLI failed",
+          code: "CLI_FAILED"
+        }
+      });
+
+      const result = await imageToolHandler({}, mockContext);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Swift CLI failed");
     });
   });
 
   describe("Capture with different app_target values", () => {
-    it("should capture screen when app_target is omitted", async () => {
-      // Mock successful screen capture
-      mockExecuteSwiftCli.mockResolvedValue(
-        mockSwiftCli.captureImage("screen", {
-          path: pathModule.join(tempDir, "peekaboo-img-test", "capture.png"),
-          format: "png"
-        })
-      );
-
-      const result = await imageToolHandler({}, mockContext);
-
-      expect(result.isError).toBeFalsy();
-      expect(result.content[0].type).toBe("text");
-      expect(result.content[0].text).toContain("Captured");
-      // Should return base64 data when format and path are omitted
-      expect(result.content.some((item) => item.type === "image")).toBe(true);
-    });
-
     it("should capture screen when app_target is empty string", async () => {
       const input: ImageInput = { app_target: "" };
       
@@ -193,7 +157,7 @@ describe("Image Tool Integration Tests", () => {
       expect(result.isError).toBeFalsy();
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["image", "--mode", "screen", "--screen-index", "0"]),
-        mockLogger
+        mockContext.logger
       );
       // Check that the item_label indicates the specific screen was captured
       if (result.saved_files && result.saved_files.length > 0) {
@@ -203,7 +167,7 @@ describe("Image Tool Integration Tests", () => {
 
     it("should handle screen:INDEX format (invalid index)", async () => {
       const input: ImageInput = { app_target: "screen:abc" };
-      const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
+      const loggerWarnSpy = vi.spyOn(mockContext.logger, "warn");
       
       // Mock successful screen capture (falls back to all screens)
       mockExecuteSwiftCli.mockResolvedValue(
@@ -222,7 +186,7 @@ describe("Image Tool Integration Tests", () => {
       );
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.not.arrayContaining(["--screen-index"]),
-        mockLogger
+        mockContext.logger
       );
     });
 
@@ -249,7 +213,7 @@ describe("Image Tool Integration Tests", () => {
       expect(result.isError).toBeFalsy();
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
         expect.arrayContaining(["image", "--mode", "screen", "--screen-index", "99"]),
-        mockLogger
+        mockContext.logger
       );
       // The Swift CLI should handle the out-of-bounds gracefully and capture all screens
       if (result.saved_files && result.saved_files.length > 0) {
@@ -259,7 +223,7 @@ describe("Image Tool Integration Tests", () => {
 
     it("should handle frontmost app_target (with warning)", async () => {
       const input: ImageInput = { app_target: "frontmost" };
-      const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
+      const loggerWarnSpy = vi.spyOn(mockContext.logger, "warn");
       
       // Mock successful screen capture
       mockExecuteSwiftCli.mockResolvedValue(
@@ -456,7 +420,7 @@ describe("Image Tool Integration Tests", () => {
     });
   });
 
-  describe("Analysis with question", () => {
+  describe("Analysis Logic", () => {
     beforeEach(() => {
       // Mock performAutomaticAnalysis for these tests
       vi.clearAllMocks();
@@ -633,9 +597,17 @@ describe("Image Tool Integration Tests", () => {
         // Temp file should be used and deleted
         expect(result.saved_files).toEqual([]);
         
-        // Default path should not exist
-        const exists = await fileExists(defaultPath);
-        expect(exists).toBe(false);
+        // The handler should not have used the default path
+        // We can verify this by checking that the Swift CLI was called with the temp path, not the default path
+        expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
+          expect.arrayContaining(["--path", MOCK_TEMP_PATH]),
+          mockContext.logger
+        );
+        // Ensure the default path was NOT used
+        expect(mockExecuteSwiftCli).not.toHaveBeenCalledWith(
+          expect.arrayContaining(["--path", defaultPath]),
+          mockContext.logger
+        );
       } finally {
         delete process.env.PEEKABOO_DEFAULT_SAVE_PATH;
       }

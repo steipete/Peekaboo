@@ -244,7 +244,7 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
 
 **Tool 3: `list`**
 
-*   **MCP Description:** "Lists system items: all running applications, windows of a specific app, or server status. Allows specifying window details. App ID uses fuzzy matching."
+*   **MCP Description:** "Lists system items: running applications with one or more windows, all windows of a specific app, or server status. App ID uses fuzzy matching."
 *   **MCP Input Schema (`ListInputSchema`):**
     ```typescript
     z.object({
