@@ -57,7 +57,6 @@ struct ListCommandTests {
         // Test that windows subcommand requires app
         #expect(throws: (any Error).self) {
             try WindowsSubcommand.parse([])
-        }
     }
 
     // MARK: - Parameterized Command Tests
@@ -229,7 +228,6 @@ struct ListCommandTests {
             #expect(title == "Documents")
         default:
             Issue.record("Expected title specifier")
-        }
     }
 
     @Test("WindowSpecifier with index", .tags(.fast))
@@ -242,7 +240,6 @@ struct ListCommandTests {
             #expect(index == 0)
         default:
             Issue.record("Expected index specifier")
-        }
     }
 
     // MARK: - Performance Tests
@@ -261,7 +258,6 @@ struct ListCommandTests {
                 is_active: index == 0,
                 window_count: index % 5
             )
-        }
 
         let appData = ApplicationListData(applications: apps)
         let encoder = JSONEncoder()
@@ -301,11 +297,9 @@ struct ListCommandTests {
             )
         ]
 
-        // Capture stdout output using the real implementation
-        let output = captureStdout {
-            let command = AppsSubcommand()
-            command.printApplicationList(applications)
-        }
+        // Get formatted output using the testable method
+        let command = AppsSubcommand()
+        let output = command.formatApplicationList(applications)
 
         // Verify that "Windows: 1" is NOT present for single window app
         #expect(!output.contains("Windows: 1"))
@@ -346,10 +340,8 @@ struct ListCommandTests {
             )
         ]
 
-        let output = captureStdout {
-            let command = AppsSubcommand()
-            command.printApplicationList(applications)
-        }
+        let command = AppsSubcommand()
+        let output = command.formatApplicationList(applications)
 
         // All these should show window counts since they're not 1
         #expect(output.contains("Windows: 0"))
@@ -369,10 +361,8 @@ struct ListCommandTests {
             )
         ]
 
-        let output = captureStdout {
-            let command = AppsSubcommand()
-            command.printApplicationList(applications)
-        }
+        let command = AppsSubcommand()
+        let output = command.formatApplicationList(applications)
 
         // Verify basic formatting is present
         #expect(output.contains("Running Applications (1):"))
@@ -404,10 +394,8 @@ struct ListCommandTests {
             )
         ]
 
-        let output = captureStdout {
-            let command = AppsSubcommand()
-            command.printApplicationList(applications)
-        }
+        let command = AppsSubcommand()
+        let output = command.formatApplicationList(applications)
 
         // Both apps have 1 window, so neither should show "Windows: 1"
         #expect(!output.contains("Windows: 1"))
@@ -428,10 +416,8 @@ struct ListCommandTests {
             ApplicationInfo(app_name: "App D", bundle_id: "com.d", pid: 4, is_active: false, window_count: 3)
         ]
 
-        let output = captureStdout {
-            let command = AppsSubcommand()
-            command.printApplicationList(applications)
-        }
+        let command = AppsSubcommand()
+        let output = command.formatApplicationList(applications)
 
         // Should show window counts for 0, 2, and 3, but NOT for 1
         #expect(output.contains("Windows: 0"))
@@ -530,7 +516,6 @@ struct ListCommandAdvancedTests {
         if windowCount > 0 {
             // Apps with windows can be active or inactive
             #expect(appInfo.window_count > 0)
-        }
     }
 
     @Test("Server permissions data encoding", .tags(.fast))
@@ -556,25 +541,3 @@ struct ListCommandAdvancedTests {
 
 // MARK: - Test Helper Functions
 
-/// Captures stdout output during the execution of a closure
-func captureStdout<T>(_ closure: () throws -> T) rethrows -> String {
-    let pipe = Pipe()
-    let originalStdout = dup(STDOUT_FILENO)
-    
-    // Redirect stdout to our pipe
-    dup2(pipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO)
-    
-    defer {
-        // Restore original stdout
-        dup2(originalStdout, STDOUT_FILENO)
-        close(originalStdout)
-        pipe.fileHandleForWriting.closeFile()
-    }
-    
-    // Execute the closure
-    _ = try closure()
-    
-    // Read the captured output
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    return String(data: data, encoding: .utf8) ?? ""
-}
