@@ -321,8 +321,7 @@ struct ImageCommand: ParsableCommand {
             throw error
         } catch {
             // Check if this is a permission error from ScreenCaptureKit
-            let errorString = error.localizedDescription.lowercased()
-            if errorString.contains("screen recording") || errorString.contains("permission") {
+            if isScreenRecordingPermissionError(error) {
                 throw CaptureError.screenRecordingPermissionDenied
             }
             throw CaptureError.captureCreationFailed
@@ -359,8 +358,7 @@ struct ImageCommand: ParsableCommand {
             try saveImage(image, to: path)
         } catch {
             // Check if this is a permission error
-            let errorString = error.localizedDescription.lowercased()
-            if errorString.contains("screen recording") || errorString.contains("permission") {
+            if isScreenRecordingPermissionError(error) {
                 throw CaptureError.screenRecordingPermissionDenied
             }
             throw error
@@ -391,8 +389,7 @@ struct ImageCommand: ParsableCommand {
             throw error
         } catch {
             // Check if this is a permission error from ScreenCaptureKit
-            let errorString = error.localizedDescription.lowercased()
-            if errorString.contains("screen recording") || errorString.contains("permission") {
+            if isScreenRecordingPermissionError(error) {
                 throw CaptureError.screenRecordingPermissionDenied
             }
             throw CaptureError.windowCaptureFailed
@@ -429,16 +426,59 @@ struct ImageCommand: ParsableCommand {
             try saveImage(image, to: path)
         } catch {
             // Check if this is a permission error
-            let errorString = error.localizedDescription.lowercased()
-            if errorString.contains("screen recording") || errorString.contains("permission") {
+            if isScreenRecordingPermissionError(error) {
                 throw CaptureError.screenRecordingPermissionDenied
             }
             throw error
         }
     }
 
+    private func isScreenRecordingPermissionError(_ error: Error) -> Bool {
+        let errorString = error.localizedDescription.lowercased()
+        
+        // Check for specific screen recording related errors
+        if errorString.contains("screen recording") {
+            return true
+        }
+        
+        // Check for NSError codes specific to screen capture permissions
+        if let nsError = error as NSError? {
+            // ScreenCaptureKit specific error codes
+            if nsError.domain == "com.apple.screencapturekit" && nsError.code == -3801 {
+                // SCStreamErrorUserDeclined = -3801
+                return true
+            }
+            
+            // CoreGraphics error codes for screen capture
+            if nsError.domain == "com.apple.coregraphics" && nsError.code == 1002 {
+                // kCGErrorCannotComplete when permissions are denied
+                return true
+            }
+        }
+        
+        // Only consider it a permission error if it mentions both "permission" and capture-related terms
+        if errorString.contains("permission") && 
+           (errorString.contains("capture") || errorString.contains("recording") || errorString.contains("screen")) {
+            return true
+        }
+        
+        return false
+    }
+
     private func saveImage(_ image: CGImage, to path: String) throws(CaptureError) {
         let url = URL(fileURLWithPath: path)
+
+        // Check if the parent directory exists
+        let directory = url.deletingLastPathComponent()
+        var isDirectory: ObjCBool = false
+        if !FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory) {
+            let error = NSError(
+                domain: NSCocoaErrorDomain,
+                code: NSFileNoSuchFileError,
+                userInfo: [NSLocalizedDescriptionKey: "No such file or directory"]
+            )
+            throw CaptureError.fileWriteError(path, error)
+        }
 
         let utType: UTType = format == .png ? .png : .jpeg
         guard let destination = CGImageDestinationCreateWithURL(
@@ -447,6 +487,15 @@ struct ImageCommand: ParsableCommand {
             1,
             nil
         ) else {
+            // Try to create a more specific error for common cases
+            if !FileManager.default.isWritableFile(atPath: directory.path) {
+                let error = NSError(
+                    domain: NSPOSIXErrorDomain,
+                    code: Int(EACCES),
+                    userInfo: [NSLocalizedDescriptionKey: "Permission denied"]
+                )
+                throw CaptureError.fileWriteError(path, error)
+            }
             throw CaptureError.fileWriteError(path, nil)
         }
 
