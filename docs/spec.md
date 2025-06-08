@@ -74,6 +74,7 @@ https://aistudio.google.com/prompts/1B0Va41QEZz5ZMiGmLl2gDme8kQ-LQPW-
     *   `PEEKABOO_DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
     *   `PEEKABOO_CONSOLE_LOGGING`: Boolean (`"true"`/`"false"`) for dev console logs. Default: `"false"`.
     *   `PEEKABOO_CLI_PATH`: Optional override for Swift `peekaboo` CLI path.
+    *   `PEEKABOO_CLI_TIMEOUT`: Timeout in milliseconds for Swift CLI operations. Prevents hanging processes. Default: `30000` (30 seconds).
 6.  **Server Status Reporting Logic:**
     *   A utility function `generateServerStatusString()` creates a formatted string with server name, version, and configured AI providers.
     *   **Tool Descriptions:** When the server handles a `ListToolsRequest`, it appends the server status information to the `description` field of each advertised tool (`image`, `analyze`, `list`).
@@ -160,7 +161,7 @@ z.object({
         "'background': capture without altering window focus. " +
         "'foreground': always bring target to front before capture."
       )
-  ),
+    ),
 })
 ```
 
@@ -646,8 +647,9 @@ Configured AI Providers: ollama/llava:latest, openai/gpt-4o
     *   `PEEKABOO_LOG_LEVEL`: For `pino` logger. Values and default.
     *   `PEEKABOO_LOG_FILE`: Path to the server's log file. Default: `~/Library/Logs/peekaboo-mcp.log` with fallback to temp directory.
     *   `PEEKABOO_DEFAULT_SAVE_PATH`: Default base absolute path for saving images captured by `image` if not specified in the tool input. If this ENV is also not set, the Swift CLI will use its own temporary directory logic.
-    *   `PEEKABOO_CONSOLE_LOGGING`: For development.
+    *   `PEEKABOO_CONSOLE_LOGGING`: Boolean (`"true"`/`"false"`) for dev console logs. Default: `"false"`.
     *   `PEEKABOO_CLI_PATH`: For overriding bundled Swift CLI.
+    *   `PEEKABOO_CLI_TIMEOUT`: Timeout in milliseconds for Swift CLI operations. Prevents hanging processes. Default: `30000` (30 seconds).
 7.  **MCP Tool Overview:**
     *   Brief descriptions of `image`, `analyze`, `list` and their primary purpose.
 8.  **Link to Detailed Tool Specification:** A separate `TOOL_API_REFERENCE.md` (generated from or summarizing the Zod schemas and output structures in this document) for users/AI developers needing full schema details.

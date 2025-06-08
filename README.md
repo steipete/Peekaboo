@@ -80,11 +80,11 @@ Peekaboo can be configured using environment variables:
 
 ```json
 {
-  "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
   "PEEKABOO_LOG_LEVEL": "debug",
   "PEEKABOO_LOG_FILE": "~/Library/Logs/peekaboo-mcp-debug.log",
   "PEEKABOO_DEFAULT_SAVE_PATH": "~/Pictures/PeekabooCaptures",
   "PEEKABOO_CONSOLE_LOGGING": "true",
+  "PEEKABOO_CLI_TIMEOUT": "30000",
   "PEEKABOO_CLI_PATH": "/opt/custom/peekaboo"
 }
 ```
@@ -93,17 +93,18 @@ Peekaboo can be configured using environment variables:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PEEKABOO_AI_PROVIDERS` | Comma-separated list of `provider_name/default_model_for_provider` pairs (e.g., `\"openai/gpt-4o,ollama/llava:7b\"`). If a model is not specified for a provider (e.g., `\"openai\"`), a default model for that provider will be used. This setting determines which AI backends are available for the `analyze` tool and the `image` tool (when a `question` is provided). **Recommended for Ollama:** `\"ollama/llava:latest\"` for the best vision model. | `\"\"` (none) |
+| `PEEKABOO_AI_PROVIDERS` | JSON string defining AI providers for image analysis (see [AI Analysis](#ai-analysis)). | `""` (disabled) |
 | `PEEKABOO_LOG_LEVEL` | Logging level (trace, debug, info, warn, error, fatal). | `info` |
 | `PEEKABOO_LOG_FILE` | Path to the server's log file. If the specified directory is not writable, falls back to the system temp directory. | `~/Library/Logs/peekaboo-mcp.log` |
-| `PEEKABOO_DEFAULT_SAVE_PATH` | Default base absolute path for saving images captured by the `image` tool. If the `path` argument is provided to the `image` tool, it takes precedence. If neither `image.path` nor this environment variable is set, the Swift CLI saves to its default temporary directory. | (none, Swift CLI uses temp paths) |
+| `PEEKABOO_DEFAULT_SAVE_PATH` | Default directory for saving captured images when no path is specified. | System temp directory |
 | `PEEKABOO_OLLAMA_BASE_URL` | Base URL for the Ollama API server. Only needed if Ollama is running on a non-default address. | `http://localhost:11434` |
 | `PEEKABOO_CONSOLE_LOGGING` | Boolean (`"true"`/`"false"`) for development console logs. | `"false"` |
+| `PEEKABOO_CLI_TIMEOUT` | Timeout in milliseconds for Swift CLI operations. Prevents hanging processes. | `30000` (30 seconds) |
 | `PEEKABOO_CLI_PATH` | Optional override for the Swift `peekaboo` CLI executable path. | (uses bundled CLI) |
 
 #### AI Provider Configuration
 
-The `PEEKABOO_AI_PROVIDERS` environment variable is your gateway to unlocking Peekaboo\'s analytical abilities for both the dedicated `analyze` tool and the `image` tool (when a `question` is supplied with an image capture). It should be a comma-separated string defining the AI providers and their default models. For example:
+The `PEEKABOO_AI_PROVIDERS` environment variable is your gateway to unlocking Peekaboo\'s analytical abilities for both the dedicated `analyze` tool and the `image` tool (when a `question` is supplied with an image capture). It should be a JSON string defining the AI providers and their default models. For example:
 
 `PEEKABOO_AI_PROVIDERS="ollama/llava:latest,openai/gpt-4o,anthropic/claude-3-haiku-20240307"`
 
