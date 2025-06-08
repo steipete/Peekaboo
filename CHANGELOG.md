@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.25] - 2025-01-08
+
+### Fixed
+- **Critical MCP server error handling**
+  - Fixed issue where unexpected errors would cause "No result received" response
+  - All tool execution errors now return proper MCP error responses
+  - Handles edge cases with special characters in tool parameters gracefully
+  - Prevents server from silently failing on unexpected exceptions
+
 ## [1.0.0-beta.24] - 2025-01-08
 
 ### Changed
