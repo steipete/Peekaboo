@@ -192,7 +192,7 @@ export async function listToolHandler(
     }
 
     // Process the response based on item type
-    const effective_item_type = input.item_type || (input.app ? "application_windows" : "running_applications");
+    const effective_item_type = (input.item_type && input.item_type.trim() !== "") ? input.item_type : (input.app ? "application_windows" : "running_applications");
 
     if (effective_item_type === "running_applications") {
       return handleApplicationsList(
@@ -387,7 +387,7 @@ async function handleServerStatus(
 
 export function buildSwiftCliArgs(input: ListToolInput): string[] {
   const args = ["list"];
-  const itemType = input.item_type || (input.app ? "application_windows" : "running_applications");
+  const itemType = (input.item_type && input.item_type.trim() !== "") ? input.item_type : (input.app ? "application_windows" : "running_applications");
 
   if (itemType === "running_applications") {
     args.push("apps");

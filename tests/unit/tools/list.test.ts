@@ -983,4 +983,40 @@ describe("List Tool", () => {
       expect(() => listToolSchema.parse(input)).toThrow();
     });
   });
+
+  describe("buildSwiftCliArgs empty string handling", () => {
+    it("should treat empty string item_type as undefined and default correctly", () => {
+      // Test case where item_type is empty string (should default to running_applications)
+      const inputWithEmptyString: ListToolInput = {
+        item_type: "",
+        include_window_details: [],
+      };
+      
+      const args = buildSwiftCliArgs(inputWithEmptyString);
+      expect(args).toEqual(["list", "apps"]);
+    });
+
+    it("should treat empty string item_type with app as application_windows", () => {
+      // Test case where item_type is empty string but app is provided
+      const inputWithEmptyStringAndApp: ListToolInput = {
+        item_type: "",
+        app: "Safari",
+        include_window_details: [],
+      };
+      
+      const args = buildSwiftCliArgs(inputWithEmptyStringAndApp);
+      expect(args).toEqual(["list", "windows", "--app", "Safari"]);
+    });
+
+    it("should treat whitespace-only item_type as undefined", () => {
+      // Test case where item_type is just whitespace
+      const inputWithWhitespace: ListToolInput = {
+        item_type: "   ",
+        include_window_details: [],
+      };
+      
+      const args = buildSwiftCliArgs(inputWithWhitespace);
+      expect(args).toEqual(["list", "apps"]);
+    });
+  });
 });
