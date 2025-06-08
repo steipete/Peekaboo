@@ -82,11 +82,10 @@ export function buildSwiftCliArgs(
       args.push("--mode", "screen", "--screen-index", screenIndex.toString());
     }
   } else if (input.app_target.toLowerCase() === "frontmost") {
-    // 'frontmost': All windows of the frontmost app
-    log.warn(
-      "'frontmost' target requires determining current frontmost app, defaulting to screen mode",
-    );
-    args.push("--mode", "screen");
+    // 'frontmost': Capture the frontmost window of the frontmost app
+    // This requires special handling to first find the frontmost app, then capture its frontmost window
+    log.debug("Using frontmost mode - will attempt to capture frontmost window");
+    args.push("--mode", "frontmost");
   } else if (input.app_target.includes(":")) {
     // 'AppName:WINDOW_TITLE:Title' or 'AppName:WINDOW_INDEX:Index'
     const parts = input.app_target.split(":");

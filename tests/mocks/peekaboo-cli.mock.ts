@@ -94,6 +94,26 @@ export const mockSwiftCli = {
     };
   },
 
+  // Mock frontmost window capture response
+  captureFrontmostWindow(): SwiftCliResponse {
+    return {
+      success: true,
+      data: {
+        saved_files: [
+          {
+            path: "/tmp/frontmost_Safari_20250608_083000.png",
+            item_label: "Safari",
+            window_title: "Example Website - Safari",
+            window_id: 12345,
+            window_index: 0,
+            mime_type: "image/png",
+          },
+        ],
+      } as ImageCaptureData,
+      messages: [],
+    };
+  },
+
   // Mock error responses
   permissionDenied(): SwiftCliResponse {
     return {

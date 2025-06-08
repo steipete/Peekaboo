@@ -383,28 +383,28 @@ describe("Image Tool", () => {
       );
     });
 
-    it("should handle app_target: 'frontmost' with warning", async () => {
+    it("should handle app_target: 'frontmost' with new frontmost mode", async () => {
       // Mock resolveImagePath for minimal case
       mockResolveImagePath.mockResolvedValue({
         effectivePath: MOCK_TEMP_IMAGE_DIR,
         tempDirUsed: MOCK_TEMP_IMAGE_DIR,
       });
       
-      const mockResponse = mockSwiftCli.captureImage("screen", {});
+      const mockResponse = mockSwiftCli.captureFrontmostWindow();
       mockExecuteSwiftCli.mockResolvedValue(mockResponse);
 
-      const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
+      const loggerDebugSpy = vi.spyOn(mockLogger, "debug");
 
       await imageToolHandler(
         { app_target: "frontmost" },
         mockContext,
       );
 
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        "'frontmost' target requires determining current frontmost app, defaulting to screen mode",
+      expect(loggerDebugSpy).toHaveBeenCalledWith(
+        "Using frontmost mode - will attempt to capture frontmost window",
       );
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        expect.arrayContaining(["--mode", "screen"]),
+        expect.arrayContaining(["--mode", "frontmost"]),
         mockLogger,
         expect.objectContaining({ timeout: expect.any(Number) })
       );
@@ -1035,33 +1035,33 @@ describe("Image Tool", () => {
     });
 
     it("should handle app_target: 'frontmost'", () => {
-      const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
+      const loggerDebugSpy = vi.spyOn(mockLogger, "debug");
       const args = buildSwiftCliArgs({ app_target: "frontmost" }, undefined, undefined, mockLogger);
       expect(args).toEqual(
-        expect.arrayContaining(["--mode", "screen"]),
+        expect.arrayContaining(["--mode", "frontmost"]),
       );
       expect(args).not.toContain("--app");
-      expect(loggerWarnSpy).toHaveBeenCalled();
+      expect(loggerDebugSpy).toHaveBeenCalledWith("Using frontmost mode - will attempt to capture frontmost window");
     });
 
     it("should handle app_target: 'frontmost' case-insensitively", () => {
-      const loggerWarnSpy = vi.spyOn(mockLogger, "warn");
+      const loggerDebugSpy = vi.spyOn(mockLogger, "debug");
       
       // Test uppercase
       const argsUpper = buildSwiftCliArgs({ app_target: "FRONTMOST" }, undefined, undefined, mockLogger);
       expect(argsUpper).toEqual(
-        expect.arrayContaining(["--mode", "screen"]),
+        expect.arrayContaining(["--mode", "frontmost"]),
       );
       expect(argsUpper).not.toContain("--app");
       
       // Test mixed case
       const argsMixed = buildSwiftCliArgs({ app_target: "Frontmost" }, undefined, undefined, mockLogger);
       expect(argsMixed).toEqual(
-        expect.arrayContaining(["--mode", "screen"]),
+        expect.arrayContaining(["--mode", "frontmost"]),
       );
       expect(argsMixed).not.toContain("--app");
       
-      expect(loggerWarnSpy).toHaveBeenCalledTimes(2);
+      expect(loggerDebugSpy).toHaveBeenCalledTimes(2);
     });
 
     it("should handle window specifiers case-insensitively", () => {

@@ -80,6 +80,8 @@ struct ImageCommand: ParsableCommand {
             } else {
                 return try captureScreens()
             }
+        case .frontmost:
+            return try captureFrontmostWindow()
         }
     }
 
@@ -96,75 +98,8 @@ struct ImageCommand: ParsableCommand {
         }
     }
 
-    private func handleError(_ error: Error) {
-        let captureError: CaptureError = if let err = error as? CaptureError {
-            err
-        } else {
-            .unknownError(error.localizedDescription)
-        }
-
-        // Log the full error details for debugging
-        Logger.shared.debug("Image capture error: \(error)")
-
-        // If it's a CaptureError with an underlying error, log that too
-        switch captureError {
-        case let .captureCreationFailed(underlyingError):
-            if let underlying = underlyingError {
-                Logger.shared.debug("Underlying capture creation error: \(underlying)")
-            }
-        case let .windowCaptureFailed(underlyingError):
-            if let underlying = underlyingError {
-                Logger.shared.debug("Underlying window capture error: \(underlying)")
-            }
-        case let .fileWriteError(_, underlyingError):
-            if let underlying = underlyingError {
-                Logger.shared.debug("Underlying file write error: \(underlying)")
-            }
-        default:
-            break
-        }
-
-        if jsonOutput {
-            let code: ErrorCode = switch captureError {
-            case .screenRecordingPermissionDenied:
-                .PERMISSION_ERROR_SCREEN_RECORDING
-            case .accessibilityPermissionDenied:
-                .PERMISSION_ERROR_ACCESSIBILITY
-            case .appNotFound:
-                .APP_NOT_FOUND
-            case .windowNotFound, .noWindowsFound:
-                .WINDOW_NOT_FOUND
-            case .fileWriteError:
-                .FILE_IO_ERROR
-            case .invalidArgument:
-                .INVALID_ARGUMENT
-            case .unknownError:
-                .UNKNOWN_ERROR
-            default:
-                .CAPTURE_FAILED
-            }
-
-            // Provide additional details for app not found errors
-            var details: String?
-            if case .appNotFound = captureError {
-                let runningApps = NSWorkspace.shared.runningApplications
-                    .filter { $0.activationPolicy == .regular }
-                    .compactMap(\.localizedName)
-                    .sorted()
-                    .joined(separator: ", ")
-                details = "Available applications: \(runningApps)"
-            }
-
-            outputError(
-                message: captureError.localizedDescription,
-                code: code,
-                details: details ?? "Image capture operation failed"
-            )
-        } else {
-            var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
-            print("Error: \(captureError.localizedDescription)", to: &localStandardErrorStream)
-        }
-        Foundation.exit(captureError.exitCode)
+    private func handleError(_ error: Error) -> Never {
+        ImageErrorHandler.handleError(error, jsonOutput: jsonOutput)
     }
 
     private func determineMode() -> CaptureMode {
@@ -307,7 +242,10 @@ struct ImageCommand: ParsableCommand {
                 let searchTerm = windowTitle
                 let appName = targetApp.localizedName ?? "Unknown"
                 
-                Logger.shared.debug("Window not found. Searched for '\(searchTerm)' in \(appName). Available windows: \(availableTitles)")
+                Logger.shared.debug(
+                    "Window not found. Searched for '\(searchTerm)' in \(appName). " +
+                    "Available windows: \(availableTitles)"
+                )
                 
                 throw CaptureError.windowTitleNotFound(searchTerm, appName, availableTitles)
             }
@@ -501,5 +439,46 @@ struct ImageCommand: ParsableCommand {
             }
             throw CaptureError.windowCaptureFailed(error)
         }
+    }
+    
+    private func captureFrontmostWindow() throws -> [SavedFile] {
+        Logger.shared.debug("Capturing frontmost window")
+        
+        // Get the frontmost (active) application
+        guard let frontmostApp = NSWorkspace.shared.frontmostApplication else {
+            throw CaptureError.appNotFound("No frontmost application found")
+        }
+        
+        Logger.shared.debug("Frontmost app: \(frontmostApp.localizedName ?? "Unknown")")
+        
+        // Get windows for the frontmost app
+        let windows = try WindowManager.getWindowsForApp(pid: frontmostApp.processIdentifier)
+        guard !windows.isEmpty else {
+            throw CaptureError.noWindowsFound(frontmostApp.localizedName ?? "frontmost application")
+        }
+        
+        // Get the frontmost window (index 0)
+        let frontmostWindow = windows[0]
+        
+        Logger.shared.debug("Capturing frontmost window: '\(frontmostWindow.title)'")
+        
+        // Generate output path
+        let timestamp = DateFormatter.timestamp.string(from: Date())
+        let appName = frontmostApp.localizedName ?? "UnknownApp"
+        let safeName = appName.replacingOccurrences(of: " ", with: "_")
+        let fileName = "frontmost_\(safeName)_\(timestamp).\(format.rawValue)"
+        let filePath = OutputPathResolver.getOutputPathWithFallback(basePath: path, fileName: fileName)
+        
+        // Capture the window
+        try captureWindow(frontmostWindow, to: filePath)
+        
+        return [SavedFile(
+            path: filePath,
+            item_label: appName,
+            window_title: frontmostWindow.title,
+            window_id: UInt32(frontmostWindow.windowId),
+            window_index: frontmostWindow.windowIndex,
+            mime_type: format == .png ? "image/png" : "image/jpeg"
+        )]
     }
 }

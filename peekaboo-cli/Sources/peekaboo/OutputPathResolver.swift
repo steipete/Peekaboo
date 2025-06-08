@@ -129,11 +129,9 @@ struct OutputPathResolver {
         let sensitivePathPrefixes = ["/etc/", "/usr/", "/bin/", "/sbin/", "/System/", "/Library/System/"]
         let normalizedPath = (path as NSString).standardizingPath
         
-        for prefix in sensitivePathPrefixes {
-            if normalizedPath.hasPrefix(prefix) {
-                Logger.shared.debug("Path points to system directory: \(path) -> \(normalizedPath)")
-                break
-            }
+        for prefix in sensitivePathPrefixes where normalizedPath.hasPrefix(prefix) {
+            Logger.shared.debug("Path points to system directory: \(path) -> \(normalizedPath)")
+            break
         }
     }
 }

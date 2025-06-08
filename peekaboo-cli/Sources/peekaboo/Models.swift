@@ -20,6 +20,7 @@ enum CaptureMode: String, CaseIterable, ExpressibleByArgument {
     case screen
     case window
     case multi
+    case frontmost
 }
 
 enum ImageFormat: String, CaseIterable, ExpressibleByArgument {
