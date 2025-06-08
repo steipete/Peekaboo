@@ -111,7 +111,7 @@ struct ImageCommand: ParsableCommand {
                 .PERMISSION_ERROR_ACCESSIBILITY
             case .appNotFound:
                 .APP_NOT_FOUND
-            case .windowNotFound:
+            case .windowNotFound, .noWindowsFound:
                 .WINDOW_NOT_FOUND
             case .fileWriteError:
                 .FILE_IO_ERROR
@@ -224,7 +224,7 @@ struct ImageCommand: ParsableCommand {
 
         let windows = try WindowManager.getWindowsForApp(pid: targetApp.processIdentifier)
         guard !windows.isEmpty else {
-            throw CaptureError.windowNotFound
+            throw CaptureError.noWindowsFound(targetApp.localizedName ?? appIdentifier)
         }
 
         let targetWindow: WindowData
@@ -270,7 +270,7 @@ struct ImageCommand: ParsableCommand {
 
         let windows = try WindowManager.getWindowsForApp(pid: targetApp.processIdentifier)
         guard !windows.isEmpty else {
-            throw CaptureError.windowNotFound
+            throw CaptureError.noWindowsFound(targetApp.localizedName ?? appIdentifier)
         }
 
         var savedFiles: [SavedFile] = []

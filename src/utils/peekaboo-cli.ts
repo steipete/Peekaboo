@@ -64,6 +64,7 @@ function mapExitCodeToErrorMessage(
     : `Swift CLI execution failed (exit code: ${exitCode})`;
   const errorCodeMap: { [key: number]: { message: string, code: string } } = {
     1: { message: "An unknown error occurred in the Swift CLI.", code: "SWIFT_CLI_UNKNOWN_ERROR" },
+    7: { message: "The specified application is running but has no capturable windows. Try setting 'capture_focus' to 'foreground' to un-hide application windows.", code: "SWIFT_CLI_NO_WINDOWS_FOUND" },
     10: { message: "No displays available for capture.", code: "SWIFT_CLI_NO_DISPLAYS" },
     11: {
       message: "Screen Recording permission is not granted. Please enable it in System Settings > Privacy & Security > Screen Recording.",

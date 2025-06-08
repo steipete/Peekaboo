@@ -112,6 +112,7 @@ enum CaptureError: Error, LocalizedError {
     case invalidWindowIndex(Int)
     case invalidArgument(String)
     case unknownError(String)
+    case noWindowsFound(String)
 
     var errorDescription: String? {
         switch self {
@@ -158,6 +159,8 @@ enum CaptureError: Error, LocalizedError {
             return "Invalid argument: \(message)"
         case let .unknownError(message):
             return "An unexpected error occurred: \(message)"
+        case let .noWindowsFound(appName):
+            return "The '\(appName)' process is running, but no capturable windows were found."
         }
     }
 
@@ -175,6 +178,7 @@ enum CaptureError: Error, LocalizedError {
         case .invalidWindowIndex: 19
         case .invalidArgument: 20
         case .unknownError: 1
+        case .noWindowsFound: 7
         }
     }
 }
