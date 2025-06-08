@@ -2,6 +2,12 @@ use crate::errors::{PeekabooError, PeekabooResult};
 use std::env;
 use std::process::Command;
 
+#[cfg(windows)]
+use winapi::um::{
+    winuser::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN},
+    errhandlingapi::GetLastError,
+};
+
 pub struct PermissionsChecker;
 
 impl PermissionsChecker {
@@ -285,4 +291,55 @@ mod tests {
         // Should return a valid user ID
         assert!(uid >= 0);
     }
+}
+
+// Windows-specific permission implementations
+#[cfg(windows)]
+impl PermissionsChecker {
+    pub fn check_screen_recording_permission() -> bool {
+        // On Windows, screen recording is generally available to all applications
+        // unless restricted by group policy or security software
+        // We can test this by checking if we can get screen metrics
+        unsafe {
+            let width = GetSystemMetrics(SM_CXSCREEN);
+            let height = GetSystemMetrics(SM_CYSCREEN);
+            
+            if width > 0 && height > 0 {
+                crate::logger::debug(&format!("Screen access available: {}x{}", width, height));
+                true
+            } else {
+                crate::logger::debug("Cannot access screen metrics");
+                false
+            }
+        }
+    }
+
+    pub fn check_accessibility_permission() -> bool {
+        // On Windows, accessibility features are generally available
+        // We can check if we can enumerate windows as a basic test
+        unsafe {
+            use winapi::um::winuser::{EnumWindows, GetWindowTextW};
+            
+            let mut window_count = 0;
+            let result = EnumWindows(Some(count_windows_proc), &mut window_count as *mut _ as isize);
+            
+            if result != 0 && window_count > 0 {
+                crate::logger::debug(&format!("Accessibility check passed: found {} windows", window_count));
+                true
+            } else {
+                crate::logger::debug("Cannot enumerate windows - accessibility may be restricted");
+                false
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+unsafe extern "system" fn count_windows_proc(
+    _hwnd: winapi::shared::windef::HWND,
+    lparam: isize,
+) -> i32 {
+    let counter = &mut *(lparam as *mut i32);
+    *counter += 1;
+    1 // Continue enumeration
 }

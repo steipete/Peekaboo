@@ -38,7 +38,24 @@ function determineSwiftCliPath(packageRootDirForFallback?: string): string {
       }
       // Fallback to debug build if release doesn't exist
       const debugBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-linux", "target", "debug", "peekaboo");
-      return debugBinaryPath;
+      if (existsSync(debugBinaryPath)) {
+        return debugBinaryPath;
+      }
+      // If neither exists, return the expected release path for error reporting
+      return linuxBinaryPath;
+    } else if (platform === 'win32') {
+      // Windows - use Rust binary
+      const windowsBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-linux", "target", "release", "peekaboo.exe");
+      if (existsSync(windowsBinaryPath)) {
+        return windowsBinaryPath;
+      }
+      // Fallback to debug build if release doesn't exist
+      const debugBinaryPath = path.resolve(packageRootDirForFallback, "peekaboo-linux", "target", "debug", "peekaboo.exe");
+      if (existsSync(debugBinaryPath)) {
+        return debugBinaryPath;
+      }
+      // If neither exists, return the expected release path for error reporting
+      return windowsBinaryPath;
     } else {
       // Unsupported platform - fallback to Swift binary
       return path.resolve(packageRootDirForFallback, "peekaboo");

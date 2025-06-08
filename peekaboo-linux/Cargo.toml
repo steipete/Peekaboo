@@ -1,8 +1,8 @@
 [package]
-name = "peekaboo-linux"
+name = "peekaboo"
 version = "1.0.0-beta.18"
 edition = "2021"
-description = "Linux screen capture and window management utility for Peekaboo MCP"
+description = "Cross-platform screen capture and window management utility for Peekaboo MCP"
 license = "MIT"
 authors = ["Peter Steinberger <steipete@gmail.com>"]
 repository = "https://github.com/steipete/peekaboo"
@@ -19,22 +19,12 @@ clap = { version = "4.4", features = ["derive", "color", "help", "usage", "error
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# Screen capture libraries for Linux
-screenshots = "0.8"  # Cross-platform screenshot library
+# Cross-platform screen capture
+screenshots = "0.8"  # Works on Linux, Windows, and macOS
 image = { version = "0.24", features = ["png", "jpeg"] }
 
-# X11 support for window management
-x11rb = { version = "0.13", features = ["all-extensions"] }
-
-# Wayland support (optional, for future Wayland-native support)
-wayland-client = { version = "0.31", optional = true }
-wayland-protocols = { version = "0.31", optional = true }
-
-# System information for process discovery
+# System information for process discovery (cross-platform)
 sysinfo = "0.35"
-
-# System information and process management
-procfs = "0.16"
 
 # Error handling
 anyhow = "1.0"
@@ -57,18 +47,39 @@ strsim = "0.10"
 # Regular expressions for parsing
 regex = "1.10"
 
-# System calls for user ID and permissions
-libc = "0.2"
-
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
 
 # Lazy static for global state
 lazy_static = "1.4"
 
+# Platform-specific dependencies
+[target.'cfg(unix)'.dependencies]
+# Unix-specific dependencies (Linux, macOS)
+libc = "0.2"
+procfs = "0.16"  # Linux-specific process info
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Linux-specific window management
+x11rb = { version = "0.13", features = ["all-extensions"] }
+wayland-client = { version = "0.31", optional = true }
+wayland-protocols = { version = "0.31", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+# Windows-specific dependencies
+winapi = { version = "0.3", features = [
+    "winuser", "processthreadsapi", "psapi", "tlhelp32api", 
+    "handleapi", "errhandlingapi", "winnt", "winerror"
+] }
+windows = { version = "0.52", features = [
+    "Win32_Foundation", "Win32_System_ProcessStatus", 
+    "Win32_System_Threading", "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi", "Win32_System_Diagnostics_ToolHelp"
+] }
+
 [features]
-default = ["x11"]
-x11 = []
+default = []
+x11 = ["x11rb"]
 wayland = ["wayland-client", "wayland-protocols"]
 
 [dev-dependencies]
@@ -81,3 +92,4 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+

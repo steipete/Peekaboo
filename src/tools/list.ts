@@ -224,13 +224,23 @@ async function handleServerStatus(
         const debugBinaryPath = path.resolve(packageRootDir, "peekaboo-linux", "target", "debug", "peekaboo");
         cliPath = debugBinaryPath;
       }
+    } else if (platform === 'win32') {
+      // Windows - use Rust binary
+      const windowsBinaryPath = path.resolve(packageRootDir, "peekaboo-linux", "target", "release", "peekaboo.exe");
+      if (existsSync(windowsBinaryPath)) {
+        cliPath = windowsBinaryPath;
+      } else {
+        // Fallback to debug build if release doesn't exist
+        const debugBinaryPath = path.resolve(packageRootDir, "peekaboo-linux", "target", "debug", "peekaboo.exe");
+        cliPath = debugBinaryPath;
+      }
     } else {
       // Unsupported platform
       cliPath = path.join(packageRootDir, "peekaboo");
     }
   }
 
-  const binaryType = process.platform === "linux" ? "Rust" : "Swift";
+  const binaryType = (process.platform === 'linux' || process.platform === 'win32') ? 'Rust' : 'Swift';
   statusSections.push(`\n## Native Binary (${binaryType} CLI) Status`);
 
   let cliStatus = "\u274c Not found";

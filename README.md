@@ -1,13 +1,15 @@
-# Peekaboo MCP: Lightning-fast macOS Screenshots for AI Agents
+# Peekaboo MCP: Lightning-fast Cross-Platform Screenshots for AI Agents
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
 [![npm version](https://badge.fury.io/js/%40steipete%2Fpeekaboo-mcp.svg)](https://www.npmjs.com/package/@steipete/peekaboo-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/macOS-14.0%2B-blue.svg)](https://www.apple.com/macos/)
+[![Linux](https://img.shields.io/badge/Linux-Ubuntu%2020.04%2B-orange.svg)](https://ubuntu.com/)
+[![Windows](https://img.shields.io/badge/Windows-10%2B-blue.svg)](https://www.microsoft.com/windows/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 
-Peekaboo is a macOS-only MCP server that enables AI agents to capture screenshots of applications, windows, or the entire system, with optional visual question answering through local or remote AI models.
+Peekaboo is a cross-platform MCP server that enables AI agents to capture screenshots of applications, windows, or the entire system, with optional visual question answering through local or remote AI models.
 
 ## What is Peekaboo?
 
@@ -17,6 +19,16 @@ Peekaboo bridges the gap between AI assistants and visual content on your screen
 - **Analyze visual content** using AI vision models (both local and cloud-based)
 - **List running applications** and their windows for targeted captures
 - **Work non-intrusively** without changing window focus or interrupting your workflow
+
+## Platform Support
+
+Peekaboo now supports multiple platforms with native implementations:
+
+- **🍎 macOS**: Native Swift implementation using ScreenCaptureKit for optimal performance
+- **🐧 Linux**: Rust implementation with X11/Wayland support for broad compatibility
+- **🪟 Windows**: Rust implementation using Windows APIs for native integration
+
+Each platform uses the most appropriate native technologies for the best performance and user experience.
 
 ## Key Features
 
@@ -34,6 +46,8 @@ Read more about the design philosophy and implementation details in the [blog po
 ### Requirements
 
 - **macOS 14.0+** (Sonoma or later)
+- **Linux Ubuntu 20.04+**
+- **Windows 10+**
 - **Node.js 20.0+**
 - **Screen Recording Permission** (you'll be prompted on first use)
 
@@ -115,99 +129,6 @@ Each entry follows the format `provider_name/model_identifier`.
 The `analyze` tool and the `image` tool (when a `question` is provided) will use these configurations. If the `provider_config` argument in these tools is set to `\"auto\"` (the default for `analyze`, and an option for `image`), Peekaboo will try providers from `PEEKABOO_AI_PROVIDERS` in the order they are listed, checking for necessary API keys (like `OPENAI_API_KEY`) or service availability (like Ollama running at `http://localhost:11434` or the URL specified in `PEEKABOO_OLLAMA_BASE_URL`).
 
 You can override the model or pick a specific provider listed in `PEEKABOO_AI_PROVIDERS` using the `provider_config` argument in the `analyze` or `image` tools. (The system will still verify its operational readiness, e.g., API key presence or service availability.)
-
-### Setting Up Local AI with Ollama
-
-Ollama provides powerful local AI models that can analyze your screenshots without sending data to the cloud.
-
-#### Installing Ollama
-
-```bash
-# Install via Homebrew
-brew install ollama
-
-# Or download from https://ollama.ai
-
-# Start the Ollama service
-ollama serve
-```
-
-#### Downloading Vision Models
-
-**For powerful machines**, LLaVA (Large Language and Vision Assistant) is the recommended model:
-
-```bash
-# Download the latest LLaVA model (recommended for best quality)
-ollama pull llava:latest
-
-# Alternative LLaVA versions
-ollama pull llava:7b-v1.6
-ollama pull llava:13b-v1.6  # Larger, more capable
-ollama pull llava:34b-v1.6  # Largest, most powerful (requires significant RAM)
-```
-
-**For less beefy machines**, Qwen2-VL provides excellent performance with lower resource requirements:
-
-```bash
-# Download Qwen2-VL 7B model (great balance of quality and performance)
-ollama pull qwen2-vl:7b
-```
-
-**Model Size Guide:**
-- `qwen2-vl:7b` - ~4GB download, ~6GB RAM required (excellent for lighter machines)
-- `llava:7b` - ~4.5GB download, ~8GB RAM required
-- `llava:13b` - ~8GB download, ~16GB RAM required  
-- `llava:34b` - ~20GB download, ~40GB RAM required
-
-#### Configuring Peekaboo with Ollama
-
-Add Ollama to your Claude Desktop configuration:
-
-```json
-{
-  "mcpServers": {
-    "peekaboo": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@steipete/peekaboo-mcp@beta"
-      ],
-      "env": {
-        "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest"
-      }
-    }
-  }
-}
-```
-
-**For less powerful machines (using Qwen2-VL):**
-```json
-{
-  "mcpServers": {
-    "peekaboo": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@steipete/peekaboo-mcp@beta"
-      ],
-      "env": {
-        "PEEKABOO_AI_PROVIDERS": "ollama/qwen2-vl:7b"
-      }
-    }
-  }
-}
-```
-
-**Multiple AI Providers (Ollama + OpenAI):**
-```json
-{
-  "env": {
-    "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
-    "OPENAI_API_KEY": "your-api-key-here"
-  }
-}
-```
-
 
 ### macOS Permissions
 

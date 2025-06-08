@@ -3,6 +3,21 @@ use crate::models::{ApplicationData, ApplicationInfo};
 use sysinfo::{System, Pid};
 use std::collections::HashMap;
 
+#[cfg(windows)]
+use winapi::um::{
+    processthreadsapi::OpenProcess,
+    psapi::{GetModuleFileNameExW, GetProcessImageFileNameW},
+    winnt::{PROCESS_QUERY_INFORMATION, PROCESS_VM_READ},
+    handleapi::CloseHandle,
+    tlhelp32api::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS},
+    winuser::{GetWindowTextW, EnumWindows, GetWindowThreadProcessId, IsWindowVisible},
+};
+
+#[cfg(windows)]
+use std::ffi::OsString;
+#[cfg(windows)]
+use std::os::windows::ffi::OsStringExt;
+
 pub struct ApplicationFinder {
     system: System,
 }
@@ -82,38 +97,48 @@ impl ApplicationFinder {
         Ok(result)
     }
 
-    fn get_all_running_applications_internal(&self) -> PeekabooResult<Vec<ApplicationData>> {
-        let mut apps = Vec::new();
-        let mut seen_names = HashMap::new();
-
-        for (pid, process) in self.system.processes() {
-            let process_name = process.name().to_string_lossy();
-            
-            // Skip system processes and processes without names
-            if process_name.is_empty() || self.is_system_process(&process_name) {
-                continue;
-            }
-
-            // Try to get a more user-friendly name
-            let display_name = self.get_display_name(&process_name, *pid);
-            
-            // Skip duplicates (same display name)
-            if seen_names.contains_key(&display_name) {
-                continue;
-            }
-            seen_names.insert(display_name.clone(), true);
-
-            let bundle_id = self.get_bundle_id(*pid);
-            
-            apps.push(ApplicationData {
-                name: display_name,
-                bundle_id,
-                pid: pid.as_u32() as i32,
-                is_active: self.is_process_active(*pid),
-            });
+    fn get_all_running_applications_internal(&mut self) -> PeekabooResult<Vec<ApplicationData>> {
+        #[cfg(windows)]
+        {
+            return self.get_windows_applications();
         }
+        
+        #[cfg(not(windows))]
+        {
+            let mut apps = Vec::new();
+            let mut seen_names = HashMap::new();
 
-        Ok(apps)
+            for (pid, process) in self.system.processes() {
+                let process_name = process.name().to_string_lossy();
+                
+                // Skip system processes and processes without names
+                if process_name.is_empty() || self.is_system_process(&process_name) {
+                    continue;
+                }
+
+                // Try to get a more user-friendly name
+                let display_name = self.get_display_name(&process_name, *pid);
+                
+                // Skip duplicates (same display name)
+                if seen_names.contains_key(&display_name) {
+                    continue;
+                }
+                seen_names.insert(display_name.clone(), true);
+
+                let bundle_id = self.get_bundle_id(*pid);
+                let path = process.exe().map(|p| p.to_string_lossy().to_string());
+                
+                apps.push(ApplicationData {
+                    name: display_name,
+                    bundle_id,
+                    path,
+                    pid: pid.as_u32() as i32,
+                    is_active: self.is_process_active(*pid),
+                });
+            }
+
+            Ok(apps)
+        }
     }
 
     fn find_all_matches(&self, identifier: &str, apps: &[ApplicationData]) -> Vec<AppMatch> {
@@ -327,4 +352,74 @@ mod tests {
         assert!(!finder.is_system_process("firefox"));
         assert!(!finder.is_system_process("code"));
     }
+}
+
+// Windows-specific implementations
+#[cfg(windows)]
+impl ApplicationFinder {
+    /// Windows-specific method to get running applications with window titles
+    fn get_windows_applications(&mut self) -> PeekabooResult<Vec<ApplicationData>> {
+        let mut applications = Vec::new();
+        let mut process_map = HashMap::new();
+        
+        // First, get all processes using sysinfo (cross-platform)
+        self.refresh();
+        for (pid, process) in self.system.processes() {
+            let app_data = ApplicationData {
+                name: process.name().to_string(),
+                bundle_id: None, // Windows doesn't have bundle IDs like macOS
+                path: process.exe().map(|p| p.to_string_lossy().to_string()),
+                pid: pid.as_u32() as i32,
+                is_active: false, // Will be determined by window enumeration
+            };
+            process_map.insert(pid.as_u32(), app_data);
+        }
+        
+        // Then enumerate windows to find which processes have visible windows
+        unsafe {
+            let mut window_processes = std::collections::HashSet::new();
+            
+            EnumWindows(Some(enum_windows_proc), &mut window_processes as *mut _ as isize);
+            
+            // Mark processes with visible windows as active
+            for (pid, mut app_data) in process_map {
+                if window_processes.contains(&pid) {
+                    app_data.is_active = true;
+                }
+                
+                // Filter out system processes
+                if !self.is_system_process(&app_data.name) {
+                    applications.push(app_data);
+                }
+            }
+        }
+        
+        Ok(applications)
+    }
+}
+
+#[cfg(windows)]
+unsafe extern "system" fn enum_windows_proc(
+    hwnd: winapi::shared::windef::HWND,
+    lparam: isize,
+) -> i32 {
+    let window_processes = &mut *(lparam as *mut std::collections::HashSet<u32>);
+    
+    // Check if window is visible
+    if IsWindowVisible(hwnd) != 0 {
+        let mut process_id: u32 = 0;
+        GetWindowThreadProcessId(hwnd, &mut process_id);
+        
+        if process_id != 0 {
+            // Get window title to filter out empty/system windows
+            let mut title: [u16; 256] = [0; 256];
+            let title_len = GetWindowTextW(hwnd, title.as_mut_ptr(), title.len() as i32);
+            
+            if title_len > 0 {
+                window_processes.insert(process_id);
+            }
+        }
+    }
+    
+    1 // Continue enumeration
 }
