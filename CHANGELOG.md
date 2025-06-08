@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.14] - 2025-01-08
+
+### Added
+- Enhanced test host application with real-time permission status display and CLI availability checking
+- Comprehensive test coverage improvements with proper Swift Testing patterns
+- Local test execution framework with detailed setup instructions
+
+### Improved
+- Swift code quality: Fixed all SwiftLint violations (reduced from 31 to 0 serious violations)
+- Test stability: Resolved Swift test compilation errors and improved test reliability
+- Code organization: Refactored ImageCommand.swift for better readability and maintainability
+- Documentation: Enhanced CLAUDE.md and release documentation with proper testing procedures
+
+### Fixed
+- JSON encoding/decoding issues in tests by removing unnecessary snake_case conversions
+- Window title validation expectations for system windows without titles
+- Swift Testing syntax errors and compiler warnings
+- Function and file length violations through strategic refactoring
+
 ## [1.0.0-beta.13] - 2025-01-08
 
 ### Added
