@@ -14,21 +14,30 @@ jobs:
       matrix:
         node-version: [20.x, 22.x]
     
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+    # Xcode will be selected dynamically in the setup step
     
     steps:
     - uses: actions/checkout@v4
     
     - name: Set up Xcode
       run: |
-        if [ -d "$DEVELOPER_DIR" ]; then
-          sudo xcode-select -s $DEVELOPER_DIR
-        else
-          echo "Xcode 16.2 not found, using default Xcode"
+        # Try to find the best available Xcode version
+        if [ -d "/Applications/Xcode_16.4.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.4.app/Contents/Developer"
+          echo "Using Xcode 16.4"
+        elif [ -d "/Applications/Xcode_16.3.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.3.app/Contents/Developer"
+          echo "Using Xcode 16.3"
+        elif [ -d "/Applications/Xcode.app" ]; then
           DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-          sudo xcode-select -s $DEVELOPER_DIR
+          echo "Using default Xcode"
+        else
+          echo "Error: No Xcode installation found"
+          exit 1
         fi
+        
+        sudo xcode-select -s "$DEVELOPER_DIR"
+        echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> $GITHUB_ENV
         xcodebuild -version
         swift --version
     
@@ -89,21 +98,30 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 30
     
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+    # Xcode will be selected dynamically in the setup step
     
     steps:
     - uses: actions/checkout@v4
     
     - name: Set up Xcode
       run: |
-        if [ -d "$DEVELOPER_DIR" ]; then
-          sudo xcode-select -s $DEVELOPER_DIR
-        else
-          echo "Xcode 16.2 not found, using default Xcode"
+        # Try to find the best available Xcode version
+        if [ -d "/Applications/Xcode_16.4.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.4.app/Contents/Developer"
+          echo "Using Xcode 16.4"
+        elif [ -d "/Applications/Xcode_16.3.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.3.app/Contents/Developer"
+          echo "Using Xcode 16.3"
+        elif [ -d "/Applications/Xcode.app" ]; then
           DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-          sudo xcode-select -s $DEVELOPER_DIR
+          echo "Using default Xcode"
+        else
+          echo "Error: No Xcode installation found"
+          exit 1
         fi
+        
+        sudo xcode-select -s "$DEVELOPER_DIR"
+        echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> $GITHUB_ENV
         xcodebuild -version
         swift --version
     
