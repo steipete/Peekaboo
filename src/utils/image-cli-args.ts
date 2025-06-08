@@ -1,16 +1,58 @@
 import { ImageInput } from "../types/index.js";
 import { Logger } from "pino";
+import * as fs from "fs/promises";
+import * as path from "path";
+import * as os from "os";
+
+export interface ResolvedImagePath {
+  effectivePath: string | undefined;
+  tempDirUsed: string | undefined;
+}
+
+export async function resolveImagePath(
+  input: ImageInput,
+  logger: Logger,
+): Promise<ResolvedImagePath> {
+  // If input.path is provided, use it directly
+  if (input.path) {
+    return { effectivePath: input.path, tempDirUsed: undefined };
+  }
+
+  // Check if a temporary directory is required
+  // A temp dir is needed if:
+  // 1. A question is present
+  // 2. Format is explicitly set to 'data'
+  const needsTempDir = input.question || input.format === "data";
+
+  if (needsTempDir) {
+    // Create a temporary directory
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "peekaboo-img-"));
+    logger.debug({ tempPath: tempDir }, "Created temporary directory for capture");
+    return { effectivePath: tempDir, tempDirUsed: tempDir };
+  }
+
+  // Check for PEEKABOO_DEFAULT_SAVE_PATH environment variable
+  const defaultSavePath = process.env.PEEKABOO_DEFAULT_SAVE_PATH;
+  if (defaultSavePath) {
+    return { effectivePath: defaultSavePath, tempDirUsed: undefined };
+  }
+
+  // Final fallback: create a temporary directory
+  // This happens when: no path, no question, no explicit 'data' format, no env var
+  const fallbackTempDir = await fs.mkdtemp(path.join(os.tmpdir(), "peekaboo-img-"));
+  logger.debug({ tempPath: fallbackTempDir }, "Created fallback temporary directory for capture");
+  return { effectivePath: fallbackTempDir, tempDirUsed: fallbackTempDir };
+}
 
 export function buildSwiftCliArgs(
   input: ImageInput,
-  logger?: Logger,
-  effectivePath?: string | undefined,
+  effectivePath: string | undefined,
   swiftFormat?: string,
+  logger?: Logger,
 ): string[] {
   const args = ["image"];
 
-  // Use provided values or derive from input
-  const actualPath = effectivePath !== undefined ? effectivePath : input.path;
+  // Use provided format or derive from input
   const actualFormat = swiftFormat || (input.format === "data" ? "png" : input.format) || "png";
 
   // Create a logger if not provided (for backward compatibility)
@@ -79,16 +121,9 @@ export function buildSwiftCliArgs(
     args.push("--mode", "multi");
   }
 
-  // Determine the path to use for the capture
-  const finalPath =
-    actualPath ||
-    (process.env.PEEKABOO_DEFAULT_SAVE_PATH && !input.question
-      ? process.env.PEEKABOO_DEFAULT_SAVE_PATH
-      : undefined);
-
-  // Add path if it was determined
-  if (finalPath) {
-    args.push("--path", finalPath);
+  // Add path if it was provided
+  if (effectivePath) {
+    args.push("--path", effectivePath);
   }
 
   // Add format
