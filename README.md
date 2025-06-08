@@ -629,13 +629,6 @@ cd peekaboo-cli && swift build
 - **FileHandle warning**: Non-critical Swift warning about TextOutputStream conformance
 - **AI Provider Config**: Requires `PEEKABOO_AI_PROVIDERS` environment variable for analysis features
 
-## Roadmap
-
-- [ ] OCR Integration - Built-in text extraction from screenshots
-- [ ] Video Capture - Screen recording capabilities
-- [ ] Annotation Tools - Drawing/markup on captured images
-- [ ] Cloud Storage - Direct upload to cloud providers
-- [ ] Hotkey Support - System-wide keyboard shortcuts
 
 ## License
 
