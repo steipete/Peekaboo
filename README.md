@@ -42,7 +42,7 @@ Read more about the design philosophy and implementation details in the [blog po
 #### For Cursor IDE
 
 <div align="center">
-  <a href="cursor://anysphere.cursor-deeplink/mcp/install?name=peekaboo&config=ewogICJjb21tYW5kIjogIm5weCIsCiAgImFyZ3MiOiBbCiAgICAiLXkiLAogICAgIkBzdGVpcGV0ZS9wZWVrYWJvby1tY3AiCiAgXSwKICAiZW52IjogewogICAgIlBFRUtBQk9PX0FJX1BST1ZJREVSUyI6ICJvbGxhbWEvbGxhdmE6bGF0ZXN0IgogIH0KfQ==">
+  <a href="cursor://anysphere.cursor-deeplink/mcp/install?name=peekaboo&config=eyJwZWVrYWJvbyI6eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBzdGVpcGV0ZS9wZWVrYWJvby1tY3AiXSwiZW52Ijp7IlBFRUtBQk9PX0FJX1BST1ZJREVSUyI6Im9sbGFtYS9sbGF2YTpsYXRlc3QifX19Cg==">
     <img src="https://cursor.com/deeplink/mcp-install-dark.png" alt="Install Peekaboo in Cursor IDE" height="40" />
   </a>
 </div>
