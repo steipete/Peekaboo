@@ -215,7 +215,15 @@ Add Ollama to your Claude Desktop configuration:
 
 Peekaboo requires specific macOS permissions to function:
 
-#### 1. Screen Recording Permission
+#### 1. Screen Recording Permission (Required)
+
+**For macOS Sequoia (15.0+):**
+1. Open **System Settings** → **Privacy & Security**
+2. Scroll down to **Screen & System Audio Recording**
+3. Toggle on your terminal application or MCP client
+4. You may need to restart the application after granting permission
+
+**For macOS Sonoma (14.0) and earlier:**
 1. Open **System Preferences** → **Security & Privacy** → **Privacy**
 2. Select **Screen Recording** from the left sidebar
 3. Click the **lock icon** and enter your password
@@ -230,7 +238,12 @@ Peekaboo requires specific macOS permissions to function:
 
 #### 2. Accessibility Permission (Optional)
 
-To whisper commands to windows and make them dance:
+**For macOS Sequoia (15.0+):**
+1. Open **System Settings** → **Privacy & Security**
+2. Select **Accessibility**
+3. Toggle on your terminal/MCP client application
+
+**For macOS Sonoma (14.0) and earlier:**
 1. Open **System Preferences** → **Security & Privacy** → **Privacy**
 2. Select **Accessibility** from the left sidebar
 3. Add your terminal/MCP client application
