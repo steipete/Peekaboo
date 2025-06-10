@@ -5,20 +5,6 @@ import Foundation
 import ScreenCaptureKit
 import UniformTypeIdentifiers
 
-// Define the wrapper struct
-struct FileHandleTextOutputStream: TextOutputStream {
-    private let fileHandle: FileHandle
-
-    init(_ fileHandle: FileHandle) {
-        self.fileHandle = fileHandle
-    }
-
-    mutating func write(_ string: String) {
-        guard let data = string.data(using: .utf8) else { return }
-        fileHandle.write(data)
-    }
-}
-
 struct ImageCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "image",
@@ -112,181 +98,32 @@ struct ImageCommand: AsyncParsableCommand {
     }
 
     private func captureScreens() async throws(CaptureError) -> [SavedFile] {
-        let displays = try getActiveDisplays()
-        var savedFiles: [SavedFile] = []
-
-        if let screenIndex {
-            savedFiles = try await captureSpecificScreen(displays: displays, screenIndex: screenIndex)
-        } else {
-            savedFiles = try await captureAllScreens(displays: displays)
-        }
-
-        return savedFiles
-    }
-
-    private func getActiveDisplays() throws(CaptureError) -> [CGDirectDisplayID] {
-        var displayCount: UInt32 = 0
-        let result = CGGetActiveDisplayList(0, nil, &displayCount)
-        guard result == .success && displayCount > 0 else {
-            throw CaptureError.noDisplaysAvailable
-        }
-
-        var displays = [CGDirectDisplayID](repeating: 0, count: Int(displayCount))
-        let listResult = CGGetActiveDisplayList(displayCount, &displays, nil)
-        guard listResult == .success else {
-            throw CaptureError.noDisplaysAvailable
-        }
-
-        return displays
-    }
-
-    private func captureSpecificScreen(
-        displays: [CGDirectDisplayID],
-        screenIndex: Int
-    ) async throws(CaptureError) -> [SavedFile] {
-        if screenIndex >= 0 && screenIndex < displays.count {
-            let displayID = displays[screenIndex]
-            let labelSuffix = " (Index \(screenIndex))"
-            let isSingleCapture = displays.count == 1 || path != nil
-            return try await [captureSingleDisplay(
-                displayID: displayID,
-                index: screenIndex,
-                labelSuffix: labelSuffix,
-                isSingleCapture: isSingleCapture
-            )]
-        } else {
-            Logger.shared.debug("Screen index \(screenIndex) is out of bounds. Capturing all screens instead.")
-            // When falling back to all screens, use fallback-aware capture to prevent filename conflicts
-            return try await captureAllScreensWithFallback(displays: displays)
-        }
-    }
-
-    private func captureAllScreens(displays: [CGDirectDisplayID]) async throws(CaptureError) -> [SavedFile] {
-        var savedFiles: [SavedFile] = []
-        let isSingleCapture = displays.count == 1 && path != nil
-        for (index, displayID) in displays.enumerated() {
-            let savedFile = try await captureSingleDisplay(
-                displayID: displayID,
-                index: index,
-                labelSuffix: "",
-                isSingleCapture: isSingleCapture
-            )
-            savedFiles.append(savedFile)
-        }
-        return savedFiles
-    }
-
-    private func captureAllScreensWithFallback(displays: [CGDirectDisplayID]) async throws(CaptureError)
-        -> [SavedFile] {
-        var savedFiles: [SavedFile] = []
-        for (index, displayID) in displays.enumerated() {
-            let savedFile = try await captureSingleDisplayWithFallback(
-                displayID: displayID,
-                index: index,
-                labelSuffix: ""
-            )
-            savedFiles.append(savedFile)
-        }
-        return savedFiles
-    }
-
-    private func captureSingleDisplay(
-        displayID: CGDirectDisplayID,
-        index: Int,
-        labelSuffix: String,
-        isSingleCapture: Bool = false
-    ) async throws(CaptureError) -> SavedFile {
-        let fileName = FileNameGenerator.generateFileName(displayIndex: index, format: format)
-        let filePath = OutputPathResolver.getOutputPath(
-            basePath: path,
-            fileName: fileName,
-            isSingleCapture: isSingleCapture
-        )
-
-        try await captureDisplay(displayID, to: filePath)
-
-        return SavedFile(
-            path: filePath,
-            item_label: "Display \(index + 1)\(labelSuffix)",
-            window_title: nil,
-            window_id: nil,
-            window_index: nil,
-            mime_type: format == .png ? "image/png" : "image/jpeg"
-        )
-    }
-
-    private func captureSingleDisplayWithFallback(
-        displayID: CGDirectDisplayID,
-        index: Int,
-        labelSuffix: String
-    ) async throws(CaptureError) -> SavedFile {
-        let fileName = FileNameGenerator.generateFileName(displayIndex: index, format: format)
-        // Fallback mode means multiple screens, so never single capture
-        let filePath = OutputPathResolver.getOutputPathWithFallback(
-            basePath: path,
-            fileName: fileName,
-            isSingleCapture: false
-        )
-
-        try await captureDisplay(displayID, to: filePath)
-
-        return SavedFile(
-            path: filePath,
-            item_label: "Display \(index + 1)\(labelSuffix)",
-            window_title: nil,
-            window_id: nil,
-            window_index: nil,
-            mime_type: format == .png ? "image/png" : "image/jpeg"
-        )
+        let handler = ScreenCaptureHandler(format: format, path: path)
+        return try await handler.captureScreens(screenIndex: screenIndex)
     }
 
     private func captureApplicationWindow(_ appIdentifier: String) async throws -> [SavedFile] {
+        let handler = WindowCaptureHandler(captureFocus: captureFocus, format: format, path: path)
+
         let targetApp: NSRunningApplication
         do {
-            targetApp = try ApplicationFinder.findApplication(identifier: appIdentifier)
-        } catch let ApplicationError.notFound(identifier) {
-            throw CaptureError.appNotFound(identifier)
-        } catch let ApplicationError.ambiguous(identifier, matches) {
-            // For ambiguous matches, capture all windows from all matching applications
-            Logger.shared.debug("Multiple applications match '\(identifier)', capturing all windows from all matches")
-            return try await captureWindowsFromMultipleApps(matches, appIdentifier: identifier)
+            targetApp = try await findTargetApplication(appIdentifier, handler: handler)
+        } catch let error as EarlyReturnError {
+            return error.savedFiles
         }
-
-        if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
-            try PermissionsChecker.requireAccessibilityPermission()
-            targetApp.activate()
-            try await Task.sleep(nanoseconds: 200_000_000) // Brief delay for activation
-        }
+        try await activateAppIfNeeded(targetApp)
 
         let windows = try WindowManager.getWindowsForApp(pid: targetApp.processIdentifier)
         guard !windows.isEmpty else {
             throw CaptureError.noWindowsFound(targetApp.localizedName ?? appIdentifier)
         }
 
-        let targetWindow: WindowData
-        if let windowTitle {
-            guard let window = windows.first(where: { $0.title.contains(windowTitle) }) else {
-                // Create detailed error message with available window titles for debugging
-                let availableTitles = windows.map { "\"\($0.title)\"" }.joined(separator: ", ")
-                let searchTerm = windowTitle
-                let appName = targetApp.localizedName ?? "Unknown"
-
-                Logger.shared.debug(
-                    "Window not found. Searched for '\(searchTerm)' in \(appName). " +
-                        "Available windows: \(availableTitles)"
-                )
-
-                throw CaptureError.windowTitleNotFound(searchTerm, appName, availableTitles)
-            }
-            targetWindow = window
-        } else if let windowIndex {
-            guard windowIndex >= 0 && windowIndex < windows.count else {
-                throw CaptureError.invalidWindowIndex(windowIndex)
-            }
-            targetWindow = windows[windowIndex]
-        } else {
-            targetWindow = windows[0] // frontmost window
-        }
+        let targetWindow = try handler.findTargetWindow(
+            from: windows,
+            windowTitle: windowTitle,
+            windowIndex: windowIndex,
+            appName: targetApp.localizedName ?? "Unknown"
+        )
 
         let fileName = FileNameGenerator.generateFileName(
             appName: targetApp.localizedName, windowTitle: targetWindow.title, format: format
@@ -299,37 +136,26 @@ struct ImageCommand: AsyncParsableCommand {
             isSingleCapture: isSingleCapture
         )
 
-        try await captureWindow(targetWindow, to: filePath)
+        try await handler.captureWindow(targetWindow, to: filePath)
 
-        let savedFile = SavedFile(
+        return [createSavedFile(
             path: filePath,
-            item_label: targetApp.localizedName,
-            window_title: targetWindow.title,
-            window_id: targetWindow.windowId,
-            window_index: targetWindow.windowIndex,
-            mime_type: format == .png ? "image/png" : "image/jpeg"
-        )
-
-        return [savedFile]
+            app: targetApp,
+            window: targetWindow,
+            windowIndex: targetWindow.windowIndex
+        )]
     }
 
     private func captureAllApplicationWindows(_ appIdentifier: String) async throws -> [SavedFile] {
+        let handler = WindowCaptureHandler(captureFocus: captureFocus, format: format, path: path)
+
         let targetApp: NSRunningApplication
         do {
-            targetApp = try ApplicationFinder.findApplication(identifier: appIdentifier)
-        } catch let ApplicationError.notFound(identifier) {
-            throw CaptureError.appNotFound(identifier)
-        } catch let ApplicationError.ambiguous(identifier, matches) {
-            // For ambiguous matches, capture all windows from all matching applications
-            Logger.shared.debug("Multiple applications match '\(identifier)', capturing all windows from all matches")
-            return try await captureWindowsFromMultipleApps(matches, appIdentifier: identifier)
+            targetApp = try await findTargetApplication(appIdentifier, handler: handler)
+        } catch let error as EarlyReturnError {
+            return error.savedFiles
         }
-
-        if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
-            try PermissionsChecker.requireAccessibilityPermission()
-            targetApp.activate()
-            try await Task.sleep(nanoseconds: 200_000_000)
-        }
+        try await activateAppIfNeeded(targetApp)
 
         let windows = try WindowManager.getWindowsForApp(pid: targetApp.processIdentifier)
         guard !windows.isEmpty else {
@@ -349,113 +175,22 @@ struct ImageCommand: AsyncParsableCommand {
                 isSingleCapture: false
             )
 
-            try await captureWindow(window, to: filePath)
+            try await handler.captureWindow(window, to: filePath)
 
-            let savedFile = SavedFile(
+            savedFiles.append(createSavedFile(
                 path: filePath,
-                item_label: targetApp.localizedName,
-                window_title: window.title,
-                window_id: window.windowId,
-                window_index: index,
-                mime_type: format == .png ? "image/png" : "image/jpeg"
-            )
-            savedFiles.append(savedFile)
+                app: targetApp,
+                window: window,
+                windowIndex: index
+            ))
         }
 
         return savedFiles
     }
 
-    private func captureWindowsFromMultipleApps(
-        _ apps: [NSRunningApplication], appIdentifier: String
-    ) async throws -> [SavedFile] {
-        var allSavedFiles: [SavedFile] = []
-        var totalWindowIndex = 0
-
-        for targetApp in apps {
-            // Log which app we're processing
-            Logger.shared.debug("Capturing windows for app: \(targetApp.localizedName ?? "Unknown")")
-
-            // Handle focus behavior for each app (if needed)
-            if captureFocus == .foreground || (captureFocus == .auto && !targetApp.isActive) {
-                try PermissionsChecker.requireAccessibilityPermission()
-                targetApp.activate()
-                try await Task.sleep(nanoseconds: 200_000_000)
-            }
-
-            let windows = try WindowManager.getWindowsForApp(pid: targetApp.processIdentifier)
-            if windows.isEmpty {
-                Logger.shared.debug("No windows found for app: \(targetApp.localizedName ?? "Unknown")")
-                continue
-            }
-
-            for window in windows {
-                let fileName = FileNameGenerator.generateFileName(
-                    appName: targetApp.localizedName,
-                    windowIndex: totalWindowIndex,
-                    windowTitle: window.title,
-                    format: format
-                )
-                // Multiple windows from multiple apps means not a single capture
-                let filePath = OutputPathResolver.getOutputPath(
-                    basePath: path,
-                    fileName: fileName,
-                    isSingleCapture: false
-                )
-
-                try await captureWindow(window, to: filePath)
-
-                let savedFile = SavedFile(
-                    path: filePath,
-                    item_label: targetApp.localizedName,
-                    window_title: window.title,
-                    window_id: window.windowId,
-                    window_index: totalWindowIndex,
-                    mime_type: format == .png ? "image/png" : "image/jpeg"
-                )
-                allSavedFiles.append(savedFile)
-                totalWindowIndex += 1
-            }
-        }
-
-        guard !allSavedFiles.isEmpty else {
-            throw CaptureError.noWindowsFound("No windows found for any matching applications of '\(appIdentifier)'")
-        }
-
-        return allSavedFiles
-    }
-
-    private func captureDisplay(_ displayID: CGDirectDisplayID, to path: String) async throws(CaptureError) {
-        do {
-            try await ScreenCapture.captureDisplay(displayID, to: path, format: format)
-        } catch let error as CaptureError {
-            // Re-throw CaptureError as-is
-            throw error
-        } catch {
-            // Check if this is a permission error from ScreenCaptureKit
-            if PermissionErrorDetector.isScreenRecordingPermissionError(error) {
-                throw CaptureError.screenRecordingPermissionDenied
-            }
-            throw CaptureError.captureCreationFailed(error)
-        }
-    }
-
-    private func captureWindow(_ window: WindowData, to path: String) async throws(CaptureError) {
-        do {
-            try await ScreenCapture.captureWindow(window, to: path, format: format)
-        } catch let error as CaptureError {
-            // Re-throw CaptureError as-is
-            throw error
-        } catch {
-            // Check if this is a permission error from ScreenCaptureKit
-            if PermissionErrorDetector.isScreenRecordingPermissionError(error) {
-                throw CaptureError.screenRecordingPermissionDenied
-            }
-            throw CaptureError.windowCaptureFailed(error)
-        }
-    }
-
     private func captureFrontmostWindow() async throws -> [SavedFile] {
         Logger.shared.debug("Capturing frontmost window")
+        let handler = WindowCaptureHandler(captureFocus: captureFocus, format: format, path: path)
 
         // Get the frontmost (active) application
         guard let frontmostApp = NSWorkspace.shared.frontmostApplication else {
@@ -489,7 +224,7 @@ struct ImageCommand: AsyncParsableCommand {
         )
 
         // Capture the window
-        try await captureWindow(frontmostWindow, to: filePath)
+        try await handler.captureWindow(frontmostWindow, to: filePath)
 
         return [SavedFile(
             path: filePath,
@@ -500,4 +235,51 @@ struct ImageCommand: AsyncParsableCommand {
             mime_type: format == .png ? "image/png" : "image/jpeg"
         )]
     }
+
+    // MARK: - Helper Methods
+
+    private func findTargetApplication(
+        _ appIdentifier: String,
+        handler: WindowCaptureHandler
+    ) async throws -> NSRunningApplication {
+        do {
+            return try ApplicationFinder.findApplication(identifier: appIdentifier)
+        } catch let ApplicationError.notFound(identifier) {
+            throw CaptureError.appNotFound(identifier)
+        } catch let ApplicationError.ambiguous(identifier, matches) {
+            // For ambiguous matches, capture all windows from all matching applications
+            Logger.shared.debug("Multiple applications match '\(identifier)', capturing all windows from all matches")
+            let savedFiles = try await handler.captureWindowsFromMultipleApps(matches, appIdentifier: identifier)
+            throw EarlyReturnError(savedFiles: savedFiles)
+        }
+    }
+
+    private func activateAppIfNeeded(_ app: NSRunningApplication) async throws {
+        if captureFocus == .foreground || (captureFocus == .auto && !app.isActive) {
+            try PermissionsChecker.requireAccessibilityPermission()
+            app.activate()
+            try await Task.sleep(nanoseconds: 200_000_000) // Brief delay for activation
+        }
+    }
+
+    private func createSavedFile(
+        path: String,
+        app: NSRunningApplication,
+        window: WindowData,
+        windowIndex: Int
+    ) -> SavedFile {
+        SavedFile(
+            path: path,
+            item_label: app.localizedName,
+            window_title: window.title,
+            window_id: window.windowId,
+            window_index: windowIndex,
+            mime_type: format == .png ? "image/png" : "image/jpeg"
+        )
+    }
+}
+
+// Helper error for early return with results
+private struct EarlyReturnError: Error {
+    let savedFiles: [SavedFile]
 }

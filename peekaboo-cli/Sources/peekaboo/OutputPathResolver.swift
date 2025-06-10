@@ -52,64 +52,82 @@ struct OutputPathResolver: Sendable {
             basePath != "." && basePath != ".."
 
         if isLikelyFile {
-            // Create parent directory if needed
-            let parentDir = (basePath as NSString).deletingLastPathComponent
-            if !parentDir.isEmpty && parentDir != "/" {
-                do {
-                    try FileManager.default.createDirectory(
-                        atPath: parentDir,
-                        withIntermediateDirectories: true,
-                        attributes: nil
-                    )
-                } catch {
-                    // Log but don't fail - maybe directory already exists
-                    // Logger.debug("Could not create parent directory \(parentDir): \(error)")
-                }
-            }
-
-            // If this is a single capture, use the file path as-is without appending metadata
-            if isSingleCapture {
-                return basePath
-            }
-
-            // When a file path is provided and we're capturing multiple items, append metadata
-            let pathExtension = (basePath as NSString).pathExtension
-
-            // Check what type of capture this is based on the fileName pattern
-            let isScreenCapture = fileName.hasPrefix("screen_")
-            let isWindowCapture = fileName.contains("_window_")
-
-            if isWindowCapture {
-                // Extract the metadata suffix from the generated fileName
-                // e.g., "Finder_window_0_20250610_052730.png" -> "_Finder_window_0_20250610_052730"
-                let fileNameWithoutExt = (fileName as NSString).deletingPathExtension
-                let suffix = "_" + fileNameWithoutExt
-
-                return safeCombineFilename(basePath: basePath, suffix: suffix, extension: pathExtension)
-            } else if isScreenCapture {
-                // Screen capture - modify filename to include screen info
-                // Extract screen info from fileName (e.g., "screen_1_20250608_120000.png" -> "1_20250608_120000")
-                let fileNameWithoutExt = (fileName as NSString).deletingPathExtension
-                let replacedText = fileNameWithoutExt.replacingOccurrences(of: "screen_", with: "")
-                let screenSuffix = "_" + replacedText
-
-                return safeCombineFilename(basePath: basePath, suffix: screenSuffix, extension: pathExtension)
-            }
-
-            return basePath
+            return handleFileBasePath(
+                basePath: basePath,
+                fileName: fileName,
+                isSingleCapture: isSingleCapture
+            )
         } else {
-            // Treat as directory - ensure it exists
+            return handleDirectoryBasePath(basePath: basePath, fileName: fileName)
+        }
+    }
+
+    private static func handleFileBasePath(
+        basePath: String,
+        fileName: String,
+        isSingleCapture: Bool
+    ) -> String {
+        // Create parent directory if needed
+        createParentDirectoryIfNeeded(for: basePath)
+
+        // If this is a single capture, use the file path as-is without appending metadata
+        if isSingleCapture {
+            return basePath
+        }
+
+        // When a file path is provided and we're capturing multiple items, append metadata
+        let pathExtension = (basePath as NSString).pathExtension
+
+        // Check what type of capture this is based on the fileName pattern
+        let isScreenCapture = fileName.hasPrefix("screen_")
+        let isWindowCapture = fileName.contains("_window_")
+
+        if isWindowCapture {
+            // Extract the metadata suffix from the generated fileName
+            // e.g., "Finder_window_0_20250610_052730.png" -> "_Finder_window_0_20250610_052730"
+            let fileNameWithoutExt = (fileName as NSString).deletingPathExtension
+            let suffix = "_" + fileNameWithoutExt
+            return safeCombineFilename(basePath: basePath, suffix: suffix, extension: pathExtension)
+        } else if isScreenCapture {
+            // Screen capture - modify filename to include screen info
+            // Extract screen info from fileName (e.g., "screen_1_20250608_120000.png" -> "1_20250608_120000")
+            let fileNameWithoutExt = (fileName as NSString).deletingPathExtension
+            let replacedText = fileNameWithoutExt.replacingOccurrences(of: "screen_", with: "")
+            let screenSuffix = "_" + replacedText
+            return safeCombineFilename(basePath: basePath, suffix: screenSuffix, extension: pathExtension)
+        }
+
+        return basePath
+    }
+
+    private static func handleDirectoryBasePath(basePath: String, fileName: String) -> String {
+        // Treat as directory - ensure it exists
+        do {
+            try FileManager.default.createDirectory(
+                atPath: basePath,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+        } catch {
+            // Log but don't fail - maybe directory already exists
+            // Logger.debug("Could not create directory \(basePath): \(error)")
+        }
+        return "\(basePath)/\(fileName)"
+    }
+
+    private static func createParentDirectoryIfNeeded(for path: String) {
+        let parentDir = (path as NSString).deletingLastPathComponent
+        if !parentDir.isEmpty && parentDir != "/" {
             do {
                 try FileManager.default.createDirectory(
-                    atPath: basePath,
+                    atPath: parentDir,
                     withIntermediateDirectories: true,
                     attributes: nil
                 )
             } catch {
                 // Log but don't fail - maybe directory already exists
-                // Logger.debug("Could not create directory \(basePath): \(error)")
+                // Logger.debug("Could not create parent directory \(parentDir): \(error)")
             }
-            return "\(basePath)/\(fileName)"
         }
     }
 
@@ -125,19 +143,7 @@ struct OutputPathResolver: Sendable {
 
         if isLikelyFile {
             // Create parent directory if needed
-            let parentDir = (basePath as NSString).deletingLastPathComponent
-            if !parentDir.isEmpty && parentDir != "/" {
-                do {
-                    try FileManager.default.createDirectory(
-                        atPath: parentDir,
-                        withIntermediateDirectories: true,
-                        attributes: nil
-                    )
-                } catch {
-                    // Log but don't fail - maybe directory already exists
-                    // Logger.debug("Could not create parent directory \(parentDir): \(error)")
-                }
-            }
+            createParentDirectoryIfNeeded(for: basePath)
 
             // If this is a single capture, use the file path as-is
             if isSingleCapture {
@@ -154,18 +160,7 @@ struct OutputPathResolver: Sendable {
 
             return safeCombineFilename(basePath: basePath, suffix: screenSuffix, extension: pathExtension)
         } else {
-            // Treat as directory - ensure it exists
-            do {
-                try FileManager.default.createDirectory(
-                    atPath: basePath,
-                    withIntermediateDirectories: true,
-                    attributes: nil
-                )
-            } catch {
-                // Log but don't fail - maybe directory already exists
-                // Logger.debug("Could not create directory \(basePath): \(error)")
-            }
-            return "\(basePath)/\(fileName)"
+            return handleDirectoryBasePath(basePath: basePath, fileName: fileName)
         }
     }
 

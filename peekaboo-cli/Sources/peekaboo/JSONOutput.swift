@@ -63,39 +63,88 @@ struct AnyCodable: Codable {
             // Handle Codable types by encoding them directly
             try AnyEncodable(codable).encode(to: encoder)
         } else {
-            switch value {
-            case let bool as Bool:
-                try container.encode(bool)
-            case let int as Int:
-                try container.encode(int)
-            case let int32 as Int32:
-                try container.encode(int32)
-            case let int64 as Int64:
-                try container.encode(int64)
-            case let double as Double:
-                try container.encode(double)
-            case let float as Float:
-                try container.encode(float)
-            case let string as String:
-                try container.encode(string)
-            case let array as [Any]:
-                try container.encode(array.map(AnyCodable.init))
-            case let dict as [String: Any]:
-                try container.encode(dict.mapValues(AnyCodable.init))
-            case is NSNull:
-                try container.encodeNil()
-            case Optional<Any>.none:
-                try container.encodeNil()
-            default:
-                // Check if it's an optional with nil value
-                let mirror = Mirror(reflecting: value)
-                if mirror.displayStyle == .optional && mirror.children.isEmpty {
-                    try container.encodeNil()
-                } else {
-                    // Try to encode as a string representation
-                    try container.encode(String(describing: value))
-                }
-            }
+            try encodeValue(value, to: &container)
+        }
+    }
+
+    private func encodeValue(_ value: Any, to container: inout SingleValueEncodingContainer) throws {
+        if try encodePrimitive(value, to: &container) {
+            return
+        }
+        
+        if try encodeCollection(value, to: &container) {
+            return
+        }
+        
+        if try encodeNil(value, to: &container) {
+            return
+        }
+        
+        try encodeDefault(value, to: &container)
+    }
+    
+    private func encodePrimitive(_ value: Any, to container: inout SingleValueEncodingContainer) throws -> Bool {
+        switch value {
+        case let bool as Bool:
+            try container.encode(bool)
+            return true
+        case let int as Int:
+            try container.encode(int)
+            return true
+        case let int32 as Int32:
+            try container.encode(int32)
+            return true
+        case let int64 as Int64:
+            try container.encode(int64)
+            return true
+        case let double as Double:
+            try container.encode(double)
+            return true
+        case let float as Float:
+            try container.encode(float)
+            return true
+        case let string as String:
+            try container.encode(string)
+            return true
+        default:
+            return false
+        }
+    }
+    
+    private func encodeCollection(_ value: Any, to container: inout SingleValueEncodingContainer) throws -> Bool {
+        switch value {
+        case let array as [Any]:
+            try container.encode(array.map(AnyCodable.init))
+            return true
+        case let dict as [String: Any]:
+            try container.encode(dict.mapValues(AnyCodable.init))
+            return true
+        default:
+            return false
+        }
+    }
+    
+    private func encodeNil(_ value: Any, to container: inout SingleValueEncodingContainer) throws -> Bool {
+        switch value {
+        case is NSNull:
+            try container.encodeNil()
+            return true
+        case Optional<Any>.none:
+            try container.encodeNil()
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func encodeDefault(_ value: Any, to container: inout SingleValueEncodingContainer) throws {
+        // Check if it's an optional with nil value
+        let mirror = Mirror(reflecting: value)
+        if mirror.displayStyle == .optional && mirror.children.isEmpty {
+            try container.encodeNil()
+        } else {
+            // Try to encode as a string representation
+            try container.encode(String(describing: value))
         }
     }
 
