@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: macos-15
+    runs-on: self-hosted
     
     strategy:
       matrix:
@@ -68,7 +68,7 @@ jobs:
         fail_ci_if_error: false
 
   build-swift:
-    runs-on: macos-15
+    runs-on: self-hosted
     timeout-minutes: 30
     
     env:
