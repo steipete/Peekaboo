@@ -42,9 +42,9 @@ export async function imageToolHandler(
     if (originalFormat) {
       logger.info(
         { originalFormat, correctedFormat: effectiveFormat },
-        "Format was automatically corrected"
+        "Format was automatically corrected",
       );
-      formatWarning = `Invalid format '${originalFormat}' was provided. Automatically using ${effectiveFormat?.toUpperCase() || 'PNG'} format instead.`;
+      formatWarning = `Invalid format '${originalFormat}' was provided. Automatically using ${effectiveFormat?.toUpperCase() || "PNG"} format instead.`;
     }
 
     // Defensive validation: ensure format is one of the valid values

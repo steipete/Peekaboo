@@ -189,17 +189,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         // Store original format before validation
         const originalFormat = (args as any)?.format;
         const validatedArgs = imageToolSchema.parse(args || {});
-        
+
         // Check if format was corrected
-        if (originalFormat && typeof originalFormat === 'string') {
+        if (originalFormat && typeof originalFormat === "string") {
           const normalizedOriginal = originalFormat.toLowerCase();
-          const validFormats = ['png', 'jpg', 'jpeg', 'data'];
-          if (!validFormats.includes(normalizedOriginal) && validatedArgs.format === 'png') {
+          const validFormats = ["png", "jpg", "jpeg", "data"];
+          if (!validFormats.includes(normalizedOriginal) && validatedArgs.format === "png") {
             // Format was corrected, add the original format to the validated args
             (validatedArgs as any)._originalFormat = originalFormat;
           }
         }
-        
+
         response = await imageToolHandler(validatedArgs, toolContext);
         break;
       }
