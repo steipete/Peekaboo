@@ -74,12 +74,12 @@ export async function getProviderStatus(
 async function checkOllamaStatus(model: string, logger: Logger): Promise<ProviderStatus> {
   try {
     const baseUrl = process.env.PEEKABOO_OLLAMA_BASE_URL || "http://localhost:11434";
-    
+
     // Check if server is reachable
     const tagsResponse = await fetch(`${baseUrl}/api/tags`, {
       signal: AbortSignal.timeout(3000), // 3 second timeout
     });
-    
+
     if (!tagsResponse.ok) {
       return {
         available: false,
@@ -91,11 +91,11 @@ async function checkOllamaStatus(model: string, logger: Logger): Promise<Provide
     }
 
     const tagsData = await tagsResponse.json();
-    const availableModels = tagsData.models?.map((m: any) => m.name) || [];
-    
+    const availableModels = tagsData.models?.map((m: { name: string }) => m.name) || [];
+
     // Check if the specific model is available
-    const modelAvailable = availableModels.some((m: string) => 
-      m === model || m.startsWith(model + ":") || model.startsWith(m.split(":")[0])
+    const modelAvailable = availableModels.some((m: string) =>
+      m === model || m.startsWith(model + ":") || model.startsWith(m.split(":")[0]),
     );
 
     if (!modelAvailable) {
@@ -121,7 +121,7 @@ async function checkOllamaStatus(model: string, logger: Logger): Promise<Provide
   } catch (error) {
     logger.debug({ error }, "Ollama not available");
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    
+
     if (errorMessage.includes("fetch") || errorMessage.includes("timeout")) {
       return {
         available: false,
@@ -131,7 +131,7 @@ async function checkOllamaStatus(model: string, logger: Logger): Promise<Provide
         },
       };
     }
-    
+
     return {
       available: false,
       error: errorMessage,
@@ -144,7 +144,7 @@ async function checkOllamaStatus(model: string, logger: Logger): Promise<Provide
 
 async function checkOpenAIStatus(model: string, logger: Logger): Promise<ProviderStatus> {
   const apiKey = process.env.OPENAI_API_KEY;
-  
+
   if (!apiKey) {
     return {
       available: false,
@@ -157,17 +157,17 @@ async function checkOpenAIStatus(model: string, logger: Logger): Promise<Provide
 
   try {
     // Test the API key by making a simple models list request
-    const openai = new OpenAI({ 
+    const openai = new OpenAI({
       apiKey,
       timeout: 3000, // 3 second timeout
     });
-    
+
     const modelsResponse = await openai.models.list();
     const availableModels = modelsResponse.data.map(m => m.id);
-    
+
     // Check if the specific model is available
     const modelAvailable = availableModels.includes(model);
-    
+
     if (!modelAvailable) {
       // For OpenAI, we'll be more lenient and just warn if model isn't in the list
       // since the models list API might not include all available models
@@ -186,7 +186,7 @@ async function checkOpenAIStatus(model: string, logger: Logger): Promise<Provide
   } catch (error) {
     logger.debug({ error }, "OpenAI API check failed");
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    
+
     if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
       return {
         available: false,
@@ -197,7 +197,7 @@ async function checkOpenAIStatus(model: string, logger: Logger): Promise<Provide
         },
       };
     }
-    
+
     if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
       return {
         available: false,
@@ -208,7 +208,7 @@ async function checkOpenAIStatus(model: string, logger: Logger): Promise<Provide
         },
       };
     }
-    
+
     return {
       available: false,
       error: `OpenAI API error: ${errorMessage}`,
@@ -220,9 +220,9 @@ async function checkOpenAIStatus(model: string, logger: Logger): Promise<Provide
   }
 }
 
-function checkAnthropicStatus(model: string): ProviderStatus {
+function checkAnthropicStatus(_model: string): ProviderStatus {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  
+
   if (!apiKey) {
     return {
       available: false,
@@ -242,19 +242,6 @@ function checkAnthropicStatus(model: string): ProviderStatus {
   };
 }
 
-// Legacy functions for backward compatibility
-async function checkOllamaAvailability(logger: Logger): Promise<boolean> {
-  const status = await checkOllamaStatus("llava:latest", logger);
-  return status.available;
-}
-
-function checkOpenAIAvailability(): boolean {
-  return !!process.env.OPENAI_API_KEY;
-}
-
-function checkAnthropicAvailability(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY;
-}
 
 export async function analyzeImageWithProvider(
   provider: AIProvider,

@@ -326,7 +326,7 @@ async function handleServerStatus(
 
   // 4. AI Provider Status
   statusSections.push("\n## AI Provider Status");
-  
+
   const aiProvidersEnv = process.env.PEEKABOO_AI_PROVIDERS;
   if (!aiProvidersEnv || !aiProvidersEnv.trim()) {
     statusSections.push("❌ No AI providers configured");
@@ -338,16 +338,16 @@ async function handleServerStatus(
       statusSections.push(`Raw config: ${aiProvidersEnv}`);
     } else {
       statusSections.push(`Found ${providers.length} configured provider${providers.length !== 1 ? "s" : ""}:`);
-      
+
       for (const provider of providers) {
         statusSections.push(`\n### ${provider.provider}/${provider.model}`);
-        
+
         try {
           const status = await getProviderStatus(provider, logger);
-          
+
           if (status.available) {
             statusSections.push("✅ **Available and working**");
-            
+
             if (status.details?.modelList && status.details.modelList.length > 0) {
               const modelCount = status.details.modelList.length;
               statusSections.push(`- Found ${modelCount} available model${modelCount !== 1 ? "s" : ""}`);
@@ -357,11 +357,11 @@ async function handleServerStatus(
             if (status.error) {
               statusSections.push(`- Error: ${status.error}`);
             }
-            
+
             // Provide specific troubleshooting info
             if (status.details) {
               const details = status.details;
-              
+
               if (provider.provider.toLowerCase() === "openai") {
                 if (!details.apiKeyPresent) {
                   statusSections.push("- Missing: Set OPENAI_API_KEY environment variable");
@@ -373,7 +373,7 @@ async function handleServerStatus(
               } else if (provider.provider.toLowerCase() === "ollama") {
                 if (!details.serverReachable) {
                   statusSections.push("- Ollama server not running or not reachable");
-                  statusSections.push(`- Start with: ollama serve`);
+                  statusSections.push("- Start with: ollama serve");
                 } else if (!details.modelAvailable) {
                   statusSections.push(`- Model '${provider.model}' not installed`);
                   statusSections.push(`- Install with: ollama pull ${provider.model}`);
