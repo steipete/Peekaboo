@@ -8,23 +8,60 @@ on:
 
 jobs:
   test:
-    runs-on: macos-15
+    runs-on: macos-latest
     
     strategy:
       matrix:
         node-version: [20.x, 22.x]
     
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_16.3.app/Contents/Developer
+    # Xcode will be selected dynamically in the setup step
     
     steps:
     - uses: actions/checkout@v4
     
     - name: Set up Xcode
       run: |
-        sudo xcode-select -s $DEVELOPER_DIR
+        # Try to find the best available Xcode version with Swift 6.0+
+        if [ -d "/Applications/Xcode_16.2.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.2.app/Contents/Developer"
+          echo "Using Xcode 16.2"
+        elif [ -d "/Applications/Xcode_16.1.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.1.app/Contents/Developer"
+          echo "Using Xcode 16.1"
+        elif [ -d "/Applications/Xcode_16.0.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.0.app/Contents/Developer"
+          echo "Using Xcode 16.0"
+        elif [ -d "/Applications/Xcode_15.4.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.4.app/Contents/Developer"
+          echo "Using Xcode 15.4"
+        elif [ -d "/Applications/Xcode_15.3.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.3.app/Contents/Developer"
+          echo "Using Xcode 15.3"
+        elif [ -d "/Applications/Xcode_15.2.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.2.app/Contents/Developer"
+          echo "Using Xcode 15.2"
+        elif [ -d "/Applications/Xcode.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+          echo "Using default Xcode"
+        else
+          echo "Error: No Xcode installation found"
+          exit 1
+        fi
+        
+        sudo xcode-select -s "$DEVELOPER_DIR"
+        echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> $GITHUB_ENV
         xcodebuild -version
         swift --version
+    
+    - name: Cache Swift build
+      uses: actions/cache@v4
+      with:
+        path: |
+          peekaboo-cli/.build
+          peekaboo
+        key: ${{ runner.os }}-swift-${{ hashFiles('peekaboo-cli/Package.swift', 'peekaboo-cli/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-swift-
     
     - name: Build Swift CLI for tests
       run: |
@@ -55,8 +92,10 @@ jobs:
     
     - name: Run tests with coverage
       run: npm run test:coverage
+      timeout-minutes: 15
       env:
         CI: true
+        PEEKABOO_LOG_LEVEL: warn
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
@@ -68,20 +107,55 @@ jobs:
         fail_ci_if_error: false
 
   build-swift:
-    runs-on: macos-15
+    runs-on: macos-latest
     timeout-minutes: 30
     
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_16.3.app/Contents/Developer
+    # Xcode will be selected dynamically in the setup step
     
     steps:
     - uses: actions/checkout@v4
     
     - name: Set up Xcode
       run: |
-        sudo xcode-select -s $DEVELOPER_DIR
+        # Try to find the best available Xcode version with Swift 6.0+
+        if [ -d "/Applications/Xcode_16.2.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.2.app/Contents/Developer"
+          echo "Using Xcode 16.2"
+        elif [ -d "/Applications/Xcode_16.1.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.1.app/Contents/Developer"
+          echo "Using Xcode 16.1"
+        elif [ -d "/Applications/Xcode_16.0.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_16.0.app/Contents/Developer"
+          echo "Using Xcode 16.0"
+        elif [ -d "/Applications/Xcode_15.4.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.4.app/Contents/Developer"
+          echo "Using Xcode 15.4"
+        elif [ -d "/Applications/Xcode_15.3.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.3.app/Contents/Developer"
+          echo "Using Xcode 15.3"
+        elif [ -d "/Applications/Xcode_15.2.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode_15.2.app/Contents/Developer"
+          echo "Using Xcode 15.2"
+        elif [ -d "/Applications/Xcode.app" ]; then
+          DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+          echo "Using default Xcode"
+        else
+          echo "Error: No Xcode installation found"
+          exit 1
+        fi
+        
+        sudo xcode-select -s "$DEVELOPER_DIR"
+        echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> $GITHUB_ENV
         xcodebuild -version
         swift --version
+    
+    - name: Cache Swift build artifacts
+      uses: actions/cache@v4
+      with:
+        path: peekaboo-cli/.build
+        key: ${{ runner.os }}-swift-build-${{ hashFiles('peekaboo-cli/Package.swift', 'peekaboo-cli/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-swift-build-
     
     - name: Build Swift CLI
       run: |
