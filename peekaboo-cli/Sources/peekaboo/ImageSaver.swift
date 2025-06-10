@@ -38,7 +38,14 @@ struct ImageSaver: Sendable {
             throw CaptureError.fileWriteError(path, nil)
         }
 
-        CGImageDestinationAddImage(destination, image, nil)
+        // Set compression quality for JPEG images (1.0 = highest quality)
+        let properties: CFDictionary? = if format == .jpg {
+            [kCGImageDestinationLossyCompressionQuality: 0.95] as CFDictionary
+        } else {
+            nil
+        }
+        
+        CGImageDestinationAddImage(destination, image, properties)
 
         guard CGImageDestinationFinalize(destination) else {
             throw CaptureError.fileWriteError(path, nil)

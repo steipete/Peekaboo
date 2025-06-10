@@ -243,7 +243,7 @@ struct WindowsSubcommand: AsyncParsableCommand {
             }
 
             if let bounds = window.bounds {
-                print("   Bounds: (\(bounds.x_coordinate), \(bounds.y_coordinate)) \(bounds.width)×\(bounds.height)")
+                print("   Bounds: (\(bounds.x), \(bounds.y)) \(bounds.width)×\(bounds.height)")
             }
 
             print()

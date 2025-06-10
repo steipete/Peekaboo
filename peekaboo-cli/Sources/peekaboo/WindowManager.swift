@@ -91,8 +91,8 @@ final class WindowManager: Sendable {
                 window_id: includeIDs ? windowData.windowId : nil,
                 window_index: windowData.windowIndex,
                 bounds: includeBounds ? WindowBounds(
-                    x_coordinate: Int(windowData.bounds.origin.x),
-                    y_coordinate: Int(windowData.bounds.origin.y),
+                    x: Int(windowData.bounds.origin.x),
+                    y: Int(windowData.bounds.origin.y),
                     width: Int(windowData.bounds.size.width),
                     height: Int(windowData.bounds.size.height)
                 ) : nil,

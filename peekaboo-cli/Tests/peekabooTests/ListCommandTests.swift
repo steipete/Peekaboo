@@ -149,7 +149,7 @@ struct ListCommandTests {
             window_title: "Documents",
             window_id: 1001,
             window_index: 0,
-            bounds: WindowBounds(x_coordinate: 100, y_coordinate: 200, width: 800, height: 600),
+            bounds: WindowBounds(x: 100, y: 200, width: 800, height: 600),
             is_on_screen: true
         )
 
@@ -165,8 +165,8 @@ struct ListCommandTests {
         #expect(json?["is_on_screen"] as? Bool == true)
 
         let bounds = json?["bounds"] as? [String: Any]
-        #expect(bounds?["x_coordinate"] as? Int == 100)
-        #expect(bounds?["y_coordinate"] as? Int == 200)
+        #expect(bounds?["x"] as? Int == 100)
+        #expect(bounds?["y"] as? Int == 200)
         #expect(bounds?["width"] as? Int == 800)
         #expect(bounds?["height"] as? Int == 600)
     }
@@ -180,7 +180,7 @@ struct ListCommandTests {
                     window_title: "Documents",
                     window_id: 1001,
                     window_index: 0,
-                    bounds: WindowBounds(x_coordinate: 100, y_coordinate: 200, width: 800, height: 600),
+                    bounds: WindowBounds(x: 100, y: 200, width: 800, height: 600),
                     is_on_screen: true
                 )
             ],

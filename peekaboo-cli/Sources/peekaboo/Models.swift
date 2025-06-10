@@ -57,17 +57,10 @@ struct WindowInfo: Codable, Sendable {
 }
 
 struct WindowBounds: Codable, Sendable {
-    let x_coordinate: Int
-    let y_coordinate: Int
+    let x: Int
+    let y: Int
     let width: Int
     let height: Int
-
-    private enum CodingKeys: String, CodingKey {
-        case x_coordinate = "x"
-        case y_coordinate = "y"
-        case width
-        case height
-    }
 }
 
 struct TargetApplicationInfo: Codable, Sendable {

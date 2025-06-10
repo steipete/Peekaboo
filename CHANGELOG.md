@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Window Bounds Display**: Fixed window bounds showing as `[undefined,undefined WIDTH×HEIGHT]` by simplifying field names from `x_coordinate`/`y_coordinate` to `x`/`y`
+- **Image Quality**: Added JPEG compression quality setting (0.95) to maintain high quality while reducing file sizes for AI analysis
+
+### Changed
+- **Code Simplification**: Removed unnecessary CodingKeys mapping in WindowBounds struct
+
 ## [1.1.0-beta.2] - 2025-01-10
 
 ### Added
