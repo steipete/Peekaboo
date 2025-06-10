@@ -99,24 +99,28 @@ describeSwiftTests("Invalid Format Integration Tests", () => {
         mockContext,
       );
       
-      // The tool might fail due to permissions or timeout
+      // The tool might fail due to permissions or timeout, which is acceptable
       if (result.isError) {
-        // If it's a permission or timeout error, that's expected
+        // If it's a permission or timeout error, that's expected in CI/testing environments
         const errorText = result.content?.[0]?.text || "";
         const metaErrorCode = (result as any)._meta?.backend_error_code;
         
-        expect(
-          errorText.includes("permission") ||
+        // This is OK - system might not have permissions or CLI might timeout
+        const isExpectedError = errorText.includes("permission") ||
           errorText.includes("denied") ||
           errorText.includes("timeout") ||
           metaErrorCode === "PERMISSION_DENIED_SCREEN_RECORDING" ||
-          metaErrorCode === "SWIFT_CLI_TIMEOUT"
-        ).toBeTruthy();
+          metaErrorCode === "SWIFT_CLI_TIMEOUT";
         
-        continue; // Skip to next format
+        if (isExpectedError) {
+          continue; // Skip to next format - this is expected
+        } else {
+          // Unexpected error
+          throw new Error(`Unexpected error for format ${format}: ${errorText}`);
+        }
       }
       
-      // Should succeed with fallback
+      // If successful, the tool should automatically convert to PNG
       expect(result.isError).toBeUndefined();
       
       if (result.saved_files && result.saved_files.length > 0) {
