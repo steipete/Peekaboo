@@ -53,7 +53,7 @@ Or manually add to your Cursor settings:
         "@steipete/peekaboo-mcp"
       ],
       "env": {
-        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o",
+        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
         "OPENAI_API_KEY": "your-openai-api-key-here"
       }
     }
@@ -79,7 +79,7 @@ Add the Peekaboo configuration:
         "@steipete/peekaboo-mcp"
       ],
       "env": {
-        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o",
+        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
         "OPENAI_API_KEY": "your-openai-api-key-here"
       }
     }
