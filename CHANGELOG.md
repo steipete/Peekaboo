@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0-beta.2] - 2025-01-10
+
+### Added
+- **Enhanced AI Provider Status Checking**: Server status now includes comprehensive AI provider diagnostics
+  - Real-time validation of OpenAI API keys and model availability
+  - Ollama server connectivity and model installation status
+  - Specific troubleshooting guidance for each provider type
+  - Network timeout detection and error reporting
+  - Detailed error messages with actionable next steps
+
+### Improved
+- **Faster AI Provider Checks**: Reduced timeout from 5 seconds to 3 seconds for quicker status responses
+- **Better Error Diagnostics**: Provider status checks now distinguish between API key issues, network problems, and missing models
+
+### Fixed
+- **Semicolon Separator Support**: AI provider configuration now supports both comma (`,`) and semicolon (`;`) separators
+  - Example: `"openai/gpt-4o;ollama/llava:latest"` now works correctly
+  - Fixes configuration parsing issues with Claude Desktop configurations that use semicolons
+  - Resolves "All configured AI providers failed or are unavailable" errors when using semicolon-separated configurations
+
 ## [1.1.0-beta.1] - 2025-01-09
 
 ### Added
