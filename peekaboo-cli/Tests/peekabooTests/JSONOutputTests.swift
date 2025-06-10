@@ -389,4 +389,67 @@ struct JSONOutputFormatValidationTests {
         _ = try JSONSerialization.jsonObject(with: encoded)
         #expect(Bool(true)) // JSON was successfully created
     }
+
+    @Test("WindowBounds JSON encoding with custom CodingKeys", .tags(.fast))
+    func windowBoundsJSONEncoding() throws {
+        // Create a WindowBounds instance
+        let bounds = WindowBounds(x_coordinate: 100, y_coordinate: 200, width: 1920, height: 1080)
+        
+        // Encode to JSON
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(bounds)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        
+        // Verify that x_coordinate and y_coordinate are encoded as "x" and "y"
+        #expect(json?["x"] as? Int == 100)
+        #expect(json?["y"] as? Int == 200)
+        #expect(json?["width"] as? Int == 1920)
+        #expect(json?["height"] as? Int == 1080)
+        
+        // Verify that the original property names are NOT in the JSON
+        #expect(json?["x_coordinate"] == nil)
+        #expect(json?["y_coordinate"] == nil)
+        
+        // Verify the JSON string representation
+        let jsonString = String(data: data, encoding: .utf8) ?? ""
+        #expect(jsonString.contains("\"x\":100"))
+        #expect(jsonString.contains("\"y\":200"))
+        #expect(!jsonString.contains("x_coordinate"))
+        #expect(!jsonString.contains("y_coordinate"))
+    }
+
+    @Test("WindowInfo with bounds JSON encoding", .tags(.fast))
+    func windowInfoWithBoundsJSONEncoding() throws {
+        // Create a WindowInfo with bounds
+        let bounds = WindowBounds(x_coordinate: 50, y_coordinate: 75, width: 800, height: 600)
+        let windowInfo = WindowInfo(
+            window_title: "Test Window",
+            window_id: 12345,
+            window_index: 0,
+            bounds: bounds,
+            is_on_screen: true
+        )
+        
+        // Encode to JSON
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(windowInfo)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        
+        // Verify WindowInfo structure
+        #expect(json?["window_title"] as? String == "Test Window")
+        #expect(json?["window_id"] as? UInt32 == 12345)
+        #expect(json?["window_index"] as? Int == 0)
+        #expect(json?["is_on_screen"] as? Bool == true)
+        
+        // Verify bounds are properly encoded with custom keys
+        let boundsJson = json?["bounds"] as? [String: Any]
+        #expect(boundsJson?["x"] as? Int == 50)
+        #expect(boundsJson?["y"] as? Int == 75)
+        #expect(boundsJson?["width"] as? Int == 800)
+        #expect(boundsJson?["height"] as? Int == 600)
+        
+        // Ensure no x_coordinate or y_coordinate in the JSON
+        #expect(boundsJson?["x_coordinate"] == nil)
+        #expect(boundsJson?["y_coordinate"] == nil)
+    }
 }

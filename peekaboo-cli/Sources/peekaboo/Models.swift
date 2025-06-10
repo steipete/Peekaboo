@@ -63,8 +63,8 @@ struct WindowBounds: Codable, Sendable {
     let height: Int
 
     private enum CodingKeys: String, CodingKey {
-        case x_coordinate
-        case y_coordinate
+        case x_coordinate = "x"
+        case y_coordinate = "y"
         case width
         case height
     }
