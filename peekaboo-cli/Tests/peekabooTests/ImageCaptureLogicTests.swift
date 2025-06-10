@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import AppKit
 import Foundation
 @testable import peekaboo
@@ -487,6 +488,7 @@ struct AdvancedImageCaptureLogicTests {
         let description: String
     }
 
+    // swiftlint:disable:next function_body_length
     private func createTestScenarios() -> [TestScenario] {
         [
             TestScenario(

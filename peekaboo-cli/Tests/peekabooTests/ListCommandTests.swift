@@ -1,9 +1,11 @@
+// swiftlint:disable file_length
 import ArgumentParser
 import Foundation
 @testable import peekaboo
 import Testing
 
 @Suite("ListCommand Tests", .tags(.unit))
+// swiftlint:disable:next type_body_length
 struct ListCommandTests {
     // MARK: - Command Parsing Tests
 

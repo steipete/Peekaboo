@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import AppKit
 @testable import peekaboo
 import Testing
