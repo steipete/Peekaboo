@@ -42,7 +42,7 @@ describe("Invalid Format Handling", () => {
     });
   });
 
-  it("should fallback invalid format 'bmp' to 'png' and use correct extension in filename", async () => {
+  it("should fallback invalid format 'bmp' to 'png' and show warning message", async () => {
     // Import schema to test preprocessing
     const { imageToolSchema } = await import("../../../src/types/index.js");
     
@@ -77,6 +77,9 @@ describe("Invalid Format Handling", () => {
     // Validate that schema preprocessing worked
     expect(parsedInput.format).toBe("png");
     
+    // Simulate the _originalFormat being set by the handler
+    (parsedInput as any)._originalFormat = "bmp";
+    
     const result = await imageToolHandler(parsedInput, mockContext);
     
     expect(result.isError).toBeUndefined();
@@ -92,10 +95,9 @@ describe("Invalid Format Handling", () => {
     expect(result.saved_files?.[0]?.path).toBe("/tmp/test_invalid_format.png");
     expect(result.saved_files?.[0]?.path).not.toContain(".bmp");
     
-    // The result should not contain .bmp anywhere
-    const resultText = result.content[0]?.text || "";
-    expect(resultText).not.toContain(".bmp");
-    expect(resultText).toContain(".png");
+    // Check that the warning message is included
+    expect(result.content).toHaveLength(2); // Summary + warning
+    expect(result.content[1]?.text).toBe("Invalid format 'bmp' was provided. Automatically using PNG format instead.");
   });
   
   it("should handle other invalid formats correctly", async () => {

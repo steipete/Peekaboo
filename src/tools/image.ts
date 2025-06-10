@@ -37,6 +37,16 @@ export async function imageToolHandler(
     // The format here is already normalized (lowercase, jpeg->jpg mapping applied)
     let effectiveFormat = input.format;
 
+    // Check if format was corrected by the preprocessor
+    const originalFormat = (input as any)._originalFormat;
+    if (originalFormat) {
+      logger.info(
+        { originalFormat, correctedFormat: effectiveFormat },
+        "Format was automatically corrected"
+      );
+      formatWarning = `Invalid format '${originalFormat}' was provided. Automatically using ${effectiveFormat?.toUpperCase() || 'PNG'} format instead.`;
+    }
+
     // Defensive validation: ensure format is one of the valid values
     // This should not be necessary due to schema preprocessing, but provides extra safety
     const validFormats = ["png", "jpg", "data"];

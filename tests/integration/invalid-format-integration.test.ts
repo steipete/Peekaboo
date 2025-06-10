@@ -135,4 +135,54 @@ describeSwiftTests("Invalid Format Integration Tests", () => {
       }
     }
   }, 90000); // Increased timeout for multiple captures
+  
+  it("should show warning message when invalid format is provided", async () => {
+    const testPath = path.join(tempDir, "test_with_warning.tiff");
+    
+    // Test with invalid format 'tiff'
+    // Note: We need to simulate the _originalFormat being set by the index.ts handler
+    const input = { 
+      format: "png" as const, // This will be the preprocessed value
+      path: testPath,
+    };
+    // Simulate what index.ts does
+    (input as any)._originalFormat = "tiff";
+    
+    const result = await imageToolHandler(input, mockContext);
+    
+    // The tool might fail due to permissions or timeout
+    if (result.isError) {
+      // If it's a permission or timeout error, that's expected in CI/testing environments
+      const errorText = result.content?.[0]?.text || "";
+      const metaErrorCode = (result as any)._meta?.backend_error_code;
+      
+      // This is OK - system might not have permissions or CLI might timeout
+      const isExpectedError = errorText.includes("permission") ||
+        errorText.includes("denied") ||
+        errorText.includes("timeout") ||
+        errorText.includes("TCC") ||
+        errorText.includes("declined") ||
+        metaErrorCode === "PERMISSION_DENIED_SCREEN_RECORDING" ||
+        metaErrorCode === "SWIFT_CLI_TIMEOUT";
+      
+      if (!isExpectedError) {
+        throw new Error(`Unexpected error: ${errorText}`);
+      }
+      return;
+    }
+    
+    // If successful, check for warning message
+    expect(result.isError).toBeUndefined();
+    
+    // Should have multiple content items (summary + warning)
+    expect(result.content.length).toBeGreaterThanOrEqual(2);
+    
+    // Find the warning message
+    const warningMessage = result.content.find(item => 
+      item.text?.includes("Invalid format 'tiff' was provided")
+    );
+    
+    expect(warningMessage).toBeDefined();
+    expect(warningMessage?.text).toBe("Invalid format 'tiff' was provided. Automatically using PNG format instead.");
+  });
 });

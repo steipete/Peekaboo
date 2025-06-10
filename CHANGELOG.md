@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Code Simplification**: Removed unnecessary CodingKeys mapping in WindowBounds struct
 
+### Improved
+- **Invalid Format Handling**: When an invalid image format (e.g., "bmp", "gif", "tiff") is provided, the tool now displays a clear message informing the user that the format was automatically corrected to PNG
+
 ## [1.1.0-beta.2] - 2025-01-10
 
 ### Added
