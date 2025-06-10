@@ -363,7 +363,12 @@ struct ModelEdgeCaseTests {
             (x: Int.max, y: Int.max, width: 1, height: 1)
         ]
     )
-    func windowBoundsEdgeCases(x: Int, y: Int, width: Int, height: Int) {
+    func windowBoundsEdgeCases(
+        x: Int, // swiftlint:disable:this identifier_name
+        y: Int, // swiftlint:disable:this identifier_name
+        width: Int,
+        height: Int
+    ) {
         let bounds = WindowBounds(x: x, y: y, width: width, height: height)
         #expect(bounds.x == x)
         #expect(bounds.y == y)

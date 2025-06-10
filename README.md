@@ -381,6 +381,107 @@ await use_mcp_tool("peekaboo", "image", {
 - Shows clear messages like "Chrome browser is not running or not found"
 - Only applies to browser identifiers - other apps work normally
 
+#### File Naming and Path Behavior
+
+Peekaboo intelligently manages output paths to prevent file overwrites while respecting your intentions:
+
+**Key Principle: Single vs Multiple Captures**
+
+When you provide a specific file path (e.g., `~/Desktop/screenshot.png`), Peekaboo determines whether to use it exactly or add metadata based on the capture context:
+
+1. **Single Capture → Exact Path**
+   - Capturing one specific window
+   - Capturing one specific screen (when only one display exists)
+   - Capturing with `app_target: "frontmost"`
+   - Your path is used exactly as specified
+
+2. **Multiple Captures → Metadata Added**
+   - Capturing all windows of an app (`mode: "multi"` or multiple windows exist)
+   - Capturing all screens (when multiple displays exist)
+   - Capturing with no specific target (defaults to all screens)
+   - Metadata is appended to prevent overwrites
+
+**Examples:**
+```javascript
+// SINGLE CAPTURES - Use exact path
+// ================================
+
+// One window of Safari
+await use_mcp_tool("peekaboo", "image", {
+  app_target: "Safari",
+  path: "~/Desktop/browser.png"
+});
+// Result: ~/Desktop/browser.png ✓
+
+// Specific screen (when you have only one monitor)
+await use_mcp_tool("peekaboo", "image", {
+  app_target: "screen:0",
+  path: "~/Desktop/myscreen.png"
+});
+// Result: ~/Desktop/myscreen.png ✓
+
+// Frontmost window
+await use_mcp_tool("peekaboo", "image", {
+  app_target: "frontmost",
+  path: "~/Desktop/active.png"
+});
+// Result: ~/Desktop/active.png ✓
+
+// MULTIPLE CAPTURES - Add metadata
+// ================================
+
+// All windows of Safari (mode: multi)
+await use_mcp_tool("peekaboo", "image", {
+  app_target: "Safari",
+  mode: "multi",
+  path: "~/Desktop/browser.png"
+});
+// Results: ~/Desktop/browser_Safari_window_0_20250610_120000.png
+//          ~/Desktop/browser_Safari_window_1_20250610_120000.png
+
+// All screens (multiple monitors)
+await use_mcp_tool("peekaboo", "image", {
+  app_target: "screen",  // or omit app_target
+  path: "~/Desktop/monitor.png"
+});
+// Results: ~/Desktop/monitor_1_20250610_120000.png
+//          ~/Desktop/monitor_2_20250610_120000.png
+
+// DIRECTORY PATHS - Always use generated names
+// ============================================
+
+// Directory path (note trailing slash)
+await use_mcp_tool("peekaboo", "image", {
+  app_target: "Safari",
+  path: "~/Desktop/screenshots/"
+});
+// Result: ~/Desktop/screenshots/Safari_20250610_120000.png
+```
+
+**Long Filename Protection:**
+
+Peekaboo automatically handles filesystem limitations:
+- Truncates filenames exceeding macOS's 255-byte limit
+- Preserves UTF-8 multibyte characters (emoji, non-Latin scripts)
+- Ensures metadata is always included when needed
+- Never creates invalid filenames
+
+**Example:**
+```javascript
+// Very long filename with emoji
+await use_mcp_tool("peekaboo", "image", {
+  app_target: "Safari",
+  path: "~/Desktop/" + "🎯".repeat(100) + "_screenshot.png"
+});
+// Result: Filename safely truncated to fit 255-byte limit
+//         while preserving valid UTF-8 characters
+```
+
+**Format Validation:**
+- Invalid formats ("bmp", "gif", "tiff", etc.) automatically convert to PNG
+- You'll receive a clear warning message when format correction occurs
+- Only "png" and "jpg"/"jpeg" are valid formats
+
 ### 2. `list` - System Information
 
 Lists running applications, windows, or server status.

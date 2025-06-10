@@ -137,7 +137,14 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
         "- 'AppName:WINDOW_INDEX:Index': Window of 'AppName' at 'Index'."
       ),
       path: z.string().optional().describe(
-        "Optional. Base absolute path for saving captured image(s). If this path points to a directory, the Swift CLI will generate unique filenames inside it. If this path is omitted, a temporary directory is created for the capture. The path(s) of the saved file(s) are always returned in the 'saved_files' output."
+        "Optional. Base absolute path for saving captured image(s). " +
+        "If this path points to a directory, the Swift CLI will generate unique filenames inside it. " +
+        "If this path points to a file: " +
+        "- Single capture: Uses the exact path as-is. " +
+        "- Multiple captures: Appends metadata (app name, window index, timestamp) to prevent overwrites. " +
+        "Very long filenames are automatically truncated to stay within macOS's 255-byte limit while preserving UTF-8 characters. " +
+        "If this path is omitted, a temporary directory is created for the capture. " +
+        "The path(s) of the saved file(s) are always returned in the 'saved_files' output."
       ),
       question: z.string().optional().describe(
         "Optional. If provided, the captured image will be analyzed. " +
@@ -360,12 +367,26 @@ Configured AI Providers (from PEEKABOO_AI_PROVIDERS ENV): <parsed list or 'None 
 *   **Options (defined using `swift-argument-parser`):**
     *   `--app <String?>`: App identifier.
     *   `--path <String?>`: Output path for the captured image(s). Can be either a file path or directory path.
-        *   **File Path Logic**: If the path appears to be a file (contains an extension and doesn't end with `/`), the CLI intelligently handles it:
-            *   For single screen capture (`--screen-index` specified): Uses the exact file path provided.
-            *   For multiple screen/window capture: Appends screen/window identifiers to avoid overwriting (e.g., `/tmp/capture.png` becomes `/tmp/capture_1_timestamp.png`, `/tmp/capture_2_timestamp.png`).
-        *   **Directory Path Logic**: If the path appears to be a directory (no extension or ends with `/`), generated filenames are placed in that directory.
+        *   **File Path Logic**: The CLI uses a sophisticated algorithm to determine whether to use the exact path or append metadata:
+            *   **Single Capture Detection**: The CLI determines if this is a "single capture" scenario:
+                - Screen capture with `--screen-index` when only one display exists
+                - Window capture (`--mode window`) without `--window-index` when app has only one window
+                - Window capture with specific `--window-index` or `--window-title`
+                - Frontmost window capture (`--mode frontmost`)
+            *   **Path Resolution Behavior**:
+                - **Single capture + file path**: Uses the exact path provided (e.g., `/tmp/shot.png` → `/tmp/shot.png`)
+                - **Multiple captures + file path**: Appends metadata to prevent overwrites:
+                    - Window captures: `_AppName_window_N_YYYYMMDD_HHMMSS` (e.g., `/tmp/shot.png` → `/tmp/shot_Safari_window_0_20250610_120000.png`)
+                    - Screen captures: `_N_YYYYMMDD_HHMMSS` (e.g., `/tmp/shot.png` → `/tmp/shot_1_20250610_120000.png`)
+                - **Directory path (always)**: Generates full filename (e.g., `/tmp/screens/` → `/tmp/screens/screen_1_20250610_120000.png`)
+            *   **Filename Truncation**: When appending metadata would exceed macOS's 255-byte filename limit:
+                - Truncates the base filename while preserving the metadata suffix
+                - Uses UTF-8 aware truncation to avoid breaking multibyte characters
+                - Ensures the result is always a valid UTF-8 string
+                - Example: Very long emoji filename + metadata → truncated to fit within 255 bytes
+        *   **Directory Path Logic**: If the path appears to be a directory (no extension or ends with `/`), generated filenames are always placed in that directory.
         *   **Auto-Creation**: The CLI automatically creates intermediate directories as needed for both file and directory paths.
-        *   **Edge Cases**: Special directory indicators like `.` and `..` are handled correctly.
+        *   **Edge Cases**: Special directory indicators like `.` and `..` are handled correctly as directories.
     *   `--mode <ModeEnum?>`: `ModeEnum` is `screen, window, multi`. Default logic: if `--app` then `window`, else `screen`.
     *   `--window-title <String?>`: For `mode window`.
     *   `--window-index <Int?>`: For `mode window`.

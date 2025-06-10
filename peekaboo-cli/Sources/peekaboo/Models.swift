@@ -57,8 +57,8 @@ struct WindowInfo: Codable, Sendable {
 }
 
 struct WindowBounds: Codable, Sendable {
-    let x: Int
-    let y: Int
+    let x: Int // swiftlint:disable:this identifier_name
+    let y: Int // swiftlint:disable:this identifier_name
     let width: Int
     let height: Int
 }

@@ -352,7 +352,8 @@ struct ImageCommandPathHandlingTests {
         let result = OutputPathResolver.determineOutputPath(
             basePath: "/tmp/my-screenshot.png",
             fileName: fileName,
-            screenIndex: 0
+            screenIndex: 0,
+            isSingleCapture: true
         )
 
         #expect(result == "/tmp/my-screenshot.png")
@@ -362,7 +363,12 @@ struct ImageCommandPathHandlingTests {
     func multipleScreensFilePath() {
         // For multiple screens, should append screen info
         let fileName = "screen_1_20250608_120000.png"
-        let result = OutputPathResolver.determineOutputPath(basePath: "/tmp/screenshot.png", fileName: fileName)
+        let result = OutputPathResolver.determineOutputPath(
+            basePath: "/tmp/screenshot.png",
+            fileName: fileName,
+            screenIndex: nil,
+            isSingleCapture: false
+        )
 
         #expect(result == "/tmp/screenshot_1_20250608_120000.png")
     }
@@ -447,7 +453,12 @@ struct ImageCommandPathHandlingTests {
 
         for path in specialPaths {
             let fileName = "screen_1_20250608_120000.png"
-            let result = OutputPathResolver.determineOutputPath(basePath: path, fileName: fileName, screenIndex: 0)
+            let result = OutputPathResolver.determineOutputPath(
+                basePath: path,
+                fileName: fileName,
+                screenIndex: 0,
+                isSingleCapture: true
+            )
 
             // For single screen, should use exact path
             #expect(result == path, "Failed for special path: \(path)")
@@ -464,7 +475,12 @@ struct ImageCommandPathHandlingTests {
 
         for path in nestedPaths {
             let fileName = "screen_1_20250608_120000.png"
-            let result = OutputPathResolver.determineOutputPath(basePath: path, fileName: fileName, screenIndex: 0)
+            let result = OutputPathResolver.determineOutputPath(
+                basePath: path,
+                fileName: fileName,
+                screenIndex: 0,
+                isSingleCapture: true
+            )
 
             #expect(result == path, "Should return exact path for nested file: \(path)")
 

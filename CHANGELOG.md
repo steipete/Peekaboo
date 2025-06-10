@@ -8,14 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- **Window Bounds Display**: Fixed window bounds showing as `[undefined,undefined WIDTH×HEIGHT]` by simplifying field names from `x_coordinate`/`y_coordinate` to `x`/`y`
+- **Window Bounds Display**: Fixed window bounds showing as `[undefined,undefined WIDTH×HEIGHT]` by simplifying field names from `x_coordinate`/`y_coordinate` to `x`/`y` throughout the codebase
 - **Image Quality**: Added JPEG compression quality setting (0.95) to maintain high quality while reducing file sizes for AI analysis
+- **Long Filename Handling**: Fixed critical edge case where very long filenames combined with Peekaboo's metadata could exceed the 255-byte macOS filesystem limit
+  - Implemented UTF-8 aware truncation algorithm that safely handles multibyte characters (emoji, non-Latin scripts)
+  - Truncation occurs at valid UTF-8 boundaries to prevent corrupted characters
+  - Ensures metadata suffixes are always preserved when capturing multiple items
+  - Added comprehensive test suite covering edge cases including exactly 255-byte filenames
 
 ### Changed
-- **Code Simplification**: Removed unnecessary CodingKeys mapping in WindowBounds struct
+- **Code Simplification**: Removed unnecessary CodingKeys mapping in WindowBounds struct, simplifying JSON serialization
+- **Smart Path Handling**: Completely redesigned how output paths are handled based on capture context:
+  - **Single Capture Behavior**: When capturing exactly one item (one window, one screen on a single-display system, or frontmost window), the specified path is used exactly as provided
+    - Examples: `path: "~/Desktop/shot.png"` → saves to `~/Desktop/shot.png`
+  - **Multiple Capture Behavior**: When capturing multiple items (multiple windows, multiple screens, or using `mode: "multi"`), metadata is automatically appended to prevent file overwrites
+    - Window example: `path: "~/Desktop/shot.png"` → `~/Desktop/shot_Safari_window_0_20250610_120000.png`
+    - Screen example: `path: "~/Desktop/shot.png"` → `~/Desktop/shot_1_20250610_120000.png`
+  - **Directory Path Behavior**: Paths identified as directories (ending with `/` or no extension) always use generated filenames
+    - Example: `path: "~/Desktop/screenshots/"` → `~/Desktop/screenshots/Safari_20250610_120000.png`
 
 ### Improved
-- **Invalid Format Handling**: When an invalid image format (e.g., "bmp", "gif", "tiff") is provided, the tool now displays a clear message informing the user that the format was automatically corrected to PNG
+- **Invalid Format Handling**: Enhanced format validation with user-friendly feedback
+  - Invalid formats ("bmp", "gif", "tiff", etc.) are automatically converted to PNG
+  - Clear warning message included in response: `"Invalid format 'bmp' was provided. Automatically using PNG format instead."`
+  - Format validation happens early in the request processing pipeline
 
 ## [1.1.0-beta.2] - 2025-01-10
 

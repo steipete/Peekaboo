@@ -147,7 +147,13 @@ struct ImageCommand: AsyncParsableCommand {
         if screenIndex >= 0 && screenIndex < displays.count {
             let displayID = displays[screenIndex]
             let labelSuffix = " (Index \(screenIndex))"
-            return try await [captureSingleDisplay(displayID: displayID, index: screenIndex, labelSuffix: labelSuffix)]
+            let isSingleCapture = displays.count == 1 || path != nil
+            return try await [captureSingleDisplay(
+                displayID: displayID,
+                index: screenIndex,
+                labelSuffix: labelSuffix,
+                isSingleCapture: isSingleCapture
+            )]
         } else {
             Logger.shared.debug("Screen index \(screenIndex) is out of bounds. Capturing all screens instead.")
             // When falling back to all screens, use fallback-aware capture to prevent filename conflicts
@@ -157,8 +163,14 @@ struct ImageCommand: AsyncParsableCommand {
 
     private func captureAllScreens(displays: [CGDirectDisplayID]) async throws(CaptureError) -> [SavedFile] {
         var savedFiles: [SavedFile] = []
+        let isSingleCapture = displays.count == 1 && path != nil
         for (index, displayID) in displays.enumerated() {
-            let savedFile = try await captureSingleDisplay(displayID: displayID, index: index, labelSuffix: "")
+            let savedFile = try await captureSingleDisplay(
+                displayID: displayID,
+                index: index,
+                labelSuffix: "",
+                isSingleCapture: isSingleCapture
+            )
             savedFiles.append(savedFile)
         }
         return savedFiles
@@ -181,10 +193,15 @@ struct ImageCommand: AsyncParsableCommand {
     private func captureSingleDisplay(
         displayID: CGDirectDisplayID,
         index: Int,
-        labelSuffix: String
+        labelSuffix: String,
+        isSingleCapture: Bool = false
     ) async throws(CaptureError) -> SavedFile {
         let fileName = FileNameGenerator.generateFileName(displayIndex: index, format: format)
-        let filePath = OutputPathResolver.getOutputPath(basePath: path, fileName: fileName)
+        let filePath = OutputPathResolver.getOutputPath(
+            basePath: path,
+            fileName: fileName,
+            isSingleCapture: isSingleCapture
+        )
 
         try await captureDisplay(displayID, to: filePath)
 
@@ -204,7 +221,12 @@ struct ImageCommand: AsyncParsableCommand {
         labelSuffix: String
     ) async throws(CaptureError) -> SavedFile {
         let fileName = FileNameGenerator.generateFileName(displayIndex: index, format: format)
-        let filePath = OutputPathResolver.getOutputPathWithFallback(basePath: path, fileName: fileName)
+        // Fallback mode means multiple screens, so never single capture
+        let filePath = OutputPathResolver.getOutputPathWithFallback(
+            basePath: path,
+            fileName: fileName,
+            isSingleCapture: false
+        )
 
         try await captureDisplay(displayID, to: filePath)
 
@@ -269,7 +291,13 @@ struct ImageCommand: AsyncParsableCommand {
         let fileName = FileNameGenerator.generateFileName(
             appName: targetApp.localizedName, windowTitle: targetWindow.title, format: format
         )
-        let filePath = OutputPathResolver.getOutputPath(basePath: path, fileName: fileName)
+        // Single window capture when path is provided
+        let isSingleCapture = path != nil
+        let filePath = OutputPathResolver.getOutputPath(
+            basePath: path,
+            fileName: fileName,
+            isSingleCapture: isSingleCapture
+        )
 
         try await captureWindow(targetWindow, to: filePath)
 
@@ -314,7 +342,12 @@ struct ImageCommand: AsyncParsableCommand {
             let fileName = FileNameGenerator.generateFileName(
                 appName: targetApp.localizedName, windowIndex: index, windowTitle: window.title, format: format
             )
-            let filePath = OutputPathResolver.getOutputPath(basePath: path, fileName: fileName)
+            // Multiple windows means not a single capture
+            let filePath = OutputPathResolver.getOutputPath(
+                basePath: path,
+                fileName: fileName,
+                isSingleCapture: false
+            )
 
             try await captureWindow(window, to: filePath)
 
@@ -362,7 +395,12 @@ struct ImageCommand: AsyncParsableCommand {
                     windowTitle: window.title,
                     format: format
                 )
-                let filePath = OutputPathResolver.getOutputPath(basePath: path, fileName: fileName)
+                // Multiple windows from multiple apps means not a single capture
+                let filePath = OutputPathResolver.getOutputPath(
+                    basePath: path,
+                    fileName: fileName,
+                    isSingleCapture: false
+                )
 
                 try await captureWindow(window, to: filePath)
 
@@ -442,7 +480,13 @@ struct ImageCommand: AsyncParsableCommand {
         let appName = frontmostApp.localizedName ?? "UnknownApp"
         let safeName = appName.replacingOccurrences(of: " ", with: "_")
         let fileName = "frontmost_\(safeName)_\(timestamp).\(format.rawValue)"
-        let filePath = OutputPathResolver.getOutputPathWithFallback(basePath: path, fileName: fileName)
+        // Single frontmost window capture when path is provided
+        let isSingleCapture = path != nil
+        let filePath = OutputPathResolver.getOutputPathWithFallback(
+            basePath: path,
+            fileName: fileName,
+            isSingleCapture: isSingleCapture
+        )
 
         // Capture the window
         try await captureWindow(frontmostWindow, to: filePath)

@@ -394,18 +394,18 @@ struct JSONOutputFormatValidationTests {
     func windowBoundsJSONEncoding() throws {
         // Create a WindowBounds instance
         let bounds = WindowBounds(x: 100, y: 200, width: 1920, height: 1080)
-        
+
         // Encode to JSON
         let encoder = JSONEncoder()
         let data = try encoder.encode(bounds)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        
+
         // Verify the JSON has "x" and "y" keys
         #expect(json?["x"] as? Int == 100)
         #expect(json?["y"] as? Int == 200)
         #expect(json?["width"] as? Int == 1920)
         #expect(json?["height"] as? Int == 1080)
-        
+
         // Verify the JSON string representation
         let jsonString = String(data: data, encoding: .utf8) ?? ""
         #expect(jsonString.contains("\"x\":100"))
@@ -425,18 +425,18 @@ struct JSONOutputFormatValidationTests {
             bounds: bounds,
             is_on_screen: true
         )
-        
+
         // Encode to JSON
         let encoder = JSONEncoder()
         let data = try encoder.encode(windowInfo)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        
+
         // Verify WindowInfo structure
         #expect(json?["window_title"] as? String == "Test Window")
         #expect(json?["window_id"] as? UInt32 == 12345)
         #expect(json?["window_index"] as? Int == 0)
         #expect(json?["is_on_screen"] as? Bool == true)
-        
+
         // Verify bounds are properly encoded
         let boundsJson = json?["bounds"] as? [String: Any]
         #expect(boundsJson?["x"] as? Int == 50)

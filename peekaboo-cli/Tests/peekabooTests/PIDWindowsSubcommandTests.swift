@@ -37,7 +37,7 @@ struct PIDWindowsSubcommandTests {
         let pidFormats = [
             "PID:1", // Single digit
             "PID:123", // Three digits
-            "PID:99999", // Large PID
+            "PID:99999" // Large PID
         ]
 
         for pidFormat in pidFormats {

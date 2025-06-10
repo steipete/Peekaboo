@@ -44,7 +44,7 @@ struct ImageSaver: Sendable {
         } else {
             nil
         }
-        
+
         CGImageDestinationAddImage(destination, image, properties)
 
         guard CGImageDestinationFinalize(destination) else {
