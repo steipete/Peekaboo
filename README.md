@@ -41,12 +41,6 @@ Read more about the design philosophy and implementation details in the [blog po
 
 #### For Cursor IDE
 
-<div align="center">
-  <a href="cursor://anysphere.cursor-deeplink/mcp/install?name=peekaboo&config=ewogICJjb21tYW5kIjogIm5weCIsCiAgImFyZ3MiOiBbCiAgICAiLXkiLAogICAgIkBzdGVpcGV0ZS9wZWVrYWJvby1tY3AiCiAgXSwKICAiZW52IjogewogICAgIlBFRUtBQk9PX0FJX1BST1ZJREVSUyI6ICJvbGxhbWEvbGxhdmE6bGF0ZXN0IgogIH0KfQ==">
-    <img src="https://cursor.com/deeplink/mcp-install-dark.png" alt="Install Peekaboo in Cursor IDE" height="40" />
-  </a>
-</div>
-
 Or manually add to your Cursor settings:
 
 ```json
@@ -59,7 +53,8 @@ Or manually add to your Cursor settings:
         "@steipete/peekaboo-mcp"
       ],
       "env": {
-        "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest"
+        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o",
+        "OPENAI_API_KEY": "your-openai-api-key-here"
       }
     }
   }
@@ -72,7 +67,27 @@ Edit your Claude Desktop configuration file:
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Add the Peekaboo configuration and restart Claude Desktop.
+Add the Peekaboo configuration:
+
+```json
+{
+  "mcpServers": {
+    "peekaboo": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@steipete/peekaboo-mcp"
+      ],
+      "env": {
+        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o",
+        "OPENAI_API_KEY": "your-openai-api-key-here"
+      }
+    }
+  }
+}
+```
+
+Then restart Claude Desktop.
 
 ### Configuration
 
@@ -80,7 +95,8 @@ Peekaboo can be configured using environment variables:
 
 ```json
 {
-  "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
+  "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
+  "OPENAI_API_KEY": "your-openai-api-key-here",
   "PEEKABOO_LOG_LEVEL": "debug",
   "PEEKABOO_LOG_FILE": "~/Library/Logs/peekaboo-mcp-debug.log",
   "PEEKABOO_DEFAULT_SAVE_PATH": "~/Pictures/PeekabooCaptures",
@@ -105,11 +121,15 @@ Peekaboo can be configured using environment variables:
 
 #### AI Provider Configuration
 
-The `PEEKABOO_AI_PROVIDERS` environment variable is your gateway to unlocking Peekaboo\'s analytical abilities for both the dedicated `analyze` tool and the `image` tool (when a `question` is supplied with an image capture). It should be a JSON string defining the AI providers and their default models. For example:
+The `PEEKABOO_AI_PROVIDERS` environment variable is your gateway to unlocking Peekaboo\'s analytical abilities for both the dedicated `analyze` tool and the `image` tool (when a `question` is supplied with an image capture). It should be a string defining the AI providers and their default models. For example:
 
-`PEEKABOO_AI_PROVIDERS="ollama/llava:latest,openai/gpt-4o,anthropic/claude-3-haiku-20240307"`
+`PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest,anthropic/claude-3-haiku-20240307"`
 
-Each entry follows the format `provider_name/model_identifier`.
+Or using semicolon separators:
+
+`PEEKABOO_AI_PROVIDERS="openai/gpt-4o;ollama/llava:latest;anthropic/claude-3-haiku-20240307"`
+
+Each entry follows the format `provider_name/model_identifier`. You can use either commas (`,`) or semicolons (`;`) as separators.
 
 - **`provider_name`**: Currently supported values are `ollama` (for local Ollama instances) and `openai`. Support for `anthropic` is planned.
 - **`model_identifier`**: The specific model to use for that provider (e.g., `llava:latest`, `gpt-4o`).
@@ -255,11 +275,11 @@ Peekaboo requires specific macOS permissions to function:
 The easiest way to test Peekaboo is with the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector):
 
 ```bash
+# Test with OpenAI (recommended)
+OPENAI_API_KEY="your-key" PEEKABOO_AI_PROVIDERS="openai/gpt-4o" npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp
+
 # Test with local Ollama
 PEEKABOO_AI_PROVIDERS="ollama/llava:latest" npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp
-
-# Test with OpenAI
-OPENAI_API_KEY="your-key" PEEKABOO_AI_PROVIDERS="openai/gpt-4o" npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp
 ```
 
 This launches an interactive web interface where you can test all of Peekaboo's tools and see their responses in real-time.
@@ -471,13 +491,13 @@ npm run test:integration
 | `Swift CLI unavailable` or `PEEKABOO_CLI_PATH` issues | Ensure the `peekaboo` binary is at the root of the NPM package, or if `PEEKABOO_CLI_PATH` is set, verify it points to a valid executable. You can test the Swift CLI directly: `path/to/peekaboo --version`. If missing or broken, rebuild: `cd peekaboo-cli && swift build -c release` (then place binary appropriately or update `PEEKABOO_CLI_PATH`). |
 | `AI analysis failed` | Check your `PEEKABOO_AI_PROVIDERS` environment variable for correct format and valid provider/model pairs. Ensure API keys (e.g., `OPENAI_API_KEY`) are set if using cloud providers. Verify local services like Ollama are running (`PEEKABOO_OLLAMA_BASE_URL`). Check the server logs (`PEEKABOO_LOG_FILE` or console if `PEEKABOO_CONSOLE_LOGGING="true"`) for detailed error messages from the AI provider. |
 | `Command not found: peekaboo-mcp` | If installed globally, ensure your system's PATH includes the global npm binaries directory. If running from a local clone, use `node dist/index.js` or a configured npm script. For `npx`, ensure the package name `@steipete/peekaboo-mcp` is correct. |
-| General weirdness or unexpected behavior | Check the Peekaboo MCP server logs! The default location is `/tmp/peekaboo-mcp.log` (or what you set in `PEEKABOO_LOG_FILE`). Set `PEEKABOO_LOG_LEVEL=debug` for maximum detail. |
+| General weirdness or unexpected behavior | Check the Peekaboo MCP server logs! The default location is `~/Library/Logs/peekaboo-mcp.log` (or what you set in `PEEKABOO_LOG_FILE`). Set `PEEKABOO_LOG_LEVEL=debug` for maximum detail. |
 
 ### Debug Mode
 
 ```bash
 # Enable debug logging
-PEEKABOO_LOG_LEVEL=debug PEEKABOO_CONSOLE_LOGGING=true npx @steipete/peekaboo-mcp
+OPENAI_API_KEY="your-key" PEEKABOO_AI_PROVIDERS="openai/gpt-4o" PEEKABOO_LOG_LEVEL=debug PEEKABOO_CONSOLE_LOGGING=true npx @steipete/peekaboo-mcp
 
 # Check permissions
 ./peekaboo list server_status --json-output
@@ -572,7 +592,8 @@ For MCP clients other than Claude Desktop:
     "command": "node",
     "args": ["/path/to/peekaboo/dist/index.js"],
     "env": {
-      "PEEKABOO_AI_PROVIDERS": "ollama/llava,openai/gpt-4o"
+      "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava",
+      "OPENAI_API_KEY": "your-openai-api-key-here"
     }
   }
 }

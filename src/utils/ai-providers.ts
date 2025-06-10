@@ -8,7 +8,7 @@ export function parseAIProviders(aiProvidersEnv: string): AIProvider[] {
   }
 
   return aiProvidersEnv
-    .split(",")
+    .split(/[,;]/) // Support both comma and semicolon separators
     .map((p) => p.trim())
     .filter(Boolean)
     .map((provider) => {
@@ -21,41 +21,231 @@ export function parseAIProviders(aiProvidersEnv: string): AIProvider[] {
     .filter((p) => p.provider && p.model);
 }
 
+export interface ProviderStatus {
+  available: boolean;
+  error?: string;
+  details?: {
+    modelAvailable?: boolean;
+    serverReachable?: boolean;
+    apiKeyPresent?: boolean;
+    modelList?: string[];
+  };
+}
+
 export async function isProviderAvailable(
   provider: AIProvider,
   logger: Logger,
 ): Promise<boolean> {
+  const status = await getProviderStatus(provider, logger);
+  return status.available;
+}
+
+export async function getProviderStatus(
+  provider: AIProvider,
+  logger: Logger,
+): Promise<ProviderStatus> {
   try {
     switch (provider.provider.toLowerCase()) {
       case "ollama":
-        return await checkOllamaAvailability(logger);
+        return await checkOllamaStatus(provider.model, logger);
       case "openai":
-        return checkOpenAIAvailability();
+        return await checkOpenAIStatus(provider.model, logger);
       case "anthropic":
-        return checkAnthropicAvailability();
+        return checkAnthropicStatus(provider.model);
       default:
         logger.warn({ provider: provider.provider }, "Unknown AI provider");
-        return false;
+        return {
+          available: false,
+          error: `Unknown provider: ${provider.provider}`,
+        };
     }
   } catch (error) {
     logger.error(
       { error, provider: provider.provider },
-      "Error checking provider availability",
+      "Error checking provider status",
     );
-    return false;
+    return {
+      available: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
   }
 }
 
-async function checkOllamaAvailability(logger: Logger): Promise<boolean> {
+async function checkOllamaStatus(model: string, logger: Logger): Promise<ProviderStatus> {
   try {
-    const baseUrl =
-      process.env.PEEKABOO_OLLAMA_BASE_URL || "http://localhost:11434";
-    const response = await fetch(`${baseUrl}/api/tags`);
-    return response.ok;
+    const baseUrl = process.env.PEEKABOO_OLLAMA_BASE_URL || "http://localhost:11434";
+    
+    // Check if server is reachable
+    const tagsResponse = await fetch(`${baseUrl}/api/tags`, {
+      signal: AbortSignal.timeout(3000), // 3 second timeout
+    });
+    
+    if (!tagsResponse.ok) {
+      return {
+        available: false,
+        error: `Ollama server returned ${tagsResponse.status}`,
+        details: {
+          serverReachable: false,
+        },
+      };
+    }
+
+    const tagsData = await tagsResponse.json();
+    const availableModels = tagsData.models?.map((m: any) => m.name) || [];
+    
+    // Check if the specific model is available
+    const modelAvailable = availableModels.some((m: string) => 
+      m === model || m.startsWith(model + ":") || model.startsWith(m.split(":")[0])
+    );
+
+    if (!modelAvailable) {
+      return {
+        available: false,
+        error: `Model '${model}' not found. Available models: ${availableModels.join(", ") || "none"}`,
+        details: {
+          serverReachable: true,
+          modelAvailable: false,
+          modelList: availableModels,
+        },
+      };
+    }
+
+    return {
+      available: true,
+      details: {
+        serverReachable: true,
+        modelAvailable: true,
+        modelList: availableModels,
+      },
+    };
   } catch (error) {
     logger.debug({ error }, "Ollama not available");
-    return false;
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    if (errorMessage.includes("fetch") || errorMessage.includes("timeout")) {
+      return {
+        available: false,
+        error: "Ollama server not reachable (not running or network issue)",
+        details: {
+          serverReachable: false,
+        },
+      };
+    }
+    
+    return {
+      available: false,
+      error: errorMessage,
+      details: {
+        serverReachable: false,
+      },
+    };
   }
+}
+
+async function checkOpenAIStatus(model: string, logger: Logger): Promise<ProviderStatus> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  
+  if (!apiKey) {
+    return {
+      available: false,
+      error: "OpenAI API key not configured (OPENAI_API_KEY environment variable missing)",
+      details: {
+        apiKeyPresent: false,
+      },
+    };
+  }
+
+  try {
+    // Test the API key by making a simple models list request
+    const openai = new OpenAI({ 
+      apiKey,
+      timeout: 3000, // 3 second timeout
+    });
+    
+    const modelsResponse = await openai.models.list();
+    const availableModels = modelsResponse.data.map(m => m.id);
+    
+    // Check if the specific model is available
+    const modelAvailable = availableModels.includes(model);
+    
+    if (!modelAvailable) {
+      // For OpenAI, we'll be more lenient and just warn if model isn't in the list
+      // since the models list API might not include all available models
+      logger.debug({ model, availableCount: availableModels.length }, "Model not found in OpenAI models list, but this might be normal");
+    }
+
+    return {
+      available: true,
+      details: {
+        apiKeyPresent: true,
+        serverReachable: true,
+        modelAvailable: modelAvailable,
+        modelList: availableModels.slice(0, 10), // Limit to first 10 models for brevity
+      },
+    };
+  } catch (error) {
+    logger.debug({ error }, "OpenAI API check failed");
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+      return {
+        available: false,
+        error: "Invalid OpenAI API key",
+        details: {
+          apiKeyPresent: true,
+          serverReachable: true,
+        },
+      };
+    }
+    
+    if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+      return {
+        available: false,
+        error: "Cannot reach OpenAI API (network issue)",
+        details: {
+          apiKeyPresent: true,
+          serverReachable: false,
+        },
+      };
+    }
+    
+    return {
+      available: false,
+      error: `OpenAI API error: ${errorMessage}`,
+      details: {
+        apiKeyPresent: true,
+        serverReachable: false,
+      },
+    };
+  }
+}
+
+function checkAnthropicStatus(model: string): ProviderStatus {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  
+  if (!apiKey) {
+    return {
+      available: false,
+      error: "Anthropic API key not configured (ANTHROPIC_API_KEY environment variable missing)",
+      details: {
+        apiKeyPresent: false,
+      },
+    };
+  }
+
+  return {
+    available: false,
+    error: "Anthropic support not yet implemented",
+    details: {
+      apiKeyPresent: true,
+    },
+  };
+}
+
+// Legacy functions for backward compatibility
+async function checkOllamaAvailability(logger: Logger): Promise<boolean> {
+  const status = await checkOllamaStatus("llava:latest", logger);
+  return status.available;
 }
 
 function checkOpenAIAvailability(): boolean {

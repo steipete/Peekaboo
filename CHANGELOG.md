@@ -14,6 +14,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Provides clear error messages for invalid PIDs or non-existent processes
   - Useful for targeting specific instances when multiple copies of an app are running
 
+- **Enhanced AI Provider Status Checking**: Server status now includes comprehensive AI provider diagnostics
+  - Real-time validation of OpenAI API keys and model availability
+  - Ollama server connectivity and model installation status
+  - Specific troubleshooting guidance for each provider type
+  - Network timeout detection and error reporting
+  - Detailed error messages with actionable next steps
+
+### Improved
+- **Faster AI Provider Checks**: Reduced timeout from 5 seconds to 3 seconds for quicker status responses
+- **Better Error Diagnostics**: Provider status checks now distinguish between API key issues, network problems, and missing models
+
+### Fixed
+- **Semicolon Separator Support**: AI provider configuration now supports both comma (`,`) and semicolon (`;`) separators
+  - Example: `"openai/gpt-4o;ollama/llava:latest"` now works correctly
+  - Fixes configuration parsing issues with Claude Desktop configurations that use semicolons
+  - Resolves "All configured AI providers failed or are unavailable" errors when using semicolon-separated configurations
+
 ## [1.0.1] - 2025-01-08
 
 ### Fixed

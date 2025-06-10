@@ -4,7 +4,7 @@ export function generateServerStatusString(version: string): string {
   let providersText = "None Configured. Set PEEKABOO_AI_PROVIDERS ENV.";
   if (aiProviders && aiProviders.trim()) {
     const providers = aiProviders
-      .split(",")
+      .split(/[,;]/) // Support both comma and semicolon separators
       .map((p) => p.trim())
       .filter(Boolean);
     providersText = providers.join(", ");

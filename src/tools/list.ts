@@ -9,6 +9,7 @@ import {
   SwiftCliResponse,
   ToolResponse,
 } from "../types/index.js";
+import { parseAIProviders, getProviderStatus } from "../utils/ai-providers.js";
 import { executeSwiftCli, execPeekaboo } from "../utils/peekaboo-cli.js";
 import { generateServerStatusString } from "../utils/server-status.js";
 import fs from "fs/promises";
@@ -323,7 +324,75 @@ async function handleServerStatus(
     statusSections.push("- Unable to check permissions (CLI not available)");
   }
 
-  // 4. Environment Configuration
+  // 4. AI Provider Status
+  statusSections.push("\n## AI Provider Status");
+  
+  const aiProvidersEnv = process.env.PEEKABOO_AI_PROVIDERS;
+  if (!aiProvidersEnv || !aiProvidersEnv.trim()) {
+    statusSections.push("❌ No AI providers configured");
+    statusSections.push("Configure PEEKABOO_AI_PROVIDERS environment variable to enable image analysis");
+  } else {
+    const providers = parseAIProviders(aiProvidersEnv);
+    if (providers.length === 0) {
+      statusSections.push("❌ Invalid AI provider configuration");
+      statusSections.push(`Raw config: ${aiProvidersEnv}`);
+    } else {
+      statusSections.push(`Found ${providers.length} configured provider${providers.length !== 1 ? "s" : ""}:`);
+      
+      for (const provider of providers) {
+        statusSections.push(`\n### ${provider.provider}/${provider.model}`);
+        
+        try {
+          const status = await getProviderStatus(provider, logger);
+          
+          if (status.available) {
+            statusSections.push("✅ **Available and working**");
+            
+            if (status.details?.modelList && status.details.modelList.length > 0) {
+              const modelCount = status.details.modelList.length;
+              statusSections.push(`- Found ${modelCount} available model${modelCount !== 1 ? "s" : ""}`);
+            }
+          } else {
+            statusSections.push("❌ **Not available**");
+            if (status.error) {
+              statusSections.push(`- Error: ${status.error}`);
+            }
+            
+            // Provide specific troubleshooting info
+            if (status.details) {
+              const details = status.details;
+              
+              if (provider.provider.toLowerCase() === "openai") {
+                if (!details.apiKeyPresent) {
+                  statusSections.push("- Missing: Set OPENAI_API_KEY environment variable");
+                } else if (!details.serverReachable) {
+                  statusSections.push("- Network issue: Cannot reach OpenAI API");
+                } else if (details.apiKeyPresent && !status.available) {
+                  statusSections.push("- Invalid API key or insufficient permissions");
+                }
+              } else if (provider.provider.toLowerCase() === "ollama") {
+                if (!details.serverReachable) {
+                  statusSections.push("- Ollama server not running or not reachable");
+                  statusSections.push(`- Start with: ollama serve`);
+                } else if (!details.modelAvailable) {
+                  statusSections.push(`- Model '${provider.model}' not installed`);
+                  statusSections.push(`- Install with: ollama pull ${provider.model}`);
+                  if (details.modelList && details.modelList.length > 0) {
+                    statusSections.push(`- Available models: ${details.modelList.slice(0, 5).join(", ")}${details.modelList.length > 5 ? "..." : ""}`);
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          statusSections.push("❌ **Status check failed**");
+          statusSections.push(`- Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+        }
+      }
+    }
+  }
+
+  // 5. Environment Configuration
   statusSections.push("\n## Environment Configuration");
 
   const logFile = process.env.PEEKABOO_LOG_FILE || path.join(os.homedir(), "Library/Logs/peekaboo-mcp.log");
@@ -350,7 +419,7 @@ async function handleServerStatus(
   statusSections.push(`- Custom CLI Path: ${customCliPath || "Not set (using default)"}`);
   statusSections.push(`- Default Save Path: ${defaultSavePath}`);
 
-  // 5. Configuration Issues
+  // 6. Configuration Issues
   statusSections.push("\n## Configuration Issues");
 
   const issues: string[] = [];
@@ -381,7 +450,7 @@ async function handleServerStatus(
     issues.forEach(issue => statusSections.push(issue));
   }
 
-  // 6. System Information
+  // 7. System Information
   statusSections.push("\n## System Information");
   statusSections.push(`- Platform: ${os.platform()}`);
   statusSections.push(`- Architecture: ${os.arch()}`);
