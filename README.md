@@ -2,6 +2,10 @@
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
+<a href="https://glama.ai/mcp/servers/@steipete/Peekaboo">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@steipete/Peekaboo/badge" alt="Peekaboo MCP server" />
+</a>
+
 [![npm version](https://badge.fury.io/js/%40steipete%2Fpeekaboo-mcp.svg)](https://www.npmjs.com/package/@steipete/peekaboo-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/macOS-14.0%2B-blue.svg)](https://www.apple.com/macos/)
@@ -229,7 +233,6 @@ Add Ollama to your Claude Desktop configuration:
   }
 }
 ```
-
 
 ### macOS Permissions
 
