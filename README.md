@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/steipete-peekaboo-badge.png)](https://mseep.ai/app/steipete-peekaboo)
+
 # Peekaboo MCP: Lightning-fast macOS Screenshots for AI Agents
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
