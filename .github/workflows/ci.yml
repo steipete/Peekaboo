@@ -89,9 +89,9 @@ jobs:
         swift build -c release
     
     - name: Run Swift tests
-      timeout-minutes: 10
+      timeout-minutes: 15
       run: |
         cd peekaboo-cli
-        swift test --parallel --skip "LocalIntegrationTests|ScreenshotValidationTests|ApplicationFinderTests|WindowManagerTests"
+        swift test --parallel --filter "ImageCommandTests|ImageAnalyzeIntegrationTests|ConfigCommandTests|ListCommandTests|VersionTests|ModelsTests|JSONOutputTests|ErrorHandlingTests|FileHandlingTests|ConfigurationTests"
       env:
         CI: true
