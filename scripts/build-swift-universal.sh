@@ -14,7 +14,7 @@ X86_64_BINARY_TEMP="$PROJECT_ROOT/${FINAL_BINARY_NAME}-x86_64"
 # -Osize: Optimize for binary size.
 # -wmo: Whole Module Optimization, allows more aggressive optimizations.
 # -Xlinker -dead_strip: Remove dead code at the linking stage.
-SWIFT_OPTIMIZATION_FLAGS="-Xswiftc -Osize -Xswiftc -wmo -Xlinker -dead_strip -Xlinker -no_uuid"
+SWIFT_OPTIMIZATION_FLAGS="-Xswiftc -Osize -Xswiftc -wmo -Xlinker -dead_strip"
 
 echo "🧹 Cleaning previous build artifacts..."
 (cd "$SWIFT_PROJECT_PATH" && swift package reset) || echo "'swift package reset' encountered an issue, attempting rm -rf..."
@@ -50,7 +50,8 @@ lipo -create -output "$FINAL_BINARY_PATH.tmp" "$ARM64_BINARY_TEMP" "$X86_64_BINA
 echo "🤏 Stripping symbols for further size reduction..."
 # -S: Remove debugging symbols
 # -x: Remove non-global symbols
-# -u: Preserve the LC_UUID load command (required for macOS 26+)
+# -u: Save symbols of undefined references
+# Note: LC_UUID is preserved by not using -no_uuid during linking
 strip -Sxu "$FINAL_BINARY_PATH.tmp"
 
 echo "🔏 Code signing the universal binary..."

@@ -5,6 +5,13 @@ All notable changes to Peekaboo will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2025-07-03
+
+### Fixed
+- Actually fixed compatibility with macOS Sequoia 26 by ensuring LC_UUID load command is generated during linking
+- The v2.0.1 fix was incomplete - the binary was still missing LC_UUID
+- Verified both x86_64 and arm64 architectures now contain proper LC_UUID load commands
+
 ## [2.0.1] - 2025-07-03
 
 ### Fixed

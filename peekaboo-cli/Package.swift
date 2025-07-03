@@ -30,7 +30,9 @@ let package = Package(
                     "-Xlinker", "-sectcreate",
                     "-Xlinker", "__TEXT",
                     "-Xlinker", "__info_plist",
-                    "-Xlinker", "Sources/Resources/Info.plist"
+                    "-Xlinker", "Sources/Resources/Info.plist",
+                    // Ensure LC_UUID is generated for macOS 26 compatibility
+                    "-Xlinker", "-random_uuid"
                 ])
             ]
         ),
