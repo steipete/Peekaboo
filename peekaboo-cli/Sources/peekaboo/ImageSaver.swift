@@ -9,17 +9,23 @@ import UniformTypeIdentifiers
 /// with proper error handling for common file system issues.
 struct ImageSaver: Sendable {
     static func saveImage(_ image: CGImage, to path: String, format: ImageFormat) throws(CaptureError) {
-        let url = URL(fileURLWithPath: path)
-
-        // Check if the parent directory exists
-        let directory = url.deletingLastPathComponent()
-        var isDirectory: ObjCBool = false
-        if !FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory) {
+        // Validate path doesn't contain null characters
+        if path.contains("\0") {
             let error = NSError(
                 domain: NSCocoaErrorDomain,
-                code: NSFileNoSuchFileError,
-                userInfo: [NSLocalizedDescriptionKey: "No such file or directory"]
+                code: NSFileWriteInvalidFileNameError,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid characters in file path"]
             )
+            throw CaptureError.fileWriteError(path, error)
+        }
+        
+        let url = URL(fileURLWithPath: path)
+
+        // Create parent directory if it doesn't exist
+        let directory = url.deletingLastPathComponent()
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
+        } catch {
             throw CaptureError.fileWriteError(path, error)
         }
 

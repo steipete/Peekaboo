@@ -19,8 +19,8 @@ struct UtilityTests {
             logger.warn("Warning message")
             logger.error("Error message")
             
-            // Give async operations time to complete
-            Thread.sleep(forTimeInterval: 0.1)
+            // Ensure all operations are complete
+            logger.flush()
             
             let logs = logger.getDebugLogs()
             logger.setJsonOutputMode(false)
@@ -54,7 +54,12 @@ struct UtilityTests {
         @Test("Logger outputs to stderr in normal mode")
         func testLoggerStderrMode() {
             let logger = Logger.shared
+            
+            // Ensure clean state
+            logger.clearDebugLogs()
+            Thread.sleep(forTimeInterval: 0.05)
             logger.setJsonOutputMode(false)
+            Thread.sleep(forTimeInterval: 0.05)
             
             // These will output to stderr, we just verify they don't crash
             logger.debug("Debug to stderr")

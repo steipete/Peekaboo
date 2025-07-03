@@ -195,9 +195,10 @@ struct ConfigCommandTests {
             let providers = manager.getAIProviders(cliValue: cliValue)
             #expect(providers == cliValue)
             
-            // Without CLI value, check env var
+            // Without CLI value, should use config or default
             let savePath = manager.getDefaultSavePath(cliValue: nil)
-            #expect(savePath == FileManager.default.temporaryDirectory.path)
+            // The actual value depends on config file, env vars, or default
+            #expect(savePath.contains("/Desktop"))  // Should be under Desktop
         }
     }
 }

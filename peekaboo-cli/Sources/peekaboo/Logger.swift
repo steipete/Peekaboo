@@ -13,7 +13,7 @@ final class Logger: @unchecked Sendable {
     private init() {}
 
     func setJsonOutputMode(_ enabled: Bool) {
-        queue.async(flags: .barrier) {
+        queue.sync(flags: .barrier) {
             self.isJsonOutputMode = enabled
             // Don't clear logs automatically - let tests manage this explicitly
         }
@@ -66,8 +66,15 @@ final class Logger: @unchecked Sendable {
     }
 
     func clearDebugLogs() {
-        queue.async(flags: .barrier) {
+        queue.sync(flags: .barrier) {
             self.debugLogs.removeAll()
+        }
+    }
+    
+    /// For testing - ensures all pending operations are complete
+    func flush() {
+        queue.sync(flags: .barrier) {
+            // This ensures all pending async operations are complete
         }
     }
 }
