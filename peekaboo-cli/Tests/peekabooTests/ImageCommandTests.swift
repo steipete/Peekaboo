@@ -133,6 +133,52 @@ struct ImageCommandTests {
         #expect(command.screenIndex == 1)
     }
 
+    @Test("Command with analyze option", .tags(.fast))
+    func imageCommandWithAnalyze() throws {
+        // Test analyze option parsing
+        let command = try ImageCommand.parse([
+            "--analyze", "What is shown in this image?"
+        ])
+
+        #expect(command.analyze == "What is shown in this image?")
+    }
+
+    @Test("Command with analyze and app", .tags(.fast))
+    func imageCommandWithAnalyzeAndApp() throws {
+        // Test analyze with app specification
+        let command = try ImageCommand.parse([
+            "--app", "Safari",
+            "--analyze", "Summarize this webpage"
+        ])
+
+        #expect(command.app == "Safari")
+        #expect(command.analyze == "Summarize this webpage")
+    }
+
+    @Test("Command with analyze and mode", .tags(.fast))
+    func imageCommandWithAnalyzeAndMode() throws {
+        // Test analyze with different capture modes
+        let command = try ImageCommand.parse([
+            "--mode", "frontmost",
+            "--analyze", "What errors are shown?"
+        ])
+
+        #expect(command.mode == .frontmost)
+        #expect(command.analyze == "What errors are shown?")
+    }
+
+    @Test("Command with analyze and JSON output", .tags(.fast))
+    func imageCommandWithAnalyzeAndJSON() throws {
+        // Test analyze with JSON output
+        let command = try ImageCommand.parse([
+            "--analyze", "Describe the UI",
+            "--json-output"
+        ])
+
+        #expect(command.analyze == "Describe the UI")
+        #expect(command.jsonOutput == true)
+    }
+
     // MARK: - Parameterized Command Tests
 
     @Test(
@@ -147,6 +193,21 @@ struct ImageCommandTests {
         let command = try ImageCommand.parse(args)
         #expect(command.mode == mode)
         #expect(command.format == format)
+    }
+
+    @Test(
+        "Analyze option with different modes",
+        arguments: [
+            (args: ["--mode", "screen", "--analyze", "What is on screen?"], mode: CaptureMode.screen, prompt: "What is on screen?"),
+            (args: ["--mode", "window", "--analyze", "Describe this window"], mode: CaptureMode.window, prompt: "Describe this window"),
+            (args: ["--mode", "multi", "--analyze", "Compare windows"], mode: CaptureMode.multi, prompt: "Compare windows"),
+            (args: ["--mode", "frontmost", "--analyze", "What app is this?"], mode: CaptureMode.frontmost, prompt: "What app is this?")
+        ]
+    )
+    func analyzeWithDifferentModes(args: [String], mode: CaptureMode, prompt: String) throws {
+        let command = try ImageCommand.parse(args)
+        #expect(command.mode == mode)
+        #expect(command.analyze == prompt)
     }
 
     @Test(
@@ -264,6 +325,7 @@ struct ImageCommandTests {
         #expect(command.screenIndex == nil)
         #expect(command.captureFocus == .auto)
         #expect(command.jsonOutput == false)
+        #expect(command.analyze == nil)
     }
 
     @Test(
@@ -660,6 +722,25 @@ struct ImageCommandAdvancedTests {
         #expect(command.format == .jpg)
         #expect(command.path == "/tmp/safari-home.jpg")
         #expect(command.captureFocus == .foreground)
+        #expect(command.jsonOutput == true)
+    }
+
+    @Test("Complex command with analyze", .tags(.fast))
+    func complexCommandWithAnalyze() throws {
+        let command = try ImageCommand.parse([
+            "--mode", "window",
+            "--app", "Chrome",
+            "--format", "png",
+            "--path", "/tmp/chrome-analysis.png",
+            "--analyze", "What is the main content on this page?",
+            "--json-output"
+        ])
+
+        #expect(command.mode == .window)
+        #expect(command.app == "Chrome")
+        #expect(command.format == .png)
+        #expect(command.path == "/tmp/chrome-analysis.png")
+        #expect(command.analyze == "What is the main content on this page?")
         #expect(command.jsonOutput == true)
     }
 
