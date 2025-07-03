@@ -56,16 +56,29 @@ struct PeekabooCommand: AsyncParsableCommand {
               PEEKABOO_DEFAULT_SAVE_PATH Default directory for screenshots
                                          Default: current directory
 
+            CONFIGURATION:
+              Config file: ~/.config/peekaboo/config.json (JSONC format with comments)
+              Use 'peekaboo config' command to manage configuration
+              
             SEE ALSO:
               GitHub: https://github.com/steipete/peekaboo
               
             """,
         version: Version.current,
-        subcommands: [ImageCommand.self, ListCommand.self, AnalyzeCommand.self],
+        subcommands: [ImageCommand.self, ListCommand.self, AnalyzeCommand.self, ConfigCommand.self],
         defaultSubcommand: ImageCommand.self
     )
 
-    func run() async throws {
-        // Root command doesn't do anything, subcommands handle everything
+    static func main() async {
+        // Load configuration at startup
+        _ = ConfigurationManager.shared.loadConfiguration()
+        
+        // Run the command
+        do {
+            var command = try PeekabooCommand.parseAsRoot()
+            try await command.run()
+        } catch {
+            PeekabooCommand.exit(withError: error)
+        }
     }
 }

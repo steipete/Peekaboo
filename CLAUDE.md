@@ -120,6 +120,13 @@ PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./peekaboo-cli/.build/debug/peekaboo
 
 # Use multiple AI providers (auto-selects first available)
 PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "What application is this?"
+
+# Configuration management (NEW)
+./peekaboo-cli/.build/debug/peekaboo config init                    # Create default config file
+./peekaboo-cli/.build/debug/peekaboo config show                    # Display current config
+./peekaboo-cli/.build/debug/peekaboo config show --effective        # Show merged configuration
+./peekaboo-cli/.build/debug/peekaboo config edit                    # Edit config in default editor
+./peekaboo-cli/.build/debug/peekaboo config validate                # Validate config syntax
 ```
 
 ## Code Architecture
@@ -187,7 +194,40 @@ PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest" ./peekaboo-cli/.build/
    - `OPENAI_API_KEY`: Required for OpenAI provider
    - `PEEKABOO_OLLAMA_BASE_URL`: Optional Ollama server URL (default: http://localhost:11434)
 
-6. **Swift CLI AI Analysis Architecture** (NEW):
+6. **Configuration File** (NEW):
+   - Location: `~/.config/peekaboo/config.json`
+   - Format: JSONC (JSON with Comments)
+   - Supports environment variable expansion: `${VAR_NAME}`
+   - Precedence: CLI args > env vars > config file > defaults
+   - Manage with: `peekaboo config` subcommand
+   
+   Example configuration:
+   ```json
+   {
+     // AI Provider Settings
+     "aiProviders": {
+       "providers": "openai/gpt-4o,ollama/llava:latest",
+       "openaiApiKey": "${OPENAI_API_KEY}",
+       "ollamaBaseUrl": "http://localhost:11434"
+     },
+     
+     // Default Settings
+     "defaults": {
+       "savePath": "~/Desktop/Screenshots",
+       "imageFormat": "png",
+       "captureMode": "window",
+       "captureFocus": "auto"
+     },
+     
+     // Logging
+     "logging": {
+       "level": "info",
+       "path": "~/.config/peekaboo/logs/peekaboo.log"
+     }
+   }
+   ```
+
+7. **Swift CLI AI Analysis Architecture** (NEW):
    - Protocol-based design with `AIProvider` protocol
    - Native URLSession implementation for HTTP requests
    - Built-in JSON encoding/decoding using Codable

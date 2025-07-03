@@ -6,7 +6,7 @@ class OpenAIProvider: AIProvider {
     private let baseURL = URL(string: "https://api.openai.com/v1/chat/completions")!
     
     var apiKey: String? {
-        ProcessInfo.processInfo.environment["OPENAI_API_KEY"]
+        ConfigurationManager.shared.getOpenAIAPIKey()
     }
     
     var session: URLSession {

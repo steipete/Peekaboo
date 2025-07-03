@@ -113,8 +113,8 @@ struct AnalyzeCommand: AsyncParsableCommand {
         let base64String = imageData.base64EncodedString()
         
         // Get configured providers
-        let aiProvidersEnv = ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"]
-        let configuredProviders = AIProviderFactory.createProviders(from: aiProvidersEnv)
+        let aiProvidersString = ConfigurationManager.shared.getAIProviders(cliValue: nil)
+        let configuredProviders = AIProviderFactory.createProviders(from: aiProvidersString)
         
         guard !configuredProviders.isEmpty else {
             throw AnalyzeError.noProvidersConfigured

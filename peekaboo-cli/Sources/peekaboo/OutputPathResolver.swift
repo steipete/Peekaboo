@@ -19,7 +19,8 @@ struct OutputPathResolver: Sendable {
                 isSingleCapture: isSingleCapture
             )
         } else {
-            return "/tmp/\(fileName)"
+            let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
+            return handleDirectoryBasePath(basePath: defaultPath, fileName: fileName)
         }
     }
 
@@ -36,7 +37,8 @@ struct OutputPathResolver: Sendable {
                 isSingleCapture: isSingleCapture
             )
         } else {
-            return "/tmp/\(fileName)"
+            let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
+            return handleDirectoryBasePath(basePath: defaultPath, fileName: fileName)
         }
     }
 

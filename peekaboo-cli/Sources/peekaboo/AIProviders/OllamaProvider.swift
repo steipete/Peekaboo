@@ -5,7 +5,7 @@ class OllamaProvider: AIProvider {
     let model: String
     
     var baseURL: URL {
-        let baseURLString = ProcessInfo.processInfo.environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
+        let baseURLString = ConfigurationManager.shared.getOllamaBaseURL()
         return URL(string: baseURLString) ?? URL(string: "http://localhost:11434")!
     }
     
