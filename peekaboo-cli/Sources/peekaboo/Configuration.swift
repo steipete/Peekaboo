@@ -199,8 +199,8 @@ final class ConfigurationManager: @unchecked Sendable {
                 let varNameRange = match.range(at: 1)
                 if let swiftRange = Range(varNameRange, in: text) {
                     let varName = String(text[swiftRange])
-                    if let value = ProcessInfo.processInfo.environment[varName] {
-                        let fullMatch = Range(match.range, in: text)!
+                    if let value = ProcessInfo.processInfo.environment[varName],
+                       let fullMatch = Range(match.range, in: text) {
                         result.replaceSubrange(fullMatch, with: value)
                     }
                 }
@@ -232,7 +232,16 @@ final class ConfigurationManager: @unchecked Sendable {
                 return envValue as! T
             } else if T.self == Bool.self {
                 return (envValue.lowercased() == "true" || envValue == "1") as! T
+            } else if T.self == Int.self {
+                if let intValue = Int(envValue) {
+                    return intValue as! T
+                }
+            } else if T.self == Double.self {
+                if let doubleValue = Double(envValue) {
+                    return doubleValue as! T
+                }
             }
+            // For other types, we can't convert from string, so fall through
         }
         
         // Config file value takes third precedence
