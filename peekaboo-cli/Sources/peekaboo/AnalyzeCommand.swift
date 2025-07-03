@@ -195,7 +195,7 @@ struct AnalyzeCommand: AsyncParsableCommand {
 
 // MARK: - Data Models
 
-private struct AnalysisResult {
+struct AnalysisResult {
     let analysisText: String
     let modelUsed: String
     let durationSeconds: TimeInterval

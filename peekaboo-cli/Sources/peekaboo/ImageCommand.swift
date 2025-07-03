@@ -32,9 +32,15 @@ struct ImageCommand: AsyncParsableCommand {
               peekaboo image --app Safari --path screenshot.png --format jpg
               peekaboo image --app Xcode --capture-focus foreground
               
+              # Capture and analyze in one command
+              peekaboo image --mode frontmost --analyze "What errors are shown?"
+              peekaboo image --app Safari --analyze "Summarize this webpage"
+              peekaboo image --mode screen --analyze "Describe the desktop"
+              
               # Scripting examples
               peekaboo image --app Safari --json-output | jq -r '.data.saved_files[0].path'
               peekaboo image --mode frontmost --json-output | jq '.data.saved_files[0].window_title'
+              peekaboo image --analyze "Is there an error?" --json-output | jq -r '.data.analysis.text'
 
             CAPTURE MODES:
               screen     Capture entire screen(s)
@@ -91,12 +97,22 @@ struct ImageCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
+    @Option(name: .long, help: "Analyze the captured image with AI (provide a question/prompt)")
+    var analyze: String?
+
     func run() async throws {
         Logger.shared.setJsonOutputMode(jsonOutput)
         do {
             try PermissionsChecker.requireScreenRecordingPermission()
             let savedFiles = try await performCapture()
-            outputResults(savedFiles)
+            
+            // If analyze option is provided, analyze the first captured image
+            if let analyzePrompt = analyze, let firstFile = savedFiles.first {
+                let analysisResult = try await analyzeImage(at: firstFile.path, with: analyzePrompt)
+                outputResultsWithAnalysis(savedFiles, analysis: analysisResult)
+            } else {
+                outputResults(savedFiles)
+            }
         } catch {
             handleError(error)
             // Throw a special exit error that AsyncParsableCommand can handle
@@ -136,6 +152,81 @@ struct ImageCommand: AsyncParsableCommand {
             for file in savedFiles {
                 print("  \(file.path)")
             }
+        }
+    }
+
+    private func analyzeImage(at path: String, with prompt: String) async throws -> AnalysisResult {
+        // Validate image exists
+        let imagePath = URL(fileURLWithPath: path)
+        guard FileManager.default.fileExists(atPath: imagePath.path) else {
+            throw AnalyzeError.fileNotFound(path)
+        }
+        
+        // Read image and convert to base64
+        let imageData = try Data(contentsOf: imagePath)
+        let base64String = imageData.base64EncodedString()
+        
+        // Get configured providers
+        let aiProvidersString = ConfigurationManager.shared.getAIProviders(cliValue: nil)
+        let configuredProviders = AIProviderFactory.createProviders(from: aiProvidersString)
+        
+        guard !configuredProviders.isEmpty else {
+            throw AnalyzeError.noProvidersConfigured
+        }
+        
+        // Use first available provider
+        let selectedProvider = try await AIProviderFactory.determineProvider(
+            requestedType: nil,
+            requestedModel: nil,
+            configuredProviders: configuredProviders
+        )
+        
+        // Perform analysis
+        let startTime = Date()
+        let analysisText = try await selectedProvider.analyze(
+            imageBase64: base64String,
+            question: prompt
+        )
+        let duration = Date().timeIntervalSince(startTime)
+        
+        return AnalysisResult(
+            analysisText: analysisText,
+            modelUsed: "\(selectedProvider.name)/\(selectedProvider.model)",
+            durationSeconds: duration,
+            imagePath: path
+        )
+    }
+
+    private func outputResultsWithAnalysis(_ savedFiles: [SavedFile], analysis: AnalysisResult) {
+        if jsonOutput {
+            // Create combined output for JSON
+            let _ = ImageCaptureData(saved_files: savedFiles)
+            // Add analysis data to the output
+            let enrichedData: [String: Any] = [
+                "saved_files": savedFiles.map { file in
+                    [
+                        "path": file.path,
+                        "mime_type": file.mime_type,
+                        "window_title": file.window_title as Any
+                    ]
+                },
+                "analysis": [
+                    "text": analysis.analysisText,
+                    "model": analysis.modelUsed,
+                    "duration_seconds": analysis.durationSeconds
+                ]
+            ]
+            outputSuccess(data: enrichedData)
+        } else {
+            // Regular output
+            print("Captured \(savedFiles.count) image(s):")
+            for file in savedFiles {
+                print("  \(file.path)")
+            }
+            print()
+            print("\(analysis.analysisText)")
+            print()
+            print("👻 Peekaboo: Analyzed image with \(analysis.modelUsed) in \(String(format: "%.2f", analysis.durationSeconds))s.")
         }
     }
 

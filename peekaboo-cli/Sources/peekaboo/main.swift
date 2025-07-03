@@ -21,18 +21,19 @@ struct PeekabooCommand: AsyncParsableCommand {
               
               peekaboo list apps                             # List all running apps
               peekaboo list windows --app Safari             # List Safari windows
-              peekaboo list server_status                    # Check permissions
+              peekaboo list permissions                      # Check permissions
               
               peekaboo analyze screenshot.png "What error is shown?"
               peekaboo analyze ui.png "Find the login button" --provider ollama
               peekaboo analyze diagram.png "Explain this" --model gpt-4o
 
             COMMON WORKFLOWS:
-              # Capture and analyze in one go
-              peekaboo --app Safari --path /tmp/page.png && peekaboo analyze /tmp/page.png "What's on this page?"
+              # Capture and analyze in one command (NEW!)
+              peekaboo --app Safari --analyze "What's on this page?"
+              peekaboo --mode frontmost --analyze "What UI issues do you see?"
               
-              # Debug UI issues
-              peekaboo --mode frontmost --path bug.png && peekaboo analyze bug.png "What UI issues do you see?"
+              # Or use separate commands for more control
+              peekaboo --app Safari --path /tmp/page.png && peekaboo analyze /tmp/page.png "What's on this page?"
               
               # Document all windows
               for app in Safari Chrome "Visual Studio Code"; do
@@ -40,11 +41,19 @@ struct PeekabooCommand: AsyncParsableCommand {
               done
 
             PERMISSIONS:
-              Screen Recording permission is required for capturing screenshots.
-              Grant via: System Settings > Privacy & Security > Screen Recording
+              Peekaboo requires system permissions to function properly:
               
-              Accessibility permission is optional for window focus control.
-              Grant via: System Settings > Privacy & Security > Accessibility
+              ✅ Screen Recording (REQUIRED)
+                 Needed for all screenshot operations
+                 Grant via: System Settings > Privacy & Security > Screen Recording
+              
+              ⚠️  Accessibility (OPTIONAL)
+                 Needed for window focus control (foreground capture mode)
+                 Grant via: System Settings > Privacy & Security > Accessibility
+              
+              Check your permissions status:
+                peekaboo permissions                    # Human-readable output
+                peekaboo permissions --json-output      # Machine-readable JSON
 
             CONFIGURATION:
               Peekaboo uses a configuration file at ~/.config/peekaboo/config.json
@@ -63,17 +72,18 @@ struct PeekabooCommand: AsyncParsableCommand {
               see: https://github.com/steipete/peekaboo#configuration
               
             SEE ALSO:
+              Website: https://peekaboo.boo
               GitHub: https://github.com/steipete/peekaboo
               
             """,
         version: Version.current,
-        subcommands: [ImageCommand.self, ListCommand.self, AnalyzeCommand.self, ConfigCommand.self],
-        defaultSubcommand: ImageCommand.self
+        subcommands: [ImageCommand.self, ListCommand.self, AnalyzeCommand.self, ConfigCommand.self, PermissionsCommand.self],
+        defaultSubcommand: nil
     )
 
     mutating func run() async throws {
-        // This shouldn't be called as we have subcommands and a default
-        fatalError("Main command run() should not be called directly")
+        // When no subcommand is provided, print help
+        print(Self.helpMessage())
     }
 }
 

@@ -9,7 +9,7 @@ import Foundation
 struct ListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List running applications, windows, or check server status",
+        abstract: "List running applications, windows, or check permissions",
         discussion: """
             SYNOPSIS:
               peekaboo list SUBCOMMAND [OPTIONS]
@@ -24,7 +24,7 @@ struct ListCommand: AsyncParsableCommand {
               peekaboo list windows --app PID:12345
               peekaboo list windows --app Chrome --include-details bounds,ids
               
-              peekaboo list server_status                    # Check permissions
+              peekaboo list permissions                      # Check permissions
               
               # Scripting examples
               peekaboo list apps --json-output | jq '.data.applications[] | select(.is_active)'
@@ -33,13 +33,13 @@ struct ListCommand: AsyncParsableCommand {
             SUBCOMMANDS:
               apps          List all running applications with process IDs
               windows       List windows for a specific application  
-              server_status Check permissions and system status
+              permissions   Check permissions required for Peekaboo
 
             OUTPUT FORMAT:
               Default output is human-readable text.
               Use --json-output for machine-readable JSON format.
             """,
-        subcommands: [AppsSubcommand.self, WindowsSubcommand.self, ServerStatusSubcommand.self],
+        subcommands: [AppsSubcommand.self, WindowsSubcommand.self, PermissionsSubcommand.self],
         defaultSubcommand: AppsSubcommand.self
     )
 
@@ -350,28 +350,28 @@ struct WindowsSubcommand: AsyncParsableCommand {
     }
 }
 
-/// Subcommand for checking system permissions and CLI status.
+/// Subcommand for checking system permissions required for Peekaboo.
 ///
 /// Verifies that required permissions (Screen Recording) and optional
 /// permissions (Accessibility) are granted for proper operation.
-struct ServerStatusSubcommand: AsyncParsableCommand {
+struct PermissionsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "server_status",
-        abstract: "Check system permissions and CLI status",
+        commandName: "permissions",
+        abstract: "Check system permissions required for Peekaboo",
         discussion: """
             SYNOPSIS:
-              peekaboo list server_status [--json-output]
+              peekaboo list permissions [--json-output]
 
             DESCRIPTION:
-              Checks system permissions and configuration status. Use this command
-              to troubleshoot permission issues or verify installation.
+              Checks system permissions required for Peekaboo operations. Use this
+              command to troubleshoot permission issues or verify installation.
 
             EXAMPLES:
-              peekaboo list server_status
-              peekaboo list server_status --json-output
+              peekaboo list permissions
+              peekaboo list permissions --json-output
               
               # Check specific permission
-              peekaboo list server_status --json-output | jq '.data.permissions.screen_recording'
+              peekaboo list permissions --json-output | jq '.data.permissions.screen_recording'
 
             STATUS CHECKS:
               Screen Recording  Required for all screenshot operations

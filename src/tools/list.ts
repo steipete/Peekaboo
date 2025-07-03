@@ -300,7 +300,7 @@ async function handleServerStatus(
   if (cliExecutable) {
     try {
       const permissionsResult = await execPeekaboo(
-        ["list", "server_status", "--json-output"],
+        ["list", "permissions", "--json-output"],
         packageRootDir,
         { expectSuccess: false },
       );
@@ -502,7 +502,7 @@ export function buildSwiftCliArgs(input: ListToolInput): string[] {
       }
       break;
     case "server_status":
-      args.push("server_status");
+      args.push("permissions");  // Always map to permissions subcommand
       break;
     default:
       // Fallback to apps if unknown type

@@ -5,7 +5,6 @@ import Foundation
 ///
 /// Provides subcommands to create, view, edit, and validate the JSONC configuration
 /// file that controls AI providers, default settings, and logging preferences.
-@available(macOS 14.0, *)
 struct ConfigCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "config",
