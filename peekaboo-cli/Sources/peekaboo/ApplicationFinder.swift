@@ -1,12 +1,24 @@
 import AppKit
 import Foundation
 
+/// Represents a matched application with its relevance score and match type.
+///
+/// Used internally by `ApplicationFinder` to rank and select the best matching
+/// application when multiple candidates are found for a given search query.
 struct AppMatch: Sendable {
     let app: NSRunningApplication
     let score: Double
     let matchType: String
 }
 
+/// Provides intelligent application discovery and matching capabilities.
+///
+/// `ApplicationFinder` searches for running applications using various strategies including
+/// exact matching, fuzzy matching, and special handling for common applications like browsers.
+/// It supports finding applications by:
+/// - Application name (with fuzzy matching)
+/// - Bundle identifier
+/// - Process ID (PID)
 final class ApplicationFinder: Sendable {
     static func findApplication(identifier: String) throws(ApplicationError) -> NSRunningApplication {
         // Logger.shared.debug("Searching for application: \(identifier)")

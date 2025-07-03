@@ -3,6 +3,10 @@ import CoreGraphics
 import Foundation
 import ScreenCaptureKit
 
+/// Utility for checking and enforcing macOS system permissions.
+///
+/// Verifies that required permissions (Screen Recording) and optional permissions
+/// (Accessibility) are granted before performing operations that require them.
 final class PermissionsChecker: Sendable {
     static func checkScreenRecordingPermission() -> Bool {
         // Use a simpler approach - check CGWindowListCreateImage which doesn't require async

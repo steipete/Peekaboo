@@ -1,5 +1,9 @@
 import Foundation
 
+/// Standard JSON response format for Peekaboo API output.
+///
+/// Provides a consistent structure for success/error responses including
+/// data payload, messages, debug logs, and error information.
 struct JSONResponse: Codable {
     let success: Bool
     let data: AnyCodable?
@@ -22,6 +26,10 @@ struct JSONResponse: Codable {
     }
 }
 
+/// Error information structure for JSON responses.
+///
+/// Contains error details including message, standardized error code,
+/// and optional additional context.
 struct ErrorInfo: Codable {
     let message: String
     let code: String
@@ -34,6 +42,10 @@ struct ErrorInfo: Codable {
     }
 }
 
+/// Standardized error codes for Peekaboo operations.
+///
+/// Provides consistent error identification across the API for proper
+/// error handling by clients and automation tools.
 enum ErrorCode: String, Codable {
     case PERMISSION_ERROR_SCREEN_RECORDING
     case PERMISSION_ERROR_ACCESSIBILITY
@@ -48,7 +60,10 @@ enum ErrorCode: String, Codable {
     case UNKNOWN_ERROR
 }
 
-// Helper for encoding arbitrary data as JSON
+/// Type-erased codable wrapper for encoding arbitrary data.
+///
+/// Enables encoding of heterogeneous data types in JSON responses
+/// while maintaining type safety at the API boundary.
 struct AnyCodable: Codable {
     let value: Any
 
@@ -252,6 +267,10 @@ func outputJSONCodable(_ response: some Codable) {
     }
 }
 
+/// Generic JSON response wrapper for strongly-typed data.
+///
+/// Provides type-safe JSON responses when the data payload type
+/// is known at compile time.
 struct CodableJSONResponse<T: Codable>: Codable {
     let success: Bool
     let data: T

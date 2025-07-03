@@ -2,11 +2,44 @@ import AppKit
 import ArgumentParser
 import Foundation
 
+/// Command for listing applications, windows, and checking server status.
+///
+/// Provides subcommands to inspect running applications, enumerate windows,
+/// and verify system permissions required for screenshot operations.
 struct ListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List running applications or windows",
-        subcommands: [AppsSubcommand.self, WindowsSubcommand.self, ServerStatusSubcommand.self],
+        abstract: "List running applications, windows, or check permissions",
+        discussion: """
+            SYNOPSIS:
+              peekaboo list SUBCOMMAND [OPTIONS]
+
+            EXAMPLES:
+              peekaboo list                                  # List all applications (default)
+              peekaboo list apps                             # List all running applications
+              peekaboo list apps --json-output               # Output as JSON
+              
+              peekaboo list windows --app Safari             # List Safari windows
+              peekaboo list windows --app "Visual Studio Code"
+              peekaboo list windows --app PID:12345
+              peekaboo list windows --app Chrome --include-details bounds,ids
+              
+              peekaboo list permissions                      # Check permissions
+              
+              # Scripting examples
+              peekaboo list apps --json-output | jq '.data.applications[] | select(.is_active)'
+              peekaboo list windows --app Safari --json-output | jq '.data.windows[].window_title'
+
+            SUBCOMMANDS:
+              apps          List all running applications with process IDs
+              windows       List windows for a specific application  
+              permissions   Check permissions required for Peekaboo
+
+            OUTPUT FORMAT:
+              Default output is human-readable text.
+              Use --json-output for machine-readable JSON format.
+            """,
+        subcommands: [AppsSubcommand.self, WindowsSubcommand.self, PermissionsSubcommand.self],
         defaultSubcommand: AppsSubcommand.self
     )
 
@@ -15,13 +48,42 @@ struct ListCommand: AsyncParsableCommand {
     }
 }
 
+/// Subcommand for listing all running applications.
+///
+/// Displays information about running applications including their process IDs,
+/// bundle identifiers, activation status, and window counts.
 struct AppsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "apps",
-        abstract: "List all running applications"
+        abstract: "List all running applications with details",
+        discussion: """
+            SYNOPSIS:
+              peekaboo list apps [--json-output]
+
+            DESCRIPTION:
+              Lists all running applications with their process IDs, bundle
+              identifiers, and window counts. Applications are sorted by name.
+
+            EXAMPLES:
+              peekaboo list apps
+              peekaboo list apps | grep Safari
+              peekaboo list apps | wc -l                     # Count running apps
+              
+              # JSON output for scripting
+              peekaboo list apps --json-output | jq '.data.applications[] | select(.is_active)'
+              peekaboo list apps --json-output | jq -r '.data.applications[].app_name'
+              peekaboo list apps --json-output | jq '.data.applications[] | select(.window_count > 3)'
+
+            OUTPUT FIELDS:
+              - Application name
+              - Bundle identifier (e.g., com.apple.Safari)
+              - Process ID (PID)
+              - Status (Active/Background)
+              - Window count
+            """
     )
 
-    @Flag(name: .long, help: "Output results in JSON format")
+    @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
     func run() async throws {
@@ -103,19 +165,56 @@ struct AppsSubcommand: AsyncParsableCommand {
     }
 }
 
+/// Subcommand for listing windows of a specific application.
+///
+/// Enumerates all windows belonging to a target application with optional
+/// details like bounds, window IDs, and off-screen status.
 struct WindowsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "windows",
-        abstract: "List windows for a specific application"
+        abstract: "List all windows for a specific application",
+        discussion: """
+            SYNOPSIS:
+              peekaboo list windows --app APPLICATION [--include-details DETAILS] [--json-output]
+
+            DESCRIPTION:
+              Lists all windows for the specified application. Windows are listed
+              in z-order (frontmost first).
+
+            EXAMPLES:
+              peekaboo list windows --app Safari
+              peekaboo list windows --app "Visual Studio Code"
+              peekaboo list windows --app com.apple.Terminal
+              peekaboo list windows --app PID:12345
+              
+              # Include additional details
+              peekaboo list windows --app Chrome --include-details bounds
+              peekaboo list windows --app Finder --include-details bounds,ids,off_screen
+              
+              # JSON output for scripting
+              peekaboo list windows --app Safari --json-output | jq -r '.data.windows[].window_title'
+              peekaboo list windows --app Terminal --include-details bounds --json-output | \
+                jq '.data.windows[] | select(.bounds.width > 1000)'
+
+            APPLICATION IDENTIFIERS:
+              name       Application name (fuzzy matching supported)
+              bundle     Bundle identifier (e.g., com.apple.Safari)
+              PID:xxxxx  Process ID with PID: prefix
+
+            DETAIL OPTIONS:
+              off_screen Include off-screen windows
+              bounds     Include window position and size (x, y, width, height)
+              ids        Include CGWindowID values for window manipulation
+            """
     )
 
-    @Option(name: .long, help: "Target application identifier")
+    @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String
 
-    @Option(name: .long, help: "Include additional window details (comma-separated: off_screen,bounds,ids)")
+    @Option(name: .long, help: "Additional details (comma-separated: off_screen,bounds,ids)")
     var includeDetails: String?
 
-    @Flag(name: .long, help: "Output results in JSON format")
+    @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
     func run() async throws {
@@ -251,13 +350,40 @@ struct WindowsSubcommand: AsyncParsableCommand {
     }
 }
 
-struct ServerStatusSubcommand: AsyncParsableCommand {
+/// Subcommand for checking system permissions required for Peekaboo.
+///
+/// Verifies that required permissions (Screen Recording) and optional
+/// permissions (Accessibility) are granted for proper operation.
+struct PermissionsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "server_status",
-        abstract: "Check server permissions status"
+        commandName: "permissions",
+        abstract: "Check system permissions required for Peekaboo",
+        discussion: """
+            SYNOPSIS:
+              peekaboo list permissions [--json-output]
+
+            DESCRIPTION:
+              Checks system permissions required for Peekaboo operations. Use this
+              command to troubleshoot permission issues or verify installation.
+
+            EXAMPLES:
+              peekaboo list permissions
+              peekaboo list permissions --json-output
+              
+              # Check specific permission
+              peekaboo list permissions --json-output | jq '.data.permissions.screen_recording'
+
+            STATUS CHECKS:
+              Screen Recording  Required for all screenshot operations
+              Accessibility     Optional, needed for window focus control
+              
+            EXIT STATUS:
+              0  All required permissions granted
+              1  Missing required permissions
+            """
     )
 
-    @Flag(name: .long, help: "Output results in JSON format")
+    @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
     func run() async throws {
@@ -283,11 +409,18 @@ struct ServerStatusSubcommand: AsyncParsableCommand {
     }
 }
 
+/// System permissions status for Peekaboo operations.
+///
+/// Indicates whether Screen Recording (required) and Accessibility (optional)
+/// permissions have been granted.
 struct ServerPermissions: Codable {
     let screen_recording: Bool
     let accessibility: Bool
 }
 
+/// Container for server status information.
+///
+/// Wraps permission status data for JSON output.
 struct ServerStatusData: Codable {
     let permissions: ServerPermissions
 }

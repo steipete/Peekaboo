@@ -104,6 +104,31 @@ echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | node dist/index.js
 peekaboo-mcp
 ```
 
+### Using the Swift CLI directly
+```bash
+# Capture screenshots
+./peekaboo-cli/.build/debug/peekaboo image --app "Safari" --path screenshot.png
+./peekaboo-cli/.build/debug/peekaboo image --mode frontmost --path screenshot.png
+
+# List applications or windows
+./peekaboo-cli/.build/debug/peekaboo list apps --json-output
+./peekaboo-cli/.build/debug/peekaboo list windows --app "Finder" --json-output
+
+# Analyze images with AI (NEW)
+PEEKABOO_AI_PROVIDERS="openai/gpt-4o" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "What is shown in this image?"
+PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "Describe this screenshot" --json-output
+
+# Use multiple AI providers (auto-selects first available)
+PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "What application is this?"
+
+# Configuration management (NEW)
+./peekaboo-cli/.build/debug/peekaboo config init                    # Create default config file
+./peekaboo-cli/.build/debug/peekaboo config show                    # Display current config
+./peekaboo-cli/.build/debug/peekaboo config show --effective        # Show merged configuration
+./peekaboo-cli/.build/debug/peekaboo config edit                    # Edit config in default editor
+./peekaboo-cli/.build/debug/peekaboo config validate                # Validate config syntax
+```
+
 ## Code Architecture
 
 ### Project Structure
@@ -115,8 +140,9 @@ peekaboo-mcp
 
 - **Swift CLI** (`peekaboo-cli/`): Native macOS binary for system interactions
   - Handles all screen capture, window management, and application listing
+  - **NEW**: Can now analyze images directly using AI providers (OpenAI, Ollama)
   - Outputs structured JSON when called with `--json-output`
-  - Does NOT interact with AI providers directly
+  - AI analysis functionality available via the `analyze` command
 
 ### Key Design Patterns
 
@@ -127,10 +153,12 @@ peekaboo-mcp
    - Parse response and handle errors
    - Return MCP-formatted response
 
-2. **AI Provider Abstraction**: The `analyze` tool supports multiple AI providers:
+2. **AI Provider Abstraction**: Both the MCP server and Swift CLI support multiple AI providers:
    - Configured via `PEEKABOO_AI_PROVIDERS` environment variable
-   - Format: `provider/model,provider/model` (e.g., `ollama/llava:latest,openai/gpt-4-vision-preview`)
+   - Format: `provider/model,provider/model` (e.g., `ollama/llava:latest,openai/gpt-4o`)
    - Auto-selection tries providers in order until one is available
+   - Swift CLI implements providers using native URLSession for HTTP requests
+   - Supports OpenAI (requires `OPENAI_API_KEY`) and Ollama (local server)
 
 3. **Error Handling**: Standardized error codes from Swift CLI:
    - `PERMISSION_DENIED_SCREEN_RECORDING`
@@ -163,6 +191,48 @@ peekaboo-mcp
    - `PEEKABOO_LOG_LEVEL`: Control logging verbosity (trace, debug, info, warn, error, fatal)
    - `PEEKABOO_DEFAULT_SAVE_PATH`: Default location for captured images
    - `PEEKABOO_CLI_PATH`: Override bundled Swift CLI path
+   - `OPENAI_API_KEY`: Required for OpenAI provider
+   - `PEEKABOO_OLLAMA_BASE_URL`: Optional Ollama server URL (default: http://localhost:11434)
+
+6. **Configuration File** (NEW):
+   - Location: `~/.config/peekaboo/config.json`
+   - Format: JSONC (JSON with Comments)
+   - Supports environment variable expansion: `${VAR_NAME}`
+   - Precedence: CLI args > env vars > config file > defaults
+   - Manage with: `peekaboo config` subcommand
+   
+   Example configuration:
+   ```json
+   {
+     // AI Provider Settings
+     "aiProviders": {
+       "providers": "openai/gpt-4o,ollama/llava:latest",
+       "openaiApiKey": "${OPENAI_API_KEY}",
+       "ollamaBaseUrl": "http://localhost:11434"
+     },
+     
+     // Default Settings
+     "defaults": {
+       "savePath": "~/Desktop/Screenshots",
+       "imageFormat": "png",
+       "captureMode": "window",
+       "captureFocus": "auto"
+     },
+     
+     // Logging
+     "logging": {
+       "level": "info",
+       "path": "~/.config/peekaboo/logs/peekaboo.log"
+     }
+   }
+   ```
+
+7. **Swift CLI AI Analysis Architecture** (NEW):
+   - Protocol-based design with `AIProvider` protocol
+   - Native URLSession implementation for HTTP requests
+   - Built-in JSON encoding/decoding using Codable
+   - Async/await support for modern Swift concurrency
+   - No external dependencies required
 
 ## Common Development Tasks
 
@@ -170,3 +240,5 @@ peekaboo-mcp
 - After Swift CLI changes, rebuild with `npm run build:swift` and test JSON output manually
 - Use `PEEKABOO_LOG_LEVEL=debug` for detailed debugging during development
 - Test permissions by running `./peekaboo list server_status --json-output`
+- Test AI analysis with: `PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./peekaboo analyze screenshot.png "What is this?"`
+- When adding new AI providers, implement the `AIProvider` protocol in `peekaboo-cli/Sources/peekaboo/AIProviders/`

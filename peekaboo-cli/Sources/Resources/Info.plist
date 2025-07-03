@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.steipete.peekaboo</string>
+    <key>CFBundleName</key>
+    <string>Peekaboo</string>
+    <key>CFBundleVersion</key>
+    <string>2.0.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>2.0.0</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Peekaboo needs screen recording permission to capture screenshots and analyze window content.</string>
+</dict>
+</plist>

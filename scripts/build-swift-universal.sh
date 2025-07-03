@@ -52,6 +52,28 @@ echo "🤏 Stripping symbols for further size reduction..."
 # -x: Remove non-global symbols
 strip -Sx "$FINAL_BINARY_PATH.tmp"
 
+echo "🔏 Code signing the universal binary..."
+if security find-identity -p codesigning -v | grep -q "Developer ID Application"; then
+    # Sign with Developer ID if available
+    SIGNING_IDENTITY=$(security find-identity -p codesigning -v | grep "Developer ID Application" | head -1 | awk '{print $2}')
+    codesign --force --sign "$SIGNING_IDENTITY" \
+        --options runtime \
+        --identifier "com.steipete.peekaboo" \
+        --timestamp \
+        "$FINAL_BINARY_PATH.tmp"
+    echo "✅ Signed with Developer ID: $SIGNING_IDENTITY"
+else
+    # Fall back to ad-hoc signing for local builds
+    codesign --force --sign - \
+        --identifier "com.steipete.peekaboo" \
+        "$FINAL_BINARY_PATH.tmp"
+    echo "⚠️  Ad-hoc signed (no Developer ID found)"
+fi
+
+# Verify the signature and embedded info
+echo "🔍 Verifying code signature..."
+codesign -dv "$FINAL_BINARY_PATH.tmp" 2>&1 | grep -E "Identifier=|Signature"
+
 # Replace the old binary with the new one
 mv "$FINAL_BINARY_PATH.tmp" "$FINAL_BINARY_PATH"
 

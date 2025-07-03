@@ -24,6 +24,14 @@ let package = Package(
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency"),
                 .unsafeFlags(["-parse-as-library"])
+            ],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Sources/Resources/Info.plist"
+                ])
             ]
         ),
         .testTarget(

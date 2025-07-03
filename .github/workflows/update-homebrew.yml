@@ -1,0 +1,101 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update (e.g., 2.0.1)'
+        required: true
+
+jobs:
+  update-homebrew-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            VERSION="v${{ github.event.inputs.version }}"
+          fi
+          # Remove 'v' prefix if present
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Download release artifact
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          echo "Downloading release artifact for ${TAG}..."
+          curl -L -o peekaboo-macos-universal.tar.gz \
+            "https://github.com/steipete/peekaboo/releases/download/${TAG}/peekaboo-macos-universal.tar.gz"
+
+      - name: Calculate SHA256
+        id: sha256
+        run: |
+          SHA256=$(sha256sum peekaboo-macos-universal.tar.gz | cut -d' ' -f1)
+          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+          echo "SHA256: ${SHA256}"
+
+      - name: Update Homebrew formula
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA256="${{ steps.sha256.outputs.sha256 }}"
+          
+          # Update the formula file
+          sed -i "s|url \".*\"|url \"https://github.com/steipete/peekaboo/releases/download/v${VERSION}/peekaboo-macos-universal.tar.gz\"|" homebrew/peekaboo.rb
+          sed -i "s|sha256 \".*\"|sha256 \"${SHA256}\"|" homebrew/peekaboo.rb
+          sed -i "s|version \".*\"|version \"${VERSION}\"|" homebrew/peekaboo.rb
+
+      - name: Checkout homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: steipete/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Copy updated formula to tap
+        run: |
+          mkdir -p homebrew-tap/Formula
+          cp homebrew/peekaboo.rb homebrew-tap/Formula/
+
+      - name: Commit and push to tap
+        run: |
+          cd homebrew-tap
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          VERSION="${{ steps.version.outputs.version }}"
+          git add Formula/peekaboo.rb
+          git commit -m "Update Peekaboo to v${VERSION}" || echo "No changes to commit"
+          git push
+
+      - name: Update formula in main repo
+        if: github.event_name == 'release'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          VERSION="${{ steps.version.outputs.version }}"
+          git add homebrew/peekaboo.rb
+          git commit -m "Update Homebrew formula for v${VERSION}" || echo "No changes to commit"
+          
+          # Create a PR instead of pushing directly to main
+          git checkout -b update-homebrew-formula-v${VERSION}
+          git push origin update-homebrew-formula-v${VERSION}
+          
+          # Create PR using GitHub CLI
+          gh pr create \
+            --title "Update Homebrew formula for v${VERSION}" \
+            --body "Automated update of Homebrew formula to version ${VERSION}" \
+            --base main \
+            --head update-homebrew-formula-v${VERSION}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
