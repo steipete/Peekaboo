@@ -91,7 +91,62 @@ Then restart Claude Desktop.
 
 ### Configuration
 
-Peekaboo can be configured using environment variables:
+Peekaboo supports two configuration methods: environment variables and a configuration file. Settings follow this precedence (highest to lowest):
+1. Command-line arguments (for CLI usage)
+2. Environment variables
+3. Configuration file
+4. Built-in defaults
+
+#### Configuration File (Recommended)
+
+Peekaboo supports a JSONC (JSON with Comments) configuration file at `~/.config/peekaboo/config.json`:
+
+```json
+{
+  // AI Provider Settings
+  "aiProviders": {
+    "providers": "openai/gpt-4o,ollama/llava:latest",
+    "openaiApiKey": "${OPENAI_API_KEY}",  // Supports env var expansion
+    "ollamaBaseUrl": "http://localhost:11434"
+  },
+  
+  // Default Settings
+  "defaults": {
+    "savePath": "~/Desktop/Screenshots",
+    "imageFormat": "png",
+    "captureMode": "window",
+    "captureFocus": "auto"
+  },
+  
+  // Logging Configuration
+  "logging": {
+    "level": "info",
+    "path": "~/.config/peekaboo/logs/peekaboo.log"
+  }
+}
+```
+
+**Managing Configuration:**
+```bash
+# Create default configuration file
+peekaboo config init
+
+# View current configuration
+peekaboo config show
+
+# Edit configuration in your default editor
+peekaboo config edit
+
+# Show effective configuration (merged from all sources)
+peekaboo config show --effective
+
+# Validate configuration syntax
+peekaboo config validate
+```
+
+#### Environment Variables
+
+You can also configure Peekaboo using environment variables:
 
 ```json
 {
@@ -106,7 +161,7 @@ Peekaboo can be configured using environment variables:
 }
 ```
 
-#### Available Environment Variables
+#### Available Configuration Options
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -663,6 +718,7 @@ peekaboo --help
 peekaboo image --help
 peekaboo list --help
 peekaboo analyze --help
+peekaboo config --help
 
 # Capture screenshots
 peekaboo image --app Safari --path ~/Desktop/safari.png
@@ -686,8 +742,14 @@ peekaboo analyze image.png "What text is visible?" --json-output
 
 #### CLI Environment Variables
 
-The Swift CLI respects the same environment variables as the MCP server:
+The Swift CLI respects both the configuration file and environment variables, with the same precedence as the MCP server:
 
+1. Command-line arguments
+2. Environment variables
+3. Configuration file (`~/.config/peekaboo/config.json`)
+4. Built-in defaults
+
+Key environment variables:
 - `PEEKABOO_AI_PROVIDERS`: AI providers for image analysis (e.g., "openai/gpt-4o,ollama/llava:latest")
 - `OPENAI_API_KEY`: Required for OpenAI provider
 - `PEEKABOO_OLLAMA_BASE_URL`: Ollama server URL (default: http://localhost:11434)
