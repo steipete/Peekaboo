@@ -1,106 +1,86 @@
-# Peekaboo MCP: Lightning-fast macOS Screenshots for AI Agents
+# Peekaboo: Lightning-fast macOS Screenshots & AI Vision Analysis
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
 [![npm version](https://badge.fury.io/js/%40steipete%2Fpeekaboo-mcp.svg)](https://www.npmjs.com/package/@steipete/peekaboo-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/macOS-14.0%2B-blue.svg)](https://www.apple.com/macos/)
+[![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange.svg)](https://swift.org/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 
-Peekaboo is a macOS-only MCP server that enables AI agents to capture screenshots of applications, windows, or the entire system, with optional visual question answering through local or remote AI models.
+Peekaboo is a powerful macOS utility for capturing screenshots and analyzing them with AI vision models. It works both as a **standalone CLI tool** (recommended) and as an **MCP server** for AI assistants like Claude Desktop and Cursor.
+
+## 🎯 Choose Your Path
+
+### 🖥️ **CLI Tool** (Recommended for Most Users)
+Perfect for:
+- Command-line workflows and automation
+- Shell scripts and CI/CD pipelines  
+- Quick screenshots and AI analysis
+- System administration tasks
+
+### 🤖 **MCP Server** (For AI Assistants)
+Perfect for:
+- Claude Desktop integration
+- Cursor IDE workflows
+- AI agents that need visual context
+- Interactive AI debugging sessions
 
 ## What is Peekaboo?
 
-Peekaboo bridges the gap between AI assistants and visual content on your screen. Without visual capabilities, AI agents are fundamentally limited when debugging UI issues or understanding what's happening on screen. Peekaboo solves this by giving AI agents the ability to:
+Peekaboo bridges the gap between visual content on your screen and AI understanding. It provides:
 
-- **Capture screenshots** of your entire screen, specific applications, or individual windows
-- **Analyze visual content** using AI vision models (both local and cloud-based)
-- **List running applications** and their windows for targeted captures
-- **Work non-intrusively** without changing window focus or interrupting your workflow
+- **Lightning-fast screenshots** of screens, applications, or specific windows
+- **AI-powered image analysis** using GPT-4 Vision, Claude, or local models
+- **Window and application management** with smart fuzzy matching
+- **Privacy-first operation** with local AI options via Ollama
+- **Non-intrusive capture** without changing window focus
 
-## Key Features
+## 🚀 Quick Start: CLI Tool
 
-- **🚀 Fast & Non-intrusive**: Uses Apple's ScreenCaptureKit for instant captures without focus changes
-- **🎯 Smart Window Targeting**: Fuzzy matching finds the right window even with partial names
-- **🤖 AI-Powered Analysis**: Ask questions about screenshots using GPT-4o, Claude, or local models
-- **🔒 Privacy-First**: Run entirely locally with Ollama, or use cloud providers when needed
-- **📦 Easy Installation**: One-click install via Cursor or simple npm/npx commands
-- **🛠️ Developer-Friendly**: Clean JSON API, TypeScript support, comprehensive logging
+### Installation
 
-Read more about the design philosophy and implementation details in the [blog post](https://steipete.com/posts/peekaboo-mcp-screenshots-so-fast-theyre-paranormal/).
+```bash
+# Build from source (recommended)
+git clone https://github.com/steipete/peekaboo.git
+cd peekaboo
+./scripts/build-cli-standalone.sh --install
 
-## Installation
-
-### Requirements
-
-- **macOS 14.0+** (Sonoma or later)
-- **Node.js 20.0+**
-- **Screen Recording Permission** (you'll be prompted on first use)
-
-### Quick Start
-
-#### For Cursor IDE
-
-Or manually add to your Cursor settings:
-
-```json
-{
-  "mcpServers": {
-    "peekaboo": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@steipete/peekaboo-mcp"
-      ],
-      "env": {
-        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
-        "OPENAI_API_KEY": "your-openai-api-key-here"
-      }
-    }
-  }
-}
+# Or install via npm (includes both CLI and MCP server)
+npm install -g @steipete/peekaboo-mcp
 ```
 
-#### For Claude Desktop
+### Basic Usage
 
-Edit your Claude Desktop configuration file:
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+```bash
+# Capture screenshots
+peekaboo image --app Safari --path screenshot.png
+peekaboo image --mode frontmost
+peekaboo image --mode screen --screen-index 0
 
-Add the Peekaboo configuration:
+# List applications and windows
+peekaboo list apps
+peekaboo list windows --app "Visual Studio Code"
 
-```json
-{
-  "mcpServers": {
-    "peekaboo": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@steipete/peekaboo-mcp"
-      ],
-      "env": {
-        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
-        "OPENAI_API_KEY": "your-openai-api-key-here"
-      }
-    }
-  }
-}
+# Analyze images with AI
+peekaboo analyze screenshot.png "What error is shown?"
+peekaboo analyze ui.png "Find all buttons" --provider ollama
+
+# Configure settings
+peekaboo config init                    # Create config file
+peekaboo config edit                    # Edit in your editor
+peekaboo config show --effective        # Show current settings
 ```
-
-Then restart Claude Desktop.
 
 ### Configuration
 
-Peekaboo supports two configuration methods: environment variables and a configuration file. Settings follow this precedence (highest to lowest):
-1. Command-line arguments (for CLI usage)
-2. Environment variables
-3. Configuration file
-4. Built-in defaults
+Create a persistent configuration file at `~/.config/peekaboo/config.json`:
 
-#### Configuration File (Recommended)
+```bash
+peekaboo config init
+```
 
-Peekaboo supports a JSONC (JSON with Comments) configuration file at `~/.config/peekaboo/config.json`:
-
+Example configuration:
 ```json
 {
   // AI Provider Settings
@@ -116,900 +96,209 @@ Peekaboo supports a JSONC (JSON with Comments) configuration file at `~/.config/
     "imageFormat": "png",
     "captureMode": "window",
     "captureFocus": "auto"
-  },
-  
-  // Logging Configuration
-  "logging": {
-    "level": "info",
-    "path": "~/.config/peekaboo/logs/peekaboo.log"
   }
 }
 ```
 
-**Managing Configuration:**
+### Common Workflows
+
 ```bash
-# Create default configuration file
-peekaboo config init
+# Capture and analyze in one command
+peekaboo image --app Safari --path /tmp/page.png && \
+  peekaboo analyze /tmp/page.png "What's on this page?"
 
-# View current configuration
-peekaboo config show
+# Monitor active window changes
+while true; do
+  peekaboo image --mode frontmost --json-output | jq -r '.data.saved_files[0].window_title'
+  sleep 5
+done
 
-# Edit configuration in your default editor
-peekaboo config edit
-
-# Show effective configuration (merged from all sources)
-peekaboo config show --effective
-
-# Validate configuration syntax
-peekaboo config validate
+# Batch analyze screenshots
+for img in ~/Screenshots/*.png; do
+  peekaboo analyze "$img" "Summarize this screenshot"
+done
 ```
 
-#### Environment Variables
+## 🤖 MCP Server Setup
 
-You can also configure Peekaboo using environment variables:
+For AI assistants like Claude Desktop and Cursor, Peekaboo provides a Model Context Protocol (MCP) server.
+
+### For Claude Desktop
+
+Edit your Claude Desktop configuration:
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ```json
 {
-  "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
-  "OPENAI_API_KEY": "your-openai-api-key-here",
-  "PEEKABOO_LOG_LEVEL": "debug",
-  "PEEKABOO_LOG_FILE": "~/Library/Logs/peekaboo-mcp-debug.log",
-  "PEEKABOO_DEFAULT_SAVE_PATH": "~/Pictures/PeekabooCaptures",
-  "PEEKABOO_CONSOLE_LOGGING": "true",
-  "PEEKABOO_CLI_TIMEOUT": "30000",
-  "PEEKABOO_CLI_PATH": "/opt/custom/peekaboo"
+  "mcpServers": {
+    "peekaboo": {
+      "command": "npx",
+      "args": ["-y", "@steipete/peekaboo-mcp"],
+      "env": {
+        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
+        "OPENAI_API_KEY": "your-openai-api-key-here"
+      }
+    }
+  }
 }
 ```
 
-#### Available Configuration Options
+### For Cursor IDE
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PEEKABOO_AI_PROVIDERS` | JSON string defining AI providers for image analysis (see [AI Analysis](#ai-analysis)). | `""` (disabled) |
-| `PEEKABOO_LOG_LEVEL` | Logging level (trace, debug, info, warn, error, fatal). | `info` |
-| `PEEKABOO_LOG_FILE` | Path to the server's log file. If the specified directory is not writable, falls back to the system temp directory. | `~/Library/Logs/peekaboo-mcp.log` |
-| `PEEKABOO_DEFAULT_SAVE_PATH` | Default directory for saving captured images when no path is specified. | System temp directory |
-| `PEEKABOO_OLLAMA_BASE_URL` | Base URL for the Ollama API server. Only needed if Ollama is running on a non-default address. | `http://localhost:11434` |
-| `PEEKABOO_CONSOLE_LOGGING` | Boolean (`"true"`/`"false"`) for development console logs. | `"false"` |
-| `PEEKABOO_CLI_TIMEOUT` | Timeout in milliseconds for Swift CLI operations. Prevents hanging processes. | `30000` (30 seconds) |
-| `PEEKABOO_CLI_PATH` | Optional override for the Swift `peekaboo` CLI executable path. | (uses bundled CLI) |
+Add to your Cursor settings:
 
-#### AI Provider Configuration
+```json
+{
+  "mcpServers": {
+    "peekaboo": {
+      "command": "npx",
+      "args": ["-y", "@steipete/peekaboo-mcp"],
+      "env": {
+        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
+        "OPENAI_API_KEY": "your-openai-api-key-here"
+      }
+    }
+  }
+}
+```
 
-The `PEEKABOO_AI_PROVIDERS` environment variable is your gateway to unlocking Peekaboo\'s analytical abilities for both the dedicated `analyze` tool and the `image` tool (when a `question` is supplied with an image capture). It should be a string defining the AI providers and their default models. For example:
+### MCP Tools Available
 
-`PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest,anthropic/claude-3-haiku-20240307"`
+1. **`image`** - Capture screenshots
+2. **`list`** - List applications, windows, or check status
+3. **`analyze`** - Analyze images with AI vision models
 
-Or using semicolon separators:
+## 🔧 Configuration
 
-`PEEKABOO_AI_PROVIDERS="openai/gpt-4o;ollama/llava:latest;anthropic/claude-3-haiku-20240307"`
+### Configuration Precedence
 
-Each entry follows the format `provider_name/model_identifier`. You can use either commas (`,`) or semicolons (`;`) as separators.
+Settings follow this precedence (highest to lowest):
+1. Command-line arguments
+2. Environment variables
+3. Configuration file (`~/.config/peekaboo/config.json`)
+4. Built-in defaults
 
-- **`provider_name`**: Currently supported values are `ollama` (for local Ollama instances) and `openai`. Support for `anthropic` is planned.
-- **`model_identifier`**: The specific model to use for that provider (e.g., `llava:latest`, `gpt-4o`).
+### Available Options
 
-The `analyze` tool and the `image` tool (when a `question` is provided) will use these configurations. If the `provider_config` argument in these tools is set to `\"auto\"` (the default for `analyze`, and an option for `image`), Peekaboo will try providers from `PEEKABOO_AI_PROVIDERS` in the order they are listed, checking for necessary API keys (like `OPENAI_API_KEY`) or service availability (like Ollama running at `http://localhost:11434` or the URL specified in `PEEKABOO_OLLAMA_BASE_URL`).
+| Setting | Config File | Environment Variable | Description |
+|---------|-------------|---------------------|-------------|
+| AI Providers | `aiProviders.providers` | `PEEKABOO_AI_PROVIDERS` | Comma-separated list (e.g., "openai/gpt-4o,ollama/llava:latest") |
+| OpenAI API Key | `aiProviders.openaiApiKey` | `OPENAI_API_KEY` | Required for OpenAI provider |
+| Ollama URL | `aiProviders.ollamaBaseUrl` | `PEEKABOO_OLLAMA_BASE_URL` | Default: http://localhost:11434 |
+| Default Save Path | `defaults.savePath` | `PEEKABOO_DEFAULT_SAVE_PATH` | Where screenshots are saved |
+| Log Level | `logging.level` | `PEEKABOO_LOG_LEVEL` | trace, debug, info, warn, error, fatal |
+| Log Path | `logging.path` | `PEEKABOO_LOG_FILE` | Log file location |
 
-You can override the model or pick a specific provider listed in `PEEKABOO_AI_PROVIDERS` using the `provider_config` argument in the `analyze` or `image` tools. (The system will still verify its operational readiness, e.g., API key presence or service availability.)
+## 🎨 Setting Up Local AI with Ollama
 
-### Setting Up Local AI with Ollama
-
-Ollama provides powerful local AI models that can analyze your screenshots without sending data to the cloud.
-
-#### Installing Ollama
+For privacy-focused local AI analysis:
 
 ```bash
-# Install via Homebrew
+# Install Ollama
 brew install ollama
-
-# Or download from https://ollama.ai
-
-# Start the Ollama service
 ollama serve
+
+# Download vision models
+ollama pull llava:latest       # Recommended
+ollama pull qwen2-vl:7b        # Lighter alternative
+
+# Configure Peekaboo
+peekaboo config edit
+# Set providers to: "ollama/llava:latest"
 ```
 
-#### Downloading Vision Models
+## 📋 Requirements
 
-**For powerful machines**, LLaVA (Large Language and Vision Assistant) is the recommended model:
+- **macOS 14.0+** (Sonoma or later)
+- **Screen Recording Permission** (required)
+- **Accessibility Permission** (optional, for window focus control)
 
-```bash
-# Download the latest LLaVA model (recommended for best quality)
-ollama pull llava:latest
+### Granting Permissions
 
-# Alternative LLaVA versions
-ollama pull llava:7b-v1.6
-ollama pull llava:13b-v1.6  # Larger, more capable
-ollama pull llava:34b-v1.6  # Largest, most powerful (requires significant RAM)
-```
+1. **Screen Recording** (Required):
+   - System Settings → Privacy & Security → Screen & System Audio Recording
+   - Enable for Terminal, Claude Desktop, or your IDE
 
-**For less beefy machines**, Qwen2-VL provides excellent performance with lower resource requirements:
+2. **Accessibility** (Optional):
+   - System Settings → Privacy & Security → Accessibility
+   - Enable for better window focus control
 
-```bash
-# Download Qwen2-VL 7B model (great balance of quality and performance)
-ollama pull qwen2-vl:7b
-```
-
-**Model Size Guide:**
-- `qwen2-vl:7b` - ~4GB download, ~6GB RAM required (excellent for lighter machines)
-- `llava:7b` - ~4.5GB download, ~8GB RAM required
-- `llava:13b` - ~8GB download, ~16GB RAM required  
-- `llava:34b` - ~20GB download, ~40GB RAM required
-
-#### Configuring Peekaboo with Ollama
-
-Add Ollama to your Claude Desktop configuration:
-
-```json
-{
-  "mcpServers": {
-    "peekaboo": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@steipete/peekaboo-mcp@beta"
-      ],
-      "env": {
-        "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest"
-      }
-    }
-  }
-}
-```
-
-**For less powerful machines (using Qwen2-VL):**
-```json
-{
-  "mcpServers": {
-    "peekaboo": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@steipete/peekaboo-mcp@beta"
-      ],
-      "env": {
-        "PEEKABOO_AI_PROVIDERS": "ollama/qwen2-vl:7b"
-      }
-    }
-  }
-}
-```
-
-**Multiple AI Providers (Ollama + OpenAI):**
-```json
-{
-  "env": {
-    "PEEKABOO_AI_PROVIDERS": "ollama/llava:latest,openai/gpt-4o",
-    "OPENAI_API_KEY": "your-api-key-here"
-  }
-}
-```
-
-
-### macOS Permissions
-
-Peekaboo requires specific macOS permissions to function:
-
-#### 1. Screen Recording Permission (Required)
-
-**For macOS Sequoia (15.0+):**
-1. Open **System Settings** → **Privacy & Security**
-2. Scroll down to **Screen & System Audio Recording**
-3. Toggle on your terminal application or MCP client
-4. You may need to restart the application after granting permission
-
-**For macOS Sonoma (14.0) and earlier:**
-1. Open **System Preferences** → **Security & Privacy** → **Privacy**
-2. Select **Screen Recording** from the left sidebar
-3. Click the **lock icon** and enter your password
-4. Click **+** and add your terminal application or MCP client
-5. Restart the application
-
-**Applications that need permission:**
-- Terminal.app: `/Applications/Utilities/Terminal.app`
-- Claude Desktop: `/Applications/Claude.app`
-- VS Code: `/Applications/Visual Studio Code.app`
-- Cursor: `/Applications/Cursor.app`
-
-#### 2. Accessibility Permission (Optional)
-
-**For macOS Sequoia (15.0+):**
-1. Open **System Settings** → **Privacy & Security**
-2. Select **Accessibility**
-3. Toggle on your terminal/MCP client application
-
-**For macOS Sonoma (14.0) and earlier:**
-1. Open **System Preferences** → **Security & Privacy** → **Privacy**
-2. Select **Accessibility** from the left sidebar
-3. Add your terminal/MCP client application
-
-### Testing & Debugging
-
-#### Using MCP Inspector
-
-The easiest way to test Peekaboo is with the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector):
-
-```bash
-# Test with OpenAI (recommended)
-OPENAI_API_KEY="your-key" PEEKABOO_AI_PROVIDERS="openai/gpt-4o" npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp
-
-# Test with local Ollama
-PEEKABOO_AI_PROVIDERS="ollama/llava:latest" npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp
-```
-
-This launches an interactive web interface where you can test all of Peekaboo's tools and see their responses in real-time.
-
-#### Direct CLI Testing
-
-```bash
-# Commune with the Swift spirit directly
-./peekaboo --help
-
-# Check the spectral server's pulse
-./peekaboo list server_status --json-output
-
-# Capture a soul (requires permission wards)
-./peekaboo image --mode screen --format png
-
-# Open the portal for testing
-peekaboo-mcp
-```
-
-**Expected output:**
-```json
-{
-  "success": true,
-  "data": {
-    "swift_cli_available": true,
-    "permissions": {
-      "screen_recording": true
-    },
-    "system_info": {
-      "macos_version": "14.0"
-    }
-  }
-}
-```
-
-## Available Tools
-
-Peekaboo provides three main tools for AI agents:
-
-### 1. `image` - Capture Screenshots
-
-Captures macOS screen content with automatic shadow/frame removal.
-
-**Important:** Screen captures **cannot use `format: "data"`** due to the large size of screen images causing JavaScript stack overflow errors. Screen captures always save to files, either to a specified path or a temporary directory. When `format: "data"` is requested for screen captures, the tool automatically falls back to PNG format and saves to a file with a warning message explaining the fallback.
-
-**Examples:**
-```javascript
-// Capture entire screen (must save to file)
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "screen:0",
-  path: "~/Desktop/screenshot.png"
-});
-
-// Capture specific app window with analysis (can use format: "data")
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "Safari",
-  question: "What website is currently open?",
-  format: "data"
-});
-
-// Capture window by title
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "Notes:WINDOW_TITLE:Meeting Notes",
-  path: "~/Desktop/notes.png"
-});
-
-// Capture frontmost window of currently active application
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "frontmost",
-  format: "png"
-});
-
-// Capture by Process ID (useful for multiple instances)
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "PID:663",
-  path: "~/Desktop/process.png"
-});
-```
-
-#### Browser Helper Filtering
-
-Peekaboo automatically filters out browser helper processes when searching for common browsers (Chrome, Safari, Firefox, Edge, Brave, Arc, Opera). This prevents confusing errors when helper processes like "Google Chrome Helper (Renderer)" are matched instead of the main browser application.
-
-**Examples:**
-```javascript
-// ✅ Finds main Chrome browser, not helpers
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "Chrome"
-});
-
-// ❌ Old behavior: Could match "Google Chrome Helper (Renderer)"
-//     Result: "no capturable windows were found" 
-// ✅ New behavior: Finds "Google Chrome" or shows "Chrome browser is not running"
-```
-
-**Browser-Specific Error Messages:**
-- Instead of generic "Application not found"
-- Shows clear messages like "Chrome browser is not running or not found"
-- Only applies to browser identifiers - other apps work normally
-
-#### File Naming and Path Behavior
-
-Peekaboo intelligently manages output paths to prevent file overwrites while respecting your intentions:
-
-**Key Principle: Single vs Multiple Captures**
-
-When you provide a specific file path (e.g., `~/Desktop/screenshot.png`), Peekaboo determines whether to use it exactly or add metadata based on the capture context:
-
-1. **Single Capture → Exact Path**
-   - Capturing one specific window
-   - Capturing one specific screen (when only one display exists)
-   - Capturing with `app_target: "frontmost"`
-   - Your path is used exactly as specified
-
-2. **Multiple Captures → Metadata Added**
-   - Capturing all windows of an app (`mode: "multi"` or multiple windows exist)
-   - Capturing all screens (when multiple displays exist)
-   - Capturing with no specific target (defaults to all screens)
-   - Metadata is appended to prevent overwrites
-
-**Examples:**
-```javascript
-// SINGLE CAPTURES - Use exact path
-// ================================
-
-// One window of Safari
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "Safari",
-  path: "~/Desktop/browser.png"
-});
-// Result: ~/Desktop/browser.png ✓
-
-// Specific screen (when you have only one monitor)
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "screen:0",
-  path: "~/Desktop/myscreen.png"
-});
-// Result: ~/Desktop/myscreen.png ✓
-
-// Frontmost window
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "frontmost",
-  path: "~/Desktop/active.png"
-});
-// Result: ~/Desktop/active.png ✓
-
-// MULTIPLE CAPTURES - Add metadata
-// ================================
-
-// All windows of Safari (mode: multi)
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "Safari",
-  mode: "multi",
-  path: "~/Desktop/browser.png"
-});
-// Results: ~/Desktop/browser_Safari_window_0_20250610_120000.png
-//          ~/Desktop/browser_Safari_window_1_20250610_120000.png
-
-// All screens (multiple monitors)
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "screen",  // or omit app_target
-  path: "~/Desktop/monitor.png"
-});
-// Results: ~/Desktop/monitor_1_20250610_120000.png
-//          ~/Desktop/monitor_2_20250610_120000.png
-
-// DIRECTORY PATHS - Always use generated names
-// ============================================
-
-// Directory path (note trailing slash)
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "Safari",
-  path: "~/Desktop/screenshots/"
-});
-// Result: ~/Desktop/screenshots/Safari_20250610_120000.png
-```
-
-**Long Filename Protection:**
-
-Peekaboo automatically handles filesystem limitations:
-- Truncates filenames exceeding macOS's 255-byte limit
-- Preserves UTF-8 multibyte characters (emoji, non-Latin scripts)
-- Ensures metadata is always included when needed
-- Never creates invalid filenames
-
-**Example:**
-```javascript
-// Very long filename with emoji
-await use_mcp_tool("peekaboo", "image", {
-  app_target: "Safari",
-  path: "~/Desktop/" + "🎯".repeat(100) + "_screenshot.png"
-});
-// Result: Filename safely truncated to fit 255-byte limit
-//         while preserving valid UTF-8 characters
-```
-
-**Format Validation:**
-- Invalid formats ("bmp", "gif", "tiff", etc.) automatically convert to PNG
-- You'll receive a clear warning message when format correction occurs
-- Only "png" and "jpg"/"jpeg" are valid formats
-
-### 2. `list` - System Information
-
-Lists running applications, windows, or server status.
-
-**Examples:**
-
-```javascript
-// List all running applications
-await use_mcp_tool("peekaboo", "list", {
-  item_type: "running_applications"
-});
-
-// List windows of specific app
-await use_mcp_tool("peekaboo", "list", {
-  item_type: "application_windows",
-  app: "Preview"
-});
-
-// List windows by Process ID
-await use_mcp_tool("peekaboo", "list", {
-  item_type: "application_windows",
-  app: "PID:663"
-});
-
-// Check server status
-await use_mcp_tool("peekaboo", "list", {
-  item_type: "server_status"
-});
-```
-
-### 3. `analyze` - AI Vision Analysis
-
-Analyzes existing images using configured AI models.
-
-**Examples:**
-
-```javascript
-// Analyze with auto-selected provider
-await use_mcp_tool("peekaboo", "analyze", {
-  image_path: "~/Desktop/screenshot.png",
-  question: "What applications are visible?"
-});
-
-// Force specific provider
-await use_mcp_tool("peekaboo", "analyze", {
-  image_path: "~/Desktop/diagram.jpg",
-  question: "Explain this diagram",
-  provider_config: {
-    type: "ollama",
-    model: "llava:13b"
-  }
-});
-```
-
-## Testing
-
-Peekaboo includes comprehensive test suites for both TypeScript and Swift components:
-
-### TypeScript Tests
-
-- **Unit Tests**: Test individual functions and modules in isolation
-- **Integration Tests**: Test tool handlers with mocked Swift CLI
-- **Platform-Specific Tests**: Some integration tests require macOS and Swift binary
-
-```bash
-# Run all tests (requires macOS and Swift binary for integration tests)
-npm test
-
-# Run only unit tests (works on any platform)
-npm run test:unit
-
-# Run TypeScript-only tests (skips Swift-dependent tests, works on Linux)
-npm run test:typescript
-
-# Watch mode for TypeScript-only tests
-npm run test:typescript:watch
-
-# Run with coverage
-npm run test:coverage
-```
-
-### Swift Tests
-
-```bash
-# Run Swift CLI tests (macOS only)
-npm run test:swift
-
-# Run full integration tests (TypeScript + Swift)
-npm run test:integration
-```
-
-### Platform Support
-
-- **macOS**: All tests run (unit, integration, Swift)
-- **Linux/CI**: Only TypeScript tests run (Swift-dependent tests are automatically skipped)
-- **Environment Variables**:
-  - `SKIP_SWIFT_TESTS=true`: Force skip Swift-dependent tests
-  - `CI=true`: Automatically skips Swift-dependent tests
-
-## Troubleshooting
-
-### Common Issues
-
-| Haunting | Exorcism |
-|-------|----------|
-| `Permission denied` errors during image capture | Grant **Screen Recording** permission in System Settings → Privacy & Security. Ensure the correct application (Terminal, Claude, VS Code, etc.) is added and checked. Restart the app after changing permissions. |
-| Window capture issues (wrong window, focus problems) | Grant **Accessibility** permission if using `capture_focus: "foreground"` or for more reliable window targeting. |
-| `Swift CLI unavailable` or `PEEKABOO_CLI_PATH` issues | Ensure the `peekaboo` binary is at the root of the NPM package, or if `PEEKABOO_CLI_PATH` is set, verify it points to a valid executable. You can test the Swift CLI directly: `path/to/peekaboo --version`. If missing or broken, rebuild: `cd peekaboo-cli && swift build -c release` (then place binary appropriately or update `PEEKABOO_CLI_PATH`). |
-| `AI analysis failed` | Check your `PEEKABOO_AI_PROVIDERS` environment variable for correct format and valid provider/model pairs. Ensure API keys (e.g., `OPENAI_API_KEY`) are set if using cloud providers. Verify local services like Ollama are running (`PEEKABOO_OLLAMA_BASE_URL`). Check the server logs (`PEEKABOO_LOG_FILE` or console if `PEEKABOO_CONSOLE_LOGGING="true"`) for detailed error messages from the AI provider. |
-| `Command not found: peekaboo-mcp` | If installed globally, ensure your system's PATH includes the global npm binaries directory. If running from a local clone, use `node dist/index.js` or a configured npm script. For `npx`, ensure the package name `@steipete/peekaboo-mcp` is correct. |
-| General weirdness or unexpected behavior | Check the Peekaboo MCP server logs! The default location is `~/Library/Logs/peekaboo-mcp.log` (or what you set in `PEEKABOO_LOG_FILE`). Set `PEEKABOO_LOG_LEVEL=debug` for maximum detail. |
-
-### Debug Mode
-
-```bash
-# Enable debug logging
-OPENAI_API_KEY="your-key" PEEKABOO_AI_PROVIDERS="openai/gpt-4o" PEEKABOO_LOG_LEVEL=debug PEEKABOO_CONSOLE_LOGGING=true npx @steipete/peekaboo-mcp
-
-# Check permissions
-./peekaboo list server_status --json-output
-```
-
-### Getting Help
-
-- 📚 [Documentation](./docs/)
-- 🐛 [Report Issues](https://github.com/steipete/peekaboo/issues)
-- 💬 [Discussions](https://github.com/steipete/peekaboo/discussions)
-- 📖 [Blog Post](https://steipete.com/posts/peekaboo-mcp-screenshots-so-fast-theyre-paranormal/)
-
-## Building from Source
-
-### Development Setup
+## 🏗️ Building from Source
 
 ```bash
 # Clone the repository
 git clone https://github.com/steipete/peekaboo.git
 cd peekaboo
 
-# Install dependencies
+# Build everything (CLI + MCP server)
 npm install
+npm run build:all
 
-# Build TypeScript
-npm run build
-
-# Build Swift CLI
-cd peekaboo-cli
-swift build -c release
-cp .build/release/peekaboo ../peekaboo
-cd ..
-
-# Optional: Install globally
-npm link
-```
-
-### Building the Swift CLI Standalone
-
-The Peekaboo Swift CLI can be built and used independently of the MCP server for direct command-line usage:
-
-```bash
-# Quick build (from project root)
+# Build CLI only
 ./scripts/build-cli-standalone.sh
 
-# Build and install system-wide
+# Install CLI system-wide
 ./scripts/build-cli-standalone.sh --install
-
-# Manual build
-cd peekaboo-cli
-swift build -c release
-# Binary will be at: .build/release/peekaboo
 ```
 
-### Using the Swift CLI Directly
-
-The Swift CLI provides all screenshot capture, window listing, and AI analysis capabilities:
+## 🧪 Testing
 
 ```bash
-# Get help
-peekaboo --help
-peekaboo image --help
-peekaboo list --help
-peekaboo analyze --help
-peekaboo config --help
-
-# Capture screenshots
-peekaboo image --app Safari --path ~/Desktop/safari.png
-peekaboo image --mode frontmost --format png
-peekaboo image --mode screen --screen-index 0
-
-# List applications and windows
-peekaboo list apps
-peekaboo list windows --app "Visual Studio Code"
+# Test CLI directly
 peekaboo list server_status
-
-# Analyze images with AI (requires PEEKABOO_AI_PROVIDERS)
-PEEKABOO_AI_PROVIDERS="openai/gpt-4o" peekaboo analyze screenshot.png "What is shown in this image?"
-PEEKABOO_AI_PROVIDERS="ollama/llava:latest" peekaboo analyze diagram.jpg "Explain this diagram"
-
-# JSON output for scripting
-peekaboo list apps --json-output
-peekaboo image --app Chrome --json-output
-peekaboo analyze image.png "What text is visible?" --json-output
-```
-
-#### CLI Environment Variables
-
-The Swift CLI respects both the configuration file and environment variables, with the same precedence as the MCP server:
-
-1. Command-line arguments
-2. Environment variables
-3. Configuration file (`~/.config/peekaboo/config.json`)
-4. Built-in defaults
-
-Key environment variables:
-- `PEEKABOO_AI_PROVIDERS`: AI providers for image analysis (e.g., "openai/gpt-4o,ollama/llava:latest")
-- `OPENAI_API_KEY`: Required for OpenAI provider
-- `PEEKABOO_OLLAMA_BASE_URL`: Ollama server URL (default: http://localhost:11434)
-- `PEEKABOO_DEFAULT_SAVE_PATH`: Default directory for captured images
-
-#### Example Scripts
-
-```bash
-# Capture all Safari windows
-for i in {0..10}; do
-  peekaboo image --app Safari --window-index $i --path ~/Desktop/safari_$i.png 2>/dev/null || break
-done
-
-# Monitor active window changes
-while true; do
-  peekaboo image --mode frontmost --format png --json-output | jq -r '.data.saved_files[0].window_title'
-  sleep 5
-done
-
-# Batch analyze screenshots
-for img in ~/Screenshots/*.png; do
-  echo "Analyzing $img..."
-  PEEKABOO_AI_PROVIDERS="ollama/llava:latest" peekaboo analyze "$img" "Summarize this screenshot in one sentence"
-done
-```
-
-### Local Development Configuration
-
-For development, you can run Peekaboo locally:
-```json
-{
-  "mcpServers": {
-    "peekaboo_local": {
-      "command": "peekaboo-mcp",
-      "args": [],
-      "env": {
-        "PEEKABOO_LOG_LEVEL": "debug",
-        "PEEKABOO_CONSOLE_LOGGING": "true"
-      }
-    }
-  }
-}
-```
-
-Alternatively, running directly with `node`:
-```json
-{
-  "mcpServers": {
-    "peekaboo_local_node": {
-      "command": "node",
-      "args": [
-        "/Users/steipete/Projects/Peekaboo/dist/index.js"
-      ],
-      "env": {
-        "PEEKABOO_LOG_LEVEL": "debug",
-        "PEEKABOO_CONSOLE_LOGGING": "true"
-      }
-    }
-  }
-}
-```
-Remember to use absolute paths and unique server names to avoid conflicts with the npm version.
-
-### Using the AppleScript Version
-
-For simple screenshot capture without MCP integration:
-
-```bash
-osascript peekaboo.scpt
-```
-
-Note: This legacy version doesn't include AI analysis or MCP features.
-
-### Manual Configuration for Other MCP Clients
-
-For MCP clients other than Claude Desktop:
-
-```json
-{
-  "server": {
-    "command": "node",
-    "args": ["/path/to/peekaboo/dist/index.js"],
-    "env": {
-      "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava",
-      "OPENAI_API_KEY": "your-openai-api-key-here"
-    }
-  }
-}
-```
-
-## Tool Documentation
-
-### `image` - Screenshot Capture
-
-Captures macOS screen content and optionally analyzes it. Window shadows/frames are automatically excluded.
-
-**Parameters:**
-
-*   `app_target` (string, optional): Specifies the capture target. If omitted or empty, captures all screens.
-    *   Examples:
-        *   `"screen:INDEX"`: Captures the screen at the specified zero-based index (e.g., `"screen:0"`). (Note: Index selection from multiple screens is planned for full support in the Swift CLI).
-        *   `"frontmost"`: Captures the frontmost window of the currently active application.
-        *   `"AppName"`: Captures all windows of the application named `AppName` (e.g., `"Safari"`, `"com.apple.Safari"`). Fuzzy matching is used.
-        *   `"PID:ProcessID"`: Captures all windows of the application with the specified process ID (e.g., `"PID:663"`). Useful when multiple instances of the same app are running.
-        *   `"AppName:WINDOW_TITLE:Title"`: Captures the window of `AppName` that has the specified `Title` (e.g., `"Notes:WINDOW_TITLE:My Important Note"`).
-        *   `"AppName:WINDOW_INDEX:Index"`: Captures the window of `AppName` at the specified zero-based `Index` (e.g., `"Preview:WINDOW_INDEX:0"` for the frontmost window of Preview).
-*   `path` (string, optional): Base absolute path for saving the captured image(s). If `format` is `"data"` and `path` is also provided, the image is saved to this path (as a PNG) AND Base64 data is returned. If a `question` is provided and `path` is omitted, a temporary path is used for capture, and the file is deleted after analysis.
-*   `question` (string, optional): If provided, the captured image will be analyzed. The server automatically selects an AI provider from those configured in the `PEEKABOO_AI_PROVIDERS` environment variable.
-*   `format` (string, optional, default: `"png"`): Specifies the output image format or data return type.
-    *   `"png"` or `"jpg"`: Saves the image to the specified `path` in the chosen format. For application captures: if `path` is not provided, behaves like `"data"`. For screen captures: always saves to file.
-    *   `"data"`: Returns Base64 encoded PNG data of the image directly in the MCP response. If `path` is also specified, a PNG file is also saved to that `path`. **Note: Screen captures cannot use this format and will automatically fall back to PNG file format.**
-    *   Invalid values (empty strings, null, or unrecognized formats) automatically fall back to `"png"`.
-*   `capture_focus` (string, optional, default: `"background"`): Controls window focus behavior during capture.
-    *   `"background"`: Captures without altering the current window focus (default).
-    *   `"foreground"`: Attempts to bring the target application/window to the foreground before capture. This might be necessary for certain applications or to ensure a specific window is captured if multiple are open.
-
-**Behavior with `question` (AI Analysis):**
-
-*   If a `question` is provided, the tool will capture the image (saving it to `path` if specified, or a temporary path otherwise).
-*   This image is then sent to an AI model for analysis. The AI provider and model are chosen automatically by the server based on your `PEEKABOO_AI_PROVIDERS` environment variable (trying them in order until one succeeds).
-*   The analysis result is returned as `analysis_text` in the response. Image data (Base64) is NOT returned in the `content` array when a question is asked.
-*   If a temporary path was used for the image, it's deleted after the analysis attempt.
-
-**Output Structure (Simplified):**
-
-*   `content`: Can contain `ImageContentItem` (if `format: "data"` or `path` was omitted, and no `question`) and/or `TextContentItem` (for summaries, analysis text, warnings).
-*   `saved_files`: Array of objects, each detailing a file saved to `path` (if `path` was provided).
-*   `analysis_text`: Text from AI (if `question` was asked).
-*   `model_used`: AI model identifier (if `question` was asked).
-
-For detailed parameter documentation, see [docs/spec.md](./docs/spec.md).
-
-## Technical Features
-
-### Screenshot Capabilities
-- **Multi-display support**: Captures each display separately
-- **Smart app targeting**: Fuzzy matching for application names
-- **Multiple formats**: PNG, JPEG, WebP, HEIF support
-- **Automatic naming**: Timestamp-based file naming
-- **Permission checking**: Automatic verification of required permissions
-
-### Window Management  
-- **Application listing**: Complete list of running applications with PIDs
-- **Window enumeration**: List all windows for specific apps
-- **Flexible matching**: Find apps by partial name, bundle ID, or Process ID
-- **PID targeting**: Target specific processes using `PID:XXX` syntax
-- **Status monitoring**: Active/inactive status, window counts
-
-### AI Integration
-- **Provider agnostic**: Supports Ollama and OpenAI (Anthropic coming soon)
-- **Natural language**: Ask questions about captured images
-- **Configurable**: Environment-based provider selection
-- **Fallback support**: Automatic failover between providers
-
-## Architecture
-
-```
-Peekaboo/
-├── src/                      # Node.js MCP Server (TypeScript)
-│   ├── index.ts             # Main MCP server entry point
-│   ├── tools/               # Individual tool implementations
-│   │   ├── image.ts         # Screen capture tool
-│   │   ├── analyze.ts       # AI analysis tool  
-│   │   └── list.ts          # Application/window listing
-│   ├── utils/               # Utility modules
-│   │   ├── peekaboo-cli.ts   # Swift CLI integration
-│   │   ├── ai-providers.ts  # AI provider management
-│   │   └── server-status.ts # Server status utilities
-│   └── types/               # Shared type definitions
-├── peekaboo-cli/            # Native Swift CLI
-│   └── Sources/peekaboo/    # Swift source files
-│       ├── main.swift       # CLI entry point
-│       ├── ImageCommand.swift    # Image capture implementation
-│       ├── ListCommand.swift     # Application listing
-│       ├── Models.swift          # Data structures
-│       ├── ApplicationFinder.swift   # App discovery logic
-│       ├── WindowManager.swift      # Window management
-│       ├── PermissionsChecker.swift # macOS permissions
-│       └── JSONOutput.swift        # JSON response formatting
-├── package.json             # Node.js dependencies
-├── tsconfig.json           # TypeScript configuration
-└── README.md               # This file
-```
-
-## Technical Details
-
-### JSON Output Format
-The Swift CLI outputs structured JSON when called with `--json-output`:
-
-```json
-{
-  "success": true,
-  "data": {
-    "applications": [
-      {
-        "app_name": "Safari",
-        "bundle_id": "com.apple.Safari", 
-        "pid": 1234,
-        "is_active": true,
-        "window_count": 2
-      }
-    ]
-  },
-  "debug_logs": ["Found 50 applications"]
-}
-```
-
-### MCP Integration
-The Node.js server provides:
-- Schema validation via Zod
-- Proper MCP error codes
-- Structured logging via Pino
-- Full TypeScript type safety
-
-### Security
-Peekaboo respects macOS security:
-- Checks permissions before operations
-- Graceful handling of missing permissions
-- Clear guidance for permission setup
-
-## Development
-
-### Testing Commands
-```bash
-# Test Swift CLI directly
-./peekaboo list apps --json-output | head -20
+peekaboo image --mode screen --path test.png
+peekaboo analyze test.png "What is shown?"
 
 # Test MCP server
-echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | node dist/index.js
+npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp
 ```
 
-### Building
+## 📚 Documentation
+
+- [API Documentation](./docs/spec.md)
+- [Architecture Overview](./docs/architecture.md)
+- [Contributing Guide](./CONTRIBUTING.md)
+- [Blog Post](https://steipete.com/posts/peekaboo-mcp-screenshots-so-fast-theyre-paranormal/)
+
+## 🐛 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `Permission denied` | Grant Screen Recording permission in System Settings |
+| `Window not found` | Try using fuzzy matching or list windows first |
+| `AI analysis failed` | Check API keys and provider configuration |
+| `Command not found` | Ensure Peekaboo is in your PATH or use full path |
+
+Enable debug logging for more details:
 ```bash
-# Build TypeScript
-npm run build
-
-# Build Swift CLI
-cd peekaboo-cli && swift build
+export PEEKABOO_LOG_LEVEL=debug
+peekaboo list server_status
 ```
 
-## Known Issues
+## 🤝 Contributing
 
-- **FileHandle warning**: Non-critical Swift warning about TextOutputStream conformance
-- **AI Provider Config**: Requires `PEEKABOO_AI_PROVIDERS` environment variable for analysis features
-
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## Contributing
+Contributions are welcome! Please:
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
 5. Open a Pull Request
 
-## Author
+## 📝 License
+
+MIT License - see [LICENSE](./LICENSE) file for details.
+
+## 👤 Author
 
 Created by [Peter Steinberger](https://steipete.com) - [@steipete](https://github.com/steipete)
 
-Read more about Peekaboo's design and implementation in the [blog post](https://steipete.com/posts/peekaboo-mcp-screenshots-so-fast-theyre-paranormal/).
+## 🙏 Acknowledgments
+
+- Apple's ScreenCaptureKit for blazing-fast captures
+- The MCP team for the Model Context Protocol
+- The Swift and TypeScript communities
+
+---
+
+**Note**: This is Peekaboo v2.0, which introduces standalone CLI functionality alongside the original MCP server. For users upgrading from v1.x, see the [CHANGELOG](./CHANGELOG.md) for migration details.

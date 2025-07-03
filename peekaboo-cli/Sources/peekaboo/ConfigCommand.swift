@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 
 @available(macOS 14.0, *)
-struct ConfigCommand: AsyncParsableCommand {
+struct ConfigCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "config",
         abstract: "Manage Peekaboo configuration",

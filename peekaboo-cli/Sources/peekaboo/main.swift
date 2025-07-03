@@ -1,7 +1,6 @@
 import ArgumentParser
 import Foundation
 
-@main
 @available(macOS 14.0, *)
 struct PeekabooCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -69,16 +68,20 @@ struct PeekabooCommand: AsyncParsableCommand {
         defaultSubcommand: ImageCommand.self
     )
 
+    mutating func run() async throws {
+        // This shouldn't be called as we have subcommands and a default
+        fatalError("Main command run() should not be called directly")
+    }
+}
+
+// Entry point
+@main
+struct Main {
     static func main() async {
         // Load configuration at startup
         _ = ConfigurationManager.shared.loadConfiguration()
         
         // Run the command
-        do {
-            var command = try PeekabooCommand.parseAsRoot()
-            try await command.run()
-        } catch {
-            PeekabooCommand.exit(withError: error)
-        }
+        await PeekabooCommand.main()
     }
 }
