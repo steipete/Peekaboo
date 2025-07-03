@@ -1,14 +1,20 @@
 import Foundation
 
-struct OllamaProvider: AIProvider {
+class OllamaProvider: AIProvider {
     let name = "ollama"
     let model: String
-    private let baseURL: URL
+    
+    var baseURL: URL {
+        let baseURLString = ProcessInfo.processInfo.environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
+        return URL(string: baseURLString) ?? URL(string: "http://localhost:11434")!
+    }
+    
+    var session: URLSession {
+        URLSession.shared
+    }
     
     init(model: String = "llava:latest") {
         self.model = model
-        let baseURLString = ProcessInfo.processInfo.environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
-        self.baseURL = URL(string: baseURLString) ?? URL(string: "http://localhost:11434")!
     }
     
     var isAvailable: Bool {
@@ -23,7 +29,7 @@ struct OllamaProvider: AIProvider {
         request.timeoutInterval = 3.0
         
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await session.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 return AIProviderStatus(

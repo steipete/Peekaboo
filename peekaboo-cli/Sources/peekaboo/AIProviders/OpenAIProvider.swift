@@ -1,14 +1,20 @@
 import Foundation
 
-struct OpenAIProvider: AIProvider {
+class OpenAIProvider: AIProvider {
     let name = "openai"
     let model: String
-    private let apiKey: String?
     private let baseURL = URL(string: "https://api.openai.com/v1/chat/completions")!
+    
+    var apiKey: String? {
+        ProcessInfo.processInfo.environment["OPENAI_API_KEY"]
+    }
+    
+    var session: URLSession {
+        URLSession.shared
+    }
     
     init(model: String = "gpt-4o") {
         self.model = model
-        self.apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"]
     }
     
     var isAvailable: Bool {
@@ -78,7 +84,7 @@ struct OpenAIProvider: AIProvider {
         encoder.keyEncodingStrategy = .convertToSnakeCase
         request.httpBody = try encoder.encode(requestBody)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AIProviderError.invalidResponse("Invalid HTTP response")
