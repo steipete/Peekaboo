@@ -495,8 +495,12 @@ struct ImageCommandPathHandlingTests {
     func defaultPathBehavior() {
         let fileName = "screen_1_20250608_120000.png"
         let result = OutputPathResolver.getOutputPath(basePath: nil, fileName: fileName)
-
-        #expect(result == "/tmp/\(fileName)")
+        
+        // When basePath is nil, it should use the configured default path
+        let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
+        let expectedPath = "\(defaultPath)/\(fileName)"
+        
+        #expect(result == expectedPath)
     }
 
     @Test("getOutputPath method delegation", .tags(.fast))
