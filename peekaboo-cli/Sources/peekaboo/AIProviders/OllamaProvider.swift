@@ -135,7 +135,7 @@ class OllamaProvider: AIProvider {
         let encoder = JSONEncoder()
         request.httpBody = try encoder.encode(requestBody)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AIProviderError.invalidResponse("Invalid HTTP response")
