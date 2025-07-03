@@ -1,5 +1,9 @@
 import Foundation
 
+/// Factory for creating and managing AI provider instances.
+///
+/// Handles creation of AI providers based on configuration, automatic provider
+/// selection, and fallback logic when providers are unavailable.
 struct AIProviderFactory {
     static func createProvider(from config: AIProviderConfig) -> AIProvider? {
         switch config.provider.lowercased() {

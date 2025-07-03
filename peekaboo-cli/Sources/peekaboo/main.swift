@@ -1,11 +1,15 @@
 import ArgumentParser
 import Foundation
 
+/// Main command-line interface for Peekaboo.
+///
+/// Provides a comprehensive CLI for capturing screenshots and analyzing images
+/// using AI vision models. Supports multiple capture modes and AI providers.
 @available(macOS 14.0, *)
 struct PeekabooCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "peekaboo",
-        abstract: "Lightning-fast macOS screenshots and AI vision analysis",
+        abstract: "Lightning-fast macOS screenshots and AI vision analysis (v\(Version.current))",
         discussion: """
             EXAMPLES:
               peekaboo --app Safari                          # Capture Safari window
@@ -42,22 +46,21 @@ struct PeekabooCommand: AsyncParsableCommand {
               Accessibility permission is optional for window focus control.
               Grant via: System Settings > Privacy & Security > Accessibility
 
-            ENVIRONMENT VARIABLES:
-              PEEKABOO_AI_PROVIDERS      Comma-separated list of AI providers
-                                         Default: "openai/gpt-4o,ollama/llava:latest"
-                                         
-              OPENAI_API_KEY             API key for OpenAI GPT-4 Vision
-              ANTHROPIC_API_KEY          API key for Claude Vision (coming soon)
-              
-              PEEKABOO_OLLAMA_BASE_URL   Ollama server URL
-                                         Default: http://localhost:11434
-                                         
-              PEEKABOO_DEFAULT_SAVE_PATH Default directory for screenshots
-                                         Default: current directory
-
             CONFIGURATION:
-              Config file: ~/.config/peekaboo/config.json (JSONC format with comments)
-              Use 'peekaboo config' command to manage configuration
+              Peekaboo uses a configuration file at ~/.config/peekaboo/config.json
+              
+              peekaboo config init        # Create default configuration file
+              peekaboo config edit        # Open config in your editor
+              peekaboo config show        # Display current configuration
+              peekaboo config validate    # Check configuration syntax
+              
+              The config file uses JSONC format (JSON with Comments) and supports:
+              • Comments using // and /* */
+              • Environment variable expansion with ${VAR_NAME}
+              • Hierarchical settings for AI providers, defaults, and logging
+              
+              For detailed configuration options and environment variables,
+              see: https://github.com/steipete/peekaboo#configuration
               
             SEE ALSO:
               GitHub: https://github.com/steipete/peekaboo
@@ -74,7 +77,9 @@ struct PeekabooCommand: AsyncParsableCommand {
     }
 }
 
-// Entry point
+/// Application entry point.
+///
+/// Initializes configuration and launches the command-line parser.
 @main
 struct Main {
     static func main() async {

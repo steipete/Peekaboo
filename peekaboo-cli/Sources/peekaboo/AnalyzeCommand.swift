@@ -1,6 +1,10 @@
 import ArgumentParser
 import Foundation
 
+/// Command for analyzing images using AI vision models.
+///
+/// Provides AI-powered image analysis using various vision models including
+/// cloud-based (OpenAI) and local (Ollama) providers.
 struct AnalyzeCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "analyze",
@@ -207,6 +211,10 @@ private struct AnalysisResultData: Codable {
 
 // MARK: - Errors
 
+/// Errors specific to image analysis operations.
+///
+/// Covers file access issues, format validation, and configuration problems
+/// that can occur during AI analysis.
 enum AnalyzeError: LocalizedError {
     case fileNotFound(String)
     case unsupportedFormat(String)

@@ -2,6 +2,10 @@ import AppKit
 import ArgumentParser
 import Foundation
 
+/// Command for listing applications, windows, and checking server status.
+///
+/// Provides subcommands to inspect running applications, enumerate windows,
+/// and verify system permissions required for screenshot operations.
 struct ListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
@@ -44,6 +48,10 @@ struct ListCommand: AsyncParsableCommand {
     }
 }
 
+/// Subcommand for listing all running applications.
+///
+/// Displays information about running applications including their process IDs,
+/// bundle identifiers, activation status, and window counts.
 struct AppsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "apps",
@@ -157,6 +165,10 @@ struct AppsSubcommand: AsyncParsableCommand {
     }
 }
 
+/// Subcommand for listing windows of a specific application.
+///
+/// Enumerates all windows belonging to a target application with optional
+/// details like bounds, window IDs, and off-screen status.
 struct WindowsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "windows",
@@ -338,6 +350,10 @@ struct WindowsSubcommand: AsyncParsableCommand {
     }
 }
 
+/// Subcommand for checking system permissions and CLI status.
+///
+/// Verifies that required permissions (Screen Recording) and optional
+/// permissions (Accessibility) are granted for proper operation.
 struct ServerStatusSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "server_status",
@@ -393,11 +409,18 @@ struct ServerStatusSubcommand: AsyncParsableCommand {
     }
 }
 
+/// System permissions status for Peekaboo operations.
+///
+/// Indicates whether Screen Recording (required) and Accessibility (optional)
+/// permissions have been granted.
 struct ServerPermissions: Codable {
     let screen_recording: Bool
     let accessibility: Bool
 }
 
+/// Container for server status information.
+///
+/// Wraps permission status data for JSON output.
 struct ServerStatusData: Codable {
     let permissions: ServerPermissions
 }

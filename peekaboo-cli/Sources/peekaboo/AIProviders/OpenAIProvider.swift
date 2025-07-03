@@ -1,5 +1,9 @@
 import Foundation
 
+/// OpenAI GPT-4 Vision provider implementation.
+///
+/// Provides image analysis capabilities using OpenAI's GPT-4 Vision API.
+/// Requires an OpenAI API key configured via environment variable or config file.
 class OpenAIProvider: AIProvider {
     let name = "openai"
     let model: String

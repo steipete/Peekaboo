@@ -1,5 +1,9 @@
 import Foundation
 
+/// Ollama local AI provider implementation.
+///
+/// Provides image analysis using locally-running Ollama models for privacy-conscious users.
+/// Supports vision models like LLaVA and requires Ollama server to be running locally.
 class OllamaProvider: AIProvider {
     let name = "ollama"
     let model: String

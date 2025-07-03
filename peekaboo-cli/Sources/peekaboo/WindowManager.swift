@@ -2,6 +2,10 @@ import AppKit
 import CoreGraphics
 import Foundation
 
+/// Manages window enumeration and information retrieval.
+///
+/// Provides functionality to list windows for specific applications, extract window
+/// metadata, and filter windows based on visibility criteria.
 final class WindowManager: Sendable {
     static func getWindowsForApp(pid: pid_t, includeOffScreen: Bool = false) throws(WindowError) -> [WindowData] {
         // Logger.shared.debug("Getting windows for PID: \(pid)")
@@ -109,6 +113,10 @@ extension ImageCommand {
     }
 }
 
+/// Errors that can occur during window management operations.
+///
+/// Covers failures in accessing the window server and scenarios where
+/// no windows are found for a given application.
 enum WindowError: Error, LocalizedError, Sendable {
     case windowListFailed
     case noWindowsFound

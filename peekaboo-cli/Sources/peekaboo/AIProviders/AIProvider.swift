@@ -1,5 +1,9 @@
 import Foundation
 
+/// Protocol for AI vision model providers.
+///
+/// Defines the interface that all AI providers must implement to analyze images.
+/// Providers can be cloud-based (like OpenAI) or local (like Ollama).
 protocol AIProvider {
     var name: String { get }
     var model: String { get }
@@ -9,12 +13,20 @@ protocol AIProvider {
     func checkAvailability() async -> AIProviderStatus
 }
 
+/// Status information about an AI provider's availability.
+///
+/// Contains availability status, error messages if unavailable,
+/// and detailed diagnostic information.
 struct AIProviderStatus {
     let available: Bool
     let error: String?
     let details: AIProviderDetails?
 }
 
+/// Detailed diagnostic information about an AI provider.
+///
+/// Provides granular information about why a provider might be unavailable,
+/// including server connectivity, API key presence, and model availability.
 struct AIProviderDetails {
     let modelAvailable: Bool?
     let serverReachable: Bool?
@@ -22,6 +34,10 @@ struct AIProviderDetails {
     let modelList: [String]?
 }
 
+/// Errors that can occur when using AI providers.
+///
+/// Comprehensive error enumeration covering configuration issues,
+/// connectivity problems, and API-specific failures.
 enum AIProviderError: LocalizedError {
     case notConfigured(String)
     case serverUnreachable(String)
@@ -51,6 +67,10 @@ enum AIProviderError: LocalizedError {
     }
 }
 
+/// Configuration for an AI provider instance.
+///
+/// Parses provider/model strings like "openai/gpt-4o" or "ollama/llava:latest"
+/// into separate provider and model components.
 struct AIProviderConfig {
     let provider: String
     let model: String

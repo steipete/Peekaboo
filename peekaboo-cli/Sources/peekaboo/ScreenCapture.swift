@@ -2,6 +2,10 @@ import CoreGraphics
 import Foundation
 @preconcurrency import ScreenCaptureKit
 
+/// Core screenshot capture functionality using ScreenCaptureKit.
+///
+/// Provides methods to capture entire displays or specific windows using Apple's
+/// modern ScreenCaptureKit framework for high-quality, efficient captures.
 struct ScreenCapture: Sendable {
     static func captureDisplay(
         _ displayID: CGDirectDisplayID, to path: String, format: ImageFormat = .png

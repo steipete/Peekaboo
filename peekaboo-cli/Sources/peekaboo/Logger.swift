@@ -1,5 +1,9 @@
 import Foundation
 
+/// Thread-safe logging utility for Peekaboo.
+///
+/// Provides logging functionality that can switch between stderr output (for normal operation)
+/// and buffered collection (for JSON output mode) to avoid interfering with structured output.
 final class Logger: @unchecked Sendable {
     static let shared = Logger()
     private var debugLogs: [String] = []

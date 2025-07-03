@@ -1,6 +1,10 @@
 import ArgumentParser
 import Foundation
 
+/// Command for managing Peekaboo configuration.
+///
+/// Provides subcommands to create, view, edit, and validate the JSONC configuration
+/// file that controls AI providers, default settings, and logging preferences.
 @available(macOS 14.0, *)
 struct ConfigCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -25,6 +29,10 @@ struct ConfigCommand: ParsableCommand {
         subcommands: [InitCommand.self, ShowCommand.self, EditCommand.self, ValidateCommand.self]
     )
     
+    /// Subcommand to create a default configuration file.
+    ///
+    /// Generates a new configuration file with sensible defaults and example settings
+    /// at the standard location (~/.config/peekaboo/config.json).
     struct InitCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "init",
@@ -83,6 +91,10 @@ struct ConfigCommand: ParsableCommand {
         }
     }
     
+    /// Subcommand to display current configuration.
+    ///
+    /// Shows either the raw configuration file contents or the effective configuration
+    /// after merging all sources (CLI args, environment variables, config file).
     struct ShowCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
@@ -189,6 +201,10 @@ struct ConfigCommand: ParsableCommand {
         }
     }
     
+    /// Subcommand to open configuration in an editor.
+    ///
+    /// Opens the configuration file in the user's preferred text editor,
+    /// creating a default configuration if one doesn't exist.
     struct EditCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "edit",
@@ -274,6 +290,10 @@ struct ConfigCommand: ParsableCommand {
         }
     }
     
+    /// Subcommand to validate configuration syntax.
+    ///
+    /// Checks that the configuration file contains valid JSONC syntax and can be
+    /// successfully parsed, reporting any syntax errors found.
     struct ValidateCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "validate",

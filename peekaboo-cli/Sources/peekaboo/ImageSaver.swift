@@ -3,6 +3,10 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
+/// Handles saving captured images to disk.
+///
+/// Provides functionality to save CGImage data to files in various formats (PNG, JPEG)
+/// with proper error handling for common file system issues.
 struct ImageSaver: Sendable {
     static func saveImage(_ image: CGImage, to path: String, format: ImageFormat) throws(CaptureError) {
         let url = URL(fileURLWithPath: path)

@@ -5,6 +5,10 @@ import Foundation
 import ScreenCaptureKit
 import UniformTypeIdentifiers
 
+/// Command for capturing screenshots of screens, applications, or windows.
+///
+/// Provides comprehensive screenshot functionality with multiple capture modes,
+/// flexible window selection, and configurable output options.
 struct ImageCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "image",
@@ -328,7 +332,10 @@ struct ImageCommand: AsyncParsableCommand {
     }
 }
 
-// Helper error for early return with results
+/// Helper error for early return with results.
+///
+/// Used internally when handling ambiguous application matches to return
+/// captured files before the normal flow completes.
 private struct EarlyReturnError: Error {
     let savedFiles: [SavedFile]
 }
