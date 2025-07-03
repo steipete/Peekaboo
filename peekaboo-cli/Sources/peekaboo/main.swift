@@ -6,9 +6,9 @@ import Foundation
 struct PeekabooCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "peekaboo",
-        abstract: "A macOS utility for screen capture, application listing, and window management",
+        abstract: "A macOS utility for screen capture, application listing, window management, and AI analysis",
         version: Version.current,
-        subcommands: [ImageCommand.self, ListCommand.self],
+        subcommands: [ImageCommand.self, ListCommand.self, AnalyzeCommand.self],
         defaultSubcommand: ImageCommand.self
     )
 
