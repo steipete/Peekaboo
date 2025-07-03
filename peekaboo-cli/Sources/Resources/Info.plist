@@ -7,9 +7,9 @@
     <key>CFBundleName</key>
     <string>Peekaboo</string>
     <key>CFBundleVersion</key>
-    <string>2.0.0</string>
+    <string>2.0.1</string>
     <key>CFBundleShortVersionString</key>
-    <string>2.0.0</string>
+    <string>2.0.1</string>
     <key>NSScreenCaptureUsageDescription</key>
     <string>Peekaboo needs screen recording permission to capture screenshots and analyze window content.</string>
 </dict>

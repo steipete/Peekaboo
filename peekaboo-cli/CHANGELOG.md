@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2025-07-03
+
+### Fixed
+- Fixed compatibility with macOS Sequoia 26 (pre-release) by preserving LC_UUID load command during binary stripping
+- The strip command now uses the `-u` flag to ensure the LC_UUID load command is retained, which is required by the dynamic linker (dyld) on macOS 26
+
+### Technical Details
+- Modified build script to use `strip -Sxu` instead of `strip -Sx` to preserve the LC_UUID load command
+- This ensures the binary includes the necessary UUID for debugging, crash reporting, and symbol resolution on newer macOS versions
+
 ## [2.0.0] - 2025-07-03
 
 ### Added

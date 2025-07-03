@@ -50,7 +50,8 @@ lipo -create -output "$FINAL_BINARY_PATH.tmp" "$ARM64_BINARY_TEMP" "$X86_64_BINA
 echo "🤏 Stripping symbols for further size reduction..."
 # -S: Remove debugging symbols
 # -x: Remove non-global symbols
-strip -Sx "$FINAL_BINARY_PATH.tmp"
+# -u: Preserve the LC_UUID load command (required for macOS 26+)
+strip -Sxu "$FINAL_BINARY_PATH.tmp"
 
 echo "🔏 Code signing the universal binary..."
 if security find-identity -p codesigning -v | grep -q "Developer ID Application"; then
