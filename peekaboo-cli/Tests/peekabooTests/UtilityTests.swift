@@ -118,26 +118,30 @@ struct UtilityTests {
     @Suite("Window Capture Handler Tests")
     struct WindowCaptureHandlerTests {
         
-        @Test("Creates handler with default window index")
-        func testCreatesHandlerWithDefaultIndex() {
+        @Test("Creates handler with required parameters")
+        func testCreatesHandlerWithRequiredParams() {
             let handler = WindowCaptureHandler(
-                appIdentifier: "com.apple.finder",
-                windowIndex: nil
+                captureFocus: .foreground,
+                format: .png,
+                path: "/tmp/test.png"
             )
             
-            #expect(handler.appIdentifier == "com.apple.finder")
-            #expect(handler.windowIndex == 0)
+            #expect(handler.captureFocus == .foreground)
+            #expect(handler.format == .png)
+            #expect(handler.path == "/tmp/test.png")
         }
         
-        @Test("Creates handler with specific window index")
-        func testCreatesHandlerWithSpecificIndex() {
+        @Test("Creates handler with nil path")
+        func testCreatesHandlerWithNilPath() {
             let handler = WindowCaptureHandler(
-                appIdentifier: "Safari",
-                windowIndex: 3
+                captureFocus: .auto,
+                format: .jpg,
+                path: nil
             )
             
-            #expect(handler.appIdentifier == "Safari")
-            #expect(handler.windowIndex == 3)
+            #expect(handler.captureFocus == .auto)
+            #expect(handler.format == .jpg)
+            #expect(handler.path == nil)
         }
     }
     

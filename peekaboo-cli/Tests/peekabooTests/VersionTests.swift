@@ -18,7 +18,7 @@ struct VersionTests {
     }
     
     @Test("Version components are valid numbers")
-    func testVersionComponentsAreNumbers() {
+    func testVersionComponentsAreNumbers() throws {
         let version = Version.current
         let components = version.split(separator: ".")
         

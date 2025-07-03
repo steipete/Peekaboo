@@ -15,7 +15,7 @@ struct ListCommandTests {
         #expect(ListCommand.configuration.subcommands.count == 3)
         #expect(ListCommand.configuration.subcommands.contains { $0 == AppsSubcommand.self })
         #expect(ListCommand.configuration.subcommands.contains { $0 == WindowsSubcommand.self })
-        #expect(ListCommand.configuration.subcommands.contains { $0 == ServerStatusSubcommand.self })
+        #expect(ListCommand.configuration.subcommands.contains { $0 == PermissionsSubcommand.self })
     }
 
     @Test("AppsSubcommand parsing with defaults", .tags(.fast))
@@ -443,12 +443,12 @@ struct ListCommandTests {
 
 @Suite("ListCommand Advanced Tests", .tags(.integration))
 struct ListCommandAdvancedTests {
-    @Test("ServerStatusSubcommand parsing", .tags(.fast))
-    func serverStatusSubcommandParsing() throws {
-        let command = try ServerStatusSubcommand.parse([])
+    @Test("PermissionsSubcommand parsing", .tags(.fast))
+    func permissionsSubcommandParsing() throws {
+        let command = try PermissionsSubcommand.parse([])
         #expect(command.jsonOutput == false)
 
-        let commandWithJSON = try ServerStatusSubcommand.parse(["--json-output"])
+        let commandWithJSON = try PermissionsSubcommand.parse(["--json-output"])
         #expect(commandWithJSON.jsonOutput == true)
     }
 
@@ -463,8 +463,8 @@ struct ListCommandAdvancedTests {
         let windowsHelp = WindowsSubcommand.helpMessage()
         #expect(windowsHelp.contains("windows"))
 
-        let statusHelp = ServerStatusSubcommand.helpMessage()
-        #expect(statusHelp.contains("status"))
+        let permissionsHelp = PermissionsSubcommand.helpMessage()
+        #expect(permissionsHelp.contains("permissions"))
     }
 
     @Test(

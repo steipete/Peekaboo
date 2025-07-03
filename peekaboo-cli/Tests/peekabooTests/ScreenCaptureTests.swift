@@ -72,11 +72,11 @@ struct ScreenCaptureTests {
         func testCapturesWindowByID() async throws {
             // First get a valid window ID from Finder
             let apps = ApplicationFinder.getAllRunningApplications()
-            let finder = apps.first { $0.bundleIdentifier == "com.apple.finder" }
+            let finder = apps.first { $0.bundle_id == "com.apple.finder" }
             let finderApp = try #require(finder)
             
-            let windows = try WindowManager.getWindows(for: finderApp.processIdentifier)
-            let window = #require(windows.first)
+            let windows = try WindowManager.getWindowsForApp(pid: finderApp.pid)
+            let window = try #require(windows.first)
             
             let outputPath = tempDir.appendingPathComponent("window.png").path
             
