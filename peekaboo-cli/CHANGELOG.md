@@ -7,27 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Comprehensive test suite with 331 tests achieving 100% pass rate
-- Test coverage for all major components including configuration, file handling, error handling, and utility functions
-- `flush()` method to Logger for better test synchronization
-
-### Fixed
-- All test failures through improved error handling and validation
-- ImageSaver crash when paths contain invalid characters
-- Logger race conditions in test environment
-- PermissionErrorDetector now handles all relevant error domains
-- Test isolation issues preventing interference between tests
-
-### Changed
-- Logger's `setJsonOutputMode` and `clearDebugLogs` methods are now synchronous for better reliability
-- ApplicationFinder tests now correctly handle apps without windows
-
-## [2.1.0] - 2025-01-03
+## [2.0.0] - 2025-07-03
 
 ### Added
-- **Homebrew Distribution** - Install via `brew install steipete/tap/peekaboo` for easy installation and updates
-- **Native AI Analysis** - Swift CLI can now analyze images directly using AI providers (OpenAI, Ollama) without Node.js
+- **Standalone Swift CLI** - Complete rewrite in Swift for better performance and native macOS integration
+- **MCP Server** - Model Context Protocol support for AI assistant integration
+- **Multiple Capture Modes**:
+  - Window capture (single or all windows)
+  - Screen capture (main or specific display)
+  - Frontmost window capture
+  - Multi-window capture from multiple apps
+- **AI Vision Analysis** - Analyze screenshots with OpenAI or Ollama directly from Swift CLI
 - **Configuration File Support** - JSONC format configuration at `~/.config/peekaboo/config.json` with:
   - Environment variable expansion (`${HOME}`, `${OPENAI_API_KEY}`)
   - Comments support for better documentation
@@ -38,39 +28,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `config edit` - Open configuration in default editor
   - `config validate` - Validate configuration syntax
 - **Permissions Command** - New `peekaboo list permissions` to check system permissions
-- **Improved Error Messages** - More descriptive errors for common issues like ambiguous app names
-- **DocC Documentation** - Comprehensive API documentation for Swift codebase
-
-### Changed
-- **CLI Help Improvements** - Better organized help text following Unix conventions
-- **Enhanced Permission Visibility** - Clear indicators when permissions are missing
-- **Unified AI Provider Interface** - Consistent API for both OpenAI and Ollama providers
-
-### Fixed
-- Configuration precedence (CLI args > env vars > config file > defaults)
-- SwiftLint violations across the codebase
-- OllamaProvider tests with injected URLSession for better testability
-- Various edge cases in error handling and file operations
-
-## [2.0.0] - 2024-12-24
-
-### Added
-- **Standalone Swift CLI** - Complete rewrite in Swift for better performance and native macOS integration
-- **MCP Server** - Model Context Protocol support for AI assistant integration
-- **Multiple Capture Modes**:
-  - Window capture (single or all windows)
-  - Screen capture (main or specific display)
-  - Frontmost window capture
-  - Multi-window capture from multiple apps
-- **AI Vision Analysis** - Analyze screenshots with OpenAI or Ollama
-- **Configuration System** - Environment-based configuration with sensible defaults
 - **PID Targeting** - Target applications by process ID with `PID:12345` syntax
+- **Homebrew Distribution** - Install via `brew install steipete/tap/peekaboo` for easy installation and updates
+- **Comprehensive Test Suite** - 331 tests with 100% pass rate covering all major components
+- **DocC Documentation** - Comprehensive API documentation for Swift codebase
 
 ### Changed
 - Complete architecture redesign separating CLI and MCP server
 - Improved performance with native Swift implementation
 - Better error handling and permission management
-- More intuitive command-line interface
+- More intuitive command-line interface following Unix conventions
+- Enhanced permission visibility with clear indicators when permissions are missing
+- Unified AI provider interface for consistent API across OpenAI and Ollama
+- Logger's `setJsonOutputMode` and `clearDebugLogs` methods are now synchronous for better reliability
+
+### Fixed
+- Configuration precedence (CLI args > env vars > config file > defaults)
+- SwiftLint violations across the codebase
+- ImageSaver crash when paths contain invalid characters
+- Logger race conditions in test environment
+- PermissionErrorDetector now handles all relevant error domains
+- Test isolation issues preventing interference between tests
+- Various edge cases in error handling and file operations
 
 ### Removed
 - Node.js CLI (replaced with Swift implementation)
