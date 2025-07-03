@@ -8,34 +8,83 @@ import UniformTypeIdentifiers
 struct ImageCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "image",
-        abstract: "Capture screen or window images"
+        abstract: "Capture screenshots of screens, applications, or windows",
+        discussion: """
+            SYNOPSIS:
+              peekaboo image [--app NAME] [--mode MODE] [--path PATH] [OPTIONS]
+
+            EXAMPLES:
+              peekaboo image --app Safari                    # Capture Safari's frontmost window
+              peekaboo image --app Chrome --window-index 1   # Capture Chrome's second window
+              peekaboo image --app "com.apple.Notes"         # Use bundle ID
+              peekaboo image --app PID:12345                 # Use process ID
+              
+              peekaboo image --mode screen                   # Capture all screens
+              peekaboo image --mode screen --screen-index 0  # Capture primary screen
+              peekaboo image --mode frontmost                # Capture active window
+              peekaboo image --mode multi --app Safari       # Capture all Safari windows
+              
+              peekaboo image --app Terminal --window-title "~/Projects"
+              peekaboo image --app Safari --path screenshot.png --format jpg
+              peekaboo image --app Xcode --capture-focus foreground
+              
+              # Scripting examples
+              peekaboo image --app Safari --json-output | jq -r '.data.saved_files[0].path'
+              peekaboo image --mode frontmost --json-output | jq '.data.saved_files[0].window_title'
+
+            CAPTURE MODES:
+              screen     Capture entire screen(s)
+              window     Capture specific application window (default with --app)
+              multi      Capture all windows of an application
+              frontmost  Capture the currently active window
+
+            WINDOW SELECTION:
+              When using --app, windows are captured based on:
+              1. --window-title: Match by title (partial match supported)
+              2. --window-index: Select by index (0 = frontmost)
+              3. Default: Capture the frontmost window
+
+            OUTPUT PATHS:
+              - With --path: Save to specified location
+              - Without --path: Save to current directory with timestamp
+              - Multiple captures: Append window index to filename
+
+            FOCUS BEHAVIOR:
+              auto       Bring window to front if not visible (default)
+              foreground Always bring window to front before capture
+              background Never change window focus
+
+            PERMISSIONS:
+              Screen Recording: Required (System Settings > Privacy & Security)
+              Accessibility: Required only for 'foreground' focus mode
+            """
     )
 
-    @Option(name: .long, help: "Target application identifier")
+    @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345' for process ID")
     var app: String?
 
-    @Option(name: .long, help: "Base output path for saved images")
+    @Option(name: .long, help: "Output path for saved image (e.g., ~/Desktop/screenshot.png)")
     var path: String?
 
-    @Option(name: .long, help: "Capture mode")
+    @Option(name: .long, help: ArgumentHelp("Capture mode", valueName: "mode"))
     var mode: CaptureMode?
 
-    @Option(name: .long, help: "Window title to capture")
+    @Option(name: .long, help: "Capture window with specific title (use with --app)")
     var windowTitle: String?
 
-    @Option(name: .long, help: "Window index to capture (0=frontmost)")
+    @Option(name: .long, help: "Window index to capture (0=frontmost, use with --app)")
     var windowIndex: Int?
 
-    @Option(name: .long, help: "Screen index to capture (0-based)")
+    @Option(name: .long, help: "Screen index to capture (0-based, use with --mode screen)")
     var screenIndex: Int?
 
-    @Option(name: .long, help: "Image format")
+    @Option(name: .long, help: ArgumentHelp("Image format: png or jpg", valueName: "format"))
     var format: ImageFormat = .png
 
-    @Option(name: .long, help: "Capture focus behavior")
+    @Option(name: .long, help: ArgumentHelp("Window focus behavior: auto, foreground, or background", valueName: "focus"))
     var captureFocus: CaptureFocus = .auto
 
-    @Flag(name: .long, help: "Output results in JSON format")
+    @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
     func run() async throws {

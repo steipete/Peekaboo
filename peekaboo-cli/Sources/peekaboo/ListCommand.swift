@@ -5,7 +5,36 @@ import Foundation
 struct ListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List running applications or windows",
+        abstract: "List running applications, windows, or check server status",
+        discussion: """
+            SYNOPSIS:
+              peekaboo list SUBCOMMAND [OPTIONS]
+
+            EXAMPLES:
+              peekaboo list                                  # List all applications (default)
+              peekaboo list apps                             # List all running applications
+              peekaboo list apps --json-output               # Output as JSON
+              
+              peekaboo list windows --app Safari             # List Safari windows
+              peekaboo list windows --app "Visual Studio Code"
+              peekaboo list windows --app PID:12345
+              peekaboo list windows --app Chrome --include-details bounds,ids
+              
+              peekaboo list server_status                    # Check permissions
+              
+              # Scripting examples
+              peekaboo list apps --json-output | jq '.data.applications[] | select(.is_active)'
+              peekaboo list windows --app Safari --json-output | jq '.data.windows[].window_title'
+
+            SUBCOMMANDS:
+              apps          List all running applications with process IDs
+              windows       List windows for a specific application  
+              server_status Check permissions and system status
+
+            OUTPUT FORMAT:
+              Default output is human-readable text.
+              Use --json-output for machine-readable JSON format.
+            """,
         subcommands: [AppsSubcommand.self, WindowsSubcommand.self, ServerStatusSubcommand.self],
         defaultSubcommand: AppsSubcommand.self
     )
@@ -18,10 +47,35 @@ struct ListCommand: AsyncParsableCommand {
 struct AppsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "apps",
-        abstract: "List all running applications"
+        abstract: "List all running applications with details",
+        discussion: """
+            SYNOPSIS:
+              peekaboo list apps [--json-output]
+
+            DESCRIPTION:
+              Lists all running applications with their process IDs, bundle
+              identifiers, and window counts. Applications are sorted by name.
+
+            EXAMPLES:
+              peekaboo list apps
+              peekaboo list apps | grep Safari
+              peekaboo list apps | wc -l                     # Count running apps
+              
+              # JSON output for scripting
+              peekaboo list apps --json-output | jq '.data.applications[] | select(.is_active)'
+              peekaboo list apps --json-output | jq -r '.data.applications[].app_name'
+              peekaboo list apps --json-output | jq '.data.applications[] | select(.window_count > 3)'
+
+            OUTPUT FIELDS:
+              - Application name
+              - Bundle identifier (e.g., com.apple.Safari)
+              - Process ID (PID)
+              - Status (Active/Background)
+              - Window count
+            """
     )
 
-    @Flag(name: .long, help: "Output results in JSON format")
+    @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
     func run() async throws {
@@ -106,16 +160,49 @@ struct AppsSubcommand: AsyncParsableCommand {
 struct WindowsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "windows",
-        abstract: "List windows for a specific application"
+        abstract: "List all windows for a specific application",
+        discussion: """
+            SYNOPSIS:
+              peekaboo list windows --app APPLICATION [--include-details DETAILS] [--json-output]
+
+            DESCRIPTION:
+              Lists all windows for the specified application. Windows are listed
+              in z-order (frontmost first).
+
+            EXAMPLES:
+              peekaboo list windows --app Safari
+              peekaboo list windows --app "Visual Studio Code"
+              peekaboo list windows --app com.apple.Terminal
+              peekaboo list windows --app PID:12345
+              
+              # Include additional details
+              peekaboo list windows --app Chrome --include-details bounds
+              peekaboo list windows --app Finder --include-details bounds,ids,off_screen
+              
+              # JSON output for scripting
+              peekaboo list windows --app Safari --json-output | jq -r '.data.windows[].window_title'
+              peekaboo list windows --app Terminal --include-details bounds --json-output | \
+                jq '.data.windows[] | select(.bounds.width > 1000)'
+
+            APPLICATION IDENTIFIERS:
+              name       Application name (fuzzy matching supported)
+              bundle     Bundle identifier (e.g., com.apple.Safari)
+              PID:xxxxx  Process ID with PID: prefix
+
+            DETAIL OPTIONS:
+              off_screen Include off-screen windows
+              bounds     Include window position and size (x, y, width, height)
+              ids        Include CGWindowID values for window manipulation
+            """
     )
 
-    @Option(name: .long, help: "Target application identifier")
+    @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String
 
-    @Option(name: .long, help: "Include additional window details (comma-separated: off_screen,bounds,ids)")
+    @Option(name: .long, help: "Additional details (comma-separated: off_screen,bounds,ids)")
     var includeDetails: String?
 
-    @Flag(name: .long, help: "Output results in JSON format")
+    @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
     func run() async throws {
@@ -254,10 +341,33 @@ struct WindowsSubcommand: AsyncParsableCommand {
 struct ServerStatusSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "server_status",
-        abstract: "Check server permissions status"
+        abstract: "Check system permissions and CLI status",
+        discussion: """
+            SYNOPSIS:
+              peekaboo list server_status [--json-output]
+
+            DESCRIPTION:
+              Checks system permissions and configuration status. Use this command
+              to troubleshoot permission issues or verify installation.
+
+            EXAMPLES:
+              peekaboo list server_status
+              peekaboo list server_status --json-output
+              
+              # Check specific permission
+              peekaboo list server_status --json-output | jq '.data.permissions.screen_recording'
+
+            STATUS CHECKS:
+              Screen Recording  Required for all screenshot operations
+              Accessibility     Optional, needed for window focus control
+              
+            EXIT STATUS:
+              0  All required permissions granted
+              1  Missing required permissions
+            """
     )
 
-    @Flag(name: .long, help: "Output results in JSON format")
+    @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
     func run() async throws {

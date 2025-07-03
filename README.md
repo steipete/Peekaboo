@@ -636,6 +636,84 @@ cd ..
 npm link
 ```
 
+### Building the Swift CLI Standalone
+
+The Peekaboo Swift CLI can be built and used independently of the MCP server for direct command-line usage:
+
+```bash
+# Quick build (from project root)
+./scripts/build-cli-standalone.sh
+
+# Build and install system-wide
+./scripts/build-cli-standalone.sh --install
+
+# Manual build
+cd peekaboo-cli
+swift build -c release
+# Binary will be at: .build/release/peekaboo
+```
+
+### Using the Swift CLI Directly
+
+The Swift CLI provides all screenshot capture, window listing, and AI analysis capabilities:
+
+```bash
+# Get help
+peekaboo --help
+peekaboo image --help
+peekaboo list --help
+peekaboo analyze --help
+
+# Capture screenshots
+peekaboo image --app Safari --path ~/Desktop/safari.png
+peekaboo image --mode frontmost --format png
+peekaboo image --mode screen --screen-index 0
+
+# List applications and windows
+peekaboo list apps
+peekaboo list windows --app "Visual Studio Code"
+peekaboo list server_status
+
+# Analyze images with AI (requires PEEKABOO_AI_PROVIDERS)
+PEEKABOO_AI_PROVIDERS="openai/gpt-4o" peekaboo analyze screenshot.png "What is shown in this image?"
+PEEKABOO_AI_PROVIDERS="ollama/llava:latest" peekaboo analyze diagram.jpg "Explain this diagram"
+
+# JSON output for scripting
+peekaboo list apps --json-output
+peekaboo image --app Chrome --json-output
+peekaboo analyze image.png "What text is visible?" --json-output
+```
+
+#### CLI Environment Variables
+
+The Swift CLI respects the same environment variables as the MCP server:
+
+- `PEEKABOO_AI_PROVIDERS`: AI providers for image analysis (e.g., "openai/gpt-4o,ollama/llava:latest")
+- `OPENAI_API_KEY`: Required for OpenAI provider
+- `PEEKABOO_OLLAMA_BASE_URL`: Ollama server URL (default: http://localhost:11434)
+- `PEEKABOO_DEFAULT_SAVE_PATH`: Default directory for captured images
+
+#### Example Scripts
+
+```bash
+# Capture all Safari windows
+for i in {0..10}; do
+  peekaboo image --app Safari --window-index $i --path ~/Desktop/safari_$i.png 2>/dev/null || break
+done
+
+# Monitor active window changes
+while true; do
+  peekaboo image --mode frontmost --format png --json-output | jq -r '.data.saved_files[0].window_title'
+  sleep 5
+done
+
+# Batch analyze screenshots
+for img in ~/Screenshots/*.png; do
+  echo "Analyzing $img..."
+  PEEKABOO_AI_PROVIDERS="ollama/llava:latest" peekaboo analyze "$img" "Summarize this screenshot in one sentence"
+done
+```
+
 ### Local Development Configuration
 
 For development, you can run Peekaboo locally:

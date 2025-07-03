@@ -4,22 +4,83 @@ import Foundation
 struct AnalyzeCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "analyze",
-        abstract: "Analyze images using AI providers"
+        abstract: "Analyze images using AI vision models",
+        discussion: """
+            SYNOPSIS:
+              peekaboo analyze IMAGE_PATH QUESTION [--provider PROVIDER] [--model MODEL] [--json-output]
+
+            DESCRIPTION:
+              Analyzes images using AI vision models to answer questions about
+              visual content. Supports both local and cloud-based AI providers.
+
+            EXAMPLES:
+              peekaboo analyze screenshot.png "What's in this image?"
+              peekaboo analyze error.png "What error message is shown?"
+              peekaboo analyze ui.png "Describe the layout"
+              
+              # Use specific providers
+              peekaboo analyze diagram.png "Explain this diagram" --provider openai
+              peekaboo analyze photo.png "What objects are visible?" --provider ollama
+              
+              # Use specific models
+              peekaboo analyze chart.png "What data is shown?" --model gpt-4o
+              peekaboo analyze ui.png "Find buttons" --provider ollama --model llava:latest
+              
+              # Combine with capture
+              peekaboo --mode frontmost --path /tmp/active.png && \
+                peekaboo analyze /tmp/active.png "What application is this?"
+              
+              # JSON output for scripting
+              peekaboo analyze error.png "Is there an error?" --json-output | \
+                jq -r '.data.analysis_text'
+
+            COMMON USE CASES:
+              # UI debugging
+              peekaboo analyze screenshot.png "What errors or warnings are visible?"
+              
+              # Accessibility testing
+              peekaboo analyze app.png "Describe this interface for a visually impaired user"
+              
+              # Documentation
+              peekaboo analyze diagram.png "Create a text description of this diagram"
+              
+              # Automated testing
+              peekaboo analyze test-result.png "Did the test pass or fail?"
+
+            AI PROVIDERS:
+              auto    Automatically select first available provider (default)
+              openai  OpenAI GPT-4 Vision (cloud-based, high quality)
+              ollama  Local Ollama models (privacy-focused, offline capable)
+
+            SUPPORTED FORMATS:
+              PNG, JPG, JPEG, WebP
+
+            ENVIRONMENT VARIABLES:
+              PEEKABOO_AI_PROVIDERS      Comma-separated list of providers/models
+                                         Example: "openai/gpt-4o,ollama/llava:latest"
+                                         
+              OPENAI_API_KEY             Required for OpenAI provider
+              PEEKABOO_OLLAMA_BASE_URL   Ollama server URL (default: http://localhost:11434)
+
+            EXIT STATUS:
+              0  Analysis completed successfully
+              1  Analysis failed (missing file, invalid format, API error)
+            """
     )
     
-    @Argument(help: "Path to the image file to analyze")
+    @Argument(help: ArgumentHelp("Path to the image file to analyze", valueName: "image-path"))
     var imagePath: String
     
-    @Argument(help: "Question to ask about the image")
+    @Argument(help: ArgumentHelp("Question to ask about the image", valueName: "question"))
     var question: String
     
-    @Option(name: .long, help: "AI provider type (auto, openai, ollama)")
+    @Option(name: .long, help: ArgumentHelp("AI provider to use: auto, openai, or ollama", valueName: "provider"))
     var provider: String = "auto"
     
-    @Option(name: .long, help: "AI model to use (optional, uses provider default if not specified)")
+    @Option(name: .long, help: ArgumentHelp("Specific AI model to use (e.g., gpt-4o, llava:latest)", valueName: "model"))
     var model: String?
     
-    @Flag(name: .long, help: "Output results in JSON format")
+    @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
     
     func run() async throws {
