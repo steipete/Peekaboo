@@ -9,18 +9,21 @@ struct VersionTests {
     func testSemanticVersioningFormat() {
         let version = Version.current
         
-        // Should match X.Y.Z format
-        let versionRegex = try! NSRegularExpression(pattern: #"^\d+\.\d+\.\d+$"#)
+        // Version should be in format "Peekaboo X.Y.Z"
+        let versionRegex = try! NSRegularExpression(pattern: #"^Peekaboo \d+\.\d+\.\d+$"#)
         let range = NSRange(location: 0, length: version.utf16.count)
         let matches = versionRegex.matches(in: version, range: range)
         
-        #expect(!matches.isEmpty, "Version '\(version)' should follow semantic versioning (X.Y.Z)")
+        #expect(!matches.isEmpty, "Version '\(version)' should follow format 'Peekaboo X.Y.Z'")
     }
     
     @Test("Version components are valid numbers")
     func testVersionComponentsAreNumbers() throws {
         let version = Version.current
-        let components = version.split(separator: ".")
+        
+        // Remove "Peekaboo " prefix
+        let versionNumber = version.replacingOccurrences(of: "Peekaboo ", with: "")
+        let components = versionNumber.split(separator: ".")
         
         #expect(components.count == 3)
         
@@ -44,7 +47,7 @@ struct VersionTests {
     @Test("Version string is not empty")
     func testVersionNotEmpty() {
         #expect(!Version.current.isEmpty)
-        #expect(Version.current.count >= 5) // Minimum: "0.0.0"
+        #expect(Version.current.count >= 14) // Minimum: "Peekaboo 0.0.0"
     }
     
     @Test("Version can be used in user agent strings")
@@ -52,6 +55,6 @@ struct VersionTests {
         let userAgent = "Peekaboo/\(Version.current)"
         
         #expect(userAgent.hasPrefix("Peekaboo/"))
-        #expect(userAgent.count > 9) // "Peekaboo/" + at least "0.0.0"
+        #expect(userAgent.count > 18) // "Peekaboo/" + "Peekaboo " + at least "0.0.0"
     }
 }

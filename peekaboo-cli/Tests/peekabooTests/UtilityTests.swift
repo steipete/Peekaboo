@@ -78,8 +78,12 @@ struct UtilityTests {
         func testVersionFormat() {
             let version = Version.current
             
-            // Should be in format X.Y.Z
-            let components = version.split(separator: ".")
+            // Should be in format "Peekaboo X.Y.Z"
+            #expect(version.hasPrefix("Peekaboo "))
+            
+            // Extract version number after "Peekaboo "
+            let versionNumber = version.replacingOccurrences(of: "Peekaboo ", with: "")
+            let components = versionNumber.split(separator: ".")
             #expect(components.count == 3)
             
             // Each component should be a number
