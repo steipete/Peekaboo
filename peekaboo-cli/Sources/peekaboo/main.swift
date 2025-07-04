@@ -12,9 +12,9 @@ struct PeekabooCommand: AsyncParsableCommand {
         abstract: "Lightning-fast macOS screenshots and AI vision analysis (v\(Version.current))",
         discussion: """
             EXAMPLES:
-              peekaboo --app Safari                          # Capture Safari window
-              peekaboo --mode screen                         # Capture entire screen
-              peekaboo --mode frontmost                      # Capture active window
+              peekaboo image --app Safari                    # Capture Safari window
+              peekaboo image --mode screen                   # Capture entire screen
+              peekaboo image --mode frontmost                # Capture active window
               peekaboo image --app "Visual Studio Code"      # Capture VS Code
               peekaboo image --app Chrome --window-title "Gmail" # Capture specific window
               peekaboo image --app Finder --path ~/Desktop/finder.png
@@ -29,15 +29,15 @@ struct PeekabooCommand: AsyncParsableCommand {
 
             COMMON WORKFLOWS:
               # Capture and analyze in one command (NEW!)
-              peekaboo --app Safari --analyze "What's on this page?"
-              peekaboo --mode frontmost --analyze "What UI issues do you see?"
+              peekaboo image --app Safari --analyze "What's on this page?"
+              peekaboo image --mode frontmost --analyze "What UI issues do you see?"
               
               # Or use separate commands for more control
-              peekaboo --app Safari --path /tmp/page.png && peekaboo analyze /tmp/page.png "What's on this page?"
+              peekaboo image --app Safari --path /tmp/page.png && peekaboo analyze /tmp/page.png "What's on this page?"
               
               # Document all windows
               for app in Safari Chrome "Visual Studio Code"; do
-                peekaboo --app "$app" --mode multi --path ~/Screenshots/
+                peekaboo image --app "$app" --mode multi --path ~/Screenshots/
               done
 
             PERMISSIONS:
