@@ -1,4 +1,4 @@
-# Peekaboo MCP: Lightning-fast macOS Screenshots
+# Peekaboo MCP: Lightning-fast macOS Screenshots 🚀
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
