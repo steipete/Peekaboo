@@ -19,6 +19,22 @@ import {
   analyzeToolSchema,
   listToolHandler,
   listToolSchema,
+  seeToolHandler,
+  seeToolSchema,
+  clickToolHandler,
+  clickToolSchema,
+  typeToolHandler,
+  typeToolSchema,
+  scrollToolHandler,
+  scrollToolSchema,
+  hotkeyToolHandler,
+  hotkeyToolSchema,
+  swipeToolHandler,
+  swipeToolSchema,
+  runToolHandler,
+  runToolSchema,
+  sleepToolHandler,
+  sleepToolSchema,
 } from "./tools/index.js";
 import { generateServerStatusString } from "./utils/server-status.js";
 import { initializeSwiftCliPath } from "./utils/peekaboo-cli.js";
@@ -122,6 +138,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "image",
+        title: "Capture and Analyze Screen Content",
         description: `Captures macOS screen content and optionally analyzes it. \
 Targets can be entire screen, specific app window, or all windows of an app (via app_target). \
 Supports foreground/background capture. Output via file path or inline Base64 data (format: "data"). \
@@ -131,6 +148,7 @@ Window shadows/frames excluded. ${serverStatus}`,
       },
       {
         name: "analyze",
+        title: "Analyze Image with AI",
         description:
 `Analyzes a pre-existing image file from the local filesystem using a configured AI model.
 
@@ -153,6 +171,7 @@ The AI will analyze the image and attempt to answer your question based on its v
       },
       {
         name: "list",
+        title: "List System Items",
         description:
 `Lists various system items on macOS, providing situational awareness.
 
@@ -171,6 +190,85 @@ Use Cases:
   The agent can then use the window title or ID with the 'image' tool.` +
           statusSuffix,
         inputSchema: zodToJsonSchema(listToolSchema),
+      },
+      {
+        name: "see",
+        title: "See UI Elements",
+        description:
+`Captures a screenshot and analyzes UI elements for automation.
+Returns UI element map with Peekaboo IDs (B1 for buttons, T1 for text fields, etc.) that can be used with interaction commands.
+Creates or updates a session for tracking UI state across multiple commands.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(seeToolSchema),
+      },
+      {
+        name: "click",
+        title: "Click UI Elements",
+        description:
+`Clicks on UI elements or coordinates.
+Supports element queries, specific IDs from see command, or raw coordinates.
+Includes smart waiting for elements to become actionable.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(clickToolSchema),
+      },
+      {
+        name: "type",
+        title: "Type Text",
+        description:
+`Types text into UI elements or at current focus.
+Supports special keys ({return}, {tab}, etc.) and configurable typing speed.
+Can target specific elements or type at current keyboard focus.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(typeToolSchema),
+      },
+      {
+        name: "scroll",
+        title: "Scroll Content",
+        description:
+`Scrolls the mouse wheel in any direction.
+Can target specific elements or scroll at current mouse position.
+Supports smooth scrolling and configurable speed.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(scrollToolSchema),
+      },
+      {
+        name: "hotkey",
+        title: "Press Keyboard Shortcuts",
+        description:
+`Presses keyboard shortcuts and key combinations.
+Simulates pressing multiple keys simultaneously like Cmd+C or Ctrl+Shift+T.
+Keys are pressed in order and released in reverse order.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(hotkeyToolSchema),
+      },
+      {
+        name: "swipe",
+        title: "Swipe/Drag Gesture",
+        description:
+`Performs a swipe/drag gesture from one point to another.
+Useful for dragging elements, swiping through content, or gesture-based interactions.
+Creates smooth movement with configurable duration.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(swipeToolSchema),
+      },
+      {
+        name: "run",
+        title: "Run Automation Script",
+        description:
+`Runs a batch script of Peekaboo commands from a .peekaboo.json file.
+Scripts can automate complex UI workflows by chaining commands.
+Each command runs sequentially with shared session state.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(runToolSchema),
+      },
+      {
+        name: "sleep",
+        title: "Pause Execution",
+        description:
+`Pauses execution for a specified duration.
+Useful for waiting between UI actions or allowing animations to complete.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(sleepToolSchema),
       },
     ],
   };
@@ -211,6 +309,46 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "list": {
         const validatedArgs = listToolSchema.parse(args || {});
         response = await listToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "see": {
+        const validatedArgs = seeToolSchema.parse(args || {});
+        response = await seeToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "click": {
+        const validatedArgs = clickToolSchema.parse(args || {});
+        response = await clickToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "type": {
+        const validatedArgs = typeToolSchema.parse(args || {});
+        response = await typeToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "scroll": {
+        const validatedArgs = scrollToolSchema.parse(args || {});
+        response = await scrollToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "hotkey": {
+        const validatedArgs = hotkeyToolSchema.parse(args || {});
+        response = await hotkeyToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "swipe": {
+        const validatedArgs = swipeToolSchema.parse(args || {});
+        response = await swipeToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "run": {
+        const validatedArgs = runToolSchema.parse(args || {});
+        response = await runToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "sleep": {
+        const validatedArgs = sleepToolSchema.parse(args || {});
+        response = await sleepToolHandler(validatedArgs, toolContext);
         break;
       }
       default:
