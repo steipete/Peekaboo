@@ -198,3 +198,62 @@ export const imageToolSchema = z.object({
   );
 
 export type ImageInput = z.infer<typeof imageToolSchema>;
+
+// Tool input types
+export interface SeeInput {
+  app_target?: string;
+  path?: string;
+  session?: string;
+  annotate?: boolean;
+}
+
+export interface ClickInput {
+  query?: string;
+  on?: string;
+  coords?: string;
+  session?: string;
+  wait_for?: number;
+  double?: boolean;
+  right?: boolean;
+}
+
+export interface TypeInput {
+  text: string;
+  on?: string;
+  session?: string;
+  clear?: boolean;
+  delay?: number;
+  wait_for?: number;
+}
+
+export interface ScrollInput {
+  direction: "up" | "down" | "left" | "right";
+  amount?: number;
+  on?: string;
+  session?: string;
+  delay?: number;
+  smooth?: boolean;
+}
+
+export interface HotkeyInput {
+  keys: string;
+  hold_duration?: number;
+}
+
+export interface SwipeInput {
+  from: string;
+  to: string;
+  duration?: number;
+  steps?: number;
+}
+
+export interface RunInput {
+  script_path: string;
+  session?: string;
+  stop_on_error?: boolean;
+  timeout?: number;
+}
+
+export interface SleepInput {
+  duration: number;
+}
