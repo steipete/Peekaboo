@@ -86,18 +86,18 @@ struct AnyCodable: Codable {
         if try encodePrimitive(value, to: &container) {
             return
         }
-        
+
         if try encodeCollection(value, to: &container) {
             return
         }
-        
+
         if try encodeNil(value, to: &container) {
             return
         }
-        
+
         try encodeDefault(value, to: &container)
     }
-    
+
     private func encodePrimitive(_ value: Any, to container: inout SingleValueEncodingContainer) throws -> Bool {
         switch value {
         case let bool as Bool:
@@ -125,7 +125,7 @@ struct AnyCodable: Codable {
             return false
         }
     }
-    
+
     private func encodeCollection(_ value: Any, to container: inout SingleValueEncodingContainer) throws -> Bool {
         switch value {
         case let array as [Any]:
@@ -138,7 +138,7 @@ struct AnyCodable: Codable {
             return false
         }
     }
-    
+
     private func encodeNil(_ value: Any, to container: inout SingleValueEncodingContainer) throws -> Bool {
         switch value {
         case is NSNull:

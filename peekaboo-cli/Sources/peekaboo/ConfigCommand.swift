@@ -10,24 +10,24 @@ struct ConfigCommand: ParsableCommand {
         commandName: "config",
         abstract: "Manage Peekaboo configuration",
         discussion: """
-            The config command helps you manage Peekaboo's configuration file.
-            
-            Configuration file location: ~/.config/peekaboo/config.json
-            
-            The configuration file uses JSONC format (JSON with Comments) and supports:
-            • Comments using // and /* */
-            • Environment variable expansion using ${VAR_NAME}
-            • Tilde expansion for home directories
-            
-            Configuration precedence (highest to lowest):
-            1. Command-line arguments
-            2. Environment variables
-            3. Configuration file
-            4. Built-in defaults
-            """,
+        The config command helps you manage Peekaboo's configuration file.
+
+        Configuration file location: ~/.config/peekaboo/config.json
+
+        The configuration file uses JSONC format (JSON with Comments) and supports:
+        • Comments using // and /* */
+        • Environment variable expansion using ${VAR_NAME}
+        • Tilde expansion for home directories
+
+        Configuration precedence (highest to lowest):
+        1. Command-line arguments
+        2. Environment variables
+        3. Configuration file
+        4. Built-in defaults
+        """,
         subcommands: [InitCommand.self, ShowCommand.self, EditCommand.self, ValidateCommand.self]
     )
-    
+
     /// Subcommand to create a default configuration file.
     ///
     /// Generates a new configuration file with sensible defaults and example settings
@@ -37,17 +37,17 @@ struct ConfigCommand: ParsableCommand {
             commandName: "init",
             abstract: "Create a default configuration file"
         )
-        
+
         @Flag(name: .long, help: "Force overwrite existing configuration")
         var force = false
-        
+
         @Flag(name: .long, help: "Output JSON data for programmatic use")
         var jsonOutput = false
-        
+
         mutating func run() async throws {
             let configPath = ConfigurationManager.configPath
             let configExists = FileManager.default.fileExists(atPath: configPath)
-            
+
             if configExists && !force {
                 if jsonOutput {
                     outputError(
@@ -61,10 +61,10 @@ struct ConfigCommand: ParsableCommand {
                 }
                 throw ExitCode.failure
             }
-            
+
             do {
                 try ConfigurationManager.shared.createDefaultConfiguration()
-                
+
                 if jsonOutput {
                     outputSuccess(data: [
                         "message": "Configuration file created successfully",
@@ -89,7 +89,7 @@ struct ConfigCommand: ParsableCommand {
             }
         }
     }
-    
+
     /// Subcommand to display current configuration.
     ///
     /// Shows either the raw configuration file contents or the effective configuration
@@ -99,16 +99,16 @@ struct ConfigCommand: ParsableCommand {
             commandName: "show",
             abstract: "Display current configuration"
         )
-        
+
         @Flag(name: .long, help: "Show effective configuration (merged with environment)")
         var effective = false
-        
+
         @Flag(name: .long, help: "Output JSON data for programmatic use")
         var jsonOutput = false
-        
+
         mutating func run() async throws {
             let configPath = ConfigurationManager.configPath
-            
+
             if !effective {
                 // Show raw configuration file
                 if !FileManager.default.fileExists(atPath: configPath) {
@@ -124,7 +124,7 @@ struct ConfigCommand: ParsableCommand {
                     }
                     throw ExitCode.failure
                 }
-                
+
                 do {
                     let contents = try String(contentsOfFile: configPath)
                     if jsonOutput {
@@ -159,7 +159,7 @@ struct ConfigCommand: ParsableCommand {
                 // Show effective configuration
                 let manager = ConfigurationManager.shared
                 _ = manager.loadConfiguration()
-                
+
                 let effectiveConfig: [String: Any] = [
                     "aiProviders": [
                         "providers": manager.getAIProviders(cliValue: nil),
@@ -175,7 +175,7 @@ struct ConfigCommand: ParsableCommand {
                     ],
                     "configFile": FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND"
                 ]
-                
+
                 if jsonOutput {
                     outputSuccess(data: effectiveConfig)
                 } else {
@@ -194,12 +194,14 @@ struct ConfigCommand: ParsableCommand {
                     print("  Level: \(manager.getLogLevel())")
                     print("  Path: \(manager.getLogPath())")
                     print()
-                    print("Config File: \(FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND")")
+                    print(
+                        "Config File: \(FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND")"
+                    )
                 }
             }
         }
     }
-    
+
     /// Subcommand to open configuration in an editor.
     ///
     /// Opens the configuration file in the user's preferred text editor,
@@ -209,16 +211,16 @@ struct ConfigCommand: ParsableCommand {
             commandName: "edit",
             abstract: "Open configuration file in your default editor"
         )
-        
+
         @Option(name: .long, help: "Editor to use (defaults to $EDITOR or nano)")
         var editor: String?
-        
+
         @Flag(name: .long, help: "Output JSON data for programmatic use")
         var jsonOutput = false
-        
+
         mutating func run() async throws {
             let configPath = ConfigurationManager.configPath
-            
+
             // Create config if it doesn't exist
             if !FileManager.default.fileExists(atPath: configPath) {
                 if jsonOutput {
@@ -229,22 +231,22 @@ struct ConfigCommand: ParsableCommand {
                 } else {
                     print("No configuration file found. Creating default configuration...")
                 }
-                
+
                 try ConfigurationManager.shared.createDefaultConfiguration()
             }
-            
+
             // Determine editor
             let editorCommand = editor ?? ProcessInfo.processInfo.environment["EDITOR"] ?? "nano"
-            
+
             // Open editor
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
             process.arguments = [editorCommand, configPath]
-            
+
             do {
                 try process.run()
                 process.waitUntilExit()
-                
+
                 if process.terminationStatus == 0 {
                     if jsonOutput {
                         outputSuccess(data: [
@@ -254,7 +256,7 @@ struct ConfigCommand: ParsableCommand {
                         ])
                     } else {
                         print("✅ Configuration saved.")
-                        
+
                         // Validate the edited configuration
                         if let _ = ConfigurationManager.shared.loadConfiguration() {
                             print("✅ Configuration is valid.")
@@ -288,7 +290,7 @@ struct ConfigCommand: ParsableCommand {
             }
         }
     }
-    
+
     /// Subcommand to validate configuration syntax.
     ///
     /// Checks that the configuration file contains valid JSONC syntax and can be
@@ -298,13 +300,13 @@ struct ConfigCommand: ParsableCommand {
             commandName: "validate",
             abstract: "Validate configuration file syntax"
         )
-        
+
         @Flag(name: .long, help: "Output JSON data for programmatic use")
         var jsonOutput = false
-        
+
         mutating func run() async throws {
             let configPath = ConfigurationManager.configPath
-            
+
             if !FileManager.default.fileExists(atPath: configPath) {
                 if jsonOutput {
                     outputError(
@@ -318,7 +320,7 @@ struct ConfigCommand: ParsableCommand {
                 }
                 throw ExitCode.failure
             }
-            
+
             // Try to load and validate
             if let config = ConfigurationManager.shared.loadConfiguration() {
                 if jsonOutput {

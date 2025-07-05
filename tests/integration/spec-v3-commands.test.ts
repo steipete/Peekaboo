@@ -105,7 +105,7 @@ describe("Spec v3 Commands", () => {
     });
   });
 
-  describe.skip("run command script validation", () => {
+  describe("run command script validation", () => {
     // TODO: Fix run command to handle positional arguments for commands like sleep
     it("should validate script file format", async () => {
       const tempFile = path.join(os.tmpdir(), `test-${Date.now()}.peekaboo.json`);
@@ -121,7 +121,7 @@ describe("Spec v3 Commands", () => {
       expect(result.code).toBe(1);
       const json = JSON.parse(result.stdout);
       expect(json.success).toBe(false);
-      expect(json.error.message || json.data?.error).toContain("steps");
+      expect(json.error.message).toContain("ValidationError");
 
       // Cleanup
       await fs.unlink(tempFile);
@@ -150,8 +150,8 @@ describe("Spec v3 Commands", () => {
       expect(result.code).toBe(0);
       const json = JSON.parse(result.stdout);
       expect(json.success).toBe(true);
-      expect(json.data.success).toBe(false); // Run command always outputs JSON with success: true wrapper
-      expect(json.data.completedSteps).toBe(0); // Sleep positional arg issue
+      expect(json.data.success).toBe(true);
+      expect(json.data.completedSteps).toBe(1)
       expect(json.data.totalSteps).toBe(1);
 
       // Cleanup

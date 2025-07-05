@@ -89,7 +89,7 @@ struct ApplicationFinderTests {
         // Note: getAllRunningApplications only returns apps with windows
         // Finder might not have any windows open, so we can't guarantee it's in the list
         // Instead, just verify we get some apps
-        let appNames = apps.map { $0.app_name }
+        let appNames = apps.map(\.app_name)
         Logger.shared.debug("Found \(apps.count) apps with windows: \(appNames.joined(separator: ", "))")
     }
 
@@ -247,7 +247,7 @@ struct ApplicationFinderTests {
             // Verify the app is in the running list
             let runningApps = ApplicationFinder.getAllRunningApplications()
             let isInList = runningApps.contains { $0.bundle_id == result.bundleIdentifier }
-            
+
             // Note: getAllRunningApplications only returns apps with windows
             // The app might be running but have no windows, so it won't be in the list
             if isInList {

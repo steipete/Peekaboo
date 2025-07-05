@@ -12,25 +12,25 @@ struct SleepCommand: AsyncParsableCommand {
             The 'sleep' command pauses execution for a specified number
             of milliseconds. This is useful in automation scripts to wait
             for UI animations, page loads, or other time-based events.
-            
+
             EXAMPLES:
               peekaboo sleep 1000        # Sleep for 1 second
               peekaboo sleep 500         # Sleep for 0.5 seconds
               peekaboo sleep 3000        # Sleep for 3 seconds
-              
+
             The duration is specified in milliseconds.
         """
     )
-    
+
     @Argument(help: "Duration to sleep in milliseconds")
     var duration: Int
-    
+
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
-    
+
     mutating func run() async throws {
         let startTime = Date()
-        
+
         // Validate duration
         guard duration > 0 else {
             let error = ValidationError("Duration must be positive")
@@ -45,12 +45,12 @@ struct SleepCommand: AsyncParsableCommand {
             }
             throw ExitCode.failure
         }
-        
+
         // Perform sleep
         try await Task.sleep(nanoseconds: UInt64(duration) * 1_000_000)
-        
+
         let actualDuration = Date().timeIntervalSince(startTime) * 1000 // Convert to ms
-        
+
         // Output results
         if jsonOutput {
             let output = SleepResult(
@@ -72,7 +72,7 @@ struct SleepResult: Codable {
     let success: Bool
     let requested_duration: Int
     let actual_duration: Int
-    
+
     private enum CodingKeys: String, CodingKey {
         case success
         case requested_duration

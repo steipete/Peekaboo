@@ -7,34 +7,34 @@ import Foundation
 class OllamaProvider: AIProvider {
     let name = "ollama"
     let model: String
-    
+
     var baseURL: URL {
         let baseURLString = ConfigurationManager.shared.getOllamaBaseURL()
         return URL(string: baseURLString) ?? URL(string: "http://localhost:11434")!
     }
-    
+
     var session: URLSession {
         URLSession.shared
     }
-    
+
     init(model: String = "llava:latest") {
         self.model = model
     }
-    
+
     var isAvailable: Bool {
         get async {
             await checkAvailability().available
         }
     }
-    
+
     func checkAvailability() async -> AIProviderStatus {
         let tagsURL = baseURL.appendingPathComponent("/api/tags")
         var request = URLRequest(url: tagsURL)
         request.timeoutInterval = 3.0
-        
+
         do {
             let (data, response) = try await session.data(for: request)
-            
+
             guard let httpResponse = response as? HTTPURLResponse else {
                 return AIProviderStatus(
                     available: false,
@@ -47,7 +47,7 @@ class OllamaProvider: AIProvider {
                     )
                 )
             }
-            
+
             guard httpResponse.statusCode == 200 else {
                 return AIProviderStatus(
                     available: false,
@@ -60,17 +60,17 @@ class OllamaProvider: AIProvider {
                     )
                 )
             }
-            
+
             let tagsResponse = try JSONDecoder().decode(OllamaTagsResponse.self, from: data)
-            let availableModels = tagsResponse.models.map { $0.name }
-            
+            let availableModels = tagsResponse.models.map(\.name)
+
             // Check if the specific model is available
             let modelAvailable = availableModels.contains { modelName in
-                modelName == model || 
-                modelName.hasPrefix(model + ":") || 
-                model.hasPrefix(modelName.split(separator: ":")[0] + ":")
+                modelName == model ||
+                    modelName.hasPrefix(model + ":") ||
+                    model.hasPrefix(modelName.split(separator: ":")[0] + ":")
             }
-            
+
             if !modelAvailable {
                 return AIProviderStatus(
                     available: false,
@@ -83,7 +83,7 @@ class OllamaProvider: AIProvider {
                     )
                 )
             }
-            
+
             return AIProviderStatus(
                 available: true,
                 error: nil,
@@ -94,15 +94,14 @@ class OllamaProvider: AIProvider {
                     modelList: availableModels
                 )
             )
-            
+
         } catch {
-            let errorMessage: String
-            if error is URLError {
-                errorMessage = "Ollama server not reachable (not running or network issue)"
+            let errorMessage: String = if error is URLError {
+                "Ollama server not reachable (not running or network issue)"
             } else {
-                errorMessage = error.localizedDescription
+                error.localizedDescription
             }
-            
+
             return AIProviderStatus(
                 available: false,
                 error: errorMessage,
@@ -115,43 +114,43 @@ class OllamaProvider: AIProvider {
             )
         }
     }
-    
+
     func analyze(imageBase64: String, question: String) async throws -> String {
         let prompt = question.isEmpty ? "Please describe what you see in this image." : question
-        
+
         let requestBody = OllamaGenerateRequest(
             model: model,
             prompt: prompt,
             images: [imageBase64],
             stream: false
         )
-        
+
         let generateURL = baseURL.appendingPathComponent("/api/generate")
         var request = URLRequest(url: generateURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 60.0 // Ollama can be slower
-        
+
         let encoder = JSONEncoder()
         request.httpBody = try encoder.encode(requestBody)
-        
+
         let (data, response) = try await session.data(for: request)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AIProviderError.invalidResponse("Invalid HTTP response")
         }
-        
+
         guard (200...299).contains(httpResponse.statusCode) else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw AIProviderError.invalidResponse("HTTP \(httpResponse.statusCode): \(errorMessage)")
         }
-        
+
         let ollamaResponse = try JSONDecoder().decode(OllamaGenerateResponse.self, from: data)
-        
+
         guard !ollamaResponse.response.isEmpty else {
             throw AIProviderError.invalidResponse("Empty response from Ollama")
         }
-        
+
         return ollamaResponse.response
     }
 }
@@ -166,7 +165,7 @@ private struct OllamaModel: Codable {
     let name: String
     let modifiedAt: String
     let size: Int64
-    
+
     private enum CodingKeys: String, CodingKey {
         case name
         case modifiedAt = "modified_at"
@@ -193,7 +192,7 @@ private struct OllamaGenerateResponse: Codable {
     let promptEvalDuration: Int64?
     let evalCount: Int?
     let evalDuration: Int64?
-    
+
     private enum CodingKeys: String, CodingKey {
         case model
         case createdAt = "created_at"

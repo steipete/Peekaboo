@@ -1,13 +1,12 @@
-import Testing
-@testable import peekaboo
-import Foundation
 import CoreGraphics
+import Foundation
+@testable import peekaboo
+import Testing
 
 #if os(macOS) && swift(>=5.9)
 @available(macOS 14.0, *)
 @Suite("HotkeyCommand Tests")
 struct HotkeyCommandTests {
-    
     @Test("Hotkey command parses key combinations", arguments: [
         ("cmd,c", ["cmd", "c"]),
         ("cmd,shift,t", ["cmd", "shift", "t"]),
@@ -20,7 +19,7 @@ struct HotkeyCommandTests {
         #expect(keyNames == expected)
         #expect(command.holdDuration == 50) // default
     }
-    
+
     @Test("Hotkey command parses all options")
     func parseAllOptions() throws {
         let command = try HotkeyCommand.parse([
@@ -32,14 +31,14 @@ struct HotkeyCommandTests {
         #expect(command.holdDuration == 100)
         #expect(command.jsonOutput == true)
     }
-    
+
     @Test("Hotkey command requires keys")
     func requiresKeys() {
         #expect(throws: Error.self) {
             _ = try HotkeyCommand.parse([])
         }
     }
-    
+
     @Test("Key code mapping", arguments: [
         ("a", CGKeyCode(0x00)),
         ("cmd", CGKeyCode(0x37)),
@@ -55,24 +54,24 @@ struct HotkeyCommandTests {
         // For now, we validate that the mapping concept is sound
         #expect(true)
     }
-    
+
     @Test("Modifier detection")
     func modifierDetection() {
         let modifiers = ["cmd", "shift", "alt", "ctrl", "fn"]
         let nonModifiers = ["a", "b", "space", "return", "f1"]
-        
+
         // This would test the isModifier method in the actual implementation
         for mod in modifiers {
             // In real implementation: #expect(KeyCodeMapper.isModifier(code))
             #expect(true)
         }
-        
+
         for key in nonModifiers {
             // In real implementation: #expect(!KeyCodeMapper.isModifier(code))
             #expect(true)
         }
     }
-    
+
     @Test("Hotkey result structure")
     func hotkeyResultStructure() {
         let result = HotkeyResult(
@@ -81,13 +80,13 @@ struct HotkeyCommandTests {
             keyCount: 2,
             executionTime: 0.055
         )
-        
+
         #expect(result.success == true)
         #expect(result.keys == ["cmd", "c"])
         #expect(result.keyCount == 2)
         #expect(result.executionTime == 0.055)
     }
-    
+
     @Test("Invalid key names should fail")
     func invalidKeyNames() {
         // This would test that unknown key names throw appropriate errors

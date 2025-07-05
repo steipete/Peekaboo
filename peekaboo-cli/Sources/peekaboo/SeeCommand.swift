@@ -1,8 +1,8 @@
-import ArgumentParser
-import Foundation
-import CoreGraphics
 import AppKit
+import ArgumentParser
 import AXorcist
+import CoreGraphics
+import Foundation
 
 /// Captures a screenshot and builds an interactive UI map.
 /// This is the foundation command for all GUI automation in Peekaboo 3.0.
@@ -14,7 +14,7 @@ struct SeeCommand: AsyncParsableCommand {
         discussion: """
             The 'see' command captures a screenshot and analyzes the UI hierarchy,
             creating an interactive map that subsequent commands can use.
-            
+
             EXAMPLES:
               peekaboo see                           # Capture frontmost window
               peekaboo see --app Safari              # Capture Safari window
@@ -22,48 +22,48 @@ struct SeeCommand: AsyncParsableCommand {
               peekaboo see --window-title "GitHub"   # Capture specific window
               peekaboo see --annotate                # Generate annotated screenshot
               peekaboo see --analyze "Find login"    # Capture and analyze
-              
+
             OUTPUT:
               Returns a session ID that can be used with click, type, and other
               interaction commands. Also outputs the screenshot path and UI analysis.
         """
     )
-    
+
     @Option(help: "Application name to capture")
     var app: String?
-    
+
     @Option(help: "Specific window title to capture")
     var windowTitle: String?
-    
+
     @Option(help: "Capture mode (screen, window, frontmost)")
     var mode: CaptureMode = .frontmost
-    
+
     @Option(help: "Output path for screenshot")
     var path: String?
-    
+
     @Flag(help: "Generate annotated screenshot with interaction markers")
     var annotate = false
-    
+
     @Option(help: "Analyze captured content with AI")
     var analyze: String?
-    
+
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
-    
+
     enum CaptureMode: String, ExpressibleByArgument {
         case screen
         case window
         case frontmost
     }
-    
+
     mutating func run() async throws {
         let startTime = Date()
         let sessionCache = SessionCache()
-        
+
         do {
             // Perform capture based on mode
             let captureResult: CaptureResult
-            
+
             switch mode {
             case .screen:
                 captureResult = try await captureScreen()
@@ -76,17 +76,17 @@ struct SeeCommand: AsyncParsableCommand {
             case .frontmost:
                 captureResult = try await captureFrontmost()
             }
-            
+
             // Save screenshot (already saved during capture)
             let outputPath = try saveScreenshot(captureResult)
-            
+
             // Update session cache with UI map
             try await sessionCache.updateScreenshot(
                 path: outputPath,
                 application: captureResult.applicationName,
                 window: captureResult.windowTitle
             )
-            
+
             // Generate annotated screenshot if requested
             var annotatedPath: String?
             if annotate {
@@ -95,7 +95,7 @@ struct SeeCommand: AsyncParsableCommand {
                     sessionCache: sessionCache
                 )
             }
-            
+
             // Perform AI analysis if requested
             var analysisResult: String?
             if let prompt = analyze {
@@ -104,12 +104,12 @@ struct SeeCommand: AsyncParsableCommand {
                     prompt: prompt
                 )
             }
-            
+
             // Load session data for output
             let sessionData = await sessionCache.load()
             let elementCount = sessionData?.uiMap.count ?? 0
-            let interactableCount = sessionData?.uiMap.values.filter { $0.isActionable }.count ?? 0
-            
+            let interactableCount = sessionData?.uiMap.values.count(where: { $0.isActionable }) ?? 0
+
             // Prepare output
             if jsonOutput {
                 // Build UI element summaries
@@ -121,9 +121,9 @@ struct SeeCommand: AsyncParsableCommand {
                         is_actionable: element.isActionable
                     )
                 } ?? []
-                
+
                 let output = SeeResult(
-                    session_id: await sessionCache.sessionId,
+                    session_id: sessionCache.sessionId,
                     screenshot_path: outputPath,
                     annotated_path: annotatedPath,
                     application_name: captureResult.applicationName,
@@ -138,7 +138,7 @@ struct SeeCommand: AsyncParsableCommand {
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Screenshot captured successfully")
-                print("📍 Session ID: \(await sessionCache.sessionId)")
+                print("📍 Session ID: \(sessionCache.sessionId)")
                 print("🖼  Screenshot: \(outputPath)")
                 if let annotated = annotatedPath {
                     print("🎯 Annotated: \(annotated)")
@@ -156,7 +156,7 @@ struct SeeCommand: AsyncParsableCommand {
                 }
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
-            
+
         } catch {
             if jsonOutput {
                 ImageErrorHandler.handleError(error, jsonOutput: true)
@@ -166,15 +166,15 @@ struct SeeCommand: AsyncParsableCommand {
             throw ExitCode.failure
         }
     }
-    
+
     private func captureScreen() async throws -> CaptureResult {
         let suggestedName = "screen_\(Date().timeIntervalSince1970)"
         let outputPath = path ?? FileNameGenerator.generateFileName(format: .png)
-        
+
         // Get primary display
         let displayID = CGMainDisplayID()
         try await ScreenCapture.captureDisplay(displayID, to: outputPath)
-        
+
         return CaptureResult(
             outputPath: outputPath,
             applicationName: nil,
@@ -182,13 +182,13 @@ struct SeeCommand: AsyncParsableCommand {
             suggestedName: suggestedName
         )
     }
-    
+
     private func captureWindow(app: String, title: String?) async throws -> CaptureResult {
         let appInfo = try ApplicationFinder.findApplication(identifier: app)
         let windows = try WindowManager.getWindowsForApp(pid: appInfo.processIdentifier)
-        
+
         let targetWindow: WindowData
-        if let title = title {
+        if let title {
             guard let window = windows.first(where: { $0.title.contains(title) }) else {
                 throw CaptureError.windowNotFound
             }
@@ -199,7 +199,7 @@ struct SeeCommand: AsyncParsableCommand {
             }
             targetWindow = window
         }
-        
+
         let appName = appInfo.localizedName ?? "Unknown"
         let suggestedName = appName.lowercased().replacingOccurrences(of: " ", with: "_")
         let outputPath = path ?? FileNameGenerator.generateFileName(
@@ -207,9 +207,9 @@ struct SeeCommand: AsyncParsableCommand {
             windowTitle: targetWindow.title,
             format: .png
         )
-        
+
         try await ScreenCapture.captureWindow(targetWindow, to: outputPath)
-        
+
         return CaptureResult(
             outputPath: outputPath,
             applicationName: appName,
@@ -217,19 +217,19 @@ struct SeeCommand: AsyncParsableCommand {
             suggestedName: suggestedName
         )
     }
-    
+
     private func captureFrontmost() async throws -> CaptureResult {
         // Get frontmost application using NSWorkspace
         let workspace = NSWorkspace.shared
         guard let frontApp = workspace.frontmostApplication else {
             throw CaptureError.appNotFound("No active application")
         }
-        
+
         let windows = try WindowManager.getWindowsForApp(pid: frontApp.processIdentifier)
         guard let frontWindow = windows.first else {
             throw CaptureError.windowNotFound
         }
-        
+
         let appName = frontApp.localizedName ?? "Unknown"
         let suggestedName = appName.lowercased().replacingOccurrences(of: " ", with: "_")
         let outputPath = path ?? FileNameGenerator.generateFileName(
@@ -237,9 +237,9 @@ struct SeeCommand: AsyncParsableCommand {
             windowTitle: frontWindow.title,
             format: .png
         )
-        
+
         try await ScreenCapture.captureWindow(frontWindow, to: outputPath)
-        
+
         return CaptureResult(
             outputPath: outputPath,
             applicationName: appName,
@@ -247,63 +247,65 @@ struct SeeCommand: AsyncParsableCommand {
             suggestedName: suggestedName
         )
     }
-    
+
     private func saveScreenshot(_ captureResult: CaptureResult) throws -> String {
         // Image is already saved, just return the path
-        return captureResult.outputPath
+        captureResult.outputPath
     }
-    
-    private func generateAnnotatedScreenshot(originalPath: String, 
-                                           sessionCache: SessionCache) async throws -> String {
+
+    private func generateAnnotatedScreenshot(
+        originalPath: String,
+        sessionCache: SessionCache
+    ) async throws -> String {
         // For now, we'll create a simple annotated version by adding element IDs
         // In a full implementation, this would overlay visual markers on the screenshot
-        
+
         // Load the session data to get UI elements
         guard let sessionData = await sessionCache.load() else {
             return originalPath
         }
-        
+
         // Generate annotated filename
         let url = URL(fileURLWithPath: originalPath)
         let annotatedPath = url.deletingPathExtension()
             .appendingPathExtension("annotated")
             .appendingPathExtension(url.pathExtension)
             .path
-        
+
         // For now, just copy the original image
         // In a real implementation, we would:
         // 1. Load the image
         // 2. Draw rectangles around each UI element
         // 3. Add element IDs as labels
         // 4. Save the annotated image
-        
+
         try FileManager.default.copyItem(atPath: originalPath, toPath: annotatedPath)
-        
+
         // Log annotation info
-        let interactableElements = sessionData.uiMap.values.filter { $0.isActionable }
+        let interactableElements = sessionData.uiMap.values.filter(\.isActionable)
         print("📝 Created annotated screenshot with \(interactableElements.count) interactive elements")
-        
+
         return annotatedPath
     }
-    
+
     private func performAnalysis(imagePath: String, prompt: String) async throws -> String {
         // Get configured providers
         let aiProvidersString = ConfigurationManager.shared.getAIProviders(cliValue: nil)
         let configuredProviders = AIProviderFactory.createProviders(from: aiProvidersString)
-        
+
         guard !configuredProviders.isEmpty else {
             throw CaptureError.invalidArgument("No AI providers configured")
         }
-        
+
         // Use first available provider
         guard let analyzer = await AIProviderFactory.findAvailableProvider(from: configuredProviders) else {
             throw CaptureError.invalidArgument("No AI provider available")
         }
-        
+
         // Read image and convert to base64
         let imageData = try Data(contentsOf: URL(fileURLWithPath: imagePath))
         let base64String = imageData.base64EncodedString()
-        
+
         return try await analyzer.analyze(
             imageBase64: base64String,
             question: prompt
@@ -334,7 +336,7 @@ struct SeeResult: Codable {
     let analysis_result: String?
     let execution_time: TimeInterval
     let ui_elements: [UIElementSummary]
-    let success: Bool = true
+    var success: Bool = true
 }
 
 struct UIElementSummary: Codable {

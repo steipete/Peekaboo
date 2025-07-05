@@ -8,20 +8,25 @@ struct MockSuccessProvider: AIProvider {
     let model: String
     let mockResponse: String
     let mockDelay: TimeInterval
-    
-    init(name: String = "mock", model: String = "test-model", mockResponse: String = "Mock analysis result", mockDelay: TimeInterval = 0) {
+
+    init(
+        name: String = "mock",
+        model: String = "test-model",
+        mockResponse: String = "Mock analysis result",
+        mockDelay: TimeInterval = 0
+    ) {
         self.name = name
         self.model = model
         self.mockResponse = mockResponse
         self.mockDelay = mockDelay
     }
-    
+
     var isAvailable: Bool {
         get async {
             true
         }
     }
-    
+
     func checkAvailability() async -> AIProviderStatus {
         AIProviderStatus(
             available: true,
@@ -34,7 +39,7 @@ struct MockSuccessProvider: AIProvider {
             )
         )
     }
-    
+
     func analyze(imageBase64: String, question: String) async throws -> String {
         if mockDelay > 0 {
             try await Task.sleep(nanoseconds: UInt64(mockDelay * 1_000_000_000))
@@ -47,19 +52,19 @@ struct MockFailureProvider: AIProvider {
     let name: String
     let model: String
     let error: AIProviderError
-    
+
     init(name: String = "mock-fail", model: String = "fail-model", error: AIProviderError = .unknown("Mock error")) {
         self.name = name
         self.model = model
         self.error = error
     }
-    
+
     var isAvailable: Bool {
         get async {
             false
         }
     }
-    
+
     func checkAvailability() async -> AIProviderStatus {
         AIProviderStatus(
             available: false,
@@ -72,7 +77,7 @@ struct MockFailureProvider: AIProvider {
             )
         )
     }
-    
+
     func analyze(imageBase64: String, question: String) async throws -> String {
         throw error
     }
@@ -81,18 +86,18 @@ struct MockFailureProvider: AIProvider {
 struct MockUnavailableProvider: AIProvider {
     let name: String
     let model: String
-    
+
     init(name: String = "mock-unavailable", model: String = "unavailable-model") {
         self.name = name
         self.model = model
     }
-    
+
     var isAvailable: Bool {
         get async {
             false
         }
     }
-    
+
     func checkAvailability() async -> AIProviderStatus {
         AIProviderStatus(
             available: false,
@@ -105,7 +110,7 @@ struct MockUnavailableProvider: AIProvider {
             )
         )
     }
-    
+
     func analyze(imageBase64: String, question: String) async throws -> String {
         throw AIProviderError.notConfigured("Provider not available")
     }
@@ -115,41 +120,41 @@ struct MockUnavailableProvider: AIProvider {
 
 class MockURLProtocol: URLProtocol {
     nonisolated(unsafe) static var mockResponses: [URL: (data: Data?, response: URLResponse?, error: Error?)] = [:]
-    
+
     override class func canInit(with request: URLRequest) -> Bool {
-        return true
+        true
     }
-    
+
     override class func canonicalRequest(for request: URLRequest) -> URLRequest {
-        return request
+        request
     }
-    
+
     override func startLoading() {
         guard let url = request.url,
               let mockResponse = MockURLProtocol.mockResponses[url] else {
             client?.urlProtocol(self, didFailWithError: URLError(.badURL))
             return
         }
-        
+
         if let response = mockResponse.response {
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         }
-        
+
         if let data = mockResponse.data {
             client?.urlProtocol(self, didLoad: data)
         }
-        
+
         if let error = mockResponse.error {
             client?.urlProtocol(self, didFailWithError: error)
         } else {
             client?.urlProtocolDidFinishLoading(self)
         }
     }
-    
+
     override func stopLoading() {
         // Nothing to do
     }
-    
+
     static func reset() {
         mockResponses.removeAll()
     }

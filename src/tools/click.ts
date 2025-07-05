@@ -81,7 +81,7 @@ export async function clickToolHandler(
     }
     
     // Wait timeout
-    args.push("--wait-for", input.wait_for.toString());
+    args.push("--wait-for", (input.wait_for ?? 5000).toString());
     
     // Click type
     if (input.double) {

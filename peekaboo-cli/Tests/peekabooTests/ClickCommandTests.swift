@@ -1,12 +1,11 @@
-import Testing
-@testable import peekaboo
 import Foundation
+@testable import peekaboo
+import Testing
 
 #if os(macOS) && swift(>=5.9)
 @available(macOS 14.0, *)
 @Suite("ClickCommand Tests")
 struct ClickCommandTests {
-    
     @Test("Click command parses query argument")
     func parseQueryArgument() throws {
         let command = try ClickCommand.parse(["Sign In"])
@@ -17,7 +16,7 @@ struct ClickCommandTests {
         #expect(command.double == false)
         #expect(command.right == false)
     }
-    
+
     @Test("Click command parses element ID")
     func parseElementID() throws {
         let command = try ClickCommand.parse(["--on", "B1"])
@@ -25,7 +24,7 @@ struct ClickCommandTests {
         #expect(command.on == "B1")
         #expect(command.coords == nil)
     }
-    
+
     @Test("Click command parses coordinates")
     func parseCoordinates() throws {
         let command = try ClickCommand.parse(["--coords", "100,200"])
@@ -33,7 +32,7 @@ struct ClickCommandTests {
         #expect(command.on == nil)
         #expect(command.coords == "100,200")
     }
-    
+
     @Test("Click command parses all options")
     func parseAllOptions() throws {
         let command = try ClickCommand.parse([
@@ -50,14 +49,14 @@ struct ClickCommandTests {
         #expect(command.right == false)
         #expect(command.jsonOutput == true)
     }
-    
+
     @Test("Click command allows right-click")
     func parseRightClick() throws {
         let command = try ClickCommand.parse(["--on", "B1", "--right"])
         #expect(command.right == true)
         #expect(command.double == false)
     }
-    
+
     @Test("Click result structure")
     func clickResultStructure() {
         let result = ClickResult(
@@ -67,7 +66,7 @@ struct ClickCommandTests {
             waitTime: 1.5,
             executionTime: 2.0
         )
-        
+
         #expect(result.success == true)
         #expect(result.clickedElement == "AXButton: Save")
         #expect(result.clickLocation["x"] == 150.0)
@@ -75,7 +74,7 @@ struct ClickCommandTests {
         #expect(result.waitTime == 1.5)
         #expect(result.executionTime == 2.0)
     }
-    
+
     @Test("Click target validation", arguments: [
         (query: "Button", on: nil, coords: nil, valid: true),
         (query: nil, on: "B1", coords: nil, valid: true),
@@ -84,7 +83,7 @@ struct ClickCommandTests {
     ])
     func validateClickTarget(query: String?, on: String?, coords: String?, valid: Bool) {
         var args: [String] = []
-        
+
         if let q = query {
             args.append(q)
         }
@@ -94,7 +93,7 @@ struct ClickCommandTests {
         if let c = coords {
             args.append(contentsOf: ["--coords", c])
         }
-        
+
         if valid {
             #expect(throws: Never.self) {
                 _ = try ClickCommand.parse(args)

@@ -18,7 +18,7 @@ struct ImageSaver: Sendable {
             )
             throw CaptureError.fileWriteError(path, error)
         }
-        
+
         let url = URL(fileURLWithPath: path)
 
         // Create parent directory if it doesn't exist
