@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import AXorcist
+import AppKit
 
 /// Process-isolated session cache for UI automation state.
 /// Implements atomic file operations to ensure data integrity across processes.
@@ -107,46 +108,96 @@ actor SessionCache {
     }
     
     /// Build UI element map for the specified application
+    @MainActor
     private func buildUIMap(for appName: String, window: String?) async throws -> [String: SessionData.UIElement] {
-        // TODO: Implement full AXorcist integration
-        // For now, create a mock UI map with proper IDs
         var uiMap: [String: SessionData.UIElement] = [:]
         var roleCounters: [String: Int] = [:]
         
-        // This is a placeholder - in real implementation, we'd traverse the AX tree
-        // For demo purposes, create some sample elements
-        let mockElements: [(role: String, title: String?, frame: CGRect)] = [
-            ("AXButton", "Save", CGRect(x: 100, y: 100, width: 80, height: 30)),
-            ("AXButton", "Cancel", CGRect(x: 200, y: 100, width: 80, height: 30)),
-            ("AXTextField", "Username", CGRect(x: 100, y: 150, width: 200, height: 30)),
-            ("AXTextField", "Password", CGRect(x: 100, y: 190, width: 200, height: 30)),
-            ("AXLink", "Forgot Password?", CGRect(x: 100, y: 230, width: 120, height: 20))
-        ]
+        // Find the application using AXorcist
+        guard let app = NSWorkspace.shared.runningApplications.first(where: { 
+            $0.localizedName == appName || $0.bundleIdentifier == appName 
+        }) else {
+            // If app not found, return empty map
+            return uiMap
+        }
         
-        for (index, mock) in mockElements.enumerated() {
-            let prefix = ElementIDGenerator.prefix(for: mock.role)
-            let counter = (roleCounters[prefix] ?? 0) + 1
-            roleCounters[prefix] = counter
-            
-            let peekabooId = "\(prefix)\(counter)"
-            let elementId = "element_\(index)"
-            
-            let element = SessionData.UIElement(
-                id: peekabooId,
-                elementId: elementId,
-                role: mock.role,
-                title: mock.title,
-                label: mock.title,
-                value: nil,
-                frame: mock.frame,
-                isActionable: ElementIDGenerator.isActionableRole(mock.role),
-                parentId: nil
-            )
-            
-            uiMap[peekabooId] = element // Store by peekaboo ID for easy lookup
+        // Create AXUIElement for the application
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        
+        // Get all windows if no specific window is requested
+        let windows: [Element]
+        if let windowTitle = window {
+            // Find specific window
+            windows = appElement.children()?.filter { element in
+                element.title() == windowTitle
+            } ?? []
+        } else {
+            // Get all windows
+            windows = appElement.windows() ?? []
+        }
+        
+        // Process each window
+        for window in windows {
+            await processElement(window, parentId: nil, uiMap: &uiMap, roleCounters: &roleCounters)
         }
         
         return uiMap
+    }
+    
+    /// Recursively process an element and its children
+    @MainActor
+    private func processElement(_ element: Element, 
+                              parentId: String?,
+                              uiMap: inout [String: SessionData.UIElement],
+                              roleCounters: inout [String: Int]) async {
+        // Get element properties
+        let role = element.role() ?? "AXGroup"
+        let title = element.title()
+        let label = title // AXorcist doesn't expose label separately
+        let value = element.value() as? String
+        
+        // Get element bounds
+        let position = element.position()
+        let size = element.size()
+        let frame: CGRect
+        if let pos = position, let sz = size {
+            frame = CGRect(x: pos.x, y: pos.y, width: sz.width, height: sz.height)
+        } else {
+            frame = .zero
+        }
+        
+        // Generate Peekaboo ID
+        let prefix = ElementIDGenerator.prefix(for: role)
+        let counter = (roleCounters[prefix] ?? 0) + 1
+        roleCounters[prefix] = counter
+        let peekabooId = "\(prefix)\(counter)"
+        
+        // Create unique element ID
+        let elementId = "element_\(uiMap.count)"
+        
+        // Create UI element
+        let uiElement = SessionData.UIElement(
+            id: peekabooId,
+            elementId: elementId,
+            role: role,
+            title: title,
+            label: label,
+            value: value,
+            frame: frame,
+            isActionable: ElementIDGenerator.isActionableRole(role),
+            parentId: parentId
+        )
+        
+        // Store in map
+        uiMap[peekabooId] = uiElement
+        
+        // Process children recursively
+        if let children = element.children() {
+            for child in children {
+                await processElement(child, parentId: peekabooId, uiMap: &uiMap, roleCounters: &roleCounters)
+            }
+        }
     }
     
     /// Find UI elements matching a query
