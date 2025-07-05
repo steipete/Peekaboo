@@ -1,7 +1,7 @@
 import ArgumentParser
-import Foundation
-import CoreGraphics
 import AXorcist
+import CoreGraphics
+import Foundation
 
 /// Presses key combinations like Cmd+C, Ctrl+A, etc.
 /// Supports modifier keys and special keys.
@@ -13,51 +13,51 @@ struct HotkeyCommand: AsyncParsableCommand {
         discussion: """
             The 'hotkey' command simulates keyboard shortcuts by pressing
             multiple keys simultaneously, like Cmd+C for copy or Cmd+Shift+T.
-            
+
             EXAMPLES:
               peekaboo hotkey --keys "cmd,c"          # Copy
               peekaboo hotkey --keys "cmd,v"          # Paste
               peekaboo hotkey --keys "cmd,shift,t"    # Reopen closed tab
               peekaboo hotkey --keys "cmd,space"      # Spotlight
               peekaboo hotkey --keys "ctrl,a"         # Select all (in terminal)
-              
+
             KEY NAMES:
               Modifiers: cmd, shift, alt/option, ctrl, fn
               Letters: a-z
               Numbers: 0-9
               Special: space, return, tab, escape, delete, arrow_up, arrow_down, arrow_left, arrow_right
               Function: f1-f12
-              
+
             The keys are pressed in the order given and released in reverse order.
         """
     )
-    
+
     @Option(help: "Comma-separated list of keys to press")
     var keys: String
-    
+
     @Option(help: "Delay between key press and release in milliseconds")
     var holdDuration: Int = 50
-    
+
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
-    
+
     mutating func run() async throws {
         let startTime = Date()
-        
+
         do {
             // Parse key names
             let keyNames = keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
-            
+
             guard !keyNames.isEmpty else {
                 throw ValidationError("No keys specified")
             }
-            
+
             // Perform hotkey using InputEvents utility
             try InputEvents.performHotkey(
                 keys: keyNames,
                 holdDuration: Double(holdDuration) / 1000.0
             )
-            
+
             // Output results
             if jsonOutput {
                 let output = HotkeyResult(
@@ -72,7 +72,7 @@ struct HotkeyCommand: AsyncParsableCommand {
                 print("🎹 Keys: \(keyNames.joined(separator: " + "))")
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
-            
+
         } catch {
             if jsonOutput {
                 outputError(

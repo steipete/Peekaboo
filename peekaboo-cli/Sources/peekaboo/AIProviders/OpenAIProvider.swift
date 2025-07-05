@@ -8,27 +8,27 @@ class OpenAIProvider: AIProvider {
     let name = "openai"
     let model: String
     private let baseURL = URL(string: "https://api.openai.com/v1/chat/completions")!
-    
+
     var apiKey: String? {
         ConfigurationManager.shared.getOpenAIAPIKey()
     }
-    
+
     var session: URLSession {
         URLSession.shared
     }
-    
+
     init(model: String = "gpt-4o") {
         self.model = model
     }
-    
+
     var isAvailable: Bool {
         get async {
             await checkAvailability().available
         }
     }
-    
+
     func checkAvailability() async -> AIProviderStatus {
-        guard let apiKey = apiKey, !apiKey.isEmpty else {
+        guard let apiKey, !apiKey.isEmpty else {
             return AIProviderStatus(
                 available: false,
                 error: "OpenAI API key not configured (OPENAI_API_KEY environment variable missing)",
@@ -40,7 +40,7 @@ class OpenAIProvider: AIProvider {
                 )
             )
         }
-        
+
         // For now, we'll assume OpenAI is available if API key is present
         // In a more robust implementation, we could make a test API call
         return AIProviderStatus(
@@ -54,14 +54,14 @@ class OpenAIProvider: AIProvider {
             )
         )
     }
-    
+
     func analyze(imageBase64: String, question: String) async throws -> String {
-        guard let apiKey = apiKey else {
+        guard let apiKey else {
             throw AIProviderError.apiKeyMissing("OPENAI_API_KEY environment variable not set")
         }
-        
+
         let prompt = question.isEmpty ? "Please describe what you see in this image." : question
-        
+
         let requestBody = OpenAIRequest(
             model: model,
             messages: [
@@ -77,40 +77,40 @@ class OpenAIProvider: AIProvider {
             ],
             maxTokens: 1000
         )
-        
+
         var request = URLRequest(url: baseURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 30.0
-        
+
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
         request.httpBody = try encoder.encode(requestBody)
-        
+
         let (data, response) = try await session.data(for: request)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AIProviderError.invalidResponse("Invalid HTTP response")
         }
-        
+
         if httpResponse.statusCode == 401 {
             throw AIProviderError.apiKeyMissing("Invalid OpenAI API key")
         }
-        
+
         guard (200...299).contains(httpResponse.statusCode) else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw AIProviderError.invalidResponse("HTTP \(httpResponse.statusCode): \(errorMessage)")
         }
-        
+
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         let openAIResponse = try decoder.decode(OpenAIResponse.self, from: data)
-        
+
         guard let content = openAIResponse.choices.first?.message.content else {
             throw AIProviderError.invalidResponse("No content in OpenAI response")
         }
-        
+
         return content
     }
 }
@@ -131,29 +131,29 @@ private struct OpenAIMessage: Codable {
 private enum OpenAIContent: Codable {
     case text(OpenAITextContent)
     case imageURL(OpenAIImageContent)
-    
+
     private enum CodingKeys: String, CodingKey {
         case type
         case text
         case imageURL = "image_url"
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .text(let content):
+        case let .text(content):
             try container.encode("text", forKey: .type)
             try container.encode(content.text, forKey: .text)
-        case .imageURL(let content):
+        case let .imageURL(content):
             try container.encode("image_url", forKey: .type)
             try container.encode(content.imageURL, forKey: .imageURL)
         }
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(String.self, forKey: .type)
-        
+
         switch type {
         case "text":
             let text = try container.decode(String.self, forKey: .text)
@@ -162,7 +162,11 @@ private enum OpenAIContent: Codable {
             let imageURL = try container.decode(OpenAIImageURL.self, forKey: .imageURL)
             self = .imageURL(OpenAIImageContent(imageURL: imageURL))
         default:
-            throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "Unknown content type: \(type)")
+            throw DecodingError.dataCorruptedError(
+                forKey: .type,
+                in: container,
+                debugDescription: "Unknown content type: \(type)"
+            )
         }
     }
 }

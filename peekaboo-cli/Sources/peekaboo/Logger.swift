@@ -70,7 +70,7 @@ final class Logger: @unchecked Sendable {
             self.debugLogs.removeAll()
         }
     }
-    
+
     /// For testing - ensures all pending operations are complete
     func flush() {
         queue.sync(flags: .barrier) {

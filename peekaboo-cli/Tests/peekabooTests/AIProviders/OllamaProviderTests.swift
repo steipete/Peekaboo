@@ -1,27 +1,26 @@
-import XCTest
 @testable import peekaboo
+import XCTest
 
 final class OllamaProviderTests: XCTestCase {
-    
     override func setUp() {
         super.setUp()
         MockURLProtocol.reset()
     }
-    
+
     override func tearDown() {
         super.tearDown()
         MockURLProtocol.reset()
     }
-    
+
     func testOllamaProviderInitialization() {
         let provider = OllamaProvider(model: "llava:latest")
         XCTAssertEqual(provider.name, "ollama")
         XCTAssertEqual(provider.model, "llava:latest")
-        
+
         let defaultProvider = OllamaProvider()
         XCTAssertEqual(defaultProvider.model, "llava:latest")
     }
-    
+
     func testCheckAvailabilityWithRunningServer() async {
         let mockTagsResponse = """
         {
@@ -31,23 +30,23 @@ final class OllamaProviderTests: XCTestCase {
             ]
         }
         """
-        
+
         let config = URLSessionConfiguration.default
         config.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: config)
-        
+
         let url = URL(string: "http://localhost:11434/api/tags")!
         MockURLProtocol.mockResponses[url] = (
             data: mockTagsResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
             error: nil
         )
-        
+
         let provider = TestableOllamaProvider(model: "llava:latest", session: session)
-        
+
         let isAvailable = await provider.isAvailable
         XCTAssertTrue(isAvailable)
-        
+
         let status = await provider.checkAvailability()
         XCTAssertTrue(status.available)
         XCTAssertNil(status.error)
@@ -55,7 +54,7 @@ final class OllamaProviderTests: XCTestCase {
         XCTAssertEqual(status.details?.modelAvailable, true)
         XCTAssertEqual(status.details?.modelList?.count, 2)
     }
-    
+
     func testCheckAvailabilityWithoutModel() async {
         let mockTagsResponse = """
         {
@@ -64,23 +63,23 @@ final class OllamaProviderTests: XCTestCase {
             ]
         }
         """
-        
+
         let config = URLSessionConfiguration.default
         config.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: config)
-        
+
         let url = URL(string: "http://localhost:11434/api/tags")!
         MockURLProtocol.mockResponses[url] = (
             data: mockTagsResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
             error: nil
         )
-        
+
         let provider = TestableOllamaProvider(model: "llava:latest", session: session)
-        
+
         let isAvailable = await provider.isAvailable
         XCTAssertFalse(isAvailable)
-        
+
         let status = await provider.checkAvailability()
         XCTAssertFalse(status.available)
         XCTAssertNotNil(status.error)
@@ -88,31 +87,31 @@ final class OllamaProviderTests: XCTestCase {
         XCTAssertEqual(status.details?.serverReachable, true)
         XCTAssertEqual(status.details?.modelAvailable, false)
     }
-    
+
     func testCheckAvailabilityServerNotRunning() async {
         let config = URLSessionConfiguration.default
         config.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: config)
-        
+
         let url = URL(string: "http://localhost:11434/api/tags")!
         MockURLProtocol.mockResponses[url] = (
             data: nil,
             response: nil,
             error: URLError(.cannotConnectToHost)
         )
-        
+
         let provider = TestableOllamaProvider(session: session)
-        
+
         let isAvailable = await provider.isAvailable
         XCTAssertFalse(isAvailable)
-        
+
         let status = await provider.checkAvailability()
         XCTAssertFalse(status.available)
         XCTAssertNotNil(status.error)
         XCTAssertTrue(status.error?.contains("not reachable") ?? false)
         XCTAssertEqual(status.details?.serverReachable, false)
     }
-    
+
     func testAnalyzeSuccessResponse() async throws {
         let mockGenerateResponse = """
         {
@@ -129,24 +128,24 @@ final class OllamaProviderTests: XCTestCase {
             "eval_duration": 100000000
         }
         """
-        
+
         let config = URLSessionConfiguration.default
         config.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: config)
-        
+
         let url = URL(string: "http://localhost:11434/api/generate")!
         MockURLProtocol.mockResponses[url] = (
             data: mockGenerateResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
             error: nil
         )
-        
+
         let provider = TestableOllamaProvider(session: session)
         let result = try await provider.analyze(imageBase64: "fake-base64", question: "What is this?")
-        
+
         XCTAssertEqual(result, "This image shows a beautiful landscape with mountains.")
     }
-    
+
     func testAnalyzeEmptyQuestion() async throws {
         let mockGenerateResponse = """
         {
@@ -156,39 +155,39 @@ final class OllamaProviderTests: XCTestCase {
             "done": true
         }
         """
-        
+
         let config = URLSessionConfiguration.default
         config.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: config)
-        
+
         let url = URL(string: "http://localhost:11434/api/generate")!
         MockURLProtocol.mockResponses[url] = (
             data: mockGenerateResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
             error: nil
         )
-        
+
         let provider = TestableOllamaProvider(session: session)
         let result = try await provider.analyze(imageBase64: "fake-base64", question: "")
-        
+
         // Should use default prompt when question is empty
         XCTAssertEqual(result, "This appears to be a screenshot of a terminal.")
     }
-    
+
     func testAnalyzeServerError() async throws {
         let config = URLSessionConfiguration.default
         config.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: config)
-        
+
         let url = URL(string: "http://localhost:11434/api/generate")!
         MockURLProtocol.mockResponses[url] = (
             data: "Model not found".data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil),
             error: nil
         )
-        
+
         let provider = TestableOllamaProvider(session: session)
-        
+
         do {
             _ = try await provider.analyze(imageBase64: "fake-base64", question: "What is this?")
             XCTFail("Expected error to be thrown")
@@ -196,7 +195,7 @@ final class OllamaProviderTests: XCTestCase {
             XCTAssertTrue(error.errorDescription?.contains("HTTP 404") ?? false)
         }
     }
-    
+
     func testAnalyzeEmptyResponse() async throws {
         let mockGenerateResponse = """
         {
@@ -206,20 +205,20 @@ final class OllamaProviderTests: XCTestCase {
             "done": true
         }
         """
-        
+
         let config = URLSessionConfiguration.default
         config.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: config)
-        
+
         let url = URL(string: "http://localhost:11434/api/generate")!
         MockURLProtocol.mockResponses[url] = (
             data: mockGenerateResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
             error: nil
         )
-        
+
         let provider = TestableOllamaProvider(session: session)
-        
+
         do {
             _ = try await provider.analyze(imageBase64: "fake-base64", question: "What is this?")
             XCTFail("Expected error to be thrown")
@@ -227,13 +226,13 @@ final class OllamaProviderTests: XCTestCase {
             XCTAssertTrue(error.errorDescription?.contains("Empty response from Ollama") ?? false)
         }
     }
-    
+
     func testCustomBaseURL() {
         // Test with environment variable set
         let provider = TestableOllamaProvider(baseURL: "http://custom-server:12345")
         XCTAssertEqual(provider.testBaseURL.absoluteString, "http://custom-server:12345")
     }
-    
+
     func testModelMatching() async {
         // Test various model name matching scenarios
         let mockTagsResponse = """
@@ -245,28 +244,28 @@ final class OllamaProviderTests: XCTestCase {
             ]
         }
         """
-        
+
         let config = URLSessionConfiguration.default
         config.protocolClasses = [MockURLProtocol.self]
         let session = URLSession(configuration: config)
-        
+
         let url = URL(string: "http://localhost:11434/api/tags")!
         MockURLProtocol.mockResponses[url] = (
             data: mockTagsResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
             error: nil
         )
-        
+
         // Test exact match
         let provider1 = TestableOllamaProvider(model: "llava:latest", session: session)
         let status1 = await provider1.checkAvailability()
         XCTAssertTrue(status1.available)
-        
+
         // Test prefix match
         let provider2 = TestableOllamaProvider(model: "llava", session: session)
         let status2 = await provider2.checkAvailability()
         XCTAssertTrue(status2.available)
-        
+
         // Test no match
         let provider3 = TestableOllamaProvider(model: "mistral:latest", session: session)
         let status3 = await provider3.checkAvailability()
@@ -279,23 +278,24 @@ final class OllamaProviderTests: XCTestCase {
 private class TestableOllamaProvider: OllamaProvider {
     private let testSession: URLSession?
     private let customBaseURL: String?
-    
+
     var testBaseURL: URL {
-        let urlString = customBaseURL ?? ProcessInfo.processInfo.environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
+        let urlString = customBaseURL ?? ProcessInfo.processInfo
+            .environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
         return URL(string: urlString)!
     }
-    
+
     init(model: String = "llava:latest", session: URLSession? = nil, baseURL: String? = nil) {
-        self.testSession = session
-        self.customBaseURL = baseURL
+        testSession = session
+        customBaseURL = baseURL
         super.init(model: model)
     }
-    
+
     override var session: URLSession {
-        return testSession ?? URLSession.shared
+        testSession ?? URLSession.shared
     }
-    
+
     override var baseURL: URL {
-        return testBaseURL
+        testBaseURL
     }
 }

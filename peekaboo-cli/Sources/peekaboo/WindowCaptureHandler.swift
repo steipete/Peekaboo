@@ -30,22 +30,22 @@ struct WindowCaptureHandler {
 
         return allSavedFiles
     }
-    
+
     /// Captures all windows for a single application
     private func captureAppWindows(
         targetApp: NSRunningApplication,
         totalWindowIndex: inout Int
     ) async throws -> [SavedFile] {
         Logger.shared.debug("Capturing windows for app: \(targetApp.localizedName ?? "Unknown")")
-        
+
         try await activateAppIfNeeded(targetApp)
-        
+
         let windows = try WindowManager.getWindowsForApp(pid: targetApp.processIdentifier)
         if windows.isEmpty {
             Logger.shared.debug("No windows found for app: \(targetApp.localizedName ?? "Unknown")")
             return []
         }
-        
+
         var savedFiles: [SavedFile] = []
         for window in windows {
             let savedFile = try await captureSingleWindowWithIndex(
@@ -56,10 +56,10 @@ struct WindowCaptureHandler {
             savedFiles.append(savedFile)
             totalWindowIndex += 1
         }
-        
+
         return savedFiles
     }
-    
+
     /// Activates the app if needed based on capture focus settings
     private func activateAppIfNeeded(_ app: NSRunningApplication) async throws {
         if captureFocus == .foreground || (captureFocus == .auto && !app.isActive) {
@@ -68,7 +68,7 @@ struct WindowCaptureHandler {
             try await Task.sleep(nanoseconds: 200_000_000)
         }
     }
-    
+
     /// Captures a single window with index
     private func captureSingleWindowWithIndex(
         window: WindowData,
@@ -87,9 +87,9 @@ struct WindowCaptureHandler {
             fileName: fileName,
             isSingleCapture: false
         )
-        
+
         try await captureWindow(window, to: filePath)
-        
+
         return SavedFile(
             path: filePath,
             item_label: targetApp.localizedName,

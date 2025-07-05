@@ -1,7 +1,7 @@
 import ArgumentParser
-import Foundation
-import CoreGraphics
 import AXorcist
+import CoreGraphics
+import Foundation
 
 /// Clicks on UI elements identified in the current session.
 /// Supports element queries, coordinates, and smart waiting.
@@ -14,7 +14,7 @@ struct ClickCommand: AsyncParsableCommand {
             The 'click' command interacts with UI elements captured by 'see'.
             It supports intelligent element finding, actionability checks, and
             automatic waiting for elements to become available.
-            
+
             EXAMPLES:
               peekaboo click "Sign In"              # Click button with text
               peekaboo click --id element_42        # Click specific element ID
@@ -22,54 +22,54 @@ struct ClickCommand: AsyncParsableCommand {
               peekaboo click "Submit" --wait 5      # Wait up to 5s for element
               peekaboo click "Menu" --double        # Double-click
               peekaboo click "File" --right         # Right-click
-              
+
             ELEMENT MATCHING:
               Elements are matched by searching text in:
               - Title/Label content
               - Value text
               - Role descriptions
-              
+
               Use --id for precise element targeting from 'see' output.
         """
     )
-    
+
     @Argument(help: "Element text or query to click")
     var query: String?
-    
+
     @Option(help: "Session ID (uses latest if not specified)")
     var session: String?
-    
+
     @Option(help: "Element ID to click (e.g., B1, T2)")
     var on: String?
-    
+
     @Option(help: "Click at coordinates (x,y)")
     var coords: String?
-    
+
     @Option(help: "Maximum milliseconds to wait for element")
     var waitFor: Int = 5000
-    
+
     @Flag(help: "Double-click instead of single click")
     var double = false
-    
+
     @Flag(help: "Right-click (secondary click)")
     var right = false
-    
+
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
-    
+
     mutating func run() async throws {
         let startTime = Date()
-        
+
         do {
             // Load session
             let sessionCache = SessionCache(sessionId: session)
-            guard let sessionData = await sessionCache.load() else {
+            guard await sessionCache.load() != nil else {
                 throw PeekabooError.sessionNotFound
             }
-            
+
             // Determine click target
             let clickTarget: ClickTarget
-            
+
             if let elementId = on {
                 // Click by element ID with auto-wait
                 let element = try await waitForElement(
@@ -78,7 +78,7 @@ struct ClickCommand: AsyncParsableCommand {
                     timeout: waitFor
                 )
                 clickTarget = .element(element)
-                
+
             } else if let coordString = coords {
                 // Click by coordinates
                 let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -88,7 +88,7 @@ struct ClickCommand: AsyncParsableCommand {
                     throw ValidationError("Invalid coordinates format. Use: x,y")
                 }
                 clickTarget = .coordinates(CGPoint(x: x, y: y))
-                
+
             } else if let searchQuery = query {
                 // Find element by query with auto-wait
                 let element = try await waitForElementByQuery(
@@ -97,17 +97,17 @@ struct ClickCommand: AsyncParsableCommand {
                     timeout: waitFor
                 )
                 clickTarget = .element(element)
-                
+
             } else {
                 throw ValidationError("Specify an element query, --on, or --coords")
             }
-            
+
             // Perform the click
             let clickResult = try await performClick(
                 target: clickTarget,
                 clickType: ClickType(double: double, right: right)
             )
-            
+
             // Output results
             if jsonOutput {
                 let output = ClickResult(
@@ -129,7 +129,7 @@ struct ClickCommand: AsyncParsableCommand {
                 }
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
-            
+
         } catch {
             if jsonOutput {
                 outputError(
@@ -143,53 +143,56 @@ struct ClickCommand: AsyncParsableCommand {
             throw ExitCode.failure
         }
     }
-    
-    private func performClick(target: ClickTarget,
-                            clickType: ClickType) async throws -> InternalClickResult {
-        
+
+    private func performClick(
+        target: ClickTarget,
+        clickType: ClickType
+    ) async throws -> InternalClickResult {
         // Get the click location and element info
         let (clickLocation, elementInfo): (CGPoint, String?) = {
             switch target {
-            case .element(let element):
+            case let .element(element):
                 // Calculate center of element
                 let center = CGPoint(
                     x: element.frame.midX,
                     y: element.frame.midY
                 )
-                
+
                 let info = "\(element.role): \(element.title ?? element.label ?? element.id)"
                 return (center, info)
-                
-            case .coordinates(let point):
+
+            case let .coordinates(point):
                 return (point, nil)
             }
         }()
-        
+
         // Perform the actual click using CoreGraphics events
         let clickPoint = CGPoint(x: clickLocation.x, y: clickLocation.y)
         let mouseButton: InputEvents.MouseButton = clickType.right ? .right : .left
         let clickCount = clickType.double ? 2 : 1
-        
+
         try InputEvents.click(at: clickPoint, button: mouseButton, clickCount: clickCount)
-        
+
         // Small delay to ensure click is processed
         try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-        
+
         return InternalClickResult(
             location: clickLocation,
             elementInfo: elementInfo,
             waitTime: 0 // Wait time is now handled in waitForElement
         )
     }
-    
-    private func waitForElement(elementId: String,
-                              sessionCache: SessionCache,
-                              timeout: Int) async throws -> SessionCache.SessionData.UIElement {
+
+    private func waitForElement(
+        elementId: String,
+        sessionCache: SessionCache,
+        timeout: Int
+    ) async throws -> SessionCache.SessionData.UIElement {
         let startTime = Date()
         let timeoutSeconds = Double(timeout) / 1000.0
         let deadline = startTime.addingTimeInterval(timeoutSeconds)
         let retryInterval: UInt64 = 100_000_000 // 100ms in nanoseconds
-        
+
         // First, try to find in the current session data
         if let sessionData = await sessionCache.load(),
            let element = sessionData.uiMap[elementId] {
@@ -198,51 +201,53 @@ struct ClickCommand: AsyncParsableCommand {
                 return element
             }
         }
-        
+
         // Enter retry loop
         while Date() < deadline {
             // In a real implementation, we would:
             // 1. Re-query the accessibility tree
             // 2. Find elements matching the original element's properties
             // 3. Check if they're actionable
-            
+
             // For now, just check the cached data
             if let sessionData = await sessionCache.load(),
                let element = sessionData.uiMap[elementId],
                element.isActionable {
                 return element
             }
-            
+
             // Wait before retrying
             try await Task.sleep(nanoseconds: retryInterval)
         }
-        
+
         throw PeekabooError.interactionFailed(
             "Element '\(elementId)' not found or not actionable after \(timeout)ms"
         )
     }
-    
-    private func waitForElementByQuery(query: String,
-                                     sessionCache: SessionCache,
-                                     timeout: Int) async throws -> SessionCache.SessionData.UIElement {
+
+    private func waitForElementByQuery(
+        query: String,
+        sessionCache: SessionCache,
+        timeout: Int
+    ) async throws -> SessionCache.SessionData.UIElement {
         let startTime = Date()
         let timeoutSeconds = Double(timeout) / 1000.0
         let deadline = startTime.addingTimeInterval(timeoutSeconds)
         let retryInterval: UInt64 = 100_000_000 // 100ms in nanoseconds
-        
+
         while Date() < deadline {
             // Find elements matching the query
             let elements = await sessionCache.findElements(matching: query)
-                .filter { $0.isActionable }
-            
+                .filter(\.isActionable)
+
             if let element = elements.first {
                 return element
             }
-            
+
             // Wait before retrying
             try await Task.sleep(nanoseconds: retryInterval)
         }
-        
+
         throw PeekabooError.interactionFailed(
             "No actionable element found matching '\(query)' after \(timeout)ms"
         )
@@ -259,9 +264,9 @@ private enum ClickTarget {
 private struct ClickType {
     let double: Bool
     let right: Bool
-    
+
     func toAXClickType() -> String { // TODO: Change to AXMouseButton when available
-        return right ? "right" : "left"
+        right ? "right" : "left"
     }
 }
 
@@ -279,9 +284,14 @@ struct ClickResult: Codable {
     let clickLocation: [String: Double]
     let waitTime: Double
     let executionTime: TimeInterval
-    
-    init(success: Bool, clickedElement: String?, clickLocation: CGPoint, 
-         waitTime: Double, executionTime: TimeInterval) {
+
+    init(
+        success: Bool,
+        clickedElement: String?,
+        clickLocation: CGPoint,
+        waitTime: Double,
+        executionTime: TimeInterval
+    ) {
         self.success = success
         self.clickedElement = clickedElement
         self.clickLocation = ["x": clickLocation.x, "y": clickLocation.y]

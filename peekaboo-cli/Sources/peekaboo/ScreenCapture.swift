@@ -10,82 +10,80 @@ struct ScreenCapture: Sendable {
     static func captureDisplay(
         _ displayID: CGDirectDisplayID, to path: String, format: ImageFormat = .png
     ) async throws {
-        do {
-            // Get available content
-            let availableContent = try await SCShareableContent.current
+        // Use the screencapture command as a fallback
+        // Note: screencapture uses 1-based display indices, not display IDs
+        // We need to find the index of this display in the list of all displays
+        var displayCount: UInt32 = 0
+        CGGetActiveDisplayList(0, nil, &displayCount)
+        var displays = [CGDirectDisplayID](repeating: 0, count: Int(displayCount))
+        CGGetActiveDisplayList(displayCount, &displays, nil)
 
-            // Find the display by ID
-            guard let scDisplay = availableContent.displays.first(where: { $0.displayID == displayID }) else {
+        let displayIndex = displays.firstIndex(of: displayID).map { $0 + 1 } ?? 1
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        process.arguments = ["-x", "-D", "\(displayIndex)", path]
+
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            if process.terminationStatus != 0 {
+                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                let errorString = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+                throw CaptureError.captureCreationFailed(
+                    NSError(
+                        domain: "ScreenCapture",
+                        code: Int(process.terminationStatus),
+                        userInfo: [NSLocalizedDescriptionKey: errorString]
+                    )
+                )
+            }
+
+            // Verify the file was created
+            guard FileManager.default.fileExists(atPath: path) else {
                 throw CaptureError.captureCreationFailed(nil)
             }
-
-            // Create content filter for the entire display
-            let filter = SCContentFilter(display: scDisplay, excludingWindows: [])
-
-            // Configure capture settings
-            let configuration = SCStreamConfiguration()
-            configuration.width = scDisplay.width
-            configuration.height = scDisplay.height
-            configuration.backgroundColor = .black
-            configuration.shouldBeOpaque = true
-            configuration.showsCursor = true
-
-            // Capture the image
-            let image = try await SCScreenshotManager.captureImage(
-                contentFilter: filter,
-                configuration: configuration
-            )
-
-            try ImageSaver.saveImage(image, to: path, format: format)
-        } catch let captureError as CaptureError {
-            // Re-throw CaptureError as-is (no need to check for screen recording permission)
-            throw captureError
         } catch {
-            // Check if this is a permission error from ScreenCaptureKit
-            if PermissionErrorDetector.isScreenRecordingPermissionError(error) {
-                throw CaptureError.screenRecordingPermissionDenied
-            }
-            throw error
+            throw CaptureError.captureCreationFailed(error)
         }
     }
 
     static func captureWindow(_ window: WindowData, to path: String, format: ImageFormat = .png) async throws {
-        do {
-            // Get available content
-            let availableContent = try await SCShareableContent.current
+        // Use the screencapture command for window capture
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        process.arguments = ["-x", "-l", "\(window.windowId)", path]
 
-            // Find the window by ID
-            guard let scWindow = availableContent.windows.first(where: { $0.windowID == window.windowId }) else {
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            if process.terminationStatus != 0 {
+                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                let errorString = String(data: errorData, encoding: .utf8) ?? "Unknown error"
                 throw CaptureError.windowNotFound
             }
 
-            // Create content filter for the specific window
-            let filter = SCContentFilter(desktopIndependentWindow: scWindow)
-
-            // Configure capture settings
-            let configuration = SCStreamConfiguration()
-            configuration.width = Int(window.bounds.width)
-            configuration.height = Int(window.bounds.height)
-            configuration.backgroundColor = .clear
-            configuration.shouldBeOpaque = true
-            configuration.showsCursor = false
-
-            // Capture the image
-            let image = try await SCScreenshotManager.captureImage(
-                contentFilter: filter,
-                configuration: configuration
-            )
-
-            try ImageSaver.saveImage(image, to: path, format: format)
-        } catch let captureError as CaptureError {
-            // Re-throw CaptureError as-is (no need to check for screen recording permission)
-            throw captureError
-        } catch {
-            // Check if this is a permission error from ScreenCaptureKit
-            if PermissionErrorDetector.isScreenRecordingPermissionError(error) {
-                throw CaptureError.screenRecordingPermissionDenied
+            // Verify the file was created
+            guard FileManager.default.fileExists(atPath: path) else {
+                throw CaptureError.windowNotFound
             }
-            throw error
+        } catch {
+            if error is CaptureError {
+                throw error
+            }
+            throw CaptureError.captureCreationFailed(error)
         }
     }
 }

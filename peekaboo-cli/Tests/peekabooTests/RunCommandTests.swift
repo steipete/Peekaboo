@@ -1,21 +1,20 @@
-import Testing
-@testable import peekaboo
 import Foundation
+@testable import peekaboo
+import Testing
 
 #if os(macOS) && swift(>=5.9)
 @available(macOS 14.0, *)
 @Suite("RunCommand Tests")
 struct RunCommandTests {
-    
     @Test("Run command parses script path")
     func parseScriptPath() throws {
         let command = try RunCommand.parse(["/path/to/script.peekaboo.json"])
         #expect(command.scriptPath == "/path/to/script.peekaboo.json")
         #expect(command.session == nil)
         #expect(command.stopOnError == true) // default
-        #expect(command.timeout == 300000) // default 5 minutes
+        #expect(command.timeout == 300_000) // default 5 minutes
     }
-    
+
     @Test("Run command parses all options")
     func parseAllOptions() throws {
         let command = try RunCommand.parse([
@@ -31,14 +30,14 @@ struct RunCommandTests {
         #expect(command.timeout == 60000)
         #expect(command.jsonOutput == true)
     }
-    
+
     @Test("Run command requires script path")
     func requiresScriptPath() {
         #expect(throws: Error.self) {
             _ = try RunCommand.parse([])
         }
     }
-    
+
     @Test("Script structure validation")
     func scriptStructure() {
         let script = PeekabooScript(
@@ -62,7 +61,7 @@ struct RunCommandTests {
                 )
             ]
         )
-        
+
         #expect(script.name == "Login Automation")
         #expect(script.description == "Automates the login flow")
         #expect(script.commands.count == 3)
@@ -71,7 +70,7 @@ struct RunCommandTests {
         #expect(script.commands[0].comment == "Capture Safari UI")
         #expect(script.commands[2].comment == nil)
     }
-    
+
     @Test("Run result structure")
     func runResultStructure() {
         let result = RunResult(
@@ -83,7 +82,7 @@ struct RunCommandTests {
             executionTime: 12.5,
             errors: ["Command 4 failed: Element not found", "Command 5 failed: Timeout"]
         )
-        
+
         #expect(result.success == false)
         #expect(result.scriptPath == "/tmp/test.peekaboo.json")
         #expect(result.commandsExecuted == 3)
@@ -93,7 +92,7 @@ struct RunCommandTests {
         #expect(result.errors?.count == 2)
         #expect(result.errors?.first == "Command 4 failed: Element not found")
     }
-    
+
     @Test("Script JSON parsing")
     func scriptJSONParsing() throws {
         let jsonData = """
@@ -113,7 +112,7 @@ struct RunCommandTests {
             ]
         }
         """.data(using: .utf8)!
-        
+
         let script = try JSONDecoder().decode(PeekabooScript.self, from: jsonData)
         #expect(script.name == "Test Script")
         #expect(script.commands.count == 2)

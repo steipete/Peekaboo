@@ -198,10 +198,26 @@ struct ImageCommandTests {
     @Test(
         "Analyze option with different modes",
         arguments: [
-            (args: ["--mode", "screen", "--analyze", "What is on screen?"], mode: CaptureMode.screen, prompt: "What is on screen?"),
-            (args: ["--mode", "window", "--analyze", "Describe this window"], mode: CaptureMode.window, prompt: "Describe this window"),
-            (args: ["--mode", "multi", "--analyze", "Compare windows"], mode: CaptureMode.multi, prompt: "Compare windows"),
-            (args: ["--mode", "frontmost", "--analyze", "What app is this?"], mode: CaptureMode.frontmost, prompt: "What app is this?")
+            (
+                args: ["--mode", "screen", "--analyze", "What is on screen?"],
+                mode: CaptureMode.screen,
+                prompt: "What is on screen?"
+            ),
+            (
+                args: ["--mode", "window", "--analyze", "Describe this window"],
+                mode: CaptureMode.window,
+                prompt: "Describe this window"
+            ),
+            (
+                args: ["--mode", "multi", "--analyze", "Compare windows"],
+                mode: CaptureMode.multi,
+                prompt: "Compare windows"
+            ),
+            (
+                args: ["--mode", "frontmost", "--analyze", "What app is this?"],
+                mode: CaptureMode.frontmost,
+                prompt: "What app is this?"
+            )
         ]
     )
     func analyzeWithDifferentModes(args: [String], mode: CaptureMode, prompt: String) throws {
@@ -557,11 +573,11 @@ struct ImageCommandPathHandlingTests {
     func defaultPathBehavior() {
         let fileName = "screen_1_20250608_120000.png"
         let result = OutputPathResolver.getOutputPath(basePath: nil, fileName: fileName)
-        
+
         // When basePath is nil, it should use the configured default path
         let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
         let expectedPath = "\(defaultPath)/\(fileName)"
-        
+
         #expect(result == expectedPath)
     }
 

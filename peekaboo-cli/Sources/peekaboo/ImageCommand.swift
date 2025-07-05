@@ -14,60 +14,60 @@ struct ImageCommand: AsyncParsableCommand {
         commandName: "image",
         abstract: "Capture screenshots of screens, applications, or windows",
         discussion: """
-            SYNOPSIS:
-              peekaboo image [--app NAME] [--mode MODE] [--path PATH] [OPTIONS]
+        SYNOPSIS:
+          peekaboo image [--app NAME] [--mode MODE] [--path PATH] [OPTIONS]
 
-            EXAMPLES:
-              peekaboo image --app Safari                    # Capture Safari's frontmost window
-              peekaboo image --app Chrome --window-index 1   # Capture Chrome's second window
-              peekaboo image --app "com.apple.Notes"         # Use bundle ID
-              peekaboo image --app PID:12345                 # Use process ID
-              
-              peekaboo image --mode screen                   # Capture all screens
-              peekaboo image --mode screen --screen-index 0  # Capture primary screen
-              peekaboo image --mode frontmost                # Capture active window
-              peekaboo image --mode multi --app Safari       # Capture all Safari windows
-              
-              peekaboo image --app Terminal --window-title "~/Projects"
-              peekaboo image --app Safari --path screenshot.png --format jpg
-              peekaboo image --app Xcode --capture-focus foreground
-              
-              # Capture and analyze in one command
-              peekaboo image --mode frontmost --analyze "What errors are shown?"
-              peekaboo image --app Safari --analyze "Summarize this webpage"
-              peekaboo image --mode screen --analyze "Describe the desktop"
-              
-              # Scripting examples
-              peekaboo image --app Safari --json-output | jq -r '.data.saved_files[0].path'
-              peekaboo image --mode frontmost --json-output | jq '.data.saved_files[0].window_title'
-              peekaboo image --analyze "Is there an error?" --json-output | jq -r '.data.analysis.text'
+        EXAMPLES:
+          peekaboo image --app Safari                    # Capture Safari's frontmost window
+          peekaboo image --app Chrome --window-index 1   # Capture Chrome's second window
+          peekaboo image --app "com.apple.Notes"         # Use bundle ID
+          peekaboo image --app PID:12345                 # Use process ID
 
-            CAPTURE MODES:
-              screen     Capture entire screen(s)
-              window     Capture specific application window (default with --app)
-              multi      Capture all windows of an application
-              frontmost  Capture the currently active window
+          peekaboo image --mode screen                   # Capture all screens
+          peekaboo image --mode screen --screen-index 0  # Capture primary screen
+          peekaboo image --mode frontmost                # Capture active window
+          peekaboo image --mode multi --app Safari       # Capture all Safari windows
 
-            WINDOW SELECTION:
-              When using --app, windows are captured based on:
-              1. --window-title: Match by title (partial match supported)
-              2. --window-index: Select by index (0 = frontmost)
-              3. Default: Capture the frontmost window
+          peekaboo image --app Terminal --window-title "~/Projects"
+          peekaboo image --app Safari --path screenshot.png --format jpg
+          peekaboo image --app Xcode --capture-focus foreground
 
-            OUTPUT PATHS:
-              - With --path: Save to specified location
-              - Without --path: Save to current directory with timestamp
-              - Multiple captures: Append window index to filename
+          # Capture and analyze in one command
+          peekaboo image --mode frontmost --analyze "What errors are shown?"
+          peekaboo image --app Safari --analyze "Summarize this webpage"
+          peekaboo image --mode screen --analyze "Describe the desktop"
 
-            FOCUS BEHAVIOR:
-              auto       Bring window to front if not visible (default)
-              foreground Always bring window to front before capture
-              background Never change window focus
+          # Scripting examples
+          peekaboo image --app Safari --json-output | jq -r '.data.saved_files[0].path'
+          peekaboo image --mode frontmost --json-output | jq '.data.saved_files[0].window_title'
+          peekaboo image --analyze "Is there an error?" --json-output | jq -r '.data.analysis.text'
 
-            PERMISSIONS:
-              Screen Recording: Required (System Settings > Privacy & Security)
-              Accessibility: Required only for 'foreground' focus mode
-            """
+        CAPTURE MODES:
+          screen     Capture entire screen(s)
+          window     Capture specific application window (default with --app)
+          multi      Capture all windows of an application
+          frontmost  Capture the currently active window
+
+        WINDOW SELECTION:
+          When using --app, windows are captured based on:
+          1. --window-title: Match by title (partial match supported)
+          2. --window-index: Select by index (0 = frontmost)
+          3. Default: Capture the frontmost window
+
+        OUTPUT PATHS:
+          - With --path: Save to specified location
+          - Without --path: Save to current directory with timestamp
+          - Multiple captures: Append window index to filename
+
+        FOCUS BEHAVIOR:
+          auto       Bring window to front if not visible (default)
+          foreground Always bring window to front before capture
+          background Never change window focus
+
+        PERMISSIONS:
+          Screen Recording: Required (System Settings > Privacy & Security)
+          Accessibility: Required only for 'foreground' focus mode
+        """
     )
 
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345' for process ID")
@@ -91,7 +91,10 @@ struct ImageCommand: AsyncParsableCommand {
     @Option(name: .long, help: ArgumentHelp("Image format: png or jpg", valueName: "format"))
     var format: ImageFormat = .png
 
-    @Option(name: .long, help: ArgumentHelp("Window focus behavior: auto, foreground, or background", valueName: "focus"))
+    @Option(
+        name: .long,
+        help: ArgumentHelp("Window focus behavior: auto, foreground, or background", valueName: "focus")
+    )
     var captureFocus: CaptureFocus = .auto
 
     @Flag(name: .long, help: "Output results in JSON format for scripting")
@@ -105,7 +108,7 @@ struct ImageCommand: AsyncParsableCommand {
         do {
             try PermissionsChecker.requireScreenRecordingPermission()
             let savedFiles = try await performCapture()
-            
+
             // If analyze option is provided, analyze the first captured image
             if let analyzePrompt = analyze, let firstFile = savedFiles.first {
                 let analysisResult = try await analyzeImage(at: firstFile.path, with: analyzePrompt)
@@ -161,26 +164,26 @@ struct ImageCommand: AsyncParsableCommand {
         guard FileManager.default.fileExists(atPath: imagePath.path) else {
             throw AnalyzeError.fileNotFound(path)
         }
-        
+
         // Read image and convert to base64
         let imageData = try Data(contentsOf: imagePath)
         let base64String = imageData.base64EncodedString()
-        
+
         // Get configured providers
         let aiProvidersString = ConfigurationManager.shared.getAIProviders(cliValue: nil)
         let configuredProviders = AIProviderFactory.createProviders(from: aiProvidersString)
-        
+
         guard !configuredProviders.isEmpty else {
             throw AnalyzeError.noProvidersConfigured
         }
-        
+
         // Use first available provider
         let selectedProvider = try await AIProviderFactory.determineProvider(
             requestedType: nil,
             requestedModel: nil,
             configuredProviders: configuredProviders
         )
-        
+
         // Perform analysis
         let startTime = Date()
         let analysisText = try await selectedProvider.analyze(
@@ -188,7 +191,7 @@ struct ImageCommand: AsyncParsableCommand {
             question: prompt
         )
         let duration = Date().timeIntervalSince(startTime)
-        
+
         return AnalysisResult(
             analysisText: analysisText,
             modelUsed: "\(selectedProvider.name)/\(selectedProvider.model)",
@@ -226,7 +229,9 @@ struct ImageCommand: AsyncParsableCommand {
             print()
             print("\(analysis.analysisText)")
             print()
-            print("👻 Peekaboo: Analyzed image with \(analysis.modelUsed) in \(String(format: "%.2f", analysis.durationSeconds))s.")
+            print(
+                "👻 Peekaboo: Analyzed image with \(analysis.modelUsed) in \(String(format: "%.2f", analysis.durationSeconds))s."
+            )
         }
     }
 

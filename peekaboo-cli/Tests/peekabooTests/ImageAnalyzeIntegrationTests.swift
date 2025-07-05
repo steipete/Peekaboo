@@ -1,15 +1,15 @@
 import Foundation
-import Testing
 @testable import peekaboo
+import Testing
 
 @Suite("ImageCommand Analyze Integration Tests", .tags(.imageCapture, .imageAnalysis, .integration))
 struct ImageAnalyzeIntegrationTests {
-    
     // MARK: - Test Helpers
-    
+
     private func createTestImageFile() throws -> String {
-        let testPath = FileManager.default.temporaryDirectory.appendingPathComponent("test_capture_\(UUID().uuidString).png").path
-        
+        let testPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("test_capture_\(UUID().uuidString).png").path
+
         // Create a simple 1x1 PNG for testing
         let pngData = Data([
             0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
@@ -22,17 +22,17 @@ struct ImageAnalyzeIntegrationTests {
             0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, // IEND chunk
             0x44, 0xAE, 0x42, 0x60, 0x82
         ])
-        
+
         try pngData.write(to: URL(fileURLWithPath: testPath))
         return testPath
     }
-    
+
     private func cleanupTestFile(_ path: String) {
         try? FileManager.default.removeItem(atPath: path)
     }
-    
+
     // MARK: - AnalysisResult Tests
-    
+
     @Test("AnalysisResult model creation", .tags(.fast))
     func analysisResultModel() {
         let result = AnalysisResult(
@@ -41,15 +41,15 @@ struct ImageAnalyzeIntegrationTests {
             durationSeconds: 1.5,
             imagePath: "/tmp/test.png"
         )
-        
+
         #expect(result.analysisText == "This is a test window")
         #expect(result.modelUsed == "test/model")
         #expect(result.durationSeconds == 1.5)
         #expect(result.imagePath == "/tmp/test.png")
     }
-    
+
     // MARK: - Analyze Error Handling Tests
-    
+
     @Test("Analyze with missing image file", .tags(.fast))
     func analyzeWithMissingFile() async throws {
         // Note: We can't directly test analyzeImage as it's private
@@ -59,11 +59,11 @@ struct ImageAnalyzeIntegrationTests {
             "--path", "/tmp/non_existent_\(UUID().uuidString).png",
             "--analyze", "Test prompt"
         ])
-        
+
         #expect(command.analyze == "Test prompt")
         // Actual file validation would happen during command execution
     }
-    
+
     @Test("Analyze prompt variations", .tags(.fast))
     func analyzePromptVariations() throws {
         let prompts = [
@@ -75,21 +75,21 @@ struct ImageAnalyzeIntegrationTests {
             "List all visible buttons",
             "What is the main color scheme?"
         ]
-        
+
         // Test that all prompts are valid
         for prompt in prompts {
             let command = try ImageCommand.parse(["--analyze", prompt])
             #expect(command.analyze == prompt)
         }
     }
-    
+
     @Test("Long analyze prompts", .tags(.fast))
     func longAnalyzePrompts() throws {
         let longPrompt = String(repeating: "Please analyze this image and tell me ", count: 10) + "what you see."
         let command = try ImageCommand.parse(["--analyze", longPrompt])
         #expect(command.analyze == longPrompt)
     }
-    
+
     @Test("Unicode in analyze prompts", .tags(.fast))
     func unicodeAnalyzePrompts() throws {
         let unicodePrompts = [
@@ -98,15 +98,15 @@ struct ImageAnalyzeIntegrationTests {
             "Что показано на этом изображении?",
             "🔍 What do you see? 👀"
         ]
-        
+
         for prompt in unicodePrompts {
             let command = try ImageCommand.parse(["--analyze", prompt])
             #expect(command.analyze == prompt)
         }
     }
-    
+
     // MARK: - JSON Output Structure Tests
-    
+
     @Test("JSON output with analysis structure", .tags(.fast))
     func jsonOutputWithAnalysisStructure() throws {
         // Test the expected JSON structure when analysis is included
@@ -118,14 +118,14 @@ struct ImageAnalyzeIntegrationTests {
             window_index: 0,
             mime_type: "image/png"
         )
-        
+
         let analysisResult = AnalysisResult(
             analysisText: "This is a test analysis",
             modelUsed: "test/model",
             durationSeconds: 2.5,
             imagePath: "/tmp/test.png"
         )
-        
+
         // Create the expected structure
         let enrichedData: [String: Any] = [
             "saved_files": [[
@@ -139,15 +139,15 @@ struct ImageAnalyzeIntegrationTests {
                 "duration_seconds": analysisResult.durationSeconds
             ]
         ]
-        
+
         // Verify structure
         #expect((enrichedData["saved_files"] as? [[String: Any]])?.count == 1)
         #expect((enrichedData["analysis"] as? [String: Any])?["text"] as? String == "This is a test analysis")
         #expect((enrichedData["analysis"] as? [String: Any])?["model"] as? String == "test/model")
     }
-    
+
     // MARK: - Multiple File Analysis Tests
-    
+
     @Test("Analysis with multi-mode capture", .tags(.fast))
     func analysisWithMultiMode() throws {
         // When capturing multiple windows, only the first should be analyzed
@@ -156,14 +156,14 @@ struct ImageAnalyzeIntegrationTests {
             "--app", "TestApp",
             "--analyze", "Compare these windows"
         ])
-        
+
         #expect(command.mode == .multi)
         #expect(command.analyze == "Compare these windows")
         // Note: In actual execution, only the first captured image would be analyzed
     }
-    
+
     // MARK: - Configuration Integration Tests
-    
+
     @Test("Analyze with different AI provider configurations", .tags(.fast))
     func analyzeWithDifferentProviders() throws {
         let providerConfigs = [
@@ -172,28 +172,28 @@ struct ImageAnalyzeIntegrationTests {
             "openai/gpt-4o,ollama/llava:latest",
             "ollama/llava:latest,openai/gpt-4o"
         ]
-        
+
         // Test that commands parse correctly with different provider configurations
         for _ in providerConfigs {
             let command = try ImageCommand.parse([
                 "--analyze", "Test prompt",
                 "--json-output"
             ])
-            
+
             #expect(command.analyze == "Test prompt")
             #expect(command.jsonOutput == true)
         }
     }
-    
+
     // MARK: - Edge Case Tests
-    
+
     @Test("Empty analyze prompt handling", .tags(.fast))
     func emptyAnalyzePrompt() throws {
         // Empty prompts should be allowed at parse time
         let command = try ImageCommand.parse(["--analyze", ""])
         #expect(command.analyze == "")
     }
-    
+
     @Test("Analyze with all capture modes", .tags(.fast))
     func analyzeWithAllCaptureModes() throws {
         let modes: [(mode: String, expectedMode: CaptureMode?)] = [
@@ -202,18 +202,18 @@ struct ImageAnalyzeIntegrationTests {
             ("multi", .multi),
             ("frontmost", .frontmost)
         ]
-        
+
         for (modeString, expectedMode) in modes {
             let command = try ImageCommand.parse([
                 "--mode", modeString,
                 "--analyze", "Analyze this \(modeString) capture"
             ])
-            
+
             #expect(command.mode == expectedMode)
             #expect(command.analyze == "Analyze this \(modeString) capture")
         }
     }
-    
+
     @Test("Analyze option position in command", .tags(.fast))
     func analyzeOptionPosition() throws {
         // Test that analyze works regardless of position in command
@@ -223,13 +223,13 @@ struct ImageAnalyzeIntegrationTests {
             ["--app", "Safari", "--analyze", "Test", "--format", "png"],
             ["--analyze", "Test", "--json-output", "--path", "/tmp/test.png"]
         ]
-        
+
         for args in commands {
             let command = try ImageCommand.parse(args)
             #expect(command.analyze == "Test")
         }
     }
-    
+
     @Test("Path handling with analysis", .tags(.fast))
     func pathHandlingWithAnalysis() throws {
         let testPaths = [
@@ -238,13 +238,13 @@ struct ImageAnalyzeIntegrationTests {
             "./local-analysis.jpg",
             "/path with spaces/analyzed image.png"
         ]
-        
+
         for path in testPaths {
             let command = try ImageCommand.parse([
                 "--path", path,
                 "--analyze", "Analyze this"
             ])
-            
+
             #expect(command.path == path)
             #expect(command.analyze == "Analyze this")
         }
@@ -255,7 +255,6 @@ struct ImageAnalyzeIntegrationTests {
 
 @Suite("ImageCommand Mock AI Provider Tests", .tags(.imageCapture, .imageAnalysis, .unit))
 struct ImageCommandMockAIProviderTests {
-    
     @Test("Analyze with mock provider", .tags(.fast))
     func analyzeWithMockProvider() async throws {
         // This would test with a mock AI provider if we had one set up
@@ -265,7 +264,7 @@ struct ImageCommandMockAIProviderTests {
             "--analyze", "Mock analysis test",
             "--json-output"
         ])
-        
+
         #expect(command.mode == .frontmost)
         #expect(command.analyze == "Mock analysis test")
         #expect(command.jsonOutput == true)
