@@ -1,0 +1,47 @@
+{
+  "name": "Calculator Demo",
+  "description": "Performs a simple calculation using the macOS Calculator app",
+  "version": "1.0.0",
+  "commands": [
+    {
+      "command": "see",
+      "args": ["--app", "Calculator", "--annotate"],
+      "comment": "Capture Calculator and identify buttons"
+    },
+    {
+      "command": "click",
+      "args": ["--query", "Clear"],
+      "comment": "Clear any existing calculation"
+    },
+    {
+      "command": "click",
+      "args": ["--query", "9"],
+      "comment": "Click number 9"
+    },
+    {
+      "command": "click",
+      "args": ["--query", "×"],
+      "comment": "Click multiply"
+    },
+    {
+      "command": "click",
+      "args": ["--query", "7"],
+      "comment": "Click number 7"
+    },
+    {
+      "command": "click",
+      "args": ["--query", "="],
+      "comment": "Click equals"
+    },
+    {
+      "command": "sleep",
+      "args": ["--duration", "1000"],
+      "comment": "Pause to see result"
+    },
+    {
+      "command": "see",
+      "args": ["--app", "Calculator", "--analyze", "What is the result shown?"],
+      "comment": "Capture and analyze the result"
+    }
+  ]
+}

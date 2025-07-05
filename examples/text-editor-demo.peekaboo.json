@@ -1,0 +1,72 @@
+{
+  "name": "Text Editor Demo",
+  "description": "Creates and saves a document in TextEdit",
+  "version": "1.0.0",
+  "commands": [
+    {
+      "command": "hotkey",
+      "args": ["--keys", "cmd,space"],
+      "comment": "Open Spotlight search"
+    },
+    {
+      "command": "sleep",
+      "args": ["--duration", "500"],
+      "comment": "Wait for Spotlight"
+    },
+    {
+      "command": "type",
+      "args": ["--text", "TextEdit"],
+      "comment": "Type TextEdit"
+    },
+    {
+      "command": "type",
+      "args": ["--return"],
+      "comment": "Launch TextEdit"
+    },
+    {
+      "command": "sleep",
+      "args": ["--duration", "1000"],
+      "comment": "Wait for TextEdit to open"
+    },
+    {
+      "command": "see",
+      "args": ["--app", "TextEdit"],
+      "comment": "Capture TextEdit window"
+    },
+    {
+      "command": "type",
+      "args": ["--text", "# Peekaboo Automation Demo\n\nThis document was created automatically using Peekaboo MCP.\n\n## Features\n- GUI automation\n- Screenshot capture\n- AI-powered analysis\n- Session-based UI mapping"],
+      "comment": "Type document content"
+    },
+    {
+      "command": "hotkey",
+      "args": ["--keys", "cmd,s"],
+      "comment": "Save document"
+    },
+    {
+      "command": "sleep",
+      "args": ["--duration", "1000"],
+      "comment": "Wait for save dialog"
+    },
+    {
+      "command": "type",
+      "args": ["--text", "Peekaboo_Demo"],
+      "comment": "Type filename"
+    },
+    {
+      "command": "click",
+      "args": ["--query", "Save"],
+      "comment": "Click Save button"
+    },
+    {
+      "command": "sleep",
+      "args": ["--duration", "1000"],
+      "comment": "Wait for save"
+    },
+    {
+      "command": "see",
+      "args": ["--app", "TextEdit", "--analyze", "What document is shown and what does it contain?"],
+      "comment": "Capture and analyze the saved document"
+    }
+  ]
+}
