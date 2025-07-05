@@ -55,12 +55,13 @@ struct SleepCommand: AsyncParsableCommand {
         if jsonOutput {
             let output = SleepResult(
                 success: true,
-                requestedDuration: duration,
-                actualDuration: Int(actualDuration)
+                requested_duration: duration,
+                actual_duration: Int(actualDuration)
             )
             outputSuccessCodable(data: output)
         } else {
-            print("💤 Slept for \(duration)ms")
+            let seconds = Double(duration) / 1000.0
+            print("✅ Paused for \(seconds)s")
         }
     }
 }
@@ -69,6 +70,12 @@ struct SleepCommand: AsyncParsableCommand {
 
 struct SleepResult: Codable {
     let success: Bool
-    let requestedDuration: Int
-    let actualDuration: Int
+    let requested_duration: Int
+    let actual_duration: Int
+    
+    private enum CodingKeys: String, CodingKey {
+        case success
+        case requested_duration
+        case actual_duration
+    }
 }
