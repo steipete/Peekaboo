@@ -14,7 +14,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
-        .package(path: "../../AXorcist")
+        .package(url: "https://github.com/steipete/AXorcist", branch: "main")
     ],
     targets: [
         .executableTarget(
