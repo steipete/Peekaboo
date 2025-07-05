@@ -165,13 +165,12 @@ struct ClickCommand: AsyncParsableCommand {
             }
         }()
         
-        // TODO: Implement actual click using AXorcist
-        // For now, this is a placeholder
-        // try await AXorcist.shared.click(
-        //     at: clickLocation,
-        //     clickType: clickType.toAXClickType(),
-        //     clickCount: clickType.double ? 2 : 1
-        // )
+        // Perform the actual click using CoreGraphics events
+        let clickPoint = CGPoint(x: clickLocation.x, y: clickLocation.y)
+        let mouseButton: InputEvents.MouseButton = clickType.right ? .right : .left
+        let clickCount = clickType.double ? 2 : 1
+        
+        try InputEvents.click(at: clickPoint, button: mouseButton, clickCount: clickCount)
         
         // Small delay to ensure click is processed
         try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds

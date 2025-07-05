@@ -150,16 +150,15 @@ struct TypeCommand: AsyncParsableCommand {
         for action in actions {
             switch action {
             case .text(let string):
-                // TODO: Implement typing using AXorcist
-                // For now, just count characters
+                // Type the string using CoreGraphics events
+                let delaySeconds = Double(delayMs) / 1000.0
+                try InputEvents.typeString(string, delay: delaySeconds)
                 totalChars += string.count
                 
-                if delayMs > 0 {
-                    try await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
-                }
-                
             case .key(let key):
-                // TODO: Implement special key typing
+                // Type special key
+                let specialKey = key.toInputEventKey()
+                try InputEvents.pressKey(specialKey)
                 keyPresses += 1
                 
                 if delayMs > 0 {
@@ -167,7 +166,10 @@ struct TypeCommand: AsyncParsableCommand {
                 }
                 
             case .clear:
-                // TODO: Implement clear field functionality
+                // Clear field by selecting all (Cmd+A) and deleting
+                try InputEvents.performHotkey(keys: ["cmd", "a"])
+                try await Task.sleep(nanoseconds: 50_000_000) // 50ms
+                try InputEvents.pressKey(.delete)
                 keyPresses += 2
                 
                 if delayMs > 0 {
@@ -201,6 +203,15 @@ private enum SpecialKey {
     case tab
     case escape
     case delete
+    
+    func toInputEventKey() -> InputEvents.SpecialKey {
+        switch self {
+        case .return: return .return
+        case .tab: return .tab
+        case .escape: return .escape
+        case .delete: return .delete
+        }
+    }
 }
 
 private struct InternalTypeResult {
