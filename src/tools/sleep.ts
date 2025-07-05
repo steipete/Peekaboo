@@ -33,7 +33,7 @@ export async function sleepToolHandler(
     logger.debug({ input }, "Processing peekaboo.sleep tool call");
 
     // Build command arguments
-    const args = ["sleep", "--duration", input.duration.toString(), "--json-output"];
+    const args = ["sleep", input.duration.toString(), "--json-output"];
 
     // Execute the command
     const result = await executeSwiftCli(args, logger);

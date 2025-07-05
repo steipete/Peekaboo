@@ -112,17 +112,28 @@ struct SeeCommand: AsyncParsableCommand {
             
             // Prepare output
             if jsonOutput {
+                // Build UI element summaries
+                let uiElements: [UIElementSummary] = sessionData?.uiMap.values.map { element in
+                    UIElementSummary(
+                        id: element.id,
+                        role: element.role,
+                        title: element.title,
+                        is_actionable: element.isActionable
+                    )
+                } ?? []
+                
                 let output = SeeResult(
-                    sessionId: await sessionCache.sessionId,
-                    screenshotPath: outputPath,
-                    annotatedPath: annotatedPath,
-                    applicationName: captureResult.applicationName,
-                    windowTitle: captureResult.windowTitle,
-                    elementCount: elementCount,
-                    interactableCount: interactableCount,
-                    captureMode: mode.rawValue,
-                    analysisResult: analysisResult,
-                    executionTime: Date().timeIntervalSince(startTime)
+                    session_id: await sessionCache.sessionId,
+                    screenshot_path: outputPath,
+                    annotated_path: annotatedPath,
+                    application_name: captureResult.applicationName,
+                    window_title: captureResult.windowTitle,
+                    element_count: elementCount,
+                    interactable_count: interactableCount,
+                    capture_mode: mode.rawValue,
+                    analysis_result: analysisResult,
+                    execution_time: Date().timeIntervalSince(startTime),
+                    ui_elements: uiElements
                 )
                 outputSuccessCodable(data: output)
             } else {
@@ -312,14 +323,23 @@ private struct CaptureResult {
 // MARK: - JSON Output Structure
 
 struct SeeResult: Codable {
-    let sessionId: String
-    let screenshotPath: String
-    let annotatedPath: String?
-    let applicationName: String?
-    let windowTitle: String?
-    let elementCount: Int
-    let interactableCount: Int
-    let captureMode: String
-    let analysisResult: String?
-    let executionTime: TimeInterval
+    let session_id: String
+    let screenshot_path: String
+    let annotated_path: String?
+    let application_name: String?
+    let window_title: String?
+    let element_count: Int
+    let interactable_count: Int
+    let capture_mode: String
+    let analysis_result: String?
+    let execution_time: TimeInterval
+    let ui_elements: [UIElementSummary]
+    let success: Bool = true
+}
+
+struct UIElementSummary: Codable {
+    let id: String
+    let role: String
+    let title: String?
+    let is_actionable: Bool
 }
