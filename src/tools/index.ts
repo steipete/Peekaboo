@@ -1,4 +1,12 @@
 export { imageToolHandler, imageToolSchema } from "./image.js";
 export { analyzeToolHandler, analyzeToolSchema } from "./analyze.js";
 export { listToolHandler, listToolSchema } from "./list.js";
+export { seeToolHandler, seeToolSchema } from "./see.js";
+export { clickToolHandler, clickToolSchema } from "./click.js";
+export { typeToolHandler, typeToolSchema } from "./type.js";
+export { scrollToolHandler, scrollToolSchema } from "./scroll.js";
+export { hotkeyToolHandler, hotkeyToolSchema } from "./hotkey.js";
+export { swipeToolHandler, swipeToolSchema } from "./swipe.js";
+export { runToolHandler, runToolSchema } from "./run.js";
+export { sleepToolHandler, sleepToolSchema } from "./sleep.js";
 export { buildSwiftCliArgs } from "../utils/image-cli-args.js";

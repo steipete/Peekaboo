@@ -77,7 +77,23 @@ struct PeekabooCommand: AsyncParsableCommand {
               
             """,
         version: Version.current,
-        subcommands: [ImageCommand.self, ListCommand.self, AnalyzeCommand.self, ConfigCommand.self, PermissionsCommand.self],
+        subcommands: [
+            // Original commands
+            ImageCommand.self, 
+            ListCommand.self, 
+            AnalyzeCommand.self, 
+            ConfigCommand.self, 
+            PermissionsCommand.self,
+            // New v3 interaction commands
+            SeeCommand.self,
+            ClickCommand.self,
+            TypeCommand.self,
+            ScrollCommand.self,
+            HotkeyCommand.self,
+            SwipeCommand.self,
+            RunCommand.self,
+            SleepCommand.self
+        ],
         defaultSubcommand: nil
     )
 

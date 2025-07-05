@@ -13,13 +13,15 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0")
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+        .package(path: "../../AXorcist")
     ],
     targets: [
         .executableTarget(
             name: "peekaboo",
             dependencies: [
-                .product(name: "ArgumentParser", package: "swift-argument-parser")
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "AXorcist", package: "AXorcist")
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency"),
