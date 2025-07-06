@@ -58,7 +58,9 @@ struct SeeCommand: AsyncParsableCommand {
 
     mutating func run() async throws {
         let startTime = Date()
-        let sessionCache = SessionCache()
+        // Always create a new session for see command
+        let sessionId = String(ProcessInfo.processInfo.processIdentifier)
+        let sessionCache = SessionCache(sessionId: sessionId)
 
         do {
             // Perform capture based on mode

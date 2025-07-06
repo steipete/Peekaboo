@@ -57,10 +57,19 @@ actor SessionCache {
     }
 
     init(sessionId: String? = nil) {
-        // Use PID as session ID if not provided
-        self.sessionId = sessionId ?? String(ProcessInfo.processInfo.processIdentifier)
+        // If no session ID provided, try to find the most recent session
+        if let sessionId = sessionId {
+            self.sessionId = sessionId
+        } else if let latestSession = Self.findLatestSession() {
+            self.sessionId = latestSession
+            Logger.shared.debug("Using latest session: \(latestSession)")
+        } else {
+            // Fall back to PID as session ID if no existing sessions
+            self.sessionId = String(ProcessInfo.processInfo.processIdentifier)
+            Logger.shared.debug("No existing sessions found, using PID: \(self.sessionId)")
+        }
 
-        // Create cache directory in ~/.peekaboo/session/<PID>/
+        // Create cache directory in ~/.peekaboo/session/<sessionId>/
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
         cacheDir = homeDir.appendingPathComponent(".peekaboo/session/\(self.sessionId)")
         try? FileManager.default.createDirectory(
@@ -69,6 +78,32 @@ actor SessionCache {
         )
 
         sessionFile = cacheDir.appendingPathComponent("map.json")
+    }
+    
+    /// Find the most recent session directory
+    private static func findLatestSession() -> String? {
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser
+        let sessionDir = homeDir.appendingPathComponent(".peekaboo/session")
+        
+        guard let sessions = try? FileManager.default.contentsOfDirectory(
+            at: sessionDir,
+            includingPropertiesForKeys: [.creationDateKey],
+            options: .skipsHiddenFiles
+        ) else {
+            return nil
+        }
+        
+        // Sort sessions by creation date (most recent first)
+        let sortedSessions = sessions.compactMap { url -> (url: URL, date: Date)? in
+            guard let resourceValues = try? url.resourceValues(forKeys: [.creationDateKey]),
+                  let creationDate = resourceValues.creationDate else {
+                return nil
+            }
+            return (url, creationDate)
+        }.sorted { $0.date > $1.date }
+        
+        // Return the name of the most recent session
+        return sortedSessions.first?.url.lastPathComponent
     }
 
     /// Load session data from disk
