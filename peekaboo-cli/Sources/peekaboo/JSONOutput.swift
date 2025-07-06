@@ -73,6 +73,8 @@ enum ErrorCode: String, Codable {
     case DOCK_ITEM_NOT_FOUND
     case POSITION_NOT_FOUND
     case SCRIPT_ERROR
+    case MISSING_API_KEY
+    case AGENT_ERROR
 }
 
 /// Type-erased codable wrapper for encoding arbitrary data.

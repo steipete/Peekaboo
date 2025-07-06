@@ -118,10 +118,10 @@ struct Peekaboo: AsyncParsableCommand {
             // Join all arguments as the task description
             let task = remainingArgs.joined(separator: " ")
             
-            // Create and run an AgentCommand
-            var agentCommand = AgentCommand()
-            agentCommand.task = task
-            try await agentCommand.run()
+            // Create agent command with task
+            let agentArgs = ["agent", task]
+            var agent = try AgentCommand.parse(agentArgs)
+            try await agent.run()
         } else {
             // When no subcommand is provided, print help
             print(Self.helpMessage())

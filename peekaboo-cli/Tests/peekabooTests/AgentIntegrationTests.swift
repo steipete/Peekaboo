@@ -220,7 +220,4 @@ enum TestError: Error {
     case missingAPIKey
 }
 
-// Tag for integration tests
-extension Tag {
-    @Tag static var integration: Self
-}
+// Tag for integration tests - removed duplicate, using TestTags.swift version
