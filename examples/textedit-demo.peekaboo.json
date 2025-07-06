@@ -1,0 +1,86 @@
+{
+  "description": "Demonstrates text editing and formatting in TextEdit",
+  "steps": [
+    {
+      "stepId": "capture-textedit",
+      "command": "see",
+      "params": {
+        "app": "TextEdit",
+        "annotate": true
+      },
+      "comment": "Capture TextEdit UI with annotations"
+    },
+    {
+      "stepId": "click-text-area",
+      "command": "click",
+      "params": {
+        "on": "T1"
+      },
+      "comment": "Click on the main text area"
+    },
+    {
+      "stepId": "type-heading",
+      "command": "type",
+      "params": {
+        "text": "Welcome to Peekaboo v3!"
+      },
+      "comment": "Type the heading"
+    },
+    {
+      "stepId": "select-all",
+      "command": "hotkey",
+      "params": {
+        "keys": "cmd,a"
+      },
+      "comment": "Select all text"
+    },
+    {
+      "stepId": "make-bold",
+      "command": "hotkey",
+      "params": {
+        "keys": "cmd,b"
+      },
+      "comment": "Make text bold"
+    },
+    {
+      "stepId": "deselect",
+      "command": "click",
+      "params": {
+        "on": "T1"
+      },
+      "comment": "Click to deselect"
+    },
+    {
+      "stepId": "new-paragraph",
+      "command": "type",
+      "params": {
+        "text": "\n\nThis is a demonstration of automated text editing with Peekaboo."
+      },
+      "comment": "Add a new paragraph"
+    },
+    {
+      "stepId": "add-list",
+      "command": "type",
+      "params": {
+        "text": "\n\nFeatures:\n- UI element detection\n- Text input automation\n- Keyboard shortcuts\n- Mouse interactions"
+      },
+      "comment": "Add a feature list"
+    },
+    {
+      "stepId": "pause",
+      "command": "sleep",
+      "params": {
+        "duration": 2000
+      },
+      "comment": "Pause to view the result"
+    },
+    {
+      "stepId": "final-capture",
+      "command": "see",
+      "params": {
+        "app": "TextEdit"
+      },
+      "comment": "Capture final state"
+    }
+  ]
+}
