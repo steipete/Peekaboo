@@ -301,7 +301,7 @@ struct ClickCommand: AsyncParsableCommand {
         
         // Create AXUIElement for the application
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let _ = Element(axApp)
+        let appElement = Element(axApp)
         
         // Search for matching element
         return findMatchingElement(in: appElement, matching: locator)
