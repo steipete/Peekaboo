@@ -3,8 +3,6 @@ import Foundation
 @testable import peekaboo
 import Testing
 
-#if os(macOS) && swift(>=5.9)
-@available(macOS 14.0, *)
 @Suite("HotkeyCommand Tests")
 struct HotkeyCommandTests {
     @Test("Hotkey command parses key combinations", arguments: [
@@ -94,4 +92,3 @@ struct HotkeyCommandTests {
         #expect(true)
     }
 }
-#endif

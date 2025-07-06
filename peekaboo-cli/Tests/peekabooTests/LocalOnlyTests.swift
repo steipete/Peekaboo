@@ -244,7 +244,7 @@ struct LocalIntegrationTests {
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5s
 
         // Capture with foreground focus
-        _ = ImageCommand()
+        // _ = ImageCommand()  // Commented out to avoid ArgumentParser crash
         // Set properties as needed
         // command.app = Self.testHostAppName
 

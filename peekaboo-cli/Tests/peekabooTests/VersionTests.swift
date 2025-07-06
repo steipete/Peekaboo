@@ -8,12 +8,12 @@ struct VersionTests {
     func semanticVersioningFormat() {
         let version = Version.current
 
-        // Version should be in format "Peekaboo X.Y.Z"
-        let versionRegex = try! NSRegularExpression(pattern: #"^Peekaboo \d+\.\d+\.\d+$"#)
+        // Version should be in format "Peekaboo X.Y.Z" or "Peekaboo X.Y.Z-prerelease"
+        let versionRegex = try! NSRegularExpression(pattern: #"^Peekaboo \d+\.\d+\.\d+(-[\w\.]+)?$"#)
         let range = NSRange(location: 0, length: version.utf16.count)
         let matches = versionRegex.matches(in: version, range: range)
 
-        #expect(!matches.isEmpty, "Version '\(version)' should follow format 'Peekaboo X.Y.Z'")
+        #expect(!matches.isEmpty, "Version '\(version)' should follow semantic versioning format")
     }
 
     @Test("Version components are valid numbers")
@@ -22,7 +22,12 @@ struct VersionTests {
 
         // Remove "Peekaboo " prefix
         let versionNumber = version.replacingOccurrences(of: "Peekaboo ", with: "")
-        let components = versionNumber.split(separator: ".")
+        
+        // Split by prerelease identifier first
+        let versionParts = versionNumber.split(separator: "-")
+        let semverPart = String(versionParts[0])
+        
+        let components = semverPart.split(separator: ".")
 
         #expect(components.count == 3)
 

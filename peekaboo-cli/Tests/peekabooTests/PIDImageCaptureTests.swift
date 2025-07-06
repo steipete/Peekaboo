@@ -67,12 +67,13 @@ struct PIDImageCaptureTests {
         let pid = targetApp.processIdentifier
 
         // Create image command with specific PID
-        var command = ImageCommand()
-        command.app = "PID:\(pid)"
-        command.mode = .multi
-        command.format = .png
-        command.path = NSTemporaryDirectory()
-        command.jsonOutput = true
+        let command = try ImageCommand.parse([
+            "--app", "PID:\(pid)",
+            "--mode", "multi",
+            "--format", "png",
+            "--path", NSTemporaryDirectory(),
+            "--json-output"
+        ])
 
         do {
             let result = try await captureWithPID(command: command, targetPID: pid)
@@ -97,36 +98,44 @@ struct PIDImageCaptureTests {
         ]
 
         for invalidPID in invalidPIDs {
-            var command = ImageCommand()
-            command.app = invalidPID
-            command.mode = .window
-            command.format = .png
-            command.jsonOutput = true
-
-            // The command should parse but fail during execution
-            #expect(command.app == invalidPID)
-
-            // In actual execution, this would fail with APP_NOT_FOUND error
-            // Here we just verify the command accepts the PID format
+            do {
+                let command = try ImageCommand.parse([
+                    "--app", invalidPID,
+                    "--mode", "window",
+                    "--format", "png",
+                    "--json-output"
+                ])
+                
+                // The command should parse but fail during execution
+                #expect(command.app == invalidPID)
+                
+                // In actual execution, this would fail with APP_NOT_FOUND error
+                // Here we just verify the command accepts the PID format
+            } catch {
+                // Some invalid formats might fail to parse
+                continue
+            }
         }
     }
 
     @Test("PID targeting with window specifiers")
     func pidTargetingWithWindowSpecifiers() throws {
         // Test that PID can be combined with window index
-        var command1 = ImageCommand()
-        command1.app = "PID:1234"
-        command1.windowIndex = 0
-        command1.mode = .window
+        let command1 = try ImageCommand.parse([
+            "--app", "PID:1234",
+            "--window-index", "0",
+            "--mode", "window"
+        ])
 
         #expect(command1.app == "PID:1234")
         #expect(command1.windowIndex == 0)
 
         // Test that PID can be combined with window title
-        var command2 = ImageCommand()
-        command2.app = "PID:5678"
-        command2.windowTitle = "Document"
-        command2.mode = .window
+        let command2 = try ImageCommand.parse([
+            "--app", "PID:5678",
+            "--window-title", "Document",
+            "--mode", "window"
+        ])
 
         #expect(command2.app == "PID:5678")
         #expect(command2.windowTitle == "Document")

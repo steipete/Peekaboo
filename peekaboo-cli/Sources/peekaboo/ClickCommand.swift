@@ -1,3 +1,4 @@
+import AppKit
 import ArgumentParser
 import AXorcist
 import CoreGraphics
@@ -183,6 +184,7 @@ struct ClickCommand: AsyncParsableCommand {
         )
     }
 
+    @MainActor
     private func waitForElement(
         elementId: String,
         sessionCache: SessionCache,
@@ -193,27 +195,34 @@ struct ClickCommand: AsyncParsableCommand {
         let deadline = startTime.addingTimeInterval(timeoutSeconds)
         let retryInterval: UInt64 = 100_000_000 // 100ms in nanoseconds
 
-        // First, try to find in the current session data
-        if let sessionData = await sessionCache.load(),
-           let element = sessionData.uiMap[elementId] {
-            // Check if element is actionable
-            if element.isActionable {
-                return element
-            }
+        // Load session data to get element properties
+        guard let sessionData = await sessionCache.load(),
+              let targetElement = sessionData.uiMap[elementId] else {
+            throw PeekabooError.elementNotFound
         }
 
-        // Enter retry loop
-        while Date() < deadline {
-            // In a real implementation, we would:
-            // 1. Re-query the accessibility tree
-            // 2. Find elements matching the original element's properties
-            // 3. Check if they're actionable
+        // Create locator from element properties
+        let locator = ElementLocator(
+            role: targetElement.role,
+            title: targetElement.title,
+            label: targetElement.label,
+            value: targetElement.value
+        )
 
-            // For now, just check the cached data
-            if let sessionData = await sessionCache.load(),
-               let element = sessionData.uiMap[elementId],
-               element.isActionable {
-                return element
+        // Enter retry loop with live accessibility queries
+        while Date() < deadline {
+            // Re-query the accessibility tree for live element
+            if let liveElement = try await findLiveElement(
+                matching: locator,
+                in: sessionData.applicationName
+            ) {
+                // Perform actionability checks
+                if try await isElementActionable(liveElement) {
+                    // Update element with live coordinates
+                    var updatedElement = targetElement
+                    updatedElement.frame = liveElement.frame() ?? .zero
+                    return updatedElement
+                }
             }
 
             // Wait before retrying
@@ -224,7 +233,105 @@ struct ClickCommand: AsyncParsableCommand {
             "Element '\(elementId)' not found or not actionable after \(timeout)ms"
         )
     }
+    
+    @MainActor
+    private func findLiveElement(
+        matching locator: ElementLocator,
+        in appName: String?
+    ) async throws -> Element? {
+        // Find the application
+        guard let appName = appName,
+              let app = NSWorkspace.shared.runningApplications.first(where: {
+                  $0.localizedName == appName || $0.bundleIdentifier == appName
+              }) else {
+            return nil
+        }
+        
+        // Create AXUIElement for the application
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        
+        // Search for matching element
+        return findMatchingElement(in: appElement, matching: locator)
+    }
+    
+    @MainActor
+    private func findMatchingElement(
+        in element: Element,
+        matching locator: ElementLocator
+    ) -> Element? {
+        // Check if current element matches
+        if matchesLocator(element: element, locator: locator) {
+            return element
+        }
+        
+        // Recursively search children
+        if let children = element.children() {
+            for child in children {
+                if let match = findMatchingElement(in: child, matching: locator) {
+                    return match
+                }
+            }
+        }
+        
+        return nil
+    }
+    
+    @MainActor
+    private func matchesLocator(element: Element, locator: ElementLocator) -> Bool {
+        // Match by role
+        if let role = element.role(), role != locator.role {
+            return false
+        }
+        
+        // Match by title if specified
+        if let locatorTitle = locator.title {
+            if element.title() != locatorTitle {
+                return false
+            }
+        }
+        
+        // Match by value if specified
+        if let locatorValue = locator.value,
+           let elementValue = element.value() as? String {
+            if elementValue != locatorValue {
+                return false
+            }
+        }
+        
+        return true
+    }
+    
+    @MainActor
+    private func isElementActionable(_ element: Element) async throws -> Bool {
+        // Check if element is enabled
+        if !(element.isEnabled() ?? true) {
+            return false
+        }
+        
+        // Check if element is visible (not hidden)
+        // AXorcist doesn't expose hidden attribute directly, so we check frame
+        guard let frame = element.frame() else {
+            return false
+        }
+        if frame.width <= 0 || frame.height <= 0 {
+            return false
+        }
+        
+        // Check if element is on screen
+        if let mainScreen = NSScreen.main {
+            let screenBounds = mainScreen.frame
+            if !screenBounds.intersects(frame) {
+                return false
+            }
+        } else {
+            return false
+        }
+        
+        return true
+    }
 
+    @MainActor
     private func waitForElementByQuery(
         query: String,
         sessionCache: SessionCache,
@@ -235,13 +342,36 @@ struct ClickCommand: AsyncParsableCommand {
         let deadline = startTime.addingTimeInterval(timeoutSeconds)
         let retryInterval: UInt64 = 100_000_000 // 100ms in nanoseconds
 
+        // Load session data to get application context
+        guard let sessionData = await sessionCache.load() else {
+            throw PeekabooError.sessionNotFound
+        }
+
         while Date() < deadline {
-            // Find elements matching the query
+            // Find elements matching the query from cached data
             let elements = await sessionCache.findElements(matching: query)
                 .filter(\.isActionable)
 
-            if let element = elements.first {
-                return element
+            // For each matching element, verify it's still live and actionable
+            for element in elements {
+                let locator = ElementLocator(
+                    role: element.role,
+                    title: element.title,
+                    label: element.label,
+                    value: element.value
+                )
+                
+                if let liveElement = try await findLiveElement(
+                    matching: locator,
+                    in: sessionData.applicationName
+                ) {
+                    if try await isElementActionable(liveElement) {
+                        // Update element with live coordinates
+                        var updatedElement = element
+                        updatedElement.frame = liveElement.frame() ?? .zero
+                        return updatedElement
+                    }
+                }
             }
 
             // Wait before retrying
@@ -255,6 +385,13 @@ struct ClickCommand: AsyncParsableCommand {
 }
 
 // MARK: - Supporting Types
+
+private struct ElementLocator {
+    let role: String
+    let title: String?
+    let label: String?
+    let value: String?
+}
 
 private enum ClickTarget {
     case element(SessionCache.SessionData.UIElement)

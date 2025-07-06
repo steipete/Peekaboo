@@ -35,6 +35,8 @@ import {
   runToolSchema,
   sleepToolHandler,
   sleepToolSchema,
+  cleanToolHandler,
+  cleanToolSchema,
 } from "./tools/index.js";
 import { generateServerStatusString } from "./utils/server-status.js";
 import { initializeSwiftCliPath } from "./utils/peekaboo-cli.js";
@@ -270,6 +272,16 @@ Useful for waiting between UI actions or allowing animations to complete.` +
           statusSuffix,
         inputSchema: zodToJsonSchema(sleepToolSchema),
       },
+      {
+        name: "clean",
+        title: "Clean Session Cache",
+        description:
+`Cleans up session cache and temporary files.
+Sessions are stored in ~/.peekaboo/session/<PID>/ directories.
+Use this to free up disk space and remove orphaned session data.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(cleanToolSchema),
+      },
     ],
   };
 });
@@ -349,6 +361,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "sleep": {
         const validatedArgs = sleepToolSchema.parse(args || {});
         response = await sleepToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "clean": {
+        const validatedArgs = cleanToolSchema.parse(args || {});
+        response = await cleanToolHandler(validatedArgs, toolContext);
         break;
       }
       default:

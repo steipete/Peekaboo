@@ -9,4 +9,5 @@ export { hotkeyToolHandler, hotkeyToolSchema } from "./hotkey.js";
 export { swipeToolHandler, swipeToolSchema } from "./swipe.js";
 export { runToolHandler, runToolSchema } from "./run.js";
 export { sleepToolHandler, sleepToolSchema } from "./sleep.js";
+export { cleanToolHandler, cleanToolSchema } from "./clean.js";
 export { buildSwiftCliArgs } from "../utils/image-cli-args.js";

@@ -2,33 +2,29 @@ import Foundation
 @testable import peekaboo
 import Testing
 
-#if os(macOS) && swift(>=5.9)
-@available(macOS 14.0, *)
 @Suite("RunCommand Tests")
 struct RunCommandTests {
     @Test("Run command parses script path")
     func parseScriptPath() throws {
         let command = try RunCommand.parse(["/path/to/script.peekaboo.json"])
         #expect(command.scriptPath == "/path/to/script.peekaboo.json")
-        #expect(command.session == nil)
-        #expect(command.stopOnError == true) // default
-        #expect(command.timeout == 300_000) // default 5 minutes
+        #expect(command.output == nil)
+        #expect(command.noFailFast == false) // default
+        #expect(command.verbose == false) // default
     }
 
     @Test("Run command parses all options")
     func parseAllOptions() throws {
         let command = try RunCommand.parse([
             "/tmp/automation.peekaboo.json",
-            "--session", "test-123",
-            "--continue-on-error",
-            "--timeout", "60000",
-            "--json-output"
+            "--output", "results.json",
+            "--no-fail-fast",
+            "--verbose"
         ])
         #expect(command.scriptPath == "/tmp/automation.peekaboo.json")
-        #expect(command.session == "test-123")
-        #expect(command.stopOnError == false) // inverted by --continue-on-error
-        #expect(command.timeout == 60000)
-        #expect(command.jsonOutput == true)
+        #expect(command.output == "results.json")
+        #expect(command.noFailFast == true)
+        #expect(command.verbose == true)
     }
 
     @Test("Run command requires script path")
@@ -40,83 +36,127 @@ struct RunCommandTests {
 
     @Test("Script structure validation")
     func scriptStructure() {
-        let script = PeekabooScript(
-            name: "Login Automation",
+        // Create script steps with proper structure
+        let steps = [
+            TestScriptStep(
+                stepId: "step1",
+                comment: "Capture Safari UI",
+                command: "see",
+                params: ["app": "Safari"]
+            ),
+            TestScriptStep(
+                stepId: "step2", 
+                comment: "Click login button",
+                command: "click",
+                params: ["query": "Login"]
+            ),
+            TestScriptStep(
+                stepId: "step3",
+                comment: nil,
+                command: "type",
+                params: ["text": "user@example.com", "on": "T1"]
+            )
+        ]
+        
+        let script = TestPeekabooScript(
             description: "Automates the login flow",
-            commands: [
-                PeekabooScript.Command(
-                    command: "see",
-                    args: ["--app", "Safari"],
-                    comment: "Capture Safari UI"
-                ),
-                PeekabooScript.Command(
-                    command: "click",
-                    args: ["Login"],
-                    comment: "Click login button"
-                ),
-                PeekabooScript.Command(
-                    command: "type",
-                    args: ["user@example.com", "--on", "T1"],
-                    comment: nil
-                )
-            ]
+            steps: steps
         )
 
-        #expect(script.name == "Login Automation")
         #expect(script.description == "Automates the login flow")
-        #expect(script.commands.count == 3)
-        #expect(script.commands[0].command == "see")
-        #expect(script.commands[0].args == ["--app", "Safari"])
-        #expect(script.commands[0].comment == "Capture Safari UI")
-        #expect(script.commands[2].comment == nil)
+        #expect(script.steps.count == 3)
+        #expect(script.steps[0].command == "see")
+        #expect(script.steps[0].params?["app"] == "Safari")
+        #expect(script.steps[0].comment == "Capture Safari UI")
+        #expect(script.steps[2].comment == nil)
     }
 
     @Test("Run result structure")
     func runResultStructure() {
-        let result = RunResult(
+        let stepResults = [
+            StepResult(
+                stepId: "step1",
+                stepNumber: 1,
+                command: "see",
+                success: true,
+                output: "{\"success\": true}",
+                error: nil,
+                executionTime: 1.5
+            ),
+            StepResult(
+                stepId: "step2",
+                stepNumber: 2,
+                command: "click",
+                success: false,
+                output: nil,
+                error: "Element not found",
+                executionTime: 2.0
+            )
+        ]
+        
+        let result = ScriptExecutionResult(
             success: false,
             scriptPath: "/tmp/test.peekaboo.json",
-            commandsExecuted: 3,
-            totalCommands: 5,
-            sessionId: "session-123",
+            description: "Test script",
+            totalSteps: 5,
+            completedSteps: 1,
+            failedSteps: 1,
             executionTime: 12.5,
-            errors: ["Command 4 failed: Element not found", "Command 5 failed: Timeout"]
+            steps: stepResults
         )
 
         #expect(result.success == false)
         #expect(result.scriptPath == "/tmp/test.peekaboo.json")
-        #expect(result.commandsExecuted == 3)
-        #expect(result.totalCommands == 5)
-        #expect(result.sessionId == "session-123")
+        #expect(result.totalSteps == 5)
+        #expect(result.completedSteps == 1)
+        #expect(result.failedSteps == 1)
         #expect(result.executionTime == 12.5)
-        #expect(result.errors?.count == 2)
-        #expect(result.errors?.first == "Command 4 failed: Element not found")
+        #expect(result.steps.count == 2)
+        #expect(result.steps[1].error == "Element not found")
     }
 
     @Test("Script JSON parsing")
     func scriptJSONParsing() throws {
         let jsonData = """
         {
-            "name": "Test Script",
             "description": "A test automation script",
-            "commands": [
+            "steps": [
                 {
+                    "stepId": "step1",
                     "command": "see",
-                    "args": ["--app", "Finder"]
+                    "params": {
+                        "app": "Finder"
+                    }
                 },
                 {
+                    "stepId": "step2",
                     "command": "sleep",
-                    "args": ["--duration", "1000"],
+                    "params": {
+                        "duration": "1000"
+                    },
                     "comment": "Wait for UI to settle"
                 }
             ]
         }
         """.data(using: .utf8)!
 
-        let script = try JSONDecoder().decode(PeekabooScript.self, from: jsonData)
-        #expect(script.name == "Test Script")
-        #expect(script.commands.count == 2)
-        #expect(script.commands[1].comment == "Wait for UI to settle")
+        let script = try JSONDecoder().decode(TestPeekabooScript.self, from: jsonData)
+        #expect(script.description == "A test automation script")
+        #expect(script.steps.count == 2)
+        #expect(script.steps[1].comment == "Wait for UI to settle")
     }
 }
-#endif
+
+// MARK: - Test Helper Types
+
+struct TestPeekabooScript: Codable {
+    let description: String?
+    let steps: [TestScriptStep]
+}
+
+struct TestScriptStep: Codable {
+    let stepId: String
+    let comment: String?
+    let command: String
+    let params: [String: String]?
+}

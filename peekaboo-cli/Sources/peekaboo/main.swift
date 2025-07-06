@@ -92,7 +92,8 @@ struct PeekabooCommand: AsyncParsableCommand {
             HotkeyCommand.self,
             SwipeCommand.self,
             RunCommand.self,
-            SleepCommand.self
+            SleepCommand.self,
+            CleanCommand.self
         ],
         defaultSubcommand: nil
     )

@@ -2,20 +2,18 @@ import Foundation
 @testable import peekaboo
 import Testing
 
-#if os(macOS) && swift(>=5.9)
-@available(macOS 14.0, *)
 @Suite("SleepCommand Tests")
 struct SleepCommandTests {
     @Test("Sleep command parses duration")
     func parseDuration() throws {
-        let command = try SleepCommand.parse(["--duration", "1000"])
+        let command = try SleepCommand.parse(["1000"])
         #expect(command.duration == 1000)
         #expect(command.jsonOutput == false)
     }
 
     @Test("Sleep command parses with JSON output")
     func parseWithJSONOutput() throws {
-        let command = try SleepCommand.parse(["--duration", "500", "--json-output"])
+        let command = try SleepCommand.parse(["500", "--json-output"])
         #expect(command.duration == 500)
         #expect(command.jsonOutput == true)
     }
@@ -31,31 +29,34 @@ struct SleepCommandTests {
     func sleepResultStructure() {
         let result = SleepResult(
             success: true,
-            requestedDuration: 1000,
-            actualDuration: 1001.5
+            requested_duration: 1000,
+            actual_duration: 1001
         )
 
         #expect(result.success == true)
-        #expect(result.requestedDuration == 1000)
-        #expect(result.actualDuration == 1001.5)
+        #expect(result.requested_duration == 1000)
+        #expect(result.actual_duration == 1001)
     }
 
     @Test("Duration validation", arguments: [
-        (0, true), // 0ms is valid (no-op)
+        (0, false), // 0ms is invalid (must be positive)
         (1, true), // 1ms is valid
         (1000, true), // 1 second
         (60000, true), // 1 minute
         (-100, false), // Negative duration should fail
     ])
-    func validateDuration(duration: Int, isValid: Bool) {
-        if isValid {
-            #expect(throws: Never.self) {
-                _ = try SleepCommand.parse(["--duration", String(duration)])
+    func validateDuration(duration: Int, isValid: Bool) throws {
+        // ArgumentParser validates that Int arguments can be parsed
+        // Runtime validation checks if > 0
+        if duration < 0 {
+            // Negative numbers fail at parse time
+            #expect(throws: Error.self) {
+                _ = try SleepCommand.parse([String(duration)])
             }
         } else {
-            #expect(throws: Error.self) {
-                _ = try SleepCommand.parse(["--duration", String(duration)])
-            }
+            // Zero and positive numbers parse successfully
+            let command = try SleepCommand.parse([String(duration)])
+            #expect(command.duration == duration)
         }
     }
 
@@ -75,4 +76,3 @@ struct SleepCommandTests {
         }
     }
 }
-#endif

@@ -176,6 +176,8 @@ enum CaptureError: Error, LocalizedError, Sendable {
     case invalidArgument(String)
     case unknownError(String)
     case noWindowsFound(String)
+    case fileIOError(String)
+    case captureFailure(String)
 
     var errorDescription: String? {
         switch self {
@@ -241,6 +243,10 @@ enum CaptureError: Error, LocalizedError, Sendable {
             return "An unexpected error occurred: \(message)"
         case let .noWindowsFound(appName):
             return "The '\(appName)' process is running, but no capturable windows were found."
+        case let .fileIOError(message):
+            return "File I/O error: \(message)"
+        case let .captureFailure(message):
+            return "Capture failed: \(message)"
         }
     }
 
@@ -260,6 +266,8 @@ enum CaptureError: Error, LocalizedError, Sendable {
         case .invalidArgument: 20
         case .unknownError: 1
         case .noWindowsFound: 7
+        case .fileIOError: 22
+        case .captureFailure: 23
         }
     }
 }
