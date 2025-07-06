@@ -60,7 +60,7 @@ struct SeeCommand: AsyncParsableCommand {
         let startTime = Date()
         // Always create a new session for see command
         let sessionId = String(ProcessInfo.processInfo.processIdentifier)
-        let sessionCache = SessionCache(sessionId: sessionId)
+        let sessionCache = try SessionCache(sessionId: sessionId, createIfNeeded: true)
 
         do {
             // Perform capture based on mode
@@ -86,7 +86,8 @@ struct SeeCommand: AsyncParsableCommand {
             try await sessionCache.updateScreenshot(
                 path: outputPath,
                 application: captureResult.applicationName,
-                window: captureResult.windowTitle
+                window: captureResult.windowTitle,
+                windowBounds: captureResult.windowBounds
             )
 
             // Generate annotated screenshot if requested
@@ -121,7 +122,8 @@ struct SeeCommand: AsyncParsableCommand {
                         id: element.id,
                         role: element.role,
                         title: element.title,
-                        is_actionable: element.isActionable
+                        is_actionable: element.isActionable,
+                        keyboard_shortcut: element.keyboardShortcut
                     )
                 } ?? []
 
@@ -184,25 +186,42 @@ struct SeeCommand: AsyncParsableCommand {
             outputPath: outputPath,
             applicationName: nil,
             windowTitle: nil,
-            suggestedName: suggestedName
+            suggestedName: suggestedName,
+            windowBounds: nil
         )
     }
 
+    @MainActor
     private func captureWindow(app: String, title: String?) async throws -> CaptureResult {
         let appInfo = try ApplicationFinder.findApplication(identifier: app)
-        let windows = try WindowManager.getWindowsForApp(pid: appInfo.processIdentifier)
+        
+        // Get the NSRunningApplication
+        guard let runningApp = NSWorkspace.shared.runningApplications.first(where: {
+            $0.processIdentifier == appInfo.processIdentifier
+        }) else {
+            throw CaptureError.appNotFound(appInfo.localizedName ?? app)
+        }
+        
+        // Get windows with subrole information
+        let enhancedWindows = WindowManager.getWindowsWithSubroles(for: runningApp)
+        guard !enhancedWindows.isEmpty else {
+            throw CaptureError.windowNotFound
+        }
 
         let targetWindow: WindowData
         if let title {
-            guard let window = windows.first(where: { $0.title.contains(title) }) else {
+            // Look for exact match first, then partial match
+            if let match = enhancedWindows.first(where: { $0.window.title == title }) {
+                targetWindow = match.window
+            } else if let match = enhancedWindows.first(where: { $0.window.title.contains(title) }) {
+                targetWindow = match.window
+            } else {
                 throw CaptureError.windowNotFound
             }
-            targetWindow = window
         } else {
-            guard let window = windows.first else {
-                throw CaptureError.windowNotFound
-            }
-            targetWindow = window
+            // When no title specified, prefer standard windows over panels/dialogs
+            // The windows are already sorted with standard windows first
+            targetWindow = enhancedWindows.first!.window
         }
 
         let appName = appInfo.localizedName ?? "Unknown"
@@ -219,10 +238,12 @@ struct SeeCommand: AsyncParsableCommand {
             outputPath: outputPath,
             applicationName: appName,
             windowTitle: targetWindow.title,
-            suggestedName: suggestedName
+            suggestedName: suggestedName,
+            windowBounds: targetWindow.bounds
         )
     }
 
+    @MainActor
     private func captureFrontmost() async throws -> CaptureResult {
         // Get frontmost application using NSWorkspace
         let workspace = NSWorkspace.shared
@@ -230,8 +251,9 @@ struct SeeCommand: AsyncParsableCommand {
             throw CaptureError.appNotFound("No active application")
         }
 
-        let windows = try WindowManager.getWindowsForApp(pid: frontApp.processIdentifier)
-        guard let frontWindow = windows.first else {
+        // Get windows with subrole information, prioritizing standard windows
+        let enhancedWindows = WindowManager.getWindowsWithSubroles(for: frontApp)
+        guard let frontWindow = enhancedWindows.first?.window else {
             throw CaptureError.windowNotFound
         }
 
@@ -249,7 +271,8 @@ struct SeeCommand: AsyncParsableCommand {
             outputPath: outputPath,
             applicationName: appName,
             windowTitle: frontWindow.title,
-            suggestedName: suggestedName
+            suggestedName: suggestedName,
+            windowBounds: frontWindow.bounds
         )
     }
 
@@ -275,7 +298,8 @@ struct SeeCommand: AsyncParsableCommand {
         try await createAnnotatedImage(
             from: originalPath,
             to: annotatedPath,
-            uiElements: sessionData.uiMap
+            uiElements: sessionData.uiMap,
+            windowBounds: sessionData.windowBounds
         )
 
         // Log annotation info only in non-JSON mode
@@ -291,7 +315,8 @@ struct SeeCommand: AsyncParsableCommand {
     private func createAnnotatedImage(
         from sourcePath: String,
         to destinationPath: String,
-        uiElements: [String: SessionCache.SessionData.UIElement]
+        uiElements: [String: SessionCache.SessionData.UIElement],
+        windowBounds: CGRect?
     ) async throws {
         // Load the original image
         guard let nsImage = NSImage(contentsOfFile: sourcePath) else {
@@ -350,12 +375,20 @@ struct SeeCommand: AsyncParsableCommand {
             // Get color for role
             let color = roleColors[element.role] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
             
+            // Transform coordinates from screen space to window-relative space
+            var elementFrame = element.frame
+            if let windowBounds = windowBounds {
+                // Convert from screen coordinates to window-relative coordinates
+                elementFrame.origin.x -= windowBounds.origin.x
+                elementFrame.origin.y -= windowBounds.origin.y
+            }
+            
             // Draw bounding box
             let rect = NSRect(
-                x: element.frame.origin.x,
-                y: imageSize.height - element.frame.origin.y - element.frame.height, // Flip Y coordinate
-                width: element.frame.width,
-                height: element.frame.height
+                x: elementFrame.origin.x,
+                y: imageSize.height - elementFrame.origin.y - elementFrame.height, // Flip Y coordinate
+                width: elementFrame.width,
+                height: elementFrame.height
             )
             
             color.withAlphaComponent(0.3).setFill()
@@ -428,6 +461,7 @@ private struct CaptureResult {
     let applicationName: String?
     let windowTitle: String?
     let suggestedName: String
+    let windowBounds: CGRect?
 }
 
 // MARK: - JSON Output Structure
@@ -453,4 +487,5 @@ struct UIElementSummary: Codable {
     let role: String
     let title: String?
     let is_actionable: Bool
+    let keyboard_shortcut: String?
 }

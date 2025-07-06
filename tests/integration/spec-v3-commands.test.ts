@@ -131,7 +131,7 @@ describe("Spec v3 Commands", () => {
         // Missing steps array
       }));
 
-      const result = await runCommand(["run", tempFile]);
+      const result = await runCommand(["run", tempFile, "--json-output"]);
       
       expect(result.code).toBe(1);
       const json = JSON.parse(result.stdout);
@@ -160,7 +160,7 @@ describe("Spec v3 Commands", () => {
         ]
       }));
 
-      const result = await runCommand(["run", tempFile]);
+      const result = await runCommand(["run", tempFile, "--json-output"]);
       
       expect(result.code).toBe(0);
       const json = JSON.parse(result.stdout);

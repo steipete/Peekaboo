@@ -55,6 +55,53 @@ To manage state without a persistent server, Peekaboo will use a **transient, pr
 
 *   **Garbage Collection:** To prevent orphaned directories from accumulating, a manual cleanup command will be provided: `peekaboo clean --all-sessions`. This command will scan the `~/.peekaboo/session/` directory and delete any session subdirectories with a modification date older than a configurable threshold (default: 24 hours).
 
+##### **3.1.1 Automatic Session Resolution**
+
+To improve usability and reduce friction in interactive workflows, Peekaboo implements automatic session resolution for all commands except `see`.
+
+*   **Session Resolution Precedence:** When a command needs a session, it follows this precedence order:
+    1. **Explicit `--session-id`**: If provided, use the specified session ID (highest priority)
+    2. **Latest Valid Session**: Find the most recently created session within the last 10 minutes
+    3. **Error**: If no valid session is found, fail with a helpful error message
+
+*   **Time-Based Filtering:** Only sessions created within the last 10 minutes are considered "valid" for automatic resolution. This prevents accidentally using stale sessions from previous automation runs.
+
+*   **Command-Specific Behavior:**
+    *   **`see` command**: Always creates a new session (never uses existing sessions)
+    *   **All other commands**: Use session resolution precedence to find appropriate session
+
+*   **Implementation Details:**
+    ```swift
+    // Session resolution logic
+    func resolveSession(explicitId: String?) -> String {
+        if let id = explicitId { return id }
+        
+        let tenMinutesAgo = Date().addingTimeInterval(-600)
+        let validSessions = findSessions()
+            .filter { $0.creationDate > tenMinutesAgo }
+            .sorted { $0.creationDate > $1.creationDate }
+        
+        guard let latest = validSessions.first else {
+            throw PeekabooError.noValidSessionFound
+        }
+        
+        return latest.sessionId
+    }
+    ```
+
+*   **Updated Workflow Examples:**
+    ```bash
+    # Interactive usage - no session tracking needed
+    peekaboo see --app "Notes"
+    peekaboo click --on "B1"  # Automatically uses session from 'see'
+    peekaboo type "Hello World"
+    
+    # Explicit session control still available
+    peekaboo see --app "Safari"  # Creates session 12345
+    peekaboo see --app "Notes"   # Creates session 12346
+    peekaboo click --on "B1" --session-id 12345  # Click in Safari
+    ```
+
 ##### **3.2. Performance & Dependencies**
 *   **Performance Target:** The core `peekaboo see` command, for a moderately complex window, should complete in **under 2 seconds**. Interaction commands (`click`, `type`) should target sub-500ms execution times.
 *   **Dependencies:** The `peekaboo-cli` will be a self-contained binary. The Homebrew installation formula will specify the minimum required macOS version (e.g., macOS 13.0). No other runtime dependencies will be required.
@@ -90,15 +137,15 @@ This is the evolution of the `AXorcist` project, refactored and expanded into th
     }
     ```
 
-**`peekaboo click --on <element_id> --session-id <id> [--wait-for <ms>]`**
+**`peekaboo click --on <element_id> [--session-id <id>] [--wait-for <ms>]`**
 
 *   **Arguments:**
     *   `--on <element_id>`: **Required.** The `peekabooId` from the `map.json` of the target session.
-    *   `--session-id <id>`: **Required.** The session ID from a `see` command.
+    *   `--session-id <id>`: **Optional.** The session ID from a `see` command. If omitted, uses the most recent session created within the last 10 minutes.
 *   **Flags:**
     *   `--wait-for <ms>`: (Optional) Waits up to `<ms>` milliseconds for the element to appear if not immediately found. Defaults to the value in `config.jsonc` (5000ms).
 
-**`peekaboo type --text "..." [--on <element_id>] --session-id <id>`**
+**`peekaboo type --text "..." [--on <element_id>] [--session-id <id>]`**
 
 *   **Arguments:**
     *   `--text "..."`: **Required.** The string to type.
@@ -329,7 +376,7 @@ When you run `peekaboo click --on B1 --session-id 12345`:
 
 A `right-click` is specified using the `--button` flag.
 
-*   **CLI Command:** `peekaboo click --on M2 --button right --session-id 12345`
+*   **CLI Command:** `peekaboo click --on M2 --button right [--session-id 12345]`
 *   **Swift Implementation:** The implementation is identical to a left-click, but the `mouseType` and `mouseButton` parameters change in the `CGEvent` creation.
     ```swift
     let rightMouseDownEvent = CGEvent(mouseEventSource: nil, mouseType: .rightMouseDown, /*...*/)
@@ -340,7 +387,7 @@ A `right-click` is specified using the `--button` flag.
 
 A `double-click` is specified using the `--clicks` flag.
 
-*   **CLI Command:** `peekaboo click --on B3 --clicks 2 --session-id 12345`
+*   **CLI Command:** `peekaboo click --on B3 --clicks 2 [--session-id 12345]`
 *   **Swift Implementation:** The CLI wraps the `_click` sequence in a loop and uses the `CGEventSetIntegerValueField` function to correctly set the click count, which allows the OS to interpret it as a double-click event.
     ```swift
     // Simplified Swift logic
@@ -358,7 +405,7 @@ A `double-click` is specified using the `--clicks` flag.
 
 To handle scrolling, a dedicated `scroll` command is required.
 
-*   **CLI Command:** `peekaboo scroll --direction <dir> --amount <val> [--on <element_id>] --session-id <id>`
+*   **CLI Command:** `peekaboo scroll --direction <dir> --amount <val> [--on <element_id>] [--session-id <id>]`
 *   **Arguments:**
     *   `--direction`: **Required.** `up`, `down`, `left`, or `right`.
     *   `--amount`: **Required.** The number of "lines" or "ticks" to scroll.
@@ -384,7 +431,7 @@ To handle scrolling, a dedicated `scroll` command is required.
 
 This command handles typing strings of text.
 
-*   **CLI Command:** `peekaboo type --text "Hello, World!" [--on T1] --session-id 12345`
+*   **CLI Command:** `peekaboo type --text "Hello, World!" [--on T1] [--session-id 12345]`
 *   **How it Works:**
     1.  If `--on` is provided, it first performs a `click` on the target element to ensure it has keyboard focus.
     2.  It then iterates through each character of the `--text` string.
@@ -451,11 +498,11 @@ This table summarizes the full suite of proposed interaction commands for Peekab
 
 | Command | Key Arguments | Description |
 | :--- | :--- | :--- |
-| **`peekaboo click`** | `--on <id>`<br>`--session-id <id>`<br>`--button <type>`<br>`--clicks <num>` | Performs a left, right, or middle click on a UI element. Can perform multi-clicks. |
-| **`peekaboo type`** | `--text "..."`<br>`--session-id <id>`<br>`--on <id>` | Types a string of text. Can click an element first to focus it. |
-| **`peekaboo scroll`** | `--direction <dir>`<br>`--amount <num>`<br>`--session-id <id>` | Scrolls the mouse wheel up, down, left, or right. |
+| **`peekaboo click`** | `--on <id>`<br>`[--session-id <id>]`<br>`--button <type>`<br>`--clicks <num>` | Performs a left, right, or middle click on a UI element. Can perform multi-clicks. |
+| **`peekaboo type`** | `--text "..."`<br>`[--session-id <id>]`<br>`--on <id>` | Types a string of text. Can click an element first to focus it. |
+| **`peekaboo scroll`** | `--direction <dir>`<br>`--amount <num>`<br>`[--session-id <id>]` | Scrolls the mouse wheel up, down, left, or right. |
 | **`peekaboo hotkey`** | `--keys "key1,key2"` | Presses a combination of keys simultaneously (e.g., for shortcuts like Cmd+S). |
-| **`peekaboo swipe`** | `--from <id1> --to <id2>`<br>`--session-id <id>` | Drags the mouse from the center of one element to the center of another. |
+| **`peekaboo swipe`** | `--from <id1> --to <id2>`<br>`[--session-id <id>]` | Drags the mouse from the center of one element to the center of another. |
 
 This expanded suite provides a complete, robust, and intuitive set of tools to fully emulate human interaction, allowing agents to effectively drive any macOS application.
 

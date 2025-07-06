@@ -35,7 +35,8 @@ Peekaboo bridges the gap between visual content on your screen and AI understand
 - **Lightning-fast screenshots** of screens, applications, or specific windows
 - **AI-powered image analysis** using GPT-4 Vision, Claude, or local models
 - **Complete GUI automation** (v3) - Click, type, scroll, and interact with any macOS app
-- **Smart UI element detection** - Automatically identifies buttons, text fields, links, and more
+- **Smart UI element detection** - Automatically identifies buttons, text fields, links, and more with precise coordinate mapping
+- **Automatic session resolution** - Commands intelligently use the most recent session (no manual tracking!)
 - **Window and application management** with smart fuzzy matching
 - **Privacy-first operation** with local AI options via Ollama
 - **Non-intrusive capture** without changing window focus
@@ -138,14 +139,20 @@ for img in ~/Screenshots/*.png; do
   peekaboo analyze "$img" "Summarize this screenshot"
 done
 
-# Automated login workflow (v3)
-peekaboo see --app MyApp
-peekaboo click --on T1                  # Click first text field
-peekaboo type "user@example.com"
-peekaboo click --on T2                  # Click second text field  
+# Automated login workflow (v3 with automatic session resolution)
+peekaboo see --app MyApp                # Creates new session
+peekaboo click --on T1                  # Automatically uses session from 'see'
+peekaboo type "user@example.com"        # Still using same session
+peekaboo click --on T2                  # No need to specify --session
 peekaboo type "password123"
 peekaboo click "Sign In"
 peekaboo sleep 2000                     # Wait 2 seconds
+
+# Multiple app automation with explicit sessions
+SESSION_A=$(peekaboo see --app Safari --json-output | jq -r '.data.session_id')
+SESSION_B=$(peekaboo see --app Notes --json-output | jq -r '.data.session_id')
+peekaboo click --on B1 --session $SESSION_A  # Click in Safari
+peekaboo type "Hello" --session $SESSION_B   # Type in Notes
 
 # Run automation script
 peekaboo run login.peekaboo.json

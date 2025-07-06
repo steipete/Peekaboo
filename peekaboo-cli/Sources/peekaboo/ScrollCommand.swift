@@ -65,7 +65,7 @@ struct ScrollCommand: AsyncParsableCommand {
 
             if let elementId = on {
                 // Load session and find element
-                let sessionCache = SessionCache(sessionId: session)
+                let sessionCache = try SessionCache(sessionId: session, createIfNeeded: false)
                 guard let sessionData = await sessionCache.load() else {
                     throw PeekabooError.sessionNotFound
                 }
