@@ -58,10 +58,12 @@ export async function swipeToolHandler(
     args.push("--to", input.to);
     
     // Duration
-    args.push("--duration", input.duration.toString());
+    const duration = input.duration ?? 500;
+    args.push("--duration", duration.toString());
     
     // Steps
-    args.push("--steps", input.steps.toString());
+    const steps = input.steps ?? 10;
+    args.push("--steps", steps.toString());
     
     args.push("--json-output");
 

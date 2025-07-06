@@ -89,20 +89,22 @@ export async function runToolHandler(
       args.push("--session", input.session);
     }
     
-    // Stop on error
-    if (!input.stop_on_error) {
+    // Stop on error (default is true, so only add flag when false)
+    const stopOnError = input.stop_on_error ?? true;
+    if (!stopOnError) {
       args.push("--continue-on-error");
     }
     
     // Timeout
-    args.push("--timeout", input.timeout.toString());
+    const timeout = input.timeout ?? 300000;
+    args.push("--timeout", timeout.toString());
     
     args.push("--json-output");
 
     // Execute the command
     const result = await executeSwiftCli(args, logger);
 
-    if (!result.success || !result.data) {
+    if (!result.data) {
       const errorMessage = result.error?.message || "Run command failed";
       logger.error({ result }, errorMessage);
       
@@ -129,7 +131,7 @@ export async function runToolHandler(
     lines.push(`📄 Script: ${runData.script_path}`);
     lines.push(`🔢 Commands executed: ${runData.commands_executed}/${runData.total_commands}`);
     lines.push(`🔖 Session ID: ${runData.session_id}`);
-    lines.push(`⏱️  Total time: ${(runData.execution_time / 1000).toFixed(2)}s`);
+    lines.push(`⏱️  Total time: ${runData.execution_time.toFixed(2)}s`);
     
     if (runData.errors && runData.errors.length > 0) {
       lines.push("\n❌ Errors:");

@@ -88,7 +88,7 @@ describe("click tool", () => {
           success: true,
           clicked_element: "AXButton: Submit",
           click_location: { x: 150, y: 250 },
-          wait_time: 0.5,
+          wait_time: 500,
           execution_time: 0.75,
         },
       };

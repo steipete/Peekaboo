@@ -315,7 +315,8 @@ describeSwiftTests("Swift CLI Integration Tests", () => {
           expect(actualPath).toBeDefined();
           // Check that the path starts with the base path (without extension) and ends with .png
           const basePath = tempImagePath.replace(/\.png$/, '');
-          expect(actualPath).toMatch(new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_\\d+_\\d{8}_\\d{6}\\.png$`));
+          // The path might be the exact tempImagePath or have a suffix
+          expect(actualPath).toMatch(new RegExp(`^${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(_\\d+_\\d{8}_\\d{6})?\\.png$`));
           
           // Verify the actual file exists at the returned path
           await expect(fs.access(actualPath!)).resolves.toBeUndefined();

@@ -70,11 +70,13 @@ export async function typeToolHandler(
     }
     
     // Typing delay
-    args.push("--delay", input.delay.toString());
+    const delay = input.delay ?? 50;
+    args.push("--delay", delay.toString());
     
     // Wait timeout (only used if 'on' is specified)
     if (input.on) {
-      args.push("--wait-for", input.wait_for.toString());
+      const waitFor = input.wait_for ?? 5000;
+      args.push("--wait-for", waitFor.toString());
     }
     
     args.push("--json-output");
