@@ -40,6 +40,9 @@ struct RunCommand: AsyncParsableCommand {
 
     @Flag(help: "Show detailed step execution")
     var verbose = false
+    
+    @Flag(help: "Output in JSON format")
+    var jsonOutput = false
 
     mutating func run() async throws {
         let startTime = Date()
@@ -52,7 +55,8 @@ struct RunCommand: AsyncParsableCommand {
             let results = try await executeScript(
                 script,
                 failFast: !noFailFast,
-                verbose: verbose
+                verbose: verbose,
+                jsonOutput: jsonOutput
             )
 
             // Prepare output
@@ -74,11 +78,35 @@ struct RunCommand: AsyncParsableCommand {
                 let data = try encoder.encode(output)
                 try data.write(to: URL(fileURLWithPath: outputPath))
 
-                if !verbose {
+                if !verbose && !jsonOutput {
                     print("✅ Script completed. Results saved to: \(outputPath)")
                 }
-            } else {
+            } else if jsonOutput {
                 outputSuccessCodable(data: output)
+            } else {
+                // Human-readable output
+                if output.success {
+                    print("✅ Script completed successfully")
+                    print("   Total steps: \(output.totalSteps)")
+                    print("   Completed: \(output.completedSteps)")
+                    print("   Failed: \(output.failedSteps)")
+                    print("   Execution time: \(String(format: "%.2f", output.executionTime))s")
+                } else {
+                    print("❌ Script failed")
+                    print("   Total steps: \(output.totalSteps)")
+                    print("   Completed: \(output.completedSteps)")
+                    print("   Failed: \(output.failedSteps)")
+                    print("   Execution time: \(String(format: "%.2f", output.executionTime))s")
+                    
+                    // Show failed steps
+                    let failedSteps = output.steps.filter { !$0.success }
+                    if !failedSteps.isEmpty {
+                        print("\nFailed steps:")
+                        for step in failedSteps {
+                            print("   - Step \(step.stepNumber) (\(step.command)): \(step.error ?? "Unknown error")")
+                        }
+                    }
+                }
             }
 
             // Exit with failure if any steps failed
@@ -87,7 +115,11 @@ struct RunCommand: AsyncParsableCommand {
             }
 
         } catch {
-            outputError(message: error.localizedDescription, code: .INVALID_ARGUMENT)
+            if jsonOutput {
+                outputError(message: error.localizedDescription, code: .INVALID_ARGUMENT)
+            } else {
+                print("❌ Error: \(error.localizedDescription)")
+            }
             throw ExitCode.failure
         }
     }
@@ -112,7 +144,8 @@ struct RunCommand: AsyncParsableCommand {
     private func executeScript(
         _ script: PeekabooScript,
         failFast: Bool,
-        verbose: Bool
+        verbose: Bool,
+        jsonOutput: Bool
     ) async throws -> [StepResult] {
         var results: [StepResult] = []
         var sessionId: String?
@@ -120,7 +153,7 @@ struct RunCommand: AsyncParsableCommand {
         for (index, step) in script.steps.enumerated() {
             let stepNumber = index + 1
 
-            if verbose {
+            if verbose && !jsonOutput {
                 print("\n🔄 Step \(stepNumber)/\(script.steps.count): \(step.command)")
                 if let comment = step.comment {
                     print("   💬 \(comment)")
@@ -153,7 +186,7 @@ struct RunCommand: AsyncParsableCommand {
 
                 results.append(result)
 
-                if verbose {
+                if verbose && !jsonOutput {
                     print("   ✅ Step \(stepNumber) completed in \(String(format: "%.2f", result.executionTime))s")
                 }
 
@@ -170,7 +203,7 @@ struct RunCommand: AsyncParsableCommand {
 
                 results.append(result)
 
-                if verbose {
+                if verbose && !jsonOutput {
                     print("   ❌ Step \(stepNumber) failed: \(error.localizedDescription)")
                 }
 
@@ -194,8 +227,8 @@ struct RunCommand: AsyncParsableCommand {
         if let params = step.params {
             // Handle session ID propagation
             if step.command != "see" && step.command != "sleep" && step.command != "hotkey" {
-                if let sessionId = params["session-id"] as? String ?? currentSessionId {
-                    args.append("--session-id")
+                if let sessionId = params["session-id"] as? String ?? params["session"] as? String ?? currentSessionId {
+                    args.append("--session")
                     args.append(sessionId)
                 }
             }
@@ -216,7 +249,7 @@ struct RunCommand: AsyncParsableCommand {
                     args.append(query)
                 }
                 // Add other click parameters as flags
-                for (key, value) in params where key != "session-id" && key != "query" {
+                for (key, value) in params where key != "session-id" && key != "query" && key != "session" {
                     args.append("--\(key)")
 
                     if let stringValue = value as? String {
@@ -227,9 +260,13 @@ struct RunCommand: AsyncParsableCommand {
                         args.append(numberValue.stringValue)
                     }
                 }
-            } else if step.command == "type", params["text"] != nil {
-                // Type can take text as --text flag or handle special keys
-                for (key, value) in params where key != "session-id" {
+            } else if step.command == "type" {
+                // Type takes text as positional argument
+                if let text = params["text"] as? String {
+                    args.append(text)
+                }
+                // Add other type parameters as flags
+                for (key, value) in params where key != "session-id" && key != "session" && key != "text" {
                     args.append("--\(key)")
 
                     if let stringValue = value as? String {
@@ -253,9 +290,30 @@ struct RunCommand: AsyncParsableCommand {
                         args.append(numberValue.stringValue)
                     }
                 }
-            } else if step.command == "scroll" || step.command == "swipe" || step.command == "hotkey" {
+            } else if step.command == "swipe" {
+                // Swipe uses specific parameter names
+                for (key, value) in params where key != "session-id" && key != "session" {
+                    var paramKey = key
+                    // Map common variations to expected parameter names
+                    if key == "from" || key == "from-element" {
+                        paramKey = "from"
+                    } else if key == "to" || key == "to-element" {
+                        paramKey = "to"
+                    }
+                    
+                    args.append("--\(paramKey)")
+
+                    if let stringValue = value as? String {
+                        args.append(stringValue)
+                    } else if let boolValue = value as? Bool, boolValue {
+                        // Flag parameters don't need a value
+                    } else if let numberValue = value as? NSNumber {
+                        args.append(numberValue.stringValue)
+                    }
+                }
+            } else if step.command == "scroll" || step.command == "hotkey" {
                 // These commands use all parameters as flags
-                for (key, value) in params where key != "session-id" {
+                for (key, value) in params where key != "session-id" && key != "session" {
                     args.append("--\(key)")
 
                     if let stringValue = value as? String {
@@ -268,7 +326,7 @@ struct RunCommand: AsyncParsableCommand {
                 }
             } else {
                 // Default: Add all parameters as flags
-                for (key, value) in params where key != "session-id" {
+                for (key, value) in params where key != "session-id" && key != "session" {
                     args.append("--\(key)")
 
                     if let stringValue = value as? String {
@@ -325,6 +383,98 @@ struct RunCommand: AsyncParsableCommand {
 struct PeekabooScript: Codable {
     let description: String?
     let steps: [ScriptStep]
+    
+    // Support both old and new formats
+    enum CodingKeys: String, CodingKey {
+        case name, description, version, steps, commands
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Try to get description from either field
+        if let desc = try? container.decodeIfPresent(String.self, forKey: .description) {
+            self.description = desc
+        } else if let name = try? container.decodeIfPresent(String.self, forKey: .name) {
+            self.description = name
+        } else {
+            self.description = nil
+        }
+        
+        // Try to decode steps from either "steps" or "commands"
+        if let steps = try? container.decode([ScriptStep].self, forKey: .steps) {
+            self.steps = steps
+        } else if let commands = try? container.decode([LegacyCommand].self, forKey: .commands) {
+            // Convert legacy commands to steps
+            self.steps = commands.enumerated().map { index, cmd in
+                ScriptStep(
+                    stepId: "step\(index + 1)",
+                    comment: cmd.comment,
+                    command: cmd.command,
+                    params: cmd.toParams()
+                )
+            }
+        } else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .steps,
+                in: container,
+                debugDescription: "Neither 'steps' nor 'commands' found in script"
+            )
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(description, forKey: .description)
+        try container.encode(steps, forKey: .steps)
+    }
+}
+
+// Legacy format support
+private struct LegacyCommand: Codable {
+    let command: String
+    let args: [String]?
+    let comment: String?
+    
+    func toParams() -> [String: Any]? {
+        guard let args = args, !args.isEmpty else { return nil }
+        
+        var params: [String: Any] = [:]
+        var i = 0
+        
+        while i < args.count {
+            let arg = args[i]
+            
+            // Handle flags that start with --
+            if arg.hasPrefix("--") {
+                let key = String(arg.dropFirst(2))
+                
+                // Check if there's a value after this flag
+                if i + 1 < args.count && !args[i + 1].hasPrefix("--") {
+                    params[key] = args[i + 1]
+                    i += 2
+                } else {
+                    // Boolean flag
+                    params[key] = true
+                    i += 1
+                }
+            } else {
+                // Handle positional arguments based on command
+                switch command {
+                case "sleep":
+                    params["duration"] = arg
+                case "type":
+                    params["text"] = arg
+                default:
+                    // For other commands, treat as query
+                    params["query"] = arg
+                }
+                i += 1
+            }
+        }
+        
+        return params.isEmpty ? nil : params
+    }
 }
 
 struct ScriptStep: Codable {
@@ -335,6 +485,13 @@ struct ScriptStep: Codable {
 
     enum CodingKeys: String, CodingKey {
         case stepId, comment, command, params
+    }
+    
+    init(stepId: String, comment: String?, command: String, params: [String: Any]?) {
+        self.stepId = stepId
+        self.comment = comment
+        self.command = command
+        self.params = params
     }
 
     init(from decoder: Decoder) throws {
