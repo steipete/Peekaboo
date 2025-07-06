@@ -242,3 +242,32 @@ PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest" ./peekaboo-cli/.build/
 - Test permissions by running `./peekaboo list server_status --json-output`
 - Test AI analysis with: `PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./peekaboo analyze screenshot.png "What is this?"`
 - When adding new AI providers, implement the `AIProvider` protocol in `peekaboo-cli/Sources/peekaboo/AIProviders/`
+
+## Swift Testing Framework
+
+**IMPORTANT**: This project uses the Swift Testing framework (introduced in Xcode 16), NOT XCTest. When writing or modifying tests:
+
+1. **Use Swift Testing imports and attributes**:
+   - Import `Testing` not `XCTest`
+   - Use `@Test` attribute for test functions
+   - Use `@Suite` for test suites
+   - Use `#expect()` and `#require()` macros instead of `XCTAssert`
+
+2. **Key differences from XCTest**:
+   - Test discovery: Use `@Test` attribute on any function
+   - Suite type: Prefer `struct` over `class` (automatic state isolation)
+   - Assertions: `#expect(expression)` and `#require(expression)`
+   - Setup/Teardown: Use `init()` and `deinit` (on classes/actors)
+   - Async: Simply mark test functions as `async`
+   - Parameterized tests: Use `@Test(arguments:)`
+
+3. **Common conversions**:
+   - `XCTAssertEqual(a, b)` → `#expect(a == b)`
+   - `XCTAssertTrue(x)` → `#expect(x)`
+   - `XCTAssertFalse(x)` → `#expect(!x)`
+   - `XCTUnwrap(x)` → `try #require(x)`
+   - `XCTAssertThrowsError` → `#expect(throws: Error.self) { ... }`
+
+4. **Build Settings**: Ensure test targets have "Enable Testing Frameworks" set to "Yes" in Build Settings
+
+See `/docs/swift-testing-playbook.md` for comprehensive migration guide.

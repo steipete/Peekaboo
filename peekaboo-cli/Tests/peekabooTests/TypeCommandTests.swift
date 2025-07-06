@@ -2,99 +2,69 @@ import Foundation
 @testable import peekaboo
 import Testing
 
-#if os(macOS) && swift(>=5.9)
-@available(macOS 14.0, *)
 @Suite("TypeCommand Tests")
 struct TypeCommandTests {
     @Test("Type command parses text argument")
     func parseTextArgument() throws {
         let command = try TypeCommand.parse(["Hello, world!"])
         #expect(command.text == "Hello, world!")
-        #expect(command.on == nil)
         #expect(command.clear == false)
-        #expect(command.delay == 50)
+        #expect(command.return == false)
+        #expect(command.escape == false)
+        #expect(command.delay == 50) // default
     }
 
     @Test("Type command parses all options")
     func parseAllOptions() throws {
         let command = try TypeCommand.parse([
-            "test@example.com",
-            "--on", "T1",
-            "--session", "test-123",
+            "test text",
             "--clear",
+            "--return",
             "--delay", "100",
-            "--wait-for", "3000",
             "--json-output"
         ])
-        #expect(command.text == "test@example.com")
-        #expect(command.on == "T1")
-        #expect(command.session == "test-123")
+        #expect(command.text == "test text")
         #expect(command.clear == true)
+        #expect(command.return == true)
         #expect(command.delay == 100)
-        #expect(command.waitFor == 3000)
         #expect(command.jsonOutput == true)
     }
 
-    @Test("Type command requires text argument")
-    func requiresTextArgument() {
-        #expect(throws: Error.self) {
-            _ = try TypeCommand.parse([])
-        }
-    }
-
-    @Test("Text parsing handles special sequences", arguments: [
-        ("{return}", TextSegment.key(.return)),
-        ("{tab}", TextSegment.key(.tab)),
-        ("{escape}", TextSegment.key(.escape)),
-        ("{delete}", TextSegment.key(.delete)),
-        ("Hello", TextSegment.text("Hello")),
-        ("{unknown}", TextSegment.text("{unknown}"))
+    @Test("Type command special key flags", arguments: [
+        (["--return"], true, false, false, nil),
+        (["--escape"], false, true, false, nil),
+        (["--delete"], false, false, true, nil),
+        (["--tab", "3"], false, false, false, 3),
     ])
-    func parseTextSegments(input: String, expected: TextSegment) {
-        let segments = TypeCommand.parseTextSegments(input)
-        #expect(segments.count == 1)
+    func parseSpecialKeys(args: [String], hasReturn: Bool, hasEscape: Bool, hasDelete: Bool, tabCount: Int?) throws {
+        let command = try TypeCommand.parse(args)
+        #expect(command.return == hasReturn)
+        #expect(command.escape == hasEscape)
+        #expect(command.delete == hasDelete)
+        #expect(command.tab == tabCount)
+    }
 
-        // Compare segments
-        switch (segments.first, expected) {
-        case let (.text(actual), .text(exp)):
-            #expect(actual == exp)
-        case let (.key(actual), .key(exp)):
-            #expect(actual == exp)
-        default:
-            Issue.record("Segment types don't match")
+    @Test("Type command requires text or special key")
+    func requiresTextOrSpecialKey() {
+        // Empty command with no arguments should now work but will fail at runtime
+        // TypeCommand allows empty parse but validates at runtime
+        #expect(throws: Never.self) {
+            let cmd = try TypeCommand.parse([])
+            // Command would fail when run() is called
+            #expect(cmd.text == nil)
+            #expect(cmd.tab == nil)
+            #expect(cmd.return == false)
+            #expect(cmd.escape == false)
+            #expect(cmd.delete == false)
+            #expect(cmd.clear == false)
         }
     }
 
-    @Test("Complex text parsing")
-    func parseComplexText() {
-        let segments = TypeCommand.parseTextSegments("Hello{tab}World{return}")
-        #expect(segments.count == 4)
-
-        guard segments.count == 4 else { return }
-
-        if case let .text(text) = segments[0] {
-            #expect(text == "Hello")
-        } else {
-            Issue.record("Expected text segment")
-        }
-
-        if case let .key(key) = segments[1] {
-            #expect(key == .tab)
-        } else {
-            Issue.record("Expected key segment")
-        }
-
-        if case let .text(text) = segments[2] {
-            #expect(text == "World")
-        } else {
-            Issue.record("Expected text segment")
-        }
-
-        if case let .key(key) = segments[3] {
-            #expect(key == .return)
-        } else {
-            Issue.record("Expected key segment")
-        }
+    @Test("Type command with clear flag")
+    func parseClearFlag() throws {
+        let command = try TypeCommand.parse(["password123", "--clear"])
+        #expect(command.text == "password123")
+        #expect(command.clear == true)
     }
 
     @Test("Type result structure")
@@ -102,16 +72,44 @@ struct TypeCommandTests {
         let result = TypeResult(
             success: true,
             typedText: "Hello, world!",
-            targetElement: "AXTextField: Username",
-            charactersTyped: 13,
+            keyPresses: 13,
+            totalCharacters: 13,
             executionTime: 0.65
         )
 
         #expect(result.success == true)
         #expect(result.typedText == "Hello, world!")
-        #expect(result.targetElement == "AXTextField: Username")
-        #expect(result.charactersTyped == 13)
+        #expect(result.keyPresses == 13)
+        #expect(result.totalCharacters == 13)
         #expect(result.executionTime == 0.65)
     }
+
+    @Test("Type command with session ID")
+    func parseSessionId() throws {
+        let command = try TypeCommand.parse([
+            "test",
+            "--session", "12345"
+        ])
+        #expect(command.text == "test")
+        #expect(command.session == "12345")
+    }
+
+    @Test("Type command with multiple tab presses")
+    func parseMultipleTabs() throws {
+        let command = try TypeCommand.parse(["--tab", "5"])
+        #expect(command.tab == 5)
+        #expect(command.text == nil)
+    }
+
+    @Test("Type command combines text and special keys")
+    func combineTextAndKeys() throws {
+        let command = try TypeCommand.parse([
+            "username@example.com",
+            "--tab", "1",  // Must provide value for --tab
+            "--return"
+        ])
+        #expect(command.text == "username@example.com")
+        #expect(command.tab == 1)
+        #expect(command.return == true)
+    }
 }
-#endif

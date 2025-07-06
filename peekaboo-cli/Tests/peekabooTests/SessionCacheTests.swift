@@ -2,8 +2,6 @@ import Foundation
 @testable import peekaboo
 import Testing
 
-#if os(macOS) && swift(>=5.9)
-@available(macOS 14.0, *)
 @Suite("SessionCache Tests")
 struct SessionCacheTests {
     let testSessionId: String
@@ -21,12 +19,31 @@ struct SessionCacheTests {
     func sessionInitialization() async throws {
         #expect(await sessionCache.sessionId == testSessionId)
     }
+    
+    @Test("Default session ID uses process ID")
+    func defaultSessionUsesProcessID() async throws {
+        let defaultCache = SessionCache()
+        let expectedPID = String(ProcessInfo.processInfo.processIdentifier)
+        #expect(await defaultCache.sessionId == expectedPID)
+    }
+    
+    @Test("Session cache uses ~/.peekaboo/session/<PID>/ directory structure")
+    func sessionDirectoryStructure() async throws {
+        let cache = SessionCache(sessionId: "test-12345")
+        let paths = await cache.getSessionPaths()
+        
+        // Check that paths follow the v3 spec structure
+        #expect(paths.raw.contains("/.peekaboo/session/test-12345/raw.png"))
+        #expect(paths.annotated.contains("/.peekaboo/session/test-12345/annotated.png"))
+        #expect(paths.map.contains("/.peekaboo/session/test-12345/map.json"))
+    }
 
     @Test("Save and load session data preserves all fields")
     func saveAndLoadSessionData() async throws {
         // Create test data
         let testData = SessionCache.SessionData(
-            screenshot: "/tmp/test.png",
+            screenshotPath: "/tmp/test.png",
+            annotatedPath: nil,
             uiMap: [
                 "B1": SessionCache.SessionData.UIElement(
                     id: "B1",
@@ -49,7 +66,7 @@ struct SessionCacheTests {
 
         // Load data
         let loadedData = try #require(await sessionCache.load())
-        #expect(loadedData.screenshot == "/tmp/test.png")
+        #expect(loadedData.screenshotPath == "/tmp/test.png")
         #expect(loadedData.applicationName == "TestApp")
         #expect(loadedData.windowTitle == "Test Window")
         #expect(loadedData.uiMap.count == 1)
@@ -72,7 +89,8 @@ struct SessionCacheTests {
     func findElementsMatching() async throws {
         // Create test data with multiple elements
         let testData = SessionCache.SessionData(
-            screenshot: "/tmp/test.png",
+            screenshotPath: "/tmp/test.png",
+            annotatedPath: nil,
             uiMap: [
                 "B1": SessionCache.SessionData.UIElement(
                     id: "B1",
@@ -154,7 +172,8 @@ struct SessionCacheTests {
     @Test("Get element by ID returns correct element")
     func getElementById() async throws {
         let testData = SessionCache.SessionData(
-            screenshot: "/tmp/test.png",
+            screenshotPath: "/tmp/test.png",
+            annotatedPath: nil,
             uiMap: [
                 "B1": SessionCache.SessionData.UIElement(
                     id: "B1",
@@ -187,7 +206,8 @@ struct SessionCacheTests {
     @Test("Clear session removes all data")
     func clearSession() async throws {
         let testData = SessionCache.SessionData(
-            screenshot: "/tmp/test.png",
+            screenshotPath: "/tmp/test.png",
+            annotatedPath: nil,
             uiMap: [:],
             lastUpdateTime: Date(),
             applicationName: nil,
@@ -246,13 +266,43 @@ struct SessionCacheTests {
         #expect(ElementIDGenerator.isActionableRole(role) == shouldBeActionable)
     }
 
+    @Test("Update screenshot copies file to session directory")
+    func updateScreenshotCopiesFile() async throws {
+        // Create a temporary test file
+        let tempDir = FileManager.default.temporaryDirectory
+        let sourcePath = tempDir.appendingPathComponent("test-source.png").path
+        let testData = Data([0x89, 0x50, 0x4E, 0x47]) // PNG header
+        try testData.write(to: URL(fileURLWithPath: sourcePath))
+        
+        // Update screenshot
+        try await sessionCache.updateScreenshot(
+            path: sourcePath,
+            application: "TestApp",
+            window: "TestWindow"
+        )
+        
+        // Verify raw.png was created in session directory
+        let paths = await sessionCache.getSessionPaths()
+        #expect(FileManager.default.fileExists(atPath: paths.raw))
+        
+        // Verify session data is updated
+        let data = await sessionCache.load()
+        #expect(data?.screenshotPath == paths.raw)
+        #expect(data?.applicationName == "TestApp")
+        #expect(data?.windowTitle == "TestWindow")
+        
+        // Cleanup
+        try? FileManager.default.removeItem(atPath: sourcePath)
+    }
+    
     @Test("Atomic save operations preserve data integrity")
     func atomicSaveOperations() async throws {
         // This test verifies atomic save operations work correctly
         // by saving multiple times rapidly
 
         let testData = SessionCache.SessionData(
-            screenshot: "/tmp/test.png",
+            screenshotPath: "/tmp/test.png",
+            annotatedPath: nil,
             uiMap: [:],
             lastUpdateTime: Date(),
             applicationName: "AtomicTest",
@@ -272,4 +322,3 @@ struct SessionCacheTests {
         #expect(finalData?.windowTitle == "Atomic Window 4")
     }
 }
-#endif

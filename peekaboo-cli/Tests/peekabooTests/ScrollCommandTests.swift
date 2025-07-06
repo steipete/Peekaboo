@@ -3,8 +3,6 @@ import Foundation
 @testable import peekaboo
 import Testing
 
-#if os(macOS) && swift(>=5.9)
-@available(macOS 14.0, *)
 @Suite("ScrollCommand Tests")
 struct ScrollCommandTests {
     @Test("Scroll command parses direction", arguments: [
@@ -46,12 +44,12 @@ struct ScrollCommandTests {
     }
 
     @Test("Scroll delta calculation", arguments: [
-        (ScrollDirection.up, 0, 5),
-        (ScrollDirection.down, 0, -5),
-        (ScrollDirection.left, 5, 0),
-        (ScrollDirection.right, -5, 0)
+        (ScrollCommand.ScrollDirection.up, 0, 5),
+        (ScrollCommand.ScrollDirection.down, 0, -5),
+        (ScrollCommand.ScrollDirection.left, 5, 0),
+        (ScrollCommand.ScrollDirection.right, -5, 0)
     ])
-    func scrollDeltas(direction: ScrollDirection, expectedDeltaX: Int, expectedDeltaY: Int) {
+    func scrollDeltas(direction: ScrollCommand.ScrollDirection, expectedDeltaX: Int, expectedDeltaY: Int) {
         // This test validates the expected scroll delta values for each direction
         // In the actual implementation, these values are used for CGEvent creation
         #expect(true) // Placeholder - would test the actual delta calculation method
@@ -89,4 +87,3 @@ struct ScrollCommandTests {
         // This would be tested in integration tests
     }
 }
-#endif

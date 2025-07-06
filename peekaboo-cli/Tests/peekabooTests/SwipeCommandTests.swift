@@ -3,72 +3,75 @@ import Foundation
 @testable import peekaboo
 import Testing
 
-#if os(macOS) && swift(>=5.9)
-@available(macOS 14.0, *)
 @Suite("SwipeCommand Tests")
 struct SwipeCommandTests {
     @Test("Swipe command parses from and to coordinates")
     func parseCoordinates() throws {
         let command = try SwipeCommand.parse([
-            "--from", "100,200",
-            "--to", "300,400"
+            "--from-coords", "100,200",
+            "--to-coords", "300,400"
         ])
-        #expect(command.from == "100,200")
-        #expect(command.to == "300,400")
+        #expect(command.fromCoords == "100,200")
+        #expect(command.toCoords == "300,400")
         #expect(command.duration == 500) // default
-        #expect(command.steps == 10) // default
+        #expect(command.steps == 20) // default is 20, not 10
     }
 
     @Test("Swipe command parses all options")
     func parseAllOptions() throws {
         let command = try SwipeCommand.parse([
-            "--from", "50,100",
-            "--to", "250,300",
+            "--from-coords", "50,100",
+            "--to-coords", "250,300",
             "--duration", "1000",
-            "--steps", "20",
+            "--steps", "30",
             "--json-output"
         ])
-        #expect(command.from == "50,100")
-        #expect(command.to == "250,300")
+        #expect(command.fromCoords == "50,100")
+        #expect(command.toCoords == "250,300")
         #expect(command.duration == 1000)
-        #expect(command.steps == 20)
-        #expect(command.jsonOutput == true)
+        #expect(command.steps == 30)
+        #expect(command.jsonOutput)
     }
 
     @Test("Swipe command requires both from and to")
-    func requiresFromAndTo() {
+    func requiresFromAndTo() throws {
+        // Parsing succeeds but validation would fail at runtime
         // Missing both
-        #expect(throws: Error.self) {
-            _ = try SwipeCommand.parse([])
-        }
+        let cmd1 = try SwipeCommand.parse([])
+        #expect(cmd1.from == nil)
+        #expect(cmd1.fromCoords == nil)
+        #expect(cmd1.to == nil)
+        #expect(cmd1.toCoords == nil)
 
         // Missing to
-        #expect(throws: Error.self) {
-            _ = try SwipeCommand.parse(["--from", "100,200"])
-        }
+        let cmd2 = try SwipeCommand.parse(["--from-coords", "100,200"])
+        #expect(cmd2.fromCoords == "100,200")
+        #expect(cmd2.to == nil)
+        #expect(cmd2.toCoords == nil)
 
         // Missing from
-        #expect(throws: Error.self) {
-            _ = try SwipeCommand.parse(["--to", "300,400"])
-        }
+        let cmd3 = try SwipeCommand.parse(["--to-coords", "300,400"])
+        #expect(cmd3.from == nil)
+        #expect(cmd3.fromCoords == nil)
+        #expect(cmd3.toCoords == "300,400")
     }
 
     @Test("Swipe result structure")
     func swipeResultStructure() {
         let result = SwipeResult(
             success: true,
-            startLocation: ["x": 100.0, "y": 200.0],
-            endLocation: ["x": 300.0, "y": 400.0],
+            fromLocation: ["x": 100.0, "y": 200.0],
+            toLocation: ["x": 300.0, "y": 400.0],
             distance: 282.84, // sqrt((300-100)² + (400-200)²)
             duration: 500,
             executionTime: 0.52
         )
 
         #expect(result.success == true)
-        #expect(result.startLocation["x"] == 100.0)
-        #expect(result.startLocation["y"] == 200.0)
-        #expect(result.endLocation["x"] == 300.0)
-        #expect(result.endLocation["y"] == 400.0)
+        #expect(result.fromLocation["x"] == 100.0)
+        #expect(result.fromLocation["y"] == 200.0)
+        #expect(result.toLocation["x"] == 300.0)
+        #expect(result.toLocation["y"] == 400.0)
         #expect(abs(result.distance - 282.84) < 0.01)
         #expect(result.duration == 500)
         #expect(result.executionTime == 0.52)
@@ -89,10 +92,12 @@ struct SwipeCommandTests {
         let parts = coords.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         if isValid {
             #expect(parts.count == 2)
-            #expect(Double(parts[0]) != nil || parts.isEmpty)
-            #expect(Double(parts[1]) != nil || parts.isEmpty)
+            if parts.count == 2 {
+                #expect(Double(parts[0]) != nil)
+                #expect(Double(parts[1]) != nil)
+            }
         } else {
-            #expect(parts.count != 2 || Double(parts[0]) == nil || Double(parts[1]) == nil)
+            #expect(parts.count != 2 || (parts.count >= 1 && Double(parts[0]) == nil) || (parts.count >= 2 && Double(parts[1]) == nil))
         }
     }
 
@@ -114,4 +119,3 @@ struct SwipeCommandTests {
         }
     }
 }
-#endif

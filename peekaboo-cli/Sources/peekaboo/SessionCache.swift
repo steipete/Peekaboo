@@ -4,7 +4,7 @@ import CoreGraphics
 import Foundation
 
 /// Process-isolated session cache for UI automation state.
-/// Implements atomic file operations to ensure data integrity across processes.
+/// Each session is stored in ~/.peekaboo/session/<PID>/ with atomic file operations.
 @available(macOS 14.0, *)
 actor SessionCache {
     let sessionId: String
@@ -12,7 +12,8 @@ actor SessionCache {
     private let sessionFile: URL
 
     struct SessionData: Codable {
-        var screenshot: String?
+        var screenshotPath: String?  // Path to raw.png
+        var annotatedPath: String?   // Path to annotated.png
         var uiMap: [String: UIElement]
         var lastUpdateTime: Date
         var applicationName: String?
@@ -25,7 +26,7 @@ actor SessionCache {
             let title: String?
             let label: String?
             let value: String?
-            let frame: CGRect
+            var frame: CGRect
             let isActionable: Bool
             let parentId: String?
             let children: [String]
@@ -56,20 +57,18 @@ actor SessionCache {
     }
 
     init(sessionId: String? = nil) {
-        self.sessionId = sessionId ?? UUID().uuidString
+        // Use PID as session ID if not provided
+        self.sessionId = sessionId ?? String(ProcessInfo.processInfo.processIdentifier)
 
-        // Create cache directory
-        let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first!
-        cacheDir = appSupport.appendingPathComponent("peekaboo/sessions")
+        // Create cache directory in ~/.peekaboo/session/<PID>/
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser
+        cacheDir = homeDir.appendingPathComponent(".peekaboo/session/\(self.sessionId)")
         try? FileManager.default.createDirectory(
             at: cacheDir,
             withIntermediateDirectories: true
         )
 
-        sessionFile = cacheDir.appendingPathComponent("\(self.sessionId).json")
+        sessionFile = cacheDir.appendingPathComponent("map.json")
     }
 
     /// Load session data from disk
@@ -108,7 +107,12 @@ actor SessionCache {
     /// Update screenshot and UI map
     func updateScreenshot(path: String, application: String?, window: String?) async throws {
         var data = load() ?? SessionData(uiMap: [:], lastUpdateTime: Date())
-        data.screenshot = path
+        
+        // Copy screenshot to session directory as raw.png
+        let rawPath = cacheDir.appendingPathComponent("raw.png")
+        try FileManager.default.copyItem(atPath: path, toPath: rawPath.path)
+        data.screenshotPath = rawPath.path
+        
         data.applicationName = application
         data.windowTitle = window
         data.lastUpdateTime = Date()
@@ -119,6 +123,14 @@ actor SessionCache {
         }
 
         try save(data)
+    }
+    
+    /// Get paths for session files
+    func getSessionPaths() -> (raw: String, annotated: String, map: String) {
+        let rawPath = cacheDir.appendingPathComponent("raw.png").path
+        let annotatedPath = cacheDir.appendingPathComponent("annotated.png").path
+        let mapPath = sessionFile.path
+        return (raw: rawPath, annotated: annotatedPath, map: mapPath)
     }
 
     /// Build UI element map for the specified application

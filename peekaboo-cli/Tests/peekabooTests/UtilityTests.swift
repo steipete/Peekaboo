@@ -75,12 +75,17 @@ struct UtilityTests {
         func versionFormat() {
             let version = Version.current
 
-            // Should be in format "Peekaboo X.Y.Z"
+            // Should be in format "Peekaboo X.Y.Z" or "Peekaboo X.Y.Z-prerelease"
             #expect(version.hasPrefix("Peekaboo "))
 
             // Extract version number after "Peekaboo "
             let versionNumber = version.replacingOccurrences(of: "Peekaboo ", with: "")
-            let components = versionNumber.split(separator: ".")
+            
+            // Split by prerelease identifier first
+            let versionParts = versionNumber.split(separator: "-", maxSplits: 1)
+            let semverPart = String(versionParts[0])
+            
+            let components = semverPart.split(separator: ".")
             #expect(components.count == 3)
 
             // Each component should be a number

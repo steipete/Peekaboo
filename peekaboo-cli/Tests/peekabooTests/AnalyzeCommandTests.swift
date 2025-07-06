@@ -1,20 +1,9 @@
 import Foundation
 @testable import peekaboo
-import XCTest
+import Testing
 
-final class AnalyzeCommandTests: XCTestCase {
-    override func setUp() {
-        super.setUp()
-        // Clean up any test files
-        try? FileManager.default.removeItem(atPath: testImagePath)
-    }
-
-    override func tearDown() {
-        super.tearDown()
-        // Clean up test files
-        try? FileManager.default.removeItem(atPath: testImagePath)
-    }
-
+@Suite("AnalyzeCommand Tests")
+struct AnalyzeCommandTests {
     private var testImagePath: String {
         NSTemporaryDirectory() + "test_image.png"
     }
@@ -35,9 +24,16 @@ final class AnalyzeCommandTests: XCTestCase {
         try pngData.write(to: URL(fileURLWithPath: testImagePath))
     }
 
-    func testAnalyzeWithMockProvider() async throws {
+    @Test("Analyze with mock provider")
+    func analyzeWithMockProvider() async throws {
+        // Clean up any test files
+        try? FileManager.default.removeItem(atPath: testImagePath)
+        
         // Create test image
         try createTestImage()
+        defer {
+            try? FileManager.default.removeItem(atPath: testImagePath)
+        }
 
         // Set up environment with mock provider config
         let originalEnv = ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"]
@@ -55,38 +51,42 @@ final class AnalyzeCommandTests: XCTestCase {
         let command = try AnalyzeCommand.parse(args)
 
         // Verify the command properties are set correctly
-        XCTAssertEqual(command.imagePath, testImagePath)
-        XCTAssertEqual(command.question, "What is this?")
-        XCTAssertEqual(command.provider, "auto")
-        XCTAssertFalse(command.jsonOutput)
+        #expect(command.imagePath == testImagePath)
+        #expect(command.question == "What is this?")
+        #expect(command.provider == "auto")
+        #expect(command.jsonOutput == false)
     }
 
-    func testAnalyzeCommandValidation() throws {
+    @Test("Analyze command validation")
+    func analyzeCommandValidation() throws {
         // Test default values by parsing with minimal arguments
         let args = ["/tmp/test.png", "Test question"]
         let command = try AnalyzeCommand.parse(args)
-        XCTAssertEqual(command.provider, "auto")
-        XCTAssertFalse(command.jsonOutput)
-        XCTAssertNil(command.model)
+        #expect(command.provider == "auto")
+        #expect(command.jsonOutput == false)
+        #expect(command.model == nil)
     }
 
-    func testAnalyzeErrorFileNotFound() {
+    @Test("Analyze error file not found")
+    func analyzeErrorFileNotFound() {
         let error = AnalyzeError.fileNotFound("/path/to/missing.png")
-        XCTAssertEqual(error.errorDescription, "Image file not found: /path/to/missing.png")
+        #expect(error.errorDescription == "Image file not found: /path/to/missing.png")
     }
 
-    func testAnalyzeErrorUnsupportedFormat() {
+    @Test("Analyze error unsupported format")
+    func analyzeErrorUnsupportedFormat() {
         let error = AnalyzeError.unsupportedFormat("txt")
-        XCTAssertEqual(
-            error.errorDescription,
+        #expect(
+            error.errorDescription ==
             "Unsupported image format: .txt. Supported formats: .png, .jpg, .jpeg, .webp"
         )
     }
 
-    func testAnalyzeErrorNoProvidersConfigured() {
+    @Test("Analyze error no providers configured")
+    func analyzeErrorNoProvidersConfigured() {
         let error = AnalyzeError.noProvidersConfigured
-        XCTAssertEqual(
-            error.errorDescription,
+        #expect(
+            error.errorDescription ==
             "AI analysis not configured. Set the PEEKABOO_AI_PROVIDERS environment variable."
         )
     }
@@ -94,19 +94,10 @@ final class AnalyzeCommandTests: XCTestCase {
 
 // MARK: - Integration Tests
 
-final class AnalyzeIntegrationTests: XCTestCase {
+@Suite("AnalyzeCommand Integration Tests")
+struct AnalyzeIntegrationTests {
     private var tempImagePath: String {
         NSTemporaryDirectory() + "integration_test.png"
-    }
-
-    override func setUp() {
-        super.setUp()
-        try? FileManager.default.removeItem(atPath: tempImagePath)
-    }
-
-    override func tearDown() {
-        super.tearDown()
-        try? FileManager.default.removeItem(atPath: tempImagePath)
     }
 
     private func createTestPNG() throws {
@@ -125,32 +116,37 @@ final class AnalyzeIntegrationTests: XCTestCase {
         try pngData.write(to: URL(fileURLWithPath: tempImagePath))
     }
 
-    func testEndToEndWithMockProviders() async throws {
-        // This test would require setting up a full mock environment
-        // Including mock HTTP responses for the providers
-
+    @Test("End-to-end with mock providers")
+    func endToEndWithMockProviders() async throws {
+        // Clean up before test
+        try? FileManager.default.removeItem(atPath: tempImagePath)
+        
         // Create test image
         try createTestPNG()
+        defer {
+            try? FileManager.default.removeItem(atPath: tempImagePath)
+        }
 
         // Create a mock provider factory or use dependency injection
         // This is complex without modifying the main code structure
 
         // For now, we verify the basic structure
-        XCTAssertTrue(FileManager.default.fileExists(atPath: tempImagePath))
+        #expect(FileManager.default.fileExists(atPath: tempImagePath))
 
         // Test that we can read and base64 encode the image
         let imageData = try Data(contentsOf: URL(fileURLWithPath: tempImagePath))
         let base64String = imageData.base64EncodedString()
-        XCTAssertFalse(base64String.isEmpty)
+        #expect(!base64String.isEmpty)
     }
 
-    func testFileFormatValidation() throws {
+    @Test("File format validation")
+    func fileFormatValidation() throws {
         // Test supported formats
         let supportedExtensions = ["png", "jpg", "jpeg", "webp"]
         for ext in supportedExtensions {
             let path = "/test/image.\(ext)"
             let url = URL(fileURLWithPath: path)
-            XCTAssertTrue(supportedExtensions.contains(url.pathExtension.lowercased()))
+            #expect(supportedExtensions.contains(url.pathExtension.lowercased()))
         }
 
         // Test unsupported formats
@@ -158,7 +154,7 @@ final class AnalyzeIntegrationTests: XCTestCase {
         for ext in unsupportedExtensions {
             let path = "/test/image.\(ext)"
             let url = URL(fileURLWithPath: path)
-            XCTAssertFalse(supportedExtensions.contains(url.pathExtension.lowercased()))
+            #expect(!supportedExtensions.contains(url.pathExtension.lowercased()))
         }
     }
 }
