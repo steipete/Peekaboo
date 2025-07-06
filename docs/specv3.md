@@ -203,31 +203,118 @@ This is the evolution of the `AXorcist` project, refactored and expanded into th
     peekaboo window focus --app "Visual Studio Code"
     ```
 
-**`peekaboo window <subcommand> [options]`**
+**`peekaboo menu <subcommand> [options]`**
 
-*   **Description:** Provides window manipulation capabilities including closing, minimizing, maximizing, moving, resizing, and focusing windows.
+*   **Description:** Interact with application menu bars to click menu items and navigate menu hierarchies.
 *   **Subcommands:**
-    *   `close`: Close a window
-    *   `minimize`: Minimize a window to the Dock
-    *   `maximize`: Maximize a window (full screen)
-    *   `move`: Move a window to a new position
-    *   `resize`: Resize a window
-    *   `set-bounds`: Set window position and size in one operation
-    *   `focus`: Bring a window to the foreground
-    *   `list`: List windows for an application (convenience shortcut)
-*   **Target Identification Options:**
-    *   `--app <identifier>`: Target by application name, bundle ID, or 'PID:12345'
-    *   `--window-title <title>`: Target by window title (partial match)
-    *   `--window-index <index>`: Target by window index (0-based, frontmost is 0)
-    *   `--session <id> --element <id>`: Target using session cache and element ID
+    *   `click`: Click a menu item using the menu path
+    *   `click-system`: Click system menu items (menu extras)
+    *   `list`: List all menu items for an application
+*   **Options:**
+    *   `--app <identifier>`: Target application name or bundle ID
+    *   `--path <path>`: Menu path using " > " separator (e.g., "File > New")
+    *   `--item <item>`: Direct menu item name
+    *   `--title <title>`: System menu title (for click-system)
 *   **Examples:**
     ```bash
-    peekaboo window close --app Safari
-    peekaboo window minimize --app Finder --window-title "Downloads"
-    peekaboo window move --app TextEdit --x 100 --y 100
-    peekaboo window resize --app Terminal --width 800 --height 600
-    peekaboo window set-bounds --app Chrome --x 50 --y 50 --width 1024 --height 768
-    peekaboo window focus --app "Visual Studio Code"
+    peekaboo menu click --app Safari --path "File > New Tab"
+    peekaboo menu click --app Finder --item "Empty Trash"
+    peekaboo menu list --app TextEdit --include-disabled
+    peekaboo menu click-system --title "Wi-Fi"
+    ```
+
+**`peekaboo app <subcommand> [options]`**
+
+*   **Description:** Manage application lifecycle including launching, quitting, hiding, and switching between applications.
+*   **Subcommands:**
+    *   `launch`: Launch an application
+    *   `quit`: Quit one or more applications
+    *   `hide`: Hide applications
+    *   `show`: Show hidden applications
+    *   `switch`: Switch between applications
+*   **Options:**
+    *   `--app <identifier>`: Application name, bundle ID, or 'PID:12345'
+    *   `--bundle-id <id>`: Launch by bundle identifier
+    *   `--wait`: Wait for app to be ready (launch)
+    *   `--background`: Launch without activation
+    *   `--save-changes`: Save changes before quitting
+    *   `--all`: Apply to all applications
+    *   `--except <apps>`: Exclude specific apps (comma-separated)
+    *   `--others`: Hide/show other applications
+*   **Examples:**
+    ```bash
+    peekaboo app launch --app TextEdit --wait
+    peekaboo app quit --app Safari --save-changes
+    peekaboo app hide --app Slack --others
+    peekaboo app switch --to Finder
+    peekaboo app switch --cycle --reverse
+    ```
+
+**`peekaboo dock <subcommand> [options]`**
+
+*   **Description:** Interact with the macOS Dock to launch apps, access dock menus, and manage dock visibility.
+*   **Subcommands:**
+    *   `click`: Launch an app from the Dock
+    *   `right-click`: Right-click a Dock item
+    *   `hide`: Hide the Dock
+    *   `show`: Show the Dock
+    *   `list`: List all items in the Dock
+*   **Options:**
+    *   `--app <name>`: Application name in Dock
+    *   `--index <index>`: Dock item index (0-based)
+    *   `--select <item>`: Menu item to select after right-click
+    *   `--type <type>`: Filter list by type (all, apps, other)
+*   **Examples:**
+    ```bash
+    peekaboo dock click --app Safari
+    peekaboo dock right-click --app Finder --select "New Window"
+    peekaboo dock hide
+    peekaboo dock list --type apps
+    ```
+
+**`peekaboo dialog <subcommand> [options]`**
+
+*   **Description:** Interact with system dialogs and alerts including clicking buttons, entering text, and handling file dialogs.
+*   **Subcommands:**
+    *   `click`: Click a button in a dialog
+    *   `input`: Enter text in dialog fields
+    *   `file`: Handle file dialogs (save/open)
+    *   `dismiss`: Dismiss a dialog
+    *   `list`: List active dialog information
+*   **Options:**
+    *   `--button <name>`: Button to click (e.g., "OK", "Cancel", "Save")
+    *   `--title <title>`: Dialog window title
+    *   `--text <text>`: Text to enter
+    *   `--field <label>`: Field label or placeholder
+    *   `--path <path>`: File path for save/open dialogs
+    *   `--name <name>`: Filename for save dialogs
+    *   `--force`: Force dismiss with Escape key
+*   **Examples:**
+    ```bash
+    peekaboo dialog click --button "Save"
+    peekaboo dialog input --text "password123" --field "Password"
+    peekaboo dialog file --path "/Users/me/Documents" --name "report.pdf" --select "Save"
+    peekaboo dialog dismiss --force
+    ```
+
+**`peekaboo drag <options>`**
+
+*   **Description:** Perform drag and drop operations between UI elements, coordinates, or applications.
+*   **Options:**
+    *   `--from <element_id>`: Source element ID
+    *   `--to <element_id>`: Target element ID
+    *   `--from-coords <x,y>`: Source coordinates
+    *   `--to-coords <x,y>`: Target coordinates
+    *   `--to-app <name>`: Target application (e.g., "Trash")
+    *   `--duration <ms>`: Drag duration in milliseconds (default: 500)
+    *   `--modifiers <keys>`: Modifier keys (e.g., "cmd,option")
+    *   `--session <id>`: Session ID for element lookup
+*   **Examples:**
+    ```bash
+    peekaboo drag --from B1 --to T2 --session abc123
+    peekaboo drag --from-coords 100,200 --to-coords 500,400
+    peekaboo drag --from F1 --to-app Trash
+    peekaboo drag --from-coords 50,50 --to-coords 300,300 --modifiers cmd,option
     ```
 
 ##### **4.3. Key Implementation Details**
@@ -322,6 +409,46 @@ printSuccess("Clicked element \(self.elementId).")
       "params": {
         "subcommand": "minimize",
         "app": "com.apple.Notes"
+      }
+    },
+    {
+      "stepId": "unique-step-id-5",
+      "comment": "Open a new tab via menu",
+      "command": "menu",
+      "params": {
+        "subcommand": "click",
+        "app": "Safari",
+        "path": "File > New Tab"
+      }
+    },
+    {
+      "stepId": "unique-step-id-6",
+      "comment": "Launch TextEdit in background",
+      "command": "app",
+      "params": {
+        "subcommand": "launch",
+        "app": "TextEdit",
+        "wait": true,
+        "background": true
+      }
+    },
+    {
+      "stepId": "unique-step-id-7",
+      "comment": "Click Save button in dialog",
+      "command": "dialog",
+      "params": {
+        "subcommand": "click",
+        "button": "Save"
+      }
+    },
+    {
+      "stepId": "unique-step-id-8",
+      "comment": "Drag file to Trash",
+      "command": "drag",
+      "params": {
+        "from": "F1",
+        "to_app": "Trash",
+        "duration": 1000
       }
     }
   ]

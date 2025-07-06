@@ -59,6 +59,20 @@ enum ErrorCode: String, Codable {
     case INTERNAL_SWIFT_ERROR
     case UNKNOWN_ERROR
     case WINDOW_MANIPULATION_ERROR
+    case VALIDATION_ERROR
+    case MENU_BAR_NOT_FOUND
+    case MENU_ITEM_NOT_FOUND
+    case DOCK_NOT_FOUND
+    case NO_ACTIVE_DIALOG
+    case ELEMENT_NOT_FOUND
+    case SESSION_NOT_FOUND
+    case APPLICATION_NOT_FOUND
+    case NO_POINT_SPECIFIED
+    case INVALID_COORDINATES
+    case DOCK_LIST_NOT_FOUND
+    case DOCK_ITEM_NOT_FOUND
+    case POSITION_NOT_FOUND
+    case SCRIPT_ERROR
 }
 
 /// Type-erased codable wrapper for encoding arbitrary data.

@@ -5,8 +5,7 @@ import Foundation
 ///
 /// Provides a comprehensive CLI for capturing screenshots and analyzing images
 /// using AI vision models. Supports multiple capture modes and AI providers.
-@available(macOS 14.0, *)
-struct PeekabooCommand: AsyncParsableCommand {
+struct Peekaboo: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "peekaboo",
         abstract: "Lightning-fast macOS screenshots and AI vision analysis (v\(Version.current))",
@@ -26,6 +25,9 @@ struct PeekabooCommand: AsyncParsableCommand {
           peekaboo analyze screenshot.png "What error is shown?"
           peekaboo analyze ui.png "Find the login button" --provider ollama
           peekaboo analyze diagram.png "Explain this" --model gpt-4o
+
+          peekaboo agent "Open TextEdit and write Hello"  # AI agent automation
+          peekaboo "Click the login button and sign in"   # Direct agent invocation
 
         COMMON WORKFLOWS:
           # Capture and analyze in one command (NEW!)
@@ -94,14 +96,36 @@ struct PeekabooCommand: AsyncParsableCommand {
             RunCommand.self,
             SleepCommand.self,
             CleanCommand.self,
-            WindowCommand.self
+            WindowCommand.self,
+            // System interaction commands
+            MenuCommand.self,
+            AppCommand.self,
+            DockCommand.self,
+            DialogCommand.self,
+            DragCommand.self,
+            AgentCommand.self
         ],
         defaultSubcommand: nil
     )
+    
+    // Support direct task invocation without 'agent' subcommand
+    @Argument(parsing: .remaining, help: ArgumentHelp("Task for AI agent to perform", visibility: .hidden))
+    var remainingArgs: [String] = []
 
     mutating func run() async throws {
-        // When no subcommand is provided, print help
-        print(Self.helpMessage())
+        // Check if we have a direct task invocation
+        if !remainingArgs.isEmpty {
+            // Join all arguments as the task description
+            let task = remainingArgs.joined(separator: " ")
+            
+            // Create and run an AgentCommand
+            var agentCommand = AgentCommand()
+            agentCommand.task = task
+            try await agentCommand.run()
+        } else {
+            // When no subcommand is provided, print help
+            print(Self.helpMessage())
+        }
     }
 }
 
@@ -115,6 +139,6 @@ struct Main {
         _ = ConfigurationManager.shared.loadConfiguration()
 
         // Run the command
-        await PeekabooCommand.main()
+        await Peekaboo.main()
     }
 }
