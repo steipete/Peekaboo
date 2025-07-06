@@ -223,11 +223,13 @@ class OverlayManager: ObservableObject {
             }
             
             self.applications = allApps
+            logger.info("Refreshed applications: found \(allApps.count) apps with \(allApps.reduce(0) { $0 + $1.elements.count }) total elements")
             
             // Create overlay windows after applications are loaded
             if isOverlayActive && !allApps.isEmpty {
                 DispatchQueue.main.async { [weak self] in
                     self?.createOverlayWindows()
+                    self?.logger.info("Creating overlay windows for \(allApps.count) applications")
                 }
             }
         }
@@ -416,14 +418,17 @@ class OverlayManager: ObservableObject {
         
         window.isOpaque = false
         window.backgroundColor = NSColor.clear
-        window.level = .screenSaver
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        // Use the highest possible window level
+        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)))
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
         window.isMovableByWindowBackground = false
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.ignoresMouseEvents = true
         window.hasShadow = false
         window.animationBehavior = .none
+        // Make window stay on top
+        window.hidesOnDeactivate = false
         
         // Create a view that shows overlays for ALL apps
         let allAppsOverlayView = AllAppsOverlayView(overlayManager: self)
@@ -433,11 +438,15 @@ class OverlayManager: ObservableObject {
         
         NSAnimationContext.beginGrouping()
         NSAnimationContext.current.duration = 0
-        window.orderFront(nil)
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
         NSAnimationContext.endGrouping()
         
+        // Force window to front using additional method
+        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)))
+        
         overlayWindows["main"] = window
-        logger.info("Created single overlay window showing elements from all apps")
+        logger.info("Created single overlay window at maximum level showing elements from all apps")
     }
     
     // This method is no longer used - we create a single window for all apps

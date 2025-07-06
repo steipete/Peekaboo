@@ -41,14 +41,14 @@ struct ElementOverlay: View {
             // Top-left corner indicator - offset by half the circle size to position correctly
             Circle()
                 .fill(element.color)
-                .frame(width: 20, height: 20)
+                .frame(width: 30, height: 30)
                 .overlay(
                     Text(element.elementID)
                         .font(.system(size: 8, weight: .bold))
                         .foregroundColor(.white)
                 )
-                .position(x: displayFrame.minX + 10, y: displayFrame.minY + 10)
-                .opacity(isHovered ? 1.0 : 0.7)
+                .position(x: displayFrame.minX + 15, y: displayFrame.minY + 15)
+                .opacity(isHovered ? 1.0 : 0.9)
             
             // Only show full frame outline when hovered
             if isHovered {

@@ -67,7 +67,7 @@ struct MenuCommand: AsyncParsableCommand {
                 
                 // Get menu bar
                 guard let menuBar = app.menuBar() else {
-                    throw MenuError.menuBarNotFound
+                    throw PeekabooMenuError.menuBarNotFound
                 }
                 
                 // Parse menu path
@@ -87,7 +87,7 @@ struct MenuCommand: AsyncParsableCommand {
                         element.title() == component || 
                         element.attributedTitle()?.string == component
                     }) else {
-                        throw MenuError.menuItemNotFound(component)
+                        throw PeekabooMenuError.menuItemNotFound(component)
                     }
                     
                     // If this is the last component, click it
@@ -103,7 +103,7 @@ struct MenuCommand: AsyncParsableCommand {
                         
                         // Get the submenu
                         guard let submenu = menuItem.children()?.first else {
-                            throw MenuError.submenuNotFound(component)
+                            throw PeekabooMenuError.submenuNotFound(component)
                         }
                         
                         currentElement = submenu
@@ -128,7 +128,7 @@ struct MenuCommand: AsyncParsableCommand {
                 
             } catch let error as ApplicationError {
                 handleApplicationError(error, jsonOutput: jsonOutput)
-            } catch let error as MenuError {
+            } catch let error as PeekabooMenuError {
                 handleMenuError(error, jsonOutput: jsonOutput)
             } catch {
                 handleGenericError(error, jsonOutput: jsonOutput)
@@ -161,7 +161,7 @@ struct MenuCommand: AsyncParsableCommand {
                 
                 // Find menu bar
                 guard let menuBar = systemWide.menuBar() else {
-                    throw MenuError.menuBarNotFound
+                    throw PeekabooMenuError.menuBarNotFound
                 }
                 
                 // Find menu extras (they're typically in a specific group)
@@ -169,7 +169,7 @@ struct MenuCommand: AsyncParsableCommand {
                 
                 // Menu extras are usually in the last group
                 guard let menuExtrasGroup = menuBarItems.last(where: { $0.role() == "AXGroup" }) else {
-                    throw MenuError.menuExtraNotFound(title)
+                    throw PeekabooMenuError.menuExtraNotFound(title)
                 }
                 
                 // Find the specific menu extra
@@ -179,7 +179,7 @@ struct MenuCommand: AsyncParsableCommand {
                     element.help() == title ||
                     element.descriptionText()?.contains(title) == true
                 }) else {
-                    throw MenuError.menuExtraNotFound(title)
+                    throw PeekabooMenuError.menuExtraNotFound(title)
                 }
                 
                 // Click the menu extra
@@ -194,7 +194,7 @@ struct MenuCommand: AsyncParsableCommand {
                     if let menu = menuExtra.children()?.first {
                         let menuItems = menu.children() ?? []
                         guard let targetItem = menuItems.first(where: { $0.title() == itemToClick }) else {
-                            throw MenuError.menuItemNotFound(itemToClick)
+                            throw PeekabooMenuError.menuItemNotFound(itemToClick)
                         }
                         try targetItem.performAction(.press)
                     }
@@ -219,7 +219,7 @@ struct MenuCommand: AsyncParsableCommand {
                     }
                 }
                 
-            } catch let error as MenuError {
+            } catch let error as PeekabooMenuError {
                 handleMenuError(error, jsonOutput: jsonOutput)
             } catch {
                 handleGenericError(error, jsonOutput: jsonOutput)
@@ -252,7 +252,7 @@ struct MenuCommand: AsyncParsableCommand {
                 
                 // Get menu bar
                 guard let menuBar = app.menuBar() else {
-                    throw MenuError.menuBarNotFound
+                    throw PeekabooMenuError.menuBarNotFound
                 }
                 
                 // Collect all menu items
@@ -284,7 +284,7 @@ struct MenuCommand: AsyncParsableCommand {
                 
             } catch let error as ApplicationError {
                 handleApplicationError(error, jsonOutput: jsonOutput)
-            } catch let error as MenuError {
+            } catch let error as PeekabooMenuError {
                 handleMenuError(error, jsonOutput: jsonOutput)
             } catch {
                 handleGenericError(error, jsonOutput: jsonOutput)
@@ -357,7 +357,7 @@ struct MenuCommand: AsyncParsableCommand {
 
 // MARK: - Menu Errors
 
-enum MenuError: LocalizedError {
+enum PeekabooMenuError: LocalizedError {
     case menuBarNotFound
     case menuItemNotFound(String)
     case submenuNotFound(String)
@@ -392,7 +392,7 @@ enum MenuError: LocalizedError {
 
 // MARK: - Error Handling
 
-private func handleMenuError(_ error: MenuError, jsonOutput: Bool) {
+private func handleMenuError(_ error: PeekabooMenuError, jsonOutput: Bool) {
     if jsonOutput {
         let response = JSONResponse(
             success: false,

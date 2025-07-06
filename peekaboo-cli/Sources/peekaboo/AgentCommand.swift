@@ -50,21 +50,22 @@ struct AgentCommand: AsyncParsableCommand {
         // Initialize HTTP client
         let httpClient = HTTPClient(eventLoopGroupProvider: .singleton)
         defer {
-            try? httpClient.syncShutdown()
+            Task {
+                try? await httpClient.shutdown()
+            }
         }
         
         // Get OpenAI API key
         guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
             if jsonOutput {
-                let output = JSONOutput(
+                let response = JSONResponse(
                     success: false,
-                    error: ErrorResponse(
-                        code: "MISSING_API_KEY",
+                    error: ErrorInfo(
                         message: "OpenAI API key not found. Set OPENAI_API_KEY environment variable.",
-                        details: nil
+                        code: .MISSING_API_KEY
                     )
                 )
-                try outputJSON(output)
+                outputJSON(response)
                 return
             } else {
                 throw ValidationError("OpenAI API key not found. Set OPENAI_API_KEY environment variable.")
@@ -87,12 +88,11 @@ struct AgentCommand: AsyncParsableCommand {
             let result = try await agent.executeTask(task, dryRun: dryRun)
             
             if jsonOutput {
-                let output = JSONOutput(
+                let response = JSONResponse(
                     success: true,
-                    data: result,
-                    error: nil
+                    data: result
                 )
-                try outputJSON(output)
+                outputJSON(response)
             } else {
                 // Human-readable output
                 print("\n✅ Task completed successfully!")
@@ -110,15 +110,14 @@ struct AgentCommand: AsyncParsableCommand {
             }
         } catch {
             if jsonOutput {
-                let output = JSONOutput(
+                let response = JSONResponse(
                     success: false,
-                    error: ErrorResponse(
-                        code: "AGENT_ERROR",
+                    error: ErrorInfo(
                         message: error.localizedDescription,
-                        details: nil
+                        code: .AGENT_ERROR
                     )
                 )
-                try outputJSON(output)
+                outputJSON(response)
             } else {
                 throw error
             }
@@ -221,7 +220,7 @@ struct OpenAIAgent {
             } else if runStatus.status == "completed" {
                 // Get the final message
                 let messages = try await getMessages(threadId: thread.id)
-                let summary = messages.first?.content.first?.text.value
+                let summary = messages.first?.content.first?.text?.value
                 
                 return AgentResult(
                     steps: steps,
