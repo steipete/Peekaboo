@@ -8,7 +8,7 @@
 [![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange.svg)](https://swift.org/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 
-> 🎉 **NEW in v3**: Complete GUI automation framework! Click, type, scroll, and automate any macOS application. See the [GUI Automation section](#-gui-automation-with-peekaboo-v3) for details.
+> 🎉 **NEW in v3**: Complete GUI automation framework with AI Agent! Click, type, scroll, and automate any macOS application using natural language. See the [GUI Automation section](#-gui-automation-with-peekaboo-v3) and [AI Agent section](#-ai-agent-automation) for details.
 
 Peekaboo is a powerful macOS utility for capturing screenshots, analyzing them with AI vision models, and now automating GUI interactions. It works both as a **standalone CLI tool** (recommended) and as an **MCP server** for AI assistants like Claude Desktop and Cursor.
 
@@ -35,6 +35,7 @@ Peekaboo bridges the gap between visual content on your screen and AI understand
 - **Lightning-fast screenshots** of screens, applications, or specific windows
 - **AI-powered image analysis** using GPT-4 Vision, Claude, or local models
 - **Complete GUI automation** (v3) - Click, type, scroll, and interact with any macOS app
+- **Natural language automation** (v3) - AI agent that understands tasks like "Open TextEdit and write a poem"
 - **Smart UI element detection** - Automatically identifies buttons, text fields, links, and more with precise coordinate mapping
 - **Automatic session resolution** - Commands intelligently use the most recent session (no manual tracking!)
 - **Window and application management** with smart fuzzy matching
@@ -86,6 +87,11 @@ peekaboo click "Submit"                 # Click button by text
 peekaboo type "Hello world"             # Type at current focus
 peekaboo scroll down --amount 5         # Scroll down 5 ticks
 peekaboo hotkey cmd,c                   # Press Cmd+C
+
+# AI Agent Automation (v3) 🤖
+peekaboo "Open TextEdit and write Hello World"
+peekaboo agent "Take a screenshot of Safari and email it"
+peekaboo agent --verbose "Find all Finder windows and close them"
 
 # Window Management (v3)
 peekaboo window close --app Safari      # Close Safari window
@@ -465,6 +471,85 @@ await run({ script_path: "test.peekaboo.json", stop_on_error: false })
   ]
 }
 ```
+
+## 🤖 AI Agent Automation
+
+Peekaboo v3 introduces an AI-powered agent that can understand and execute complex automation tasks using natural language. The agent uses OpenAI's Assistants API to break down your instructions into specific Peekaboo commands.
+
+### Setting Up the Agent
+
+```bash
+# Set your OpenAI API key
+export OPENAI_API_KEY="your-api-key-here"
+
+# Now you can use natural language automation!
+peekaboo "Open Safari and search for weather"
+```
+
+### How the Agent Works
+
+1. **Understands Your Intent** - The AI agent analyzes your natural language request
+2. **Plans the Steps** - Breaks down the task into specific actions
+3. **Executes Commands** - Uses Peekaboo's automation tools to perform each step
+4. **Verifies Results** - Takes screenshots to confirm actions succeeded
+5. **Handles Errors** - Can retry failed actions or adjust approach
+
+### Agent Examples
+
+```bash
+# Direct invocation (no subcommand needed)
+peekaboo "Open TextEdit and write a thank you letter"
+peekaboo "Take a screenshot of all open windows"
+peekaboo "Find the Terminal app and run ls -la"
+peekaboo "Close all Finder windows except Downloads"
+
+# Using the agent subcommand with options
+peekaboo agent "Click the login button and sign in" --verbose
+peekaboo agent "Fill out the contact form" --dry-run
+peekaboo agent "Install this app from the DMG file" --max-steps 30
+```
+
+### Agent Options
+
+- `--verbose` - See the agent's reasoning and planning process
+- `--dry-run` - Preview what the agent would do without executing
+- `--max-steps <n>` - Limit the number of actions (default: 20)
+- `--model <model>` - Choose OpenAI model (default: gpt-4-turbo)
+- `--json-output` - Get structured JSON output
+
+### Agent Capabilities
+
+The agent has access to all Peekaboo commands:
+- **Visual Understanding** - Can see and understand what's on screen
+- **UI Interaction** - Click buttons, fill forms, navigate menus
+- **Text Entry** - Type text, use keyboard shortcuts
+- **Window Management** - Open, close, minimize, arrange windows
+- **Application Control** - Launch apps, switch between them
+- **File Operations** - Save files, handle dialogs
+- **Complex Workflows** - Chain multiple actions together
+
+### Example Workflow
+
+```bash
+# Complex multi-step task
+peekaboo agent --verbose "Create a new document in Pages with the title 'Meeting Notes' and add today's date"
+
+# Agent will:
+# 1. Use 'see' to check current screen
+# 2. Use 'app launch Pages' if needed
+# 3. Use 'click' on New Document
+# 4. Use 'type' to enter the title
+# 5. Use 'hotkey' for formatting
+# 6. Use 'type' to add the date
+```
+
+### Tips for Best Results
+
+1. **Be Specific** - "Click the blue Submit button" works better than "submit"
+2. **One Task at a Time** - Break complex workflows into smaller tasks
+3. **Verify State** - The agent works best when it can see the current screen
+4. **Use Verbose Mode** - Add `--verbose` to understand what the agent is doing
+5. **Set Reasonable Limits** - Use `--max-steps` to prevent runaway automation
 
 ### ⏸️ The `sleep` Tool
 

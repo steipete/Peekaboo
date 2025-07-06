@@ -176,6 +176,59 @@ This is the evolution of the `AXorcist` project, refactored and expanded into th
 
 *   **Description:** A utility command that pauses execution for a specified number of milliseconds.
 
+**`peekaboo agent <task> [options]`**
+
+*   **Description:** Execute complex automation tasks using AI-powered agent. The agent uses OpenAI Assistants API to break down natural language instructions into specific Peekaboo commands.
+*   **Arguments:**
+    *   `<task>`: **Required.** Natural language description of the task to perform.
+*   **Flags:**
+    *   `--verbose`: Show agent's reasoning and planning process
+    *   `--dry-run`: Preview planned steps without executing them
+    *   `--max-steps <num>`: Maximum number of steps the agent can take (default: 20)
+    *   `--model <model>`: OpenAI model to use (default: "gpt-4-turbo")
+    *   `--json-output`: Output results in JSON format
+*   **Environment:**
+    *   `OPENAI_API_KEY`: **Required.** Your OpenAI API key
+*   **Direct Invocation:**
+    *   Peekaboo can be invoked directly with a task (no subcommand): `peekaboo "Open Safari and search for weather"`
+*   **Examples:**
+    ```bash
+    # Using agent subcommand
+    peekaboo agent "Open TextEdit and write 'Hello World'"
+    peekaboo agent "Take a screenshot of all open windows and save to Desktop"
+    peekaboo agent --verbose "Find the Terminal app and run 'ls -la'"
+    peekaboo agent --dry-run "Close all Finder windows"
+    
+    # Direct invocation (no subcommand)
+    peekaboo "Click the login button and sign in"
+    peekaboo "Compose an email to john@example.com with subject 'Meeting'"
+    ```
+*   **How it Works:**
+    1. Creates an OpenAI Assistant with access to all Peekaboo commands as functions
+    2. The assistant analyzes the task and plans a sequence of actions
+    3. Executes each action using the appropriate Peekaboo command
+    4. Can see the screen (via `see` command) and verify results
+    5. Handles errors and can retry failed actions
+*   **Output:**
+    ```json
+    {
+      "success": true,
+      "steps": [
+        {
+          "description": "Capture current screen state",
+          "command": "peekaboo_see",
+          "output": "{\"sessionId\": \"12345\", ...}"
+        },
+        {
+          "description": "Click on TextEdit in Dock",
+          "command": "peekaboo_click",
+          "output": "{\"success\": true}"
+        }
+      ],
+      "summary": "Successfully opened TextEdit and typed 'Hello World'"
+    }
+    ```
+
 **`peekaboo window <subcommand> [options]`**
 
 *   **Description:** Provides window manipulation capabilities including closing, minimizing, maximizing, moving, resizing, and focusing windows.
