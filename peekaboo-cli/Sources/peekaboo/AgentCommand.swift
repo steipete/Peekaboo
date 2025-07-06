@@ -287,7 +287,10 @@ struct OpenAIAgent {
         request.body = .bytes(ByteBuffer(data: try encoder.encode(assistantRequest)))
         
         let response = try await httpClient.execute(request, timeout: .seconds(30))
-        let body = try await response.body.collect(upTo: 1024 * 1024) // 1MB max
+        var body = ByteBuffer()
+        for try await chunk in response.body {
+            body.writeImmutableBuffer(chunk)
+        }
         
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -513,7 +516,10 @@ struct OpenAIAgent {
         request.body = .bytes(ByteBuffer(string: "{}"))
         
         let response = try await httpClient.execute(request, timeout: .seconds(30))
-        let body = try await response.body.collect(upTo: 1024 * 1024)
+        var body = ByteBuffer()
+        for try await chunk in response.body {
+            body.writeImmutableBuffer(chunk)
+        }
         
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -548,7 +554,10 @@ struct OpenAIAgent {
         request.body = .bytes(ByteBuffer(data: jsonData))
         
         let response = try await httpClient.execute(request, timeout: .seconds(30))
-        let body = try await response.body.collect(upTo: 1024 * 1024)
+        var body = ByteBuffer()
+        for try await chunk in response.body {
+            body.writeImmutableBuffer(chunk)
+        }
         
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -563,7 +572,10 @@ struct OpenAIAgent {
         request.headers.add(name: "OpenAI-Beta", value: "assistants=v2")
         
         let response = try await httpClient.execute(request, timeout: .seconds(30))
-        let body = try await response.body.collect(upTo: 1024 * 1024)
+        var body = ByteBuffer()
+        for try await chunk in response.body {
+            body.writeImmutableBuffer(chunk)
+        }
         
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -594,7 +606,10 @@ struct OpenAIAgent {
         request.headers.add(name: "OpenAI-Beta", value: "assistants=v2")
         
         let response = try await httpClient.execute(request, timeout: .seconds(30))
-        let body = try await response.body.collect(upTo: 1024 * 1024)
+        var body = ByteBuffer()
+        for try await chunk in response.body {
+            body.writeImmutableBuffer(chunk)
+        }
         
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase

@@ -18,7 +18,7 @@ enum InputEvents {
         moveEvent?.post(tap: .cghidEventTap)
 
         // Small delay for movement
-        Thread.sleep(forTimeInterval: 0.01)
+        usleep(10000) // 10ms
 
         // Perform click(s)
         for _ in 0..<clickCount {
@@ -32,7 +32,7 @@ enum InputEvents {
             downEvent?.post(tap: .cghidEventTap)
 
             // Small delay between down and up
-            Thread.sleep(forTimeInterval: 0.05)
+            usleep(50000) // 50ms
 
             // Mouse up
             let upEvent = CGEvent(
@@ -45,7 +45,7 @@ enum InputEvents {
 
             // Delay between clicks for double/triple click
             if clickCount > 1 {
-                Thread.sleep(forTimeInterval: 0.1)
+                usleep(100000) // 100ms
             }
         }
     }
@@ -57,7 +57,7 @@ enum InputEvents {
         for character in text {
             try typeCharacter(character)
             if delay > 0 {
-                Thread.sleep(forTimeInterval: delay)
+                usleep(UInt32(delay * 1_000_000))
             }
         }
     }
@@ -159,7 +159,7 @@ enum InputEvents {
         }
 
         // Hold for specified duration
-        Thread.sleep(forTimeInterval: holdDuration)
+        usleep(UInt32(holdDuration * 1_000_000))
 
         // Release regular keys
         for keyCode in regularKeys.reversed() {
