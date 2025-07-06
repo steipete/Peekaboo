@@ -165,6 +165,33 @@ This is the evolution of the `AXorcist` project, refactored and expanded into th
 
 *   **Description:** A utility command that pauses execution for a specified number of milliseconds.
 
+**`peekaboo window <subcommand> [options]`**
+
+*   **Description:** Provides window manipulation capabilities including closing, minimizing, maximizing, moving, resizing, and focusing windows.
+*   **Subcommands:**
+    *   `close`: Close a window
+    *   `minimize`: Minimize a window to the Dock
+    *   `maximize`: Maximize a window (full screen)
+    *   `move`: Move a window to a new position
+    *   `resize`: Resize a window
+    *   `set-bounds`: Set window position and size in one operation
+    *   `focus`: Bring a window to the foreground
+    *   `list`: List windows for an application (convenience shortcut)
+*   **Target Identification Options:**
+    *   `--app <identifier>`: Target by application name, bundle ID, or 'PID:12345'
+    *   `--window-title <title>`: Target by window title (partial match)
+    *   `--window-index <index>`: Target by window index (0-based, frontmost is 0)
+    *   `--session <id> --element <id>`: Target using session cache and element ID
+*   **Examples:**
+    ```bash
+    peekaboo window close --app Safari
+    peekaboo window minimize --app Finder --window-title "Downloads"
+    peekaboo window move --app TextEdit --x 100 --y 100
+    peekaboo window resize --app Terminal --width 800 --height 600
+    peekaboo window set-bounds --app Chrome --x 50 --y 50 --width 1024 --height 768
+    peekaboo window focus --app "Visual Studio Code"
+    ```
+
 ##### **4.3. Key Implementation Details**
 
 **The `--wait-for` Mechanism:**
