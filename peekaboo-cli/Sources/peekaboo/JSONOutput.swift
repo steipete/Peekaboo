@@ -58,6 +58,7 @@ enum ErrorCode: String, Codable {
     case SIPS_ERROR
     case INTERNAL_SWIFT_ERROR
     case UNKNOWN_ERROR
+    case WINDOW_MANIPULATION_ERROR
 }
 
 /// Type-erased codable wrapper for encoding arbitrary data.

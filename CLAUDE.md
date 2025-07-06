@@ -243,6 +243,42 @@ PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest" ./peekaboo-cli/.build/
 - Test AI analysis with: `PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./peekaboo analyze screenshot.png "What is this?"`
 - When adding new AI providers, implement the `AIProvider` protocol in `peekaboo-cli/Sources/peekaboo/AIProviders/`
 
+## AXorcist Integration
+
+This project relies heavily on the **AXorcist** library for macOS accessibility features. When working with window manipulation, UI element interaction, or any accessibility-related functionality:
+
+1. **Always use AXorcist APIs** rather than raw accessibility APIs
+2. **We can modify AXorcist** - If you encounter limitations or need additional functionality, feel free to enhance the AXorcist library directly
+3. **Key AXorcist patterns**:
+   - Use `Element` wrapper instead of raw `AXUIElement`
+   - Use typed attributes like `Attribute<String>.title` instead of string constants
+   - Use enum-based actions like `.performAction(.press)` for cleaner code
+   - All Element methods are `@MainActor` - ensure your code respects this
+
+4. **Window Manipulation** (NEW):
+   - The `window` command provides comprehensive window control
+   - Supports close, minimize, maximize, move, resize, and focus operations
+   - Can target windows by app name, window title, or index
+   - Uses AXorcist's window manipulation methods like `setPosition()`, `setSize()`, `setMinimized()`, etc.
+
+5. **Common AXorcist usage**:
+   ```swift
+   // Get windows for an app
+   let axApp = AXUIElementCreateApplication(app.processIdentifier)
+   let appElement = Element(axApp)
+   let windows = appElement.windows() ?? []
+   
+   // Manipulate windows
+   window.setPosition(CGPoint(x: 100, y: 100))
+   window.setSize(CGSize(width: 800, height: 600))
+   window.setMinimized(true)
+   
+   // Perform actions
+   if let closeButton = window.closeButton() {
+       try closeButton.performAction(.press)
+   }
+   ```
+
 ## Swift Testing Framework
 
 **IMPORTANT**: This project uses the Swift Testing framework (introduced in Xcode 16), NOT XCTest. When writing or modifying tests:
