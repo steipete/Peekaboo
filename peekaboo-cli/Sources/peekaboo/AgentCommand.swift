@@ -1,10 +1,7 @@
 import ArgumentParser
 import Foundation
-import AsyncHTTPClient
-import NIOCore
-import NIOHTTP1
 
-/// Agentic command that uses OpenAI Assistants API to automate complex tasks
+/// AI Agent command that uses OpenAI Assistants API to automate complex tasks
 struct AgentCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "agent",
@@ -47,35 +44,19 @@ struct AgentCommand: AsyncParsableCommand {
     var jsonOutput = false
     
     mutating func run() async throws {
-        // Initialize HTTP client
-        let httpClient = HTTPClient(eventLoopGroupProvider: .singleton)
-        defer {
-            Task {
-                try? await httpClient.shutdown()
-            }
-        }
-        
         // Get OpenAI API key
         guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
             if jsonOutput {
-                let response = JSONResponse(
-                    success: false,
-                    error: ErrorInfo(
-                        message: "OpenAI API key not found. Set OPENAI_API_KEY environment variable.",
-                        code: .MISSING_API_KEY
-                    )
-                )
-                outputJSON(response)
-                return
+                outputAgentJSON(createAgentErrorResponse(.missingAPIKey))
             } else {
-                throw ValidationError("OpenAI API key not found. Set OPENAI_API_KEY environment variable.")
+                throw AgentError.missingAPIKey
             }
+            return
         }
         
         let agent = OpenAIAgent(
             apiKey: apiKey,
             model: model,
-            httpClient: httpClient,
             verbose: verbose,
             maxSteps: maxSteps
         )
@@ -88,11 +69,12 @@ struct AgentCommand: AsyncParsableCommand {
             let result = try await agent.executeTask(task, dryRun: dryRun)
             
             if jsonOutput {
-                let response = JSONResponse(
+                let response = AgentJSONResponse(
                     success: true,
-                    data: result
+                    data: result,
+                    error: nil
                 )
-                outputJSON(response)
+                outputAgentJSON(response)
             } else {
                 // Human-readable output
                 print("\n✅ Task completed successfully!")
@@ -108,16 +90,15 @@ struct AgentCommand: AsyncParsableCommand {
                     print("\n📝 Summary: \(summary)")
                 }
             }
+        } catch let error as AgentError {
+            if jsonOutput {
+                outputAgentJSON(createAgentErrorResponse(error))
+            } else {
+                throw error
+            }
         } catch {
             if jsonOutput {
-                let response = JSONResponse(
-                    success: false,
-                    error: ErrorInfo(
-                        message: error.localizedDescription,
-                        code: .AGENT_ERROR
-                    )
-                )
-                outputJSON(response)
+                outputAgentJSON(createAgentErrorResponse(.apiError(error.localizedDescription)))
             } else {
                 throw error
             }
@@ -130,9 +111,12 @@ struct AgentCommand: AsyncParsableCommand {
 struct OpenAIAgent {
     let apiKey: String
     let model: String
-    let httpClient: HTTPClient
     let verbose: Bool
     let maxSteps: Int
+    
+    private let session = URLSession.shared
+    private let executor = PeekabooCommandExecutor(verbose: false)
+    private let retryConfig = RetryConfiguration.default
     
     struct AgentResult: Codable {
         let steps: [Step]
@@ -148,12 +132,16 @@ struct OpenAIAgent {
     }
     
     func executeTask(_ task: String, dryRun: Bool) async throws -> AgentResult {
+        // Create session for this task
+        let sessionId = await SessionManager.shared.createSession()
+        
         // Create assistant
         let assistant = try await createAssistant()
         defer {
             // Clean up assistant
-            // Cleanup handled later
-            _ = assistant
+            Task {
+                try? await deleteAssistant(assistant.id)
+            }
         }
         
         // Create thread
@@ -198,9 +186,20 @@ struct OpenAIAgent {
                     )
                     
                     if !dryRun {
-                        let output = try await executeFunction(
+                        // Add session ID to arguments
+                        var modifiedArgs = toolCall.function.arguments
+                        if let data = modifiedArgs.data(using: .utf8),
+                           var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            json["session_id"] = sessionId
+                            if let newData = try? JSONSerialization.data(withJSONObject: json),
+                               let newString = String(data: newData, encoding: .utf8) {
+                                modifiedArgs = newString
+                            }
+                        }
+                        
+                        let output = try await executor.executeFunction(
                             name: toolCall.function.name,
-                            arguments: toolCall.function.arguments
+                            arguments: modifiedArgs
                         )
                         toolOutputs.append((toolCallId: toolCall.id, output: output))
                     }
@@ -222,15 +221,21 @@ struct OpenAIAgent {
                 let messages = try await getMessages(threadId: thread.id)
                 let summary = messages.first?.content.first?.text?.value
                 
+                // Clean up session
+                await SessionManager.shared.removeSession(sessionId)
+                
                 return AgentResult(
                     steps: steps,
                     summary: summary,
                     success: true
                 )
             } else {
-                throw ValidationError("Assistant run failed with status: \(runStatus.status)")
+                throw AgentError.apiError("Assistant run failed with status: \(runStatus.status)")
             }
         }
+        
+        // Clean up session
+        await SessionManager.shared.removeSession(sessionId)
         
         return AgentResult(
             steps: steps,
@@ -243,15 +248,15 @@ struct OpenAIAgent {
     
     private func createAssistant() async throws -> Assistant {
         let tools = [
-            makePeekabooTool("see", "Capture screenshot and identify UI elements"),
-            makePeekabooTool("click", "Click on UI elements or coordinates"),
-            makePeekabooTool("type", "Type text into UI elements"),
-            makePeekabooTool("scroll", "Scroll content in any direction"),
-            makePeekabooTool("hotkey", "Press keyboard shortcuts"),
-            makePeekabooTool("image", "Capture screenshots of apps or screen"),
-            makePeekabooTool("window", "Manipulate application windows"),
-            makePeekabooTool("menu", "Interact with application menus"),
-            makePeekabooTool("app", "Control applications (launch, quit, focus)")
+            Self.makePeekabooTool("see", "Capture screenshot and identify UI elements"),
+            Self.makePeekabooTool("click", "Click on UI elements or coordinates"),
+            Self.makePeekabooTool("type", "Type text into UI elements"),
+            Self.makePeekabooTool("scroll", "Scroll content in any direction"),
+            Self.makePeekabooTool("hotkey", "Press keyboard shortcuts"),
+            Self.makePeekabooTool("image", "Capture screenshots of apps or screen"),
+            Self.makePeekabooTool("window", "Manipulate application windows"),
+            Self.makePeekabooTool("app", "Control applications (launch, quit, focus)"),
+            Self.makePeekabooTool("wait", "Wait for a specified duration")
         ]
         
         let assistantRequest = CreateAssistantRequest(
@@ -270,349 +275,76 @@ struct OpenAIAgent {
             5. Retry if something doesn't work as expected
             
             Always verify the current state before taking actions. Be precise with UI interactions.
+            Use the session_id to maintain state across commands.
             """,
             tools: tools
         )
         
         let url = URL(string: "https://api.openai.com/v1/assistants")!
-        var request = HTTPClientRequest(url: url.absoluteString)
-        request.method = .POST
-        request.headers.add(name: "Authorization", value: "Bearer \(apiKey)")
-        request.headers.add(name: "Content-Type", value: "application/json")
-        request.headers.add(name: "OpenAI-Beta", value: "assistants=v2")
+        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
+        try request.setJSONBody(assistantRequest)
         
-        let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
-        request.body = .bytes(ByteBuffer(data: try encoder.encode(assistantRequest)))
-        
-        let response = try await httpClient.execute(request, timeout: .seconds(30))
-        var body = ByteBuffer()
-        for try await chunk in response.body {
-            body.writeImmutableBuffer(chunk)
-        }
-        
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode(Assistant.self, from: Data(buffer: body))
+        return try await session.retryableDataTask(for: request, decodingType: Assistant.self, retryConfig: retryConfig)
     }
-    
-    private func makePeekabooTool(_ name: String, _ description: String) -> Tool {
-        // Create function definition for each Peekaboo command
-        let parameters: [String: Any] = {
-            switch name {
-            case "see":
-                return [
-                    "type": "object",
-                    "properties": [
-                        "app_target": ["type": "string", "description": "Application name or 'frontmost'"],
-                        "window_title": ["type": "string", "description": "Specific window title"],
-                        "session_id": ["type": "string", "description": "Session ID for tracking state"]
-                    ]
-                ]
-            case "click":
-                return [
-                    "type": "object",
-                    "properties": [
-                        "element": ["type": "string", "description": "Element ID (e.g., 'B1') or query"],
-                        "x": ["type": "number", "description": "X coordinate"],
-                        "y": ["type": "number", "description": "Y coordinate"],
-                        "double_click": ["type": "boolean", "description": "Perform double click"]
-                    ]
-                ]
-            case "type":
-                return [
-                    "type": "object",
-                    "properties": [
-                        "text": ["type": "string", "description": "Text to type"],
-                        "element": ["type": "string", "description": "Target element ID or query"],
-                        "clear_first": ["type": "boolean", "description": "Clear existing text first"]
-                    ],
-                    "required": ["text"]
-                ]
-            default:
-                return ["type": "object", "properties": [:]]
-            }
-        }()
-        
-        return Tool(
-            type: "function",
-            function: FunctionDefinition(
-                name: "peekaboo_\(name)",
-                description: description,
-                parameters: parameters
-            )
-        )
-    }
-    
-    private func executeFunction(name: String, arguments: String) async throws -> String {
-        // Parse the function name and arguments
-        let commandName = name.replacingOccurrences(of: "peekaboo_", with: "")
-        
-        // Parse JSON arguments
-        guard let argsData = arguments.data(using: .utf8),
-              let args = try? JSONSerialization.jsonObject(with: argsData) as? [String: Any] else {
-            return "{\"success\": false, \"error\": {\"code\": \"INVALID_ARGS\", \"message\": \"Failed to parse arguments\"}}"
-        }
-        
-        // Get the path to the current executable
-        let executablePath = CommandLine.arguments[0]
-        
-        // Build command line arguments
-        var cliArgs = [commandName, "--json-output"]
-        
-        // Add arguments based on command
-        switch commandName {
-        case "see":
-            if let app = args["app_target"] as? String {
-                cliArgs.append("--app")
-                cliArgs.append(app)
-            }
-            if let title = args["window_title"] as? String {
-                cliArgs.append("--window-title")
-                cliArgs.append(title)
-            }
-            if let sessionId = args["session_id"] as? String {
-                cliArgs.append("--session-id")
-                cliArgs.append(sessionId)
-            }
-            
-        case "click":
-            if let element = args["element"] as? String {
-                cliArgs.append("--element")
-                cliArgs.append(element)
-            } else if let x = args["x"] as? Double, let y = args["y"] as? Double {
-                cliArgs.append("--coordinates")
-                cliArgs.append("\(Int(x)),\(Int(y))")
-            }
-            if let doubleClick = args["double_click"] as? Bool, doubleClick {
-                cliArgs.append("--double-click")
-            }
-            
-        case "type":
-            if let text = args["text"] as? String {
-                cliArgs.append(text)
-            }
-            if let element = args["element"] as? String {
-                cliArgs.append("--element")
-                cliArgs.append(element)
-            }
-            if let clearFirst = args["clear_first"] as? Bool, clearFirst {
-                cliArgs.append("--clear-first")
-            }
-            
-        case "scroll":
-            if let direction = args["direction"] as? String {
-                cliArgs.append("--direction")
-                cliArgs.append(direction)
-            }
-            if let amount = args["amount"] as? Int {
-                cliArgs.append("--amount")
-                cliArgs.append(String(amount))
-            }
-            
-        case "hotkey":
-            if let keys = args["keys"] as? [String] {
-                cliArgs.append(contentsOf: keys)
-            }
-            
-        case "image":
-            if let app = args["app"] as? String {
-                cliArgs.append("--app")
-                cliArgs.append(app)
-            }
-            if let mode = args["mode"] as? String {
-                cliArgs.append("--mode")
-                cliArgs.append(mode)
-            }
-            // Return base64 data for agent to see
-            cliArgs.append("--format")
-            cliArgs.append("data")
-            
-        case "window":
-            if let action = args["action"] as? String {
-                cliArgs.append(action)
-            }
-            if let app = args["app"] as? String {
-                cliArgs.append("--app")
-                cliArgs.append(app)
-            }
-            
-        case "app":
-            if let action = args["action"] as? String {
-                cliArgs.append(action)
-            }
-            if let appName = args["app_name"] as? String {
-                cliArgs.append(appName)
-            }
-            
-        default:
-            // For commands we haven't mapped yet
-            for (key, value) in args {
-                cliArgs.append("--\(key.replacingOccurrences(of: "_", with: "-"))")
-                cliArgs.append(String(describing: value))
-            }
-        }
-        
-        // Execute the command
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executablePath)
-        process.arguments = cliArgs
-        
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-        
-        try process.run()
-        process.waitUntilExit()
-        
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-        
-        var output = String(data: outputData, encoding: .utf8) ?? ""
-        
-        // If there's no output, check stderr
-        if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            output = String(data: errorData, encoding: .utf8) ?? ""
-        }
-        
-        // If the process failed, wrap in error JSON
-        if process.terminationStatus != 0 && !output.contains("\"success\"") {
-            let errorMessage = output.isEmpty ? "Command failed with exit code \(process.terminationStatus)" : output
-            output = """
-            {
-                "success": false,
-                "error": {
-                    "code": "COMMAND_FAILED",
-                    "message": \(errorMessage.debugDescription)
-                }
-            }
-            """
-        }
-        
-        return output
-    }
-    
-    // MARK: - API Methods
     
     private func deleteAssistant(_ assistantId: String) async throws {
         let url = URL(string: "https://api.openai.com/v1/assistants/\(assistantId)")!
-        var request = HTTPClientRequest(url: url.absoluteString)
-        request.method = .DELETE
-        request.headers.add(name: "Authorization", value: "Bearer \(apiKey)")
-        request.headers.add(name: "OpenAI-Beta", value: "assistants=v2")
+        let request = URLRequest.openAIRequest(url: url, method: "DELETE", apiKey: apiKey, betaHeader: "assistants=v2")
         
-        _ = try await httpClient.execute(request, timeout: .seconds(30))
+        _ = try await session.retryableData(for: request, retryConfig: retryConfig)
     }
     
     private func createThread() async throws -> Thread {
         let url = URL(string: "https://api.openai.com/v1/threads")!
-        var request = HTTPClientRequest(url: url.absoluteString)
-        request.method = .POST
-        request.headers.add(name: "Authorization", value: "Bearer \(apiKey)")
-        request.headers.add(name: "Content-Type", value: "application/json")
-        request.headers.add(name: "OpenAI-Beta", value: "assistants=v2")
-        request.body = .bytes(ByteBuffer(string: "{}"))
+        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
+        request.httpBody = "{}".data(using: .utf8)
         
-        let response = try await httpClient.execute(request, timeout: .seconds(30))
-        var body = ByteBuffer()
-        for try await chunk in response.body {
-            body.writeImmutableBuffer(chunk)
-        }
-        
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode(Thread.self, from: Data(buffer: body))
+        return try await session.retryableDataTask(for: request, decodingType: Thread.self, retryConfig: retryConfig)
     }
     
     private func addMessage(threadId: String, content: String) async throws {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/messages")!
-        var request = HTTPClientRequest(url: url.absoluteString)
-        request.method = .POST
-        request.headers.add(name: "Authorization", value: "Bearer \(apiKey)")
-        request.headers.add(name: "Content-Type", value: "application/json")
-        request.headers.add(name: "OpenAI-Beta", value: "assistants=v2")
+        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
         
         let message = ["role": "user", "content": content]
-        let jsonData = try JSONSerialization.data(withJSONObject: message)
-        request.body = .bytes(ByteBuffer(data: jsonData))
+        request.httpBody = try JSONSerialization.data(withJSONObject: message)
         
-        _ = try await httpClient.execute(request, timeout: .seconds(30))
+        _ = try await session.retryableData(for: request, retryConfig: retryConfig)
     }
     
     private func createRun(threadId: String, assistantId: String) async throws -> Run {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/runs")!
-        var request = HTTPClientRequest(url: url.absoluteString)
-        request.method = .POST
-        request.headers.add(name: "Authorization", value: "Bearer \(apiKey)")
-        request.headers.add(name: "Content-Type", value: "application/json")
-        request.headers.add(name: "OpenAI-Beta", value: "assistants=v2")
+        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
         
         let runData = ["assistant_id": assistantId]
-        let jsonData = try JSONSerialization.data(withJSONObject: runData)
-        request.body = .bytes(ByteBuffer(data: jsonData))
+        request.httpBody = try JSONSerialization.data(withJSONObject: runData)
         
-        let response = try await httpClient.execute(request, timeout: .seconds(30))
-        var body = ByteBuffer()
-        for try await chunk in response.body {
-            body.writeImmutableBuffer(chunk)
-        }
-        
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode(Run.self, from: Data(buffer: body))
+        return try await session.retryableDataTask(for: request, decodingType: Run.self, retryConfig: retryConfig)
     }
     
     private func getRun(threadId: String, runId: String) async throws -> Run {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/runs/\(runId)")!
-        var request = HTTPClientRequest(url: url.absoluteString)
-        request.method = .GET
-        request.headers.add(name: "Authorization", value: "Bearer \(apiKey)")
-        request.headers.add(name: "OpenAI-Beta", value: "assistants=v2")
+        let request = URLRequest.openAIRequest(url: url, method: "GET", apiKey: apiKey, betaHeader: "assistants=v2")
         
-        let response = try await httpClient.execute(request, timeout: .seconds(30))
-        var body = ByteBuffer()
-        for try await chunk in response.body {
-            body.writeImmutableBuffer(chunk)
-        }
-        
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode(Run.self, from: Data(buffer: body))
+        return try await session.retryableDataTask(for: request, decodingType: Run.self, retryConfig: retryConfig)
     }
     
     private func submitToolOutputs(threadId: String, runId: String, toolOutputs: [(toolCallId: String, output: String)]) async throws {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/runs/\(runId)/submit_tool_outputs")!
-        var request = HTTPClientRequest(url: url.absoluteString)
-        request.method = .POST
-        request.headers.add(name: "Authorization", value: "Bearer \(apiKey)")
-        request.headers.add(name: "Content-Type", value: "application/json")
-        request.headers.add(name: "OpenAI-Beta", value: "assistants=v2")
+        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
         
         let outputs = toolOutputs.map { ["tool_call_id": $0.toolCallId, "output": $0.output] }
         let data = ["tool_outputs": outputs]
-        let jsonData = try JSONSerialization.data(withJSONObject: data)
-        request.body = .bytes(ByteBuffer(data: jsonData))
+        request.httpBody = try JSONSerialization.data(withJSONObject: data)
         
-        _ = try await httpClient.execute(request, timeout: .seconds(30))
+        _ = try await session.retryableData(for: request, retryConfig: retryConfig)
     }
     
     private func getMessages(threadId: String) async throws -> [Message] {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/messages")!
-        var request = HTTPClientRequest(url: url.absoluteString)
-        request.method = .GET
-        request.headers.add(name: "Authorization", value: "Bearer \(apiKey)")
-        request.headers.add(name: "OpenAI-Beta", value: "assistants=v2")
+        let request = URLRequest.openAIRequest(url: url, method: "GET", apiKey: apiKey, betaHeader: "assistants=v2")
         
-        let response = try await httpClient.execute(request, timeout: .seconds(30))
-        var body = ByteBuffer()
-        for try await chunk in response.body {
-            body.writeImmutableBuffer(chunk)
-        }
-        
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        let messageList = try decoder.decode(MessageList.self, from: Data(buffer: body))
+        let messageList = try await session.retryableDataTask(for: request, decodingType: MessageList.self, retryConfig: retryConfig)
         return messageList.data
     }
 }
@@ -688,36 +420,4 @@ struct CreateAssistantRequest: Codable {
 struct Tool: Codable {
     let type: String
     let function: FunctionDefinition
-}
-
-struct FunctionDefinition: Codable {
-    let name: String
-    let description: String
-    let parameters: [String: Any]
-    
-    enum CodingKeys: String, CodingKey {
-        case name, description, parameters
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(name, forKey: .name)
-        try container.encode(description, forKey: .description)
-        let parametersData = try JSONSerialization.data(withJSONObject: parameters)
-        try container.encode(parametersData, forKey: .parameters)
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        name = try container.decode(String.self, forKey: .name)
-        description = try container.decode(String.self, forKey: .description)
-        let parametersData = try container.decode(Data.self, forKey: .parameters)
-        parameters = try JSONSerialization.jsonObject(with: parametersData) as? [String: Any] ?? [:]
-    }
-    
-    init(name: String, description: String, parameters: [String: Any]) {
-        self.name = name
-        self.description = description
-        self.parameters = parameters
-    }
 }

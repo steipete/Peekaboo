@@ -21,7 +21,7 @@ struct AppMatch: Sendable {
 /// - Process ID (PID)
 final class ApplicationFinder: Sendable {
     static func findApplication(identifier: String) throws(ApplicationError) -> NSRunningApplication {
-        // Logger.shared.debug("Searching for application: \(identifier)")
+        Logger.shared.verbose("Searching for application: \(identifier)")
 
         // In CI environment, throw not found to avoid accessing NSWorkspace
         if ProcessInfo.processInfo.environment["CI"] == "true" {
@@ -38,7 +38,7 @@ final class ApplicationFinder: Sendable {
             }
 
             if let app = runningApps.first(where: { $0.processIdentifier == pid }) {
-                // Logger.shared.debug("Found application by PID: \(app.localizedName ?? "Unknown") (PID: \(pid))")
+                Logger.shared.verbose("Found application by PID: \(app.localizedName ?? "Unknown") (PID: \(pid))")
                 return app
             } else {
                 throw ApplicationError.notFound("No application found with PID: \(pid)")
@@ -47,7 +47,7 @@ final class ApplicationFinder: Sendable {
 
         // Check for exact bundle ID match first
         if let exactMatch = runningApps.first(where: { $0.bundleIdentifier == identifier }) {
-            // Logger.shared.debug("Found exact bundle ID match: \(exactMatch.localizedName ?? "Unknown")")
+            Logger.shared.verbose("Found exact bundle ID match: \(exactMatch.localizedName ?? "Unknown")")
             return exactMatch
         }
 

@@ -8,6 +8,7 @@ final class Logger: @unchecked Sendable {
     static let shared = Logger()
     private var debugLogs: [String] = []
     private var isJsonOutputMode = false
+    private var verboseMode = false
     private let queue = DispatchQueue(label: "logger.queue", attributes: .concurrent)
 
     private init() {}
@@ -18,7 +19,34 @@ final class Logger: @unchecked Sendable {
             // Don't clear logs automatically - let tests manage this explicitly
         }
     }
+    
+    func setVerboseMode(_ enabled: Bool) {
+        queue.sync(flags: .barrier) {
+            self.verboseMode = enabled
+        }
+    }
+    
+    var isVerbose: Bool {
+        queue.sync {
+            self.verboseMode
+        }
+    }
 
+    func verbose(_ message: String) {
+        queue.async(flags: .barrier) {
+            guard self.verboseMode else { return }
+            
+            let timestamp = ISO8601DateFormatter().string(from: Date())
+            let formattedMessage = "[\(timestamp)] VERBOSE: \(message)"
+            
+            if self.isJsonOutputMode {
+                self.debugLogs.append(formattedMessage)
+            } else {
+                fputs("\(formattedMessage)\n", stderr)
+            }
+        }
+    }
+    
     func debug(_ message: String) {
         queue.async(flags: .barrier) {
             if self.isJsonOutputMode {

@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 ///
 /// Provides comprehensive screenshot functionality with multiple capture modes,
 /// flexible window selection, and configurable output options.
-struct ImageCommand: AsyncParsableCommand {
+struct ImageCommand: AsyncParsableCommand, VerboseCommand {
     static let configuration = CommandConfiguration(
         commandName: "image",
         abstract: "Capture screenshots of screens, applications, or windows",
@@ -102,8 +102,12 @@ struct ImageCommand: AsyncParsableCommand {
 
     @Option(name: .long, help: "Analyze the captured image with AI (provide a question/prompt)")
     var analyze: String?
+    
+    @Flag(name: .shortAndLong, help: "Enable verbose logging for detailed output")
+    var verbose = false
 
     func run() async throws {
+        configureVerboseLogging()
         Logger.shared.setJsonOutputMode(jsonOutput)
         do {
             try PermissionsChecker.requireScreenRecordingPermission()
@@ -125,22 +129,28 @@ struct ImageCommand: AsyncParsableCommand {
 
     private func performCapture() async throws -> [SavedFile] {
         let captureMode = determineMode()
+        Logger.shared.verbose("Starting capture with mode: \(captureMode)")
 
         switch captureMode {
         case .screen:
+            Logger.shared.verbose("Capturing screen(s)")
             return try await captureScreens()
         case .window:
             guard let app else {
                 throw CaptureError.appNotFound("No application specified for window capture")
             }
+            Logger.shared.verbose("Capturing window for app: \(app)")
             return try await captureApplicationWindow(app)
         case .multi:
             if let app {
+                Logger.shared.verbose("Capturing all windows for app: \(app)")
                 return try await captureAllApplicationWindows(app)
             } else {
+                Logger.shared.verbose("Capturing all screens (multi mode)")
                 return try await captureScreens()
             }
         case .frontmost:
+            Logger.shared.verbose("Capturing frontmost window")
             return try await captureFrontmostWindow()
         }
     }
