@@ -117,16 +117,27 @@ This is the evolution of the `AXorcist` project, refactored and expanded into th
 
 ##### **4.2. CLI Command Reference**
 
-**`peekaboo see [app_target] [--annotated]`**
+**`peekaboo see [options]`**
 
 *   **Description:** The primary vision command. Analyzes a window, generates a process-isolated session cache, and returns the PID which serves as the **session ID**.
-*   **`[app_target]` Resolution Logic:**
-    1.  **Unique Match:** If the identifier (name, bundle ID) uniquely matches one running, accessible application, that application's frontmost window is targeted.
-    2.  **Ambiguous Match:** If the identifier matches multiple applications, the command **will fail with an error**, listing the matching applications and their PIDs.
-    3.  **Window-Specific Targeting:** To target a specific window, use the format: `AppName:WINDOW_TITLE:Partial Title`. The `Partial Title` match will be a case-insensitive substring search.
-    4.  **Default:** If `[app_target]` is omitted, the frontmost window of the currently active application is targeted.
-*   **Flags:**
-    *   `--annotated`: (Optional) Generates `annotated.png` with visual annotations ("Interaction Markers").
+*   **Options:**
+    *   `--app <identifier>`: Target application by name, bundle ID, or 'PID:12345'
+    *   `--window-title <title>`: Target specific window by title (partial match)
+    *   `--mode <mode>`: Capture mode: `screen`, `window`, or `frontmost` (auto-inferred from other options)
+    *   `--path <path>`: Output path for screenshot
+    *   `--annotate`: Generate annotated screenshot with visual markers
+    *   `--analyze <prompt>`: Analyze captured content with AI
+*   **Mode Resolution Logic:**
+    1.  **Explicit Mode:** If `--mode` is specified, that mode is used
+    2.  **Auto-Inference:** If `--app` or `--window-title` is provided without `--mode`, automatically uses `window` mode
+    3.  **Default:** If no app/window options are provided, defaults to `frontmost` mode
+*   **Examples:**
+    ```bash
+    peekaboo see                              # Capture frontmost window
+    peekaboo see --app Safari                 # Auto-infers window mode
+    peekaboo see --mode screen                # Capture entire screen
+    peekaboo see --app Notes --annotate       # Capture Notes with annotations
+    ```
 *   **Output (`stdout`):** A JSON object containing the session ID and file paths.
     ```json
     {
@@ -164,6 +175,33 @@ This is the evolution of the `AXorcist` project, refactored and expanded into th
 **`peekaboo sleep <duration_ms>`**
 
 *   **Description:** A utility command that pauses execution for a specified number of milliseconds.
+
+**`peekaboo window <subcommand> [options]`**
+
+*   **Description:** Provides window manipulation capabilities including closing, minimizing, maximizing, moving, resizing, and focusing windows.
+*   **Subcommands:**
+    *   `close`: Close a window
+    *   `minimize`: Minimize a window to the Dock
+    *   `maximize`: Maximize a window (full screen)
+    *   `move`: Move a window to a new position
+    *   `resize`: Resize a window
+    *   `set-bounds`: Set window position and size in one operation
+    *   `focus`: Bring a window to the foreground
+    *   `list`: List windows for an application (convenience shortcut)
+*   **Target Identification Options:**
+    *   `--app <identifier>`: Target by application name, bundle ID, or 'PID:12345'
+    *   `--window-title <title>`: Target by window title (partial match)
+    *   `--window-index <index>`: Target by window index (0-based, frontmost is 0)
+    *   `--session <id> --element <id>`: Target using session cache and element ID
+*   **Examples:**
+    ```bash
+    peekaboo window close --app Safari
+    peekaboo window minimize --app Finder --window-title "Downloads"
+    peekaboo window move --app TextEdit --x 100 --y 100
+    peekaboo window resize --app Terminal --width 800 --height 600
+    peekaboo window set-bounds --app Chrome --x 50 --y 50 --width 1024 --height 768
+    peekaboo window focus --app "Visual Studio Code"
+    ```
 
 **`peekaboo window <subcommand> [options]`**
 
@@ -276,6 +314,15 @@ printSuccess("Clicked element \(self.elementId).")
       "stepId": "unique-step-id-3",
       "command": "sleep",
       "params": { "duration_ms": 500 }
+    },
+    {
+      "stepId": "unique-step-id-4",
+      "comment": "Minimize the Notes window",
+      "command": "window",
+      "params": {
+        "subcommand": "minimize",
+        "app": "com.apple.Notes"
+      }
     }
   ]
 }

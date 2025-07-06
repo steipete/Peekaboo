@@ -41,6 +41,7 @@ struct WaitForElementTests {
         )
         
         let sessionData = SessionCache.SessionData(
+            version: SessionCache.SessionData.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: ["B1": element],
@@ -123,6 +124,7 @@ struct WaitForElementTests {
         ]
         
         let sessionData = SessionCache.SessionData(
+            version: SessionCache.SessionData.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: elements,
@@ -183,6 +185,7 @@ struct WaitForElementTests {
         )
         
         let sessionData = SessionCache.SessionData(
+            version: SessionCache.SessionData.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: ["B1": testElement],
@@ -230,6 +233,7 @@ struct WaitForElementTests {
         ]
         
         let sessionData = SessionCache.SessionData(
+            version: SessionCache.SessionData.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: elements,
