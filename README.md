@@ -87,6 +87,13 @@ peekaboo type "Hello world"             # Type at current focus
 peekaboo scroll down --amount 5         # Scroll down 5 ticks
 peekaboo hotkey cmd,c                   # Press Cmd+C
 
+# Window Management (v3)
+peekaboo window close --app Safari      # Close Safari window
+peekaboo window minimize --app Finder   # Minimize Finder window
+peekaboo window move --app TextEdit --x 100 --y 100
+peekaboo window resize --app Terminal --width 800 --height 600
+peekaboo window focus --app "Visual Studio Code"
+
 # Configure settings
 peekaboo config init                    # Create config file
 peekaboo config edit                    # Edit in your editor
@@ -242,6 +249,7 @@ Add to your Cursor settings:
 10. **`run`** - Execute automation scripts
 11. **`sleep`** - Pause execution
 12. **`clean`** - Clean up session cache
+13. **`window`** - Manipulate application windows (close, minimize, maximize, move, resize, focus)
 
 ## 🚀 GUI Automation with Peekaboo v3
 

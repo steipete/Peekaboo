@@ -9,7 +9,7 @@ struct SeeCommandTests {
         let command = try SeeCommand.parse(["--path", "/tmp/test.png"])
         #expect(command.path == "/tmp/test.png")
         #expect(command.app == nil)
-        #expect(command.mode == .frontmost) // default value
+        #expect(command.mode == nil) // No longer has default value
         #expect(command.windowTitle == nil)
         #expect(command.annotate == false)
         #expect(command.jsonOutput == false)
@@ -36,7 +36,21 @@ struct SeeCommandTests {
     ])
     func parseCaptureMode(modeString: String) throws {
         let command = try SeeCommand.parse(["--mode", modeString])
-        #expect(command.mode.rawValue == modeString)
+        #expect(command.mode?.rawValue == modeString)
+    }
+    
+    @Test("See command auto-infers window mode when app is specified")
+    func autoInferWindowModeWithApp() throws {
+        let command = try SeeCommand.parse(["--app", "Safari"])
+        #expect(command.app == "Safari")
+        #expect(command.mode == nil) // Mode not explicitly set
+    }
+    
+    @Test("See command auto-infers window mode when window title is specified")
+    func autoInferWindowModeWithTitle() throws {
+        let command = try SeeCommand.parse(["--window-title", "Document"])
+        #expect(command.windowTitle == "Document")
+        #expect(command.mode == nil) // Mode not explicitly set
     }
 
     @Test("See result structure contains all required fields")

@@ -36,7 +36,7 @@ struct SeeCommand: AsyncParsableCommand {
     var windowTitle: String?
 
     @Option(help: "Capture mode (screen, window, frontmost)")
-    var mode: CaptureMode = .frontmost
+    var mode: CaptureMode?
 
     @Option(help: "Output path for screenshot")
     var path: String?
@@ -65,8 +65,20 @@ struct SeeCommand: AsyncParsableCommand {
         do {
             // Perform capture based on mode
             let captureResult: CaptureResult
+            
+            // Intelligently determine mode if not specified
+            let effectiveMode: CaptureMode
+            if let specifiedMode = mode {
+                effectiveMode = specifiedMode
+            } else if app != nil || windowTitle != nil {
+                // If app or window title is specified, default to window mode
+                effectiveMode = .window
+            } else {
+                // Otherwise default to frontmost
+                effectiveMode = .frontmost
+            }
 
-            switch mode {
+            switch effectiveMode {
             case .screen:
                 captureResult = try await captureScreen()
             case .window:
@@ -136,7 +148,7 @@ struct SeeCommand: AsyncParsableCommand {
                     window_title: captureResult.windowTitle,
                     element_count: elementCount,
                     interactable_count: interactableCount,
-                    capture_mode: mode.rawValue,
+                    capture_mode: effectiveMode.rawValue,
                     analysis_result: analysisResult,
                     execution_time: Date().timeIntervalSince(startTime),
                     ui_elements: uiElements
@@ -245,34 +257,76 @@ struct SeeCommand: AsyncParsableCommand {
 
     @MainActor
     private func captureFrontmost() async throws -> CaptureResult {
-        // Get frontmost application using NSWorkspace
-        let workspace = NSWorkspace.shared
-        guard let frontApp = workspace.frontmostApplication else {
-            throw CaptureError.appNotFound("No active application")
-        }
-
-        // Get windows with subrole information, prioritizing standard windows
-        let enhancedWindows = WindowManager.getWindowsWithSubroles(for: frontApp)
-        guard let frontWindow = enhancedWindows.first?.window else {
+        // Get the actual topmost visible window from all applications
+        let options: CGWindowListOption = [.excludeDesktopElements, .optionOnScreenOnly]
+        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]],
+              !windowList.isEmpty else {
             throw CaptureError.windowNotFound
         }
-
-        let appName = frontApp.localizedName ?? "Unknown"
+        
+        // Find the first visible window with a valid title
+        var targetWindow: (windowID: CGWindowID, title: String, pid: pid_t, bounds: CGRect)?
+        
+        for windowInfo in windowList {
+            // Skip windows without proper metadata
+            guard let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID,
+                  let pid = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
+                  let title = windowInfo[kCGWindowName as String] as? String,
+                  !title.isEmpty,
+                  let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any] else {
+                continue
+            }
+            
+            // Extract bounds
+            let x = boundsDict["X"] as? Double ?? 0
+            let y = boundsDict["Y"] as? Double ?? 0
+            let width = boundsDict["Width"] as? Double ?? 0
+            let height = boundsDict["Height"] as? Double ?? 0
+            let bounds = CGRect(x: x, y: y, width: width, height: height)
+            
+            // Skip tiny windows
+            if width < 50 || height < 50 {
+                continue
+            }
+            
+            targetWindow = (windowID: windowID, title: title, pid: pid, bounds: bounds)
+            break
+        }
+        
+        guard let windowData = targetWindow else {
+            throw CaptureError.windowNotFound
+        }
+        
+        // Get the application that owns this window
+        guard let app = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == windowData.pid }) else {
+            throw CaptureError.appNotFound("Could not find application for window")
+        }
+        
+        let appName = app.localizedName ?? "Unknown"
         let suggestedName = appName.lowercased().replacingOccurrences(of: " ", with: "_")
         let outputPath = path ?? FileNameGenerator.generateFileName(
             appName: appName,
-            windowTitle: frontWindow.title,
+            windowTitle: windowData.title,
             format: .png
         )
-
-        try await ScreenCapture.captureWindow(frontWindow, to: outputPath)
+        
+        // Create WindowData for capture
+        let window = WindowData(
+            windowId: windowData.windowID,
+            title: windowData.title,
+            bounds: windowData.bounds,
+            isOnScreen: true,
+            windowIndex: 0
+        )
+        
+        try await ScreenCapture.captureWindow(window, to: outputPath)
 
         return CaptureResult(
             outputPath: outputPath,
             applicationName: appName,
-            windowTitle: frontWindow.title,
+            windowTitle: windowData.title,
             suggestedName: suggestedName,
-            windowBounds: frontWindow.bounds
+            windowBounds: windowData.bounds
         )
     }
 

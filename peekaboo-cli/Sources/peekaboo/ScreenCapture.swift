@@ -71,7 +71,7 @@ struct ScreenCapture: Sendable {
 
             if process.terminationStatus != 0 {
                 let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-                let errorString = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+                let _ = String(data: errorData, encoding: .utf8) ?? "Unknown error"
                 // Log the error for debugging
                 throw CaptureError.windowNotFound
             }
