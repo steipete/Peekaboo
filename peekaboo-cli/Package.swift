@@ -14,16 +14,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
-        .package(url: "https://github.com/steipete/AXorcist", branch: "main"),
-        .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.19.0")
+        .package(url: "https://github.com/steipete/AXorcist", branch: "main")
     ],
     targets: [
         .executableTarget(
             name: "peekaboo",
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                .product(name: "AXorcist", package: "AXorcist"),
-                .product(name: "AsyncHTTPClient", package: "async-http-client")
+                .product(name: "AXorcist", package: "AXorcist")
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency"),

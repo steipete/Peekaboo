@@ -117,6 +117,22 @@ This is the evolution of the `AXorcist` project, refactored and expanded into th
 
 ##### **4.2. CLI Command Reference**
 
+**Global Flags (Available for All Commands)**
+
+*   **`--verbose`, `-v`**: Enable detailed logging output to stderr. Shows internal operations, timing information, and decision-making process.
+*   **`--json-output`**: Output results in JSON format for machine consumption. Suppresses human-readable output.
+
+When `--verbose` is enabled, commands will output timestamped log messages to stderr in the format:
+```
+[2025-01-06T08:05:23Z] VERBOSE: Message here
+```
+
+This is particularly useful for:
+- Debugging automation scripts
+- Understanding why elements aren't found
+- Tracking performance bottlenecks
+- Learning how Peekaboo works internally
+
 **`peekaboo see [options]`**
 
 *   **Description:** The primary vision command. Analyzes a window, generates a process-isolated session cache, and returns the PID which serves as the **session ID**.

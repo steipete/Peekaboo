@@ -7,7 +7,7 @@ import Foundation
 /// Captures a screenshot and builds an interactive UI map.
 /// This is the foundation command for all GUI automation in Peekaboo 3.0.
 @available(macOS 14.0, *)
-struct SeeCommand: AsyncParsableCommand {
+struct SeeCommand: AsyncParsableCommand, VerboseCommand {
     static let configuration = CommandConfiguration(
         commandName: "see",
         abstract: "Capture screen and map UI elements for interaction",
@@ -49,6 +49,9 @@ struct SeeCommand: AsyncParsableCommand {
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
+    
+    @Flag(name: .shortAndLong, help: "Enable verbose logging for detailed output")
+    var verbose = false
 
     enum CaptureMode: String, ExpressibleByArgument {
         case screen
@@ -57,9 +60,13 @@ struct SeeCommand: AsyncParsableCommand {
     }
 
     mutating func run() async throws {
+        configureVerboseLogging()
         let startTime = Date()
+        Logger.shared.verbose("Starting see command execution")
+        
         // Always create a new session for see command
         let sessionId = String(ProcessInfo.processInfo.processIdentifier)
+        Logger.shared.verbose("Creating new session with ID: \(sessionId)")
         let sessionCache = try SessionCache(sessionId: sessionId, createIfNeeded: true)
 
         do {
@@ -78,16 +85,21 @@ struct SeeCommand: AsyncParsableCommand {
                 effectiveMode = .frontmost
             }
 
+            Logger.shared.verbose("Using capture mode: \(effectiveMode)")
+            
             switch effectiveMode {
             case .screen:
+                Logger.shared.verbose("Capturing entire screen")
                 captureResult = try await captureScreen()
             case .window:
                 if let appName = app {
+                    Logger.shared.verbose("Capturing window for app: \(appName), title: \(windowTitle ?? "any")")
                     captureResult = try await captureWindow(app: appName, title: windowTitle)
                 } else {
                     throw ValidationError("--app is required for window mode")
                 }
             case .frontmost:
+                Logger.shared.verbose("Capturing frontmost window")
                 captureResult = try await captureFrontmost()
             }
 

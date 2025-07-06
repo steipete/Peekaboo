@@ -4,6 +4,23 @@ import AXorcist
 import ArgumentParser
 import AppKit
 
+// MARK: - Verbose Protocol
+
+/// Protocol for commands that support verbose logging
+protocol VerboseCommand {
+    var verbose: Bool { get }
+}
+
+extension VerboseCommand {
+    /// Configure logger for verbose mode if enabled
+    func configureVerboseLogging() {
+        Logger.shared.setVerboseMode(verbose)
+        if verbose {
+            Logger.shared.verbose("Verbose logging enabled")
+        }
+    }
+}
+
 // MARK: - Common Error Handling
 
 func handleApplicationError(_ error: ApplicationError, jsonOutput: Bool) {

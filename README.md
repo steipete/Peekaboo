@@ -106,6 +106,38 @@ peekaboo config edit                    # Edit in your editor
 peekaboo config show --effective        # Show current settings
 ```
 
+### Debugging with Verbose Mode
+
+All Peekaboo commands support the `--verbose` or `-v` flag for detailed logging:
+
+```bash
+# See what's happening under the hood
+peekaboo image --app Safari --verbose
+peekaboo see --app Terminal -v
+peekaboo click --on B1 --verbose
+
+# Verbose output includes:
+# - Application search details
+# - Window discovery information
+# - UI element detection progress
+# - Timing information
+# - Session management operations
+```
+
+Verbose logs are written to stderr with timestamps:
+```
+[2025-01-06T08:05:23Z] VERBOSE: Searching for application: Safari
+[2025-01-06T08:05:23Z] VERBOSE: Found exact bundle ID match: Safari
+[2025-01-06T08:05:23Z] VERBOSE: Capturing window for app: Safari
+[2025-01-06T08:05:23Z] VERBOSE: Found 3 windows for application
+```
+
+This is invaluable for:
+- Debugging automation scripts
+- Understanding why elements aren't found
+- Performance optimization
+- Learning Peekaboo's internals
+
 ### Configuration
 
 Create a persistent configuration file at `~/.config/peekaboo/config.json`:
@@ -917,6 +949,11 @@ Enable debug logging for more details:
 ```bash
 export PEEKABOO_LOG_LEVEL=debug
 peekaboo list server_status
+```
+
+For step-by-step debugging, use the verbose flag:
+```bash
+peekaboo image --app Safari --verbose 2>&1 | less
 ```
 
 ## 🤝 Contributing
