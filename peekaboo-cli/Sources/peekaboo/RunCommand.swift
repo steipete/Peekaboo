@@ -291,17 +291,9 @@ struct RunCommand: AsyncParsableCommand {
                     }
                 }
             } else if step.command == "swipe" {
-                // Swipe uses specific parameter names
+                // Swipe uses all parameters as flags
                 for (key, value) in params where key != "session-id" && key != "session" {
-                    var paramKey = key
-                    // Map common variations to expected parameter names
-                    if key == "from" || key == "from-element" {
-                        paramKey = "from"
-                    } else if key == "to" || key == "to-element" {
-                        paramKey = "to"
-                    }
-                    
-                    args.append("--\(paramKey)")
+                    args.append("--\(key)")
 
                     if let stringValue = value as? String {
                         args.append(stringValue)
@@ -383,98 +375,6 @@ struct RunCommand: AsyncParsableCommand {
 struct PeekabooScript: Codable {
     let description: String?
     let steps: [ScriptStep]
-    
-    // Support both old and new formats
-    enum CodingKeys: String, CodingKey {
-        case name, description, version, steps, commands
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        
-        // Try to get description from either field
-        if let desc = try? container.decodeIfPresent(String.self, forKey: .description) {
-            self.description = desc
-        } else if let name = try? container.decodeIfPresent(String.self, forKey: .name) {
-            self.description = name
-        } else {
-            self.description = nil
-        }
-        
-        // Try to decode steps from either "steps" or "commands"
-        if let steps = try? container.decode([ScriptStep].self, forKey: .steps) {
-            self.steps = steps
-        } else if let commands = try? container.decode([LegacyCommand].self, forKey: .commands) {
-            // Convert legacy commands to steps
-            self.steps = commands.enumerated().map { index, cmd in
-                ScriptStep(
-                    stepId: "step\(index + 1)",
-                    comment: cmd.comment,
-                    command: cmd.command,
-                    params: cmd.toParams()
-                )
-            }
-        } else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .steps,
-                in: container,
-                debugDescription: "Neither 'steps' nor 'commands' found in script"
-            )
-        }
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encodeIfPresent(description, forKey: .description)
-        try container.encode(steps, forKey: .steps)
-    }
-}
-
-// Legacy format support
-private struct LegacyCommand: Codable {
-    let command: String
-    let args: [String]?
-    let comment: String?
-    
-    func toParams() -> [String: Any]? {
-        guard let args = args, !args.isEmpty else { return nil }
-        
-        var params: [String: Any] = [:]
-        var i = 0
-        
-        while i < args.count {
-            let arg = args[i]
-            
-            // Handle flags that start with --
-            if arg.hasPrefix("--") {
-                let key = String(arg.dropFirst(2))
-                
-                // Check if there's a value after this flag
-                if i + 1 < args.count && !args[i + 1].hasPrefix("--") {
-                    params[key] = args[i + 1]
-                    i += 2
-                } else {
-                    // Boolean flag
-                    params[key] = true
-                    i += 1
-                }
-            } else {
-                // Handle positional arguments based on command
-                switch command {
-                case "sleep":
-                    params["duration"] = arg
-                case "type":
-                    params["text"] = arg
-                default:
-                    // For other commands, treat as query
-                    params["query"] = arg
-                }
-                i += 1
-            }
-        }
-        
-        return params.isEmpty ? nil : params
-    }
 }
 
 struct ScriptStep: Codable {

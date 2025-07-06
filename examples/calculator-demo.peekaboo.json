@@ -1,46 +1,70 @@
 {
-  "name": "Calculator Demo",
   "description": "Performs a simple calculation using the macOS Calculator app",
-  "version": "1.0.0",
-  "commands": [
+  "steps": [
     {
+      "stepId": "capture-calculator",
       "command": "see",
-      "args": ["--app", "Calculator", "--annotate"],
-      "comment": "Capture Calculator and identify buttons"
+      "params": {
+        "app": "Calculator",
+        "annotate": true
+      },
+      "comment": "Capture Calculator UI and create annotated screenshot"
     },
     {
+      "stepId": "clear-calculator",
       "command": "click",
-      "args": ["--query", "Clear"],
+      "params": {
+        "query": "Clear"
+      },
       "comment": "Clear any existing calculation"
     },
     {
+      "stepId": "click-9",
       "command": "click",
-      "args": ["--query", "9"],
+      "params": {
+        "query": "9"
+      },
       "comment": "Click number 9"
     },
     {
+      "stepId": "click-multiply",
       "command": "click",
-      "args": ["--query", "×"],
+      "params": {
+        "query": "×"
+      },
       "comment": "Click multiply"
     },
     {
+      "stepId": "click-7",
       "command": "click",
-      "args": ["--query", "7"],
+      "params": {
+        "query": "7"
+      },
       "comment": "Click number 7"
     },
     {
+      "stepId": "click-equals",
       "command": "click",
-      "args": ["--query", "="],
+      "params": {
+        "query": "="
+      },
       "comment": "Click equals"
     },
     {
+      "stepId": "wait-for-result",
       "command": "sleep",
-      "args": ["--duration", "1000"],
+      "params": {
+        "duration": 1000
+      },
       "comment": "Pause to see result"
     },
     {
+      "stepId": "capture-result",
       "command": "see",
-      "args": ["--app", "Calculator", "--analyze", "What is the result shown?"],
+      "params": {
+        "app": "Calculator",
+        "analyze": "What is the result shown in the calculator display?"
+      },
       "comment": "Capture and analyze the result"
     }
   ]
