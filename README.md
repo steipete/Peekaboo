@@ -563,6 +563,51 @@ await sleep({ duration: 1000 })
 await sleep({ duration: 500 })
 ```
 
+### 🪟 The `window` Tool
+
+Comprehensive window manipulation for any application:
+
+```typescript
+// Close window
+await window({ action: "close", app_target: "Safari" })
+await window({ action: "close", window_title: "Downloads" })
+
+// Minimize/Maximize
+await window({ action: "minimize", app_target: "Finder" })
+await window({ action: "maximize", app_target: "Terminal" })
+
+// Move window
+await window({ action: "move", app_target: "TextEdit", x: 100, y: 100 })
+
+// Resize window
+await window({ action: "resize", app_target: "Notes", width: 800, height: 600 })
+
+// Set exact bounds (move + resize)
+await window({ action: "set_bounds", app_target: "Safari", x: 50, y: 50, width: 1200, height: 800 })
+
+// Focus window
+await window({ action: "focus", app_target: "Visual Studio Code" })
+await window({ action: "focus", window_index: 0 })  // Focus first window
+
+// List all windows
+await window({ action: "list", app_target: "Finder" })
+```
+
+#### Window Actions
+- **close** - Close the window (animated if has close button)
+- **minimize** - Minimize to dock
+- **maximize** - Maximize/zoom window
+- **move** - Move to specific coordinates
+- **resize** - Change window dimensions
+- **set_bounds** - Set position and size in one operation
+- **focus** - Bring window to front and focus
+- **list** - Get information about all windows
+
+#### Targeting Options
+- **app_target** - Target by application name (fuzzy matching supported)
+- **window_title** - Target by window title (substring matching)
+- **window_index** - Target by index (0-based, front to back order)
+
 ### 🧹 The `clean` Tool
 
 Clean up session cache and temporary files:
