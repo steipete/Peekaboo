@@ -118,7 +118,7 @@ struct SwipeCommand: AsyncParsableCommand {
     private func getPoint(elementId: String?, coords: String?, session: String?) async throws -> CGPoint {
         if let elementId {
             // Get point from element
-            let sessionCache = SessionCache(sessionId: session)
+            let sessionCache = try SessionCache(sessionId: session, createIfNeeded: false)
             guard let sessionData = await sessionCache.load() else {
                 throw PeekabooError.sessionNotFound
             }

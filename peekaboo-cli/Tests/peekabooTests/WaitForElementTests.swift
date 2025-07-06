@@ -27,7 +27,7 @@ struct WaitForElementTests {
     @Test("Session cache element retrieval")
     func sessionCacheElementRetrieval() async throws {
         // Test retrieving elements from session cache
-        let sessionCache = SessionCache(sessionId: "test-retrieval")
+        let sessionCache = try SessionCache(sessionId: "test-retrieval")
         
         let element = SessionCache.SessionData.UIElement(
             id: "B1",
@@ -87,7 +87,7 @@ struct WaitForElementTests {
     @Test("Element search by query")
     func elementSearchByQuery() async throws {
         // Test searching elements by query string
-        let sessionCache = SessionCache(sessionId: "test-search")
+        let sessionCache = try SessionCache(sessionId: "test-search")
         
         let elements: [String: SessionCache.SessionData.UIElement] = [
             "B1": SessionCache.SessionData.UIElement(
@@ -169,7 +169,7 @@ struct WaitForElementTests {
     @Test("Wait for element timeout")
     func waitForElementTimeout() async throws {
         // Create a session with test element
-        let sessionCache = SessionCache(sessionId: "test-wait-timeout")
+        let sessionCache = try SessionCache(sessionId: "test-wait-timeout")
         
         let testElement = SessionCache.SessionData.UIElement(
             id: "B1",
@@ -203,7 +203,7 @@ struct WaitForElementTests {
     
     @Test("Wait for element by query filtering")
     func waitForElementByQueryFiltering() async throws {
-        let sessionCache = SessionCache(sessionId: "test-wait-query")
+        let sessionCache = try SessionCache(sessionId: "test-wait-query")
         
         // Create multiple elements
         let elements: [String: SessionCache.SessionData.UIElement] = [

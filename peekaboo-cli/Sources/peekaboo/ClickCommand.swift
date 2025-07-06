@@ -62,8 +62,8 @@ struct ClickCommand: AsyncParsableCommand {
         let startTime = Date()
 
         do {
-            // Load session
-            let sessionCache = SessionCache(sessionId: session)
+            // Load session (don't create new if not found)
+            let sessionCache = try SessionCache(sessionId: session, createIfNeeded: false)
             guard await sessionCache.load() != nil else {
                 throw PeekabooError.sessionNotFound
             }
@@ -201,26 +201,46 @@ struct ClickCommand: AsyncParsableCommand {
             throw PeekabooError.elementNotFound
         }
 
-        // Create locator from element properties
+        // Create a locator from the cached element's properties
         let locator = ElementLocator(
             role: targetElement.role,
             title: targetElement.title,
             label: targetElement.label,
-            value: targetElement.value
+            value: targetElement.value,
+            description: targetElement.description,
+            help: targetElement.help,
+            roleDescription: targetElement.roleDescription,
+            identifier: targetElement.identifier
         )
 
-        // Enter retry loop with live accessibility queries
         while Date() < deadline {
-            // Re-query the accessibility tree for live element
+            // First try to find element at the stored location (fast path)
+            if let liveElement = try await findElementAtLocation(
+                frame: targetElement.frame,
+                role: targetElement.role,
+                in: sessionData.applicationName
+            ) {
+                // Verify it matches our expected properties
+                if matchesLocator(element: liveElement, locator: locator) {
+                    if try await isElementActionable(liveElement) {
+                        // Return element with updated coordinates
+                        var updatedElement = targetElement
+                        updatedElement.frame = liveElement.frame() ?? targetElement.frame
+                        return updatedElement
+                    }
+                }
+            }
+            
+            // If not found at stored location, search the entire UI tree
             if let liveElement = try await findLiveElement(
                 matching: locator,
                 in: sessionData.applicationName
             ) {
-                // Perform actionability checks
                 if try await isElementActionable(liveElement) {
-                    // Update element with live coordinates
+                    // Return element with updated coordinates
                     var updatedElement = targetElement
-                    updatedElement.frame = liveElement.frame() ?? .zero
+                    updatedElement.frame = liveElement.frame() ?? targetElement.frame
+                    Logger.shared.debug("Element '\(elementId)' found at new location: \(updatedElement.frame)")
                     return updatedElement
                 }
             }
@@ -232,6 +252,38 @@ struct ClickCommand: AsyncParsableCommand {
         throw PeekabooError.interactionFailed(
             "Element '\(elementId)' not found or not actionable after \(timeout)ms"
         )
+    }
+    
+    @MainActor
+    private func findElementAtLocation(
+        frame: CGRect,
+        role: String,
+        in appName: String?
+    ) async throws -> Element? {
+        // Find the application using AXorcist
+        guard let appName = appName,
+              let app = NSWorkspace.shared.runningApplications.first(where: {
+                  $0.localizedName == appName || $0.bundleIdentifier == appName
+              }) else {
+            return nil
+        }
+        
+        // Create AXUIElement for the application
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let _ = Element(axApp)
+        
+        // Get element at the center of the frame using AXorcist
+        let centerPoint = CGPoint(x: frame.midX, y: frame.midY)
+        
+        // Use AXorcist's elementAtPoint static method
+        if let foundElement = Element.elementAtPoint(centerPoint, pid: app.processIdentifier) {
+            // Verify it's the right type of element using AXorcist's role() method
+            if foundElement.role() == role {
+                return foundElement
+            }
+        }
+        
+        return nil
     }
     
     @MainActor
@@ -249,7 +301,7 @@ struct ClickCommand: AsyncParsableCommand {
         
         // Create AXUIElement for the application
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
+        let _ = Element(axApp)
         
         // Search for matching element
         return findMatchingElement(in: appElement, matching: locator)
@@ -279,27 +331,47 @@ struct ClickCommand: AsyncParsableCommand {
     
     @MainActor
     private func matchesLocator(element: Element, locator: ElementLocator) -> Bool {
-        // Match by role
-        if let role = element.role(), role != locator.role {
+        // Match by role (required)
+        guard let role = element.role() else { return false }
+        if role != locator.role {
             return false
         }
         
+        // For elements with unique identifiers, match those first
+        if let locatorId = locator.identifier, !locatorId.isEmpty {
+            return element.identifier() == locatorId
+        }
+        
+        // For elements with labels (like "italic", "bold"), match by label
+        if let locatorLabel = locator.label, !locatorLabel.isEmpty {
+            // Check various label-like properties
+            let elementLabel = element.descriptionText() ?? element.help() ?? element.roleDescription() ?? element.title()
+            return elementLabel == locatorLabel
+        }
+        
         // Match by title if specified
-        if let locatorTitle = locator.title {
-            if element.title() != locatorTitle {
-                return false
+        if let locatorTitle = locator.title, !locatorTitle.isEmpty {
+            return element.title() == locatorTitle
+        }
+        
+        // Match by value if specified (for text fields, etc.)
+        if let locatorValue = locator.value, !locatorValue.isEmpty {
+            if let elementValue = element.value() as? String {
+                return elementValue == locatorValue
             }
         }
         
-        // Match by value if specified
-        if let locatorValue = locator.value,
-           let elementValue = element.value() as? String {
-            if elementValue != locatorValue {
-                return false
-            }
-        }
+        // For elements without any distinguishing properties, we need more context
+        // This handles cases like multiple identical checkboxes
+        // In this case, we should rely on position or other heuristics
+        let hasAnyProperty = (locator.identifier != nil && !locator.identifier!.isEmpty) ||
+                           (locator.label != nil && !locator.label!.isEmpty) ||
+                           (locator.title != nil && !locator.title!.isEmpty) ||
+                           (locator.value != nil && !locator.value!.isEmpty)
         
-        return true
+        // If the locator has no properties, it's likely a generic element
+        // We should not match based on role alone
+        return !hasAnyProperty
     }
     
     @MainActor
@@ -310,7 +382,11 @@ struct ClickCommand: AsyncParsableCommand {
         }
         
         // Check if element is visible (not hidden)
-        // AXorcist doesn't expose hidden attribute directly, so we check frame
+        if element.isHidden() == true {
+            return false
+        }
+        
+        // Check frame validity
         guard let frame = element.frame() else {
             return false
         }
@@ -358,7 +434,11 @@ struct ClickCommand: AsyncParsableCommand {
                     role: element.role,
                     title: element.title,
                     label: element.label,
-                    value: element.value
+                    value: element.value,
+                    description: element.description,
+                    help: element.help,
+                    roleDescription: element.roleDescription,
+                    identifier: element.identifier
                 )
                 
                 if let liveElement = try await findLiveElement(
@@ -391,6 +471,10 @@ private struct ElementLocator {
     let title: String?
     let label: String?
     let value: String?
+    let description: String?
+    let help: String?
+    let roleDescription: String?
+    let identifier: String?
 }
 
 private enum ClickTarget {

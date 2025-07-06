@@ -1,4 +1,5 @@
 import AppKit
+import AXorcist
 import CoreGraphics
 import Foundation
 
@@ -7,6 +8,53 @@ import Foundation
 /// Provides functionality to list windows for specific applications, extract window
 /// metadata, and filter windows based on visibility criteria.
 final class WindowManager: Sendable {
+    /// Get windows with enhanced information including subroles
+    @MainActor
+    static func getWindowsWithSubroles(for app: NSRunningApplication) -> [(window: WindowData, subrole: String?)] {
+        // Get basic window data first
+        guard let windows = try? getWindowsForApp(pid: app.processIdentifier) else {
+            return []
+        }
+        
+        // Create AXUIElement for the application
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        
+        // Get all AX windows
+        let axWindows = appElement.windows() ?? []
+        
+        // Match window data with AX windows and get subroles
+        var enhancedWindows: [(window: WindowData, subrole: String?)] = []
+        
+        for windowData in windows {
+            // Try to find matching AX window by title
+            let matchingAXWindow = axWindows.first { axWindow in
+                axWindow.title() == windowData.title
+            }
+            
+            let subrole = matchingAXWindow?.subrole()
+            enhancedWindows.append((window: windowData, subrole: subrole))
+        }
+        
+        // Sort to prioritize standard windows over panels
+        enhancedWindows.sort { (a, b) in
+            // AXStandardWindow should come before floating windows and dialogs
+            let aIsStandard = a.subrole == "AXStandardWindow"
+            let bIsStandard = b.subrole == "AXStandardWindow"
+            
+            if aIsStandard && !bIsStandard {
+                return true
+            } else if !aIsStandard && bIsStandard {
+                return false
+            }
+            
+            // Otherwise maintain original order
+            return a.window.windowIndex < b.window.windowIndex
+        }
+        
+        return enhancedWindows
+    }
+    
     static func getWindowsForApp(pid: pid_t, includeOffScreen: Bool = false) throws(WindowError) -> [WindowData] {
         // Logger.shared.debug("Getting windows for PID: \(pid)")
 

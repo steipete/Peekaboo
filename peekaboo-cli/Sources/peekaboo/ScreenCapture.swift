@@ -35,7 +35,7 @@ struct ScreenCapture: Sendable {
 
             if process.terminationStatus != 0 {
                 let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-                let errorString = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+                let _ = String(data: errorData, encoding: .utf8) ?? "Unknown error"
                 throw CaptureError.captureCreationFailed(
                     NSError(
                         domain: "ScreenCapture",
@@ -58,7 +58,7 @@ struct ScreenCapture: Sendable {
         // Use the screencapture command for window capture
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
-        process.arguments = ["-x", "-l", "\(window.windowId)", path]
+        process.arguments = ["-x", "-o", "-l", "\(window.windowId)", path]
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()
@@ -71,7 +71,7 @@ struct ScreenCapture: Sendable {
 
             if process.terminationStatus != 0 {
                 let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-                let errorString = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+                let _ = String(data: errorData, encoding: .utf8) ?? "Unknown error"
                 throw CaptureError.windowNotFound
             }
 

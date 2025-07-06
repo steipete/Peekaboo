@@ -9,7 +9,7 @@ struct SessionCacheTests {
 
     init() async throws {
         testSessionId = UUID().uuidString
-        sessionCache = SessionCache(sessionId: testSessionId)
+        sessionCache = try SessionCache(sessionId: testSessionId)
 
         // Clean up any existing session
         try? await sessionCache.clear()
@@ -27,14 +27,18 @@ struct SessionCacheTests {
             .appendingPathComponent(".peekaboo/session")
         try? FileManager.default.removeItem(at: sessionsDir)
         
-        let defaultCache = SessionCache()
+        // With no existing sessions and createIfNeeded = true, it should use PID
+        let defaultCache = try SessionCache(sessionId: nil, createIfNeeded: true)
         let expectedPID = String(ProcessInfo.processInfo.processIdentifier)
-        
-        // With no existing sessions, it should use PID
         #expect(await defaultCache.sessionId == expectedPID)
         
+        // With no existing sessions and createIfNeeded = false, it should throw
+        #expect(throws: Error.self) {
+            _ = try SessionCache(sessionId: nil, createIfNeeded: false)
+        }
+        
         // Create a new session with a specific ID
-        let testSession = SessionCache(sessionId: "test-session-123")
+        let testSession = try SessionCache(sessionId: "test-session-123")
         let testData = SessionCache.SessionData(
             screenshotPath: nil,
             annotatedPath: nil,
@@ -46,13 +50,13 @@ struct SessionCacheTests {
         try await testSession.save(testData)
         
         // Now a new SessionCache with no ID should use the latest session
-        let latestCache = SessionCache()
+        let latestCache = try SessionCache(sessionId: nil, createIfNeeded: false)
         #expect(await latestCache.sessionId == "test-session-123")
     }
     
     @Test("Session cache uses ~/.peekaboo/session/<PID>/ directory structure")
     func sessionDirectoryStructure() async throws {
-        let cache = SessionCache(sessionId: "test-12345")
+        let cache = try SessionCache(sessionId: "test-12345")
         let paths = await cache.getSessionPaths()
         
         // Check that paths follow the v3 spec structure
@@ -103,7 +107,7 @@ struct SessionCacheTests {
 
     @Test("Loading non-existent session returns nil")
     func loadNonExistentSession() async throws {
-        let emptyCache = SessionCache(sessionId: "non-existent-\(UUID().uuidString)")
+        let emptyCache = try SessionCache(sessionId: "non-existent-\(UUID().uuidString)")
         let data = await emptyCache.load()
         #expect(data == nil)
     }
