@@ -45,7 +45,8 @@ export async function hotkeyToolHandler(
     args.push("--keys", input.keys);
     
     // Hold duration
-    args.push("--hold-duration", input.hold_duration.toString());
+    const holdDuration = input.hold_duration ?? 50;
+    args.push("--hold-duration", holdDuration.toString());
     
     args.push("--json-output");
 

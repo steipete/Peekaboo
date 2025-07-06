@@ -6,7 +6,17 @@ import { z } from "zod";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
 
 export const sleepToolSchema = z.object({
-  duration: z.number().describe(
+  duration: z.preprocess(
+    (val) => {
+      // Convert string to number if possible
+      if (typeof val === "string") {
+        const num = parseFloat(val);
+        return isNaN(num) ? val : num;
+      }
+      return val;
+    },
+    z.number().min(0)
+  ).describe(
     "Sleep duration in milliseconds."
   ),
 }).describe(

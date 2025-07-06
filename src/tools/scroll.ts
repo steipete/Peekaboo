@@ -60,7 +60,8 @@ export async function scrollToolHandler(
     args.push("--direction", input.direction);
     
     // Amount
-    args.push("--amount", input.amount.toString());
+    const amount = input.amount ?? 3;
+    args.push("--amount", amount.toString());
     
     // Target element
     if (input.on) {
@@ -73,7 +74,8 @@ export async function scrollToolHandler(
     }
     
     // Delay between ticks
-    args.push("--delay", input.delay.toString());
+    const delay = input.delay ?? 20;
+    args.push("--delay", delay.toString());
     
     // Smooth scrolling
     if (input.smooth) {
