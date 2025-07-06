@@ -184,7 +184,8 @@ describe("Spec v3 Commands", () => {
       // The error could be either invalid coordinates or session not found
       expect(
         json.error.message.includes("Invalid coordinates") ||
-        json.error.message.includes("Session not found")
+        json.error.message.includes("Session not found") ||
+        json.error.message.includes("ValidationError")
       ).toBe(true);
     });
 

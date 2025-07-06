@@ -20,11 +20,34 @@ struct SessionCacheTests {
         #expect(await sessionCache.sessionId == testSessionId)
     }
     
-    @Test("Default session ID uses process ID")
-    func defaultSessionUsesProcessID() async throws {
+    @Test("Default session ID uses latest session or process ID")
+    func defaultSessionUsesLatestOrProcessID() async throws {
+        // Clean up any existing sessions to ensure we get PID behavior
+        let sessionsDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".peekaboo/session")
+        try? FileManager.default.removeItem(at: sessionsDir)
+        
         let defaultCache = SessionCache()
         let expectedPID = String(ProcessInfo.processInfo.processIdentifier)
+        
+        // With no existing sessions, it should use PID
         #expect(await defaultCache.sessionId == expectedPID)
+        
+        // Create a new session with a specific ID
+        let testSession = SessionCache(sessionId: "test-session-123")
+        let testData = SessionCache.SessionData(
+            screenshotPath: nil,
+            annotatedPath: nil,
+            uiMap: [:],
+            lastUpdateTime: Date(),
+            applicationName: "Test",
+            windowTitle: "Test Window"
+        )
+        try await testSession.save(testData)
+        
+        // Now a new SessionCache with no ID should use the latest session
+        let latestCache = SessionCache()
+        #expect(await latestCache.sessionId == "test-session-123")
     }
     
     @Test("Session cache uses ~/.peekaboo/session/<PID>/ directory structure")
