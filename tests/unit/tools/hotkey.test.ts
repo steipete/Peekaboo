@@ -72,7 +72,7 @@ describe("hotkey tool", () => {
       const result = await hotkeyToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["hotkey", "--keys", "cmd,c", "--hold-duration", "50", "--json-output"],
+        ["hotkey", "--keys", "cmd,c", "--hold-duration", "50"],
         mockContext.logger
       );
 
@@ -102,7 +102,7 @@ describe("hotkey tool", () => {
       const result = await hotkeyToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["hotkey", "--keys", "cmd,shift,option,t", "--hold-duration", "100", "--json-output"],
+        ["hotkey", "--keys", "cmd,shift,option,t", "--hold-duration", "100"],
         mockContext.logger
       );
 

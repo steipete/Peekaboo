@@ -43,7 +43,7 @@ struct SleepCommandTests {
         (1, true), // 1ms is valid
         (1000, true), // 1 second
         (60000, true), // 1 minute
-        (-100, false), // Negative duration should fail
+        (-100, false) // Negative duration should fail
     ])
     func validateDuration(duration: Int, isValid: Bool) throws {
         // ArgumentParser validates that Int arguments can be parsed

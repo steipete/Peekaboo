@@ -34,7 +34,7 @@ struct TypeCommandTests {
         (["--return"], true, false, false, nil),
         (["--escape"], false, true, false, nil),
         (["--delete"], false, false, true, nil),
-        (["--tab", "3"], false, false, false, 3),
+        (["--tab", "3"], false, false, false, 3)
     ])
     func parseSpecialKeys(args: [String], hasReturn: Bool, hasEscape: Bool, hasDelete: Bool, tabCount: Int?) throws {
         let command = try TypeCommand.parse(args)
@@ -105,7 +105,7 @@ struct TypeCommandTests {
     func combineTextAndKeys() throws {
         let command = try TypeCommand.parse([
             "username@example.com",
-            "--tab", "1",  // Must provide value for --tab
+            "--tab", "1", // Must provide value for --tab
             "--return"
         ])
         #expect(command.text == "username@example.com")

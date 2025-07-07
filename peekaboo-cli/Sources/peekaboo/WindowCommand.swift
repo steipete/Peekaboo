@@ -106,20 +106,21 @@ struct WindowIdentificationOptions: ParsableArguments {
 // MARK: - Helper Functions
 
 @MainActor
-private func findTargetWindow(options: WindowIdentificationOptions) async throws -> (app: NSRunningApplication, window: Element) {
+private func findTargetWindow(options: WindowIdentificationOptions) async throws
+    -> (app: NSRunningApplication, window: Element) {
     if let appIdentifier = options.app {
         // Find app by identifier
         let app = try ApplicationFinder.findApplication(identifier: appIdentifier)
-        
+
         // Get AX element for the app
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         let appElement = Element(axApp)
-        
+
         // Get windows
         guard let windows = appElement.windows(), !windows.isEmpty else {
             throw CaptureError.windowNotFound
         }
-        
+
         // Find specific window if criteria provided
         let targetWindow: Element
         if let title = options.windowTitle {
@@ -143,33 +144,34 @@ private func findTargetWindow(options: WindowIdentificationOptions) async throws
             // Default to frontmost window
             targetWindow = windows[0]
         }
-        
+
         return (app, targetWindow)
-        
+
     } else if let sessionId = options.session, let elementId = options.element {
         // Load session and find element
         let sessionCache = try SessionCache(sessionId: sessionId, createIfNeeded: false)
-        
+
         guard let sessionData = await sessionCache.load() else {
             throw CaptureError.invalidArgument("Session \(sessionId) has no data")
         }
-        
+
         // Find window element - windows have elementIds like W1, W2, etc.
-        guard let windowElement = sessionData.uiMap.values.first(where: { $0.id == elementId && $0.role == "AXWindow" }) else {
+        guard let windowElement = sessionData.uiMap.values
+            .first(where: { $0.id == elementId && $0.role == "AXWindow" }) else {
             throw CaptureError.invalidArgument("Element \(elementId) not found or is not a window")
         }
-        
+
         // Get app info - use the sessionData's applicationName
         guard let appName = sessionData.applicationName,
               let app = NSRunningApplication.runningApplications(withBundleIdentifier: appName).first ??
-                        NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == appName }) else {
+              NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == appName }) else {
             throw CaptureError.appNotFound("\(sessionData.applicationName ?? "Unknown") not found")
         }
-        
+
         // Recreate AX element from the running app
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         let appElement = Element(axApp)
-        
+
         // Find the window by matching properties
         guard let windows = appElement.windows(),
               let window = windows.first(where: { window in
@@ -180,13 +182,13 @@ private func findTargetWindow(options: WindowIdentificationOptions) async throws
                      let size = window.size() {
                       let bounds = CGRect(x: pos.x, y: pos.y, width: size.width, height: size.height)
                       return abs(bounds.origin.x - windowElement.frame.origin.x) < 1 &&
-                             abs(bounds.origin.y - windowElement.frame.origin.y) < 1
+                          abs(bounds.origin.y - windowElement.frame.origin.y) < 1
                   }
                   return false
               }) else {
             throw CaptureError.windowNotFound
         }
-        
+
         return (app, window)
     } else {
         throw CaptureError.invalidArgument("Invalid window identification options")
@@ -212,19 +214,19 @@ struct CloseSubcommand: AsyncParsableCommand {
         do {
             try windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
-            
+
             // Try to find the close button
             if let closeButton = await window.closeButton() {
                 // Press the close button
                 try await closeButton.performAction(.press)
-                
-                let data = WindowActionResult(
+
+                let data = await WindowActionResult(
                     action: "close",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
-                    window_title: await window.title()
+                    window_title: window.title()
                 )
-                
+
                 if jsonOutput {
                     outputSuccess(data: data)
                 } else {
@@ -235,14 +237,14 @@ struct CloseSubcommand: AsyncParsableCommand {
                 let supportedActions = await window.supportedActions() ?? []
                 if supportedActions.contains("AXClose") {
                     try await window.performAction("AXClose")
-                    
-                    let data = WindowActionResult(
+
+                    let data = await WindowActionResult(
                         action: "close",
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
-                        window_title: await window.title()
+                        window_title: window.title()
                     )
-                    
+
                     if jsonOutput {
                         outputSuccess(data: data)
                     } else {
@@ -252,15 +254,15 @@ struct CloseSubcommand: AsyncParsableCommand {
                     throw CaptureError.invalidArgument("Window does not support close action")
                 }
             }
-            
+
         } catch {
             handleError(error)
         }
     }
-    
+
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
-        
+
         if jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
@@ -291,19 +293,19 @@ struct MinimizeSubcommand: AsyncParsableCommand {
         do {
             try windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
-            
+
             // Try to find the minimize button
             if let minimizeButton = await window.minimizeButton() {
                 // Press the minimize button
                 try await minimizeButton.performAction(.press)
-                
-                let data = WindowActionResult(
+
+                let data = await WindowActionResult(
                     action: "minimize",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
-                    window_title: await window.title()
+                    window_title: window.title()
                 )
-                
+
                 if jsonOutput {
                     outputSuccess(data: data)
                 } else {
@@ -313,13 +315,13 @@ struct MinimizeSubcommand: AsyncParsableCommand {
                 // Fallback: try to set minimized attribute
                 let error = await window.setMinimized(true)
                 if error == .success {
-                    let data = WindowActionResult(
+                    let data = await WindowActionResult(
                         action: "minimize",
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
-                        window_title: await window.title()
+                        window_title: window.title()
                     )
-                    
+
                     if jsonOutput {
                         outputSuccess(data: data)
                     } else {
@@ -329,15 +331,15 @@ struct MinimizeSubcommand: AsyncParsableCommand {
                     throw CaptureError.invalidArgument("Failed to minimize window: \(error)")
                 }
             }
-            
+
         } catch {
             handleError(error)
         }
     }
-    
+
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
-        
+
         if jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
@@ -368,19 +370,19 @@ struct MaximizeSubcommand: AsyncParsableCommand {
         do {
             try windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
-            
+
             // Try to find the zoom/maximize button
             if let zoomButton = await window.zoomButton() {
                 // Press the zoom button
                 try await zoomButton.performAction(.press)
-                
-                let data = WindowActionResult(
+
+                let data = await WindowActionResult(
                     action: "maximize",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
-                    window_title: await window.title()
+                    window_title: window.title()
                 )
-                
+
                 if jsonOutput {
                     outputSuccess(data: data)
                 } else {
@@ -389,14 +391,14 @@ struct MaximizeSubcommand: AsyncParsableCommand {
             } else if let fullScreenButton = await window.fullScreenButton() {
                 // Try full screen button
                 try await fullScreenButton.performAction(.press)
-                
-                let data = WindowActionResult(
+
+                let data = await WindowActionResult(
                     action: "maximize",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
-                    window_title: await window.title()
+                    window_title: window.title()
                 )
-                
+
                 if jsonOutput {
                     outputSuccess(data: data)
                 } else {
@@ -406,13 +408,13 @@ struct MaximizeSubcommand: AsyncParsableCommand {
                 // Fallback: try to set full screen attribute
                 let error = await window.setFullScreen(true)
                 if error == .success {
-                    let data = WindowActionResult(
+                    let data = await WindowActionResult(
                         action: "maximize",
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
-                        window_title: await window.title()
+                        window_title: window.title()
                     )
-                    
+
                     if jsonOutput {
                         outputSuccess(data: data)
                     } else {
@@ -422,15 +424,15 @@ struct MaximizeSubcommand: AsyncParsableCommand {
                     throw CaptureError.invalidArgument("Failed to maximize window: \(error)")
                 }
             }
-            
+
         } catch {
             handleError(error)
         }
     }
-    
+
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
-        
+
         if jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
@@ -467,41 +469,43 @@ struct MoveSubcommand: AsyncParsableCommand {
         do {
             try windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
-            
+
             let newPosition = CGPoint(x: x, y: y)
             let error = await window.setPosition(newPosition)
-            
+
             if error == .success {
-                let data = WindowActionResult(
+                let data = await WindowActionResult(
                     action: "move",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
-                    window_title: await window.title(),
+                    window_title: window.title(),
                     new_bounds: WindowBounds(
                         x: x,
                         y: y,
-                        width: Int(await window.size()?.width ?? 0),
-                        height: Int(await window.size()?.height ?? 0)
+                        width: Int(window.size()?.width ?? 0),
+                        height: Int(window.size()?.height ?? 0)
                     )
                 )
-                
+
                 if jsonOutput {
                     outputSuccess(data: data)
                 } else {
-                    print("Successfully moved window '\(data.window_title ?? "Untitled")' of \(data.app_name) to (\(x), \(y))")
+                    print(
+                        "Successfully moved window '\(data.window_title ?? "Untitled")' of \(data.app_name) to (\(x), \(y))"
+                    )
                 }
             } else {
                 throw CaptureError.invalidArgument("Failed to move window: \(error)")
             }
-            
+
         } catch {
             handleError(error)
         }
     }
-    
+
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
-        
+
         if jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
@@ -538,41 +542,43 @@ struct ResizeSubcommand: AsyncParsableCommand {
         do {
             try windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
-            
+
             let newSize = CGSize(width: width, height: height)
             let error = await window.setSize(newSize)
-            
+
             if error == .success {
-                let data = WindowActionResult(
+                let data = await WindowActionResult(
                     action: "resize",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
-                    window_title: await window.title(),
+                    window_title: window.title(),
                     new_bounds: WindowBounds(
-                        x: Int(await window.position()?.x ?? 0),
-                        y: Int(await window.position()?.y ?? 0),
+                        x: Int(window.position()?.x ?? 0),
+                        y: Int(window.position()?.y ?? 0),
                         width: width,
                         height: height
                     )
                 )
-                
+
                 if jsonOutput {
                     outputSuccess(data: data)
                 } else {
-                    print("Successfully resized window '\(data.window_title ?? "Untitled")' of \(data.app_name) to \(width)×\(height)")
+                    print(
+                        "Successfully resized window '\(data.window_title ?? "Untitled")' of \(data.app_name) to \(width)×\(height)"
+                    )
                 }
             } else {
                 throw CaptureError.invalidArgument("Failed to resize window: \(error)")
             }
-            
+
         } catch {
             handleError(error)
         }
     }
-    
+
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
-        
+
         if jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
@@ -615,29 +621,31 @@ struct SetBoundsSubcommand: AsyncParsableCommand {
         do {
             try windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
-            
+
             // Set position first
             let newPosition = CGPoint(x: x, y: y)
             var error = await window.setPosition(newPosition)
-            
+
             if error == .success {
                 // Then set size
                 let newSize = CGSize(width: width, height: height)
                 error = await window.setSize(newSize)
-                
+
                 if error == .success {
-                    let data = WindowActionResult(
+                    let data = await WindowActionResult(
                         action: "set-bounds",
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
-                        window_title: await window.title(),
+                        window_title: window.title(),
                         new_bounds: WindowBounds(x: x, y: y, width: width, height: height)
                     )
-                    
+
                     if jsonOutput {
                         outputSuccess(data: data)
                     } else {
-                        print("Successfully set bounds for window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
+                        print(
+                            "Successfully set bounds for window '\(data.window_title ?? "Untitled")' of \(data.app_name)"
+                        )
                         print("New bounds: (\(x), \(y)) \(width)×\(height)")
                     }
                 } else {
@@ -646,15 +654,15 @@ struct SetBoundsSubcommand: AsyncParsableCommand {
             } else {
                 throw CaptureError.invalidArgument("Failed to move window: \(error)")
             }
-            
+
         } catch {
             handleError(error)
         }
     }
-    
+
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
-        
+
         if jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
@@ -685,37 +693,37 @@ struct FocusSubcommand: AsyncParsableCommand {
         do {
             try windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
-            
+
             // First, activate the application
             app.activate()
-            
+
             // Then raise the window
             let supportedActions = await window.supportedActions() ?? []
             if supportedActions.contains(AXActionNames.kAXRaiseAction) {
                 try await window.performAction(.raise)
             }
-            
-            let data = WindowActionResult(
+
+            let data = await WindowActionResult(
                 action: "focus",
                 success: true,
                 app_name: app.localizedName ?? "Unknown",
-                window_title: await window.title()
+                window_title: window.title()
             )
-            
+
             if jsonOutput {
                 outputSuccess(data: data)
             } else {
                 print("Successfully focused window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
             }
-            
+
         } catch {
             handleError(error)
         }
     }
-    
+
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
-        
+
         if jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
@@ -759,7 +767,7 @@ struct WindowActionResult: Codable {
     let app_name: String
     let window_title: String?
     let new_bounds: WindowBounds?
-    
+
     init(action: String, success: Bool, app_name: String, window_title: String?, new_bounds: WindowBounds? = nil) {
         self.action = action
         self.success = success
@@ -768,4 +776,3 @@ struct WindowActionResult: Codable {
         self.new_bounds = new_bounds
     }
 }
-

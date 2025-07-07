@@ -19,24 +19,24 @@ struct SessionCacheTests {
     func sessionInitialization() async throws {
         #expect(await sessionCache.sessionId == testSessionId)
     }
-    
+
     @Test("Default session ID uses latest session or process ID")
     func defaultSessionUsesLatestOrProcessID() async throws {
         // Clean up any existing sessions to ensure we get PID behavior
         let sessionsDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".peekaboo/session")
         try? FileManager.default.removeItem(at: sessionsDir)
-        
+
         // With no existing sessions and createIfNeeded = true, it should use PID
         let defaultCache = try SessionCache(sessionId: nil, createIfNeeded: true)
         let expectedPID = String(ProcessInfo.processInfo.processIdentifier)
         #expect(await defaultCache.sessionId == expectedPID)
-        
+
         // With no existing sessions and createIfNeeded = false, it should throw
         #expect(throws: Error.self) {
             _ = try SessionCache(sessionId: nil, createIfNeeded: false)
         }
-        
+
         // Create a new session with a specific ID
         let testSession = try SessionCache(sessionId: "test-session-123")
         let testData = SessionCache.SessionData(
@@ -48,17 +48,17 @@ struct SessionCacheTests {
             windowTitle: "Test Window"
         )
         try await testSession.save(testData)
-        
+
         // Now a new SessionCache with no ID should use the latest session
         let latestCache = try SessionCache(sessionId: nil, createIfNeeded: false)
         #expect(await latestCache.sessionId == "test-session-123")
     }
-    
+
     @Test("Session cache uses ~/.peekaboo/session/<PID>/ directory structure")
     func sessionDirectoryStructure() async throws {
         let cache = try SessionCache(sessionId: "test-12345")
         let paths = await cache.getSessionPaths()
-        
+
         // Check that paths follow the v3 spec structure
         #expect(paths.raw.contains("/.peekaboo/session/test-12345/raw.png"))
         #expect(paths.annotated.contains("/.peekaboo/session/test-12345/annotated.png"))
@@ -193,7 +193,7 @@ struct SessionCacheTests {
 
         // Test no matches
         let noMatchElements = await sessionCache.findElements(matching: "nonexistent")
-        #expect(noMatchElements.count == 0)
+        #expect(noMatchElements.isEmpty)
     }
 
     @Test("Get element by ID returns correct element")
@@ -300,28 +300,28 @@ struct SessionCacheTests {
         let sourcePath = tempDir.appendingPathComponent("test-source.png").path
         let testData = Data([0x89, 0x50, 0x4E, 0x47]) // PNG header
         try testData.write(to: URL(fileURLWithPath: sourcePath))
-        
+
         // Update screenshot
         try await sessionCache.updateScreenshot(
             path: sourcePath,
             application: "TestApp",
             window: "TestWindow"
         )
-        
+
         // Verify raw.png was created in session directory
         let paths = await sessionCache.getSessionPaths()
         #expect(FileManager.default.fileExists(atPath: paths.raw))
-        
+
         // Verify session data is updated
         let data = await sessionCache.load()
         #expect(data?.screenshotPath == paths.raw)
         #expect(data?.applicationName == "TestApp")
         #expect(data?.windowTitle == "TestWindow")
-        
+
         // Cleanup
         try? FileManager.default.removeItem(atPath: sourcePath)
     }
-    
+
     @Test("Atomic save operations preserve data integrity")
     func atomicSaveOperations() async throws {
         // This test verifies atomic save operations work correctly

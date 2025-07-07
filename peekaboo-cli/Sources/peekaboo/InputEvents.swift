@@ -45,7 +45,7 @@ enum InputEvents {
 
             // Delay between clicks for double/triple click
             if clickCount > 1 {
-                usleep(100000) // 100ms
+                usleep(100_000) // 100ms
             }
         }
     }

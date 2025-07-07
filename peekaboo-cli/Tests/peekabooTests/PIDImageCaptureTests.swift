@@ -105,10 +105,10 @@ struct PIDImageCaptureTests {
                     "--format", "png",
                     "--json-output"
                 ])
-                
+
                 // The command should parse but fail during execution
                 #expect(command.app == invalidPID)
-                
+
                 // In actual execution, this would fail with APP_NOT_FOUND error
                 // Here we just verify the command accepts the PID format
             } catch {

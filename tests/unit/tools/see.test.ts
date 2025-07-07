@@ -111,7 +111,7 @@ describe("see tool", () => {
       const result = await seeToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        expect.arrayContaining(["see", "--app", "Safari", "--path", "/tmp/test.png", "--session", "test-123", "--json-output"]),
+        expect.arrayContaining(["see", "--app", "Safari", "--path", "/tmp/test.png", "--session", "test-123"]),
         mockContext.logger
       );
 
@@ -148,7 +148,7 @@ describe("see tool", () => {
       const result = await seeToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        expect.arrayContaining(["see", "--annotate", "--json-output"]),
+        expect.arrayContaining(["see", "--annotate"]),
         mockContext.logger
       );
 
@@ -177,7 +177,7 @@ describe("see tool", () => {
       await seeToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        expect.arrayContaining(["see", "--mode", "screen", "--screen-index", "1", "--json-output"]),
+        expect.arrayContaining(["see", "--mode", "screen", "--screen-index", "1"]),
         mockContext.logger
       );
     });
@@ -200,7 +200,7 @@ describe("see tool", () => {
       await seeToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        expect.arrayContaining(["see", "--mode", "frontmost", "--json-output"]),
+        expect.arrayContaining(["see", "--mode", "frontmost"]),
         mockContext.logger
       );
     });

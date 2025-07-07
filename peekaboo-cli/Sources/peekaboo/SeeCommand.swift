@@ -49,7 +49,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
-    
+
     @Flag(name: .shortAndLong, help: "Enable verbose logging for detailed output")
     var verbose = false
 
@@ -63,7 +63,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         configureVerboseLogging()
         let startTime = Date()
         Logger.shared.verbose("Starting see command execution")
-        
+
         // Always create a new session for see command
         let sessionId = String(ProcessInfo.processInfo.processIdentifier)
         Logger.shared.verbose("Creating new session with ID: \(sessionId)")
@@ -72,21 +72,20 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         do {
             // Perform capture based on mode
             let captureResult: CaptureResult
-            
+
             // Intelligently determine mode if not specified
-            let effectiveMode: CaptureMode
-            if let specifiedMode = mode {
-                effectiveMode = specifiedMode
+            let effectiveMode: CaptureMode = if let specifiedMode = mode {
+                specifiedMode
             } else if app != nil || windowTitle != nil {
                 // If app or window title is specified, default to window mode
-                effectiveMode = .window
+                .window
             } else {
                 // Otherwise default to frontmost
-                effectiveMode = .frontmost
+                .frontmost
             }
 
             Logger.shared.verbose("Using capture mode: \(effectiveMode)")
-            
+
             switch effectiveMode {
             case .screen:
                 Logger.shared.verbose("Capturing entire screen")
@@ -135,7 +134,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             // Load session data for output
             let sessionData = await sessionCache.load()
             let elementCount = sessionData?.uiMap.count ?? 0
-            let interactableCount = sessionData?.uiMap.values.count(where: { $0.isActionable }) ?? 0
+            let interactableCount = sessionData?.uiMap.values.filter { $0.isActionable }.count ?? 0
             let sessionPaths = await sessionCache.getSessionPaths()
 
             // Prepare output
@@ -218,14 +217,14 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
     @MainActor
     private func captureWindow(app: String, title: String?) async throws -> CaptureResult {
         let appInfo = try ApplicationFinder.findApplication(identifier: app)
-        
+
         // Get the NSRunningApplication
         guard let runningApp = NSWorkspace.shared.runningApplications.first(where: {
             $0.processIdentifier == appInfo.processIdentifier
         }) else {
             throw CaptureError.appNotFound(appInfo.localizedName ?? app)
         }
-        
+
         // Get windows with subrole information
         let enhancedWindows = WindowManager.getWindowsWithSubroles(for: runningApp)
         guard !enhancedWindows.isEmpty else {
@@ -275,10 +274,10 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
               !windowList.isEmpty else {
             throw CaptureError.windowNotFound
         }
-        
+
         // Find the first visible window with a valid title
         var targetWindow: (windowID: CGWindowID, title: String, pid: pid_t, bounds: CGRect)?
-        
+
         for windowInfo in windowList {
             // Skip windows without proper metadata
             guard let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID,
@@ -288,32 +287,33 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
                   let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any] else {
                 continue
             }
-            
+
             // Extract bounds
             let x = boundsDict["X"] as? Double ?? 0
             let y = boundsDict["Y"] as? Double ?? 0
             let width = boundsDict["Width"] as? Double ?? 0
             let height = boundsDict["Height"] as? Double ?? 0
             let bounds = CGRect(x: x, y: y, width: width, height: height)
-            
+
             // Skip tiny windows
             if width < 50 || height < 50 {
                 continue
             }
-            
+
             targetWindow = (windowID: windowID, title: title, pid: pid, bounds: bounds)
             break
         }
-        
+
         guard let windowData = targetWindow else {
             throw CaptureError.windowNotFound
         }
-        
+
         // Get the application that owns this window
-        guard let app = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == windowData.pid }) else {
+        guard let app = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == windowData.pid })
+        else {
             throw CaptureError.appNotFound("Could not find application for window")
         }
-        
+
         let appName = app.localizedName ?? "Unknown"
         let suggestedName = appName.lowercased().replacingOccurrences(of: " ", with: "_")
         let outputPath = path ?? FileNameGenerator.generateFileName(
@@ -321,7 +321,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             windowTitle: windowData.title,
             format: .png
         )
-        
+
         // Create WindowData for capture
         let window = WindowData(
             windowId: windowData.windowID,
@@ -330,7 +330,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             isOnScreen: true,
             windowIndex: 0
         )
-        
+
         try await ScreenCapture.captureWindow(window, to: outputPath)
 
         return CaptureResult(
@@ -376,7 +376,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
 
         return annotatedPath
     }
-    
+
     @MainActor
     private func createAnnotatedImage(
         from sourcePath: String,
@@ -388,10 +388,10 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         guard let nsImage = NSImage(contentsOfFile: sourcePath) else {
             throw CaptureError.fileIOError("Failed to load image from \(sourcePath)")
         }
-        
+
         // Get image size
         let imageSize = nsImage.size
-        
+
         // Create bitmap context
         guard let bitmapRep = NSBitmapImageRep(
             bitmapDataPlanes: nil,
@@ -407,14 +407,14 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         ) else {
             throw CaptureError.captureFailure("Failed to create bitmap representation")
         }
-        
+
         // Draw into context
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmapRep)
-        
+
         // Draw original image
         nsImage.draw(in: NSRect(origin: .zero, size: imageSize))
-        
+
         // Configure text attributes
         let fontSize: CGFloat = 14
         let textAttributes: [NSAttributedString.Key: Any] = [
@@ -422,7 +422,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             .foregroundColor: NSColor.white,
             .backgroundColor: NSColor.black.withAlphaComponent(0.8)
         ]
-        
+
         // Role-based colors from spec
         let roleColors: [String: NSColor] = [
             "AXButton": NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
@@ -435,20 +435,20 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             "AXPopUpButton": NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
             "AXComboBox": NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0) // #007AFF
         ]
-        
+
         // Draw UI elements
         for (_, element) in uiElements where element.isActionable {
             // Get color for role
             let color = roleColors[element.role] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
-            
+
             // Transform coordinates from screen space to window-relative space
             var elementFrame = element.frame
-            if let windowBounds = windowBounds {
+            if let windowBounds {
                 // Convert from screen coordinates to window-relative coordinates
                 elementFrame.origin.x -= windowBounds.origin.x
                 elementFrame.origin.y -= windowBounds.origin.y
             }
-            
+
             // Draw bounding box
             let rect = NSRect(
                 x: elementFrame.origin.x,
@@ -456,19 +456,19 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
                 width: elementFrame.width,
                 height: elementFrame.height
             )
-            
+
             color.withAlphaComponent(0.3).setFill()
             rect.fill()
-            
+
             color.setStroke()
             let path = NSBezierPath(rect: rect)
             path.lineWidth = 2
             path.stroke()
-            
+
             // Draw element ID label
             let idString = NSAttributedString(string: element.id, attributes: textAttributes)
             let textSize = idString.size()
-            
+
             // Position label in top-left corner of element with padding
             let labelRect = NSRect(
                 x: rect.origin.x + 4,
@@ -476,22 +476,22 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
                 width: textSize.width + 8,
                 height: textSize.height + 4
             )
-            
+
             // Draw label background
             NSColor.black.withAlphaComponent(0.8).setFill()
             NSBezierPath(roundedRect: labelRect, xRadius: 3, yRadius: 3).fill()
-            
+
             // Draw label text
             idString.draw(at: NSPoint(x: labelRect.origin.x + 4, y: labelRect.origin.y + 2))
         }
-        
+
         NSGraphicsContext.restoreGraphicsState()
-        
+
         // Save annotated image
         guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
             throw CaptureError.captureFailure("Failed to create PNG data")
         }
-        
+
         try pngData.write(to: URL(fileURLWithPath: destinationPath))
     }
 

@@ -19,13 +19,13 @@ final class Logger: @unchecked Sendable {
             // Don't clear logs automatically - let tests manage this explicitly
         }
     }
-    
+
     func setVerboseMode(_ enabled: Bool) {
         queue.sync(flags: .barrier) {
             self.verboseMode = enabled
         }
     }
-    
+
     var isVerbose: Bool {
         queue.sync {
             self.verboseMode
@@ -35,10 +35,10 @@ final class Logger: @unchecked Sendable {
     func verbose(_ message: String) {
         queue.async(flags: .barrier) {
             guard self.verboseMode else { return }
-            
+
             let timestamp = ISO8601DateFormatter().string(from: Date())
             let formattedMessage = "[\(timestamp)] VERBOSE: \(message)"
-            
+
             if self.isJsonOutputMode {
                 self.debugLogs.append(formattedMessage)
             } else {
@@ -46,7 +46,7 @@ final class Logger: @unchecked Sendable {
             }
         }
     }
-    
+
     func debug(_ message: String) {
         queue.async(flags: .barrier) {
             if self.isJsonOutputMode {

@@ -51,7 +51,7 @@ struct CleanCommand: AsyncParsableCommand {
             let cacheDir = getCacheDirectory()
 
             // Validate options
-            let optionCount = [allSessions, olderThan != nil, session != nil].count(where: { $0 })
+            let optionCount = [allSessions, olderThan != nil, session != nil].count { $0 }
             guard optionCount == 1 else {
                 throw ValidationError("Specify exactly one of: --all-sessions, --older-than, or --session")
             }
@@ -117,11 +117,11 @@ struct CleanCommand: AsyncParsableCommand {
             let sessionSize = try calculateDirectorySize(sessionDir)
             let sessionId = sessionDir.lastPathComponent
 
-            let detail = SessionDetail(
+            let detail = try SessionDetail(
                 sessionId: sessionId,
                 path: sessionDir.path,
                 size: sessionSize,
-                creationDate: try sessionDir.resourceValues(forKeys: [.creationDateKey]).creationDate
+                creationDate: sessionDir.resourceValues(forKeys: [.creationDateKey]).creationDate
             )
 
             result.sessionDetails.append(detail)
@@ -158,7 +158,8 @@ struct CleanCommand: AsyncParsableCommand {
         for sessionDir in sessionDirs {
             guard sessionDir.hasDirectoryPath else { continue }
 
-            let modificationDate = try sessionDir.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+            let modificationDate = try sessionDir.resourceValues(forKeys: [.contentModificationDateKey])
+                .contentModificationDate
 
             if let modDate = modificationDate, modDate < cutoffDate {
                 let sessionSize = try calculateDirectorySize(sessionDir)
@@ -199,11 +200,11 @@ struct CleanCommand: AsyncParsableCommand {
 
         let sessionSize = try calculateDirectorySize(sessionDir)
 
-        let detail = SessionDetail(
+        let detail = try SessionDetail(
             sessionId: sessionId,
             path: sessionDir.path,
             size: sessionSize,
-            creationDate: try sessionDir.resourceValues(forKeys: [.creationDateKey]).creationDate
+            creationDate: sessionDir.resourceValues(forKeys: [.creationDateKey]).creationDate
         )
 
         result.sessionDetails.append(detail)

@@ -1,88 +1,87 @@
-import Testing
 import Foundation
 @testable import peekaboo
+import Testing
 
 @Suite("App Command Tests")
 struct AppCommandTests {
-    
     @Test("App command exists")
-    func testAppCommandExists() {
+    func appCommandExists() {
         let config = AppCommand.configuration
         #expect(config.commandName == "app")
         #expect(config.abstract.contains("application lifecycle"))
     }
-    
+
     @Test("App command has expected subcommands")
-    func testAppSubcommands() {
+    func appSubcommands() {
         let subcommands = AppCommand.configuration.subcommands
         #expect(subcommands.count == 5)
-        
-        let subcommandNames = subcommands.map { $0.configuration.commandName }
+
+        let subcommandNames = subcommands.map(\.configuration.commandName)
         #expect(subcommandNames.contains("launch"))
         #expect(subcommandNames.contains("quit"))
         #expect(subcommandNames.contains("hide"))
         #expect(subcommandNames.contains("show"))
         #expect(subcommandNames.contains("switch"))
     }
-    
+
     @Test("App launch command help")
-    func testAppLaunchHelp() async throws {
+    func appLaunchHelp() async throws {
         let output = try await runCommand(["app", "launch", "--help"])
-        
+
         #expect(output.contains("Launch an application"))
         #expect(output.contains("--app"))
         #expect(output.contains("--bundle-id"))
         #expect(output.contains("--wait"))
         #expect(output.contains("--background"))
     }
-    
+
     @Test("App quit command validation")
-    func testAppQuitValidation() async throws {
+    func appQuitValidation() async throws {
         // Test missing app/all
         await #expect(throws: Error.self) {
             _ = try await runCommand(["app", "quit"])
         }
-        
+
         // Test conflicting options
         await #expect(throws: Error.self) {
             _ = try await runCommand(["app", "quit", "--app", "Finder", "--all"])
         }
     }
-    
+
     @Test("App hide command validation")
-    func testAppHideValidation() async throws {
+    func appHideValidation() async throws {
         // Normal hide should work
         let output = try await runCommand(["app", "hide", "--app", "Finder", "--help"])
         #expect(output.contains("Hide applications"))
-        
+
         // Test --others flag
         #expect(output.contains("--others"))
     }
-    
+
     @Test("App show command validation")
-    func testAppShowValidation() async throws {
+    func appShowValidation() async throws {
         // Test missing app/all
         await #expect(throws: Error.self) {
             _ = try await runCommand(["app", "show"])
         }
     }
-    
+
     @Test("App switch command validation")
-    func testAppSwitchValidation() async throws {
+    func appSwitchValidation() async throws {
         // Test missing to/cycle
         await #expect(throws: Error.self) {
             _ = try await runCommand(["app", "switch"])
         }
     }
-    
+
     @Test("App lifecycle flow")
-    func testAppLifecycleFlow() {
+    func appLifecycleFlow() {
         // This tests the logical flow of app lifecycle commands
         let launchCmd = ["app", "launch", "--app", "TextEdit", "--wait"]
         let hideCmd = ["app", "hide", "--app", "TextEdit"]
         let showCmd = ["app", "show", "--app", "TextEdit"]
         let quitCmd = ["app", "quit", "--app", "TextEdit", "--save-changes"]
-        
+
         // Verify command structure is valid
         #expect(launchCmd.count > 3)
         #expect(hideCmd.count > 3)
@@ -95,100 +94,99 @@ struct AppCommandTests {
 
 @Suite("App Command Integration Tests", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
 struct AppCommandIntegrationTests {
-    
     @Test("Launch application")
-    func testLaunchApp() async throws {
+    func launchApp() async throws {
         let output = try await runCommand([
             "app", "launch",
             "--app", "TextEdit",
             "--wait",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
         #expect(data.success == true)
-        
+
         if let appData = data.data?.value as? [String: Any] {
             #expect(appData["action"] as? String == "launch")
             #expect(appData["app"] as? String == "TextEdit")
             #expect(appData["pid"] != nil)
         }
     }
-    
+
     @Test("Hide and show application")
-    func testHideShowApp() async throws {
+    func hideShowApp() async throws {
         // First hide
         let hideOutput = try await runCommand([
             "app", "hide",
             "--app", "TextEdit",
             "--json-output"
         ])
-        
+
         let hideData = try JSONDecoder().decode(JSONResponse.self, from: hideOutput.data(using: .utf8)!)
         #expect(hideData.success == true)
-        
+
         // Then show
         let showOutput = try await runCommand([
             "app", "show",
             "--app", "TextEdit",
             "--json-output"
         ])
-        
+
         let showData = try JSONDecoder().decode(JSONResponse.self, from: showOutput.data(using: .utf8)!)
         #expect(showData.success == true)
     }
-    
+
     @Test("Switch between applications")
-    func testSwitchApps() async throws {
+    func switchApps() async throws {
         // Cycle to next app
         let cycleOutput = try await runCommand([
             "app", "switch",
             "--cycle",
             "--json-output"
         ])
-        
+
         let cycleData = try JSONDecoder().decode(JSONResponse.self, from: cycleOutput.data(using: .utf8)!)
         #expect(cycleData.success == true)
-        
+
         // Switch to specific app
         let switchOutput = try await runCommand([
             "app", "switch",
             "--to", "Finder",
             "--json-output"
         ])
-        
+
         let switchData = try JSONDecoder().decode(JSONResponse.self, from: switchOutput.data(using: .utf8)!)
         #expect(switchData.success == true)
     }
-    
+
     @Test("Quit application with save")
-    func testQuitWithSave() async throws {
+    func quitWithSave() async throws {
         let output = try await runCommand([
             "app", "quit",
             "--app", "TextEdit",
             "--save-changes",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
         // App might not be running
         if data.success {
             if let quitData = data.data?.value as? [String: Any],
                let results = quitData["quit_apps"] as? [[String: Any]] {
-                #expect(results.count > 0)
+                #expect(!results.isEmpty)
             }
         }
     }
-    
+
     @Test("Hide others functionality")
-    func testHideOthers() async throws {
+    func hideOthers() async throws {
         let output = try await runCommand([
             "app", "hide",
             "--app", "Finder",
             "--others",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
         if data.success {
             if let hideData = data.data?.value as? [String: Any] {
@@ -208,5 +206,5 @@ private func runCommand(_ args: [String]) async throws -> String {
 private func runPeekabooCommand(_ args: [String]) async throws -> String {
     // This is a placeholder - in real tests, this would execute the actual CLI
     // For unit tests, we're mainly testing command structure and validation
-    return ""
+    ""
 }

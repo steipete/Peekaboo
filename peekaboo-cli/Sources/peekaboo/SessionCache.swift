@@ -12,11 +12,11 @@ actor SessionCache {
     private let sessionFile: URL
 
     struct SessionData: Codable {
-        static let currentVersion = 4  // Increment when format changes
-        
+        static let currentVersion = 4 // Increment when format changes
+
         let version: Int
-        var screenshotPath: String?  // Path to raw.png
-        var annotatedPath: String?   // Path to annotated.png
+        var screenshotPath: String? // Path to raw.png
+        var annotatedPath: String? // Path to annotated.png
         var uiMap: [String: UIElement]
         var lastUpdateTime: Date
         var applicationName: String?
@@ -77,7 +77,7 @@ actor SessionCache {
 
     init(sessionId: String? = nil, createIfNeeded: Bool = true) throws {
         // If explicit session ID provided, use it
-        if let sessionId = sessionId {
+        if let sessionId {
             self.sessionId = sessionId
         } else if let latestSession = Self.findLatestSession() {
             // Found a valid recent session
@@ -102,12 +102,12 @@ actor SessionCache {
 
         sessionFile = cacheDir.appendingPathComponent("map.json")
     }
-    
+
     /// Find the most recent session directory within the time window
     private static func findLatestSession() -> String? {
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
         let sessionDir = homeDir.appendingPathComponent(".peekaboo/session")
-        
+
         guard let sessions = try? FileManager.default.contentsOfDirectory(
             at: sessionDir,
             includingPropertiesForKeys: [.creationDateKey],
@@ -115,10 +115,10 @@ actor SessionCache {
         ) else {
             return nil
         }
-        
+
         // Only consider sessions created within the last 10 minutes
         let tenMinutesAgo = Date().addingTimeInterval(-600)
-        
+
         // Filter and sort sessions by creation date (most recent first)
         let validSessions = sessions.compactMap { url -> (url: URL, date: Date)? in
             guard let resourceValues = try? url.resourceValues(forKeys: [.creationDateKey]),
@@ -131,10 +131,13 @@ actor SessionCache {
             }
             return (url, creationDate)
         }.sorted { $0.date > $1.date }
-        
+
         // Return the name of the most recent valid session
         if let latest = validSessions.first {
-            Logger.shared.debug("Found valid session: \(latest.url.lastPathComponent) created \(Int(-latest.date.timeIntervalSinceNow)) seconds ago")
+            Logger.shared
+                .debug(
+                    "Found valid session: \(latest.url.lastPathComponent) created \(Int(-latest.date.timeIntervalSinceNow)) seconds ago"
+                )
             return latest.url.lastPathComponent
         } else {
             Logger.shared.debug("No valid sessions found within 10 minute window")
@@ -149,15 +152,18 @@ actor SessionCache {
         do {
             let data = try Data(contentsOf: sessionFile)
             let sessionData = try JSONDecoder().decode(SessionData.self, from: data)
-            
+
             // Check version compatibility
             if sessionData.version != SessionData.currentVersion {
-                Logger.shared.info("Session version mismatch (found: \(sessionData.version), expected: \(SessionData.currentVersion)). Discarding old session.")
+                Logger.shared
+                    .info(
+                        "Session version mismatch (found: \(sessionData.version), expected: \(SessionData.currentVersion)). Discarding old session."
+                    )
                 // Remove old incompatible session
                 try? FileManager.default.removeItem(at: sessionFile)
                 return nil
             }
-            
+
             return sessionData
         } catch {
             Logger.shared.error("Failed to load session data: \(error)")
@@ -188,18 +194,23 @@ actor SessionCache {
     }
 
     /// Update screenshot and UI map
-    func updateScreenshot(path: String, application: String?, window: String?, windowBounds: CGRect? = nil) async throws {
+    func updateScreenshot(
+        path: String,
+        application: String?,
+        window: String?,
+        windowBounds: CGRect? = nil
+    ) async throws {
         var data = load() ?? SessionData(
             version: SessionData.currentVersion,
-            uiMap: [:], 
+            uiMap: [:],
             lastUpdateTime: Date()
         )
-        
+
         // Copy screenshot to session directory as raw.png
         let rawPath = cacheDir.appendingPathComponent("raw.png")
         try FileManager.default.copyItem(atPath: path, toPath: rawPath.path)
         data.screenshotPath = rawPath.path
-        
+
         data.applicationName = application
         data.windowTitle = window
         data.windowBounds = windowBounds
@@ -212,7 +223,7 @@ actor SessionCache {
 
         try save(data)
     }
-    
+
     /// Get paths for session files
     func getSessionPaths() -> (raw: String, annotated: String, map: String) {
         let rawPath = cacheDir.appendingPathComponent("raw.png").path
@@ -241,13 +252,13 @@ actor SessionCache {
 
         // Get windows to process
         let windows: [Element]
-        
+
         if let windowTitle = window {
             // Find specific window by title
             windows = appElement.windows()?.filter { element in
                 element.title() == windowTitle
             } ?? []
-            
+
             if windows.isEmpty {
                 Logger.shared.debug("No window found with title: \(windowTitle)")
                 return uiMap
@@ -267,12 +278,12 @@ actor SessionCache {
             // Get window title or use index
             let windowTitle = window.title() ?? "Window\(index)"
             var windowRoleCounters: [String: Int] = [:]
-            
+
             // Process window with window-specific context
             await processElement(
-                window, 
-                parentId: nil, 
-                uiMap: &uiMap, 
+                window,
+                parentId: nil,
+                uiMap: &uiMap,
                 roleCounters: &windowRoleCounters,
                 windowContext: windowTitle
             )
@@ -298,7 +309,7 @@ actor SessionCache {
         let roleDescription = element.roleDescription()
         let identifier = element.identifier()
         let value = element.value() as? String
-        
+
         // Use the most descriptive property as the label
         let label = description ?? help ?? roleDescription ?? title
 
@@ -315,7 +326,7 @@ actor SessionCache {
         let prefix = ElementIDGenerator.prefix(for: role)
         let counter = (roleCounters[prefix] ?? 0) + 1
         roleCounters[prefix] = counter
-        
+
         // Create a sanitized window identifier
         let windowId = windowContext.map { context in
             // Remove special characters and spaces, limit length
@@ -326,7 +337,7 @@ actor SessionCache {
                 .prefix(15)
             return String(sanitized)
         } ?? "NoWindow"
-        
+
         // Generate unique ID: WindowId_Role#
         let peekabooId = "\(windowId)_\(prefix)\(counter)"
 
@@ -341,7 +352,7 @@ actor SessionCache {
             description: description,
             identifier: identifier
         )
-        
+
         // Create UI element with all available properties
         let uiElement = SessionData.UIElement(
             id: peekabooId,
@@ -370,10 +381,16 @@ actor SessionCache {
         } else {
             windowContext
         }
-        
+
         if let children = element.children() {
             for child in children {
-                await processElement(child, parentId: peekabooId, uiMap: &uiMap, roleCounters: &roleCounters, windowContext: childWindowContext)
+                await processElement(
+                    child,
+                    parentId: peekabooId,
+                    uiMap: &uiMap,
+                    roleCounters: &roleCounters,
+                    windowContext: childWindowContext
+                )
             }
         }
     }
@@ -411,7 +428,7 @@ actor SessionCache {
     func clear() throws {
         try? FileManager.default.removeItem(at: sessionFile)
     }
-    
+
     /// Detect keyboard shortcut for common UI elements
     @MainActor
     private func detectKeyboardShortcut(
@@ -425,7 +442,7 @@ actor SessionCache {
         let allText = [title, label, description, identifier]
             .compactMap { $0?.lowercased() }
             .joined(separator: " ")
-        
+
         // Common text formatting shortcuts
         if allText.contains("bold") {
             return "cmd+b"
@@ -436,7 +453,7 @@ actor SessionCache {
         } else if allText.contains("strikethrough") {
             return "cmd+shift+x"
         }
-        
+
         // Common app shortcuts
         if allText.contains("save") && !allText.contains("save as") {
             return "cmd+s"
@@ -453,7 +470,7 @@ actor SessionCache {
         } else if allText.contains("print") {
             return "cmd+p"
         }
-        
+
         // Edit menu shortcuts
         if allText.contains("copy") {
             return "cmd+c"
@@ -472,7 +489,7 @@ actor SessionCache {
         } else if allText.contains("find and replace") || allText.contains("replace") {
             return "cmd+shift+f"
         }
-        
+
         // Text alignment (common in text editors)
         if allText.contains("align left") || allText.contains("left align") {
             return "cmd+{"
@@ -481,22 +498,22 @@ actor SessionCache {
         } else if allText.contains("center") && (allText.contains("align") || allText.contains("text")) {
             return "cmd+|"
         }
-        
+
         // Font panel
         if allText.contains("font") && (allText.contains("panel") || allText.contains("window")) {
             return "cmd+t"
         }
-        
+
         // Menu items often have keyboard shortcuts in their titles
-        if let title = title {
+        if let title {
             // Look for patterns like "Bold ⌘B" or "Bold (Cmd+B)"
             let shortcutPatterns = [
-                #"⌘([A-Z])"#,  // ⌘B
+                #"⌘([A-Z])"#, // ⌘B
                 #"⌘⇧([A-Z])"#, // ⌘⇧B
                 #"\(Cmd\+([A-Z])\)"#, // (Cmd+B)
                 #"\(Cmd\+Shift\+([A-Z])\)"# // (Cmd+Shift+B)
             ]
-            
+
             for pattern in shortcutPatterns {
                 if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
                    let match = regex.firstMatch(in: title, options: [], range: NSRange(title.startIndex..., in: title)),
@@ -510,7 +527,7 @@ actor SessionCache {
                 }
             }
         }
-        
+
         return nil
     }
 }

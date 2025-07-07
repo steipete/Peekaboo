@@ -102,7 +102,7 @@ describe("run tool", () => {
       );
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["run", "/tmp/test.peekaboo.json", "--timeout", "300000", "--json-output"],
+        ["run", "/tmp/test.peekaboo.json", "--timeout", "300000"],
         mockContext.logger
       );
 
