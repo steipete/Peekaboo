@@ -1,8 +1,8 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("ImageCommand Analyze Integration Tests", .tags(.imageCapture, .imageAnalysis, .integration))
+@Suite("ImageCommand Analyze Integration Tests", .serialized, .tags(.imageCapture, .imageAnalysis, .integration))
 struct ImageAnalyzeIntegrationTests {
     // MARK: - Test Helpers
 
@@ -20,7 +20,7 @@ struct ImageAnalyzeIntegrationTests {
             0x54, 0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00,
             0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xDD, 0x8D,
             0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, // IEND chunk
-            0x44, 0xAE, 0x42, 0x60, 0x82
+            0x44, 0xAE, 0x42, 0x60, 0x82,
         ])
 
         try pngData.write(to: URL(fileURLWithPath: testPath))
@@ -39,8 +39,7 @@ struct ImageAnalyzeIntegrationTests {
             analysisText: "This is a test window",
             modelUsed: "test/model",
             durationSeconds: 1.5,
-            imagePath: "/tmp/test.png"
-        )
+            imagePath: "/tmp/test.png")
 
         #expect(result.analysisText == "This is a test window")
         #expect(result.modelUsed == "test/model")
@@ -57,7 +56,7 @@ struct ImageAnalyzeIntegrationTests {
         // The actual file validation happens during execution
         let command = try ImageCommand.parse([
             "--path", "/tmp/non_existent_\(UUID().uuidString).png",
-            "--analyze", "Test prompt"
+            "--analyze", "Test prompt",
         ])
 
         #expect(command.analyze == "Test prompt")
@@ -73,7 +72,7 @@ struct ImageAnalyzeIntegrationTests {
             "What application is this?",
             "Summarize the content",
             "List all visible buttons",
-            "What is the main color scheme?"
+            "What is the main color scheme?",
         ]
 
         // Test that all prompts are valid
@@ -96,7 +95,7 @@ struct ImageAnalyzeIntegrationTests {
             "这个图片显示了什么？",
             "この画像には何が表示されていますか？",
             "Что показано на этом изображении?",
-            "🔍 What do you see? 👀"
+            "🔍 What do you see? 👀",
         ]
 
         for prompt in unicodePrompts {
@@ -116,28 +115,26 @@ struct ImageAnalyzeIntegrationTests {
             window_title: "Test Window",
             window_id: 123,
             window_index: 0,
-            mime_type: "image/png"
-        )
+            mime_type: "image/png")
 
         let analysisResult = AnalysisResult(
             analysisText: "This is a test analysis",
             modelUsed: "test/model",
             durationSeconds: 2.5,
-            imagePath: "/tmp/test.png"
-        )
+            imagePath: "/tmp/test.png")
 
         // Create the expected structure
         let enrichedData: [String: Any] = [
             "saved_files": [[
                 "path": savedFile.path,
                 "mime_type": savedFile.mime_type,
-                "window_title": savedFile.window_title as Any
+                "window_title": savedFile.window_title as Any,
             ]],
             "analysis": [
                 "text": analysisResult.analysisText,
                 "model": analysisResult.modelUsed,
-                "duration_seconds": analysisResult.durationSeconds
-            ]
+                "duration_seconds": analysisResult.durationSeconds,
+            ],
         ]
 
         // Verify structure
@@ -154,7 +151,7 @@ struct ImageAnalyzeIntegrationTests {
         let command = try ImageCommand.parse([
             "--mode", "multi",
             "--app", "TestApp",
-            "--analyze", "Compare these windows"
+            "--analyze", "Compare these windows",
         ])
 
         #expect(command.mode == .multi)
@@ -170,14 +167,14 @@ struct ImageAnalyzeIntegrationTests {
             "openai/gpt-4o",
             "ollama/llava:latest",
             "openai/gpt-4o,ollama/llava:latest",
-            "ollama/llava:latest,openai/gpt-4o"
+            "ollama/llava:latest,openai/gpt-4o",
         ]
 
         // Test that commands parse correctly with different provider configurations
         for _ in providerConfigs {
             let command = try ImageCommand.parse([
                 "--analyze", "Test prompt",
-                "--json-output"
+                "--json-output",
             ])
 
             #expect(command.analyze == "Test prompt")
@@ -200,13 +197,13 @@ struct ImageAnalyzeIntegrationTests {
             ("screen", .screen),
             ("window", .window),
             ("multi", .multi),
-            ("frontmost", .frontmost)
+            ("frontmost", .frontmost),
         ]
 
         for (modeString, expectedMode) in modes {
             let command = try ImageCommand.parse([
                 "--mode", modeString,
-                "--analyze", "Analyze this \(modeString) capture"
+                "--analyze", "Analyze this \(modeString) capture",
             ])
 
             #expect(command.mode == expectedMode)
@@ -221,7 +218,7 @@ struct ImageAnalyzeIntegrationTests {
             ["--analyze", "Test", "--mode", "screen"],
             ["--mode", "screen", "--analyze", "Test"],
             ["--app", "Safari", "--analyze", "Test", "--format", "png"],
-            ["--analyze", "Test", "--json-output", "--path", "/tmp/test.png"]
+            ["--analyze", "Test", "--json-output", "--path", "/tmp/test.png"],
         ]
 
         for args in commands {
@@ -236,13 +233,13 @@ struct ImageAnalyzeIntegrationTests {
             "/tmp/analysis.png",
             "~/Desktop/screenshot-analysis.png",
             "./local-analysis.jpg",
-            "/path with spaces/analyzed image.png"
+            "/path with spaces/analyzed image.png",
         ]
 
         for path in testPaths {
             let command = try ImageCommand.parse([
                 "--path", path,
-                "--analyze", "Analyze this"
+                "--analyze", "Analyze this",
             ])
 
             #expect(command.path == path)
@@ -253,7 +250,7 @@ struct ImageAnalyzeIntegrationTests {
 
 // MARK: - Mock AI Provider Tests
 
-@Suite("ImageCommand Mock AI Provider Tests", .tags(.imageCapture, .imageAnalysis, .unit))
+@Suite("ImageCommand Mock AI Provider Tests", .serialized, .tags(.imageCapture, .imageAnalysis, .unit))
 struct ImageCommandMockAIProviderTests {
     @Test("Analyze with mock provider", .tags(.fast))
     func analyzeWithMockProvider() async throws {
@@ -262,7 +259,7 @@ struct ImageCommandMockAIProviderTests {
         let command = try ImageCommand.parse([
             "--mode", "frontmost",
             "--analyze", "Mock analysis test",
-            "--json-output"
+            "--json-output",
         ])
 
         #expect(command.mode == .frontmost)

@@ -1,19 +1,19 @@
 // swiftlint:disable file_length
 import AppKit
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("ApplicationFinder Tests", .tags(.applicationFinder, .unit))
 struct ApplicationFinderTests {
     // MARK: - Test Data
 
     private static let testIdentifiers = [
-        "Finder", "finder", "FINDER", "Find", "com.apple.finder"
+        "Finder", "finder", "FINDER", "Find", "com.apple.finder",
     ]
 
     private static let invalidIdentifiers = [
         "", "   ", "NonExistentApp12345", "invalid.bundle.id",
-        String(repeating: "a", count: 1000)
+        String(repeating: "a", count: 1000),
     ]
 
     // MARK: - Find Application Tests
@@ -68,9 +68,8 @@ struct ApplicationFinderTests {
             ("Finder", "com.apple.finder"),
             ("finder", "com.apple.finder"),
             ("FINDER", "com.apple.finder"),
-            ("com.apple.finder", "com.apple.finder")
-        ]
-    )
+            ("com.apple.finder", "com.apple.finder"),
+        ])
     func findApplicationVariousIdentifiers(identifier: String, expectedBundleId: String) throws {
         let result = try ApplicationFinder.findApplication(identifier: identifier)
         #expect(result.bundleIdentifier == expectedBundleId)
@@ -142,9 +141,8 @@ struct ApplicationFinderTests {
             ("Fnder", "Finder"), // Missing character
             ("Fidner", "Finder"), // Transposed characters
             ("Findr", "Finder"), // Missing character at end
-            ("inder", "Finder") // Missing first character
-        ]
-    )
+            ("inder", "Finder"), // Missing first character
+        ])
     func fuzzyMatchingTypos(typo: String, expectedApp: String) throws {
         // Test that fuzzy matching can handle common typos
         do {
@@ -181,9 +179,8 @@ struct ApplicationFinderTests {
             "com.apple",
             "apple.finder",
             "finder",
-            "com.apple.finder.extra"
-        ]
-    )
+            "com.apple.finder.extra",
+        ])
     func bundleIdentifierEdgeCases(partialBundleId: String) throws {
         // Should either find Finder or throw appropriate error
         do {
@@ -205,8 +202,7 @@ struct ApplicationFinderTests {
 
     @Test(
         "Performance: Finding apps multiple times",
-        arguments: 1...10
-    )
+        arguments: 1...10)
     func findApplicationPerformance(iteration: Int) throws {
         // Test that finding an app completes quickly even when called multiple times
         let result = try ApplicationFinder.findApplication(identifier: "Finder")
@@ -237,8 +233,7 @@ struct ApplicationFinderTests {
         arguments: [
             ("Finder", true),
             ("Dock", true)
-        ]
-    )
+        ])
     func verifySystemAppsRunning(appName: String, shouldBeRunning: Bool) throws {
         do {
             let result = try ApplicationFinder.findApplication(identifier: appName)
@@ -325,8 +320,7 @@ struct ApplicationFinderEdgeCaseTests {
 
     @Test(
         "Unicode identifiers are handled correctly",
-        arguments: ["😀App", "App™", "Приложение", "アプリ"]
-    )
+        arguments: ["😀App", "App™", "Приложение", "アプリ"])
     func unicodeIdentifiers(identifier: String) {
         // Should not crash, either finds or throws appropriate error
         do {
@@ -402,7 +396,8 @@ struct ApplicationFinderEdgeCaseTests {
             _ = try ApplicationFinder.findApplication(identifier: "XyzNonExistentApp123")
         } throws: { error in
             guard let appError = error as? ApplicationError,
-                  case let .notFound(identifier) = appError else {
+                  case let .notFound(identifier) = appError
+            else {
                 return false
             }
             return identifier == "XyzNonExistentApp123"

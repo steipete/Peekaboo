@@ -77,15 +77,15 @@ final class ConfigurationManager: @unchecked Sendable {
             let jsonString = String(data: data, encoding: .utf8) ?? ""
 
             // Strip comments from JSONC
-            let cleanedJSON = stripJSONComments(from: jsonString)
+            let cleanedJSON = self.stripJSONComments(from: jsonString)
 
             // Expand environment variables
-            let expandedJSON = expandEnvironmentVariables(in: cleanedJSON)
+            let expandedJSON = self.expandEnvironmentVariables(in: cleanedJSON)
 
             // Parse JSON
             if let expandedData = expandedJSON.data(using: .utf8) {
-                configuration = try JSONDecoder().decode(Configuration.self, from: expandedData)
-                return configuration
+                self.configuration = try JSONDecoder().decode(Configuration.self, from: expandedData)
+                return self.configuration
             }
         } catch {
             print("Warning: Failed to load configuration from \(configPath): \(error)")
@@ -111,7 +111,7 @@ final class ConfigurationManager: @unchecked Sendable {
 
             // Handle escape sequences
             if escapeNext {
-                if !inSingleLineComment && !inMultiLineComment {
+                if !inSingleLineComment, !inMultiLineComment {
                     result.append(char)
                 }
                 escapeNext = false
@@ -120,9 +120,9 @@ final class ConfigurationManager: @unchecked Sendable {
             }
 
             // Check for escape character
-            if char == "\\" && inString {
+            if char == "\\", inString {
                 escapeNext = true
-                if !inSingleLineComment && !inMultiLineComment {
+                if !inSingleLineComment, !inMultiLineComment {
                     result.append(char)
                 }
                 i += 1
@@ -130,7 +130,7 @@ final class ConfigurationManager: @unchecked Sendable {
             }
 
             // Handle string boundaries
-            if char == "\"" && !inSingleLineComment && !inMultiLineComment {
+            if char == "\"", !inSingleLineComment, !inMultiLineComment {
                 inString.toggle()
                 result.append(char)
                 i += 1
@@ -145,34 +145,34 @@ final class ConfigurationManager: @unchecked Sendable {
             }
 
             // Check for comment start
-            if char == "/" && nextChar == "/" && !inMultiLineComment {
+            if char == "/", nextChar == "/", !inMultiLineComment {
                 inSingleLineComment = true
                 i += 2
                 continue
             }
 
-            if char == "/" && nextChar == "*" && !inSingleLineComment {
+            if char == "/", nextChar == "*", !inSingleLineComment {
                 inMultiLineComment = true
                 i += 2
                 continue
             }
 
             // Check for comment end
-            if char == "\n" && inSingleLineComment {
+            if char == "\n", inSingleLineComment {
                 inSingleLineComment = false
                 result.append(char)
                 i += 1
                 continue
             }
 
-            if char == "*" && nextChar == "/" && inMultiLineComment {
+            if char == "*", nextChar == "/", inMultiLineComment {
                 inMultiLineComment = false
                 i += 2
                 continue
             }
 
             // Add character if not in comment
-            if !inSingleLineComment && !inMultiLineComment {
+            if !inSingleLineComment, !inMultiLineComment {
                 result.append(char)
             }
 
@@ -200,7 +200,8 @@ final class ConfigurationManager: @unchecked Sendable {
                 if let swiftRange = Range(varNameRange, in: text) {
                     let varName = String(text[swiftRange])
                     if let value = ProcessInfo.processInfo.environment[varName],
-                       let fullMatch = Range(match.range, in: text) {
+                       let fullMatch = Range(match.range, in: text)
+                    {
                         result.replaceSubrange(fullMatch, with: value)
                     }
                 }
@@ -217,8 +218,8 @@ final class ConfigurationManager: @unchecked Sendable {
         cliValue: T?,
         envVar: String?,
         configValue: T?,
-        defaultValue: T
-    ) -> T {
+        defaultValue: T) -> T
+    {
         // CLI argument takes highest precedence
         if let cliValue {
             return cliValue
@@ -226,7 +227,8 @@ final class ConfigurationManager: @unchecked Sendable {
 
         // Environment variable takes second precedence
         if let envVar,
-           let envValue = ProcessInfo.processInfo.environment[envVar] {
+           let envValue = ProcessInfo.processInfo.environment[envVar]
+        {
             // Try to convert string to the expected type
             if T.self == String.self {
                 return envValue as! T
@@ -255,12 +257,11 @@ final class ConfigurationManager: @unchecked Sendable {
 
     /// Get AI providers with proper precedence
     func getAIProviders(cliValue: String?) -> String {
-        getValue(
+        self.getValue(
             cliValue: cliValue,
             envVar: "PEEKABOO_AI_PROVIDERS",
-            configValue: configuration?.aiProviders?.providers,
-            defaultValue: "ollama/llava:latest"
-        )
+            configValue: self.configuration?.aiProviders?.providers,
+            defaultValue: "ollama/llava:latest")
     }
 
     /// Get OpenAI API key with proper precedence
@@ -279,43 +280,39 @@ final class ConfigurationManager: @unchecked Sendable {
 
     /// Get Ollama base URL with proper precedence
     func getOllamaBaseURL() -> String {
-        getValue(
+        self.getValue(
             cliValue: nil as String?,
             envVar: "PEEKABOO_OLLAMA_BASE_URL",
-            configValue: configuration?.aiProviders?.ollamaBaseUrl,
-            defaultValue: "http://localhost:11434"
-        )
+            configValue: self.configuration?.aiProviders?.ollamaBaseUrl,
+            defaultValue: "http://localhost:11434")
     }
 
     /// Get default save path with proper precedence
     func getDefaultSavePath(cliValue: String?) -> String {
-        let path = getValue(
+        let path = self.getValue(
             cliValue: cliValue,
             envVar: "PEEKABOO_DEFAULT_SAVE_PATH",
-            configValue: configuration?.defaults?.savePath,
-            defaultValue: "~/Desktop"
-        )
+            configValue: self.configuration?.defaults?.savePath,
+            defaultValue: "~/Desktop")
         return NSString(string: path).expandingTildeInPath
     }
 
     /// Get log level with proper precedence
     func getLogLevel() -> String {
-        getValue(
+        self.getValue(
             cliValue: nil as String?,
             envVar: "PEEKABOO_LOG_LEVEL",
-            configValue: configuration?.logging?.level,
-            defaultValue: "info"
-        )
+            configValue: self.configuration?.logging?.level,
+            defaultValue: "info")
     }
 
     /// Get log path with proper precedence
     func getLogPath() -> String {
-        let path = getValue(
+        let path = self.getValue(
             cliValue: nil as String?,
             envVar: "PEEKABOO_LOG_PATH",
-            configValue: configuration?.logging?.path,
-            defaultValue: "~/.config/peekaboo/logs/peekaboo.log"
-        )
+            configValue: self.configuration?.logging?.path,
+            defaultValue: "~/.config/peekaboo/logs/peekaboo.log")
         return NSString(string: path).expandingTildeInPath
     }
 

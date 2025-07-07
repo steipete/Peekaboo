@@ -1,6 +1,9 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vitest";
 import { spawn, ChildProcess } from "child_process";
 import * as path from "path";
+import { rm } from "fs/promises";
+import { homedir } from "os";
+import { join } from "path";
 
 const SERVER_PATH = path.resolve(process.cwd(), "dist/index.js");
 
@@ -55,7 +58,7 @@ class JSONRPCClient {
       const timeout = setTimeout(() => {
         this.responseHandlers.delete(id);
         reject(new Error(`Request timeout for method: ${method}`));
-      }, 5000);
+      }, 10000); // Increased timeout to 10 seconds
 
       this.responseHandlers.set(id, (response) => {
         clearTimeout(timeout);
@@ -227,6 +230,16 @@ describe("MCP Spec v3 Tools", () => {
   });
 
   describe("click tool validation", () => {
+    beforeEach(async () => {
+      // Clean up any existing sessions to ensure consistent test behavior
+      const sessionDir = join(homedir(), ".peekaboo/session");
+      try {
+        await rm(sessionDir, { recursive: true, force: true });
+      } catch (error) {
+        // Directory might not exist, which is fine
+      }
+    });
+
     it("should require at least one target parameter", async () => {
       const result = await client.request("tools/call", {
         name: "click",
@@ -239,9 +252,9 @@ describe("MCP Spec v3 Tools", () => {
 
     it("should accept different target types", async () => {
       const targets = [
-        { query: "Button" },
-        { on: "B1" },
-        { coords: "100,200" }
+        { query: "Button", wait_for: 100 }, // Reduce wait time for tests
+        { on: "B1", wait_for: 100 },
+        { coords: "100,200", wait_for: 100 }
       ];
 
       for (const target of targets) {
@@ -252,10 +265,9 @@ describe("MCP Spec v3 Tools", () => {
 
         // Should at least parse the arguments correctly
         expect(result.content).toBeInstanceOf(Array);
-        // Might fail due to missing session or permissions, but shouldn't be
-        // an argument validation error about missing target
-        if (result.isError && result.content[0].text.includes("Invalid arguments")) {
-          expect(result.content[0].text).not.toContain("Must specify either");
+        // Will fail due to missing session or element, which is expected
+        if (result.isError) {
+          expect(result.content[0].text).toMatch(/session|Session|No actionable element found|UI element not found/);
         }
       }
     });

@@ -5,8 +5,7 @@ import Foundation
 struct SimpleAgentCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "agent",
-        abstract: "Execute automation tasks using AI"
-    )
+        abstract: "Execute automation tasks using AI")
 
     @Argument(help: "Natural language task to perform")
     var task: String
@@ -20,7 +19,7 @@ struct SimpleAgentCommand: AsyncParsableCommand {
     mutating func run() async throws {
         // Check for OpenAI API key
         guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
-            if jsonOutput {
+            if self.jsonOutput {
                 print("""
                 {
                   "success": false,
@@ -34,20 +33,20 @@ struct SimpleAgentCommand: AsyncParsableCommand {
             throw ExitCode.failure
         }
 
-        if !jsonOutput {
+        if !self.jsonOutput {
             print("🤖 Peekaboo Agent v3")
-            print("Task: \(task)")
+            print("Task: \(self.task)")
             print("")
         }
 
         // For now, just demonstrate the concept
-        let steps = analyzeTask(task)
+        let steps = self.analyzeTask(self.task)
 
-        if jsonOutput {
+        if self.jsonOutput {
             let output: [String: Any] = [
                 "task": task,
                 "steps": steps,
-                "dry_run": dryRun
+                "dry_run": dryRun,
             ]
             let data = try JSONSerialization.data(withJSONObject: output, options: .prettyPrinted)
             print(String(data: data, encoding: .utf8) ?? "{}")
@@ -57,12 +56,12 @@ struct SimpleAgentCommand: AsyncParsableCommand {
                 print("\(index + 1). \(step)")
             }
 
-            if dryRun {
+            if self.dryRun {
                 print("\n✅ Dry run complete. No actions were taken.")
             } else {
                 print("\n🚀 Executing...")
                 // In a real implementation, this would execute each step
-                await executeSteps(steps)
+                await self.executeSteps(steps)
                 print("✅ Task completed!")
             }
         }
@@ -79,13 +78,13 @@ struct SimpleAgentCommand: AsyncParsableCommand {
                     "Wait for window to appear",
                     "Click in text area",
                     "Type the requested text",
-                    "Verify content was typed"
+                    "Verify content was typed",
                 ]
             } else if lowercased.contains("open") {
                 return [
                     "Launch TextEdit application",
                     "Wait for window to appear",
-                    "Verify TextEdit is active"
+                    "Verify TextEdit is active",
                 ]
             }
         }
@@ -95,7 +94,7 @@ struct SimpleAgentCommand: AsyncParsableCommand {
                 "Identify target (app/window/screen)",
                 "Capture screenshot",
                 "Save to specified location",
-                "Verify image was saved"
+                "Verify image was saved",
             ]
         }
 
@@ -105,7 +104,7 @@ struct SimpleAgentCommand: AsyncParsableCommand {
                 "Identify clickable elements",
                 "Find target element",
                 "Move cursor to element",
-                "Perform click action"
+                "Perform click action",
             ]
         }
 
@@ -115,7 +114,7 @@ struct SimpleAgentCommand: AsyncParsableCommand {
             "Identify relevant UI elements",
             "Plan action sequence",
             "Execute required actions",
-            "Verify task completion"
+            "Verify task completion",
         ]
     }
 

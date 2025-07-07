@@ -71,16 +71,14 @@ lib-cov/
 *.sublime-project
 
 # Swift / Xcode
-peekaboo-cli/.build/
-peekaboo-cli/DerivedData/
-peekaboo-cli/.swiftpm/
-peekaboo-cli/*.bc
-# LLVM bitcode files (Swift compiler artifacts)
-*.bc
-# Compiled CLI binary in root
-/peekaboo
+## Build
 .build/
 DerivedData/
+build/
+*.xcodeproj/project.xcworkspace/xcshareddata/
+*.xcworkspace/xcshareddata/
+
+## Various Xcode settings
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -94,17 +92,66 @@ xcuserdata/
 *.moved-aside
 *.xcuserstate
 *.xcscmblueprint
-*.hmap
-*.ipa
-*.dSYM.zip
-*.dSYM
+*.xcworkspace/xcuserdata/
+
+## Xcode Patch
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+/*.gcno
+
+## Swift Package Manager
 Packages/
 Package.pins
 Package.resolved
 .swiftpm/
-*.playground
-timeline.xctimeline
+*.xcodeproj
+
+## Playgrounds
 playground.xcworkspace
+timeline.xctimeline
+
+## Build products
+*.app
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## CocoaPods (if used)
+Pods/
+*.xcworkspace
+
+## Carthage (if used)
+Carthage/Build/
+
+## FastLane (if used)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+## Code Injection
+iOSInjectionProject/
+
+## LLVM bitcode files (Swift compiler artifacts)
+*.bc
+
+## Compiled CLI binary
+/peekaboo
+peekaboo-cli/.build/
+peekaboo-cli/DerivedData/
+peekaboo-cli/.swiftpm/
+peekaboo-cli/*.bc
+
+## Swift build artifacts
+*.hmap
+*.ipa
+
+## GUI specific
+GUI/Peekaboo/.build/
+GUI/Peekaboo/DerivedData/
+GUI/Peekaboo/.swiftpm/
 
 # Temporary files
 *.tmp
@@ -123,3 +170,14 @@ peekaboo-cli/Sources/peekaboo/Version.swift
 
 # Release artifacts
 /release/
+
+# Test images and screenshots
+*_screenshot.png
+*_Screenshot_*.png
+Calculator_*.png
+TextEdit_*.png
+Safari_*.png
+Wispr_*.png
+test-*.png
+screenshot-*.png
+Screenshot*.png

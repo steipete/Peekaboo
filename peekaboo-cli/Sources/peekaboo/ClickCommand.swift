@@ -1,6 +1,6 @@
 import AppKit
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import CoreGraphics
 import Foundation
 
@@ -31,8 +31,7 @@ struct ClickCommand: AsyncParsableCommand {
               - Role descriptions
 
               Use --id for precise element targeting from 'see' output.
-        """
-    )
+        """)
 
     @Argument(help: "Element text or query to click")
     var query: String?
@@ -76,8 +75,7 @@ struct ClickCommand: AsyncParsableCommand {
                 let element = try await waitForElement(
                     elementId: elementId,
                     sessionCache: sessionCache,
-                    timeout: waitFor
-                )
+                    timeout: waitFor)
                 clickTarget = .element(element)
 
             } else if let coordString = coords {
@@ -85,7 +83,8 @@ struct ClickCommand: AsyncParsableCommand {
                 let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
                 guard parts.count == 2,
                       let x = Double(parts[0]),
-                      let y = Double(parts[1]) else {
+                      let y = Double(parts[1])
+                else {
                     throw ValidationError("Invalid coordinates format. Use: x,y")
                 }
                 clickTarget = .coordinates(CGPoint(x: x, y: y))
@@ -95,8 +94,7 @@ struct ClickCommand: AsyncParsableCommand {
                 let element = try await waitForElementByQuery(
                     query: searchQuery,
                     sessionCache: sessionCache,
-                    timeout: waitFor
-                )
+                    timeout: waitFor)
                 clickTarget = .element(element)
 
             } else {
@@ -106,18 +104,16 @@ struct ClickCommand: AsyncParsableCommand {
             // Perform the click
             let clickResult = try await performClick(
                 target: clickTarget,
-                clickType: ClickType(double: double, right: right)
-            )
+                clickType: ClickType(double: double, right: right))
 
             // Output results
-            if jsonOutput {
+            if self.jsonOutput {
                 let output = ClickResult(
                     success: true,
                     clickedElement: clickResult.elementInfo,
                     clickLocation: clickResult.location,
                     waitTime: clickResult.waitTime,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
+                    executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Click successful")
@@ -132,11 +128,10 @@ struct ClickCommand: AsyncParsableCommand {
             }
 
         } catch {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
-                    code: .INTERNAL_SWIFT_ERROR
-                )
+                    code: .INTERNAL_SWIFT_ERROR)
             } else {
                 var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
                 print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
@@ -147,8 +142,8 @@ struct ClickCommand: AsyncParsableCommand {
 
     private func performClick(
         target: ClickTarget,
-        clickType: ClickType
-    ) async throws -> InternalClickResult {
+        clickType: ClickType) async throws -> InternalClickResult
+    {
         // Get the click location and element info
         let (clickLocation, elementInfo): (CGPoint, String?) = {
             switch target {
@@ -156,8 +151,7 @@ struct ClickCommand: AsyncParsableCommand {
                 // Calculate center of element
                 let center = CGPoint(
                     x: element.frame.midX,
-                    y: element.frame.midY
-                )
+                    y: element.frame.midY)
 
                 let info = "\(element.role): \(element.title ?? element.label ?? element.id)"
                 return (center, info)
@@ -188,8 +182,8 @@ struct ClickCommand: AsyncParsableCommand {
     private func waitForElement(
         elementId: String,
         sessionCache: SessionCache,
-        timeout: Int
-    ) async throws -> SessionCache.SessionData.UIElement {
+        timeout: Int) async throws -> SessionCache.SessionData.UIElement
+    {
         let startTime = Date()
         let timeoutSeconds = Double(timeout) / 1000.0
         let deadline = startTime.addingTimeInterval(timeoutSeconds)
@@ -197,7 +191,8 @@ struct ClickCommand: AsyncParsableCommand {
 
         // Load session data to get element properties
         guard let sessionData = await sessionCache.load(),
-              let targetElement = sessionData.uiMap[elementId] else {
+              let targetElement = sessionData.uiMap[elementId]
+        else {
             throw PeekabooError.elementNotFound
         }
 
@@ -210,19 +205,18 @@ struct ClickCommand: AsyncParsableCommand {
             description: targetElement.description,
             help: targetElement.help,
             roleDescription: targetElement.roleDescription,
-            identifier: targetElement.identifier
-        )
+            identifier: targetElement.identifier)
 
         while Date() < deadline {
             // First try to find element at the stored location (fast path)
             if let liveElement = try await findElementAtLocation(
                 frame: targetElement.frame,
                 role: targetElement.role,
-                in: sessionData.applicationName
-            ) {
+                in: sessionData.applicationName)
+            {
                 // Verify it matches our expected properties
-                if matchesLocator(element: liveElement, locator: locator) {
-                    if try await isElementActionable(liveElement) {
+                if self.matchesLocator(element: liveElement, locator: locator) {
+                    if try await self.isElementActionable(liveElement) {
                         // Return element with updated coordinates
                         var updatedElement = targetElement
                         updatedElement.frame = liveElement.frame() ?? targetElement.frame
@@ -234,9 +228,9 @@ struct ClickCommand: AsyncParsableCommand {
             // If not found at stored location, search the entire UI tree
             if let liveElement = try await findLiveElement(
                 matching: locator,
-                in: sessionData.applicationName
-            ) {
-                if try await isElementActionable(liveElement) {
+                in: sessionData.applicationName)
+            {
+                if try await self.isElementActionable(liveElement) {
                     // Return element with updated coordinates
                     var updatedElement = targetElement
                     updatedElement.frame = liveElement.frame() ?? targetElement.frame
@@ -250,21 +244,21 @@ struct ClickCommand: AsyncParsableCommand {
         }
 
         throw PeekabooError.interactionFailed(
-            "Element '\(elementId)' not found or not actionable after \(timeout)ms"
-        )
+            "Element '\(elementId)' not found or not actionable after \(timeout)ms")
     }
 
     @MainActor
     private func findElementAtLocation(
         frame: CGRect,
         role: String,
-        in appName: String?
-    ) async throws -> Element? {
+        in appName: String?) async throws -> Element?
+    {
         // Find the application using AXorcist
         guard let appName,
               let app = NSWorkspace.shared.runningApplications.first(where: {
                   $0.localizedName == appName || $0.bundleIdentifier == appName
-              }) else {
+              })
+        else {
             return nil
         }
 
@@ -289,13 +283,14 @@ struct ClickCommand: AsyncParsableCommand {
     @MainActor
     private func findLiveElement(
         matching locator: ElementLocator,
-        in appName: String?
-    ) async throws -> Element? {
+        in appName: String?) async throws -> Element?
+    {
         // Find the application
         guard let appName,
               let app = NSWorkspace.shared.runningApplications.first(where: {
                   $0.localizedName == appName || $0.bundleIdentifier == appName
-              }) else {
+              })
+        else {
             return nil
         }
 
@@ -304,16 +299,16 @@ struct ClickCommand: AsyncParsableCommand {
         let appElement = Element(axApp)
 
         // Search for matching element
-        return findMatchingElement(in: appElement, matching: locator)
+        return self.findMatchingElement(in: appElement, matching: locator)
     }
 
     @MainActor
     private func findMatchingElement(
         in element: Element,
-        matching locator: ElementLocator
-    ) -> Element? {
+        matching locator: ElementLocator) -> Element?
+    {
         // Check if current element matches
-        if matchesLocator(element: element, locator: locator) {
+        if self.matchesLocator(element: element, locator: locator) {
             return element
         }
 
@@ -412,8 +407,8 @@ struct ClickCommand: AsyncParsableCommand {
     private func waitForElementByQuery(
         query: String,
         sessionCache: SessionCache,
-        timeout: Int
-    ) async throws -> SessionCache.SessionData.UIElement {
+        timeout: Int) async throws -> SessionCache.SessionData.UIElement
+    {
         let startTime = Date()
         let timeoutSeconds = Double(timeout) / 1000.0
         let deadline = startTime.addingTimeInterval(timeoutSeconds)
@@ -439,14 +434,13 @@ struct ClickCommand: AsyncParsableCommand {
                     description: element.description,
                     help: element.help,
                     roleDescription: element.roleDescription,
-                    identifier: element.identifier
-                )
+                    identifier: element.identifier)
 
                 if let liveElement = try await findLiveElement(
                     matching: locator,
-                    in: sessionData.applicationName
-                ) {
-                    if try await isElementActionable(liveElement) {
+                    in: sessionData.applicationName)
+                {
+                    if try await self.isElementActionable(liveElement) {
                         // Update element with live coordinates
                         var updatedElement = element
                         updatedElement.frame = liveElement.frame() ?? .zero
@@ -460,8 +454,7 @@ struct ClickCommand: AsyncParsableCommand {
         }
 
         throw PeekabooError.interactionFailed(
-            "No actionable element found matching '\(query)' after \(timeout)ms"
-        )
+            "No actionable element found matching '\(query)' after \(timeout)ms")
     }
 }
 
@@ -488,7 +481,7 @@ private struct ClickType {
     let right: Bool
 
     func toAXClickType() -> String { // TODO: Change to AXMouseButton when available
-        right ? "right" : "left"
+        self.right ? "right" : "left"
     }
 }
 
@@ -512,8 +505,8 @@ struct ClickResult: Codable {
         clickedElement: String?,
         clickLocation: CGPoint,
         waitTime: Double,
-        executionTime: TimeInterval
-    ) {
+        executionTime: TimeInterval)
+    {
         self.success = success
         self.clickedElement = clickedElement
         self.clickLocation = ["x": clickLocation.x, "y": clickLocation.y]

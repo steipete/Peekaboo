@@ -77,12 +77,12 @@ struct AIProviderConfig {
 
     init(from string: String) {
         let parts = string.split(separator: "/", maxSplits: 1)
-        provider = String(parts.first ?? "")
-        model = String(parts.count > 1 ? parts[1] : "")
+        self.provider = String(parts.first ?? "")
+        self.model = String(parts.count > 1 ? parts[1] : "")
     }
 
     var isValid: Bool {
-        !provider.isEmpty && !model.isEmpty
+        !self.provider.isEmpty && !self.model.isEmpty
     }
 }
 

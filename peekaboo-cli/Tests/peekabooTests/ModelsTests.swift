@@ -1,6 +1,6 @@
 import CoreGraphics
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("Models Tests", .tags(.models, .unit))
 struct ModelsTests {
@@ -106,8 +106,7 @@ struct ModelsTests {
             window_title: "Safari - Main Window",
             window_id: 12345,
             window_index: 0,
-            mime_type: "image/png"
-        )
+            mime_type: "image/png")
 
         #expect(savedFile.path == "/tmp/test.png")
         #expect(savedFile.item_label == "Screen 1")
@@ -125,8 +124,7 @@ struct ModelsTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: "image/png"
-        )
+            mime_type: "image/png")
 
         #expect(savedFile.path == "/tmp/screen.png")
         #expect(savedFile.item_label == nil)
@@ -143,8 +141,7 @@ struct ModelsTests {
             bundle_id: "com.apple.Safari",
             pid: 1234,
             is_active: true,
-            window_count: 2
-        )
+            window_count: 2)
 
         #expect(appInfo.app_name == "Safari")
         #expect(appInfo.bundle_id == "com.apple.Safari")
@@ -161,8 +158,7 @@ struct ModelsTests {
             window_id: 12345,
             window_index: 0,
             bounds: bounds,
-            is_on_screen: true
-        )
+            is_on_screen: true)
 
         #expect(windowInfo.window_title == "Safari - Main Window")
         #expect(windowInfo.window_id == 12345)
@@ -180,8 +176,7 @@ struct ModelsTests {
         let targetApp = TargetApplicationInfo(
             app_name: "Safari",
             bundle_id: "com.apple.Safari",
-            pid: 1234
-        )
+            pid: 1234)
 
         #expect(targetApp.app_name == "Safari")
         #expect(targetApp.bundle_id == "com.apple.Safari")
@@ -197,16 +192,14 @@ struct ModelsTests {
             bundle_id: "com.apple.Safari",
             pid: 1234,
             is_active: true,
-            window_count: 2
-        )
+            window_count: 2)
 
         let app2 = ApplicationInfo(
             app_name: "Terminal",
             bundle_id: "com.apple.Terminal",
             pid: 5678,
             is_active: false,
-            window_count: 1
-        )
+            window_count: 1)
 
         let appListData = ApplicationListData(applications: [app1, app2])
 
@@ -223,19 +216,16 @@ struct ModelsTests {
             window_id: 12345,
             window_index: 0,
             bounds: bounds,
-            is_on_screen: true
-        )
+            is_on_screen: true)
 
         let targetApp = TargetApplicationInfo(
             app_name: "Safari",
             bundle_id: "com.apple.Safari",
-            pid: 1234
-        )
+            pid: 1234)
 
         let windowListData = WindowListData(
             windows: [window],
-            target_application_info: targetApp
-        )
+            target_application_info: targetApp)
 
         #expect(windowListData.windows.count == 1)
         #expect(windowListData.windows[0].window_title == "Safari - Main Window")
@@ -252,8 +242,7 @@ struct ModelsTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: "image/png"
-        )
+            mime_type: "image/png")
 
         let imageData = ImageCaptureData(saved_files: [savedFile])
 
@@ -269,19 +258,16 @@ struct ModelsTests {
     func captureErrorDescriptions() {
         #expect(CaptureError.noDisplaysAvailable.errorDescription == "No displays available for capture.")
         #expect(CaptureError.screenRecordingPermissionDenied.errorDescription!
-            .contains("Screen recording permission is required")
-        )
+            .contains("Screen recording permission is required"))
         #expect(CaptureError.invalidDisplayID.errorDescription == "Invalid display ID provided.")
         #expect(CaptureError.captureCreationFailed(nil).errorDescription == "Failed to create the screen capture.")
         #expect(CaptureError.windowNotFound.errorDescription == "The specified window could not be found.")
         #expect(CaptureError.windowCaptureFailed(nil).errorDescription == "Failed to capture the specified window.")
         let fileError = CaptureError.fileWriteError("/tmp/test.png", nil)
         #expect(fileError.errorDescription?
-            .starts(with: "Failed to write capture file to path: /tmp/test.png.") == true
-        )
+            .starts(with: "Failed to write capture file to path: /tmp/test.png.") == true)
         #expect(CaptureError.appNotFound("Safari")
-            .errorDescription == "Application with identifier 'Safari' not found or is not running."
-        )
+            .errorDescription == "Application with identifier 'Safari' not found or is not running.")
         #expect(CaptureError.invalidWindowIndex(5).errorDescription == "Invalid window index: 5.")
     }
 
@@ -299,7 +285,7 @@ struct ModelsTests {
             (.appNotFound("test"), 18),
             (.invalidWindowIndex(0), 19),
             (.invalidArgument("test"), 20),
-            (.unknownError("test"), 1)
+            (.unknownError("test"), 1),
         ]
 
         for (error, expectedCode) in testCases {
@@ -317,8 +303,7 @@ struct ModelsTests {
             title: "Safari - Main Window",
             bounds: bounds,
             isOnScreen: true,
-            windowIndex: 0
-        )
+            windowIndex: 0)
 
         #expect(windowData.windowId == 12345)
         #expect(windowData.title == "Safari - Main Window")
@@ -360,15 +345,14 @@ struct ModelEdgeCaseTests {
         arguments: [
             (x: 0, y: 0, width: 0, height: 0),
             (x: -100, y: -100, width: 100, height: 100),
-            (x: Int.max, y: Int.max, width: 1, height: 1)
-        ]
-    )
+            (x: Int.max, y: Int.max, width: 1, height: 1),
+        ])
     func windowBoundsEdgeCases(
         x: Int, // swiftlint:disable:this identifier_name
         y: Int, // swiftlint:disable:this identifier_name
         width: Int,
-        height: Int
-    ) {
+        height: Int)
+    {
         let bounds = WindowBounds(x: x, y: y, width: width, height: height)
         #expect(bounds.x == x)
         #expect(bounds.y == y)
@@ -383,8 +367,7 @@ struct ModelEdgeCaseTests {
             bundle_id: String(repeating: "com.test.", count: 100),
             pid: Int32.max,
             is_active: true,
-            window_count: Int.max
-        )
+            window_count: Int.max)
 
         #expect(appInfo.app_name.count == 1000)
         #expect(appInfo.bundle_id.contains("com.test."))
@@ -401,8 +384,7 @@ struct ModelEdgeCaseTests {
             "./relative/path/image.png",
             "/path with spaces/image.png",
             "/path/with/特殊文字.png"
-        ]
-    )
+        ])
     func savedFilePathValidation(path: String) {
         let savedFile = SavedFile(
             path: path,
@@ -410,8 +392,7 @@ struct ModelEdgeCaseTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: "image/png"
-        )
+            mime_type: "image/png")
 
         #expect(savedFile.path == path)
         #expect(!savedFile.path.isEmpty)
@@ -419,8 +400,7 @@ struct ModelEdgeCaseTests {
 
     @Test(
         "MIME type validation",
-        arguments: ["image/png", "image/jpeg", "image/jpg"]
-    )
+        arguments: ["image/png", "image/jpeg", "image/jpg"])
     func mimeTypeValidation(mimeType: String) {
         let savedFile = SavedFile(
             path: "/tmp/test",
@@ -428,8 +408,7 @@ struct ModelEdgeCaseTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: mimeType
-        )
+            mime_type: mimeType)
 
         #expect(savedFile.mime_type == mimeType)
         #expect(savedFile.mime_type.starts(with: "image/"))

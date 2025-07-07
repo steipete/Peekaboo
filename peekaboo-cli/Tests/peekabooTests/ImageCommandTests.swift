@@ -1,10 +1,10 @@
 // swiftlint:disable file_length
 import ArgumentParser
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("ImageCommand Tests", .tags(.imageCapture, .unit))
+@Suite("ImageCommand Tests", .serialized, .tags(.imageCapture, .unit))
 struct ImageCommandTests {
     // MARK: - Test Data & Helpers
 
@@ -44,7 +44,7 @@ struct ImageCommandTests {
     func imageCommandWithAppSpecifier() throws {
         // Test app-specific capture
         let command = try ImageCommand.parse([
-            "--app", "Finder"
+            "--app", "Finder",
         ])
 
         #expect(command.mode == nil) // mode is optional
@@ -55,7 +55,7 @@ struct ImageCommandTests {
     func imageCommandWithPIDSpecifier() throws {
         // Test PID-specific capture
         let command = try ImageCommand.parse([
-            "--app", "PID:1234"
+            "--app", "PID:1234",
         ])
 
         #expect(command.mode == nil) // mode is optional
@@ -66,7 +66,7 @@ struct ImageCommandTests {
     func imageCommandWithWindowTitle() throws {
         // Test window title capture
         let command = try ImageCommand.parse([
-            "--window-title", "Documents"
+            "--window-title", "Documents",
         ])
 
         #expect(command.windowTitle == "Documents")
@@ -77,7 +77,7 @@ struct ImageCommandTests {
         // Test output path specification
         let outputPath = "/tmp/test-images"
         let command = try ImageCommand.parse([
-            "--path", outputPath
+            "--path", outputPath,
         ])
 
         #expect(command.path == outputPath)
@@ -87,7 +87,7 @@ struct ImageCommandTests {
     func imageCommandWithFormat() throws {
         // Test format specification
         let command = try ImageCommand.parse([
-            "--format", "jpg"
+            "--format", "jpg",
         ])
 
         #expect(command.format == .jpg)
@@ -97,7 +97,7 @@ struct ImageCommandTests {
     func imageCommandWithFocus() throws {
         // Test focus option
         let command = try ImageCommand.parse([
-            "--capture-focus", "foreground"
+            "--capture-focus", "foreground",
         ])
 
         #expect(command.captureFocus == .foreground)
@@ -107,7 +107,7 @@ struct ImageCommandTests {
     func imageCommandWithJSONOutput() throws {
         // Test JSON output flag
         let command = try ImageCommand.parse([
-            "--json-output"
+            "--json-output",
         ])
 
         #expect(command.jsonOutput == true)
@@ -117,7 +117,7 @@ struct ImageCommandTests {
     func imageCommandWithMultiMode() throws {
         // Test multi capture mode
         let command = try ImageCommand.parse([
-            "--mode", "multi"
+            "--mode", "multi",
         ])
 
         #expect(command.mode == .multi)
@@ -127,7 +127,7 @@ struct ImageCommandTests {
     func imageCommandWithScreenIndex() throws {
         // Test screen index specification
         let command = try ImageCommand.parse([
-            "--screen-index", "1"
+            "--screen-index", "1",
         ])
 
         #expect(command.screenIndex == 1)
@@ -137,7 +137,7 @@ struct ImageCommandTests {
     func imageCommandWithAnalyze() throws {
         // Test analyze option parsing
         let command = try ImageCommand.parse([
-            "--analyze", "What is shown in this image?"
+            "--analyze", "What is shown in this image?",
         ])
 
         #expect(command.analyze == "What is shown in this image?")
@@ -148,7 +148,7 @@ struct ImageCommandTests {
         // Test analyze with app specification
         let command = try ImageCommand.parse([
             "--app", "Safari",
-            "--analyze", "Summarize this webpage"
+            "--analyze", "Summarize this webpage",
         ])
 
         #expect(command.app == "Safari")
@@ -160,7 +160,7 @@ struct ImageCommandTests {
         // Test analyze with different capture modes
         let command = try ImageCommand.parse([
             "--mode", "frontmost",
-            "--analyze", "What errors are shown?"
+            "--analyze", "What errors are shown?",
         ])
 
         #expect(command.mode == .frontmost)
@@ -172,7 +172,7 @@ struct ImageCommandTests {
         // Test analyze with JSON output
         let command = try ImageCommand.parse([
             "--analyze", "Describe the UI",
-            "--json-output"
+            "--json-output",
         ])
 
         #expect(command.analyze == "Describe the UI")
@@ -186,9 +186,8 @@ struct ImageCommandTests {
         arguments: [
             (args: ["--mode", "screen", "--format", "png"], mode: CaptureMode.screen, format: ImageFormat.png),
             (args: ["--mode", "window", "--format", "jpg"], mode: CaptureMode.window, format: ImageFormat.jpg),
-            (args: ["--mode", "multi", "--json-output"], mode: CaptureMode.multi, format: ImageFormat.png)
-        ]
-    )
+            (args: ["--mode", "multi", "--json-output"], mode: CaptureMode.multi, format: ImageFormat.png),
+        ])
     func commandCombinations(args: [String], mode: CaptureMode, format: ImageFormat) throws {
         let command = try ImageCommand.parse(args)
         #expect(command.mode == mode)
@@ -201,25 +200,20 @@ struct ImageCommandTests {
             (
                 args: ["--mode", "screen", "--analyze", "What is on screen?"],
                 mode: CaptureMode.screen,
-                prompt: "What is on screen?"
-            ),
+                prompt: "What is on screen?"),
             (
                 args: ["--mode", "window", "--analyze", "Describe this window"],
                 mode: CaptureMode.window,
-                prompt: "Describe this window"
-            ),
+                prompt: "Describe this window"),
             (
                 args: ["--mode", "multi", "--analyze", "Compare windows"],
                 mode: CaptureMode.multi,
-                prompt: "Compare windows"
-            ),
+                prompt: "Compare windows"),
             (
                 args: ["--mode", "frontmost", "--analyze", "What app is this?"],
                 mode: CaptureMode.frontmost,
-                prompt: "What app is this?"
-            )
-        ]
-    )
+                prompt: "What app is this?"),
+        ])
     func analyzeWithDifferentModes(args: [String], mode: CaptureMode, prompt: String) throws {
         let command = try ImageCommand.parse(args)
         #expect(command.mode == mode)
@@ -232,9 +226,8 @@ struct ImageCommandTests {
             ["--mode", "invalid"],
             ["--format", "bmp"],
             ["--capture-focus", "neither"],
-            ["--screen-index", "abc"]
-        ]
-    )
+            ["--screen-index", "abc"],
+        ])
     func invalidArguments(args: [String]) {
         #expect(throws: (any Error).self) {
             _ = try ImageCommand.parse(args)
@@ -251,8 +244,7 @@ struct ImageCommandTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: "image/png"
-        )
+            mime_type: "image/png")
 
         #expect(savedFile.path == "/tmp/screenshot.png")
         #expect(savedFile.item_label == "Screen 1")
@@ -267,8 +259,7 @@ struct ImageCommandTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: "image/png"
-        )
+            mime_type: "image/png")
 
         let captureData = ImageCaptureData(saved_files: [savedFile])
 
@@ -346,8 +337,7 @@ struct ImageCommandTests {
 
     @Test(
         "Screen index boundary values",
-        arguments: [0, 1, 99, 9999]
-    )
+        arguments: [0, 1, 99, 9999])
     func screenIndexBoundaries(index: Int) throws {
         let command = try ImageCommand.parse(["--screen-index", String(index)])
         #expect(command.screenIndex == index)
@@ -355,8 +345,7 @@ struct ImageCommandTests {
 
     @Test(
         "Window index boundary values",
-        arguments: [0, 1, 10, 9999]
-    )
+        arguments: [0, 1, 10, 9999])
     func windowIndexBoundaries(index: Int) throws {
         let command = try ImageCommand.parse(["--window-index", String(index)])
         #expect(command.windowIndex == index)
@@ -378,7 +367,7 @@ struct ImageCommandTests {
 
 // MARK: - Path Handling Tests
 
-@Suite("ImageCommand Path Handling Tests", .tags(.imageCapture, .unit))
+@Suite("ImageCommand Path Handling Tests", .serialized, .tags(.imageCapture, .unit))
 struct ImageCommandPathHandlingTests {
     // MARK: - Helper Methods
 
@@ -400,7 +389,7 @@ struct ImageCommandPathHandlingTests {
             "/home/user/image.jpg",
             "/path/with spaces/file.png",
             "./relative/file.png",
-            "simple.png"
+            "simple.png",
         ]
 
         // Test directory-like paths (no extension or trailing slash)
@@ -408,7 +397,7 @@ struct ImageCommandPathHandlingTests {
             "/tmp/",
             "/home/user/screenshots",
             "/path/with spaces/",
-            "simple-dir"
+            "simple-dir",
         ]
 
         // File paths should be detected correctly
@@ -432,8 +421,7 @@ struct ImageCommandPathHandlingTests {
             basePath: "/tmp/my-screenshot.png",
             fileName: fileName,
             screenIndex: 0,
-            isSingleCapture: true
-        )
+            isSingleCapture: true)
 
         #expect(result == "/tmp/my-screenshot.png")
     }
@@ -446,8 +434,7 @@ struct ImageCommandPathHandlingTests {
             basePath: "/tmp/screenshot.png",
             fileName: fileName,
             screenIndex: nil,
-            isSingleCapture: false
-        )
+            isSingleCapture: false)
 
         #expect(result == "/tmp/screenshot_1_20250608_120000.png")
     }
@@ -476,8 +463,7 @@ struct ImageCommandPathHandlingTests {
             "/tmp/picture.jpeg",
             "/tmp/screen.PNG",
             "/tmp/capture.JPG"
-        ]
-    )
+        ])
     func variousFileExtensions(path: String) {
         let fileName = "screen_1_20250608_120000.png"
         let result = OutputPathResolver.determineOutputPath(basePath: path, fileName: fileName)
@@ -499,8 +485,7 @@ struct ImageCommandPathHandlingTests {
             ("/tmp/.hidden", true), // Hidden file
             ("/tmp/.hidden/", false), // Hidden directory
             ("file.tar.gz", true) // Multiple extensions
-        ]
-    )
+        ])
     func edgeCasePaths(path: String, expectedAsFile: Bool) {
         let isLikelyFile = path.contains(".") && !path.hasSuffix("/")
         #expect(isLikelyFile == expectedAsFile, "Path '\(path)' detection failed")
@@ -512,7 +497,7 @@ struct ImageCommandPathHandlingTests {
         let testCases = [
             (fileName: "screen_1_20250608_120000.png", expected: "/tmp/shot_1_20250608_120000.png"),
             (fileName: "screen_2_20250608_120001.png", expected: "/tmp/shot_2_20250608_120001.png"),
-            (fileName: "screen_10_20250608_120002.png", expected: "/tmp/shot_10_20250608_120002.png")
+            (fileName: "screen_10_20250608_120002.png", expected: "/tmp/shot_10_20250608_120002.png"),
         ]
 
         for testCase in testCases {
@@ -527,7 +512,7 @@ struct ImageCommandPathHandlingTests {
             "/tmp/测试 screenshot.png",
             "/tmp/スクリーン capture.png",
             "/tmp/screen-shot_v2.png",
-            "/tmp/my file (1).png"
+            "/tmp/my file (1).png",
         ]
 
         for path in specialPaths {
@@ -536,8 +521,7 @@ struct ImageCommandPathHandlingTests {
                 basePath: path,
                 fileName: fileName,
                 screenIndex: 0,
-                isSingleCapture: true
-            )
+                isSingleCapture: true)
 
             // For single screen, should use exact path
             #expect(result == path, "Failed for special path: \(path)")
@@ -549,7 +533,7 @@ struct ImageCommandPathHandlingTests {
         let nestedPaths = [
             "/tmp/very/deep/nested/path/file.png",
             "/home/user/Documents/Screenshots/test.jpg",
-            "./relative/deep/path/image.png"
+            "./relative/deep/path/image.png",
         ]
 
         for path in nestedPaths {
@@ -558,8 +542,7 @@ struct ImageCommandPathHandlingTests {
                 basePath: path,
                 fileName: fileName,
                 screenIndex: 0,
-                isSingleCapture: true
-            )
+                isSingleCapture: true)
 
             #expect(result == path, "Should return exact path for nested file: \(path)")
 
@@ -595,7 +578,7 @@ struct ImageCommandPathHandlingTests {
 
 // MARK: - Error Handling Tests
 
-@Suite("ImageCommand Error Handling Tests", .tags(.imageCapture, .unit))
+@Suite("ImageCommand Error Handling Tests", .serialized, .tags(.imageCapture, .unit))
 struct ImageCommandErrorHandlingTests {
     @Test("Improved file write error messages", .tags(.fast))
     func improvedFileWriteErrorMessages() {
@@ -603,7 +586,7 @@ struct ImageCommandErrorHandlingTests {
 
         // Test with permission error
         let permissionError = NSError(domain: NSCocoaErrorDomain, code: NSFileWriteNoPermissionError, userInfo: [
-            NSLocalizedDescriptionKey: "Permission denied"
+            NSLocalizedDescriptionKey: "Permission denied",
         ])
         let fileErrorWithPermission = CaptureError.fileWriteError("/tmp/test.png", permissionError)
         let permissionMessage = fileErrorWithPermission.errorDescription ?? ""
@@ -613,7 +596,7 @@ struct ImageCommandErrorHandlingTests {
 
         // Test with no such file error
         let noFileError = NSError(domain: NSCocoaErrorDomain, code: NSFileNoSuchFileError, userInfo: [
-            NSLocalizedDescriptionKey: "No such file or directory"
+            NSLocalizedDescriptionKey: "No such file or directory",
         ])
         let fileErrorWithNoFile = CaptureError.fileWriteError("/tmp/nonexistent/test.png", noFileError)
         let noFileMessage = fileErrorWithNoFile.errorDescription ?? ""
@@ -623,7 +606,7 @@ struct ImageCommandErrorHandlingTests {
 
         // Test with disk space error
         let spaceError = NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError, userInfo: [
-            NSLocalizedDescriptionKey: "No space left on device"
+            NSLocalizedDescriptionKey: "No space left on device",
         ])
         let fileErrorWithSpace = CaptureError.fileWriteError("/tmp/test.png", spaceError)
         let spaceMessage = fileErrorWithSpace.errorDescription ?? ""
@@ -633,7 +616,7 @@ struct ImageCommandErrorHandlingTests {
 
         // Test with generic error
         let genericError = NSError(domain: "TestDomain", code: 999, userInfo: [
-            NSLocalizedDescriptionKey: "Some generic error"
+            NSLocalizedDescriptionKey: "Some generic error",
         ])
         let fileErrorWithGeneric = CaptureError.fileWriteError("/tmp/test.png", genericError)
         let genericMessage = fileErrorWithGeneric.errorDescription ?? ""
@@ -647,8 +630,7 @@ struct ImageCommandErrorHandlingTests {
 
         #expect(noUnderlyingMessage.contains("Failed to write capture file to path: /tmp/test.png."))
         #expect(noUnderlyingMessage
-            .contains("This may be due to insufficient permissions, missing directory, or disk space issues")
-        )
+            .contains("This may be due to insufficient permissions, missing directory, or disk space issues"))
     }
 
     @Test("Error message formatting consistency", .tags(.fast))
@@ -689,8 +671,7 @@ struct ImageCommandErrorHandlingTests {
         let fileName = "screen_1_20250608_120001.png"
         let result = OutputPathResolver.determineOutputPath(
             basePath: "/tmp/test-path-creation/file.png",
-            fileName: fileName
-        )
+            fileName: fileName)
 
         // Should return the intended path even if directory creation might fail
         #expect(result == "/tmp/test-path-creation/file_1_20250608_120001.png")
@@ -714,7 +695,7 @@ struct ImageCommandErrorHandlingTests {
 
 // MARK: - Extended Image Command Tests
 
-@Suite("ImageCommand Advanced Tests", .tags(.imageCapture, .integration))
+@Suite("ImageCommand Advanced Tests", .serialized, .tags(.imageCapture, .unit))
 struct ImageCommandAdvancedTests {
     // MARK: - Complex Scenario Tests
 
@@ -728,7 +709,7 @@ struct ImageCommandAdvancedTests {
             "--format", "jpg",
             "--path", "/tmp/safari-home.jpg",
             "--capture-focus", "foreground",
-            "--json-output"
+            "--json-output",
         ])
 
         #expect(command.mode == .window)
@@ -749,7 +730,7 @@ struct ImageCommandAdvancedTests {
             "--format", "png",
             "--path", "/tmp/chrome-analysis.png",
             "--analyze", "What is the main content on this page?",
-            "--json-output"
+            "--json-output",
         ])
 
         #expect(command.mode == .window)
@@ -788,8 +769,7 @@ struct ImageCommandAdvancedTests {
             (app: "Safari", title: "Home", index: nil),
             (app: "Finder", title: nil, index: 0),
             (app: "Terminal", title: nil, index: nil)
-        ]
-    )
+        ])
     func windowSpecifierCombinations(app: String, title: String?, index: Int?) throws {
         var args = ["--app", app]
 
@@ -814,9 +794,8 @@ struct ImageCommandAdvancedTests {
             "~/Desktop/screenshot.png",
             "/tmp/test.png",
             "./relative/path.png",
-            "/path with spaces/image.png"
-        ]
-    )
+            "/path with spaces/image.png",
+        ])
     func pathExpansion(path: String) throws {
         let command = try ImageCommand.parse(["--path", path])
         #expect(command.path == path)
@@ -882,7 +861,7 @@ struct ImageCommandAdvancedTests {
             "--path", "/very/long/path/to/some/directory/with/many/components/screenshot.png",
             "--format", "jpg",
             "--capture-focus", "foreground",
-            "--json-output"
+            "--json-output",
         ]
 
         do {
@@ -904,8 +883,7 @@ struct ImageCommandAdvancedTests {
             (["--window-title", "Test"], true),
             (["--screen-index", "0"], true),
             (["--window-index", "0"], true)
-        ]
-    )
+        ])
     func commandOptionCombinations(args: [String], shouldParse: Bool) {
         do {
             _ = try ImageCommand.parse(args)

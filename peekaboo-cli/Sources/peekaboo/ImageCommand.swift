@@ -67,8 +67,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
         PERMISSIONS:
           Screen Recording: Required (System Settings > Privacy & Security)
           Accessibility: Required only for 'foreground' focus mode
-        """
-    )
+        """)
 
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345' for process ID")
     var app: String?
@@ -93,8 +92,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
 
     @Option(
         name: .long,
-        help: ArgumentHelp("Window focus behavior: auto, foreground, or background", valueName: "focus")
-    )
+        help: ArgumentHelp("Window focus behavior: auto, foreground, or background", valueName: "focus"))
     var captureFocus: CaptureFocus = .auto
 
     @Flag(name: .long, help: "Output results in JSON format for scripting")
@@ -108,7 +106,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
 
     func run() async throws {
         configureVerboseLogging()
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
         do {
             try PermissionsChecker.requireScreenRecordingPermission()
             let savedFiles = try await performCapture()
@@ -116,49 +114,49 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
             // If analyze option is provided, analyze the first captured image
             if let analyzePrompt = analyze, let firstFile = savedFiles.first {
                 let analysisResult = try await analyzeImage(at: firstFile.path, with: analyzePrompt)
-                outputResultsWithAnalysis(savedFiles, analysis: analysisResult)
+                self.outputResultsWithAnalysis(savedFiles, analysis: analysisResult)
             } else {
-                outputResults(savedFiles)
+                self.outputResults(savedFiles)
             }
         } catch {
-            handleError(error)
+            self.handleError(error)
             // Throw a special exit error that AsyncParsableCommand can handle
             throw ExitCode(Int32(1))
         }
     }
 
     private func performCapture() async throws -> [SavedFile] {
-        let captureMode = determineMode()
+        let captureMode = self.determineMode()
         Logger.shared.verbose("Starting capture with mode: \(captureMode)")
 
         switch captureMode {
         case .screen:
             Logger.shared.verbose("Capturing screen(s)")
-            return try await captureScreens()
+            return try await self.captureScreens()
         case .window:
             guard let app else {
                 throw CaptureError.appNotFound("No application specified for window capture")
             }
             Logger.shared.verbose("Capturing window for app: \(app)")
-            return try await captureApplicationWindow(app)
+            return try await self.captureApplicationWindow(app)
         case .multi:
             if let app {
                 Logger.shared.verbose("Capturing all windows for app: \(app)")
-                return try await captureAllApplicationWindows(app)
+                return try await self.captureAllApplicationWindows(app)
             } else {
                 Logger.shared.verbose("Capturing all screens (multi mode)")
-                return try await captureScreens()
+                return try await self.captureScreens()
             }
         case .frontmost:
             Logger.shared.verbose("Capturing frontmost window")
-            return try await captureFrontmostWindow()
+            return try await self.captureFrontmostWindow()
         }
     }
 
     private func outputResults(_ savedFiles: [SavedFile]) {
         let data = ImageCaptureData(saved_files: savedFiles)
 
-        if jsonOutput {
+        if self.jsonOutput {
             outputSuccess(data: data)
         } else {
             print("Captured \(savedFiles.count) image(s):")
@@ -191,27 +189,24 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
         let selectedProvider = try await AIProviderFactory.determineProvider(
             requestedType: nil,
             requestedModel: nil,
-            configuredProviders: configuredProviders
-        )
+            configuredProviders: configuredProviders)
 
         // Perform analysis
         let startTime = Date()
         let analysisText = try await selectedProvider.analyze(
             imageBase64: base64String,
-            question: prompt
-        )
+            question: prompt)
         let duration = Date().timeIntervalSince(startTime)
 
         return AnalysisResult(
             analysisText: analysisText,
             modelUsed: "\(selectedProvider.name)/\(selectedProvider.model)",
             durationSeconds: duration,
-            imagePath: path
-        )
+            imagePath: path)
     }
 
     private func outputResultsWithAnalysis(_ savedFiles: [SavedFile], analysis: AnalysisResult) {
-        if jsonOutput {
+        if self.jsonOutput {
             // Create combined output for JSON
             _ = ImageCaptureData(saved_files: savedFiles)
             // Add analysis data to the output
@@ -220,14 +215,14 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
                     [
                         "path": file.path,
                         "mime_type": file.mime_type,
-                        "window_title": file.window_title as Any
+                        "window_title": file.window_title as Any,
                     ]
                 },
                 "analysis": [
                     "text": analysis.analysisText,
                     "model": analysis.modelUsed,
-                    "duration_seconds": analysis.durationSeconds
-                ]
+                    "duration_seconds": analysis.durationSeconds,
+                ],
             ]
             outputSuccess(data: enrichedData)
         } else {
@@ -240,25 +235,24 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
             print("\(analysis.analysisText)")
             print()
             print(
-                "👻 Peekaboo: Analyzed image with \(analysis.modelUsed) in \(String(format: "%.2f", analysis.durationSeconds))s."
-            )
+                "👻 Peekaboo: Analyzed image with \(analysis.modelUsed) in \(String(format: "%.2f", analysis.durationSeconds))s.")
         }
     }
 
     private func handleError(_ error: Error) {
-        ImageErrorHandler.handleError(error, jsonOutput: jsonOutput)
+        ImageErrorHandler.handleError(error, jsonOutput: self.jsonOutput)
     }
 
     private func determineMode() -> CaptureMode {
         if let mode {
             return mode
         }
-        return app != nil ? .window : .screen
+        return self.app != nil ? .window : .screen
     }
 
     private func captureScreens() async throws(CaptureError) -> [SavedFile] {
         let handler = ScreenCaptureHandler(format: format, path: path)
-        return try await handler.captureScreens(screenIndex: screenIndex)
+        return try await handler.captureScreens(screenIndex: self.screenIndex)
     }
 
     private func captureApplicationWindow(_ appIdentifier: String) async throws -> [SavedFile] {
@@ -266,7 +260,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
 
         let targetApp: NSRunningApplication
         do {
-            targetApp = try await findTargetApplication(appIdentifier, handler: handler)
+            targetApp = try await self.findTargetApplication(appIdentifier, handler: handler)
         } catch let error as EarlyReturnError {
             return error.savedFiles
         }
@@ -279,30 +273,26 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
 
         let targetWindow = try handler.findTargetWindow(
             from: windows,
-            windowTitle: windowTitle,
-            windowIndex: windowIndex,
-            appName: targetApp.localizedName ?? "Unknown"
-        )
+            windowTitle: self.windowTitle,
+            windowIndex: self.windowIndex,
+            appName: targetApp.localizedName ?? "Unknown")
 
         let fileName = FileNameGenerator.generateFileName(
-            appName: targetApp.localizedName, windowTitle: targetWindow.title, format: format
-        )
+            appName: targetApp.localizedName, windowTitle: targetWindow.title, format: self.format)
         // Single window capture when path is provided
-        let isSingleCapture = path != nil
+        let isSingleCapture = self.path != nil
         let filePath = OutputPathResolver.getOutputPath(
-            basePath: path,
+            basePath: self.path,
             fileName: fileName,
-            isSingleCapture: isSingleCapture
-        )
+            isSingleCapture: isSingleCapture)
 
         try await handler.captureWindow(targetWindow, to: filePath)
 
-        return [createSavedFile(
+        return [self.createSavedFile(
             path: filePath,
             app: targetApp,
             window: targetWindow,
-            windowIndex: targetWindow.windowIndex
-        )]
+            windowIndex: targetWindow.windowIndex)]
     }
 
     private func captureAllApplicationWindows(_ appIdentifier: String) async throws -> [SavedFile] {
@@ -310,7 +300,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
 
         let targetApp: NSRunningApplication
         do {
-            targetApp = try await findTargetApplication(appIdentifier, handler: handler)
+            targetApp = try await self.findTargetApplication(appIdentifier, handler: handler)
         } catch let error as EarlyReturnError {
             return error.savedFiles
         }
@@ -325,23 +315,20 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
 
         for (index, window) in windows.enumerated() {
             let fileName = FileNameGenerator.generateFileName(
-                appName: targetApp.localizedName, windowIndex: index, windowTitle: window.title, format: format
-            )
+                appName: targetApp.localizedName, windowIndex: index, windowTitle: window.title, format: self.format)
             // Multiple windows means not a single capture
             let filePath = OutputPathResolver.getOutputPath(
-                basePath: path,
+                basePath: self.path,
                 fileName: fileName,
-                isSingleCapture: false
-            )
+                isSingleCapture: false)
 
             try await handler.captureWindow(window, to: filePath)
 
-            savedFiles.append(createSavedFile(
+            savedFiles.append(self.createSavedFile(
                 path: filePath,
                 app: targetApp,
                 window: window,
-                windowIndex: index
-            ))
+                windowIndex: index))
         }
 
         return savedFiles
@@ -375,12 +362,11 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
         let safeName = appName.replacingOccurrences(of: " ", with: "_")
         let fileName = "frontmost_\(safeName)_\(timestamp).\(format.rawValue)"
         // Single frontmost window capture when path is provided
-        let isSingleCapture = path != nil
+        let isSingleCapture = self.path != nil
         let filePath = OutputPathResolver.getOutputPathWithFallback(
-            basePath: path,
+            basePath: self.path,
             fileName: fileName,
-            isSingleCapture: isSingleCapture
-        )
+            isSingleCapture: isSingleCapture)
 
         // Capture the window
         try await handler.captureWindow(frontmostWindow, to: filePath)
@@ -391,16 +377,15 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
             window_title: frontmostWindow.title,
             window_id: UInt32(frontmostWindow.windowId),
             window_index: frontmostWindow.windowIndex,
-            mime_type: format == .png ? "image/png" : "image/jpeg"
-        )]
+            mime_type: self.format == .png ? "image/png" : "image/jpeg")]
     }
 
     // MARK: - Helper Methods
 
     private func findTargetApplication(
         _ appIdentifier: String,
-        handler: WindowCaptureHandler
-    ) async throws -> NSRunningApplication {
+        handler: WindowCaptureHandler) async throws -> NSRunningApplication
+    {
         do {
             return try ApplicationFinder.findApplication(identifier: appIdentifier)
         } catch let ApplicationError.notFound(identifier) {
@@ -414,7 +399,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
     }
 
     private func activateAppIfNeeded(_ app: NSRunningApplication) async throws {
-        if captureFocus == .foreground || (captureFocus == .auto && !app.isActive) {
+        if self.captureFocus == .foreground || (self.captureFocus == .auto && !app.isActive) {
             try PermissionsChecker.requireAccessibilityPermission()
             app.activate()
             try await Task.sleep(nanoseconds: 200_000_000) // Brief delay for activation
@@ -425,16 +410,15 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
         path: String,
         app: NSRunningApplication,
         window: WindowData,
-        windowIndex: Int
-    ) -> SavedFile {
+        windowIndex: Int) -> SavedFile
+    {
         SavedFile(
             path: path,
             item_label: app.localizedName,
             window_title: window.title,
             window_id: window.windowId,
             window_index: windowIndex,
-            mime_type: format == .png ? "image/png" : "image/jpeg"
-        )
+            mime_type: self.format == .png ? "image/png" : "image/jpeg")
     }
 }
 

@@ -1,12 +1,12 @@
 import CoreGraphics
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("ScrollCommand Tests")
+@Suite("ScrollCommand Tests", .serialized)
 struct ScrollCommandTests {
     @Test("Scroll command parses direction", arguments: [
-        "up", "down", "left", "right"
+        "up", "down", "left", "right",
     ])
     func parseDirection(direction: String) throws {
         let command = try ScrollCommand.parse(["--direction", direction])
@@ -25,7 +25,7 @@ struct ScrollCommandTests {
             "--session", "test-123",
             "--delay", "50",
             "--smooth",
-            "--json-output"
+            "--json-output",
         ])
         #expect(command.direction == .down)
         #expect(command.amount == 5)
@@ -63,8 +63,7 @@ struct ScrollCommandTests {
             amount: 5,
             location: ["x": 500.0, "y": 300.0],
             totalTicks: 5,
-            executionTime: 0.15
-        )
+            executionTime: 0.15)
 
         #expect(result.success == true)
         #expect(result.direction == "down")

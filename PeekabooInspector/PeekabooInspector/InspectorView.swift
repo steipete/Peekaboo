@@ -1,136 +1,139 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct InspectorView: View {
     @EnvironmentObject var overlayManager: OverlayManager
     @State private var showPermissionAlert = false
     @State private var permissionStatus: PermissionStatus = .checking
     @State private var permissionCheckTimer: Timer?
-    
+
     enum PermissionStatus {
         case checking
         case granted
         case denied
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            headerView
-            
+            self.headerView
+
             Divider()
-            
-            if permissionStatus == .denied {
-                permissionDeniedView
-            } else if permissionStatus == .checking {
+
+            if self.permissionStatus == .denied {
+                self.permissionDeniedView
+            } else if self.permissionStatus == .checking {
                 ProgressView("Checking permissions...")
                     .padding()
             } else {
-                mainContent
+                self.mainContent
             }
         }
         .frame(width: 450, height: 700)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
-            startPermissionMonitoring()
-            openOverlayWindow()
+            self.startPermissionMonitoring()
+            self.openOverlayWindow()
         }
         .onDisappear {
-            stopPermissionMonitoring()
+            self.stopPermissionMonitoring()
         }
     }
-    
+
     private var headerView: some View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Peekaboo Inspector")
                         .font(.headline)
-                    Text(overlayManager.applications.isEmpty ? "Hover over UI elements to inspect" : "Monitoring \(overlayManager.applications.count) app\(overlayManager.applications.count == 1 ? "" : "s")")
+                    Text(self.overlayManager.applications
+                        .isEmpty ? "Hover over UI elements to inspect" :
+                        "Monitoring \(self.overlayManager.applications.count) app\(self.overlayManager.applications.count == 1 ? "" : "s")")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
-                Toggle("Overlay", isOn: $overlayManager.isOverlayActive)
+
+                Toggle("Overlay", isOn: self.$overlayManager.isOverlayActive)
                     .toggleStyle(.switch)
             }
             .padding()
-            
+
             Divider()
-            
-            appSelectorView
+
+            self.appSelectorView
         }
         .background(Color(NSColor.controlBackgroundColor))
     }
-    
+
     private var mainContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if let hoveredElement = overlayManager.hoveredElement {
-                    elementDetailsView(for: hoveredElement)
+                    self.elementDetailsView(for: hoveredElement)
                 } else {
                     Text("Hover over an element to see details")
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding()
                 }
-                
+
                 Divider()
-                
-                allElementsView
+
+                self.allElementsView
             }
             .padding()
         }
     }
-    
+
     private var appSelectorView: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Target Applications")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                
+
                 Spacer()
-                
+
                 Menu("Detail Level") {
                     Button("Essential (Buttons & Inputs)") {
-                        overlayManager.setDetailLevel(.essential)
+                        self.overlayManager.setDetailLevel(.essential)
                     }
-                    .disabled(overlayManager.detailLevel == .essential)
-                    
+                    .disabled(self.overlayManager.detailLevel == .essential)
+
                     Button("Moderate (Include Lists & Tables)") {
-                        overlayManager.setDetailLevel(.moderate)
+                        self.overlayManager.setDetailLevel(.moderate)
                     }
-                    .disabled(overlayManager.detailLevel == .moderate)
-                    
+                    .disabled(self.overlayManager.detailLevel == .moderate)
+
                     Button("All (Show Everything)") {
-                        overlayManager.setDetailLevel(.all)
+                        self.overlayManager.setDetailLevel(.all)
                     }
-                    .disabled(overlayManager.detailLevel == .all)
+                    .disabled(self.overlayManager.detailLevel == .all)
                 }
                 .menuStyle(.borderlessButton)
                 .padding(.trailing, 8)
-                
+
                 Menu {
                     Button("All Applications") {
-                        overlayManager.setAppSelectionMode(.all)
+                        self.overlayManager.setAppSelectionMode(.all)
                     }
-                    .disabled(overlayManager.selectedAppMode == .all)
-                    
+                    .disabled(self.overlayManager.selectedAppMode == .all)
+
                     Divider()
-                    
+
                     // Add TextEdit-only option at the top
                     Button("TextEdit Only (Debug Mode)") {
-                        overlayManager.setAppSelectionMode(.single, bundleID: "com.apple.TextEdit")
+                        self.overlayManager.setAppSelectionMode(.single, bundleID: "com.apple.TextEdit")
                     }
-                    .disabled(overlayManager.selectedAppMode == .single && overlayManager.selectedAppBundleID == "com.apple.TextEdit")
-                    
+                    .disabled(self.overlayManager.selectedAppMode == .single && self.overlayManager
+                        .selectedAppBundleID == "com.apple.TextEdit")
+
                     Divider()
-                    
-                    ForEach(overlayManager.applications) { app in
+
+                    ForEach(self.overlayManager.applications) { app in
                         Button(action: {
-                            overlayManager.setAppSelectionMode(.single, bundleID: app.bundleIdentifier)
+                            self.overlayManager.setAppSelectionMode(.single, bundleID: app.bundleIdentifier)
                         }) {
                             HStack {
                                 if let icon = app.icon {
@@ -141,15 +144,18 @@ struct InspectorView: View {
                                 Text(app.name)
                             }
                         }
-                        .disabled(overlayManager.selectedAppMode == .single && overlayManager.selectedAppBundleID == app.bundleIdentifier)
+                        .disabled(self.overlayManager.selectedAppMode == .single && self.overlayManager
+                            .selectedAppBundleID == app.bundleIdentifier)
                     }
                 } label: {
                     HStack {
-                        if overlayManager.selectedAppMode == .all {
+                        if self.overlayManager.selectedAppMode == .all {
                             Image(systemName: "apps.iphone")
                             Text("All Applications")
                         } else if let selectedID = overlayManager.selectedAppBundleID,
-                                  let app = overlayManager.applications.first(where: { $0.bundleIdentifier == selectedID }) {
+                                  let app = overlayManager.applications
+                                      .first(where: { $0.bundleIdentifier == selectedID })
+                        {
                             if let icon = app.icon {
                                 Image(nsImage: icon)
                                     .resizable()
@@ -167,8 +173,8 @@ struct InspectorView: View {
                 }
                 .menuStyle(.borderlessButton)
             }
-            
-            if overlayManager.selectedAppMode == .single {
+
+            if self.overlayManager.selectedAppMode == .single {
                 Text("Inspecting single application")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -181,7 +187,7 @@ struct InspectorView: View {
         .padding(.horizontal)
         .padding(.vertical, 8)
     }
-    
+
     private func elementDetailsView(for element: OverlayManager.UIElement) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -195,7 +201,7 @@ struct InspectorView: View {
                     .background(element.color.opacity(0.2))
                     .cornerRadius(4)
             }
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 DetailRow(label: "Role", value: element.role)
                 if let roleDesc = element.roleDescription {
@@ -213,9 +219,13 @@ struct InspectorView: View {
                 if let help = element.help {
                     DetailRow(label: "Help", value: help)
                 }
-                DetailRow(label: "Frame", value: frameString(element.frame))
-                DetailRow(label: "Position", value: "x: \(Int(element.frame.origin.x)) y: \(Int(element.frame.origin.y))")
-                DetailRow(label: "Size", value: "width: \(Int(element.frame.width)) height: \(Int(element.frame.height))")
+                DetailRow(label: "Frame", value: self.frameString(element.frame))
+                DetailRow(
+                    label: "Position",
+                    value: "x: \(Int(element.frame.origin.x)) y: \(Int(element.frame.origin.y))")
+                DetailRow(
+                    label: "Size",
+                    value: "width: \(Int(element.frame.width)) height: \(Int(element.frame.height))")
                 DetailRow(label: "Enabled", value: element.isEnabled ? "true" : "false")
                 DetailRow(label: "Keyboard Focused", value: element.isFocused ? "true" : "false")
                 if let identifier = element.identifier {
@@ -232,27 +242,27 @@ struct InspectorView: View {
             .padding()
             .background(Color(NSColor.controlBackgroundColor))
             .cornerRadius(8)
-            
+
             HStack {
                 Button("Select Element") {
-                    overlayManager.selectedElement = element
+                    self.overlayManager.selectedElement = element
                 }
                 .buttonStyle(.borderedProminent)
-                
+
                 Button("Copy Info") {
-                    copyElementInfo(element)
+                    self.copyElementInfo(element)
                 }
             }
         }
     }
-    
+
     private var allElementsView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            let totalElements = overlayManager.applications.flatMap { $0.elements }.count
+            let totalElements = self.overlayManager.applications.flatMap(\.elements).count
             Text("All Elements (\(totalElements))")
                 .font(.headline)
-            
-            ForEach(overlayManager.applications) { app in
+
+            ForEach(self.overlayManager.applications) { app in
                 if !app.elements.isEmpty {
                     DisclosureGroup {
                         ForEach(app.elements) { element in
@@ -260,25 +270,24 @@ struct InspectorView: View {
                                 Circle()
                                     .fill(element.color)
                                     .frame(width: 8, height: 8)
-                                
+
                                 Text(element.elementID)
                                     .font(.system(.caption, design: .monospaced))
-                                
+
                                 Text(element.displayName)
                                     .lineLimit(1)
                                     .truncationMode(.tail)
-                                
+
                                 Spacer()
                             }
                             .padding(.vertical, 4)
                             .padding(.horizontal, 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 4)
-                                    .fill(element.id == overlayManager.hoveredElement?.id ? 
-                                          Color.accentColor.opacity(0.1) : Color.clear)
-                            )
+                                    .fill(element.id == self.overlayManager.hoveredElement?.id ?
+                                        Color.accentColor.opacity(0.1) : Color.clear))
                             .onTapGesture {
-                                overlayManager.selectedElement = element
+                                self.overlayManager.selectedElement = element
                             }
                         }
                     } label: {
@@ -301,26 +310,29 @@ struct InspectorView: View {
             }
         }
     }
-    
+
     private var permissionDeniedView: some View {
         VStack(spacing: 20) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 48))
                 .foregroundColor(.orange)
-            
+
             Text("Accessibility Permission Required")
                 .font(.headline)
-            
+
             Text("Peekaboo Inspector needs accessibility permissions to detect UI elements.")
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
-            
+
             VStack(spacing: 12) {
                 Button("Open System Settings") {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                    NSWorkspace.shared
+                        .open(
+                            URL(
+                                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
                 }
                 .buttonStyle(.borderedProminent)
-                
+
                 HStack {
                     ProgressView()
                         .scaleEffect(0.7)
@@ -329,7 +341,7 @@ struct InspectorView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            
+
             Text("After granting permission, the app will automatically detect it.")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -337,7 +349,7 @@ struct InspectorView: View {
         }
         .padding()
     }
-    
+
     private func checkPermissions(prompt: Bool = false) {
         let accessEnabled: Bool
         if prompt {
@@ -346,37 +358,37 @@ struct InspectorView: View {
         } else {
             accessEnabled = AXIsProcessTrusted()
         }
-        
+
         let newStatus: PermissionStatus = accessEnabled ? .granted : .denied
-        
+
         // Only update if status changed
-        if permissionStatus != newStatus {
+        if self.permissionStatus != newStatus {
             withAnimation {
-                permissionStatus = newStatus
+                self.permissionStatus = newStatus
             }
-            
+
             // If granted, refresh elements immediately
             if newStatus == .granted {
-                overlayManager.refreshAllApplications()
+                self.overlayManager.refreshAllApplications()
             }
         }
     }
-    
+
     private func startPermissionMonitoring() {
         // Initial check with prompt
-        checkPermissions(prompt: true)
-        
+        self.checkPermissions(prompt: true)
+
         // Start periodic checking without prompt
-        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            checkPermissions(prompt: false)
+        self.permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            self.checkPermissions(prompt: false)
         }
     }
-    
+
     private func stopPermissionMonitoring() {
-        permissionCheckTimer?.invalidate()
-        permissionCheckTimer = nil
+        self.permissionCheckTimer?.invalidate()
+        self.permissionCheckTimer = nil
     }
-    
+
     private func openOverlayWindow() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             if let window = NSApplication.shared.windows.first(where: { $0.identifier?.rawValue == "overlay" }) {
@@ -384,20 +396,20 @@ struct InspectorView: View {
             }
         }
     }
-    
+
     private func frameString(_ frame: CGRect) -> String {
         "(\(Int(frame.origin.x)), \(Int(frame.origin.y))) \(Int(frame.width))×\(Int(frame.height))"
     }
-    
+
     private func copyElementInfo(_ element: OverlayManager.UIElement) {
         var info = "Element ID: \(element.elementID)\n"
         info += "Role: \(element.role)\n"
         if let title = element.title { info += "Title: \(title)\n" }
         if let label = element.label { info += "Label: \(label)\n" }
         if let value = element.value { info += "Value: \(value)\n" }
-        info += "Frame: \(frameString(element.frame))\n"
+        info += "Frame: \(self.frameString(element.frame))\n"
         info += "Actionable: \(element.isActionable ? "Yes" : "No")"
-        
+
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(info, forType: .string)
     }
@@ -406,13 +418,13 @@ struct InspectorView: View {
 struct DetailRow: View {
     let label: String
     let value: String
-    
+
     var body: some View {
         HStack(alignment: .top) {
-            Text(label)
+            Text(self.label)
                 .foregroundColor(.secondary)
                 .frame(width: 80, alignment: .trailing)
-            Text(value)
+            Text(self.value)
                 .font(.system(.body, design: .monospaced))
                 .textSelection(.enabled)
             Spacer()

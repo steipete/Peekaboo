@@ -1,9 +1,9 @@
 import AppKit
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("PID Image Capture Tests")
+@Suite("PID Image Capture Tests", .serialized)
 struct PIDImageCaptureTests {
     @Test("Capture windows by PID - valid PID")
     func captureWindowsByValidPID() async throws {
@@ -72,7 +72,7 @@ struct PIDImageCaptureTests {
             "--mode", "multi",
             "--format", "png",
             "--path", NSTemporaryDirectory(),
-            "--json-output"
+            "--json-output",
         ])
 
         do {
@@ -94,7 +94,7 @@ struct PIDImageCaptureTests {
             "PID:-123", // Negative PID
             "PID:12.34", // Decimal PID
             "PID:0", // Zero PID
-            "PID:999999999" // Very large PID
+            "PID:999999999", // Very large PID
         ]
 
         for invalidPID in invalidPIDs {
@@ -103,7 +103,7 @@ struct PIDImageCaptureTests {
                     "--app", invalidPID,
                     "--mode", "window",
                     "--format", "png",
-                    "--json-output"
+                    "--json-output",
                 ])
 
                 // The command should parse but fail during execution
@@ -124,7 +124,7 @@ struct PIDImageCaptureTests {
         let command1 = try ImageCommand.parse([
             "--app", "PID:1234",
             "--window-index", "0",
-            "--mode", "window"
+            "--mode", "window",
         ])
 
         #expect(command1.app == "PID:1234")
@@ -134,7 +134,7 @@ struct PIDImageCaptureTests {
         let command2 = try ImageCommand.parse([
             "--app", "PID:5678",
             "--window-title", "Document",
-            "--mode", "window"
+            "--mode", "window",
         ])
 
         #expect(command2.app == "PID:5678")
@@ -172,8 +172,7 @@ struct PIDImageCaptureTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: "image/png"
-        )
+            mime_type: "image/png")
 
         let captureData = ImageCaptureData(saved_files: [savedFile])
 
@@ -182,7 +181,6 @@ struct PIDImageCaptureTests {
             data: captureData,
             messages: ["Captured windows for PID: \(targetPID)"],
             debugLogs: [],
-            error: nil
-        )
+            error: nil)
     }
 }

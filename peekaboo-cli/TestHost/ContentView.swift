@@ -18,7 +18,7 @@ struct ContentView: View {
                 .padding(.top)
 
             // Window identifier for tests
-            Text("Window ID: \(testIdentifier)")
+            Text("Window ID: \(self.testIdentifier)")
                 .font(.system(.body, design: .monospaced))
                 .foregroundColor(.secondary)
 
@@ -26,32 +26,33 @@ struct ContentView: View {
             GroupBox("Permissions") {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        Image(systemName: screenRecordingPermission ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(screenRecordingPermission ? .green : .red)
+                        Image(systemName: self
+                            .screenRecordingPermission ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(self.screenRecordingPermission ? .green : .red)
                         Text("Screen Recording")
                         Spacer()
                         Button("Check") {
-                            checkScreenRecordingPermission()
+                            self.checkScreenRecordingPermission()
                         }
                     }
 
                     HStack {
-                        Image(systemName: accessibilityPermission ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(accessibilityPermission ? .green : .red)
+                        Image(systemName: self.accessibilityPermission ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(self.accessibilityPermission ? .green : .red)
                         Text("Accessibility")
                         Spacer()
                         Button("Check") {
-                            checkAccessibilityPermission()
+                            self.checkAccessibilityPermission()
                         }
                     }
 
                     HStack {
-                        Image(systemName: peekabooCliAvailable ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(peekabooCliAvailable ? .green : .red)
+                        Image(systemName: self.peekabooCliAvailable ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(self.peekabooCliAvailable ? .green : .red)
                         Text("Peekaboo CLI")
                         Spacer()
                         Button("Check") {
-                            checkPeekabooCli()
+                            self.checkPeekabooCli()
                         }
                     }
                 }
@@ -61,18 +62,18 @@ struct ContentView: View {
             // Test Status
             GroupBox("Test Status") {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(testStatus)
+                    Text(self.testStatus)
                         .font(.system(.body, design: .monospaced))
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     HStack {
                         Button("Run Local Tests") {
-                            runLocalTests()
+                            self.runLocalTests()
                         }
 
                         Button("Clear Logs") {
-                            logMessages.removeAll()
-                            testStatus = "Ready"
+                            self.logMessages.removeAll()
+                            self.testStatus = "Ready"
                         }
                     }
                 }
@@ -83,7 +84,7 @@ struct ContentView: View {
             GroupBox("Log Messages") {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(logMessages.enumerated()), id: \.offset) { _, message in
+                        ForEach(Array(self.logMessages.enumerated()), id: \.offset) { _, message in
                             Text(message)
                                 .font(.system(size: 12, design: .monospaced))
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -100,64 +101,64 @@ struct ContentView: View {
         }
         .padding()
         .onAppear {
-            checkPermissions()
-            checkPeekabooCli()
-            addLog("Test host started")
+            self.checkPermissions()
+            self.checkPeekabooCli()
+            self.addLog("Test host started")
         }
     }
 
     private func checkPermissions() {
-        checkScreenRecordingPermission()
-        checkAccessibilityPermission()
+        self.checkScreenRecordingPermission()
+        self.checkAccessibilityPermission()
     }
 
     private func checkScreenRecordingPermission() {
         // Check screen recording permission
         if CGPreflightScreenCaptureAccess() {
-            screenRecordingPermission = CGRequestScreenCaptureAccess()
+            self.screenRecordingPermission = CGRequestScreenCaptureAccess()
         } else {
-            screenRecordingPermission = false
+            self.screenRecordingPermission = false
         }
-        addLog("Screen recording permission: \(screenRecordingPermission)")
+        self.addLog("Screen recording permission: \(self.screenRecordingPermission)")
     }
 
     private func checkAccessibilityPermission() {
-        accessibilityPermission = AXIsProcessTrusted()
-        addLog("Accessibility permission: \(accessibilityPermission)")
+        self.accessibilityPermission = AXIsProcessTrusted()
+        self.addLog("Accessibility permission: \(self.accessibilityPermission)")
     }
 
     private func addLog(_ message: String) {
         let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
-        logMessages.append("[\(timestamp)] \(message)")
+        self.logMessages.append("[\(timestamp)] \(message)")
 
         // Keep only last 100 messages
-        if logMessages.count > 100 {
-            logMessages.removeFirst()
+        if self.logMessages.count > 100 {
+            self.logMessages.removeFirst()
         }
     }
 
     private func checkPeekabooCli() {
         let cliPath = "../.build/debug/peekaboo"
         if FileManager.default.fileExists(atPath: cliPath) {
-            peekabooCliAvailable = true
-            addLog("Peekaboo CLI found at: \(cliPath)")
+            self.peekabooCliAvailable = true
+            self.addLog("Peekaboo CLI found at: \(cliPath)")
         } else {
-            peekabooCliAvailable = false
-            addLog("Peekaboo CLI not found. Run 'swift build' first.")
+            self.peekabooCliAvailable = false
+            self.addLog("Peekaboo CLI not found. Run 'swift build' first.")
         }
     }
 
     private func runLocalTests() {
-        testStatus = "Running tests..."
-        addLog("Starting local test suite")
+        self.testStatus = "Running tests..."
+        self.addLog("Starting local test suite")
 
         // This is where the Swift tests can interact with the host app
         // The tests can find this window by its identifier and perform actions
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            testStatus = "Tests can now interact with this window"
-            addLog("Window is ready for test interactions")
-            addLog("Run: swift test --enable-test-discovery --filter LocalIntegration")
+            self.testStatus = "Tests can now interact with this window"
+            self.addLog("Window is ready for test interactions")
+            self.addLog("Run: swift test --enable-test-discovery --filter LocalIntegration")
         }
     }
 }
@@ -174,7 +175,7 @@ struct TestPatternView: View {
     }
 
     var body: some View {
-        switch pattern {
+        switch self.pattern {
         case let .solid(color):
             Rectangle()
                 .fill(color)
@@ -182,8 +183,7 @@ struct TestPatternView: View {
             LinearGradient(
                 colors: [.red, .yellow, .green, .blue, .purple],
                 startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+                endPoint: .bottomTrailing)
         case let .text(string):
             Text(string)
                 .font(.largeTitle)

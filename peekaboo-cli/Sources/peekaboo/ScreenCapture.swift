@@ -8,8 +8,8 @@ import Foundation
 /// modern ScreenCaptureKit framework for high-quality, efficient captures.
 struct ScreenCapture: Sendable {
     static func captureDisplay(
-        _ displayID: CGDirectDisplayID, to path: String, format: ImageFormat = .png
-    ) async throws {
+        _ displayID: CGDirectDisplayID, to path: String, format: ImageFormat = .png) async throws
+    {
         // Use the screencapture command as a fallback
         // Note: screencapture uses 1-based display indices, not display IDs
         // We need to find the index of this display in the list of all displays
@@ -40,9 +40,7 @@ struct ScreenCapture: Sendable {
                     NSError(
                         domain: "ScreenCapture",
                         code: Int(process.terminationStatus),
-                        userInfo: [NSLocalizedDescriptionKey: errorString]
-                    )
-                )
+                        userInfo: [NSLocalizedDescriptionKey: errorString]))
             }
 
             // Verify the file was created

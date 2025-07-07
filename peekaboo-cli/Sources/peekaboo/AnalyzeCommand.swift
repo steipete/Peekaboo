@@ -69,8 +69,7 @@ struct AnalyzeCommand: AsyncParsableCommand {
         EXIT STATUS:
           0  Analysis completed successfully
           1  Analysis failed (missing file, invalid format, API error)
-        """
-    )
+        """)
 
     @Argument(help: ArgumentHelp("Path to the image file to analyze", valueName: "image-path"))
     var imagePath: String
@@ -83,21 +82,20 @@ struct AnalyzeCommand: AsyncParsableCommand {
 
     @Option(
         name: .long,
-        help: ArgumentHelp("Specific AI model to use (e.g., gpt-4o, llava:latest)", valueName: "model")
-    )
+        help: ArgumentHelp("Specific AI model to use (e.g., gpt-4o, llava:latest)", valueName: "model"))
     var model: String?
 
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
     func run() async throws {
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
             let result = try await performAnalysis()
-            outputResults(result)
+            self.outputResults(result)
         } catch {
-            handleError(error)
+            self.handleError(error)
             throw ExitCode(1)
         }
     }
@@ -129,46 +127,41 @@ struct AnalyzeCommand: AsyncParsableCommand {
 
         // Determine which provider to use
         let selectedProvider = try await AIProviderFactory.determineProvider(
-            requestedType: provider == "auto" ? nil : provider,
-            requestedModel: model,
-            configuredProviders: configuredProviders
-        )
+            requestedType: self.provider == "auto" ? nil : self.provider,
+            requestedModel: self.model,
+            configuredProviders: configuredProviders)
 
         // Perform analysis
         let startTime = Date()
         let analysisText = try await selectedProvider.analyze(
             imageBase64: base64String,
-            question: question
-        )
+            question: self.question)
         let duration = Date().timeIntervalSince(startTime)
 
         return AnalysisResult(
             analysisText: analysisText,
             modelUsed: "\(selectedProvider.name)/\(selectedProvider.model)",
             durationSeconds: duration,
-            imagePath: self.imagePath
-        )
+            imagePath: self.imagePath)
     }
 
     private func outputResults(_ result: AnalysisResult) {
-        if jsonOutput {
+        if self.jsonOutput {
             let data = AnalysisResultData(
                 analysis_text: result.analysisText,
                 model_used: result.modelUsed,
                 duration_seconds: result.durationSeconds,
-                image_path: result.imagePath
-            )
+                image_path: result.imagePath)
             outputSuccess(data: data)
         } else {
             print(result.analysisText)
             print(
-                "\n👻 Peekaboo: Analyzed image with \(result.modelUsed) in \(String(format: "%.2f", result.durationSeconds))s."
-            )
+                "\n👻 Peekaboo: Analyzed image with \(result.modelUsed) in \(String(format: "%.2f", result.durationSeconds))s.")
         }
     }
 
     private func handleError(_ error: Error) {
-        if jsonOutput {
+        if self.jsonOutput {
             let errorCode: ErrorCode
             let errorMessage: String
 

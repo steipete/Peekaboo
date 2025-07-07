@@ -1,8 +1,8 @@
 // swiftlint:disable file_length
 import AppKit
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("Image Capture Logic Tests", .tags(.imageCapture, .unit))
 struct ImageCaptureLogicTests {
@@ -29,7 +29,7 @@ struct ImageCaptureLogicTests {
             "--mode", "window",
             "--app", "Test App",
             "--window-title", "Main Window",
-            "--format", "jpg"
+            "--format", "jpg",
         ])
 
         #expect(command.app == "Test App")
@@ -85,7 +85,7 @@ struct ImageCaptureLogicTests {
         let command = try ImageCommand.parse([
             "--mode", "window",
             "--app", "Safari",
-            "--window-title", "Main Window"
+            "--window-title", "Main Window",
         ])
 
         #expect(command.mode == .window)
@@ -99,7 +99,7 @@ struct ImageCaptureLogicTests {
         let command = try ImageCommand.parse([
             "--mode", "window",
             "--app", "Terminal",
-            "--window-index", "0"
+            "--window-index", "0",
         ])
 
         #expect(command.mode == .window)
@@ -115,7 +115,7 @@ struct ImageCaptureLogicTests {
             "--mode", "window",
             "--app", "Xcode",
             "--window-title", "Main",
-            "--window-index", "1"
+            "--window-index", "1",
         ])
 
         #expect(command.windowTitle == "Main")
@@ -129,7 +129,7 @@ struct ImageCaptureLogicTests {
     func screenTargetingByIndex() throws {
         let command = try ImageCommand.parse([
             "--mode", "screen",
-            "--screen-index", "1"
+            "--screen-index", "1",
         ])
 
         #expect(command.mode == .screen)
@@ -138,13 +138,12 @@ struct ImageCaptureLogicTests {
 
     @Test(
         "Screen index edge cases",
-        arguments: [-1, 0, 1, 5, 99]
-    )
+        arguments: [-1, 0, 1, 5, 99])
     func screenIndexEdgeCases(index: Int) throws {
         do {
             let command = try ImageCommand.parse([
                 "--mode", "screen",
-                "--screen-index", String(index)
+                "--screen-index", String(index),
             ])
 
             #expect(command.screenIndex == index)
@@ -219,7 +218,7 @@ struct ImageCaptureLogicTests {
             (.windowNotFound, .WINDOW_NOT_FOUND),
             (.fileWriteError("test", nil), .FILE_IO_ERROR),
             (.invalidArgument("test"), .INVALID_ARGUMENT),
-            (.unknownError("test"), .UNKNOWN_ERROR)
+            (.unknownError("test"), .UNKNOWN_ERROR),
         ]
 
         // Verify error mapping logic exists
@@ -241,8 +240,7 @@ struct ImageCaptureLogicTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: "image/png"
-        )
+            mime_type: "image/png")
 
         #expect(savedFile.path == "/tmp/screen-0.png")
         #expect(savedFile.item_label == "Display 1 (Index 0)")
@@ -260,8 +258,7 @@ struct ImageCaptureLogicTests {
             window_title: "Main Window",
             window_id: 12345,
             window_index: 0,
-            mime_type: "image/jpeg"
-        )
+            mime_type: "image/jpeg")
 
         #expect(savedFile.path == "/tmp/safari-main.jpg")
         #expect(savedFile.item_label == "Safari")
@@ -281,7 +278,7 @@ struct ImageCaptureLogicTests {
             "--format", "png",
             "--path", "/tmp/vscode-windows",
             "--capture-focus", "foreground",
-            "--json-output"
+            "--json-output",
         ])
 
         #expect(command.mode == .multi)
@@ -299,7 +296,7 @@ struct ImageCaptureLogicTests {
             "--screen-index", "1",
             "--format", "jpg",
             "--path", "/Users/test/screenshots/display-1.jpg",
-            "--json-output"
+            "--json-output",
         ])
 
         #expect(command.mode == .screen)
@@ -325,7 +322,7 @@ struct ImageCaptureLogicTests {
     func commandReadinessWindowCapture() throws {
         let command = try ImageCommand.parse([
             "--mode", "window",
-            "--app", "Finder"
+            "--app", "Finder",
         ])
 
         // Verify command is properly configured for window capture
@@ -363,7 +360,7 @@ struct AdvancedImageCaptureLogicTests {
         // Multi mode with app (should capture all windows)
         let multiWithApp = try ImageCommand.parse([
             "--mode", "multi",
-            "--app", "Safari"
+            "--app", "Safari",
         ])
         #expect(multiWithApp.mode == .multi)
         #expect(multiWithApp.app == "Safari")
@@ -379,21 +376,21 @@ struct AdvancedImageCaptureLogicTests {
         // Foreground focus should work with any capture mode
         let foregroundScreen = try ImageCommand.parse([
             "--mode", "screen",
-            "--capture-focus", "foreground"
+            "--capture-focus", "foreground",
         ])
         #expect(foregroundScreen.captureFocus == .foreground)
 
         let foregroundWindow = try ImageCommand.parse([
             "--mode", "window",
             "--app", "Terminal",
-            "--capture-focus", "foreground"
+            "--capture-focus", "foreground",
         ])
         #expect(foregroundWindow.captureFocus == .foreground)
 
         // Auto focus (default) should work intelligently
         let autoCapture = try ImageCommand.parse([
             "--mode", "window",
-            "--app", "Finder"
+            "--app", "Finder",
         ])
         #expect(autoCapture.captureFocus == .auto)
     }
@@ -423,7 +420,7 @@ struct AdvancedImageCaptureLogicTests {
 
     @Test("Command execution readiness matrix", .tags(.fast))
     func commandExecutionReadinessMatrix() {
-        let scenarios = createTestScenarios()
+        let scenarios = self.createTestScenarios()
 
         for scenario in scenarios {
             do {
@@ -449,7 +446,7 @@ struct AdvancedImageCaptureLogicTests {
             ["--format", "bmp"],
             ["--capture-focus", "invalid"],
             ["--screen-index", "abc"],
-            ["--window-index", "xyz"]
+            ["--window-index", "xyz"],
         ]
 
         for args in invalidArgs {
@@ -466,7 +463,7 @@ struct AdvancedImageCaptureLogicTests {
             ["--mode", "multi", "--app", String(repeating: "LongAppName", count: 100)],
             ["--window-title", String(repeating: "VeryLongTitle", count: 200)],
             ["--path", String(repeating: "/very/long/path", count: 50)],
-            Array(repeating: ["--mode", "screen"], count: 100).flatMap(\.self)
+            Array(repeating: ["--mode", "screen"], count: 100).flatMap(\.self),
         ]
 
         for config in complexConfigs {
@@ -494,48 +491,39 @@ struct AdvancedImageCaptureLogicTests {
             TestScenario(
                 args: ["--mode", "screen"],
                 shouldBeReady: true,
-                description: "Basic screen capture"
-            ),
+                description: "Basic screen capture"),
             TestScenario(
                 args: ["--mode", "screen", "--screen-index", "0"],
                 shouldBeReady: true,
-                description: "Screen with index"
-            ),
+                description: "Screen with index"),
             TestScenario(
                 args: ["--mode", "window", "--app", "Finder"],
                 shouldBeReady: true,
-                description: "Basic window capture"
-            ),
+                description: "Basic window capture"),
             TestScenario(
                 args: ["--mode", "window", "--app", "Safari", "--window-title", "Main"],
                 shouldBeReady: true,
-                description: "Window with title"
-            ),
+                description: "Window with title"),
             TestScenario(
                 args: ["--mode", "window", "--app", "Terminal", "--window-index", "0"],
                 shouldBeReady: true,
-                description: "Window with index"
-            ),
+                description: "Window with index"),
             TestScenario(
                 args: ["--mode", "multi"],
                 shouldBeReady: true,
-                description: "Multi-screen capture"
-            ),
+                description: "Multi-screen capture"),
             TestScenario(
                 args: ["--mode", "multi", "--app", "Xcode"],
                 shouldBeReady: true,
-                description: "Multi-window capture"
-            ),
+                description: "Multi-window capture"),
             TestScenario(
                 args: ["--app", "Finder"],
                 shouldBeReady: true,
-                description: "Implicit window mode"
-            ),
+                description: "Implicit window mode"),
             TestScenario(
                 args: [],
                 shouldBeReady: true,
-                description: "Default screen capture"
-            )
+                description: "Default screen capture"),
         ]
     }
 }

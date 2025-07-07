@@ -1,7 +1,7 @@
 import AppKit
 import ApplicationServices
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import Foundation
 
 struct DockCommand: AsyncParsableCommand {
@@ -30,17 +30,15 @@ struct DockCommand: AsyncParsableCommand {
             RightClickSubcommand.self,
             HideSubcommand.self,
             ShowSubcommand.self,
-            ListSubcommand.self
-        ]
-    )
+            ListSubcommand.self,
+        ])
 
     // MARK: - Launch from Dock
 
     struct LaunchSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "launch",
-            abstract: "Launch an application from the Dock"
-        )
+            abstract: "Launch an application from the Dock")
 
         @Argument(help: "Application name in the Dock")
         var app: String
@@ -67,30 +65,29 @@ struct DockCommand: AsyncParsableCommand {
                     item.title() == app ||
                         item.title()?.contains(app) == true
                 }) else {
-                    throw DockError.itemNotFound(app)
+                    throw DockError.itemNotFound(self.app)
                 }
 
                 // Click the item
                 try targetItem.performAction(.press)
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "action": "dock_launch",
-                            "app": targetItem.title() ?? app
-                        ])
-                    )
+                            "app": targetItem.title() ?? self.app,
+                        ]))
                     outputJSON(response)
                 } else {
-                    print("✓ Launched \(targetItem.title() ?? app) from Dock")
+                    print("✓ Launched \(targetItem.title() ?? self.app) from Dock")
                 }
 
             } catch let error as DockError {
                 handleDockError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -100,8 +97,7 @@ struct DockCommand: AsyncParsableCommand {
     struct RightClickSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "right-click",
-            abstract: "Right-click a Dock item and optionally select from menu"
-        )
+            abstract: "Right-click a Dock item and optionally select from menu")
 
         @Option(help: "Application name in the Dock")
         var app: String
@@ -131,34 +127,32 @@ struct DockCommand: AsyncParsableCommand {
                     item.title() == app ||
                         item.title()?.contains(app) == true
                 }) else {
-                    throw DockError.itemNotFound(app)
+                    throw DockError.itemNotFound(self.app)
                 }
 
                 // Get item position
                 guard let position = targetItem.position(),
-                      let size = targetItem.size() else {
+                      let size = targetItem.size()
+                else {
                     throw DockError.positionNotFound
                 }
 
                 let center = CGPoint(
                     x: position.x + size.width / 2,
-                    y: position.y + size.height / 2
-                )
+                    y: position.y + size.height / 2)
 
                 // Perform right-click
                 let rightMouseDown = CGEvent(
                     mouseEventSource: nil,
                     mouseType: .rightMouseDown,
                     mouseCursorPosition: center,
-                    mouseButton: .right
-                )
+                    mouseButton: .right)
 
                 let rightMouseUp = CGEvent(
                     mouseEventSource: nil,
                     mouseType: .rightMouseUp,
                     mouseCursorPosition: center,
-                    mouseButton: .right
-                )
+                    mouseButton: .right)
 
                 rightMouseDown?.post(tap: .cghidEventTap)
                 usleep(50000) // 50ms
@@ -184,28 +178,27 @@ struct DockCommand: AsyncParsableCommand {
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "action": "dock_right_click",
-                            "app": targetItem.title() ?? app,
-                            "selected_item": select
-                        ])
-                    )
+                            "app": targetItem.title() ?? self.app,
+                            "selected_item": self.select,
+                        ]))
                     outputJSON(response)
                 } else {
                     if let selected = select {
-                        print("✓ Right-clicked \(app) and selected '\(selected)'")
+                        print("✓ Right-clicked \(self.app) and selected '\(selected)'")
                     } else {
-                        print("✓ Right-clicked \(app) in Dock")
+                        print("✓ Right-clicked \(self.app) in Dock")
                     }
                 }
 
             } catch let error as DockError {
                 handleDockError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -215,8 +208,7 @@ struct DockCommand: AsyncParsableCommand {
     struct HideSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "hide",
-            abstract: "Hide the Dock"
-        )
+            abstract: "Hide the Dock")
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
@@ -229,19 +221,18 @@ struct DockCommand: AsyncParsableCommand {
                 try await runAppleScript(script)
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
-                            "action": "dock_hide"
-                        ])
-                    )
+                            "action": "dock_hide",
+                        ]))
                     outputJSON(response)
                 } else {
                     print("✓ Dock hidden")
                 }
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -251,8 +242,7 @@ struct DockCommand: AsyncParsableCommand {
     struct ShowSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
-            abstract: "Show the Dock"
-        )
+            abstract: "Show the Dock")
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
@@ -265,19 +255,18 @@ struct DockCommand: AsyncParsableCommand {
                 try await runAppleScript(script)
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
-                            "action": "dock_show"
-                        ])
-                    )
+                            "action": "dock_show",
+                        ]))
                     outputJSON(response)
                 } else {
                     print("✓ Dock shown")
                 }
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -287,8 +276,7 @@ struct DockCommand: AsyncParsableCommand {
     struct ListSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
-            abstract: "List all Dock items"
-        )
+            abstract: "List all Dock items")
 
         @Flag(help: "Include separators and spacers")
         var includeAll = false
@@ -320,14 +308,14 @@ struct DockCommand: AsyncParsableCommand {
                     let subrole = item.subrole() ?? ""
 
                     // Skip separators unless includeAll
-                    if !includeAll && (role == "AXSeparator" || subrole == "AXSeparator") {
+                    if !self.includeAll, role == "AXSeparator" || subrole == "AXSeparator" {
                         continue
                     }
 
                     var itemData: [String: Any] = [
                         "index": index,
                         "title": title,
-                        "role": role
+                        "role": role,
                     ]
 
                     if !subrole.isEmpty {
@@ -343,14 +331,13 @@ struct DockCommand: AsyncParsableCommand {
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "dock_items": itemsData,
-                            "count": itemsData.count
-                        ])
-                    )
+                            "count": itemsData.count,
+                        ]))
                     outputJSON(response)
                 } else {
                     print("Dock items:")
@@ -368,7 +355,7 @@ struct DockCommand: AsyncParsableCommand {
             } catch let error as DockError {
                 handleDockError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -460,9 +447,7 @@ private func handleDockError(_ error: DockError, jsonOutput: Bool) {
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: ErrorCode(rawValue: error.errorCode) ?? .UNKNOWN_ERROR
-            )
-        )
+                code: ErrorCode(rawValue: error.errorCode) ?? .UNKNOWN_ERROR))
         outputJSON(response)
     } else {
         print("❌ \(error.localizedDescription)")

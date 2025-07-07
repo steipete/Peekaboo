@@ -1,8 +1,9 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @available(macOS 14.0, *)
+@Suite("WindowCommand Tests", .serialized)
 struct WindowCommandTests {
     @Test
     func windowCommandHelp() async throws {
@@ -45,13 +46,12 @@ struct WindowCommandTests {
 
         for command in commands {
             do {
-                _ = try await runPeekabooCommand(["window", command])
+                _ = try await self.runPeekabooCommand(["window", command])
                 Issue.record("Expected command to fail without --app")
             } catch {
                 // Expected to fail
                 #expect(error.localizedDescription.contains("--app must be specified") ||
-                    error.localizedDescription.contains("Exit status: 1")
-                )
+                    error.localizedDescription.contains("Exit status: 1"))
             }
         }
     }
@@ -59,39 +59,45 @@ struct WindowCommandTests {
     @Test
     func windowMoveRequiresCoordinates() async throws {
         do {
-            _ = try await runPeekabooCommand(["window", "move", "--app", "Finder"])
+            _ = try await self.runPeekabooCommand(["window", "move", "--app", "Finder"])
             Issue.record("Expected command to fail without coordinates")
         } catch {
             // Expected to fail - missing required x and y
             #expect(error.localizedDescription.contains("Missing expected argument") ||
-                error.localizedDescription.contains("Exit status: 64")
-            )
+                error.localizedDescription.contains("Exit status: 64"))
         }
     }
 
     @Test
     func windowResizeRequiresDimensions() async throws {
         do {
-            _ = try await runPeekabooCommand(["window", "resize", "--app", "Finder"])
+            _ = try await self.runPeekabooCommand(["window", "resize", "--app", "Finder"])
             Issue.record("Expected command to fail without dimensions")
         } catch {
             // Expected to fail - missing required width and height
             #expect(error.localizedDescription.contains("Missing expected argument") ||
-                error.localizedDescription.contains("Exit status: 64")
-            )
+                error.localizedDescription.contains("Exit status: 64"))
         }
     }
 
     @Test
     func windowSetBoundsRequiresAllParameters() async throws {
         do {
-            _ = try await runPeekabooCommand(["window", "set-bounds", "--app", "Finder", "--x", "100", "--y", "100"])
+            _ = try await self.runPeekabooCommand([
+                "window",
+                "set-bounds",
+                "--app",
+                "Finder",
+                "--x",
+                "100",
+                "--y",
+                "100",
+            ])
             Issue.record("Expected command to fail without all parameters")
         } catch {
             // Expected to fail - missing required width and height
             #expect(error.localizedDescription.contains("Missing expected argument") ||
-                error.localizedDescription.contains("Exit status: 64")
-            )
+                error.localizedDescription.contains("Exit status: 64"))
         }
     }
 
@@ -111,7 +117,7 @@ struct WindowCommandTests {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8) ?? ""
 
-        if process.terminationStatus != 0 && process.terminationStatus != 64 {
+        if process.terminationStatus != 0, process.terminationStatus != 64 {
             throw TestError.commandFailed(status: process.terminationStatus, output: output)
         }
 
@@ -133,6 +139,7 @@ struct WindowCommandTests {
 // MARK: - Local Integration Tests
 
 @available(macOS 14.0, *)
+@Suite("Window Command Local Integration Tests", .serialized)
 struct WindowCommandLocalIntegrationTests {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
     func windowMinimizeTextEdit() async throws {
@@ -174,7 +181,7 @@ struct WindowCommandLocalIntegrationTests {
             "--app", "TextEdit",
             "--x", "200",
             "--y", "200",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: result.data(using: .utf8)!)
@@ -189,7 +196,8 @@ struct WindowCommandLocalIntegrationTests {
         #expect(data.success == true)
 
         if let responseData = data.data?.value as? [String: Any],
-           let newBounds = responseData["new_bounds"] as? [String: Any] {
+           let newBounds = responseData["new_bounds"] as? [String: Any]
+        {
             #expect(newBounds["x"] as? Int == 200)
             #expect(newBounds["y"] as? Int == 200)
         }
@@ -203,7 +211,7 @@ struct WindowCommandLocalIntegrationTests {
         let result = try await runPeekabooCommand([
             "window", "focus",
             "--app", "TextEdit",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: result.data(using: .utf8)!)
@@ -247,7 +255,7 @@ struct WindowCommandLocalIntegrationTests {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8) ?? ""
 
-        if process.terminationStatus != 0 && process.terminationStatus != 64 && process.terminationStatus != 1 {
+        if process.terminationStatus != 0, process.terminationStatus != 64, process.terminationStatus != 1 {
             throw TestError.commandFailed(status: process.terminationStatus, output: output)
         }
 

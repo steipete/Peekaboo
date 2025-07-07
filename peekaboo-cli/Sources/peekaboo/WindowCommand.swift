@@ -1,6 +1,6 @@
 import AppKit
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import Foundation
 
 /// Command for manipulating windows.
@@ -62,9 +62,8 @@ struct WindowCommand: AsyncParsableCommand {
             ResizeSubcommand.self,
             SetBoundsSubcommand.self,
             FocusSubcommand.self,
-            WindowListSubcommand.self
-        ]
-    )
+            WindowListSubcommand.self,
+        ])
 }
 
 // MARK: - Common Options
@@ -87,17 +86,17 @@ struct WindowIdentificationOptions: ParsableArguments {
 
     func validate() throws {
         // Ensure we have some way to identify the window
-        if app == nil && session == nil {
+        if self.app == nil, self.session == nil {
             throw ValidationError("Either --app or --session must be specified")
         }
 
         // If using session, must also specify element
-        if session != nil && element == nil {
+        if self.session != nil, self.element == nil {
             throw ValidationError("When using --session, --element must also be specified")
         }
 
         // If using app, can't use session/element
-        if app != nil && (session != nil || element != nil) {
+        if self.app != nil, self.session != nil || self.element != nil {
             throw ValidationError("Cannot use both --app and --session/--element")
         }
     }
@@ -107,7 +106,7 @@ struct WindowIdentificationOptions: ParsableArguments {
 
 @MainActor
 private func findTargetWindow(options: WindowIdentificationOptions) async throws
-    -> (app: NSRunningApplication, window: Element) {
+-> (app: NSRunningApplication, window: Element) {
     if let appIdentifier = options.app {
         // Find app by identifier
         let app = try ApplicationFinder.findApplication(identifier: appIdentifier)
@@ -136,7 +135,7 @@ private func findTargetWindow(options: WindowIdentificationOptions) async throws
             targetWindow = window
         } else if let index = options.windowIndex {
             // Find by index
-            guard index >= 0 && index < windows.count else {
+            guard index >= 0, index < windows.count else {
                 throw CaptureError.windowNotFound
             }
             targetWindow = windows[index]
@@ -157,14 +156,16 @@ private func findTargetWindow(options: WindowIdentificationOptions) async throws
 
         // Find window element - windows have elementIds like W1, W2, etc.
         guard let windowElement = sessionData.uiMap.values
-            .first(where: { $0.id == elementId && $0.role == "AXWindow" }) else {
+            .first(where: { $0.id == elementId && $0.role == "AXWindow" })
+        else {
             throw CaptureError.invalidArgument("Element \(elementId) not found or is not a window")
         }
 
         // Get app info - use the sessionData's applicationName
         guard let appName = sessionData.applicationName,
               let app = NSRunningApplication.runningApplications(withBundleIdentifier: appName).first ??
-              NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == appName }) else {
+              NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == appName })
+        else {
             throw CaptureError.appNotFound("\(sessionData.applicationName ?? "Unknown") not found")
         }
 
@@ -179,13 +180,15 @@ private func findTargetWindow(options: WindowIdentificationOptions) async throws
                   if let title = window.title(),
                      title == windowElement.title,
                      let pos = window.position(),
-                     let size = window.size() {
+                     let size = window.size()
+                  {
                       let bounds = CGRect(x: pos.x, y: pos.y, width: size.width, height: size.height)
                       return abs(bounds.origin.x - windowElement.frame.origin.x) < 1 &&
                           abs(bounds.origin.y - windowElement.frame.origin.y) < 1
                   }
                   return false
-              }) else {
+              })
+        else {
             throw CaptureError.windowNotFound
         }
 
@@ -200,8 +203,7 @@ private func findTargetWindow(options: WindowIdentificationOptions) async throws
 struct CloseSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "close",
-        abstract: "Close a window"
-    )
+        abstract: "Close a window")
 
     @OptionGroup var windowOptions: WindowIdentificationOptions
 
@@ -209,10 +211,10 @@ struct CloseSubcommand: AsyncParsableCommand {
     var jsonOutput = false
 
     @MainActor func run() async throws {
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
-            try windowOptions.validate()
+            try self.windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             // Try to find the close button
@@ -224,10 +226,9 @@ struct CloseSubcommand: AsyncParsableCommand {
                     action: "close",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
-                    window_title: window.title()
-                )
+                    window_title: window.title())
 
-                if jsonOutput {
+                if self.jsonOutput {
                     outputSuccess(data: data)
                 } else {
                     print("Successfully closed window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
@@ -242,10 +243,9 @@ struct CloseSubcommand: AsyncParsableCommand {
                         action: "close",
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
-                        window_title: window.title()
-                    )
+                        window_title: window.title())
 
-                    if jsonOutput {
+                    if self.jsonOutput {
                         outputSuccess(data: data)
                     } else {
                         print("Successfully closed window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
@@ -256,19 +256,18 @@ struct CloseSubcommand: AsyncParsableCommand {
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
         }
     }
 
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
 
-        if jsonOutput {
+        if self.jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
                 code: .WINDOW_MANIPULATION_ERROR,
-                details: "Failed to close window"
-            )
+                details: "Failed to close window")
         } else {
             fputs("Error: \(captureError.localizedDescription)\n", stderr)
         }
@@ -279,8 +278,7 @@ struct CloseSubcommand: AsyncParsableCommand {
 struct MinimizeSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "minimize",
-        abstract: "Minimize a window to the Dock"
-    )
+        abstract: "Minimize a window to the Dock")
 
     @OptionGroup var windowOptions: WindowIdentificationOptions
 
@@ -288,10 +286,10 @@ struct MinimizeSubcommand: AsyncParsableCommand {
     var jsonOutput = false
 
     @MainActor func run() async throws {
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
-            try windowOptions.validate()
+            try self.windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             // Try to find the minimize button
@@ -303,10 +301,9 @@ struct MinimizeSubcommand: AsyncParsableCommand {
                     action: "minimize",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
-                    window_title: window.title()
-                )
+                    window_title: window.title())
 
-                if jsonOutput {
+                if self.jsonOutput {
                     outputSuccess(data: data)
                 } else {
                     print("Successfully minimized window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
@@ -319,10 +316,9 @@ struct MinimizeSubcommand: AsyncParsableCommand {
                         action: "minimize",
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
-                        window_title: window.title()
-                    )
+                        window_title: window.title())
 
-                    if jsonOutput {
+                    if self.jsonOutput {
                         outputSuccess(data: data)
                     } else {
                         print("Successfully minimized window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
@@ -333,19 +329,18 @@ struct MinimizeSubcommand: AsyncParsableCommand {
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
         }
     }
 
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
 
-        if jsonOutput {
+        if self.jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
                 code: .WINDOW_MANIPULATION_ERROR,
-                details: "Failed to minimize window"
-            )
+                details: "Failed to minimize window")
         } else {
             fputs("Error: \(captureError.localizedDescription)\n", stderr)
         }
@@ -356,8 +351,7 @@ struct MinimizeSubcommand: AsyncParsableCommand {
 struct MaximizeSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "maximize",
-        abstract: "Maximize a window (full screen)"
-    )
+        abstract: "Maximize a window (full screen)")
 
     @OptionGroup var windowOptions: WindowIdentificationOptions
 
@@ -365,10 +359,10 @@ struct MaximizeSubcommand: AsyncParsableCommand {
     var jsonOutput = false
 
     @MainActor func run() async throws {
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
-            try windowOptions.validate()
+            try self.windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             // Try to find the zoom/maximize button
@@ -380,10 +374,9 @@ struct MaximizeSubcommand: AsyncParsableCommand {
                     action: "maximize",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
-                    window_title: window.title()
-                )
+                    window_title: window.title())
 
-                if jsonOutput {
+                if self.jsonOutput {
                     outputSuccess(data: data)
                 } else {
                     print("Successfully maximized window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
@@ -396,10 +389,9 @@ struct MaximizeSubcommand: AsyncParsableCommand {
                     action: "maximize",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
-                    window_title: window.title()
-                )
+                    window_title: window.title())
 
-                if jsonOutput {
+                if self.jsonOutput {
                     outputSuccess(data: data)
                 } else {
                     print("Successfully maximized window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
@@ -412,10 +404,9 @@ struct MaximizeSubcommand: AsyncParsableCommand {
                         action: "maximize",
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
-                        window_title: window.title()
-                    )
+                        window_title: window.title())
 
-                    if jsonOutput {
+                    if self.jsonOutput {
                         outputSuccess(data: data)
                     } else {
                         print("Successfully maximized window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
@@ -426,19 +417,18 @@ struct MaximizeSubcommand: AsyncParsableCommand {
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
         }
     }
 
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
 
-        if jsonOutput {
+        if self.jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
                 code: .WINDOW_MANIPULATION_ERROR,
-                details: "Failed to maximize window"
-            )
+                details: "Failed to maximize window")
         } else {
             fputs("Error: \(captureError.localizedDescription)\n", stderr)
         }
@@ -449,8 +439,7 @@ struct MaximizeSubcommand: AsyncParsableCommand {
 struct MoveSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "move",
-        abstract: "Move a window to a new position"
-    )
+        abstract: "Move a window to a new position")
 
     @OptionGroup var windowOptions: WindowIdentificationOptions
 
@@ -464,10 +453,10 @@ struct MoveSubcommand: AsyncParsableCommand {
     var jsonOutput = false
 
     @MainActor func run() async throws {
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
-            try windowOptions.validate()
+            try self.windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             let newPosition = CGPoint(x: x, y: y)
@@ -480,38 +469,34 @@ struct MoveSubcommand: AsyncParsableCommand {
                     app_name: app.localizedName ?? "Unknown",
                     window_title: window.title(),
                     new_bounds: WindowBounds(
-                        x: x,
-                        y: y,
+                        x: self.x,
+                        y: self.y,
                         width: Int(window.size()?.width ?? 0),
-                        height: Int(window.size()?.height ?? 0)
-                    )
-                )
+                        height: Int(window.size()?.height ?? 0)))
 
-                if jsonOutput {
+                if self.jsonOutput {
                     outputSuccess(data: data)
                 } else {
                     print(
-                        "Successfully moved window '\(data.window_title ?? "Untitled")' of \(data.app_name) to (\(x), \(y))"
-                    )
+                        "Successfully moved window '\(data.window_title ?? "Untitled")' of \(data.app_name) to (\(self.x), \(self.y))")
                 }
             } else {
                 throw CaptureError.invalidArgument("Failed to move window: \(error)")
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
         }
     }
 
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
 
-        if jsonOutput {
+        if self.jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
                 code: .WINDOW_MANIPULATION_ERROR,
-                details: "Failed to move window"
-            )
+                details: "Failed to move window")
         } else {
             fputs("Error: \(captureError.localizedDescription)\n", stderr)
         }
@@ -522,8 +507,7 @@ struct MoveSubcommand: AsyncParsableCommand {
 struct ResizeSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "resize",
-        abstract: "Resize a window"
-    )
+        abstract: "Resize a window")
 
     @OptionGroup var windowOptions: WindowIdentificationOptions
 
@@ -537,10 +521,10 @@ struct ResizeSubcommand: AsyncParsableCommand {
     var jsonOutput = false
 
     @MainActor func run() async throws {
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
-            try windowOptions.validate()
+            try self.windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             let newSize = CGSize(width: width, height: height)
@@ -555,36 +539,32 @@ struct ResizeSubcommand: AsyncParsableCommand {
                     new_bounds: WindowBounds(
                         x: Int(window.position()?.x ?? 0),
                         y: Int(window.position()?.y ?? 0),
-                        width: width,
-                        height: height
-                    )
-                )
+                        width: self.width,
+                        height: self.height))
 
-                if jsonOutput {
+                if self.jsonOutput {
                     outputSuccess(data: data)
                 } else {
                     print(
-                        "Successfully resized window '\(data.window_title ?? "Untitled")' of \(data.app_name) to \(width)×\(height)"
-                    )
+                        "Successfully resized window '\(data.window_title ?? "Untitled")' of \(data.app_name) to \(self.width)×\(self.height)")
                 }
             } else {
                 throw CaptureError.invalidArgument("Failed to resize window: \(error)")
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
         }
     }
 
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
 
-        if jsonOutput {
+        if self.jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
                 code: .WINDOW_MANIPULATION_ERROR,
-                details: "Failed to resize window"
-            )
+                details: "Failed to resize window")
         } else {
             fputs("Error: \(captureError.localizedDescription)\n", stderr)
         }
@@ -595,8 +575,7 @@ struct ResizeSubcommand: AsyncParsableCommand {
 struct SetBoundsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "set-bounds",
-        abstract: "Set window position and size in one operation"
-    )
+        abstract: "Set window position and size in one operation")
 
     @OptionGroup var windowOptions: WindowIdentificationOptions
 
@@ -616,10 +595,10 @@ struct SetBoundsSubcommand: AsyncParsableCommand {
     var jsonOutput = false
 
     @MainActor func run() async throws {
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
-            try windowOptions.validate()
+            try self.windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             // Set position first
@@ -637,16 +616,14 @@ struct SetBoundsSubcommand: AsyncParsableCommand {
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
                         window_title: window.title(),
-                        new_bounds: WindowBounds(x: x, y: y, width: width, height: height)
-                    )
+                        new_bounds: WindowBounds(x: self.x, y: self.y, width: self.width, height: self.height))
 
-                    if jsonOutput {
+                    if self.jsonOutput {
                         outputSuccess(data: data)
                     } else {
                         print(
-                            "Successfully set bounds for window '\(data.window_title ?? "Untitled")' of \(data.app_name)"
-                        )
-                        print("New bounds: (\(x), \(y)) \(width)×\(height)")
+                            "Successfully set bounds for window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
+                        print("New bounds: (\(self.x), \(self.y)) \(self.width)×\(self.height)")
                     }
                 } else {
                     throw CaptureError.invalidArgument("Failed to resize window: \(error)")
@@ -656,19 +633,18 @@ struct SetBoundsSubcommand: AsyncParsableCommand {
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
         }
     }
 
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
 
-        if jsonOutput {
+        if self.jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
                 code: .WINDOW_MANIPULATION_ERROR,
-                details: "Failed to set window bounds"
-            )
+                details: "Failed to set window bounds")
         } else {
             fputs("Error: \(captureError.localizedDescription)\n", stderr)
         }
@@ -679,8 +655,7 @@ struct SetBoundsSubcommand: AsyncParsableCommand {
 struct FocusSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "focus",
-        abstract: "Bring a window to the foreground"
-    )
+        abstract: "Bring a window to the foreground")
 
     @OptionGroup var windowOptions: WindowIdentificationOptions
 
@@ -688,10 +663,10 @@ struct FocusSubcommand: AsyncParsableCommand {
     var jsonOutput = false
 
     @MainActor func run() async throws {
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
-            try windowOptions.validate()
+            try self.windowOptions.validate()
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             // First, activate the application
@@ -707,29 +682,27 @@ struct FocusSubcommand: AsyncParsableCommand {
                 action: "focus",
                 success: true,
                 app_name: app.localizedName ?? "Unknown",
-                window_title: window.title()
-            )
+                window_title: window.title())
 
-            if jsonOutput {
+            if self.jsonOutput {
                 outputSuccess(data: data)
             } else {
                 print("Successfully focused window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
         }
     }
 
     private func handleError(_ error: Error) {
         let captureError = error as? CaptureError ?? .unknownError(error.localizedDescription)
 
-        if jsonOutput {
+        if self.jsonOutput {
             outputError(
                 message: captureError.localizedDescription,
                 code: .WINDOW_MANIPULATION_ERROR,
-                details: "Failed to focus window"
-            )
+                details: "Failed to focus window")
         } else {
             fputs("Error: \(captureError.localizedDescription)\n", stderr)
         }
@@ -740,8 +713,7 @@ struct FocusSubcommand: AsyncParsableCommand {
 struct WindowListSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List windows for an application (convenience shortcut)"
-    )
+        abstract: "List windows for an application (convenience shortcut)")
 
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String
@@ -752,8 +724,8 @@ struct WindowListSubcommand: AsyncParsableCommand {
     @MainActor func run() async throws {
         // Delegate to the existing list windows command
         var listCommand = WindowsSubcommand()
-        listCommand.app = app
-        listCommand.jsonOutput = jsonOutput
+        listCommand.app = self.app
+        listCommand.jsonOutput = self.jsonOutput
         listCommand.includeDetails = "bounds,ids"
         try await listCommand.run()
     }

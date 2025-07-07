@@ -3,13 +3,13 @@ import Foundation
 
 enum ImageErrorHandler {
     static func handleError(_ error: Error, jsonOutput: Bool) {
-        let captureError = extractCaptureError(from: error)
-        logErrorDetails(captureError)
+        let captureError = self.extractCaptureError(from: error)
+        self.logErrorDetails(captureError)
 
         if jsonOutput {
-            handleJSONOutput(for: captureError)
+            self.handleJSONOutput(for: captureError)
         } else {
-            handleStandardOutput(for: captureError)
+            self.handleStandardOutput(for: captureError)
         }
         // Don't call exit() here - let the caller handle process termination
     }
@@ -78,14 +78,13 @@ enum ImageErrorHandler {
     }
 
     private static func handleJSONOutput(for captureError: CaptureError) {
-        let code = mapErrorCode(for: captureError)
-        let details = getErrorDetails(for: captureError)
+        let code = self.mapErrorCode(for: captureError)
+        let details = self.getErrorDetails(for: captureError)
 
         outputError(
             message: captureError.localizedDescription,
             code: code,
-            details: details
-        )
+            details: details)
     }
 
     private static func handleStandardOutput(for captureError: CaptureError) {

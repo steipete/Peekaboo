@@ -1,8 +1,8 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("Window Command CLI Tests")
+@Suite("Window Command CLI Tests", .serialized)
 struct WindowCommandCLITests {
     @Test("Window help output")
     func windowHelpOutput() async throws {
@@ -66,7 +66,7 @@ struct WindowCommandCLITests {
     @Test("Missing required app parameter")
     func missingAppParameter() async throws {
         do {
-            _ = try await runCommand(["window", "close", "--json-output"])
+            _ = try await self.runCommand(["window", "close", "--json-output"])
             Issue.record("Expected command to fail")
         } catch {
             // Expected to fail
@@ -83,7 +83,7 @@ struct WindowCommandCLITests {
             "Finder",
             "--window-index",
             "999",
-            "--json-output"
+            "--json-output",
         ])
 
         if let data = output.data(using: .utf8) {
@@ -125,7 +125,7 @@ struct WindowCommandCLITests {
         let output = String(data: data, encoding: .utf8) ?? ""
 
         // Allow expected exit codes
-        if process.terminationStatus != 0 && process.terminationStatus != 1 && process.terminationStatus != 64 {
+        if process.terminationStatus != 0, process.terminationStatus != 1, process.terminationStatus != 64 {
             throw CommandError.unexpectedExitCode(process.terminationStatus)
         }
 
@@ -139,13 +139,13 @@ struct WindowCommandCLITests {
 
 @Suite(
     "Window Command Integration Tests",
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
-)
+    .serialized,
+    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
 struct WindowCommandLocalTests {
     @Test("Window operations with TextEdit")
     func textEditWindowOperations() async throws {
         // Ensure TextEdit is running
-        _ = try? await runBuiltCommand(["image", "--app", "TextEdit", "--json-output"])
+        _ = try? await self.runBuiltCommand(["image", "--app", "TextEdit", "--json-output"])
 
         // Try to focus TextEdit
         let focusOutput = try await runBuiltCommand(["window", "focus", "--app", "TextEdit", "--json-output"])
@@ -163,14 +163,15 @@ struct WindowCommandLocalTests {
                 "--app", "TextEdit",
                 "--x", "200",
                 "--y", "200",
-                "--json-output"
+                "--json-output",
             ])
 
             let moveResponse = try JSONDecoder().decode(JSONResponse.self, from: moveOutput.data(using: .utf8)!)
 
             if moveResponse.success,
                let data = moveResponse.data?.value as? [String: Any],
-               let bounds = data["new_bounds"] as? [String: Any] {
+               let bounds = data["new_bounds"] as? [String: Any]
+            {
                 #expect(bounds["x"] as? Int == 200)
                 #expect(bounds["y"] as? Int == 200)
             }

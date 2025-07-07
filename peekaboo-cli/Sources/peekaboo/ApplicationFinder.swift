@@ -52,16 +52,16 @@ final class ApplicationFinder: Sendable {
         }
 
         // Find all possible matches
-        let allMatches = findAllMatches(for: identifier, in: runningApps)
+        let allMatches = self.findAllMatches(for: identifier, in: runningApps)
 
         // Filter out browser helpers for common browser searches
-        let matches = filterBrowserHelpers(matches: allMatches, identifier: identifier)
+        let matches = self.filterBrowserHelpers(matches: allMatches, identifier: identifier)
 
         // Get unique matches
-        let uniqueMatches = removeDuplicateMatches(from: matches)
+        let uniqueMatches = self.removeDuplicateMatches(from: matches)
 
         // Handle results
-        return try processMatchResults(uniqueMatches, identifier: identifier, runningApps: runningApps)
+        return try self.processMatchResults(uniqueMatches, identifier: identifier, runningApps: runningApps)
     }
 
     private static func findAllMatches(for identifier: String, in apps: [NSRunningApplication]) -> [AppMatch] {
@@ -77,7 +77,10 @@ final class ApplicationFinder: Sendable {
                 }
 
                 // Check partial name matches
-                matches.append(contentsOf: findNameMatches(app: app, appName: appName, identifier: lowerIdentifier))
+                matches.append(contentsOf: self.findNameMatches(
+                    app: app,
+                    appName: appName,
+                    identifier: lowerIdentifier))
             }
 
             // Check bundle ID matches
@@ -102,7 +105,7 @@ final class ApplicationFinder: Sendable {
             matches.append(AppMatch(app: app, score: score, matchType: "contains"))
         } else {
             // Try fuzzy matching if no direct match
-            matches.append(contentsOf: findFuzzyMatches(app: app, appName: appName, identifier: identifier))
+            matches.append(contentsOf: self.findFuzzyMatches(app: app, appName: appName, identifier: identifier))
         }
 
         return matches
@@ -113,7 +116,7 @@ final class ApplicationFinder: Sendable {
         let lowerAppName = appName.lowercased()
 
         // Try fuzzy matching against the full app name
-        let fullNameSimilarity = calculateStringSimilarity(lowerAppName, identifier)
+        let fullNameSimilarity = self.calculateStringSimilarity(lowerAppName, identifier)
         if fullNameSimilarity >= 0.7 {
             let score = fullNameSimilarity * 0.9
             matches.append(AppMatch(app: app, score: score, matchType: "fuzzy"))
@@ -123,7 +126,7 @@ final class ApplicationFinder: Sendable {
         // For multi-word app names, also try fuzzy matching against individual words
         let words = lowerAppName.split(separator: " ").map(String.init)
         for (index, word) in words.enumerated() {
-            let wordSimilarity = calculateStringSimilarity(word, identifier)
+            let wordSimilarity = self.calculateStringSimilarity(word, identifier)
             if wordSimilarity >= 0.65 {
                 // Score based on word similarity but reduced for partial matches
                 // Give higher score to matches on the first word (main app name)
@@ -146,7 +149,7 @@ final class ApplicationFinder: Sendable {
         let lengthDiff = abs(str1.count - str2.count)
         guard lengthDiff <= 3 else { return 0.0 }
 
-        let distance = levenshteinDistance(str1, str2)
+        let distance = self.levenshteinDistance(str1, str2)
         let maxLength = max(str1.count, str2.count)
 
         // Calculate similarity (1.0 = identical, 0.0 = completely different)
@@ -201,8 +204,8 @@ final class ApplicationFinder: Sendable {
     private static func processMatchResults(
         _ matches: [AppMatch],
         identifier: String,
-        runningApps: [NSRunningApplication]
-    ) throws(ApplicationError) -> NSRunningApplication {
+        runningApps: [NSRunningApplication]) throws(ApplicationError) -> NSRunningApplication
+    {
         guard !matches.isEmpty else {
             // Provide browser-specific error messages
             let browserIdentifiers = ["chrome", "safari", "firefox", "edge", "brave", "arc", "opera"]
@@ -215,7 +218,7 @@ final class ApplicationFinder: Sendable {
             }
 
             // Find similar app names using fuzzy matching
-            let suggestions = findSimilarApplications(identifier: identifier, from: runningApps)
+            let suggestions = self.findSimilarApplications(identifier: identifier, from: runningApps)
             if !suggestions.isEmpty {
                 // Logger.shared.debug("Did you mean: \(suggestions.joined(separator: ", "))?")
             }
@@ -230,7 +233,7 @@ final class ApplicationFinder: Sendable {
         let topMatches = matches.filter { abs($0.score - topScore) < threshold }
 
         if topMatches.count > 1 {
-            handleAmbiguousMatches(topMatches, identifier: identifier)
+            self.handleAmbiguousMatches(topMatches, identifier: identifier)
             throw ApplicationError.ambiguous(identifier, topMatches.map(\.app))
         }
 
@@ -261,8 +264,8 @@ final class ApplicationFinder: Sendable {
             let lowerAppName = appName.lowercased()
 
             // Try full name similarity
-            let fullNameSimilarity = calculateStringSimilarity(lowerAppName, lowerIdentifier)
-            if fullNameSimilarity >= 0.6 && fullNameSimilarity < 1.0 {
+            let fullNameSimilarity = self.calculateStringSimilarity(lowerAppName, lowerIdentifier)
+            if fullNameSimilarity >= 0.6, fullNameSimilarity < 1.0 {
                 suggestions.append((name: appName, score: fullNameSimilarity))
                 continue
             }
@@ -270,8 +273,8 @@ final class ApplicationFinder: Sendable {
             // For multi-word app names, also check individual words
             let words = lowerAppName.split(separator: " ").map(String.init)
             for word in words {
-                let wordSimilarity = calculateStringSimilarity(word, lowerIdentifier)
-                if wordSimilarity >= 0.6 && wordSimilarity < 1.0 {
+                let wordSimilarity = self.calculateStringSimilarity(word, lowerIdentifier)
+                if wordSimilarity >= 0.6, wordSimilarity < 1.0 {
                     // Reduce score slightly for word matches vs full name matches
                     suggestions.append((name: appName, score: wordSimilarity * 0.9))
                     break // Only match first suitable word
@@ -304,7 +307,7 @@ final class ApplicationFinder: Sendable {
             }
 
             // Count windows for this app
-            let windowCount = countWindowsForApp(pid: app.processIdentifier)
+            let windowCount = self.countWindowsForApp(pid: app.processIdentifier)
 
             // Only include applications that have one or more windows.
             guard windowCount > 0 else {
@@ -316,8 +319,7 @@ final class ApplicationFinder: Sendable {
                 bundle_id: app.bundleIdentifier ?? "",
                 pid: app.processIdentifier,
                 is_active: app.isActive,
-                window_count: windowCount
-            )
+                window_count: windowCount)
 
             result.append(appInfo)
         }
@@ -339,7 +341,8 @@ final class ApplicationFinder: Sendable {
         var count = 0
         for windowInfo in windowList {
             if let windowPID = windowInfo[kCGWindowOwnerPID as String] as? Int32,
-               windowPID == pid {
+               windowPID == pid
+            {
                 count += 1
             }
         }
@@ -383,7 +386,7 @@ final class ApplicationFinder: Sendable {
 
         // If we filtered out all matches, return the original matches to avoid "not found" errors
         // But log a warning about this case
-        if filteredMatches.isEmpty && !matches.isEmpty {
+        if filteredMatches.isEmpty, !matches.isEmpty {
             // Logger.shared.debug("All matches were filtered as helpers, returning original matches to avoid 'not
             // found' error")
             return matches

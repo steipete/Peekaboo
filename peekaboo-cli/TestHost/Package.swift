@@ -4,13 +4,12 @@ import PackageDescription
 let package = Package(
     name: "PeekabooTestHost",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v13),
     ],
     products: [
         .executable(
             name: "PeekabooTestHost",
-            targets: ["PeekabooTestHost"]
-        )
+            targets: ["PeekabooTestHost"]),
     ],
     targets: [
         .executableTarget(
@@ -18,8 +17,6 @@ let package = Package(
             path: ".",
             sources: ["TestHostApp.swift", "ContentView.swift"],
             swiftSettings: [
-                .swiftLanguageMode(.v6)
-            ]
-        )
-    ]
-)
+                .swiftLanguageMode(.v6),
+            ]),
+    ])

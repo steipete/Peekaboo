@@ -1,6 +1,6 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("Clean Command Simple Tests")
 struct CleanCommandSimpleTests {
@@ -49,7 +49,7 @@ struct CleanCommandSimpleTests {
         let command = try CleanCommand.parse([
             "--older-than", "48",
             "--dry-run",
-            "--json-output"
+            "--json-output",
         ])
         #expect(command.olderThan == 48)
         #expect(command.dryRun == true)
@@ -60,7 +60,7 @@ struct CleanCommandSimpleTests {
     func cleanResultStructure() {
         let sessionDetails = [
             SessionDetail(sessionId: "123", path: "/tmp/123", size: 1024, creationDate: Date()),
-            SessionDetail(sessionId: "456", path: "/tmp/456", size: 2048, creationDate: Date())
+            SessionDetail(sessionId: "456", path: "/tmp/456", size: 2048, creationDate: Date()),
         ]
 
         let result = CleanResult(
@@ -68,8 +68,7 @@ struct CleanCommandSimpleTests {
             bytesFreed: 3072,
             sessionDetails: sessionDetails,
             executionTime: 1.5,
-            success: true
-        )
+            success: true)
 
         #expect(result.sessionsRemoved == 2)
         #expect(result.bytesFreed == 3072)

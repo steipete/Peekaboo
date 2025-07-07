@@ -23,13 +23,13 @@ final class PermissionsChecker: Sendable {
     }
 
     static func requireScreenRecordingPermission() throws {
-        if !checkScreenRecordingPermission() {
+        if !self.checkScreenRecordingPermission() {
             throw CaptureError.screenRecordingPermissionDenied
         }
     }
 
     static func requireAccessibilityPermission() throws {
-        if !checkAccessibilityPermission() {
+        if !self.checkAccessibilityPermission() {
             throw CaptureError.accessibilityPermissionDenied
         }
     }

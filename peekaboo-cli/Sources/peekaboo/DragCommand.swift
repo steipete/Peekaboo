@@ -1,7 +1,7 @@
 import AppKit
 import ApplicationServices
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import Foundation
 
 struct DragCommand: AsyncParsableCommand {
@@ -27,8 +27,7 @@ struct DragCommand: AsyncParsableCommand {
           # Multi-select with modifier keys
           peekaboo drag --from T1 --to T5 --modifiers shift
         """,
-        version: "3.0.0"
-    )
+        version: "3.0.0")
 
     @Option(help: "Starting element ID from session")
     var from: String?
@@ -62,11 +61,11 @@ struct DragCommand: AsyncParsableCommand {
 
     mutating func run() async throws {
         // Validate inputs
-        guard from != nil || fromCoords != nil else {
+        guard self.from != nil || self.fromCoords != nil else {
             throw ValidationError("Must specify either --from or --from-coords")
         }
 
-        guard to != nil || toCoords != nil || toApp != nil else {
+        guard self.to != nil || self.toCoords != nil || self.toApp != nil else {
             throw ValidationError("Must specify either --to, --to-coords, or --to-app")
         }
 
@@ -76,8 +75,7 @@ struct DragCommand: AsyncParsableCommand {
                 elementId: from,
                 coords: fromCoords,
                 session: session,
-                description: "from"
-            )
+                description: "from")
 
             // Resolve ending point
             let endPoint: CGPoint = if let targetApp = toApp {
@@ -85,11 +83,10 @@ struct DragCommand: AsyncParsableCommand {
                 try await findApplicationPoint(targetApp)
             } else {
                 try await resolvePoint(
-                    elementId: to,
-                    coords: toCoords,
-                    session: session,
-                    description: "to"
-                )
+                    elementId: self.to,
+                    coords: self.toCoords,
+                    session: self.session,
+                    description: "to")
             }
 
             // Parse modifiers
@@ -99,29 +96,26 @@ struct DragCommand: AsyncParsableCommand {
             performDrag(
                 from: startPoint,
                 to: endPoint,
-                duration: duration,
-                steps: steps,
-                flags: eventFlags
-            )
+                duration: self.duration,
+                steps: self.steps,
+                flags: eventFlags)
 
             // Output result
-            if jsonOutput {
+            if self.jsonOutput {
                 let response = JSONResponse(
                     success: true,
                     data: AnyCodable([
                         "action": "drag",
                         "from": ["x": Int(startPoint.x), "y": Int(startPoint.y)],
                         "to": ["x": Int(endPoint.x), "y": Int(endPoint.y)],
-                        "duration_ms": duration,
-                        "steps": steps,
-                        "modifiers": modifiers ?? "none"
-                    ])
-                )
+                        "duration_ms": self.duration,
+                        "steps": self.steps,
+                        "modifiers": self.modifiers ?? "none",
+                    ]))
                 outputJSON(response)
             } else {
                 print(
-                    "✓ Dragged from (\(Int(startPoint.x)), \(Int(startPoint.y))) to (\(Int(endPoint.x)), \(Int(endPoint.y)))"
-                )
+                    "✓ Dragged from (\(Int(startPoint.x)), \(Int(startPoint.y))) to (\(Int(endPoint.x)), \(Int(endPoint.y)))")
                 if let mods = modifiers {
                     print("  Modifiers: \(mods)")
                 }
@@ -135,22 +129,18 @@ struct DragCommand: AsyncParsableCommand {
                     success: false,
                     error: ErrorInfo(
                         message: error.localizedDescription,
-                        code: .VALIDATION_ERROR
-                    )
-                )
+                        code: .VALIDATION_ERROR))
                 outputJSON(response)
             } else {
                 print("❌ \(error.localizedDescription)")
             }
         } catch {
-            if jsonOutput {
+            if self.jsonOutput {
                 let response = JSONResponse(
                     success: false,
                     error: ErrorInfo(
                         message: error.localizedDescription,
-                        code: .UNKNOWN_ERROR
-                    )
-                )
+                        code: .UNKNOWN_ERROR))
                 outputJSON(response)
             } else {
                 print("❌ Error: \(error.localizedDescription)")
@@ -165,14 +155,15 @@ private func resolvePoint(
     elementId: String?,
     coords: String?,
     session: String?,
-    description: String
-) async throws -> CGPoint {
+    description: String) async throws -> CGPoint
+{
     if let coordString = coords {
         // Parse coordinates
         let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         guard parts.count == 2,
               let x = Double(parts[0]),
-              let y = Double(parts[1]) else {
+              let y = Double(parts[1])
+        else {
             throw DragError.invalidCoordinates(coordString)
         }
         return CGPoint(x: x, y: y)
@@ -193,8 +184,7 @@ private func resolvePoint(
         let frame = uiElement.frame
         return CGPoint(
             x: frame.origin.x + frame.width / 2,
-            y: frame.origin.y + frame.height / 2
-        )
+            y: frame.origin.y + frame.height / 2)
     } else {
         throw DragError.noPointSpecified(description)
     }
@@ -212,11 +202,11 @@ private func findApplicationPoint(_ appName: String) async throws -> CGPoint {
                 // Trash is typically the last item
                 if let trash = items.last {
                     if let position = trash.position(),
-                       let size = trash.size() {
+                       let size = trash.size()
+                    {
                         return CGPoint(
                             x: position.x + size.width / 2,
-                            y: position.y + size.height / 2
-                        )
+                            y: position.y + size.height / 2)
                     }
                 }
             }
@@ -231,12 +221,12 @@ private func findApplicationPoint(_ appName: String) async throws -> CGPoint {
         // Get main window
         if let window = app.mainWindow() ?? app.focusedWindow() {
             if let position = window.position(),
-               let size = window.size() {
+               let size = window.size()
+            {
                 // Return center of window
                 return CGPoint(
                     x: position.x + size.width / 2,
-                    y: position.y + size.height / 2
-                )
+                    y: position.y + size.height / 2)
             }
         }
 
@@ -252,11 +242,11 @@ private func findApplicationPoint(_ appName: String) async throws -> CGPoint {
                         item.title()?.contains(appName) == true
                 }) {
                     if let position = appItem.position(),
-                       let size = appItem.size() {
+                       let size = appItem.size()
+                    {
                         return CGPoint(
                             x: position.x + size.width / 2,
-                            y: position.y + size.height / 2
-                        )
+                            y: position.y + size.height / 2)
                     }
                 }
             }
@@ -295,8 +285,8 @@ private func performDrag(
     to endPoint: CGPoint,
     duration: Int,
     steps: Int,
-    flags: CGEventFlags
-) {
+    flags: CGEventFlags)
+{
     // Calculate step increments
     let deltaX = endPoint.x - startPoint.x
     let deltaY = endPoint.y - startPoint.y
@@ -308,8 +298,7 @@ private func performDrag(
         mouseEventSource: nil,
         mouseType: .leftMouseDown,
         mouseCursorPosition: startPoint,
-        mouseButton: .left
-    )
+        mouseButton: .left)
     mouseDown?.flags = flags
     mouseDown?.post(tap: .cghidEventTap)
 
@@ -324,8 +313,7 @@ private func performDrag(
             mouseEventSource: nil,
             mouseType: .leftMouseDragged,
             mouseCursorPosition: currentPoint,
-            mouseButton: .left
-        )
+            mouseButton: .left)
         dragEvent?.flags = flags
         dragEvent?.post(tap: .cghidEventTap)
 
@@ -337,8 +325,7 @@ private func performDrag(
         mouseEventSource: nil,
         mouseType: .leftMouseUp,
         mouseCursorPosition: endPoint,
-        mouseButton: .left
-    )
+        mouseButton: .left)
     mouseUp?.flags = flags
     mouseUp?.post(tap: .cghidEventTap)
 }
@@ -408,9 +395,7 @@ private func handleDragError(_ error: DragError, jsonOutput: Bool) {
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: ErrorCode(rawValue: error.errorCode) ?? .UNKNOWN_ERROR
-            )
-        )
+                code: ErrorCode(rawValue: error.errorCode) ?? .UNKNOWN_ERROR))
         outputJSON(response)
     } else {
         print("❌ \(error.localizedDescription)")
@@ -457,13 +442,13 @@ private func resolveSessionId(_ explicitId: String?) async throws -> String {
         let contents = try FileManager.default.contentsOfDirectory(
             at: sessionDir,
             includingPropertiesForKeys: [.creationDateKey],
-            options: [.skipsHiddenFiles]
-        )
+            options: [.skipsHiddenFiles])
 
         let validSessions = try contents.compactMap { url -> (String, Date)? in
             let resourceValues = try url.resourceValues(forKeys: [.creationDateKey])
             guard let creationDate = resourceValues.creationDate,
-                  creationDate > tenMinutesAgo else {
+                  creationDate > tenMinutesAgo
+            else {
                 return nil
             }
             return (url.lastPathComponent, creationDate)

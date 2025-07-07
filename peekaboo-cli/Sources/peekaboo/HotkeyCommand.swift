@@ -1,5 +1,5 @@
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import CoreGraphics
 import Foundation
 
@@ -29,8 +29,7 @@ struct HotkeyCommand: AsyncParsableCommand {
               Function: f1-f12
 
             The keys are pressed in the order given and released in reverse order.
-        """
-    )
+        """)
 
     @Option(help: "Comma-separated list of keys to press")
     var keys: String
@@ -46,7 +45,7 @@ struct HotkeyCommand: AsyncParsableCommand {
 
         do {
             // Parse key names
-            let keyNames = keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+            let keyNames = self.keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
 
             guard !keyNames.isEmpty else {
                 throw ValidationError("No keys specified")
@@ -55,17 +54,15 @@ struct HotkeyCommand: AsyncParsableCommand {
             // Perform hotkey using InputEvents utility
             try InputEvents.performHotkey(
                 keys: keyNames,
-                holdDuration: Double(holdDuration) / 1000.0
-            )
+                holdDuration: Double(self.holdDuration) / 1000.0)
 
             // Output results
-            if jsonOutput {
+            if self.jsonOutput {
                 let output = HotkeyResult(
                     success: true,
                     keys: keyNames,
                     keyCount: keyNames.count,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
+                    executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Hotkey pressed")
@@ -74,11 +71,10 @@ struct HotkeyCommand: AsyncParsableCommand {
             }
 
         } catch {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
-                    code: .INVALID_ARGUMENT
-                )
+                    code: .INVALID_ARGUMENT)
             } else {
                 var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
                 print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)

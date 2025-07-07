@@ -7,10 +7,10 @@ extension URLSession {
     func retryableDataTask<T: Decodable>(
         for request: URLRequest,
         decodingType: T.Type,
-        retryConfig: RetryConfiguration = .default
-    ) async throws -> T {
+        retryConfig: RetryConfiguration = .default) async throws -> T
+    {
         var lastError: Error?
-        
+
         // Debug logging
         let debugAPI = ProcessInfo.processInfo.environment["PEEKABOO_DEBUG_API"] == "true"
         if debugAPI {
@@ -22,7 +22,7 @@ extension URLSession {
 
         for attempt in 0..<retryConfig.maxAttempts {
             do {
-                if debugAPI && attempt > 0 {
+                if debugAPI, attempt > 0 {
                     print("🔄 Retry attempt \(attempt + 1)/\(retryConfig.maxAttempts)")
                 }
                 let (data, response) = try await self.data(for: request)
@@ -84,7 +84,7 @@ extension URLSession {
                     false
                 }
 
-                if shouldRetry && attempt < retryConfig.maxAttempts - 1 {
+                if shouldRetry, attempt < retryConfig.maxAttempts - 1 {
                     let delay = retryConfig.delay(for: attempt)
 
                     // If rate limited with retry-after, use that instead
@@ -107,8 +107,8 @@ extension URLSession {
     /// Performs a retryable data request returning raw data
     func retryableData(
         for request: URLRequest,
-        retryConfig: RetryConfiguration = .default
-    ) async throws -> (Data, HTTPURLResponse) {
+        retryConfig: RetryConfiguration = .default) async throws -> (Data, HTTPURLResponse)
+    {
         var lastError: Error?
 
         for attempt in 0..<retryConfig.maxAttempts {
@@ -174,8 +174,8 @@ extension URLRequest {
         url: URL,
         method: String = "POST",
         apiKey: String,
-        betaHeader: String? = nil
-    ) -> URLRequest {
+        betaHeader: String? = nil) -> URLRequest
+    {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")

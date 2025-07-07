@@ -23,12 +23,12 @@ class OllamaProvider: AIProvider {
 
     var isAvailable: Bool {
         get async {
-            await checkAvailability().available
+            await self.checkAvailability().available
         }
     }
 
     func checkAvailability() async -> AIProviderStatus {
-        let tagsURL = baseURL.appendingPathComponent("/api/tags")
+        let tagsURL = self.baseURL.appendingPathComponent("/api/tags")
         var request = URLRequest(url: tagsURL)
         request.timeoutInterval = 3.0
 
@@ -43,9 +43,7 @@ class OllamaProvider: AIProvider {
                         modelAvailable: nil,
                         serverReachable: false,
                         apiKeyPresent: nil,
-                        modelList: nil
-                    )
-                )
+                        modelList: nil))
             }
 
             guard httpResponse.statusCode == 200 else {
@@ -56,9 +54,7 @@ class OllamaProvider: AIProvider {
                         modelAvailable: nil,
                         serverReachable: false,
                         apiKeyPresent: nil,
-                        modelList: nil
-                    )
-                )
+                        modelList: nil))
             }
 
             let tagsResponse = try JSONDecoder().decode(OllamaTagsResponse.self, from: data)
@@ -66,22 +62,20 @@ class OllamaProvider: AIProvider {
 
             // Check if the specific model is available
             let modelAvailable = availableModels.contains { modelName in
-                modelName == model ||
-                    modelName.hasPrefix(model + ":") ||
-                    model.hasPrefix(modelName.split(separator: ":")[0] + ":")
+                modelName == self.model ||
+                    modelName.hasPrefix(self.model + ":") ||
+                    self.model.hasPrefix(modelName.split(separator: ":")[0] + ":")
             }
 
             if !modelAvailable {
                 return AIProviderStatus(
                     available: false,
-                    error: "Model '\(model)' not found. Available models: \(availableModels.joined(separator: ", "))",
+                    error: "Model '\(self.model)' not found. Available models: \(availableModels.joined(separator: ", "))",
                     details: AIProviderDetails(
                         modelAvailable: false,
                         serverReachable: true,
                         apiKeyPresent: nil,
-                        modelList: availableModels
-                    )
-                )
+                        modelList: availableModels))
             }
 
             return AIProviderStatus(
@@ -91,9 +85,7 @@ class OllamaProvider: AIProvider {
                     modelAvailable: true,
                     serverReachable: true,
                     apiKeyPresent: nil,
-                    modelList: availableModels
-                )
-            )
+                    modelList: availableModels))
 
         } catch {
             let errorMessage: String = if error is URLError {
@@ -109,9 +101,7 @@ class OllamaProvider: AIProvider {
                     modelAvailable: nil,
                     serverReachable: false,
                     apiKeyPresent: nil,
-                    modelList: nil
-                )
-            )
+                    modelList: nil))
         }
     }
 
@@ -122,10 +112,9 @@ class OllamaProvider: AIProvider {
             model: model,
             prompt: prompt,
             images: [imageBase64],
-            stream: false
-        )
+            stream: false)
 
-        let generateURL = baseURL.appendingPathComponent("/api/generate")
+        let generateURL = self.baseURL.appendingPathComponent("/api/generate")
         var request = URLRequest(url: generateURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

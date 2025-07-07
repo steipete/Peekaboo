@@ -1,10 +1,12 @@
 # SwiftLint configuration for Peekaboo root
-# This file ensures SwiftLint doesn't scan hidden directories when run from root
+# Compatible with Swift 6 strict concurrency mode
 
 # Paths
 included:
   - peekaboo-cli/Sources
   - peekaboo-cli/Tests
+  - GUI/Peekaboo/Peekaboo
+  - GUI/Peekaboo/PeekabooTests
 
 excluded:
   - .build
@@ -17,11 +19,13 @@ excluded:
   - "**/.build"
   - "**/.swiftpm"
   - "**/.*"
-  - peekaboo-cli/Package.swift
+  - "**/DerivedData/*"
+  - "**/xcuserdata/*"
 
-# Use the same rules as the peekaboo-cli config
+# Disabled rules that conflict with Swift 6 requirements
 disabled_rules:
   - trailing_whitespace
+  - implicit_self # Swift 6 requires explicit self in many contexts
 
 opt_in_rules:
   - empty_count

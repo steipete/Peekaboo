@@ -13,8 +13,7 @@ enum InputEvents {
             mouseEventSource: nil,
             mouseType: .mouseMoved,
             mouseCursorPosition: point,
-            mouseButton: button.cgButton
-        )
+            mouseButton: button.cgButton)
         moveEvent?.post(tap: .cghidEventTap)
 
         // Small delay for movement
@@ -27,8 +26,7 @@ enum InputEvents {
                 mouseEventSource: nil,
                 mouseType: button.downEventType,
                 mouseCursorPosition: point,
-                mouseButton: button.cgButton
-            )
+                mouseButton: button.cgButton)
             downEvent?.post(tap: .cghidEventTap)
 
             // Small delay between down and up
@@ -39,8 +37,7 @@ enum InputEvents {
                 mouseEventSource: nil,
                 mouseType: button.upEventType,
                 mouseCursorPosition: point,
-                mouseButton: button.cgButton
-            )
+                mouseButton: button.cgButton)
             upEvent?.post(tap: .cghidEventTap)
 
             // Delay between clicks for double/triple click
@@ -55,7 +52,7 @@ enum InputEvents {
     /// Types a string of text
     static func typeString(_ text: String, delay: TimeInterval = 0.01) throws {
         for character in text {
-            try typeCharacter(character)
+            try self.typeCharacter(character)
             if delay > 0 {
                 usleep(UInt32(delay * 1_000_000))
             }

@@ -1,6 +1,6 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("Utility Tests")
 struct UtilityTests {
@@ -106,8 +106,7 @@ struct UtilityTests {
         func createsHandler() {
             let handler = ScreenCaptureHandler(
                 format: .png,
-                path: "/tmp/screenshot.png"
-            )
+                path: "/tmp/screenshot.png")
 
             #expect(handler.format == .png)
             #expect(handler.path == "/tmp/screenshot.png")
@@ -117,8 +116,7 @@ struct UtilityTests {
         func createsHandlerWithoutPath() {
             let handler = ScreenCaptureHandler(
                 format: .jpg,
-                path: nil
-            )
+                path: nil)
 
             #expect(handler.format == .jpg)
             #expect(handler.path == nil)
@@ -132,8 +130,7 @@ struct UtilityTests {
             let handler = WindowCaptureHandler(
                 captureFocus: .foreground,
                 format: .png,
-                path: "/tmp/test.png"
-            )
+                path: "/tmp/test.png")
 
             #expect(handler.captureFocus == .foreground)
             #expect(handler.format == .png)
@@ -145,8 +142,7 @@ struct UtilityTests {
             let handler = WindowCaptureHandler(
                 captureFocus: .auto,
                 format: .jpg,
-                path: nil
-            )
+                path: nil)
 
             #expect(handler.captureFocus == .auto)
             #expect(handler.format == .jpg)
@@ -166,7 +162,7 @@ struct UtilityTests {
                 .withDay,
                 .withTime,
                 .withDashSeparatorInDate,
-                .withColonSeparatorInTime
+                .withColonSeparatorInTime,
             ]
             formatter.timeZone = TimeZone(secondsFromGMT: 0)
 

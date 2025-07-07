@@ -1,5 +1,5 @@
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import CoreGraphics
 import Foundation
 
@@ -28,8 +28,7 @@ struct ScrollCommand: AsyncParsableCommand {
             AMOUNT:
               The number of scroll "lines" or "ticks" to perform.
               Each tick is equivalent to one notch on a physical mouse wheel.
-        """
-    )
+        """)
 
     @Option(help: "Scroll direction: up, down, left, or right")
     var direction: ScrollDirection
@@ -77,8 +76,7 @@ struct ScrollCommand: AsyncParsableCommand {
                 // Use center of element
                 scrollLocation = CGPoint(
                     x: element.frame.midX,
-                    y: element.frame.midY
-                )
+                    y: element.frame.midY)
             } else {
                 // Use current mouse position
                 scrollLocation = CGEvent(source: nil)?.location ?? CGPoint.zero
@@ -90,36 +88,33 @@ struct ScrollCommand: AsyncParsableCommand {
                 amount: amount,
                 at: scrollLocation,
                 delayMs: delay,
-                smooth: smooth
-            )
+                smooth: smooth)
 
             // Output results
-            if jsonOutput {
+            if self.jsonOutput {
                 let output = ScrollResult(
                     success: true,
                     direction: direction.rawValue,
-                    amount: amount,
+                    amount: self.amount,
                     location: ["x": scrollLocation.x, "y": scrollLocation.y],
                     totalTicks: scrollResult.totalTicks,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
+                    executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Scroll completed")
-                print("🎯 Direction: \(direction.rawValue)")
-                print("📊 Amount: \(amount) ticks")
-                if on != nil {
+                print("🎯 Direction: \(self.direction.rawValue)")
+                print("📊 Amount: \(self.amount) ticks")
+                if self.on != nil {
                     print("📍 Location: (\(Int(scrollLocation.x)), \(Int(scrollLocation.y)))")
                 }
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
 
         } catch {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
-                    code: .INTERNAL_SWIFT_ERROR
-                )
+                    code: .INTERNAL_SWIFT_ERROR)
             } else {
                 var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
                 print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
@@ -133,10 +128,10 @@ struct ScrollCommand: AsyncParsableCommand {
         amount: Int,
         at location: CGPoint,
         delayMs: Int,
-        smooth: Bool
-    ) async throws -> InternalScrollResult {
+        smooth: Bool) async throws -> InternalScrollResult
+    {
         // Calculate scroll deltas
-        let (deltaX, deltaY) = getScrollDeltas(for: direction)
+        let (deltaX, deltaY) = self.getScrollDeltas(for: direction)
 
         // Determine tick count and size
         let tickCount = smooth ? amount * 3 : amount
@@ -152,8 +147,7 @@ struct ScrollCommand: AsyncParsableCommand {
                 wheelCount: 1,
                 wheel1: Int32(deltaY * tickSize),
                 wheel2: Int32(deltaX * tickSize),
-                wheel3: 0
-            )
+                wheel3: 0)
 
             // Set the location for the scroll event
             scrollEvent?.location = location

@@ -1,9 +1,9 @@
 import AppKit
 import AXorcist
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("Wait For Element Tests")
+@Suite("Wait For Element Tests", .serialized)
 struct WaitForElementTests {
     // MARK: - Tests
 
@@ -14,8 +14,7 @@ struct WaitForElementTests {
             role: "AXButton",
             title: "Save",
             label: "Save Document",
-            value: nil
-        )
+            value: nil)
 
         #expect(locator.role == "AXButton")
         #expect(locator.title == "Save")
@@ -36,8 +35,7 @@ struct WaitForElementTests {
             label: nil,
             value: nil,
             frame: CGRect(x: 100, y: 100, width: 80, height: 30),
-            isActionable: true
-        )
+            isActionable: true)
 
         let sessionData = SessionCache.SessionData(
             version: SessionCache.SessionData.currentVersion,
@@ -46,8 +44,7 @@ struct WaitForElementTests {
             uiMap: ["B1": element],
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window"
-        )
+            windowTitle: "Test Window")
 
         try await sessionCache.save(sessionData)
 
@@ -67,7 +64,7 @@ struct WaitForElementTests {
         let actionableRoles = [
             "AXButton", "AXTextField", "AXTextArea", "AXCheckBox",
             "AXRadioButton", "AXPopUpButton", "AXLink", "AXMenuItem",
-            "AXSlider", "AXComboBox", "AXSegmentedControl"
+            "AXSlider", "AXComboBox", "AXSegmentedControl",
         ]
 
         for role in actionableRoles {
@@ -76,7 +73,7 @@ struct WaitForElementTests {
 
         // Test non-actionable roles
         let nonActionableRoles = [
-            "AXGroup", "AXStaticText", "AXImage", "AXSplitter"
+            "AXGroup", "AXStaticText", "AXImage", "AXSplitter",
         ]
 
         for role in nonActionableRoles {
@@ -119,7 +116,7 @@ struct WaitForElementTests {
                 value: "Untitled",
                 frame: CGRect(x: 100, y: 150, width: 200, height: 30),
                 isActionable: true
-            )
+            ),
         ]
 
         let sessionData = SessionCache.SessionData(
@@ -129,8 +126,7 @@ struct WaitForElementTests {
             uiMap: elements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Save Dialog"
-        )
+            windowTitle: "Save Dialog")
 
         try await sessionCache.save(sessionData)
 
@@ -180,8 +176,7 @@ struct WaitForElementTests {
             label: nil,
             value: nil,
             frame: CGRect(x: 100, y: 100, width: 80, height: 30),
-            isActionable: true
-        )
+            isActionable: true)
 
         let sessionData = SessionCache.SessionData(
             version: SessionCache.SessionData.currentVersion,
@@ -190,8 +185,7 @@ struct WaitForElementTests {
             uiMap: ["B1": testElement],
             lastUpdateTime: Date(),
             applicationName: "NonExistentApp",
-            windowTitle: nil
-        )
+            windowTitle: nil)
 
         try await sessionCache.save(sessionData)
 
@@ -228,7 +222,7 @@ struct WaitForElementTests {
                 value: nil,
                 frame: CGRect(x: 200, y: 100, width: 100, height: 30),
                 isActionable: true // Actionable
-            )
+            ),
         ]
 
         let sessionData = SessionCache.SessionData(
@@ -238,8 +232,7 @@ struct WaitForElementTests {
             uiMap: elements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: nil
-        )
+            windowTitle: nil)
 
         try await sessionCache.save(sessionData)
 

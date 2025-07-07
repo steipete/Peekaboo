@@ -1,5 +1,5 @@
 import AppKit
-import AXorcist
+import AXorcistLib
 import CoreGraphics
 import Foundation
 
@@ -12,7 +12,7 @@ actor SessionCache {
     private let sessionFile: URL
 
     struct SessionData: Codable {
-        static let currentVersion = 4 // Increment when format changes
+        static let currentVersion = 5 // Increment when format changes
 
         let version: Int
         var screenshotPath: String? // Path to raw.png
@@ -22,6 +22,7 @@ actor SessionCache {
         var applicationName: String?
         var windowTitle: String?
         var windowBounds: CGRect?
+        var menuBar: MenuBarData? // Menu bar information
 
         struct UIElement: Codable {
             let id: String // Peekaboo ID (B1, T1, etc.)
@@ -54,8 +55,8 @@ actor SessionCache {
                 frame: CGRect,
                 isActionable: Bool,
                 parentId: String? = nil,
-                keyboardShortcut: String? = nil
-            ) {
+                keyboardShortcut: String? = nil)
+            {
                 self.id = id
                 self.elementId = elementId
                 self.role = role
@@ -70,7 +71,25 @@ actor SessionCache {
                 self.isActionable = isActionable
                 self.parentId = parentId
                 self.keyboardShortcut = keyboardShortcut
-                children = []
+                self.children = []
+            }
+        }
+
+        struct MenuBarData: Codable {
+            let menus: [Menu]
+
+            struct Menu: Codable {
+                let title: String
+                let items: [MenuItem]
+                let enabled: Bool
+            }
+
+            struct MenuItem: Codable {
+                let title: String
+                let enabled: Bool
+                let hasSubmenu: Bool
+                let keyboardShortcut: String?
+                let items: [MenuItem]? // For submenus
             }
         }
     }
@@ -97,13 +116,12 @@ actor SessionCache {
 
         // Create cache directory in ~/.peekaboo/session/<sessionId>/
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
-        cacheDir = homeDir.appendingPathComponent(".peekaboo/session/\(self.sessionId)")
+        self.cacheDir = homeDir.appendingPathComponent(".peekaboo/session/\(self.sessionId)")
         try? FileManager.default.createDirectory(
-            at: cacheDir,
-            withIntermediateDirectories: true
-        )
+            at: self.cacheDir,
+            withIntermediateDirectories: true)
 
-        sessionFile = cacheDir.appendingPathComponent("map.json")
+        self.sessionFile = self.cacheDir.appendingPathComponent("map.json")
     }
 
     /// Find the most recent session directory within the time window
@@ -114,8 +132,8 @@ actor SessionCache {
         guard let sessions = try? FileManager.default.contentsOfDirectory(
             at: sessionDir,
             includingPropertiesForKeys: [.creationDateKey],
-            options: .skipsHiddenFiles
-        ) else {
+            options: .skipsHiddenFiles)
+        else {
             return nil
         }
 
@@ -125,7 +143,8 @@ actor SessionCache {
         // Filter and sort sessions by creation date (most recent first)
         let validSessions = sessions.compactMap { url -> (url: URL, date: Date)? in
             guard let resourceValues = try? url.resourceValues(forKeys: [.creationDateKey]),
-                  let creationDate = resourceValues.creationDate else {
+                  let creationDate = resourceValues.creationDate
+            else {
                 return nil
             }
             // Only include sessions created within the time window
@@ -139,8 +158,7 @@ actor SessionCache {
         if let latest = validSessions.first {
             Logger.shared
                 .debug(
-                    "Found valid session: \(latest.url.lastPathComponent) created \(Int(-latest.date.timeIntervalSinceNow)) seconds ago"
-                )
+                    "Found valid session: \(latest.url.lastPathComponent) created \(Int(-latest.date.timeIntervalSinceNow)) seconds ago")
             return latest.url.lastPathComponent
         } else {
             Logger.shared.debug("No valid sessions found within 10 minute window")
@@ -150,7 +168,7 @@ actor SessionCache {
 
     /// Load session data from disk
     func load() -> SessionData? {
-        guard FileManager.default.fileExists(atPath: sessionFile.path) else { return nil }
+        guard FileManager.default.fileExists(atPath: self.sessionFile.path) else { return nil }
 
         do {
             let data = try Data(contentsOf: sessionFile)
@@ -160,10 +178,9 @@ actor SessionCache {
             if sessionData.version != SessionData.currentVersion {
                 Logger.shared
                     .info(
-                        "Session version mismatch (found: \(sessionData.version), expected: \(SessionData.currentVersion)). Discarding old session."
-                    )
+                        "Session version mismatch (found: \(sessionData.version), expected: \(SessionData.currentVersion)). Discarding old session.")
                 // Remove old incompatible session
-                try? FileManager.default.removeItem(at: sessionFile)
+                try? FileManager.default.removeItem(at: self.sessionFile)
                 return nil
             }
 
@@ -171,7 +188,7 @@ actor SessionCache {
         } catch {
             Logger.shared.error("Failed to load session data: \(error)")
             // Remove corrupted session file
-            try? FileManager.default.removeItem(at: sessionFile)
+            try? FileManager.default.removeItem(at: self.sessionFile)
             return nil
         }
     }
@@ -183,17 +200,16 @@ actor SessionCache {
         let jsonData = try encoder.encode(data)
 
         // Write atomically to prevent corruption
-        let tempFile = sessionFile.appendingPathExtension("tmp")
+        let tempFile = self.sessionFile.appendingPathExtension("tmp")
         try jsonData.write(to: tempFile)
 
         // Atomic move
         _ = try FileManager.default.replaceItem(
-            at: sessionFile,
+            at: self.sessionFile,
             withItemAt: tempFile,
             backupItemName: nil,
             options: [],
-            resultingItemURL: nil
-        )
+            resultingItemURL: nil)
     }
 
     /// Update screenshot and UI map
@@ -201,16 +217,15 @@ actor SessionCache {
         path: String,
         application: String?,
         window: String?,
-        windowBounds: CGRect? = nil
-    ) async throws {
-        var data = load() ?? SessionData(
+        windowBounds: CGRect? = nil) async throws
+    {
+        var data = self.load() ?? SessionData(
             version: SessionData.currentVersion,
             uiMap: [:],
-            lastUpdateTime: Date()
-        )
+            lastUpdateTime: Date())
 
         // Copy screenshot to session directory as raw.png
-        let rawPath = cacheDir.appendingPathComponent("raw.png")
+        let rawPath = self.cacheDir.appendingPathComponent("raw.png")
         // Remove existing file if it exists
         try? FileManager.default.removeItem(at: rawPath)
         try FileManager.default.copyItem(atPath: path, toPath: rawPath.path)
@@ -223,17 +238,19 @@ actor SessionCache {
 
         // Build UI map using AXorcist
         if let app = application {
-            data.uiMap = try await buildUIMap(for: app, window: window)
+            data.uiMap = try await self.buildUIMap(for: app, window: window)
+            // Extract menu bar data
+            data.menuBar = try await self.extractMenuBar(for: app)
         }
 
-        try save(data)
+        try self.save(data)
     }
 
     /// Get paths for session files
     func getSessionPaths() -> (raw: String, annotated: String, map: String) {
-        let rawPath = cacheDir.appendingPathComponent("raw.png").path
-        let annotatedPath = cacheDir.appendingPathComponent("annotated.png").path
-        let mapPath = sessionFile.path
+        let rawPath = self.cacheDir.appendingPathComponent("raw.png").path
+        let annotatedPath = self.cacheDir.appendingPathComponent("annotated.png").path
+        let mapPath = self.sessionFile.path
         return (raw: rawPath, annotated: annotatedPath, map: mapPath)
     }
 
@@ -290,11 +307,95 @@ actor SessionCache {
                 parentId: nil,
                 uiMap: &uiMap,
                 roleCounters: &windowRoleCounters,
-                windowContext: windowTitle
-            )
+                windowContext: windowTitle)
         }
 
         return uiMap
+    }
+
+    /// Extract menu bar information for the application
+    @MainActor
+    private func extractMenuBar(for appName: String) async throws -> SessionData.MenuBarData? {
+        // Find the application
+        guard let app = NSWorkspace.shared.runningApplications.first(where: {
+            $0.localizedName == appName || $0.bundleIdentifier == appName
+        }) else {
+            return nil
+        }
+
+        // Create AXUIElement for the application
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+
+        // Get the menu bar
+        guard let menuBar = appElement.menuBar() else {
+            Logger.shared.debug("No menu bar found for \(appName)")
+            return nil
+        }
+
+        // Get all top-level menus
+        let topLevelMenus = menuBar.children() ?? []
+        var menus: [SessionData.MenuBarData.Menu] = []
+
+        for menuElement in topLevelMenus {
+            // Get menu title
+            guard let menuTitle = menuElement.title() else { continue }
+
+            // Skip the Apple menu (first menu)
+            if menuTitle.isEmpty { continue }
+
+            let isEnabled = menuElement.isEnabled() ?? true
+
+            // Extract menu items (without opening the menu)
+            // Note: We can't get submenu items without actually opening the menu
+            // which would be visually disruptive, so we just get the top-level info
+            var menuItems: [SessionData.MenuBarData.MenuItem] = []
+
+            // Try to get children if the menu is already open
+            if let children = menuElement.children() {
+                for itemElement in children {
+                    if let itemTitle = itemElement.title() {
+                        let menuItem = SessionData.MenuBarData.MenuItem(
+                            title: itemTitle,
+                            enabled: itemElement.isEnabled() ?? true,
+                            hasSubmenu: false, // Would need to check children
+                            keyboardShortcut: self.extractKeyboardShortcut(from: itemElement),
+                            items: nil)
+                        menuItems.append(menuItem)
+                    }
+                }
+            }
+
+            let menu = SessionData.MenuBarData.Menu(
+                title: menuTitle,
+                items: menuItems,
+                enabled: isEnabled)
+            menus.append(menu)
+        }
+
+        return SessionData.MenuBarData(menus: menus)
+    }
+
+    /// Extract keyboard shortcut from a menu item element
+    @MainActor
+    private func extractKeyboardShortcut(from element: Element) -> String? {
+        // Try to get the keyboard shortcut attributes
+        if let cmdChar = element.attribute(Attribute<String>("AXMenuItemCmdChar")),
+           let modifiers = element.attribute(Attribute<Int>("AXMenuItemCmdModifiers"))
+        {
+            var shortcut = ""
+
+            // Build modifier string
+            if modifiers & 0x0002_0000 != 0 { shortcut += "⌃" } // Control
+            if modifiers & 0x0008_0000 != 0 { shortcut += "⌥" } // Option
+            if modifiers & 0x0010_0000 != 0 { shortcut += "⌘" } // Command
+            if modifiers & 0x0004_0000 != 0 { shortcut += "⇧" } // Shift
+
+            shortcut += cmdChar.uppercased()
+            return shortcut
+        }
+
+        return nil
     }
 
     /// Recursively process an element and its children
@@ -304,8 +405,8 @@ actor SessionCache {
         parentId: String?,
         uiMap: inout [String: SessionData.UIElement],
         roleCounters: inout [String: Int],
-        windowContext: String? = nil
-    ) async {
+        windowContext: String? = nil) async
+    {
         // Get element properties using AXorcist's full API
         let role = element.role() ?? "AXGroup"
         let title = element.title()
@@ -314,10 +415,10 @@ actor SessionCache {
         let roleDescription = element.roleDescription()
         let identifier = element.identifier()
         let value = element.value() as? String
-        
+
         // Try to get the AXLabel attribute directly (common for buttons with numeric/text labels)
         let axLabel = element.attribute(Attribute<String>("AXLabel"))
-        
+
         // Use the actual label if available, otherwise fall back to other descriptive properties
         let label = axLabel ?? description ?? help ?? roleDescription ?? title ?? value
 
@@ -353,13 +454,12 @@ actor SessionCache {
         let elementId = "element_\(uiMap.count)"
 
         // Detect keyboard shortcut
-        let keyboardShortcut = detectKeyboardShortcut(
+        let keyboardShortcut = self.detectKeyboardShortcut(
             role: role,
             title: title,
             label: label,
             description: description,
-            identifier: identifier
-        )
+            identifier: identifier)
 
         // Create UI element with all available properties
         let uiElement = SessionData.UIElement(
@@ -376,8 +476,7 @@ actor SessionCache {
             frame: frame,
             isActionable: ElementIDGenerator.isActionableRole(role),
             parentId: parentId,
-            keyboardShortcut: keyboardShortcut
-        )
+            keyboardShortcut: keyboardShortcut)
 
         // Store in map
         uiMap[peekabooId] = uiElement
@@ -392,13 +491,12 @@ actor SessionCache {
 
         if let children = element.children() {
             for child in children {
-                await processElement(
+                await self.processElement(
                     child,
                     parentId: peekabooId,
                     uiMap: &uiMap,
                     roleCounters: &roleCounters,
-                    windowContext: childWindowContext
-                )
+                    windowContext: childWindowContext)
             }
         }
     }
@@ -414,7 +512,7 @@ actor SessionCache {
                 element.title,
                 element.label,
                 element.value,
-                element.role
+                element.role,
             ].compactMap(\.self).joined(separator: " ").lowercased()
 
             return searchableText.contains(lowercaseQuery)
@@ -429,12 +527,12 @@ actor SessionCache {
 
     /// Get element by ID
     func getElement(id: String) -> SessionData.UIElement? {
-        load()?.uiMap[id]
+        self.load()?.uiMap[id]
     }
 
     /// Clear session cache
     func clear() throws {
-        try? FileManager.default.removeItem(at: sessionFile)
+        try? FileManager.default.removeItem(at: self.sessionFile)
     }
 
     /// Detect keyboard shortcut for common UI elements
@@ -444,8 +542,8 @@ actor SessionCache {
         title: String?,
         label: String?,
         description: String?,
-        identifier: String?
-    ) -> String? {
+        identifier: String?) -> String?
+    {
         // Check for common formatting buttons in TextEdit and other apps
         let allText = [title, label, description, identifier]
             .compactMap { $0?.lowercased() }
@@ -503,12 +601,12 @@ actor SessionCache {
             return "cmd+{"
         } else if allText.contains("align right") || allText.contains("right align") {
             return "cmd+}"
-        } else if allText.contains("center") && (allText.contains("align") || allText.contains("text")) {
+        } else if allText.contains("center"), allText.contains("align") || allText.contains("text") {
             return "cmd+|"
         }
 
         // Font panel
-        if allText.contains("font") && (allText.contains("panel") || allText.contains("window")) {
+        if allText.contains("font"), allText.contains("panel") || allText.contains("window") {
             return "cmd+t"
         }
 
@@ -519,13 +617,14 @@ actor SessionCache {
                 #"⌘([A-Z])"#, // ⌘B
                 #"⌘⇧([A-Z])"#, // ⌘⇧B
                 #"\(Cmd\+([A-Z])\)"#, // (Cmd+B)
-                #"\(Cmd\+Shift\+([A-Z])\)"# // (Cmd+Shift+B)
+                #"\(Cmd\+Shift\+([A-Z])\)"#, // (Cmd+Shift+B)
             ]
 
             for pattern in shortcutPatterns {
                 if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
                    let match = regex.firstMatch(in: title, options: [], range: NSRange(title.startIndex..., in: title)),
-                   let keyRange = Range(match.range(at: 1), in: title) {
+                   let keyRange = Range(match.range(at: 1), in: title)
+                {
                     let key = String(title[keyRange]).lowercased()
                     if pattern.contains("Shift") || pattern.contains("⇧") {
                         return "cmd+shift+\(key)"
@@ -593,7 +692,7 @@ enum ElementIDGenerator {
         let actionableRoles = [
             "AXButton", "AXTextField", "AXTextArea", "AXCheckBox",
             "AXRadioButton", "AXPopUpButton", "AXLink", "AXMenuItem",
-            "AXSlider", "AXComboBox", "AXSegmentedControl"
+            "AXSlider", "AXComboBox", "AXSegmentedControl",
         ]
         return actionableRoles.contains(role)
     }

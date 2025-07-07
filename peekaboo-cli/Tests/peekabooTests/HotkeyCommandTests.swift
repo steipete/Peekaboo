@@ -1,15 +1,15 @@
 import CoreGraphics
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("HotkeyCommand Tests")
+@Suite("HotkeyCommand Tests", .serialized)
 struct HotkeyCommandTests {
     @Test("Hotkey command parses key combinations", arguments: [
         ("cmd,c", ["cmd", "c"]),
         ("cmd,shift,t", ["cmd", "shift", "t"]),
         ("ctrl,a", ["ctrl", "a"]),
-        ("cmd,space", ["cmd", "space"])
+        ("cmd,space", ["cmd", "space"]),
     ])
     func parseKeyCombinations(input: String, expected: [String]) throws {
         let command = try HotkeyCommand.parse(["--keys", input])
@@ -23,7 +23,7 @@ struct HotkeyCommandTests {
         let command = try HotkeyCommand.parse([
             "--keys", "cmd,v",
             "--hold-duration", "100",
-            "--json-output"
+            "--json-output",
         ])
         #expect(command.keys == "cmd,v")
         #expect(command.holdDuration == 100)
@@ -76,8 +76,7 @@ struct HotkeyCommandTests {
             success: true,
             keys: ["cmd", "c"],
             keyCount: 2,
-            executionTime: 0.055
-        )
+            executionTime: 0.055)
 
         #expect(result.success == true)
         #expect(result.keys == ["cmd", "c"])

@@ -160,7 +160,16 @@ This is particularly useful for:
       "sessionId": "54321",
       "screenshot_raw": "/Users/user/.peekaboo/session/54321/raw.png",
       "screenshot_annotated": "/Users/user/.peekaboo/session/54321/annotated.png",
-      "ui_map": "/Users/user/.peekaboo/session/54321/map.json"
+      "ui_map": "/Users/user/.peekaboo/session/54321/map.json",
+      "menu_bar": {
+        "menus": [
+          {
+            "title": "File",
+            "item_count": 12,
+            "enabled": true
+          }
+        ]
+      }
     }
     ```
 
@@ -384,6 +393,34 @@ This is particularly useful for:
     peekaboo drag --from-coords 100,200 --to-coords 500,400
     peekaboo drag --from F1 --to-app Trash
     peekaboo drag --from-coords 50,50 --to-coords 300,300 --modifiers cmd,option
+    ```
+
+**`peekaboo menu <subcommand> [options]`**
+
+*   **Description:** Interact with application menu bars and system menu extras using pure accessibility APIs, without opening or clicking menus.
+*   **Subcommands:**
+    *   `list`: List all menus and their items (including keyboard shortcuts)
+    *   `list-all`: List menus for the frontmost application
+    *   `click`: Click a menu item (default if not specified)
+    *   `click-extra`: Click system menu extras in the status bar
+*   **Options:**
+    *   `--app <identifier>`: Target application by name, bundle ID, or 'PID:12345'
+    *   `--item <name>`: Menu item to click (for simple, non-nested items)
+    *   `--path <path>`: Menu path for nested items (e.g., 'File > Export > PDF')
+    *   `--title <title>`: Title of menu extra (for click-extra)
+    *   `--include-disabled`: Include disabled menu items in list output
+*   **Key Features:**
+    *   **Pure Accessibility:** Extracts complete menu structure without any UI interaction
+    *   **Full Hierarchy:** Discovers all submenus and nested items recursively
+    *   **Keyboard Shortcuts:** Extracts and displays all available shortcuts
+    *   **Smart Discovery:** AI agents can use list to discover available options before clicking
+*   **Examples:**
+    ```bash
+    peekaboo menu list --app Calculator                    # List all menus and items
+    peekaboo menu list-all                                 # List menus for frontmost app
+    peekaboo menu click --app Safari --item "New Window"
+    peekaboo menu click --app TextEdit --path "Format > Font > Bold"
+    peekaboo menu click-extra --title "WiFi"              # Click WiFi status menu
     ```
 
 ##### **4.3. Key Implementation Details**

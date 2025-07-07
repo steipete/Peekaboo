@@ -23,7 +23,7 @@ class OpenAIProvider: AIProvider {
 
     var isAvailable: Bool {
         get async {
-            await checkAvailability().available
+            await self.checkAvailability().available
         }
     }
 
@@ -36,9 +36,7 @@ class OpenAIProvider: AIProvider {
                     modelAvailable: nil,
                     serverReachable: nil,
                     apiKeyPresent: false,
-                    modelList: nil
-                )
-            )
+                    modelList: nil))
         }
 
         // For now, we'll assume OpenAI is available if API key is present
@@ -50,9 +48,7 @@ class OpenAIProvider: AIProvider {
                 modelAvailable: true,
                 serverReachable: true,
                 apiKeyPresent: true,
-                modelList: nil
-            )
-        )
+                modelList: nil))
     }
 
     func analyze(imageBase64: String, question: String) async throws -> String {
@@ -70,13 +66,10 @@ class OpenAIProvider: AIProvider {
                     content: [
                         .text(OpenAITextContent(text: prompt)),
                         .imageURL(OpenAIImageContent(
-                            imageURL: OpenAIImageURL(url: "data:image/jpeg;base64,\(imageBase64)")
-                        ))
-                    ]
-                )
+                            imageURL: OpenAIImageURL(url: "data:image/jpeg;base64,\(imageBase64)"))),
+                    ]),
             ],
-            maxTokens: 1000
-        )
+            maxTokens: 1000)
 
         var request = URLRequest(url: baseURL)
         request.httpMethod = "POST"
@@ -165,8 +158,7 @@ private enum OpenAIContent: Codable {
             throw DecodingError.dataCorruptedError(
                 forKey: .type,
                 in: container,
-                debugDescription: "Unknown content type: \(type)"
-            )
+                debugDescription: "Unknown content type: \(type)")
         }
     }
 }

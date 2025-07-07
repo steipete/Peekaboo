@@ -1,23 +1,23 @@
 import CoreGraphics
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("ScreenCapture Tests")
+@Suite("ScreenCapture Tests", .serialized)
 struct ScreenCaptureTests {
     @Suite("Display Capture Tests", .tags(.localOnly))
     struct DisplayCaptureTests {
         let tempDir: URL
 
         init() throws {
-            tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            self.tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: self.tempDir, withIntermediateDirectories: true)
         }
 
         @Test("Captures main display", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
         func capturesMainDisplay() async throws {
             let mainDisplayID = CGMainDisplayID()
-            let outputPath = tempDir.appendingPathComponent("main-display.png").path
+            let outputPath = self.tempDir.appendingPathComponent("main-display.png").path
 
             try await ScreenCapture.captureDisplay(mainDisplayID, to: outputPath, format: .png)
 
@@ -34,7 +34,7 @@ struct ScreenCaptureTests {
         @Test("Captures in JPEG format", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
         func capturesInJPEGFormat() async throws {
             let mainDisplayID = CGMainDisplayID()
-            let outputPath = tempDir.appendingPathComponent("main-display.jpg").path
+            let outputPath = self.tempDir.appendingPathComponent("main-display.jpg").path
 
             try await ScreenCapture.captureDisplay(mainDisplayID, to: outputPath, format: .jpg)
 
@@ -47,11 +47,10 @@ struct ScreenCaptureTests {
 
         @Test(
             "Fails with invalid display ID",
-            .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
-        )
+            .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
         func failsWithInvalidDisplayID() async throws {
             let invalidDisplayID: CGDirectDisplayID = 999_999
-            let outputPath = tempDir.appendingPathComponent("invalid.png").path
+            let outputPath = self.tempDir.appendingPathComponent("invalid.png").path
 
             await #expect(throws: CaptureError.self) {
                 try await ScreenCapture.captureDisplay(invalidDisplayID, to: outputPath)
@@ -64,8 +63,8 @@ struct ScreenCaptureTests {
         let tempDir: URL
 
         init() throws {
-            tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            self.tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: self.tempDir, withIntermediateDirectories: true)
         }
 
         @Test("Captures window by ID", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
@@ -78,7 +77,7 @@ struct ScreenCaptureTests {
             let windows = try WindowManager.getWindowsForApp(pid: finderApp.pid)
             let window = try #require(windows.first)
 
-            let outputPath = tempDir.appendingPathComponent("window.png").path
+            let outputPath = self.tempDir.appendingPathComponent("window.png").path
 
             try await ScreenCapture.captureWindow(window, to: outputPath, format: .png)
 
@@ -91,8 +90,7 @@ struct ScreenCaptureTests {
 
         @Test(
             "Fails with invalid window ID",
-            .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
-        )
+            .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
         func failsWithInvalidWindowID() async throws {
             // Create a fake window data with invalid ID
             let invalidWindow = WindowData(
@@ -100,9 +98,8 @@ struct ScreenCaptureTests {
                 title: "Invalid Window",
                 bounds: CGRect(x: 0, y: 0, width: 100, height: 100),
                 isOnScreen: false,
-                windowIndex: 0
-            )
-            let outputPath = tempDir.appendingPathComponent("invalid-window.png").path
+                windowIndex: 0)
+            let outputPath = self.tempDir.appendingPathComponent("invalid-window.png").path
 
             await #expect(throws: CaptureError.self) {
                 try await ScreenCapture.captureWindow(invalidWindow, to: outputPath)

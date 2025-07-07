@@ -1,6 +1,6 @@
 import AppKit
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("PermissionsChecker Tests", .tags(.permissions, .unit))
 struct PermissionsCheckerTests {

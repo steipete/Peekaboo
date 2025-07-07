@@ -14,8 +14,7 @@ struct ImageSaver: Sendable {
             let error = NSError(
                 domain: NSCocoaErrorDomain,
                 code: NSFileWriteInvalidFileNameError,
-                userInfo: [NSLocalizedDescriptionKey: "Invalid characters in file path"]
-            )
+                userInfo: [NSLocalizedDescriptionKey: "Invalid characters in file path"])
             throw CaptureError.fileWriteError(path, error)
         }
 
@@ -34,15 +33,14 @@ struct ImageSaver: Sendable {
             url as CFURL,
             utType.identifier as CFString,
             1,
-            nil
-        ) else {
+            nil)
+        else {
             // Try to create a more specific error for common cases
             if !FileManager.default.isWritableFile(atPath: directory.path) {
                 let error = NSError(
                     domain: NSPOSIXErrorDomain,
                     code: Int(EACCES),
-                    userInfo: [NSLocalizedDescriptionKey: "Permission denied"]
-                )
+                    userInfo: [NSLocalizedDescriptionKey: "Permission denied"])
                 throw CaptureError.fileWriteError(path, error)
             }
             throw CaptureError.fileWriteError(path, nil)

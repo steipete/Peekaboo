@@ -22,8 +22,7 @@ struct AgentCommand: AsyncParsableCommand {
         3. Execute each step using Peekaboo commands
         4. Verify results with screenshots
         5. Retry if needed
-        """
-    )
+        """)
 
     @Argument(help: "Natural language description of the task to perform")
     var task: String
@@ -46,7 +45,7 @@ struct AgentCommand: AsyncParsableCommand {
     mutating func run() async throws {
         // Get OpenAI API key
         guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputAgentJSON(createAgentErrorResponse(.missingAPIKey))
             } else {
                 throw AgentError.missingAPIKey
@@ -58,25 +57,23 @@ struct AgentCommand: AsyncParsableCommand {
             apiKey: apiKey,
             model: model,
             verbose: verbose,
-            maxSteps: maxSteps
-        )
+            maxSteps: maxSteps)
 
         do {
-            if verbose && !jsonOutput {
-                print("🤖 Starting agent with task: \(task)")
-                print("⚙️  Model: \(model)")
-                print("⚙️  Max steps: \(maxSteps)")
+            if self.verbose, !self.jsonOutput {
+                print("🤖 Starting agent with task: \(self.task)")
+                print("⚙️  Model: \(self.model)")
+                print("⚙️  Max steps: \(self.maxSteps)")
                 print("⚙️  API Key: \(String(apiKey.prefix(10)))...")
             }
 
-            let result = try await agent.executeTask(task, dryRun: dryRun)
+            let result = try await agent.executeTask(self.task, dryRun: self.dryRun)
 
-            if jsonOutput {
+            if self.jsonOutput {
                 let response = AgentJSONResponse(
                     success: true,
                     data: result,
-                    error: nil
-                )
+                    error: nil)
                 outputAgentJSON(response)
             } else {
                 // Human-readable output
@@ -100,7 +97,7 @@ struct AgentCommand: AsyncParsableCommand {
                 throw error
             }
         } catch {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputAgentJSON(createAgentErrorResponse(.apiError(error.localizedDescription)))
             } else {
                 throw error
@@ -139,20 +136,20 @@ struct OpenAIAgent {
         let sessionId = await SessionManager.shared.createSession()
 
         // Create assistant
-        if verbose {
+        if self.verbose {
             print("🔄 Creating assistant...")
         }
         let assistant = try await createAssistant()
-        if verbose {
+        if self.verbose {
             print("✅ Assistant created: \(assistant.id)")
         }
 
         // Create thread
-        if verbose {
+        if self.verbose {
             print("🔄 Creating thread...")
         }
         let thread = try await createThread()
-        if verbose {
+        if self.verbose {
             print("✅ Thread created: \(thread.id)")
         }
 
@@ -169,47 +166,47 @@ struct OpenAIAgent {
         }
 
         // Add initial message
-        if verbose {
+        if self.verbose {
             print("📝 Adding task message to thread...")
         }
-        try await addMessage(threadId: threadId, content: task)
+        try await self.addMessage(threadId: threadId, content: task)
 
         // Run the assistant
         var steps: [AgentResult.Step] = []
         var stepCount = 0
-        
+
         // Create initial run
-        if verbose {
+        if self.verbose {
             print("\n🏃 Creating initial run...")
         }
         let run = try await createRun(threadId: threadId, assistantId: assistant.id)
-        if verbose {
+        if self.verbose {
             print("✅ Run created: \(run.id) with status: \(run.status)")
         }
-        
+
         // Process the run until it's completed or we hit max steps
-        runLoop: while stepCount < maxSteps {
+        runLoop: while stepCount < self.maxSteps {
             // Poll for run status
-            if verbose {
+            if self.verbose {
                 print("🔍 Polling run status...")
             }
             var runStatus = try await getRun(threadId: threadId, runId: run.id)
-            
+
             // Wait while in progress
             var pollCount = 0
             while runStatus.status == .inProgress || runStatus.status == .queued {
-                if verbose && pollCount % 5 == 0 { // Log every 5 seconds
+                if self.verbose, pollCount % 5 == 0 { // Log every 5 seconds
                     print("⏳ Run \(run.id) status: \(runStatus.status) [\(pollCount)s]")
                 }
                 try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-                runStatus = try await getRun(threadId: threadId, runId: run.id)
+                runStatus = try await self.getRun(threadId: threadId, runId: run.id)
                 pollCount += 1
-                
+
                 if pollCount > 60 { // 60 second timeout for any single wait
                     throw AgentError.timeout
                 }
             }
-            
+
             switch runStatus.status {
             case .requiresAction:
                 // Handle function calls
@@ -220,7 +217,7 @@ struct OpenAIAgent {
                 var toolOutputs: [(toolCallId: String, output: String)] = []
 
                 for toolCall in toolCalls {
-                    if verbose && !dryRun {
+                    if self.verbose, !dryRun {
                         print("🔧 Executing: \(toolCall.function.name) with args: \(toolCall.function.arguments)")
                     }
 
@@ -228,21 +225,22 @@ struct OpenAIAgent {
                         description: toolCall.function.name,
                         command: toolCall.function.arguments,
                         output: nil,
-                        screenshot: nil
-                    )
+                        screenshot: nil)
 
                     if !dryRun {
                         // Add session ID to arguments only for commands that need it
                         var modifiedArgs = toolCall.function.arguments
                         let commandsNeedingSession = ["click", "type", "drag", "swipe"]
                         let commandName = toolCall.function.name.replacingOccurrences(of: "peekaboo_", with: "")
-                        
+
                         if commandsNeedingSession.contains(commandName) {
                             if let data = modifiedArgs.data(using: .utf8),
-                               var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                               var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                            {
                                 json["session_id"] = sessionId
                                 if let newData = try? JSONSerialization.data(withJSONObject: json),
-                                   let newString = String(data: newData, encoding: .utf8) {
+                                   let newString = String(data: newData, encoding: .utf8)
+                                {
                                     modifiedArgs = newString
                                 }
                             }
@@ -250,9 +248,8 @@ struct OpenAIAgent {
 
                         let output = try await executor.executeFunction(
                             name: toolCall.function.name,
-                            arguments: modifiedArgs
-                        )
-                        if verbose {
+                            arguments: modifiedArgs)
+                        if self.verbose {
                             print("   ✅ Tool output: \(output.prefix(100))...")
                         }
                         toolOutputs.append((toolCallId: toolCall.id, output: output))
@@ -264,43 +261,42 @@ struct OpenAIAgent {
 
                 if !dryRun {
                     // Submit tool outputs
-                    if verbose {
+                    if self.verbose {
                         print("📤 Submitting \(toolOutputs.count) tool outputs to run \(run.id)")
                         for output in toolOutputs {
                             print("   Tool \(output.toolCallId): \(output.output.prefix(100))...")
                         }
                     }
-                    try await submitToolOutputs(
+                    try await self.submitToolOutputs(
                         threadId: threadId,
                         runId: run.id,
-                        toolOutputs: toolOutputs
-                    )
+                        toolOutputs: toolOutputs)
 
                     // Wait for the run to complete after submitting tool outputs
-                    runStatus = try await getRun(threadId: threadId, runId: run.id)
+                    runStatus = try await self.getRun(threadId: threadId, runId: run.id)
                     while runStatus.status == .inProgress || runStatus.status == .queued {
-                        if verbose {
+                        if self.verbose {
                             print("⏳ Waiting for run to complete... (status: \(runStatus.status))")
                         }
                         try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-                        runStatus = try await getRun(threadId: threadId, runId: run.id)
+                        runStatus = try await self.getRun(threadId: threadId, runId: run.id)
                     }
 
                     // Continue with the same run - it might need more actions
-                    if verbose {
+                    if self.verbose {
                         print("🔄 Continuing with run \(run.id) after tool outputs...")
                     }
                     // Loop will continue to poll the same run
                 }
-                
+
             case .completed:
                 // Get the final message
-                if verbose {
+                if self.verbose {
                     print("📥 Getting final messages...")
                 }
                 let messages = try await getMessages(threadId: threadId)
                 let summary = messages.first?.content.first?.text?.value
-                if verbose, let summary {
+                if self.verbose, let summary {
                     print("📋 Summary: \(summary)")
                 }
 
@@ -310,20 +306,19 @@ struct OpenAIAgent {
                 return AgentResult(
                     steps: steps,
                     summary: summary,
-                    success: true
-                )
-                
+                    success: true)
+
             case .failed, .cancelled, .expired:
                 throw AgentError.apiError("Assistant run failed with status: \(runStatus.status)")
-                
+
             case .cancelling:
                 // Wait for cancellation to complete
-                if verbose {
+                if self.verbose {
                     print("⏳ Waiting for run cancellation...")
                 }
                 try await Task.sleep(nanoseconds: 1_000_000_000)
                 continue
-                
+
             case .queued, .inProgress:
                 // Should not happen here, but continue if it does
                 continue
@@ -336,8 +331,7 @@ struct OpenAIAgent {
         return AgentResult(
             steps: steps,
             summary: "Task completed after \(stepCount) steps",
-            success: true
-        )
+            success: true)
     }
 
     // MARK: - Assistant Management
@@ -350,16 +344,26 @@ struct OpenAIAgent {
             Self.makePeekabooTool("scroll", "Scroll content in any direction"),
             Self.makePeekabooTool("hotkey", "Press keyboard shortcuts"),
             Self.makePeekabooTool("image", "Capture screenshots of apps or screen"),
-            Self.makePeekabooTool("window", "Manipulate application windows (close, minimize, maximize, move, resize, focus)"),
+            Self.makePeekabooTool(
+                "window",
+                "Manipulate application windows (close, minimize, maximize, move, resize, focus)"),
             Self.makePeekabooTool("app", "Control applications (launch, quit, focus, hide, unhide)"),
             Self.makePeekabooTool("wait", "Wait for a specified duration in seconds"),
-            Self.makePeekabooTool("analyze_screenshot", "Analyze a screenshot using vision AI to understand UI elements and content"),
-            Self.makePeekabooTool("list", "List all running applications on macOS. Use with target='apps' to get a list of all running applications."),
-            Self.makePeekabooTool("menu", "Click menu bar items in applications"),
-            Self.makePeekabooTool("dialog", "Interact with system dialogs and alerts (click buttons, input text, dismiss)"),
+            Self.makePeekabooTool(
+                "analyze_screenshot",
+                "Analyze a screenshot using vision AI to understand UI elements and content"),
+            Self.makePeekabooTool(
+                "list",
+                "List all running applications on macOS. Use with target='apps' to get a list of all running applications."),
+            Self.makePeekabooTool(
+                "menu",
+                "Interact with menu bar: use 'list' subcommand to discover all menus, 'click' to click menu items"),
+            Self.makePeekabooTool(
+                "dialog",
+                "Interact with system dialogs and alerts (click buttons, input text, dismiss)"),
             Self.makePeekabooTool("drag", "Perform drag and drop operations between UI elements or coordinates"),
             Self.makePeekabooTool("dock", "Interact with the macOS Dock (launch apps, right-click items)"),
-            Self.makePeekabooTool("swipe", "Perform swipe gestures for navigation and scrolling")
+            Self.makePeekabooTool("swipe", "Perform swipe gestures for navigation and scrolling"),
         ]
 
         let assistantRequest = CreateAssistantRequest(
@@ -372,6 +376,7 @@ struct OpenAIAgent {
 
             VISION & SCREENSHOTS:
             - 'see': Capture screenshots and map UI elements (use analyze=true for vision analysis)
+              The see command also extracts menu bar information showing available menus
             - 'analyze_screenshot': Analyze any screenshot with vision AI
             - 'image': Take screenshots of specific apps or screens
 
@@ -386,7 +391,8 @@ struct OpenAIAgent {
             APPLICATION CONTROL:
             - 'app': Launch, quit, focus, hide, or unhide applications
             - 'window': Close, minimize, maximize, move, resize, or focus windows
-            - 'menu': Click menu bar items
+            - 'menu': Menu bar interaction - use subcommand='list' to discover menus, subcommand='click' to click items
+              Example: menu(app="Calculator", subcommand="list") to list all menus
             - 'dock': Interact with Dock items
             - 'dialog': Handle system dialogs and alerts
 
@@ -397,11 +403,12 @@ struct OpenAIAgent {
             When given a task:
             1. **TO LIST APPLICATIONS**: Use 'list' with target='apps' - DO NOT use Activity Monitor or screenshots!
             2. **TO LIST WINDOWS**: Use 'list' with target='windows' and app='AppName'
-            3. For UI interaction: Use 'see' to capture screenshots and map UI elements
-            4. Break down complex tasks into specific actions
-            5. Execute each action using the appropriate command
-            6. Verify results when needed
-            
+            3. **TO DISCOVER MENUS**: Use 'menu list --app AppName' to get full menu structure OR 'see' command which includes basic menu_bar data
+            4. For UI interaction: Use 'see' to capture screenshots and map UI elements
+            5. Break down complex tasks into specific actions
+            6. Execute each action using the appropriate command
+            7. Verify results when needed
+
             CRITICAL INSTRUCTIONS:
             - When asked to "list applications" or "show running apps", ALWAYS use: list(target="apps")
             - Do NOT launch Activity Monitor to list apps - use the list command!
@@ -410,61 +417,78 @@ struct OpenAIAgent {
             Always maintain session_id across related commands for element tracking.
             Be precise with UI interactions and verify the current state before acting.
             """,
-            tools: tools
-        )
+            tools: tools)
 
         let url = URL(string: "https://api.openai.com/v1/assistants")!
-        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
+        var request = URLRequest.openAIRequest(url: url, apiKey: self.apiKey, betaHeader: "assistants=v2")
         try request.setJSONBody(assistantRequest)
 
-        return try await session.retryableDataTask(for: request, decodingType: Assistant.self, retryConfig: retryConfig)
+        return try await self.session.retryableDataTask(
+            for: request,
+            decodingType: Assistant.self,
+            retryConfig: self.retryConfig)
     }
 
     private func deleteAssistant(_ assistantId: String) async throws {
         let url = URL(string: "https://api.openai.com/v1/assistants/\(assistantId)")!
-        let request = URLRequest.openAIRequest(url: url, method: "DELETE", apiKey: apiKey, betaHeader: "assistants=v2")
+        let request = URLRequest.openAIRequest(
+            url: url,
+            method: "DELETE",
+            apiKey: self.apiKey,
+            betaHeader: "assistants=v2")
 
-        _ = try await session.retryableData(for: request, retryConfig: retryConfig)
+        _ = try await self.session.retryableData(for: request, retryConfig: self.retryConfig)
     }
 
     private func deleteThread(_ threadId: String) async throws {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)")!
-        let request = URLRequest.openAIRequest(url: url, method: "DELETE", apiKey: apiKey, betaHeader: "assistants=v2")
+        let request = URLRequest.openAIRequest(
+            url: url,
+            method: "DELETE",
+            apiKey: self.apiKey,
+            betaHeader: "assistants=v2")
 
-        _ = try await session.retryableData(for: request, retryConfig: retryConfig)
+        _ = try await self.session.retryableData(for: request, retryConfig: self.retryConfig)
     }
 
     private func createThread() async throws -> Thread {
         let url = URL(string: "https://api.openai.com/v1/threads")!
-        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
+        var request = URLRequest.openAIRequest(url: url, apiKey: self.apiKey, betaHeader: "assistants=v2")
         request.httpBody = "{}".data(using: .utf8)
 
-        return try await session.retryableDataTask(for: request, decodingType: Thread.self, retryConfig: retryConfig)
+        return try await self.session.retryableDataTask(
+            for: request,
+            decodingType: Thread.self,
+            retryConfig: self.retryConfig)
     }
 
     private func addMessage(threadId: String, content: String) async throws {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/messages")!
-        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
+        var request = URLRequest.openAIRequest(url: url, apiKey: self.apiKey, betaHeader: "assistants=v2")
 
         let message = ["role": "user", "content": content]
         request.httpBody = try JSONSerialization.data(withJSONObject: message)
 
-        _ = try await session.retryableData(for: request, retryConfig: retryConfig)
+        _ = try await self.session.retryableData(for: request, retryConfig: self.retryConfig)
     }
 
     private func createRun(threadId: String, assistantId: String) async throws -> Run {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/runs")!
-        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
+        var request = URLRequest.openAIRequest(url: url, apiKey: self.apiKey, betaHeader: "assistants=v2")
 
         let runData = ["assistant_id": assistantId]
         request.httpBody = try JSONSerialization.data(withJSONObject: runData)
 
         do {
-            return try await session.retryableDataTask(for: request, decodingType: Run.self, retryConfig: retryConfig)
+            return try await self.session.retryableDataTask(
+                for: request,
+                decodingType: Run.self,
+                retryConfig: self.retryConfig)
         } catch let error as AgentError {
             // If thread already has active run, wait and retry
             if case let .apiError(message) = error,
-               message.contains("already has an active run") {
+               message.contains("already has an active run")
+            {
                 // Extract the run ID from error message like "run_abc123"
                 let components = message.components(separatedBy: " ")
                 if let runIdComponent = components.last(where: { $0.starts(with: "run_") }) {
@@ -484,15 +508,15 @@ struct OpenAIAgent {
 
                         // If the run is done, try creating a new one immediately
                         if existingRun.status == .completed || existingRun.status == .failed ||
-                            existingRun.status == .cancelled || existingRun.status == .expired {
+                            existingRun.status == .cancelled || existingRun.status == .expired
+                        {
                             if verbose {
                                 print("   Run is finished, creating new run...")
                             }
                             return try await session.retryableDataTask(
                                 for: request,
                                 decodingType: Run.self,
-                                retryConfig: retryConfig
-                            )
+                                retryConfig: retryConfig)
                         }
 
                         // If run requires action, we need to handle it differently
@@ -511,8 +535,7 @@ struct OpenAIAgent {
                             return try await session.retryableDataTask(
                                 for: request,
                                 decodingType: Run.self,
-                                retryConfig: retryConfig
-                            )
+                                retryConfig: retryConfig)
                         }
 
                         // If still in progress, wait for it
@@ -527,7 +550,7 @@ struct OpenAIAgent {
                                 try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
                                 let status = try await getRun(threadId: threadId, runId: existingRunId)
 
-                                if status.status != .inProgress && status.status != .queued {
+                                if status.status != .inProgress, status.status != .queued {
                                     if verbose {
                                         print("   Existing run completed with status: \(status.status)")
                                     }
@@ -540,8 +563,7 @@ struct OpenAIAgent {
                             return try await session.retryableDataTask(
                                 for: request,
                                 decodingType: Run.self,
-                                retryConfig: retryConfig
-                            )
+                                retryConfig: retryConfig)
                         }
                     } catch {
                         if verbose {
@@ -560,8 +582,7 @@ struct OpenAIAgent {
                 return try await session.retryableDataTask(
                     for: request,
                     decodingType: Run.self,
-                    retryConfig: retryConfig
-                )
+                    retryConfig: retryConfig)
             }
             throw error
         }
@@ -569,44 +590,54 @@ struct OpenAIAgent {
 
     private func getRun(threadId: String, runId: String) async throws -> Run {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/runs/\(runId)")!
-        let request = URLRequest.openAIRequest(url: url, method: "GET", apiKey: apiKey, betaHeader: "assistants=v2")
+        let request = URLRequest.openAIRequest(
+            url: url,
+            method: "GET",
+            apiKey: self.apiKey,
+            betaHeader: "assistants=v2")
 
-        return try await session.retryableDataTask(for: request, decodingType: Run.self, retryConfig: retryConfig)
+        return try await self.session.retryableDataTask(
+            for: request,
+            decodingType: Run.self,
+            retryConfig: self.retryConfig)
     }
 
     private func submitToolOutputs(
         threadId: String,
         runId: String,
-        toolOutputs: [(toolCallId: String, output: String)]
-    ) async throws {
+        toolOutputs: [(toolCallId: String, output: String)]) async throws
+    {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/runs/\(runId)/submit_tool_outputs")!
-        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
+        var request = URLRequest.openAIRequest(url: url, apiKey: self.apiKey, betaHeader: "assistants=v2")
 
         let outputs = toolOutputs.map { ["tool_call_id": $0.toolCallId, "output": $0.output] }
         let data = ["tool_outputs": outputs]
         request.httpBody = try JSONSerialization.data(withJSONObject: data)
 
-        _ = try await session.retryableData(for: request, retryConfig: retryConfig)
+        _ = try await self.session.retryableData(for: request, retryConfig: self.retryConfig)
     }
 
     private func getMessages(threadId: String) async throws -> [Message] {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/messages")!
-        let request = URLRequest.openAIRequest(url: url, method: "GET", apiKey: apiKey, betaHeader: "assistants=v2")
+        let request = URLRequest.openAIRequest(
+            url: url,
+            method: "GET",
+            apiKey: self.apiKey,
+            betaHeader: "assistants=v2")
 
         let messageList = try await session.retryableDataTask(
             for: request,
             decodingType: MessageList.self,
-            retryConfig: retryConfig
-        )
+            retryConfig: self.retryConfig)
         return messageList.data
     }
 
     private func cancelRun(threadId: String, runId: String) async throws {
         let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/runs/\(runId)/cancel")!
-        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
+        var request = URLRequest.openAIRequest(url: url, apiKey: self.apiKey, betaHeader: "assistants=v2")
         request.httpBody = "{}".data(using: .utf8)
 
-        _ = try await session.retryableData(for: request, retryConfig: retryConfig)
+        _ = try await self.session.retryableData(for: request, retryConfig: self.retryConfig)
     }
 }
 
@@ -648,16 +679,16 @@ struct Run: Codable {
     let object: String
     let status: Status
     let requiredAction: RequiredAction?
-    
+
     enum Status: String, Codable {
-        case queued = "queued"
+        case queued
         case inProgress = "in_progress"
         case requiresAction = "requires_action"
-        case cancelling = "cancelling"
-        case cancelled = "cancelled"
-        case failed = "failed"
-        case completed = "completed"
-        case expired = "expired"
+        case cancelling
+        case cancelled
+        case failed
+        case completed
+        case expired
     }
 
     struct RequiredAction: Codable {

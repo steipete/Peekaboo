@@ -11,16 +11,15 @@ struct WindowCaptureHandler {
     /// Captures windows from multiple applications
     func captureWindowsFromMultipleApps(
         _ apps: [NSRunningApplication],
-        appIdentifier: String
-    ) async throws -> [SavedFile] {
+        appIdentifier: String) async throws -> [SavedFile]
+    {
         var allSavedFiles: [SavedFile] = []
         var totalWindowIndex = 0
 
         for targetApp in apps {
             let capturedFiles = try await captureAppWindows(
                 targetApp: targetApp,
-                totalWindowIndex: &totalWindowIndex
-            )
+                totalWindowIndex: &totalWindowIndex)
             allSavedFiles.append(contentsOf: capturedFiles)
         }
 
@@ -34,11 +33,11 @@ struct WindowCaptureHandler {
     /// Captures all windows for a single application
     private func captureAppWindows(
         targetApp: NSRunningApplication,
-        totalWindowIndex: inout Int
-    ) async throws -> [SavedFile] {
+        totalWindowIndex: inout Int) async throws -> [SavedFile]
+    {
         Logger.shared.debug("Capturing windows for app: \(targetApp.localizedName ?? "Unknown")")
 
-        try await activateAppIfNeeded(targetApp)
+        try await self.activateAppIfNeeded(targetApp)
 
         let windows = try WindowManager.getWindowsForApp(pid: targetApp.processIdentifier)
         if windows.isEmpty {
@@ -51,8 +50,7 @@ struct WindowCaptureHandler {
             let savedFile = try await captureSingleWindowWithIndex(
                 window: window,
                 targetApp: targetApp,
-                windowIndex: totalWindowIndex
-            )
+                windowIndex: totalWindowIndex)
             savedFiles.append(savedFile)
             totalWindowIndex += 1
         }
@@ -62,7 +60,7 @@ struct WindowCaptureHandler {
 
     /// Activates the app if needed based on capture focus settings
     private func activateAppIfNeeded(_ app: NSRunningApplication) async throws {
-        if captureFocus == .foreground || (captureFocus == .auto && !app.isActive) {
+        if self.captureFocus == .foreground || (self.captureFocus == .auto && !app.isActive) {
             try PermissionsChecker.requireAccessibilityPermission()
             app.activate()
             try await Task.sleep(nanoseconds: 200_000_000)
@@ -73,22 +71,20 @@ struct WindowCaptureHandler {
     private func captureSingleWindowWithIndex(
         window: WindowData,
         targetApp: NSRunningApplication,
-        windowIndex: Int
-    ) async throws -> SavedFile {
+        windowIndex: Int) async throws -> SavedFile
+    {
         let fileName = FileNameGenerator.generateFileName(
             appName: targetApp.localizedName,
             windowIndex: windowIndex,
             windowTitle: window.title,
-            format: format
-        )
+            format: self.format)
         // Multiple windows from multiple apps means not a single capture
         let filePath = OutputPathResolver.getOutputPath(
-            basePath: path,
+            basePath: self.path,
             fileName: fileName,
-            isSingleCapture: false
-        )
+            isSingleCapture: false)
 
-        try await captureWindow(window, to: filePath)
+        try await self.captureWindow(window, to: filePath)
 
         return SavedFile(
             path: filePath,
@@ -96,8 +92,7 @@ struct WindowCaptureHandler {
             window_title: window.title,
             window_id: window.windowId,
             window_index: windowIndex,
-            mime_type: format == .png ? "image/png" : "image/jpeg"
-        )
+            mime_type: self.format == .png ? "image/png" : "image/jpeg")
     }
 
     /// Finds the target window based on title or index
@@ -105,8 +100,8 @@ struct WindowCaptureHandler {
         from windows: [WindowData],
         windowTitle: String?,
         windowIndex: Int?,
-        appName: String
-    ) throws -> WindowData {
+        appName: String) throws -> WindowData
+    {
         if let windowTitle {
             guard let window = windows.first(where: { $0.title.contains(windowTitle) }) else {
                 // Create detailed error message with available window titles for debugging
@@ -115,14 +110,13 @@ struct WindowCaptureHandler {
 
                 Logger.shared.debug(
                     "Window not found. Searched for '\(searchTerm)' in \(appName). " +
-                        "Available windows: \(availableTitles)"
-                )
+                        "Available windows: \(availableTitles)")
 
                 throw CaptureError.windowTitleNotFound(searchTerm, appName, availableTitles)
             }
             return window
         } else if let windowIndex {
-            guard windowIndex >= 0 && windowIndex < windows.count else {
+            guard windowIndex >= 0, windowIndex < windows.count else {
                 throw CaptureError.invalidWindowIndex(windowIndex)
             }
             return windows[windowIndex]
@@ -134,7 +128,7 @@ struct WindowCaptureHandler {
     /// Captures a window to the specified path
     func captureWindow(_ window: WindowData, to path: String) async throws {
         do {
-            try await ScreenCapture.captureWindow(window, to: path, format: format)
+            try await ScreenCapture.captureWindow(window, to: path, format: self.format)
         } catch let error as CaptureError {
             throw error
         } catch {

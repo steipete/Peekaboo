@@ -8,7 +8,7 @@
 [![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange.svg)](https://swift.org/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 
-> 🎉 **NEW in v3**: Complete GUI automation framework with AI Agent! Click, type, scroll, and automate any macOS application using natural language. See the [GUI Automation section](#-gui-automation-with-peekaboo-v3) and [AI Agent section](#-ai-agent-automation) for details.
+> 🎉 **NEW in v3**: Complete GUI automation framework with AI Agent! Click, type, scroll, and automate any macOS application using natural language. Plus comprehensive menu bar extraction without clicking! See the [GUI Automation section](#-gui-automation-with-peekaboo-v3) and [AI Agent section](#-ai-agent-automation) for details.
 
 Peekaboo is a powerful macOS utility for capturing screenshots, analyzing them with AI vision models, and now automating GUI interactions. It works both as a **standalone CLI tool** (recommended) and as an **MCP server** for AI assistants like Claude Desktop and Cursor.
 
@@ -37,6 +37,7 @@ Peekaboo bridges the gap between visual content on your screen and AI understand
 - **Complete GUI automation** (v3) - Click, type, scroll, and interact with any macOS app
 - **Natural language automation** (v3) - AI agent that understands tasks like "Open TextEdit and write a poem"
 - **Smart UI element detection** - Automatically identifies buttons, text fields, links, and more with precise coordinate mapping
+- **Menu bar extraction** (v3) - Discover all menus and keyboard shortcuts without clicking or opening menus
 - **Automatic session resolution** - Commands intelligently use the most recent session (no manual tracking!)
 - **Window and application management** with smart fuzzy matching
 - **Privacy-first operation** with local AI options via Ollama
@@ -99,6 +100,13 @@ peekaboo window minimize --app Finder   # Minimize Finder window
 peekaboo window move --app TextEdit --x 100 --y 100
 peekaboo window resize --app Terminal --width 800 --height 600
 peekaboo window focus --app "Visual Studio Code"
+
+# Menu Bar Interaction (v3)
+peekaboo menu list --app Calculator     # List all menus and items
+peekaboo menu list-all                  # List menus for frontmost app
+peekaboo menu click --app Safari --item "New Window"
+peekaboo menu click --app TextEdit --path "Format > Font > Bold"
+peekaboo menu click-extra --title "WiFi" # Click system menu extras
 
 # Configure settings
 peekaboo config init                    # Create config file
@@ -639,6 +647,36 @@ await window({ action: "list", app_target: "Finder" })
 - **app_target** - Target by application name (fuzzy matching supported)
 - **window_title** - Target by window title (substring matching)
 - **window_index** - Target by index (0-based, front to back order)
+
+### 📋 The `menu` Tool
+
+Interact with application menu bars and system menu extras:
+
+```typescript
+// List all menus and items for an app
+await menu({ app_target: "Calculator", subcommand: "list" })
+
+// Click a simple menu item
+await menu({ app_target: "Safari", item: "New Window" })
+
+// Navigate nested menus with path
+await menu({ app_target: "TextEdit", path: "Format > Font > Bold" })
+
+// Click system menu extras (WiFi, Bluetooth, etc.)
+await menu({ subcommand: "click-extra", title: "WiFi" })
+```
+
+#### Menu Subcommands
+- **list** - List all menus and their items (including keyboard shortcuts)
+- **list-all** - List menus for the frontmost application
+- **click** - Click a menu item (default if not specified)
+- **click-extra** - Click system menu extras in the status bar
+
+#### Key Features
+- **Pure Accessibility** - Extracts menu structure without clicking or opening menus
+- **Full Hierarchy** - Discovers all submenus and nested items
+- **Keyboard Shortcuts** - Shows all available keyboard shortcuts
+- **Smart Discovery** - AI agents can use list to discover available options
 
 ### 🧹 The `clean` Tool
 

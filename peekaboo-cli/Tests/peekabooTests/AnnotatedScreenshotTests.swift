@@ -1,8 +1,8 @@
 import AppKit
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("Annotated Screenshot Tests")
+@Suite("Annotated Screenshot Tests", .serialized)
 struct AnnotatedScreenshotTests {
     // MARK: - Test Image Generation
 
@@ -14,7 +14,7 @@ struct AnnotatedScreenshotTests {
         let sessionCache = try SessionCache(sessionId: "test-annotation")
 
         // Create test UI elements
-        let uiElements = createTestUIElements()
+        let uiElements = self.createTestUIElements()
         let sessionData = SessionCache.SessionData(
             version: SessionCache.SessionData.currentVersion,
             screenshotPath: "/tmp/test.png",
@@ -22,8 +22,7 @@ struct AnnotatedScreenshotTests {
             uiMap: uiElements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window"
-        )
+            windowTitle: "Test Window")
 
         try await sessionCache.save(sessionData)
 
@@ -50,7 +49,7 @@ struct AnnotatedScreenshotTests {
             ("AXLink", "L"),
             ("AXSlider", "S"),
             ("AXRadioButton", "R"),
-            ("AXMenu", "M")
+            ("AXMenu", "M"),
         ]
 
         for (role, expectedPrefix) in roleMapping {
@@ -74,7 +73,7 @@ struct AnnotatedScreenshotTests {
             ("T1", "AXTextField", "Text Field"),
             ("C1", "AXCheckBox", "Checkbox"),
             ("L1", "AXLink", "Link"),
-            ("S1", "AXSlider", "Slider")
+            ("S1", "AXSlider", "Slider"),
         ]
 
         for (id, role, title) in elementTypes {
@@ -86,8 +85,7 @@ struct AnnotatedScreenshotTests {
                 label: nil,
                 value: nil,
                 frame: CGRect(x: 100, y: 100, width: 100, height: 40),
-                isActionable: true
-            )
+                isActionable: true)
         }
 
         let sessionData = SessionCache.SessionData(
@@ -97,8 +95,7 @@ struct AnnotatedScreenshotTests {
             uiMap: elements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window"
-        )
+            windowTitle: "Test Window")
 
         try await sessionCache.save(sessionData)
 
@@ -151,7 +148,7 @@ struct AnnotatedScreenshotTests {
                 value: nil,
                 frame: CGRect(x: 50, y: 100, width: 200, height: 20),
                 isActionable: false
-            )
+            ),
         ]
 
         let sessionData = SessionCache.SessionData(
@@ -161,8 +158,7 @@ struct AnnotatedScreenshotTests {
             uiMap: elements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window"
-        )
+            windowTitle: "Test Window")
 
         try await sessionCache.save(sessionData)
 
@@ -212,7 +208,7 @@ struct AnnotatedScreenshotTests {
                 value: nil,
                 frame: CGRect(x: 150, y: 250, width: 200, height: 30),
                 isActionable: true
-            )
+            ),
         ]
 
         let sessionData = SessionCache.SessionData(
@@ -222,8 +218,7 @@ struct AnnotatedScreenshotTests {
             uiMap: elements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window"
-        )
+            windowTitle: "Test Window")
 
         try await sessionCache.save(sessionData)
 
@@ -260,8 +255,7 @@ struct AnnotatedScreenshotTests {
             lastUpdateTime: Date(),
             applicationName: "TestApp",
             windowTitle: "Test Window",
-            windowBounds: testWindowBounds
-        )
+            windowBounds: testWindowBounds)
 
         try await sessionCache.save(sessionData)
 
@@ -321,15 +315,14 @@ struct AnnotatedScreenshotTests {
         let buttons = [
             CGRect(x: 250, y: 350, width: 80, height: 30), // Bold
             CGRect(x: 340, y: 350, width: 80, height: 30), // Italic
-            CGRect(x: 430, y: 350, width: 80, height: 30) // Underline
+            CGRect(x: 430, y: 350, width: 80, height: 30), // Underline
         ]
 
         // Transform all to window-relative
         let transformed = buttons.map { button in
             CGPoint(
                 x: button.origin.x - windowBounds.origin.x,
-                y: button.origin.y - windowBounds.origin.y
-            )
+                y: button.origin.y - windowBounds.origin.y)
         }
 
         // Verify spacing is preserved
@@ -354,8 +347,7 @@ struct AnnotatedScreenshotTests {
         // Should transform to (0, 0) in window coordinates
         let relativeCoords = CGPoint(
             x: element.origin.x - windowBounds.origin.x,
-            y: element.origin.y - windowBounds.origin.y
-        )
+            y: element.origin.y - windowBounds.origin.y)
 
         #expect(relativeCoords.x == 0)
         #expect(relativeCoords.y == 0)
@@ -389,7 +381,7 @@ struct AnnotatedScreenshotTests {
             version: SessionCache.SessionData.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
-            uiMap: createTestUIElements(),
+            uiMap: self.createTestUIElements(),
             lastUpdateTime: Date(),
             applicationName: nil,
             windowTitle: nil,
@@ -422,8 +414,7 @@ struct AnnotatedScreenshotTests {
             x: elementScreenCoords.origin.x - windowBounds.origin.x,
             y: elementScreenCoords.origin.y - windowBounds.origin.y,
             width: elementScreenCoords.width,
-            height: elementScreenCoords.height
-        )
+            height: elementScreenCoords.height)
 
         #expect(windowRelativeCoords.origin.x == 100) // 300 - 200
         #expect(windowRelativeCoords.origin.y == 100) // 200 - 100
@@ -449,13 +440,11 @@ struct AnnotatedScreenshotTests {
         // Transform to window-relative
         let boldRelative = CGPoint(
             x: boldButton.origin.x - windowBounds.origin.x,
-            y: boldButton.origin.y - windowBounds.origin.y
-        )
+            y: boldButton.origin.y - windowBounds.origin.y)
 
         let italicRelative = CGPoint(
             x: italicButton.origin.x - windowBounds.origin.x,
-            y: italicButton.origin.y - windowBounds.origin.y
-        )
+            y: italicButton.origin.y - windowBounds.origin.y)
 
         // Verify buttons are within window bounds
         #expect(boldRelative.x >= 0 && boldRelative.x < windowBounds.width)
@@ -475,14 +464,14 @@ struct AnnotatedScreenshotTests {
         // Draw a gradient background
         let gradient = NSGradient(colors: [
             NSColor(white: 0.9, alpha: 1.0),
-            NSColor(white: 0.7, alpha: 1.0)
+            NSColor(white: 0.7, alpha: 1.0),
         ])!
         gradient.draw(in: NSRect(origin: .zero, size: image.size), angle: -90)
 
         // Draw some test content
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 24),
-            .foregroundColor: NSColor.black
+            .foregroundColor: NSColor.black,
         ]
         let text = "Test Window"
         let textSize = text.size(withAttributes: attributes)
@@ -490,8 +479,7 @@ struct AnnotatedScreenshotTests {
             x: (width - textSize.width) / 2,
             y: height - 50,
             width: textSize.width,
-            height: textSize.height
-        )
+            height: textSize.height)
         text.draw(in: textRect, withAttributes: attributes)
 
         image.unlockFocus()
@@ -501,7 +489,8 @@ struct AnnotatedScreenshotTests {
     private func saveTestImage(_ image: NSImage, to path: String) throws {
         guard let tiffData = image.tiffRepresentation,
               let bitmapRep = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
+              let pngData = bitmapRep.representation(using: .png, properties: [:])
+        else {
             throw CaptureError.captureFailure("Failed to create PNG data")
         }
         try pngData.write(to: URL(fileURLWithPath: path))
@@ -548,7 +537,7 @@ struct AnnotatedScreenshotTests {
                 value: "1",
                 frame: CGRect(x: 100, y: 200, width: 150, height: 20),
                 isActionable: true
-            )
+            ),
         ]
     }
 }

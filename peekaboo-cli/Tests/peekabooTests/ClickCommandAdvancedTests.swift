@@ -1,8 +1,8 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("Advanced Click Command Tests")
+@Suite("Advanced Click Command Tests", .serialized)
 struct ClickCommandAdvancedTests {
     @Test("Parse text-based click query")
     func textBasedClickParsing() async throws {
@@ -99,8 +99,7 @@ struct ClickCommandAdvancedTests {
             clickedElement: "AXButton: Save",
             clickLocation: CGPoint(x: 100, y: 200),
             waitTime: 1.5,
-            executionTime: 2.0
-        )
+            executionTime: 2.0)
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(result)
@@ -125,7 +124,7 @@ struct ClickCommandAdvancedTests {
         let command = try ClickCommand.parse([
             "TextQuery",
             "--on", "C1",
-            "--coords", "100,200"
+            "--coords", "100,200",
         ])
 
         // Should prioritize in order: --on > --coords > query
@@ -143,7 +142,7 @@ struct ClickCommandAdvancedTests {
     }
 }
 
-@Suite("Click Command Mock Tests")
+@Suite("Click Command Mock Tests", .serialized)
 struct ClickCommandMockTests {
     @Test("Find element by text in session")
     @MainActor
@@ -172,8 +171,7 @@ struct ClickCommandMockTests {
                     help: nil,
                     roleDescription: nil,
                     identifier: nil,
-                    keyboardShortcut: "cmd+b"
-                ),
+                    keyboardShortcut: "cmd+b"),
                 SessionData.UIElement(
                     id: "C2",
                     elementId: "elem2",
@@ -189,11 +187,9 @@ struct ClickCommandMockTests {
                     help: nil,
                     roleDescription: nil,
                     identifier: nil,
-                    keyboardShortcut: "cmd+i"
-                )
+                    keyboardShortcut: "cmd+i"),
             ],
-            lastUpdateTime: Date()
-        )
+            lastUpdateTime: Date())
 
         // Test finding by title
         if let element = ClickCommand.findElementByText("Bold", in: sessionData) {
@@ -267,7 +263,8 @@ extension ClickCommand {
         let parts = coords.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         guard parts.count == 2,
               let x = Double(parts[0]),
-              let y = Double(parts[1]) else {
+              let y = Double(parts[1])
+        else {
             return nil
         }
         return CGPoint(x: x, y: y)
@@ -294,12 +291,12 @@ extension ClickCommand {
             description: nil,
             help: nil,
             roleDescription: query,
-            identifier: nil
-        )
+            identifier: nil)
     }
 
     @MainActor
-    static func findElementByText(_ text: String, in sessionData: SessionCache.SessionData) -> SessionCache.SessionData.UIElement? {
+    static func findElementByText(_ text: String, in sessionData: SessionCache.SessionData) -> SessionCache.SessionData
+    .UIElement? {
         let lowerText = text.lowercased()
 
         return sessionData.uiMap.values.first { element in

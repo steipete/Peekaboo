@@ -1,6 +1,6 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("Agent Command Basic Tests")
 struct AgentCommandBasicTests {
@@ -35,8 +35,7 @@ struct AgentCommandBasicTests {
         let successResponse = AgentJSONResponse(
             success: true,
             data: AgentCommandBasicTests.TestData(message: "Success"),
-            error: nil
-        )
+            error: nil)
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
@@ -97,8 +96,7 @@ struct AgentCommandBasicTests {
         // Test invalid JSON
         let result = try await executor.executeFunction(
             name: "peekaboo_see",
-            arguments: "invalid json"
-        )
+            arguments: "invalid json")
 
         #expect(result.contains("\"success\":false"))
         #expect(result.contains("INVALID_ARGS"))

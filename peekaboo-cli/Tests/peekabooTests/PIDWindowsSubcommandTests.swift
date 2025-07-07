@@ -1,17 +1,17 @@
 import AppKit
 import ArgumentParser
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("PID Windows Subcommand Tests")
+@Suite("PID Windows Subcommand Tests", .serialized)
 struct PIDWindowsSubcommandTests {
     @Test("Parse windows subcommand with PID")
     func parseWindowsSubcommandWithPID() throws {
         // Test parsing windows subcommand with PID
         let command = try WindowsSubcommand.parse([
             "--app", "PID:1234",
-            "--json-output"
+            "--json-output",
         ])
 
         #expect(command.app == "PID:1234")
@@ -24,7 +24,7 @@ struct PIDWindowsSubcommandTests {
         let command = try WindowsSubcommand.parse([
             "--app", "PID:5678",
             "--include-details", "ids,bounds,off_screen",
-            "--json-output"
+            "--json-output",
         ])
 
         #expect(command.app == "PID:5678")
@@ -37,12 +37,12 @@ struct PIDWindowsSubcommandTests {
         let pidFormats = [
             "PID:1", // Single digit
             "PID:123", // Three digits
-            "PID:99999" // Large PID
+            "PID:99999", // Large PID
         ]
 
         for pidFormat in pidFormats {
             let command = try WindowsSubcommand.parse([
-                "--app", pidFormat
+                "--app", pidFormat,
             ])
 
             #expect(command.app == pidFormat)
@@ -57,8 +57,7 @@ struct PIDWindowsSubcommandTests {
             bundle_id: "com.test.app",
             pid: 1234,
             is_active: false,
-            window_count: 2
-        )
+            window_count: 2)
 
         #expect(appInfo.pid == 1234)
         #expect(appInfo.app_name == "TestApp")
@@ -77,8 +76,7 @@ struct PIDWindowsSubcommandTests {
         let targetAppInfo = TargetApplicationInfo(
             app_name: "Safari",
             bundle_id: "com.apple.Safari",
-            pid: 5678
-        )
+            pid: 5678)
 
         #expect(targetAppInfo.pid == 5678)
 
@@ -95,21 +93,18 @@ struct PIDWindowsSubcommandTests {
         let targetAppInfo = TargetApplicationInfo(
             app_name: "Terminal",
             bundle_id: "com.apple.Terminal",
-            pid: 9999
-        )
+            pid: 9999)
 
         let windowInfo = WindowInfo(
             window_title: "~/Projects",
             window_id: 456,
             window_index: 0,
             bounds: nil,
-            is_on_screen: true
-        )
+            is_on_screen: true)
 
         let windowListData = WindowListData(
             windows: [windowInfo],
-            target_application_info: targetAppInfo
-        )
+            target_application_info: targetAppInfo)
 
         #expect(windowListData.target_application_info.pid == 9999)
         #expect(windowListData.windows.count == 1)

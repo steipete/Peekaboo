@@ -67,9 +67,9 @@ struct AgentErrorInfo: Codable {
     }
 
     init(from error: AgentError) {
-        message = error.localizedDescription
-        code = error.errorCode
-        details = nil
+        self.message = error.localizedDescription
+        self.code = error.errorCode
+        self.details = nil
     }
 }
 
@@ -94,8 +94,7 @@ func createAgentErrorResponse(_ error: AgentError) -> AgentJSONResponse<EmptyDat
     AgentJSONResponse(
         success: false,
         data: nil,
-        error: AgentErrorInfo(from: error)
-    )
+        error: AgentErrorInfo(from: error))
 }
 
 struct EmptyData: Codable {}
@@ -115,14 +114,14 @@ actor SessionManager {
         var context: [String: String]
 
         mutating func addMapping(_ mapping: ElementMapping) {
-            elementMappings[mapping.id] = mapping
+            self.elementMappings[mapping.id] = mapping
         }
 
         mutating func addScreenshot(_ screenshot: ScreenshotData) {
-            screenshots.append(screenshot)
+            self.screenshots.append(screenshot)
             // Keep only last 10 screenshots to manage memory
-            if screenshots.count > 10 {
-                screenshots.removeFirst()
+            if self.screenshots.count > 10 {
+                self.screenshots.removeFirst()
             }
         }
     }
@@ -143,31 +142,30 @@ actor SessionManager {
 
     func createSession() -> String {
         let sessionId = UUID().uuidString
-        sessions[sessionId] = SessionData(
+        self.sessions[sessionId] = SessionData(
             id: sessionId,
             createdAt: Date(),
             elementMappings: [:],
             screenshots: [],
-            context: [:]
-        )
+            context: [:])
         return sessionId
     }
 
     func getSession(_ id: String) -> SessionData? {
-        sessions[id]
+        self.sessions[id]
     }
 
     func updateSession(_ id: String, with data: SessionData) {
-        sessions[id] = data
+        self.sessions[id] = data
     }
 
     func removeSession(_ id: String) {
-        sessions.removeValue(forKey: id)
+        self.sessions.removeValue(forKey: id)
     }
 
     func cleanupOldSessions() {
         let cutoffDate = Date().addingTimeInterval(-3600) // 1 hour
-        sessions = sessions.filter { $0.value.createdAt > cutoffDate }
+        self.sessions = self.sessions.filter { $0.value.createdAt > cutoffDate }
     }
 }
 
@@ -195,11 +193,10 @@ struct RetryConfiguration {
         maxAttempts: 3,
         initialDelay: 1.0,
         maxDelay: 30.0,
-        backoffMultiplier: 2.0
-    )
+        backoffMultiplier: 2.0)
 
     func delay(for attempt: Int) -> TimeInterval {
-        let delay = initialDelay * pow(backoffMultiplier, Double(attempt))
-        return min(delay, maxDelay)
+        let delay = self.initialDelay * pow(self.backoffMultiplier, Double(attempt))
+        return min(delay, self.maxDelay)
     }
 }
