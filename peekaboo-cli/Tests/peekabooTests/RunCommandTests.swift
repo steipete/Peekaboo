@@ -45,7 +45,7 @@ struct RunCommandTests {
                 params: ["app": "Safari"]
             ),
             TestScriptStep(
-                stepId: "step2", 
+                stepId: "step2",
                 comment: "Click login button",
                 command: "click",
                 params: ["query": "Login"]
@@ -57,7 +57,7 @@ struct RunCommandTests {
                 params: ["text": "user@example.com", "on": "T1"]
             )
         ]
-        
+
         let script = TestPeekabooScript(
             description: "Automates the login flow",
             steps: steps
@@ -93,7 +93,7 @@ struct RunCommandTests {
                 executionTime: 2.0
             )
         ]
-        
+
         let result = ScriptExecutionResult(
             success: false,
             scriptPath: "/tmp/test.peekaboo.json",

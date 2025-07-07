@@ -1,8 +1,27 @@
-# SwiftLint configuration for Peekaboo CLI
+# SwiftLint configuration for Peekaboo root
+# This file ensures SwiftLint doesn't scan hidden directories when run from root
 
-# Rules
+# Paths
+included:
+  - peekaboo-cli/Sources
+  - peekaboo-cli/Tests
+
+excluded:
+  - .build
+  - .swiftpm
+  - .git
+  - node_modules
+  - dist
+  - coverage
+  - ".*" # Exclude all hidden directories
+  - "**/.build"
+  - "**/.swiftpm"
+  - "**/.*"
+  - peekaboo-cli/Package.swift
+
+# Use the same rules as the peekaboo-cli config
 disabled_rules:
-  - trailing_whitespace # Can be annoying with markdown
+  - trailing_whitespace
 
 opt_in_rules:
   - empty_count
@@ -49,15 +68,3 @@ identifier_name:
     warning: 40
     error: 50
   allowed_symbols: ["_"]
-
-# Paths
-included:
-  - Sources
-  - Tests
-
-excluded:
-  - .build
-  - .swiftpm
-  - .git
-  - Package.swift
-  - ".*" # Exclude all hidden directories

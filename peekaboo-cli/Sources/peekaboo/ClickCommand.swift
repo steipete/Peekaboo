@@ -230,7 +230,7 @@ struct ClickCommand: AsyncParsableCommand {
                     }
                 }
             }
-            
+
             // If not found at stored location, search the entire UI tree
             if let liveElement = try await findLiveElement(
                 matching: locator,
@@ -253,7 +253,7 @@ struct ClickCommand: AsyncParsableCommand {
             "Element '\(elementId)' not found or not actionable after \(timeout)ms"
         )
     }
-    
+
     @MainActor
     private func findElementAtLocation(
         frame: CGRect,
@@ -261,20 +261,20 @@ struct ClickCommand: AsyncParsableCommand {
         in appName: String?
     ) async throws -> Element? {
         // Find the application using AXorcist
-        guard let appName = appName,
+        guard let appName,
               let app = NSWorkspace.shared.runningApplications.first(where: {
                   $0.localizedName == appName || $0.bundleIdentifier == appName
               }) else {
             return nil
         }
-        
+
         // Create AXUIElement for the application
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let _ = Element(axApp)
-        
+        _ = Element(axApp)
+
         // Get element at the center of the frame using AXorcist
         let centerPoint = CGPoint(x: frame.midX, y: frame.midY)
-        
+
         // Use AXorcist's elementAtPoint static method
         if let foundElement = Element.elementAtPoint(centerPoint, pid: app.processIdentifier) {
             // Verify it's the right type of element using AXorcist's role() method
@@ -282,31 +282,31 @@ struct ClickCommand: AsyncParsableCommand {
                 return foundElement
             }
         }
-        
+
         return nil
     }
-    
+
     @MainActor
     private func findLiveElement(
         matching locator: ElementLocator,
         in appName: String?
     ) async throws -> Element? {
         // Find the application
-        guard let appName = appName,
+        guard let appName,
               let app = NSWorkspace.shared.runningApplications.first(where: {
                   $0.localizedName == appName || $0.bundleIdentifier == appName
               }) else {
             return nil
         }
-        
+
         // Create AXUIElement for the application
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         let appElement = Element(axApp)
-        
+
         // Search for matching element
         return findMatchingElement(in: appElement, matching: locator)
     }
-    
+
     @MainActor
     private func findMatchingElement(
         in element: Element,
@@ -316,7 +316,7 @@ struct ClickCommand: AsyncParsableCommand {
         if matchesLocator(element: element, locator: locator) {
             return element
         }
-        
+
         // Recursively search children
         if let children = element.children() {
             for child in children {
@@ -325,10 +325,10 @@ struct ClickCommand: AsyncParsableCommand {
                 }
             }
         }
-        
+
         return nil
     }
-    
+
     @MainActor
     private func matchesLocator(element: Element, locator: ElementLocator) -> Bool {
         // Match by role (required)
@@ -336,56 +336,57 @@ struct ClickCommand: AsyncParsableCommand {
         if role != locator.role {
             return false
         }
-        
+
         // For elements with unique identifiers, match those first
         if let locatorId = locator.identifier, !locatorId.isEmpty {
             return element.identifier() == locatorId
         }
-        
+
         // For elements with labels (like "italic", "bold"), match by label
         if let locatorLabel = locator.label, !locatorLabel.isEmpty {
             // Check various label-like properties
-            let elementLabel = element.descriptionText() ?? element.help() ?? element.roleDescription() ?? element.title()
+            let elementLabel = element.descriptionText() ?? element.help() ?? element.roleDescription() ?? element
+                .title()
             return elementLabel == locatorLabel
         }
-        
+
         // Match by title if specified
         if let locatorTitle = locator.title, !locatorTitle.isEmpty {
             return element.title() == locatorTitle
         }
-        
+
         // Match by value if specified (for text fields, etc.)
         if let locatorValue = locator.value, !locatorValue.isEmpty {
             if let elementValue = element.value() as? String {
                 return elementValue == locatorValue
             }
         }
-        
+
         // For elements without any distinguishing properties, we need more context
         // This handles cases like multiple identical checkboxes
         // In this case, we should rely on position or other heuristics
         let hasAnyProperty = (locator.identifier != nil && !locator.identifier!.isEmpty) ||
-                           (locator.label != nil && !locator.label!.isEmpty) ||
-                           (locator.title != nil && !locator.title!.isEmpty) ||
-                           (locator.value != nil && !locator.value!.isEmpty)
-        
+            (locator.label != nil && !locator.label!.isEmpty) ||
+            (locator.title != nil && !locator.title!.isEmpty) ||
+            (locator.value != nil && !locator.value!.isEmpty)
+
         // If the locator has no properties, it's likely a generic element
         // We should not match based on role alone
         return !hasAnyProperty
     }
-    
+
     @MainActor
     private func isElementActionable(_ element: Element) async throws -> Bool {
         // Check if element is enabled
         if !(element.isEnabled() ?? true) {
             return false
         }
-        
+
         // Check if element is visible (not hidden)
         if element.isHidden() == true {
             return false
         }
-        
+
         // Check frame validity
         guard let frame = element.frame() else {
             return false
@@ -393,7 +394,7 @@ struct ClickCommand: AsyncParsableCommand {
         if frame.width <= 0 || frame.height <= 0 {
             return false
         }
-        
+
         // Check if element is on screen
         if let mainScreen = NSScreen.main {
             let screenBounds = mainScreen.frame
@@ -403,7 +404,7 @@ struct ClickCommand: AsyncParsableCommand {
         } else {
             return false
         }
-        
+
         return true
     }
 
@@ -440,7 +441,7 @@ struct ClickCommand: AsyncParsableCommand {
                     roleDescription: element.roleDescription,
                     identifier: element.identifier
                 )
-                
+
                 if let liveElement = try await findLiveElement(
                     matching: locator,
                     in: sessionData.applicationName

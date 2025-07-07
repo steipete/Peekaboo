@@ -105,7 +105,7 @@ struct Peekaboo: AsyncParsableCommand {
             DragCommand.self,
             AgentCommand.self
         ],
-        defaultSubcommand: AgentCommand.self  // Make agent the default when no subcommand is specified
+        // defaultSubcommand: AgentCommand.self // Temporarily disable default subcommand
     )
 }
 

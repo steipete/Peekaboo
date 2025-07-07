@@ -98,7 +98,7 @@ describe("click tool", () => {
       const result = await clickToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["click", "Submit", "--session", "test-123", "--wait-for", "5000", "--json-output"],
+        ["click", "Submit", "--session", "test-123", "--wait-for", "5000"],
         mockContext.logger
       );
 
@@ -129,7 +129,7 @@ describe("click tool", () => {
       const result = await clickToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["click", "--on", "B42", "--wait-for", "10000", "--json-output"],
+        ["click", "--on", "B42", "--wait-for", "10000"],
         mockContext.logger
       );
 
@@ -154,7 +154,7 @@ describe("click tool", () => {
       const result = await clickToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["click", "--coords", "300,400", "--wait-for", "5000", "--json-output"],
+        ["click", "--coords", "300,400", "--wait-for", "5000"],
         mockContext.logger
       );
 

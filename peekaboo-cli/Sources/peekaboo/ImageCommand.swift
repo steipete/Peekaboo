@@ -102,7 +102,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
 
     @Option(name: .long, help: "Analyze the captured image with AI (provide a question/prompt)")
     var analyze: String?
-    
+
     @Flag(name: .shortAndLong, help: "Enable verbose logging for detailed output")
     var verbose = false
 
@@ -213,7 +213,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
     private func outputResultsWithAnalysis(_ savedFiles: [SavedFile], analysis: AnalysisResult) {
         if jsonOutput {
             // Create combined output for JSON
-            let _ = ImageCaptureData(saved_files: savedFiles)
+            _ = ImageCaptureData(saved_files: savedFiles)
             // Add analysis data to the output
             let enrichedData: [String: Any] = [
                 "saved_files": savedFiles.map { file in

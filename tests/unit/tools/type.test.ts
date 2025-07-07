@@ -84,7 +84,7 @@ describe("type tool", () => {
       const result = await typeToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["type", "Hello, world!", "--delay", "50", "--json-output"],
+        ["type", "Hello, world!", "--delay", "50"],
         mockContext.logger
       );
 
@@ -116,7 +116,7 @@ describe("type tool", () => {
       const result = await typeToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["type", "john.doe@example.com", "--on", "T2", "--session", "test-123", "--delay", "50", "--wait-for", "5000", "--json-output"],
+        ["type", "john.doe@example.com", "--on", "T2", "--session", "test-123", "--delay", "50", "--wait-for", "5000"],
         mockContext.logger
       );
 
@@ -267,7 +267,7 @@ describe("type tool", () => {
       await typeToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["type", "test", "--delay", "50", "--json-output"],
+        ["type", "test", "--delay", "50"],
         mockContext.logger
       );
       // Note: --wait-for should NOT be included

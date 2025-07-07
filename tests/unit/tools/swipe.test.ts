@@ -80,7 +80,7 @@ describe("swipe tool", () => {
       const result = await swipeToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["swipe", "--from", "100,200", "--to", "300,400", "--duration", "500", "--steps", "10", "--json-output"],
+        ["swipe", "--from", "100,200", "--to", "300,400", "--duration", "500", "--steps", "10"],
         mockContext.logger
       );
 
@@ -116,7 +116,7 @@ describe("swipe tool", () => {
       const result = await swipeToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["swipe", "--from", "0,0", "--to", "100,0", "--duration", "1000", "--steps", "25", "--json-output"],
+        ["swipe", "--from", "0,0", "--to", "100,0", "--duration", "1000", "--steps", "25"],
         mockContext.logger
       );
 

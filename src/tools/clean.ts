@@ -69,7 +69,7 @@ export async function cleanToolHandler(
       args.push("--dry-run");
     }
 
-    
+    logger.debug({ args }, "Executing clean command with args");
 
     // Execute the command
     const result = await executeSwiftCli(args, logger);
@@ -97,14 +97,16 @@ export async function cleanToolHandler(
       lines.push("");
     }
 
-    if (cleanData.sessions_removed === 0) {
+    const sessionsRemoved = cleanData.sessions_removed ?? 0;
+    
+    if (sessionsRemoved === 0) {
       lines.push("✅ No sessions to clean");
     } else {
       const action = input.dry_run ? "Would remove" : "Removed";
-      lines.push(`🗑️  ${action} ${cleanData.sessions_removed} session${cleanData.sessions_removed === 1 ? "" : "s"}`);
+      lines.push(`🗑️  ${action} ${sessionsRemoved} session${sessionsRemoved === 1 ? "" : "s"}`);
       lines.push(`💾 Space ${input.dry_run ? "to be freed" : "freed"}: ${formatBytes(cleanData.bytes_freed)}`);
 
-      if (cleanData.session_details.length <= 5) {
+      if (cleanData.session_details && cleanData.session_details.length > 0 && cleanData.session_details.length <= 5) {
         lines.push("\nSessions:");
         for (const session of cleanData.session_details) {
           lines.push(`  - ${session.session_id} (${formatBytes(session.size)})`);
@@ -112,7 +114,9 @@ export async function cleanToolHandler(
       }
     }
 
-    lines.push(`\n⏱️  Completed in ${cleanData.execution_time.toFixed(2)}s`);
+    if (cleanData.execution_time !== undefined) {
+      lines.push(`\n⏱️  Completed in ${cleanData.execution_time.toFixed(2)}s`);
+    }
 
     return {
       content: [{
@@ -134,7 +138,11 @@ export async function cleanToolHandler(
   }
 }
 
-function formatBytes(bytes: number): string {
+function formatBytes(bytes: number | undefined): string {
+  if (bytes === undefined || bytes === null) {
+    return "0.0 B";
+  }
+  
   const units = ["B", "KB", "MB", "GB"];
   let size = bytes;
   let unitIndex = 0;

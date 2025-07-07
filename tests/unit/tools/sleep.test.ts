@@ -79,7 +79,7 @@ describe("sleep tool", () => {
       const result = await sleepToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["sleep", "1000", "--json-output"],
+        ["sleep", "1000"],
         mockContext.logger
       );
 

@@ -5,17 +5,17 @@ import Foundation
 struct PeekabooCommandExecutor {
     let verbose: Bool
     let sessionManager = SessionManager.shared
-    
+
     /// Executes a Peekaboo function and returns JSON response
     func executeFunction(name: String, arguments: String) async throws -> String {
         // Parse the function name
         let commandName = name.replacingOccurrences(of: "peekaboo_", with: "")
-        
+
         // Parse JSON arguments
         guard let argsData = arguments.data(using: .utf8) else {
             return createErrorJSON(.invalidArguments("Invalid UTF-8 string"))
         }
-        
+
         let args: [String: Any]
         do {
             guard let parsed = try JSONSerialization.jsonObject(with: argsData) as? [String: Any] else {
@@ -25,34 +25,39 @@ struct PeekabooCommandExecutor {
         } catch {
             return createErrorJSON(.invalidArguments("Failed to parse JSON: \(error.localizedDescription)"))
         }
-        
+
         // Get session ID if provided
         let sessionId = args["session_id"] as? String
-        
+
         // Log execution if verbose
         if verbose {
             print("🔧 Executing: \(commandName) with args: \(arguments)")
         }
-        
+
         // Build and execute command
         do {
             let cliArgs = try buildCommandArguments(command: commandName, args: args)
             let output = try await executeCommand(cliArgs)
-            
+
             // Update session if needed
-            if let sessionId = sessionId {
+            if let sessionId {
                 await updateSession(sessionId, command: commandName, output: output)
             }
-            
+
             return output
         } catch {
             return createErrorJSON(.commandFailed(error.localizedDescription))
         }
     }
-    
+
     private func buildCommandArguments(command: String, args: [String: Any]) throws -> [String] {
-        var cliArgs = [command, "--json-output"]
+        var cliArgs = [command]
+        var hasSubcommand = false
         
+        // Defer adding json-output for commands with subcommands
+        let commandsWithSubcommands = ["app", "list", "config", "window", "menu", "dock", "dialog"]
+        let shouldDeferJsonOutput = commandsWithSubcommands.contains(command)
+
         switch command {
         case "see":
             if let app = args["app"] as? String {
@@ -63,40 +68,44 @@ struct PeekabooCommandExecutor {
                 cliArgs.append("--window-title")
                 cliArgs.append(title)
             }
-            if let sessionId = args["session_id"] as? String {
-                cliArgs.append("--session-id")
-                cliArgs.append(sessionId)
-            }
-            
+            // Note: see command creates sessions, doesn't use them
+
         case "click":
             if let element = args["element"] as? String {
                 cliArgs.append("--on")
                 cliArgs.append(element)
             } else if let x = args["x"] as? Double, let y = args["y"] as? Double {
-                cliArgs.append("--coordinates")
+                cliArgs.append("--coords")
                 cliArgs.append("\(Int(x)),\(Int(y))")
             } else {
                 throw AgentError.invalidArguments("Click requires either 'element' or 'x,y' coordinates")
             }
             
-            if let doubleClick = args["double_click"] as? Bool, doubleClick {
-                cliArgs.append("--double-click")
+            if let sessionId = args["session_id"] as? String {
+                cliArgs.append("--session")
+                cliArgs.append(sessionId)
             }
-            
+
+            if let doubleClick = args["double_click"] as? Bool, doubleClick {
+                cliArgs.append("--double")
+            }
+
         case "type":
             guard let text = args["text"] as? String else {
                 throw AgentError.invalidArguments("Type command requires 'text' parameter")
             }
             cliArgs.append(text)
             
-            if let element = args["element"] as? String {
-                cliArgs.append("--on")
-                cliArgs.append(element)
-            }
-            if let clearFirst = args["clear_first"] as? Bool, clearFirst {
-                cliArgs.append("--clear-first")
+            // Map session_id to --session
+            if let sessionId = args["session_id"] as? String {
+                cliArgs.append("--session")
+                cliArgs.append(sessionId)
             }
             
+            if let clearFirst = args["clear_first"] as? Bool, clearFirst {
+                cliArgs.append("--clear")
+            }
+
         case "scroll":
             if let direction = args["direction"] as? String {
                 cliArgs.append("--direction")
@@ -110,13 +119,13 @@ struct PeekabooCommandExecutor {
                 cliArgs.append("--on")
                 cliArgs.append(element)
             }
-            
+
         case "hotkey":
             guard let keys = args["keys"] as? [String] else {
                 throw AgentError.invalidArguments("Hotkey command requires 'keys' array")
             }
             cliArgs.append(contentsOf: keys)
-            
+
         case "image":
             if let app = args["app"] as? String {
                 cliArgs.append("--app")
@@ -134,13 +143,14 @@ struct PeekabooCommandExecutor {
                 cliArgs.append("--format")
                 cliArgs.append(format)
             }
-            
+
         case "window":
             guard let action = args["action"] as? String else {
                 throw AgentError.invalidArguments("Window command requires 'action' parameter")
             }
             cliArgs.append(action)
-            
+            hasSubcommand = true
+
             if let app = args["app"] as? String {
                 cliArgs.append("--app")
                 cliArgs.append(app)
@@ -149,7 +159,7 @@ struct PeekabooCommandExecutor {
                 cliArgs.append("--window-title")
                 cliArgs.append(title)
             }
-            
+
             // Position/size parameters
             if action == "move" {
                 if let x = args["x"] as? Double, let y = args["y"] as? Double {
@@ -162,22 +172,32 @@ struct PeekabooCommandExecutor {
                     cliArgs.append("\(Int(width)),\(Int(height))")
                 }
             }
-            
+
         case "app":
             guard let action = args["action"] as? String,
                   let name = args["name"] as? String else {
                 throw AgentError.invalidArguments("App command requires 'action' and 'name' parameters")
             }
             cliArgs.append(action)
+            hasSubcommand = true
             cliArgs.append(name)
-            
-        case "wait", "sleep":
+
+        case "wait":
+            // Map wait to sleep command but preserve the command structure
+            cliArgs[0] = "sleep"
             guard let duration = args["duration"] as? Double else {
                 throw AgentError.invalidArguments("Wait command requires 'duration' parameter")
             }
-            // Convert to milliseconds
-            cliArgs = ["sleep", String(Int(duration * 1000))]
+            // Convert to milliseconds and add as argument
+            cliArgs.append(String(Int(duration * 1000)))
             
+        case "sleep":
+            guard let duration = args["duration"] as? Double else {
+                throw AgentError.invalidArguments("Sleep command requires 'duration' parameter")
+            }
+            // Add duration in milliseconds
+            cliArgs.append(String(Int(duration * 1000)))
+
         default:
             // For unknown commands, pass through all arguments
             for (key, value) in args {
@@ -188,26 +208,45 @@ struct PeekabooCommandExecutor {
             }
         }
         
+        // Add json-output flag after subcommands and arguments
+        if shouldDeferJsonOutput || !hasSubcommand {
+            cliArgs.append("--json-output")
+        }
+
         return cliArgs
     }
-    
+
     private func executeCommand(_ args: [String]) async throws -> String {
         // Get the path to the current executable
         let executablePath = CommandLine.arguments[0]
         
+        // Ensure we have an absolute path
+        let absolutePath: String
+        if executablePath.hasPrefix("/") {
+            absolutePath = executablePath
+        } else {
+            // Convert relative path to absolute
+            let currentDirectory = FileManager.default.currentDirectoryPath
+            absolutePath = (currentDirectory as NSString).appendingPathComponent(executablePath)
+        }
+
         // Create process
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.executableURL = URL(fileURLWithPath: absolutePath)
         process.arguments = args
         
+        if verbose {
+            print("   Executing: \(absolutePath) \(args.joined(separator: " "))")
+        }
+
         let outputPipe = Pipe()
         let errorPipe = Pipe()
         process.standardOutput = outputPipe
         process.standardError = errorPipe
-        
+
         // Run process
         try process.run()
-        
+
         // Read output asynchronously
         let outputData = try await withCheckedThrowingContinuation { continuation in
             outputPipe.fileHandleForReading.readabilityHandler = { handle in
@@ -216,7 +255,7 @@ struct PeekabooCommandExecutor {
                 continuation.resume(returning: data)
             }
         }
-        
+
         let errorData = try await withCheckedThrowingContinuation { continuation in
             errorPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
@@ -224,18 +263,18 @@ struct PeekabooCommandExecutor {
                 continuation.resume(returning: data)
             }
         }
-        
+
         process.waitUntilExit()
-        
+
         // Check termination status
         if process.terminationStatus == 0 {
             var output = String(data: outputData, encoding: .utf8) ?? ""
-            
+
             // If no output, check stderr (some commands might output there)
             if output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 output = String(data: errorData, encoding: .utf8) ?? ""
             }
-            
+
             // Validate JSON
             if !output.isEmpty,
                let data = output.data(using: .utf8),
@@ -254,20 +293,20 @@ struct PeekabooCommandExecutor {
             // Command failed
             let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
             let regularOutput = String(data: outputData, encoding: .utf8) ?? ""
-            
+
             // Try to parse as JSON error first
             if let data = regularOutput.data(using: .utf8),
                let _ = try? JSONSerialization.jsonObject(with: data) {
                 return regularOutput
             }
-            
+
             // Otherwise create error JSON
             return createErrorJSON(.commandFailed(
                 errorOutput.isEmpty ? "Exit code: \(process.terminationStatus)" : errorOutput
             ))
         }
     }
-    
+
     private func updateSession(_ sessionId: String, command: String, output: String) async {
         // Parse output to extract element mappings or screenshot info
         guard let data = output.data(using: .utf8),
@@ -275,7 +314,7 @@ struct PeekabooCommandExecutor {
               json["success"] as? Bool == true else {
             return
         }
-        
+
         // Update session based on command type
         if command == "see", let elements = json["elements"] as? [[String: Any]] {
             // Store element mappings in session
@@ -286,7 +325,7 @@ struct PeekabooCommandExecutor {
                 screenshots: [],
                 context: [:]
             )
-            
+
             for element in elements {
                 if let id = element["id"] as? String,
                    let description = element["description"] as? String,
@@ -295,7 +334,6 @@ struct PeekabooCommandExecutor {
                    let y = bounds["y"],
                    let width = bounds["width"],
                    let height = bounds["height"] {
-                    
                     let mapping = SessionManager.ElementMapping(
                         id: id,
                         description: description,
@@ -306,11 +344,11 @@ struct PeekabooCommandExecutor {
                     sessionData.addMapping(mapping)
                 }
             }
-            
+
             await sessionManager.updateSession(sessionId, with: sessionData)
         }
     }
-    
+
     private func createErrorJSON(_ error: AgentError) -> String {
         let response = createAgentErrorResponse(error)
         if let data = try? JSONEncoder().encode(response),

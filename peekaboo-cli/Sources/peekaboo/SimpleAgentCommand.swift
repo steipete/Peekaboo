@@ -7,16 +7,16 @@ struct SimpleAgentCommand: AsyncParsableCommand {
         commandName: "agent",
         abstract: "Execute automation tasks using AI"
     )
-    
+
     @Argument(help: "Natural language task to perform")
     var task: String
-    
+
     @Flag(name: .long, help: "Show what would be done without executing")
     var dryRun = false
-    
+
     @Flag(name: .long, help: "Output JSON format")
     var jsonOutput = false
-    
+
     mutating func run() async throws {
         // Check for OpenAI API key
         guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
@@ -33,16 +33,16 @@ struct SimpleAgentCommand: AsyncParsableCommand {
             }
             throw ExitCode.failure
         }
-        
+
         if !jsonOutput {
             print("🤖 Peekaboo Agent v3")
             print("Task: \(task)")
             print("")
         }
-        
+
         // For now, just demonstrate the concept
         let steps = analyzeTask(task)
-        
+
         if jsonOutput {
             let output: [String: Any] = [
                 "task": task,
@@ -56,7 +56,7 @@ struct SimpleAgentCommand: AsyncParsableCommand {
             for (index, step) in steps.enumerated() {
                 print("\(index + 1). \(step)")
             }
-            
+
             if dryRun {
                 print("\n✅ Dry run complete. No actions were taken.")
             } else {
@@ -67,11 +67,11 @@ struct SimpleAgentCommand: AsyncParsableCommand {
             }
         }
     }
-    
+
     private func analyzeTask(_ task: String) -> [String] {
         // Simple pattern matching for demo
         let lowercased = task.lowercased()
-        
+
         if lowercased.contains("textedit") {
             if lowercased.contains("hello") || lowercased.contains("write") {
                 return [
@@ -89,7 +89,7 @@ struct SimpleAgentCommand: AsyncParsableCommand {
                 ]
             }
         }
-        
+
         if lowercased.contains("screenshot") {
             return [
                 "Identify target (app/window/screen)",
@@ -98,7 +98,7 @@ struct SimpleAgentCommand: AsyncParsableCommand {
                 "Verify image was saved"
             ]
         }
-        
+
         if lowercased.contains("click") {
             return [
                 "Capture current screen",
@@ -108,7 +108,7 @@ struct SimpleAgentCommand: AsyncParsableCommand {
                 "Perform click action"
             ]
         }
-        
+
         // Default steps for unknown tasks
         return [
             "Analyze current screen state",
@@ -118,7 +118,7 @@ struct SimpleAgentCommand: AsyncParsableCommand {
             "Verify task completion"
         ]
     }
-    
+
     private func executeSteps(_ steps: [String]) async {
         for step in steps {
             print("  ▶ \(step)")

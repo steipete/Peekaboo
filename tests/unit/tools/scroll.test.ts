@@ -93,7 +93,7 @@ describe("scroll tool", () => {
       const result = await scrollToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["scroll", "--direction", "down", "--amount", "5", "--delay", "20", "--json-output"],
+        ["scroll", "--direction", "down", "--amount", "5", "--delay", "20"],
         mockContext.logger
       );
 
@@ -127,7 +127,7 @@ describe("scroll tool", () => {
       const result = await scrollToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["scroll", "--direction", "up", "--amount", "3", "--on", "G2", "--session", "test-123", "--delay", "20", "--json-output"],
+        ["scroll", "--direction", "up", "--amount", "3", "--on", "G2", "--session", "test-123", "--delay", "20"],
         mockContext.logger
       );
 

@@ -22,11 +22,11 @@ struct VersionTests {
 
         // Remove "Peekaboo " prefix
         let versionNumber = version.replacingOccurrences(of: "Peekaboo ", with: "")
-        
+
         // Split by prerelease identifier first
         let versionParts = versionNumber.split(separator: "-")
         let semverPart = String(versionParts[0])
-        
+
         let components = semverPart.split(separator: ".")
 
         #expect(components.count == 3)

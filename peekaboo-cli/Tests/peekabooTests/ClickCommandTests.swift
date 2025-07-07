@@ -1,5 +1,5 @@
-import Foundation
 import CoreGraphics
+import Foundation
 @testable import peekaboo
 import Testing
 
@@ -96,7 +96,7 @@ struct ClickCommandTests {
 
         // Parsing always succeeds, validation happens at runtime
         let command = try ClickCommand.parse(args)
-        
+
         if valid {
             // Should have at least one target specified
             #expect(command.query != nil || command.on != nil || command.coords != nil)

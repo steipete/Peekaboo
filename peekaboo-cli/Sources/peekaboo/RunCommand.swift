@@ -40,7 +40,7 @@ struct RunCommand: AsyncParsableCommand {
 
     @Flag(help: "Show detailed step execution")
     var verbose = false
-    
+
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
@@ -65,8 +65,8 @@ struct RunCommand: AsyncParsableCommand {
                 scriptPath: scriptPath,
                 description: script.description,
                 totalSteps: script.steps.count,
-                completedSteps: results.count(where: { $0.success }),
-                failedSteps: results.count(where: { !$0.success }),
+                completedSteps: results.count { $0.success },
+                failedSteps: results.count { !$0.success },
                 executionTime: Date().timeIntervalSince(startTime),
                 steps: results
             )
@@ -97,7 +97,7 @@ struct RunCommand: AsyncParsableCommand {
                     print("   Completed: \(output.completedSteps)")
                     print("   Failed: \(output.failedSteps)")
                     print("   Execution time: \(String(format: "%.2f", output.executionTime))s")
-                    
+
                     // Show failed steps
                     let failedSteps = output.steps.filter { !$0.success }
                     if !failedSteps.isEmpty {
@@ -386,7 +386,7 @@ struct ScriptStep: Codable {
     enum CodingKeys: String, CodingKey {
         case stepId, comment, command, params
     }
-    
+
     init(stepId: String, comment: String?, command: String, params: [String: Any]?) {
         self.stepId = stepId
         self.comment = comment

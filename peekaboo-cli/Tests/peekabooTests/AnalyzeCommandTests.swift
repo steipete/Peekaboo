@@ -28,7 +28,7 @@ struct AnalyzeCommandTests {
     func analyzeWithMockProvider() async throws {
         // Clean up any test files
         try? FileManager.default.removeItem(atPath: testImagePath)
-        
+
         // Create test image
         try createTestImage()
         defer {
@@ -78,7 +78,7 @@ struct AnalyzeCommandTests {
         let error = AnalyzeError.unsupportedFormat("txt")
         #expect(
             error.errorDescription ==
-            "Unsupported image format: .txt. Supported formats: .png, .jpg, .jpeg, .webp"
+                "Unsupported image format: .txt. Supported formats: .png, .jpg, .jpeg, .webp"
         )
     }
 
@@ -87,7 +87,7 @@ struct AnalyzeCommandTests {
         let error = AnalyzeError.noProvidersConfigured
         #expect(
             error.errorDescription ==
-            "AI analysis not configured. Set the PEEKABOO_AI_PROVIDERS environment variable."
+                "AI analysis not configured. Set the PEEKABOO_AI_PROVIDERS environment variable."
         )
     }
 }
@@ -120,7 +120,7 @@ struct AnalyzeIntegrationTests {
     func endToEndWithMockProviders() async throws {
         // Clean up before test
         try? FileManager.default.removeItem(atPath: tempImagePath)
-        
+
         // Create test image
         try createTestPNG()
         defer {

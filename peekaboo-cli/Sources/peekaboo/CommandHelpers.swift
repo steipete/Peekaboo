@@ -1,8 +1,8 @@
-import Foundation
-import ApplicationServices
-import AXorcist
-import ArgumentParser
 import AppKit
+import ApplicationServices
+import ArgumentParser
+import AXorcist
+import Foundation
 
 // MARK: - Verbose Protocol
 
@@ -25,14 +25,13 @@ extension VerboseCommand {
 
 func handleApplicationError(_ error: ApplicationError, jsonOutput: Bool) {
     if jsonOutput {
-        let errorCode: ErrorCode
-        switch error {
+        let errorCode: ErrorCode = switch error {
         case .notFound:
-            errorCode = .APP_NOT_FOUND
+            .APP_NOT_FOUND
         case .ambiguous:
-            errorCode = .AMBIGUOUS_APP_IDENTIFIER
+            .AMBIGUOUS_APP_IDENTIFIER
         }
-        
+
         let response = JSONResponse(
             success: false,
             error: ErrorInfo(
@@ -81,20 +80,20 @@ func handleValidationError(_ error: Error, jsonOutput: Bool) {
 extension Element {
     @MainActor
     func menuBar() -> Element? {
-        guard let menuBar = self.attribute(Attribute<AXUIElement>("AXMenuBar")) else {
+        guard let menuBar = attribute(Attribute<AXUIElement>("AXMenuBar")) else {
             return nil
         }
         return Element(menuBar)
     }
-    
+
     @MainActor
     static func systemWide() -> Element {
-        return Element(AXUIElementCreateSystemWide())
+        Element(AXUIElementCreateSystemWide())
     }
-    
+
     @MainActor
     func focusedApplication() -> Element? {
-        guard let app = self.attribute(Attribute<AXUIElement>("AXFocusedApplication")) else {
+        guard let app = attribute(Attribute<AXUIElement>("AXFocusedApplication")) else {
             return nil
         }
         return Element(app)

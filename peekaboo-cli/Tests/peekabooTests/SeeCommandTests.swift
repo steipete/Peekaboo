@@ -38,14 +38,14 @@ struct SeeCommandTests {
         let command = try SeeCommand.parse(["--mode", modeString])
         #expect(command.mode?.rawValue == modeString)
     }
-    
+
     @Test("See command auto-infers window mode when app is specified")
     func autoInferWindowModeWithApp() throws {
         let command = try SeeCommand.parse(["--app", "Safari"])
         #expect(command.app == "Safari")
         #expect(command.mode == nil) // Mode not explicitly set
     }
-    
+
     @Test("See command auto-infers window mode when window title is specified")
     func autoInferWindowModeWithTitle() throws {
         let command = try SeeCommand.parse(["--window-title", "Document"])
@@ -108,7 +108,7 @@ struct SeeCommandTests {
         ])
         #expect(command.analyze == "What is shown in this screenshot?")
     }
-    
+
     @Test("See command with window title")
     func parseWindowTitle() throws {
         let command = try SeeCommand.parse([

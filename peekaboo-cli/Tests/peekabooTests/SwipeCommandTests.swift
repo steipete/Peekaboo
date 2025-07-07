@@ -97,7 +97,10 @@ struct SwipeCommandTests {
                 #expect(Double(parts[1]) != nil)
             }
         } else {
-            #expect(parts.count != 2 || (parts.count >= 1 && Double(parts[0]) == nil) || (parts.count >= 2 && Double(parts[1]) == nil))
+            #expect(parts
+                .count != 2 || (parts.count >= 1 && Double(parts[0]) == nil) ||
+                (parts.count >= 2 && Double(parts[1]) == nil)
+            )
         }
     }
 
@@ -108,7 +111,7 @@ struct SwipeCommandTests {
             ((0, 0), (3, 4), 5.0), // 3-4-5 triangle
             ((0, 0), (0, 10), 10.0), // Vertical line
             ((0, 0), (10, 0), 10.0), // Horizontal line
-            ((100, 100), (100, 100), 0.0), // Same point
+            ((100, 100), (100, 100), 0.0) // Same point
         ]
 
         for testCase in testCases {
