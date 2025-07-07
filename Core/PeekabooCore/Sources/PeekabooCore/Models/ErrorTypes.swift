@@ -8,6 +8,7 @@ import Foundation
 /// window management, and file operations, with user-friendly error messages.
 public enum CaptureError: Error, LocalizedError, Sendable {
     case noDisplaysAvailable
+    case noDisplaysFound
     case screenRecordingPermissionDenied
     case accessibilityPermissionDenied
     case invalidDisplayID
@@ -17,17 +18,27 @@ public enum CaptureError: Error, LocalizedError, Sendable {
     case windowCaptureFailed(Error?)
     case fileWriteError(String, Error?)
     case appNotFound(String)
-    case invalidWindowIndex(Int)
+    case invalidWindowIndexOld(Int)
     case invalidArgument(String)
     case unknownError(String)
     case noWindowsFound(String)
     case fileIOError(String)
     case captureFailure(String)
+    case permissionDeniedScreenRecording
+    case noFrontmostApplication
+    case invalidCaptureArea
+    case invalidDisplayIndex(Int, availableCount: Int)
+    case ambiguousAppIdentifier(String, candidates: String)
+    case invalidWindowIndex(Int, availableCount: Int)
+    case captureFailed(String)
+    case imageConversionFailed
 
     public var errorDescription: String? {
         switch self {
         case .noDisplaysAvailable:
             return "No displays available for capture."
+        case .noDisplaysFound:
+            return "No displays found on the system."
         case .screenRecordingPermissionDenied:
             return "Screen recording permission is required. " +
                 "Please grant it in System Settings > Privacy & Security > Screen Recording."
@@ -80,7 +91,7 @@ public enum CaptureError: Error, LocalizedError, Sendable {
             return message
         case let .appNotFound(identifier):
             return "Application with identifier '\(identifier)' not found or is not running."
-        case let .invalidWindowIndex(index):
+        case let .invalidWindowIndexOld(index):
             return "Invalid window index: \(index)."
         case let .invalidArgument(message):
             return "Invalid argument: \(message)"
@@ -92,12 +103,29 @@ public enum CaptureError: Error, LocalizedError, Sendable {
             return "File I/O error: \(message)"
         case let .captureFailure(message):
             return "Capture failed: \(message)"
+        case .permissionDeniedScreenRecording:
+            return "Screen recording permission is required. Please grant it in System Settings > Privacy & Security > Screen Recording."
+        case .noFrontmostApplication:
+            return "No frontmost application found."
+        case .invalidCaptureArea:
+            return "Invalid capture area specified."
+        case let .invalidDisplayIndex(index, count):
+            return "Invalid display index \(index). Available displays: 0-\(count-1)."
+        case let .ambiguousAppIdentifier(identifier, candidates):
+            return "Multiple applications match '\(identifier)': \(candidates)."
+        case let .invalidWindowIndex(index, count):
+            return "Invalid window index \(index). Available windows: 0-\(count-1)."
+        case let .captureFailed(message):
+            return "Capture failed: \(message)"
+        case .imageConversionFailed:
+            return "Failed to convert captured image to desired format."
         }
     }
 
     public var exitCode: Int32 {
         switch self {
         case .noDisplaysAvailable: 10
+        case .noDisplaysFound: 32
         case .screenRecordingPermissionDenied: 11
         case .accessibilityPermissionDenied: 12
         case .invalidDisplayID: 13
@@ -107,12 +135,20 @@ public enum CaptureError: Error, LocalizedError, Sendable {
         case .windowCaptureFailed: 16
         case .fileWriteError: 17
         case .appNotFound: 18
-        case .invalidWindowIndex: 19
+        case .invalidWindowIndexOld: 19
         case .invalidArgument: 20
         case .unknownError: 1
         case .noWindowsFound: 7
         case .fileIOError: 22
         case .captureFailure: 23
+        case .permissionDeniedScreenRecording: 24
+        case .noFrontmostApplication: 25
+        case .invalidCaptureArea: 26
+        case .invalidDisplayIndex: 27
+        case .ambiguousAppIdentifier: 28
+        case .invalidWindowIndex: 29
+        case .captureFailed: 30
+        case .imageConversionFailed: 31
         }
     }
 }

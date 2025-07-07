@@ -94,8 +94,8 @@ public struct EmptyData: Codable {
 
 // MARK: - Session Management
 
-public actor SessionManager {
-    public static let shared = SessionManager()
+public actor AgentSessionManager {
+    public static let shared = AgentSessionManager()
 
     private var sessions: [String: SessionData] = [:]
 
