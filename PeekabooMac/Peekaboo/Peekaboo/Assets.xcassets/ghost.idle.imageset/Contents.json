@@ -1,14 +1,18 @@
 {
   "images" : [
     {
-      "filename" : "ghost.idle.png",
+      "filename" : "menubar_18.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "ghost.idle@2x.png",
+      "filename" : "menubar_36 1.png",
       "idiom" : "universal",
       "scale" : "2x"
+    },
+    {
+      "idiom" : "universal",
+      "scale" : "3x"
     }
   ],
   "info" : {
