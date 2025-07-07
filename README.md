@@ -360,9 +360,8 @@ npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp
 ## 📚 Documentation
 
 - [API Documentation](./docs/spec.md)
-- [Architecture Overview](./docs/architecture.md)
-- [Contributing Guide](./CONTRIBUTING.md)
-- [Blog Post](https://steipete.com/posts/peekaboo-mcp-screenshots-so-fast-theyre-paranormal/)
+- [Contributing Guide](https://github.com/steipete/Peekaboo?tab=readme-ov-file#-contributing)
+- [Blog Post](https://steipete.me/posts/2025/peekaboo-2-freeing-the-cli-from-its-mcp-shackles/)
 
 ## 🐛 Troubleshooting
 
