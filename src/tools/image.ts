@@ -38,7 +38,7 @@ export async function imageToolHandler(
     let effectiveFormat = input.format;
 
     // Check if format was corrected by the preprocessor
-    const originalFormat = (input as any)._originalFormat;
+    const originalFormat = (input as ImageInput & { _originalFormat?: string })._originalFormat;
     if (originalFormat) {
       logger.info(
         { originalFormat, correctedFormat: effectiveFormat },

@@ -7,27 +7,27 @@ import { executeSwiftCli } from "../utils/peekaboo-cli.js";
 
 export const cleanToolSchema = z.object({
   all_sessions: z.boolean().optional().describe(
-    "Optional. Remove all session data."
+    "Optional. Remove all session data.",
   ),
   older_than: z.number().optional().describe(
-    "Optional. Remove sessions older than specified hours."
+    "Optional. Remove sessions older than specified hours.",
   ),
   session: z.string().optional().describe(
-    "Optional. Remove specific session by ID."
+    "Optional. Remove specific session by ID.",
   ),
   dry_run: z.boolean().optional().default(false).describe(
-    "Optional. Show what would be deleted without actually deleting."
+    "Optional. Show what would be deleted without actually deleting.",
   ),
 }).refine(
   (data) => {
     const options = [data.all_sessions, data.older_than !== undefined, data.session !== undefined];
     return options.filter(Boolean).length === 1;
   },
-  "Specify exactly one of: all_sessions, older_than, or session"
+  "Specify exactly one of: all_sessions, older_than, or session",
 ).describe(
   "Cleans up session cache and temporary files. " +
   "Sessions are stored in ~/.peekaboo/session/<PID>/ directories. " +
-  "Use this to free up disk space and remove orphaned session data."
+  "Use this to free up disk space and remove orphaned session data.",
 );
 
 interface CleanResult {
@@ -56,7 +56,7 @@ export async function cleanToolHandler(
 
     // Build command arguments
     const args = ["clean"];
-    
+
     if (input.all_sessions) {
       args.push("--all-sessions");
     } else if (input.older_than !== undefined) {
@@ -64,12 +64,12 @@ export async function cleanToolHandler(
     } else if (input.session) {
       args.push("--session", input.session);
     }
-    
+
     if (input.dry_run) {
       args.push("--dry-run");
     }
+
     
-    args.push("--json-output");
 
     // Execute the command
     const result = await executeSwiftCli(args, logger);
@@ -77,7 +77,7 @@ export async function cleanToolHandler(
     if (!result.success || !result.data) {
       const errorMessage = result.error?.message || "Clean command failed";
       logger.error({ result }, errorMessage);
-      
+
       return {
         content: [{
           type: "text",
@@ -91,19 +91,19 @@ export async function cleanToolHandler(
 
     // Build response text
     const lines: string[] = [];
-    
+
     if (input.dry_run) {
       lines.push("🔍 Dry run mode - no files were deleted");
       lines.push("");
     }
-    
+
     if (cleanData.sessions_removed === 0) {
       lines.push("✅ No sessions to clean");
     } else {
       const action = input.dry_run ? "Would remove" : "Removed";
-      lines.push(`🗑️  ${action} ${cleanData.sessions_removed} session${cleanData.sessions_removed === 1 ? '' : 's'}`);
+      lines.push(`🗑️  ${action} ${cleanData.sessions_removed} session${cleanData.sessions_removed === 1 ? "" : "s"}`);
       lines.push(`💾 Space ${input.dry_run ? "to be freed" : "freed"}: ${formatBytes(cleanData.bytes_freed)}`);
-      
+
       if (cleanData.session_details.length <= 5) {
         lines.push("\nSessions:");
         for (const session of cleanData.session_details) {
@@ -111,7 +111,7 @@ export async function cleanToolHandler(
         }
       }
     }
-    
+
     lines.push(`\n⏱️  Completed in ${cleanData.execution_time.toFixed(2)}s`);
 
     return {
@@ -123,7 +123,7 @@ export async function cleanToolHandler(
 
   } catch (error) {
     logger.error({ error }, "Clean tool execution failed");
-    
+
     return {
       content: [{
         type: "text",
@@ -135,14 +135,14 @@ export async function cleanToolHandler(
 }
 
 function formatBytes(bytes: number): string {
-  const units = ['B', 'KB', 'MB', 'GB'];
+  const units = ["B", "KB", "MB", "GB"];
   let size = bytes;
   let unitIndex = 0;
-  
+
   while (size >= 1024 && unitIndex < units.length - 1) {
     size /= 1024;
     unitIndex++;
   }
-  
+
   return `${size.toFixed(1)} ${units[unitIndex]}`;
 }

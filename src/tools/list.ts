@@ -273,7 +273,7 @@ async function handleServerStatus(
 
       // Try to get CLI version
       const versionResult = await execPeekaboo(
-        ["--version"],
+        ["version"],
         packageRootDir,
         { expectSuccess: false },
       );
