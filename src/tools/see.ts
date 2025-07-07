@@ -1,11 +1,9 @@
 import {
   ToolContext,
   ToolResponse,
-  SwiftCliResponse,
 } from "../types/index.js";
 import { z } from "zod";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { buildImageSummary } from "../utils/image-summary.js";
 import { readImageAsBase64 } from "../utils/peekaboo-cli.js";
 import * as path from "path";
 import * as os from "os";
@@ -18,22 +16,22 @@ export const seeToolSchema = z.object({
     "Use `'screen:INDEX'` (e.g., `'screen:0'`) for a specific display.\n" +
     "Use `'frontmost'` for all windows of the current foreground application.\n" +
     "Use `'AppName'` (e.g., `'Safari'`) for all windows of that application.\n" +
-    "Use `'PID:PROCESS_ID'` (e.g., `'PID:663'`) to target a specific process by its PID."
+    "Use `'PID:PROCESS_ID'` (e.g., `'PID:663'`) to target a specific process by its PID.",
   ),
   path: z.string().optional().describe(
-    "Optional. Path to save the screenshot. If not provided, uses a temporary file."
+    "Optional. Path to save the screenshot. If not provided, uses a temporary file.",
   ),
   session: z.string().optional().describe(
-    "Optional. Session ID for UI automation state tracking. Creates new session if not provided."
+    "Optional. Session ID for UI automation state tracking. Creates new session if not provided.",
   ),
   annotate: z.boolean().optional().default(false).describe(
-    "Optional. If true, generates an annotated screenshot with interaction markers and IDs."
+    "Optional. If true, generates an annotated screenshot with interaction markers and IDs.",
   ),
 }).describe(
   "Captures a screenshot and analyzes UI elements for automation. " +
   "Returns UI element map with Peekaboo IDs (B1 for buttons, T1 for text fields, etc.) " +
   "that can be used with click, type, and other interaction commands. " +
-  "Creates or updates a session for tracking UI state."
+  "Creates or updates a session for tracking UI state.",
 );
 
 interface SeeResult {
@@ -71,11 +69,11 @@ export async function seeToolHandler(
 
     // Build command arguments
     const args = ["see"];
-    
+
     if (input.app_target) {
       // Parse app_target similar to image tool
       const [targetType, ...targetParts] = input.app_target.split(":");
-      
+
       if (targetType === "screen" && targetParts.length > 0) {
         args.push("--mode", "screen", "--screen-index", targetParts[0]);
       } else if (targetType === "frontmost") {
@@ -105,15 +103,13 @@ export async function seeToolHandler(
       args.push("--annotate");
     }
 
-    args.push("--json-output");
-
     // Execute the command
     const result = await executeSwiftCli(args, logger);
 
     if (!result.success || !result.data) {
       const errorMessage = result.error?.message || "See command failed";
       logger.error({ result }, errorMessage);
-      
+
       return {
         content: [{
           type: "text",
@@ -160,7 +156,7 @@ export async function seeToolHandler(
 
   } catch (error) {
     logger.error({ error }, "See tool execution failed");
-    
+
     return {
       content: [{
         type: "text",
@@ -173,20 +169,20 @@ export async function seeToolHandler(
 
 function buildSeeSummary(data: SeeResult): string {
   const lines: string[] = [];
-  
-  lines.push(`📸 UI State Captured`);
+
+  lines.push("📸 UI State Captured");
   lines.push(`Session ID: ${data.session_id}`);
-  
+
   if (data.application) {
     lines.push(`Application: ${data.application}`);
   }
   if (data.window) {
     lines.push(`Window: ${data.window}`);
   }
-  
+
   lines.push(`Screenshot: ${data.screenshot_path}`);
   lines.push(`Elements found: ${data.ui_elements.length}`);
-  
+
   // Group elements by type
   const elementsByRole = new Map<string, typeof data.ui_elements>();
   for (const elem of data.ui_elements) {
@@ -194,36 +190,43 @@ function buildSeeSummary(data: SeeResult): string {
     roleElems.push(elem);
     elementsByRole.set(elem.role, roleElems);
   }
-  
+
   lines.push("\nUI Elements:");
-  
+
   // Sort roles for consistent output
   const sortedRoles = Array.from(elementsByRole.keys()).sort();
-  
+
   for (const role of sortedRoles) {
-    const elements = elementsByRole.get(role)!;
+    const elements = elementsByRole.get(role);
+    if (!elements) {
+      continue;
+    }
     const actionableCount = elements.filter(el => el.is_actionable).length;
-    
+
     lines.push(`\n${role} (${elements.length} found, ${actionableCount} actionable):`);
-    
+
     for (const elem of elements) {
       const parts = [`  ${elem.id}`];
-      
-      if (elem.title) parts.push(`"${elem.title}"`);
-      else if (elem.label) parts.push(`"${elem.label}"`);
-      else if (elem.value) parts.push(`value: "${elem.value}"`);
-      
+
+      if (elem.title) {
+        parts.push(`"${elem.title}"`);
+      } else if (elem.label) {
+        parts.push(`"${elem.label}"`);
+      } else if (elem.value) {
+        parts.push(`value: "${elem.value}"`);
+      }
+
       parts.push(`at (${Math.round(elem.bounds.x)}, ${Math.round(elem.bounds.y)})`);
-      
+
       if (!elem.is_actionable) {
         parts.push("[not actionable]");
       }
-      
+
       lines.push(parts.join(" - "));
     }
   }
-  
+
   lines.push("\nUse element IDs (B1, T1, etc.) with click, type, and other interaction commands.");
-  
+
   return lines.join("\n");
 }

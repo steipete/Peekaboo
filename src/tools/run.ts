@@ -8,21 +8,21 @@ import * as fs from "fs/promises";
 
 export const runToolSchema = z.object({
   script_path: z.string().describe(
-    "Path to .peekaboo.json script file containing automation commands."
+    "Path to .peekaboo.json script file containing automation commands.",
   ),
   session: z.string().optional().describe(
-    "Optional. Session ID to use for the script execution. Creates new session if not specified."
+    "Optional. Session ID to use for the script execution. Creates new session if not specified.",
   ),
   stop_on_error: z.boolean().optional().default(true).describe(
-    "Optional. Stop execution if any command fails. Default: true."
+    "Optional. Stop execution if any command fails. Default: true.",
   ),
   timeout: z.number().optional().default(300000).describe(
-    "Optional. Maximum execution time in milliseconds. Default: 300000 (5 minutes)."
+    "Optional. Maximum execution time in milliseconds. Default: 300000 (5 minutes).",
   ),
 }).describe(
   "Runs a batch script of Peekaboo commands from a .peekaboo.json file. " +
   "Scripts can automate complex UI workflows by chaining see, click, type, and other commands. " +
-  "Each command in the script runs sequentially with shared session state."
+  "Each command in the script runs sequentially with shared session state.",
 );
 
 interface RunResult {
@@ -60,16 +60,16 @@ export async function runToolHandler(
     try {
       const scriptContent = await fs.readFile(input.script_path, "utf-8");
       const script: PeekabooScript = JSON.parse(scriptContent);
-      
+
       if (!script.commands || !Array.isArray(script.commands)) {
         throw new Error("Script must contain a 'commands' array");
       }
-      
-      logger.info({ 
-        scriptName: script.name, 
-        commandCount: script.commands.length 
+
+      logger.info({
+        scriptName: script.name,
+        commandCount: script.commands.length,
       }, "Loaded Peekaboo script");
-      
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       return {
@@ -83,23 +83,23 @@ export async function runToolHandler(
 
     // Build command arguments
     const args = ["run", input.script_path];
-    
+
     // Session
     if (input.session) {
       args.push("--session", input.session);
     }
-    
+
     // Stop on error (default is true, so only add flag when false)
     const stopOnError = input.stop_on_error ?? true;
     if (!stopOnError) {
       args.push("--continue-on-error");
     }
-    
+
     // Timeout
     const timeout = input.timeout ?? 300000;
     args.push("--timeout", timeout.toString());
+
     
-    args.push("--json-output");
 
     // Execute the command
     const result = await executeSwiftCli(args, logger);
@@ -107,7 +107,7 @@ export async function runToolHandler(
     if (!result.data) {
       const errorMessage = result.error?.message || "Run command failed";
       logger.error({ result }, errorMessage);
-      
+
       return {
         content: [{
           type: "text",
@@ -121,18 +121,18 @@ export async function runToolHandler(
 
     // Build response text
     const lines: string[] = [];
-    
+
     if (runData.success) {
       lines.push("✅ Script executed successfully");
     } else {
       lines.push("❌ Script execution failed");
     }
-    
+
     lines.push(`📄 Script: ${runData.script_path}`);
     lines.push(`🔢 Commands executed: ${runData.commands_executed}/${runData.total_commands}`);
     lines.push(`🔖 Session ID: ${runData.session_id}`);
     lines.push(`⏱️  Total time: ${runData.execution_time.toFixed(2)}s`);
-    
+
     if (runData.errors && runData.errors.length > 0) {
       lines.push("\n❌ Errors:");
       runData.errors.forEach((error, index) => {
@@ -154,7 +154,7 @@ export async function runToolHandler(
 
   } catch (error) {
     logger.error({ error }, "Run tool execution failed");
-    
+
     return {
       content: [{
         type: "text",

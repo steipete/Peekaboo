@@ -41,7 +41,7 @@ import {
 import { generateServerStatusString } from "./utils/server-status.js";
 import { initializeSwiftCliPath } from "./utils/peekaboo-cli.js";
 import { zodToJsonSchema } from "./utils/zod-to-json-schema.js";
-import { ToolResponse } from "./types/index.js";
+import { ToolResponse, ImageInput } from "./types/index.js";
 import { z } from "zod";
 
 // Get package version and determine package root
@@ -198,7 +198,8 @@ Use Cases:
         title: "See UI Elements",
         description:
 `Captures a screenshot and analyzes UI elements for automation.
-Returns UI element map with Peekaboo IDs (B1 for buttons, T1 for text fields, etc.) that can be used with interaction commands.
+Returns UI element map with Peekaboo IDs (B1 for buttons, T1 for text fields, etc.) 
+that can be used with interaction commands.
 Creates or updates a session for tracking UI state across multiple commands.` +
           statusSuffix,
         inputSchema: zodToJsonSchema(seeToolSchema),
@@ -297,7 +298,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case "image": {
         // Store original format before validation
-        const originalFormat = (args as any)?.format;
+        const originalFormat = (args as Record<string, unknown>)?.format;
         const validatedArgs = imageToolSchema.parse(args || {});
 
         // Check if format was corrected
@@ -306,7 +307,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           const validFormats = ["png", "jpg", "jpeg", "data"];
           if (!validFormats.includes(normalizedOriginal) && validatedArgs.format === "png") {
             // Format was corrected, add the original format to the validated args
-            (validatedArgs as any)._originalFormat = originalFormat;
+            (validatedArgs as ImageInput & { _originalFormat?: string })._originalFormat = originalFormat;
           }
         }
 

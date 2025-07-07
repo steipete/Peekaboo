@@ -15,14 +15,14 @@ export const sleepToolSchema = z.object({
       }
       return val;
     },
-    z.number().min(0)
+    z.number().min(0),
   ).describe(
-    "Sleep duration in milliseconds."
+    "Sleep duration in milliseconds.",
   ),
 }).describe(
   "Pauses execution for a specified duration. " +
   "Useful for waiting between UI actions, allowing animations to complete, " +
-  "or pacing automated workflows."
+  "or pacing automated workflows.",
 );
 
 interface SleepResult {
@@ -43,7 +43,7 @@ export async function sleepToolHandler(
     logger.debug({ input }, "Processing peekaboo.sleep tool call");
 
     // Build command arguments
-    const args = ["sleep", input.duration.toString(), "--json-output"];
+    const args = ["sleep", input.duration.toString()];
 
     // Execute the command
     const result = await executeSwiftCli(args, logger);
@@ -51,7 +51,7 @@ export async function sleepToolHandler(
     if (!result.success || !result.data) {
       const errorMessage = result.error?.message || "Sleep command failed";
       logger.error({ result }, errorMessage);
-      
+
       return {
         content: [{
           type: "text",
@@ -65,7 +65,7 @@ export async function sleepToolHandler(
 
     // Build response text
     const durationSeconds = sleepData.actual_duration / 1000;
-    
+
     return {
       content: [{
         type: "text",
@@ -75,7 +75,7 @@ export async function sleepToolHandler(
 
   } catch (error) {
     logger.error({ error }, "Sleep tool execution failed");
-    
+
     return {
       content: [{
         type: "text",
