@@ -34,6 +34,28 @@ public protocol ApplicationServiceProtocol: Sendable {
     /// Activate (bring to front) an application
     /// - Parameter identifier: Application name or bundle ID
     func activateApplication(identifier: String) async throws
+    
+    /// Quit an application
+    /// - Parameters:
+    ///   - identifier: Application name or bundle ID
+    ///   - force: Force quit without saving
+    /// - Returns: True if the application was successfully quit
+    func quitApplication(identifier: String, force: Bool) async throws -> Bool
+    
+    /// Hide an application
+    /// - Parameter identifier: Application name or bundle ID
+    func hideApplication(identifier: String) async throws
+    
+    /// Unhide an application
+    /// - Parameter identifier: Application name or bundle ID
+    func unhideApplication(identifier: String) async throws
+    
+    /// Hide all other applications
+    /// - Parameter identifier: Application to keep visible
+    func hideOtherApplications(identifier: String) async throws
+    
+    /// Show all hidden applications
+    func showAllApplications() async throws
 }
 
 /// Information about an application for service layer

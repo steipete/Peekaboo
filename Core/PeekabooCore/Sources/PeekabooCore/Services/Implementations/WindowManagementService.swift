@@ -13,9 +13,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func closeWindow(target: WindowTarget) async throws {
-        let window = try await findWindow(target: target)
-        
-        let success = await MainActor.run {
+        let success = try await performWindowOperation(target: target) { window in
             window.closeWindow()
         }
         
@@ -25,9 +23,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func minimizeWindow(target: WindowTarget) async throws {
-        let window = try await findWindow(target: target)
-        
-        let success = await MainActor.run {
+        let success = try await performWindowOperation(target: target) { window in
             window.minimizeWindow()
         }
         
@@ -37,9 +33,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func maximizeWindow(target: WindowTarget) async throws {
-        let window = try await findWindow(target: target)
-        
-        let success = await MainActor.run {
+        let success = try await performWindowOperation(target: target) { window in
             window.maximizeWindow()
         }
         
@@ -49,9 +43,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func moveWindow(target: WindowTarget, to position: CGPoint) async throws {
-        let window = try await findWindow(target: target)
-        
-        let success = await MainActor.run {
+        let success = try await performWindowOperation(target: target) { window in
             window.moveWindow(to: position)
         }
         
@@ -61,9 +53,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func resizeWindow(target: WindowTarget, to size: CGSize) async throws {
-        let window = try await findWindow(target: target)
-        
-        let success = await MainActor.run {
+        let success = try await performWindowOperation(target: target) { window in
             window.resizeWindow(to: size)
         }
         
@@ -73,9 +63,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func setWindowBounds(target: WindowTarget, bounds: CGRect) async throws {
-        let window = try await findWindow(target: target)
-        
-        let success = await MainActor.run {
+        let success = try await performWindowOperation(target: target) { window in
             window.setWindowBounds(bounds)
         }
         
@@ -85,9 +73,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func focusWindow(target: WindowTarget) async throws {
-        let window = try await findWindow(target: target)
-        
-        let success = await MainActor.run {
+        let success = try await performWindowOperation(target: target) { window in
             window.focusWindow()
         }
         
@@ -156,30 +142,51 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     
     // MARK: - Private Helpers
     
-    private func findWindow(target: WindowTarget) async throws -> Element {
+    /// Performs a window operation within MainActor context
+    private func performWindowOperation<T: Sendable>(
+        target: WindowTarget,
+        operation: @MainActor (Element) -> T
+    ) async throws -> T {
         switch target {
         case .application(let appIdentifier):
             let app = try await applicationService.findApplication(identifier: appIdentifier)
-            return try await findFirstWindow(for: app)
+            return try await MainActor.run {
+                let window = try findFirstWindow(for: app)
+                return operation(window)
+            }
             
         case .title(let titleSubstring):
-            return try await findWindowByTitle(titleSubstring)
+            let apps = try await applicationService.listApplications()
+            return try await MainActor.run {
+                let window = try findWindowByTitle(titleSubstring, in: apps)
+                return operation(window)
+            }
             
         case .index(let appIdentifier, let index):
             let app = try await applicationService.findApplication(identifier: appIdentifier)
-            return try await findWindowByIndex(for: app, index: index)
+            return try await MainActor.run {
+                let window = try findWindowByIndex(for: app, index: index)
+                return operation(window)
+            }
             
         case .frontmost:
             let frontmostApp = try await applicationService.getFrontmostApplication()
-            return try await findFirstWindow(for: frontmostApp)
+            return try await MainActor.run {
+                let window = try findFirstWindow(for: frontmostApp)
+                return operation(window)
+            }
             
         case .windowId(let id):
-            return try await findWindowById(id)
+            let apps = try await applicationService.listApplications()
+            return try await MainActor.run {
+                let window = try findWindowById(id, in: apps)
+                return operation(window)
+            }
         }
     }
     
     @MainActor
-    private func findFirstWindow(for app: ServiceApplicationInfo) async throws -> Element {
+    private func findFirstWindow(for app: ServiceApplicationInfo) throws -> Element {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         let appElement = Element(axApp)
         
@@ -191,7 +198,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     @MainActor
-    private func findWindowByIndex(for app: ServiceApplicationInfo, index: Int) async throws -> Element {
+    private func findWindowByIndex(for app: ServiceApplicationInfo, index: Int) throws -> Element {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         let appElement = Element(axApp)
         
@@ -207,9 +214,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     @MainActor
-    private func findWindowByTitle(_ titleSubstring: String) async throws -> Element {
-        let apps = try await applicationService.listApplications()
-        
+    private func findWindowByTitle(_ titleSubstring: String, in apps: [ServiceApplicationInfo]) throws -> Element {
         for app in apps {
             let axApp = AXUIElementCreateApplication(app.processIdentifier)
             let appElement = Element(axApp)
@@ -228,9 +233,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     @MainActor
-    private func findWindowById(_ id: Int) async throws -> Element {
-        let apps = try await applicationService.listApplications()
-        
+    private func findWindowById(_ id: Int, in apps: [ServiceApplicationInfo]) throws -> Element {
         for app in apps {
             let axApp = AXUIElementCreateApplication(app.processIdentifier)
             let appElement = Element(axApp)

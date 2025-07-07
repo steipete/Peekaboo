@@ -26,14 +26,22 @@ public protocol UIAutomationServiceProtocol: Sendable {
     ///   - sessionId: Session ID for element resolution
     func type(text: String, target: String?, clearExisting: Bool, typingDelay: Int, sessionId: String?) async throws
     
+    /// Type using advanced typing actions (text, special keys, key sequences)
+    /// - Parameters:
+    ///   - actions: Array of typing actions to perform
+    ///   - typingDelay: Delay between keystrokes in milliseconds
+    ///   - sessionId: Session ID for element resolution
+    func typeActions(_ actions: [TypeAction], typingDelay: Int, sessionId: String?) async throws -> TypeResult
+    
     /// Scroll in a specific direction
     /// - Parameters:
     ///   - direction: Scroll direction
     ///   - amount: Number of scroll ticks
     ///   - target: Optional target element
     ///   - smooth: Whether to use smooth scrolling
+    ///   - delay: Delay between scroll ticks in milliseconds
     ///   - sessionId: Session ID for element resolution
-    func scroll(direction: ScrollDirection, amount: Int, target: String?, smooth: Bool, sessionId: String?) async throws
+    func scroll(direction: ScrollDirection, amount: Int, target: String?, smooth: Bool, delay: Int, sessionId: String?) async throws
     
     /// Press a hotkey combination
     /// - Parameters:
@@ -60,6 +68,22 @@ public protocol UIAutomationServiceProtocol: Sendable {
     ///   - sessionId: Session ID for element resolution
     /// - Returns: Result indicating if element was found with timing info
     func waitForElement(target: ClickTarget, timeout: TimeInterval, sessionId: String?) async throws -> WaitForElementResult
+    
+    /// Perform a drag operation between two points
+    /// - Parameters:
+    ///   - from: Starting point for the drag
+    ///   - to: Ending point for the drag
+    ///   - duration: Duration of the drag in milliseconds
+    ///   - steps: Number of intermediate steps
+    ///   - modifiers: Modifier keys to hold during drag (comma-separated: cmd,shift,option,ctrl)
+    func drag(from: CGPoint, to: CGPoint, duration: Int, steps: Int, modifiers: String?) async throws
+    
+    /// Move the mouse cursor to a specific location
+    /// - Parameters:
+    ///   - to: Target location for the mouse cursor
+    ///   - duration: Duration of the movement in milliseconds (0 for instant)
+    ///   - steps: Number of intermediate steps for smooth movement
+    func moveMouse(to: CGPoint, duration: Int, steps: Int) async throws
 }
 
 /// Result of element detection
@@ -248,6 +272,23 @@ public enum ScrollDirection: String, Sendable {
     case right = "right"
 }
 
+/// Swipe direction
+public enum SwipeDirection: String, Sendable {
+    case up = "up"
+    case down = "down"
+    case left = "left"
+    case right = "right"
+}
+
+/// Modifier keys
+public enum ModifierKey: String, Sendable {
+    case command = "cmd"
+    case shift = "shift"
+    case option = "option"
+    case control = "ctrl"
+    case function = "fn"
+}
+
 /// Result of waiting for an element
 public struct WaitForElementResult: Sendable {
     public let found: Bool
@@ -258,5 +299,43 @@ public struct WaitForElementResult: Sendable {
         self.found = found
         self.element = element
         self.waitTime = waitTime
+    }
+}
+
+/// Type action for advanced typing operations
+public enum TypeAction: Sendable {
+    /// Type regular text
+    case text(String)
+    /// Press a special key
+    case key(SpecialKey)
+    /// Clear the current field (Cmd+A, Delete)
+    case clear
+}
+
+/// Special keys for typing
+public enum SpecialKey: String, Sendable {
+    case `return`
+    case tab
+    case escape
+    case delete
+    case space
+    case leftArrow = "left"
+    case rightArrow = "right"
+    case upArrow = "up"
+    case downArrow = "down"
+    case pageUp = "pageup"
+    case pageDown = "pagedown"
+    case home
+    case end
+}
+
+/// Result of typing operations
+public struct TypeResult: Sendable {
+    public let totalCharacters: Int
+    public let keyPresses: Int
+    
+    public init(totalCharacters: Int, keyPresses: Int) {
+        self.totalCharacters = totalCharacters
+        self.keyPresses = keyPresses
     }
 }

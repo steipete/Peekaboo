@@ -41,6 +41,35 @@ public protocol SessionManagerProtocol: Sendable {
     /// Get session storage path
     /// - Returns: Path to session storage directory
     func getSessionStoragePath() -> String
+    
+    /// Store raw screenshot and build UI map
+    /// - Parameters:
+    ///   - sessionId: Session identifier
+    ///   - screenshotPath: Path to the screenshot file
+    ///   - applicationName: Name of the application
+    ///   - windowTitle: Title of the window
+    ///   - windowBounds: Window bounds
+    func storeScreenshot(
+        sessionId: String,
+        screenshotPath: String,
+        applicationName: String?,
+        windowTitle: String?,
+        windowBounds: CGRect?
+    ) async throws
+    
+    /// Get element by ID from session
+    /// - Parameters:
+    ///   - sessionId: Session identifier
+    ///   - elementId: Element ID to retrieve
+    /// - Returns: UI element if found
+    func getElement(sessionId: String, elementId: String) async throws -> UIElement?
+    
+    /// Find elements matching a query
+    /// - Parameters:
+    ///   - sessionId: Session identifier
+    ///   - query: Search query
+    /// - Returns: Array of matching elements
+    func findElements(sessionId: String, matching query: String) async throws -> [UIElement]
 }
 
 /// Information about a session

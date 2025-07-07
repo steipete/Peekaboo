@@ -75,6 +75,8 @@ enum ErrorCode: String, Codable {
     case SCRIPT_ERROR
     case MISSING_API_KEY
     case AGENT_ERROR
+    case INTERACTION_FAILED
+    case TIMEOUT
 }
 
 /// Type-erased codable wrapper for encoding arbitrary data.

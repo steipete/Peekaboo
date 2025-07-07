@@ -21,6 +21,12 @@ public final class PeekabooServices: Sendable {
     /// Menu interaction operations
     public let menu: MenuServiceProtocol
     
+    /// Dock interaction operations
+    public let dock: DockServiceProtocol
+    
+    /// Dialog interaction operations
+    public let dialogs: DialogServiceProtocol
+    
     /// Session management
     public let sessions: SessionManagerProtocol
     
@@ -34,6 +40,8 @@ public final class PeekabooServices: Sendable {
         self.automation = UIAutomationService(sessionManager: sess)
         self.windows = WindowManagementService(applicationService: apps)
         self.menu = MenuService(applicationService: apps)
+        self.dock = DockService()
+        self.dialogs = DialogService()
         self.sessions = sess
     }
     
@@ -44,6 +52,8 @@ public final class PeekabooServices: Sendable {
         automation: UIAutomationServiceProtocol,
         windows: WindowManagementServiceProtocol,
         menu: MenuServiceProtocol,
+        dock: DockServiceProtocol,
+        dialogs: DialogServiceProtocol,
         sessions: SessionManagerProtocol
     ) {
         self.screenCapture = screenCapture
@@ -51,6 +61,8 @@ public final class PeekabooServices: Sendable {
         self.automation = automation
         self.windows = windows
         self.menu = menu
+        self.dock = dock
+        self.dialogs = dialogs
         self.sessions = sessions
     }
 }
@@ -147,6 +159,7 @@ extension PeekabooServices {
                         amount: amount,
                         target: target,
                         smooth: false,
+                        delay: 10,  // 10ms between scroll ticks
                         sessionId: sessionId
                     )
                     

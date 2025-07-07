@@ -1,0 +1,58 @@
+{
+  "description": "Test script for demonstrating RunCommandV2 functionality",
+  "steps": [
+    {
+      "stepId": "step1",
+      "comment": "Capture the current screen",
+      "command": "see",
+      "params": {
+        "mode": "frontmost",
+        "annotate": true
+      }
+    },
+    {
+      "stepId": "step2",
+      "comment": "Wait a moment",
+      "command": "sleep",
+      "params": {
+        "duration": 1.0
+      }
+    },
+    {
+      "stepId": "step3",
+      "comment": "Click on a button if found",
+      "command": "click",
+      "params": {
+        "query": "button"
+      }
+    },
+    {
+      "stepId": "step4",
+      "comment": "Type some text",
+      "command": "type",
+      "params": {
+        "text": "Hello from Peekaboo V2!",
+        "clear-first": false,
+        "press-enter": true
+      }
+    },
+    {
+      "stepId": "step5",
+      "comment": "Scroll down",
+      "command": "scroll",
+      "params": {
+        "direction": "down",
+        "amount": 3
+      }
+    },
+    {
+      "stepId": "step6",
+      "comment": "Press a hotkey",
+      "command": "hotkey",
+      "params": {
+        "key": "s",
+        "cmd": true
+      }
+    }
+  ]
+}
