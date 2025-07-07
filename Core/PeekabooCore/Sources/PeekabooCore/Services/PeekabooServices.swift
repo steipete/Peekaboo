@@ -19,7 +19,7 @@ public final class PeekabooServices: Sendable {
     public let windows: WindowManagementServiceProtocol
     
     /// Menu interaction operations
-    public let menus: MenuServiceProtocol
+    public let menu: MenuServiceProtocol
     
     /// Session management
     public let sessions: SessionManagerProtocol
@@ -33,7 +33,7 @@ public final class PeekabooServices: Sendable {
         self.applications = apps
         self.automation = UIAutomationService(sessionManager: sess)
         self.windows = WindowManagementService(applicationService: apps)
-        self.menus = MenuService()
+        self.menu = MenuService(applicationService: apps)
         self.sessions = sess
     }
     
@@ -43,14 +43,14 @@ public final class PeekabooServices: Sendable {
         applications: ApplicationServiceProtocol,
         automation: UIAutomationServiceProtocol,
         windows: WindowManagementServiceProtocol,
-        menus: MenuServiceProtocol,
+        menu: MenuServiceProtocol,
         sessions: SessionManagerProtocol
     ) {
         self.screenCapture = screenCapture
         self.applications = applications
         self.automation = automation
         self.windows = windows
-        self.menus = menus
+        self.menu = menu
         self.sessions = sessions
     }
 }
