@@ -86,9 +86,13 @@ struct Peekaboo: AsyncParsableCommand {
             AnalyzeCommand.self,
             ConfigCommand.self,
             PermissionsCommand.self,
+            // Service-based refactored commands
+            ImageCommandV2.self,
+            ListCommandV2.self,
             // New v3 interaction commands
             SeeCommand.self,
             ClickCommand.self,
+            ClickCommandV2.self,
             TypeCommand.self,
             ScrollCommand.self,
             HotkeyCommand.self,
@@ -97,8 +101,10 @@ struct Peekaboo: AsyncParsableCommand {
             SleepCommand.self,
             CleanCommand.self,
             WindowCommand.self,
+            WindowCommandV2.self,
             // System interaction commands
             MenuCommand.self,
+            MenuCommandV2.self,
             AppCommand.self,
             DockCommand.self,
             DialogCommand.self,

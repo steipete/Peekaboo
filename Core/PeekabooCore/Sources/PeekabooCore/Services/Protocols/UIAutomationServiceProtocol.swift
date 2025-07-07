@@ -52,6 +52,14 @@ public protocol UIAutomationServiceProtocol: Sendable {
     /// Check if accessibility permission is granted
     /// - Returns: True if permission is granted
     func hasAccessibilityPermission() async -> Bool
+    
+    /// Wait for an element to appear and become actionable
+    /// - Parameters:
+    ///   - target: The element target to wait for
+    ///   - timeout: Maximum time to wait in seconds
+    ///   - sessionId: Session ID for element resolution
+    /// - Returns: Result indicating if element was found with timing info
+    func waitForElement(target: ClickTarget, timeout: TimeInterval, sessionId: String?) async throws -> WaitForElementResult
 }
 
 /// Result of element detection
@@ -238,4 +246,17 @@ public enum ScrollDirection: String, Sendable {
     case down = "down"
     case left = "left"
     case right = "right"
+}
+
+/// Result of waiting for an element
+public struct WaitForElementResult: Sendable {
+    public let found: Bool
+    public let element: DetectedElement?
+    public let waitTime: TimeInterval
+    
+    public init(found: Bool, element: DetectedElement?, waitTime: TimeInterval) {
+        self.found = found
+        self.element = element
+        self.waitTime = waitTime
+    }
 }
