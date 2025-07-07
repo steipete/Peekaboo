@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct MainWindow: View {
-    @Environment(Settings.self) private var settings
+    @Environment(PeekabooSettings.self) private var settings
     @Environment(SessionStore.self) private var sessionStore
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SpeechRecognizer.self) private var speechRecognizer

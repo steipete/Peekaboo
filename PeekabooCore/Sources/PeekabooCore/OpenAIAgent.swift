@@ -13,13 +13,17 @@ public actor OpenAIAgent {
 
     // Tool executor protocol - to be implemented by the app
     public let toolExecutor: ToolExecutor
+    
+    // Event delegate for real-time updates
+    public weak var eventDelegate: AgentEventDelegate?
 
     public init(
         apiKey: String,
         model: String = "gpt-4-turbo",
         verbose: Bool = false,
         maxSteps: Int = 20,
-        toolExecutor: ToolExecutor)
+        toolExecutor: ToolExecutor,
+        eventDelegate: AgentEventDelegate? = nil)
     {
         self.apiKey = apiKey
         self.model = model
@@ -28,12 +32,18 @@ public actor OpenAIAgent {
         self.session = URLSession.shared
         self.retryConfig = .default
         self.toolExecutor = toolExecutor
+        self.eventDelegate = eventDelegate
     }
 
     // MARK: - Public Methods
 
     public func executeTask(_ task: String, dryRun: Bool = false) async throws -> AgentResult {
         self.logger.info("Starting task: \(task)")
+        
+        // Emit start event
+        await MainActor.run {
+            self.eventDelegate?.agentDidEmitEvent(.started(task: task))
+        }
 
         // Create assistant
         let assistant = try await createAssistant()
@@ -98,6 +108,13 @@ public actor OpenAIAgent {
                     if self.verbose {
                         self.logger.info("Executing tool: \(toolCall.function.name)")
                     }
+                    
+                    // Emit tool call started event
+                    await MainActor.run {
+                        self.eventDelegate?.agentDidEmitEvent(.toolCallStarted(
+                            name: toolCall.function.name,
+                            arguments: toolCall.function.arguments))
+                    }
 
                     let output: String = if dryRun {
                         "[DRY RUN] Would execute: \(toolCall.function.name)"
@@ -115,6 +132,13 @@ public actor OpenAIAgent {
                     stepCount += 1
 
                     toolOutputs.append((toolCallId: toolCall.id, output: output))
+                    
+                    // Emit tool call completed event
+                    await MainActor.run {
+                        self.eventDelegate?.agentDidEmitEvent(.toolCallCompleted(
+                            name: toolCall.function.name,
+                            result: output))
+                    }
                 }
 
                 // Submit tool outputs
@@ -126,6 +150,20 @@ public actor OpenAIAgent {
                 let assistantMessages = messages.filter { $0.role == "assistant" }
 
                 let summary = assistantMessages.last?.content.first?.text?.value
+                
+                // Emit assistant message events for all new messages
+                for message in assistantMessages {
+                    if let text = message.content.first?.text?.value {
+                        await MainActor.run {
+                            self.eventDelegate?.agentDidEmitEvent(.assistantMessage(content: text))
+                        }
+                    }
+                }
+                
+                // Emit completion event
+                await MainActor.run {
+                    self.eventDelegate?.agentDidEmitEvent(.completed(summary: summary))
+                }
 
                 return AgentResult(
                     steps: steps,

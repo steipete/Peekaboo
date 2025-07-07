@@ -9,6 +9,8 @@ To test this project interactive we can use:
 
 - **vtlog utility added** (2025-01-07): Adopted the vtlog logging utility from the VibeTunnel project. The script is located at `scripts/vtlog.sh` and provides easy access to PeekabooInspector's unified logging output. See the "Debugging with vtlog" section below for usage.
 
+- **Unified configuration directory** (2025-01-07): Migrated from `~/.config/peekaboo/` to `~/.peekaboo/` for better discoverability. API keys are now stored separately in `~/.peekaboo/credentials` with proper permissions (chmod 600). Automatic migration happens on first run.
+
 
 ## Common Commands
 
@@ -143,12 +145,13 @@ PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./peekaboo-cli/.build/debug/peekaboo
 # Use multiple AI providers (auto-selects first available)
 PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "What application is this?"
 
-# Configuration management (NEW)
+# Configuration management (UPDATED)
 ./peekaboo-cli/.build/debug/peekaboo config init                    # Create default config file
 ./peekaboo-cli/.build/debug/peekaboo config show                    # Display current config
 ./peekaboo-cli/.build/debug/peekaboo config show --effective        # Show merged configuration
 ./peekaboo-cli/.build/debug/peekaboo config edit                    # Edit config in default editor
 ./peekaboo-cli/.build/debug/peekaboo config validate                # Validate config syntax
+./peekaboo-cli/.build/debug/peekaboo config set-credential KEY VALUE # Set API key securely
 ```
 
 ## Code Architecture
@@ -216,11 +219,12 @@ PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest" ./peekaboo-cli/.build/
    - `OPENAI_API_KEY`: Required for OpenAI provider
    - `PEEKABOO_OLLAMA_BASE_URL`: Optional Ollama server URL (default: http://localhost:11434)
 
-6. **Configuration File** (NEW):
-   - Location: `~/.config/peekaboo/config.json`
-   - Format: JSONC (JSON with Comments)
-   - Supports environment variable expansion: `${VAR_NAME}`
-   - Precedence: CLI args > env vars > config file > defaults
+6. **Configuration Files** (UPDATED):
+   - Config directory: `~/.peekaboo/`
+   - Config file: `~/.peekaboo/config.json` (JSONC format with comments)
+   - Credentials: `~/.peekaboo/credentials` (key=value format, chmod 600)
+   - Supports environment variable expansion: `${VAR_NAME}` in config.json
+   - Precedence: CLI args > env vars > credentials file > config file > defaults
    - Manage with: `peekaboo config` subcommand
    
    Example configuration:
@@ -229,7 +233,7 @@ PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest" ./peekaboo-cli/.build/
      // AI Provider Settings
      "aiProviders": {
        "providers": "openai/gpt-4o,ollama/llava:latest",
-       "openaiApiKey": "${OPENAI_API_KEY}",
+       // NOTE: API keys should be in ~/.peekaboo/credentials or env vars
        "ollamaBaseUrl": "http://localhost:11434"
      },
      
@@ -244,9 +248,16 @@ PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest" ./peekaboo-cli/.build/
      // Logging
      "logging": {
        "level": "info",
-       "path": "~/.config/peekaboo/logs/peekaboo.log"
+       "path": "~/.peekaboo/logs/peekaboo.log"
      }
    }
+   ```
+   
+   Example credentials file:
+   ```
+   # ~/.peekaboo/credentials (chmod 600)
+   OPENAI_API_KEY=sk-...
+   ANTHROPIC_API_KEY=sk-ant-...
    ```
 
 7. **Swift CLI AI Analysis Architecture** (NEW):
@@ -264,6 +275,9 @@ PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest" ./peekaboo-cli/.build/
 - Test permissions by running `./peekaboo list server_status --json-output`
 - Test AI analysis with: `PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./peekaboo analyze screenshot.png "What is this?"`
 - When adding new AI providers, implement the `AIProvider` protocol in `peekaboo-cli/Sources/peekaboo/AIProviders/`
+- Store API keys securely: `./peekaboo config set-credential OPENAI_API_KEY sk-...`
+- Check effective configuration: `./peekaboo config show --effective`
+- Migration: Old configs in `~/.config/peekaboo/` are auto-migrated to `~/.peekaboo/` on first run
 
 ## AXorcist Integration
 

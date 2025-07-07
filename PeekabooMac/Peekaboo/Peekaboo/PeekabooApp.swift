@@ -1,3 +1,4 @@
+import AppKit
 import os.log
 import SwiftUI
 
@@ -6,7 +7,7 @@ struct PeekabooApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     // Core state
-    @State private var settings = Settings()
+    @State private var settings = PeekabooSettings()
     @State private var sessionStore = SessionStore()
     @State private var permissions = Permissions()
     @State private var speechRecognizer = SpeechRecognizer()
@@ -15,17 +16,18 @@ struct PeekabooApp: App {
     @State private var agent: PeekabooAgent?
 
     var body: some Scene {
-        // Hidden window for menu bar apps
-        WindowGroup {
-            EmptyView()
-                .frame(width: 0, height: 0)
-                .hidden()
+        // Hidden window to make Settings work in MenuBarExtra apps
+        // This is a workaround for FB10184971
+        WindowGroup("HiddenWindow") {
+            HiddenWindowView()
                 .task {
                     // Initialize agent and connect app delegate
                     self.setupApp()
                 }
         }
         .windowResizability(.contentSize)
+        .defaultSize(width: 1, height: 1)
+        .windowStyle(.hiddenTitleBar)
 
         // Main window
         WindowGroup("Peekaboo", id: "main") {
@@ -35,18 +37,19 @@ struct PeekabooApp: App {
                 .environment(self.permissions)
                 .environment(self.speechRecognizer)
                 .environment(self.agent ?? PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore))
+                .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenWindow.main"))) { _ in
+                    // Window will automatically open when this notification is received
+                }
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 400, height: 600)
 
-        // Settings window
-        Window("Settings", id: "settings") {
+        // Settings scene
+        Settings {
             SettingsWindow()
                 .environment(self.settings)
                 .environment(self.permissions)
         }
-        .windowResizability(.contentSize)
-        .defaultSize(width: 500, height: 400)
     }
 
     private func setupApp() {
@@ -78,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController?
 
     // State connections
-    private var settings: Settings?
+    private var settings: PeekabooSettings?
     private var sessionStore: SessionStore?
     private var permissions: Permissions?
     private var speechRecognizer: SpeechRecognizer?
@@ -94,7 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func connectToState(
-        settings: Settings,
+        settings: PeekabooSettings,
         sessionStore: SessionStore,
         permissions: Permissions,
         speechRecognizer: SpeechRecognizer,
@@ -134,16 +137,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showSettings() {
-        self.openWindow(id: "settings")
+        SettingsOpener.openSettings()
     }
 
     private func openWindow(id: String) {
-        if let window = NSApp.windows.first(where: { $0.identifier?.rawValue == id }) {
-            window.makeKeyAndOrderFront(nil)
-        } else {
-            // Create window by opening it through SwiftUI
-            NSApp.sendAction(#selector(NSApplication.showHelp(_:)), to: nil, from: nil)
-        }
+        // Post notification to open window
+        NotificationCenter.default.post(name: Notification.Name("OpenWindow.\(id)"), object: nil)
+        
+        // Activate app
         NSApp.activate(ignoringOtherApps: true)
     }
 

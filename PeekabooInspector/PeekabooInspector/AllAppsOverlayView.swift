@@ -39,20 +39,6 @@ struct AllAppsOverlayView: View {
 
             // Only show overlays when active
             if self.overlayManager.isOverlayActive {
-                // Debug text to verify rendering
-                VStack {
-                    Text("Overlay Active - \(self.overlayManager.applications.count) apps")
-                        .font(.largeTitle)
-                        .foregroundColor(.red)
-                        .background(Color.white)
-                    Text(
-                        "Total elements: \(self.overlayManager.applications.reduce(0) { $0 + $1.elements.count(where: { self.shouldShowElement($0) }) })")
-                        .font(.title)
-                        .foregroundColor(.red)
-                        .background(Color.white)
-                }
-                .position(x: 400, y: 100)
-
                 // Show overlays for all applications
                 ForEach(self.overlayManager.applications) { app in
                     // Show overlays based on detail level

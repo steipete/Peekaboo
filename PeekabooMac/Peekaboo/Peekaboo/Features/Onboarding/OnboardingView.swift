@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct OnboardingView: View {
-    @Environment(Settings.self) private var settings
+    @Environment(PeekabooSettings.self) private var settings
     @State private var apiKey = ""
     @State private var isValidating = false
     @State private var validationError: String?

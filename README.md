@@ -148,19 +148,36 @@ This is invaluable for:
 
 ### Configuration
 
-Create a persistent configuration file at `~/.config/peekaboo/config.json`:
+Peekaboo uses a unified configuration directory at `~/.peekaboo/` for better discoverability:
 
 ```bash
+# Create default configuration
 peekaboo config init
+
+# Files created:
+# ~/.peekaboo/config.json     - Main configuration (JSONC format)
+# ~/.peekaboo/credentials     - API keys (chmod 600)
 ```
 
-Example configuration:
+#### Managing API Keys Securely
+
+```bash
+# Set API key securely (stored in ~/.peekaboo/credentials)
+peekaboo config set-credential OPENAI_API_KEY sk-...
+
+# View current configuration (keys shown as ***SET***)
+peekaboo config show --effective
+```
+
+#### Example Configuration
+
+`~/.peekaboo/config.json`:
 ```json
 {
   // AI Provider Settings
   "aiProviders": {
     "providers": "openai/gpt-4o,ollama/llava:latest",
-    "openaiApiKey": "${OPENAI_API_KEY}",  // Supports env var expansion
+    // NOTE: API keys should be in ~/.peekaboo/credentials
     "ollamaBaseUrl": "http://localhost:11434"
   },
   
@@ -170,8 +187,22 @@ Example configuration:
     "imageFormat": "png",
     "captureMode": "window",
     "captureFocus": "auto"
+  },
+  
+  // Logging
+  "logging": {
+    "level": "info",
+    "path": "~/.peekaboo/logs/peekaboo.log"
   }
 }
+```
+
+`~/.peekaboo/credentials` (auto-created with proper permissions):
+```
+# Peekaboo credentials file
+# This file contains sensitive API keys and should not be shared
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ### Common Workflows
@@ -794,16 +825,17 @@ await click({ query: "Submit" })
 Settings follow this precedence (highest to lowest):
 1. Command-line arguments
 2. Environment variables
-3. Configuration file (`~/.config/peekaboo/config.json`)
-4. Built-in defaults
+3. Credentials file (`~/.peekaboo/credentials`)
+4. Configuration file (`~/.peekaboo/config.json`)
+5. Built-in defaults
 
 ### Available Options
 
 | Setting | Config File | Environment Variable | Description |
 |---------|-------------|---------------------|-------------|
 | AI Providers | `aiProviders.providers` | `PEEKABOO_AI_PROVIDERS` | Comma-separated list (e.g., "openai/gpt-4o,ollama/llava:latest") |
-| OpenAI API Key | `aiProviders.openaiApiKey` | `OPENAI_API_KEY` | Required for OpenAI provider |
-| Anthropic API Key | `aiProviders.anthropicApiKey` | `ANTHROPIC_API_KEY` | For Claude Vision (coming soon) |
+| OpenAI API Key | Use `credentials` file | `OPENAI_API_KEY` | Required for OpenAI provider |
+| Anthropic API Key | Use `credentials` file | `ANTHROPIC_API_KEY` | For Claude Vision (coming soon) |
 | Ollama URL | `aiProviders.ollamaBaseUrl` | `PEEKABOO_OLLAMA_BASE_URL` | Default: http://localhost:11434 |
 | Default Save Path | `defaults.savePath` | `PEEKABOO_DEFAULT_SAVE_PATH` | Where screenshots are saved (default: current directory) |
 | Log Level | `logging.level` | `PEEKABOO_LOG_LEVEL` | trace, debug, info, warn, error, fatal |
@@ -811,6 +843,23 @@ Settings follow this precedence (highest to lowest):
 | CLI Binary Path | - | `PEEKABOO_CLI_PATH` | Override bundled Swift CLI path (advanced usage) |
 
 ### Environment Variable Details
+
+#### API Key Storage Best Practices
+
+For security, Peekaboo supports three methods for API key storage (in order of recommendation):
+
+1. **Environment Variables** (Most secure for automation)
+   ```bash
+   export OPENAI_API_KEY="sk-..."
+   ```
+
+2. **Credentials File** (Best for interactive use)
+   ```bash
+   peekaboo config set-credential OPENAI_API_KEY sk-...
+   # Stored in ~/.peekaboo/credentials with chmod 600
+   ```
+
+3. **Config File** (Not recommended - use credentials file instead)
 
 #### AI Provider Configuration
 
@@ -1020,4 +1069,4 @@ Created by [Peter Steinberger](https://steipete.com) - [@steipete](https://githu
 
 ---
 
-**Note**: This is Peekaboo v2.0, which introduces standalone CLI functionality alongside the original MCP server. For users upgrading from v1.x, see the [CHANGELOG](./CHANGELOG.md) for migration details.
+**Note**: This is Peekaboo v3.0, which introduces GUI automation and AI agent capabilities. Configuration has moved from `~/.config/peekaboo/` to `~/.peekaboo/` for better discoverability. Migration happens automatically on first run. For full upgrade details, see the [CHANGELOG](./CHANGELOG.md).
