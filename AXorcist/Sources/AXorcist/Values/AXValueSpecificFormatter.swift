@@ -4,11 +4,11 @@ import ApplicationServices
 import CoreGraphics // For CGPoint, CGSize etc.
 import Foundation
 
-// Assumes ValueFormatOption is available (likely from ValueFormatter.swift or a shared Models.swift)
-// Assumes stringFromAXValueType is available from ValueHelpers.swift and axErrorToString is available from ErrorUtils.swift
+// ValueFormatOption is now from ModelEnums.swift
+// Assumes stringFromAXValueType is available from ValueHelpers.swift
 
 @MainActor
-public func formatAXValue(_ axValue: AXValue, option: ValueFormatOption = .default) -> String {
+public func formatAXValue(_ axValue: AXValue, option: ValueFormatOption = .smart) -> String {
     let type = AXValueGetType(axValue)
 
     // Handle special boolean type first (raw value 4)
@@ -27,7 +27,7 @@ private func formatBooleanAXValue(_ axValue: AXValue, type: AXValueType, option:
     var boolResult: DarwinBoolean = false // Use DarwinBoolean for AXValueGetValue
     if AXValueGetValue(axValue, type, &boolResult) {
         let result = boolResult.boolValue ? "true" : "false"
-        return option == .verbose ? "<Boolean: \(result)>" : result
+        return option == .raw ? result : "<Boolean: \(result)>" // Use .raw for plain, .smart (or other) for prefixed
     }
     // Fallback if AXValueGetValue fails
     return "AXValue (\(stringFromAXValueType(type)))"
@@ -59,7 +59,7 @@ private func formatCGPointAXValue(_ axValue: AXValue, option: ValueFormatOption)
     var point = CGPoint.zero
     if AXValueGetValue(axValue, .cgPoint, &point) {
         let result = "x=\(point.x) y=\(point.y)"
-        return option == .verbose ? "<CGPoint: \(result)>" : result
+        return option == .raw ? result : "<CGPoint: \(result)>"
     }
     return "AXValue (\(stringFromAXValueType(.cgPoint)))"
 }
@@ -69,7 +69,7 @@ private func formatCGSizeAXValue(_ axValue: AXValue, option: ValueFormatOption) 
     var size = CGSize.zero
     if AXValueGetValue(axValue, .cgSize, &size) {
         let result = "w=\(size.width) h=\(size.height)"
-        return option == .verbose ? "<CGSize: \(result)>" : result
+        return option == .raw ? result : "<CGSize: \(result)>"
     }
     return "AXValue (\(stringFromAXValueType(.cgSize)))"
 }
@@ -79,7 +79,7 @@ private func formatCGRectAXValue(_ axValue: AXValue, option: ValueFormatOption) 
     var rect = CGRect.zero
     if AXValueGetValue(axValue, .cgRect, &rect) {
         let result = "x=\(rect.origin.x) y=\(rect.origin.y) w=\(rect.size.width) h=\(rect.size.height)"
-        return option == .verbose ? "<CGRect: \(result)>" : result
+        return option == .raw ? result : "<CGRect: \(result)>"
     }
     return "AXValue (\(stringFromAXValueType(.cgRect)))"
 }
@@ -89,7 +89,7 @@ private func formatCFRangeAXValue(_ axValue: AXValue, option: ValueFormatOption)
     var range = CFRange() // No .zero for CFRange, default init is fine.
     if AXValueGetValue(axValue, .cfRange, &range) {
         let result = "pos=\(range.location) len=\(range.length)"
-        return option == .verbose ? "<CFRange: \(result)>" : result
+        return option == .raw ? result : "<CFRange: \(result)>"
     }
     return "AXValue (\(stringFromAXValueType(.cfRange)))"
 }
@@ -98,12 +98,10 @@ private func formatCFRangeAXValue(_ axValue: AXValue, option: ValueFormatOption)
 private func formatAXErrorAXValue(_ axValue: AXValue, option: ValueFormatOption) -> String {
     var error = AXError.success
     if AXValueGetValue(axValue, .axError, &error) {
-        let result = axErrorToString(error) // Assumes axErrorToString is available
-        return option == .verbose ? "<AXError: \(result)>" : result
+        let result = error.stringValue
+        return option == .raw ? result : "<AXError: \(result)>"
     }
     return "AXValue (\(stringFromAXValueType(.axError)))"
 }
 
 // stringFromAXValueType is available from ValueHelpers.swift
-
-// axErrorToString is available from ErrorUtils.swift

@@ -1,5 +1,4 @@
 import AppKit
-import AXorcistLib
 import Foundation
 import Observation
 
@@ -12,53 +11,61 @@ enum PermissionStatus {
 @Observable
 @MainActor
 final class Permissions {
+    private let systemPermissions = SystemPermissionManager.shared
+    
     var screenRecordingStatus: PermissionStatus = .notDetermined
     var accessibilityStatus: PermissionStatus = .notDetermined
+    var appleScriptStatus: PermissionStatus = .notDetermined
 
     var hasAllPermissions: Bool {
-        self.screenRecordingStatus == .authorized && self.accessibilityStatus == .authorized
+        self.screenRecordingStatus == .authorized && 
+        self.accessibilityStatus == .authorized &&
+        self.appleScriptStatus == .authorized
+    }
+
+    init() {
+        // Register for permission updates
+        NotificationCenter.default.addObserver(
+            forName: .permissionsUpdated,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                await self?.updateFromSystemPermissions()
+            }
+        }
     }
 
     func check() async {
-        // Check screen recording permission
-        if CGPreflightScreenCaptureAccess() {
-            self.screenRecordingStatus = CGRequestScreenCaptureAccess() ? .authorized : .denied
-        } else {
-            self.screenRecordingStatus = .denied
-        }
+        // Check all permissions through SystemPermissionManager
+        await self.systemPermissions.checkAllPermissions()
+        await self.updateFromSystemPermissions()
+    }
 
-        // Check accessibility permission using AXorcist
-        var debugLogs: [String] = []
-        let status = getPermissionsStatus(
-            checkAutomationFor: [],
-            isDebugLoggingEnabled: false,
-            currentDebugLogs: &debugLogs)
-
-        self.accessibilityStatus = status.isProcessTrustedForAccessibility ? .authorized : .denied
+    private func updateFromSystemPermissions() async {
+        // Update our status from SystemPermissionManager
+        self.screenRecordingStatus = self.systemPermissions.hasPermission(.screenRecording) ? .authorized : .denied
+        self.accessibilityStatus = self.systemPermissions.hasPermission(.accessibility) ? .authorized : .denied
+        self.appleScriptStatus = self.systemPermissions.hasPermission(.appleScript) ? .authorized : .denied
     }
 
     func requestScreenRecording() {
-        if self.screenRecordingStatus != .authorized {
-            CGRequestScreenCaptureAccess()
-            // Open System Preferences
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-                NSWorkspace.shared.open(url)
-            }
-        }
+        self.systemPermissions.requestPermission(.screenRecording)
     }
 
     func requestAccessibility() {
-        if self.accessibilityStatus != .authorized {
-            // Use AXorcist to check with prompt
-            var debugLogs: [String] = []
-            do {
-                try checkAccessibilityPermissions(
-                    isDebugLoggingEnabled: false,
-                    currentDebugLogs: &debugLogs)
-            } catch {
-                // The prompt will have been shown
-                print("Accessibility permission check: \(error)")
-            }
-        }
+        self.systemPermissions.requestPermission(.accessibility)
+    }
+
+    func requestAppleScript() {
+        self.systemPermissions.requestPermission(.appleScript)
+    }
+
+    func startMonitoring() {
+        self.systemPermissions.registerForMonitoring()
+    }
+
+    func stopMonitoring() {
+        self.systemPermissions.unregisterFromMonitoring()
     }
 }

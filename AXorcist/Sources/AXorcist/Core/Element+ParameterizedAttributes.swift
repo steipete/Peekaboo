@@ -3,78 +3,147 @@
 import ApplicationServices // For AXUIElement and other C APIs
 import Foundation
 
+// GlobalAXLogger is expected to be available in this module (AXorcistLib)
+
 // MARK: - Parameterized Attributes Extension
+
 extension Element {
     @MainActor
     public func parameterizedAttribute<T>(
         _ attribute: Attribute<T>,
-        forParameter parameter: Any,
-        isDebugLoggingEnabled: Bool,
-        currentDebugLogs: inout [String]
+        forParameter parameter: Any
     ) -> T? {
-        func dLog(_ message: String) {
-            if isDebugLoggingEnabled && false {
-                currentDebugLogs.append(AXorcist.formatDebugLogMessage(message, applicationName: nil, commandID: nil, file: #file, function: #function, line: #line))
-            }
+        guard let cfParameter = convertParameterToCFTypeRef(parameter, attribute: attribute) else {
+            return nil
         }
-        var cfParameter: CFTypeRef?
 
-        // Convert Swift parameter to CFTypeRef for the API
+        guard let resultCFValue = copyParameterizedAttributeValue(
+            attribute: attribute,
+            parameter: cfParameter
+        ) else {
+            return nil
+        }
+
+        guard let finalValue = ValueUnwrapper.unwrap(resultCFValue) else {
+            axDebugLog("Unwrapping CFValue for parameterized attribute \(attribute.rawValue) resulted in nil.")
+            return nil
+        }
+
+        return castValueToType(finalValue, attribute: attribute)
+    }
+
+    @MainActor
+    private func convertParameterToCFTypeRef(_ parameter: Any, attribute: Attribute<some Any>) -> CFTypeRef? {
         if var range = parameter as? CFRange {
-            cfParameter = AXValueCreate(.cfRange, &range)
+            return AXValueCreate(.cfRange, &range)
         } else if let string = parameter as? String {
-            cfParameter = string as CFString
+            return string as CFString
         } else if let number = parameter as? NSNumber {
-            cfParameter = number
-        } else if CFGetTypeID(parameter as CFTypeRef) != 0 { // Check if it's already a CFTypeRef-compatible type
-            cfParameter = (parameter as CFTypeRef)
+            return number
+        } else if CFGetTypeID(parameter as CFTypeRef) != 0 {
+            return parameter as CFTypeRef
         } else {
-            dLog("parameterizedAttribute: Unsupported parameter type \(type(of: parameter))")
+            axWarningLog("Unsupported parameter type \(type(of: parameter)) for attribute \(attribute.rawValue)")
             return nil
         }
+    }
 
-        guard let actualCFParameter = cfParameter else {
-            dLog("parameterizedAttribute: Failed to convert parameter to CFTypeRef.")
-            return nil
-        }
-
+    @MainActor
+    private func copyParameterizedAttributeValue(
+        attribute: Attribute<some Any>,
+        parameter: CFTypeRef
+    ) -> CFTypeRef? {
         var value: CFTypeRef?
         let error = AXUIElementCopyParameterizedAttributeValue(
             underlyingElement,
             attribute.rawValue as CFString,
-            actualCFParameter,
+            parameter,
             &value
         )
 
         if error != .success {
-            dLog("parameterizedAttribute: Error \(error.rawValue) getting attribute \(attribute.rawValue)")
+            axDebugLog("Error \(error.rawValue) getting parameterized attribute \(attribute.rawValue)")
             return nil
         }
 
-        guard let resultCFValue = value else { return nil }
+        guard let resultCFValue = value else {
+            axDebugLog("Parameterized attribute \(attribute.rawValue) resulted in nil CFValue despite success.")
+            return nil
+        }
 
-        // Use axValue's unwrapping and casting logic if possible, by temporarily creating an element and attribute
-        // This is a bit of a conceptual stretch, as axValue is designed for direct attributes.
-        // A more direct unwrap using ValueUnwrapper might be cleaner here.
-        let unwrappedValue = ValueUnwrapper.unwrap(
-            resultCFValue,
-            isDebugLoggingEnabled: isDebugLoggingEnabled,
-            currentDebugLogs: &currentDebugLogs
-        )
+        return resultCFValue
+    }
 
-        guard let finalValue = unwrappedValue else { return nil }
-
-        // Perform type casting similar to axValue
+    @MainActor
+    private func castValueToType<T>(_ finalValue: Any, attribute: Attribute<T>) -> T? {
         if T.self == String.self {
-            if let str = finalValue as? String { return str as? T } else if let attrStr = finalValue as? NSAttributedString { return attrStr.string as? T }
+            if let str = finalValue as? String { return str as? T }
+            if let attrStr = finalValue as? NSAttributedString { return attrStr.string as? T }
+            axDebugLog(
+                "Failed to cast unwrapped value for String attribute \(attribute.rawValue). " +
+                    "Value: \(finalValue)"
+            )
             return nil
         }
+
         if let castedValue = finalValue as? T {
             return castedValue
         }
-        dLog(
-            "parameterizedAttribute: Fallback cast attempt for attribute '\(attribute.rawValue)' to type \(T.self) FAILED. Unwrapped value was \(type(of: finalValue)): \(finalValue)"
+
+        axWarningLog(
+            "Fallback cast attempt for parameterized attribute '\(attribute.rawValue)' " +
+                "to type \(T.self) FAILED. Unwrapped value was \(type(of: finalValue)): \(finalValue)"
         )
         return nil
+    }
+}
+
+// MARK: - Specific Parameterized Attribute Accessors
+
+public extension Element {
+    @MainActor
+    func string(forRange range: CFRange) -> String? {
+        parameterizedAttribute(.stringForRangeParameterized, forParameter: range)
+    }
+
+    @MainActor
+    func range(forLine line: Int) -> CFRange? {
+        parameterizedAttribute(.rangeForLineParameterized, forParameter: NSNumber(value: line))
+    }
+
+    @MainActor
+    func bounds(forRange range: CFRange) -> CGRect? {
+        // The underlying attribute returns AXValueRef holding CGRect
+        // The generic parameterizedAttribute should handle unwrapping if T is CGRect
+        parameterizedAttribute(.boundsForRangeParameterized, forParameter: range)
+    }
+
+    @MainActor
+    func line(forIndex index: Int) -> Int? {
+        parameterizedAttribute(.lineForIndexParameterized, forParameter: NSNumber(value: index))
+    }
+
+    @MainActor
+    func attributedString(forRange range: CFRange) -> NSAttributedString? {
+        parameterizedAttribute(.attributedStringForRangeParameterized, forParameter: range)
+    }
+
+    @MainActor
+    func cell(forColumn column: Int, row: Int) -> Element? {
+        // Parameter for AXCellForColumnAndRowParameterized is an array of two NSNumbers: [col, row]
+        let params = [NSNumber(value: column), NSNumber(value: row)]
+        guard let axUIElement: AXUIElement = parameterizedAttribute(
+            .cellForColumnAndRowParameterized,
+            forParameter: params
+        ) else {
+            return nil
+        }
+        return Element(axUIElement)
+    }
+
+    @MainActor
+    func actionDescription(_ actionName: String) -> String? {
+        // kAXActionDescriptionAttribute is already Attribute<String>.actionDescription
+        parameterizedAttribute(.actionDescription, forParameter: actionName)
     }
 }

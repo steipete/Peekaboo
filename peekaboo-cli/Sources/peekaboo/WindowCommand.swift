@@ -1,6 +1,6 @@
 import AppKit
 import ArgumentParser
-import AXorcistLib
+import AXorcist
 import Foundation
 
 /// Command for manipulating windows.

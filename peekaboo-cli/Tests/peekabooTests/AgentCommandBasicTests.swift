@@ -31,10 +31,24 @@ struct AgentCommandBasicTests {
 
     @Test("JSON response structures encode correctly")
     func jSONResponseEncoding() throws {
-        // Test successful response
-        let successResponse = AgentJSONResponse(
+        // Test successful response - using the actual types from source
+        let testResult = OpenAIAgent.AgentResult(
+            steps: [
+                OpenAIAgent.AgentResult.Step(
+                    description: "Test step",
+                    command: "test",
+                    output: "Success",
+                    screenshot: nil
+                )
+            ],
+            summary: "Task completed",
+            success: true
+        )
+        
+        // Use the generic AgentJSONResponse from AgentTypes
+        let successResponse = peekaboo.AgentJSONResponse(
             success: true,
-            data: AgentCommandBasicTests.TestData(message: "Success"),
+            data: testResult,
             error: nil)
 
         let encoder = JSONEncoder()
@@ -43,7 +57,7 @@ struct AgentCommandBasicTests {
         let json = String(data: data, encoding: .utf8)!
 
         #expect(json.contains("\"success\":true"))
-        #expect(json.contains("\"message\":\"Success\""))
+        #expect(json.contains("\"summary\":\"Task completed\""))
 
         // Test error response
         let errorResponse = createAgentErrorResponse(.missingAPIKey)
@@ -102,8 +116,4 @@ struct AgentCommandBasicTests {
         #expect(result.contains("INVALID_ARGS"))
     }
 
-    // Helper struct for testing
-    private struct TestData: Codable {
-        let message: String
-    }
 }

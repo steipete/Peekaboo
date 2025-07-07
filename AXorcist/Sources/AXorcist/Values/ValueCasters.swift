@@ -7,24 +7,24 @@ import Foundation
 // Note: Assumes Element (for castToElementArray) is available.
 
 @MainActor
-internal func castValueToType<T>(_ value: Any, expectedType: T.Type, attr: String, dLog: (String) -> Void) -> T? {
+func castValueToType<T>(_ value: Any, expectedType: T.Type, attr: String) -> T? {
     // Handle basic types
-    if let result = castToBasicType(value, expectedType: expectedType, attr: attr, dLog: dLog) {
+    if let result = castToBasicType(value, expectedType: expectedType, attr: attr) {
         return result
     }
 
     // Handle array types
-    if let result = castToArrayType(value, expectedType: expectedType, attr: attr, dLog: dLog) {
+    if let result = castToArrayType(value, expectedType: expectedType, attr: attr) {
         return result
     }
 
     // Handle geometry types
-    if let result = castToGeometryType(value, expectedType: expectedType, attr: attr, dLog: dLog) {
+    if let result = castToGeometryType(value, expectedType: expectedType, attr: attr) {
         return result
     }
 
     // Handle special types
-    if let result = castToSpecialType(value, expectedType: expectedType, attr: attr, dLog: dLog) {
+    if let result = castToSpecialType(value, expectedType: expectedType, attr: attr) {
         return result
     }
     // Direct cast fallback
@@ -32,89 +32,112 @@ internal func castValueToType<T>(_ value: Any, expectedType: T.Type, attr: Strin
         return directCast
     }
 
-    dLog(
+    axDebugLog(
         "axValue: Fallback cast attempt for attribute '\(attr)' to type \(T.self) FAILED. " +
-            "Unwrapped value was \(type(of: value)): \(value)"
+            "Unwrapped value was \(type(of: value)): \(value)",
+        file: #file,
+        function: #function,
+        line: #line
     )
     return nil
 }
 
 @MainActor
-internal func castToBasicType<T>(_ value: Any, expectedType: T.Type, attr: String, dLog: (String) -> Void) -> T? {
+func castToBasicType<T>(_ value: Any, expectedType: T.Type, attr: String) -> T? {
     switch expectedType {
     case is String.Type:
-        return castToString(value, attr: attr, dLog: dLog) as? T
+        castToString(value, attr: attr) as? T
     case is Bool.Type:
-        return castToBool(value, attr: attr, dLog: dLog) as? T
+        castToBool(value, attr: attr) as? T
     case is Int.Type:
-        return castToInt(value, attr: attr, dLog: dLog) as? T
+        castToInt(value, attr: attr) as? T
     case is Double.Type:
-        return castToDouble(value, attr: attr, dLog: dLog) as? T
+        castToDouble(value, attr: attr) as? T
     default:
-        return nil
+        nil
     }
 }
 
 @MainActor
-internal func castToString(_ value: Any, attr: String, dLog: (String) -> Void) -> String? {
+func castToString(_ value: Any, attr: String) -> String? {
     if let str = value as? String {
         return str
     } else if let attrStr = value as? NSAttributedString {
         return attrStr.string
     }
-    dLog("axValue: Expected String for attribute '\(attr)', but got \(type(of: value)): \(value)")
+    axDebugLog(
+        "axValue: Expected String for attribute '\(attr)', but got \(type(of: value)): \(value)",
+        file: #file,
+        function: #function,
+        line: #line
+    )
     return nil
 }
 
 @MainActor
-internal func castToBool(_ value: Any, attr: String, dLog: (String) -> Void) -> Bool? {
+func castToBool(_ value: Any, attr: String) -> Bool? {
     if let boolVal = value as? Bool {
         return boolVal
     } else if let numVal = value as? NSNumber {
         return numVal.boolValue
     }
-    dLog("axValue: Expected Bool for attribute '\(attr)', but got \(type(of: value)): \(value)")
+    axDebugLog(
+        "axValue: Expected Bool for attribute '\(attr)', but got \(type(of: value)): \(value)",
+        file: #file,
+        function: #function,
+        line: #line
+    )
     return nil
 }
 
 @MainActor
-internal func castToInt(_ value: Any, attr: String, dLog: (String) -> Void) -> Int? {
+func castToInt(_ value: Any, attr: String) -> Int? {
     if let intVal = value as? Int {
         return intVal
     } else if let numVal = value as? NSNumber {
         return numVal.intValue
     }
-    dLog("axValue: Expected Int for attribute '\(attr)', but got \(type(of: value)): \(value)")
+    axDebugLog(
+        "axValue: Expected Int for attribute '\(attr)', but got \(type(of: value)): \(value)",
+        file: #file,
+        function: #function,
+        line: #line
+    )
     return nil
 }
 
 @MainActor
-internal func castToDouble(_ value: Any, attr: String, dLog: (String) -> Void) -> Double? {
+func castToDouble(_ value: Any, attr: String) -> Double? {
     if let doubleVal = value as? Double {
         return doubleVal
     } else if let numVal = value as? NSNumber {
         return numVal.doubleValue
     }
-    dLog("axValue: Expected Double for attribute '\(attr)', but got \(type(of: value)): \(value)")
+    axDebugLog(
+        "axValue: Expected Double for attribute '\(attr)', but got \(type(of: value)): \(value)",
+        file: #file,
+        function: #function,
+        line: #line
+    )
     return nil
 }
 
 @MainActor
-internal func castToArrayType<T>(_ value: Any, expectedType: T.Type, attr: String, dLog: (String) -> Void) -> T? {
+func castToArrayType<T>(_ value: Any, expectedType: T.Type, attr: String) -> T? {
     switch expectedType {
     case is [AXUIElement].Type:
-        return castToAXUIElementArray(value, attr: attr, dLog: dLog) as? T
+        castToAXUIElementArray(value, attr: attr) as? T
     case is [Element].Type:
-        return castToElementArray(value, attr: attr, dLog: dLog) as? T
+        castToElementArray(value, attr: attr) as? T
     case is [String].Type:
-        return castToStringArray(value, attr: attr, dLog: dLog) as? T
+        castToStringArray(value, attr: attr) as? T
     default:
-        return nil
+        nil
     }
 }
 
 @MainActor
-internal func castToAXUIElementArray(_ value: Any, attr: String, dLog: (String) -> Void) -> [AXUIElement]? {
+func castToAXUIElementArray(_ value: Any, attr: String) -> [AXUIElement]? {
     if let anyArray = value as? [Any?] {
         let result = anyArray.compactMap { item -> AXUIElement? in
             guard let cfItem = item else { return nil }
@@ -125,12 +148,17 @@ internal func castToAXUIElementArray(_ value: Any, attr: String, dLog: (String) 
         }
         return result
     }
-    dLog("axValue: Expected [AXUIElement] for attribute '\(attr)', but got \(type(of: value)): \(value)")
+    axDebugLog(
+        "axValue: Expected [AXUIElement] for attribute '\(attr)', but got \(type(of: value)): \(value)",
+        file: #file,
+        function: #function,
+        line: #line
+    )
     return nil
 }
 
 @MainActor
-internal func castToElementArray(_ value: Any, attr: String, dLog: (String) -> Void) -> [Element]? {
+func castToElementArray(_ value: Any, attr: String) -> [Element]? {
     if let anyArray = value as? [Any?] {
         let result = anyArray.compactMap { item -> Element? in
             guard let cfItem = item else { return nil }
@@ -141,67 +169,92 @@ internal func castToElementArray(_ value: Any, attr: String, dLog: (String) -> V
         }
         return result
     }
-    dLog("axValue: Expected [Element] for attribute '\(attr)', but got \(type(of: value)): \(value)")
+    axDebugLog(
+        "axValue: Expected [Element] for attribute '\(attr)', but got \(type(of: value)): \(value)",
+        file: #file,
+        function: #function,
+        line: #line
+    )
     return nil
 }
 
 @MainActor
-internal func castToStringArray(_ value: Any, attr: String, dLog: (String) -> Void) -> [String]? {
+func castToStringArray(_ value: Any, attr: String) -> [String]? {
     if let stringArray = value as? [Any?] {
         let result = stringArray.compactMap { $0 as? String }
         if result.count == stringArray.count {
             return result
         }
     }
-    dLog("axValue: Expected [String] for attribute '\(attr)', but got \(type(of: value)): \(value)")
+    axDebugLog(
+        "axValue: Expected [String] for attribute '\(attr)', but got \(type(of: value)): \(value)",
+        file: #file,
+        function: #function,
+        line: #line
+    )
     return nil
 }
 
 @MainActor
-internal func castToGeometryType<T>(_ value: Any, expectedType: T.Type, attr: String, dLog: (String) -> Void) -> T? {
+func castToGeometryType<T>(_ value: Any, expectedType: T.Type, attr: String) -> T? {
     switch expectedType {
     case is CGPoint.Type:
-        return castToCGPoint(value, attr: attr, dLog: dLog) as? T
+        castToCGPoint(value, attr: attr) as? T
     case is CGSize.Type:
-        return castToCGSize(value, attr: attr, dLog: dLog) as? T
+        castToCGSize(value, attr: attr) as? T
     default:
-        return nil
+        nil
     }
 }
 
 @MainActor
-internal func castToCGPoint(_ value: Any, attr: String, dLog: (String) -> Void) -> CGPoint? {
+func castToCGPoint(_ value: Any, attr: String) -> CGPoint? {
     if let pointVal = value as? CGPoint {
         return pointVal
     }
-    dLog("axValue: Expected CGPoint for attribute '\(attr)', but got \(type(of: value)): \(value)")
+    axDebugLog(
+        "axValue: Expected CGPoint for attribute '\(attr)', but got \(type(of: value)): \(value)",
+        file: #file,
+        function: #function,
+        line: #line
+    )
     return nil
 }
 
 @MainActor
-internal func castToCGSize(_ value: Any, attr: String, dLog: (String) -> Void) -> CGSize? {
+func castToCGSize(_ value: Any, attr: String) -> CGSize? {
     if let sizeVal = value as? CGSize {
         return sizeVal
     }
-    dLog("axValue: Expected CGSize for attribute '\(attr)', but got \(type(of: value)): \(value)")
+    axDebugLog(
+        "axValue: Expected CGSize for attribute '\(attr)', but got \(type(of: value)): \(value)",
+        file: #file,
+        function: #function,
+        line: #line
+    )
     return nil
 }
 
 @MainActor
-internal func castToSpecialType<T>(_ value: Any, expectedType: T.Type, attr: String, dLog: (String) -> Void) -> T? {
+func castToSpecialType<T>(_ value: Any, expectedType: T.Type, attr: String) -> T? {
     if expectedType == AXUIElement.self {
-        return castToAXUIElement(value, attr: attr, dLog: dLog) as? T
+        return castToAXUIElement(value, attr: attr) as? T
     }
     return nil
 }
 
 @MainActor
-internal func castToAXUIElement(_ value: Any, attr: String, dLog: (String) -> Void) -> AXUIElement? {
+func castToAXUIElement(_ value: Any, attr: String) -> AXUIElement? {
     if let cfValue = value as CFTypeRef?, CFGetTypeID(cfValue) == AXUIElementGetTypeID() {
         return (cfValue as! AXUIElement)
     }
     let typeDescription = String(describing: type(of: value))
     let valueDescription = String(describing: value)
-    dLog("axValue: Expected AXUIElement for attribute '\(attr)', but got \(typeDescription): \(valueDescription)")
+    axDebugLog(
+        "axValue: Expected AXUIElement for attribute '\(attr)', but got \(typeDescription): \(valueDescription)",
+        file: #file,
+        function: #function,
+        line: #line
+    )
     return nil
 }

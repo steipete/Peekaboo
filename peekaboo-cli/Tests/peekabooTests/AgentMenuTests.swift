@@ -2,6 +2,29 @@ import Foundation
 import Testing
 @testable import peekaboo
 
+// MARK: - Test Helpers
+
+private func runCommand(_ args: [String]) async throws -> String {
+    let output = try await runPeekabooCommand(args)
+    return output
+}
+
+private func runPeekabooCommand(_ args: [String]) async throws -> String {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: ".build/debug/peekaboo")
+    process.arguments = args
+    
+    let pipe = Pipe()
+    process.standardOutput = pipe
+    process.standardError = pipe
+    
+    try process.run()
+    process.waitUntilExit()
+    
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    return String(data: data, encoding: .utf8) ?? ""
+}
+
 @Suite("Agent Menu Integration Tests", .serialized)
 struct AgentMenuTests {
     @Test("Agent can discover menus using list subcommand")
@@ -28,7 +51,7 @@ struct AgentMenuTests {
             "--json-output",
         ])
 
-        let data = try #require(output.data(using: .utf8))
+        let data = try #require(output.data(using: String.Encoding.utf8))
         let json = try JSONDecoder().decode(AgentJSONResponse.self, from: data)
 
         #expect(json.success == true)
@@ -73,7 +96,7 @@ struct AgentMenuTests {
             "--json-output",
         ])
 
-        let data = try #require(output.data(using: .utf8))
+        let data = try #require(output.data(using: String.Encoding.utf8))
         let json = try JSONDecoder().decode(AgentJSONResponse.self, from: data)
 
         #expect(json.success == true)
@@ -125,7 +148,7 @@ struct AgentMenuTests {
             "--json-output",
         ])
 
-        let data = try #require(output.data(using: .utf8))
+        let data = try #require(output.data(using: String.Encoding.utf8))
         let json = try JSONDecoder().decode(AgentJSONResponse.self, from: data)
 
         #expect(json.success == true)
@@ -175,7 +198,7 @@ struct AgentMenuTests {
             "--json-output",
         ])
 
-        let data = try #require(output.data(using: .utf8))
+        let data = try #require(output.data(using: String.Encoding.utf8))
         let json = try JSONDecoder().decode(AgentJSONResponse.self, from: data)
 
         // Agent should handle this gracefully

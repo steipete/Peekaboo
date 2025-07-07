@@ -1,169 +1,122 @@
 import ApplicationServices
 import Foundation
 
+// GlobalAXLogger should be available
+
 // Extension to generate a descriptive path string
-extension Element {
+public extension Element {
     @MainActor
-    // Update signature to include logging parameters
-    public func generatePathString(
-        upTo ancestor: Element? = nil,
-        isDebugLoggingEnabled: Bool,
-        currentDebugLogs: inout [String]
-    ) -> String {
-        func dLog(_ message: String) {
-            if isDebugLoggingEnabled && false {
-                currentDebugLogs.append(AXorcist.formatDebugLogMessage(message, applicationName: nil, commandID: nil, file: #file, function: #function, line: #line))
-            }
-        }
+    func generatePathString(upTo ancestor: Element? = nil) -> String { // Removed logging params
         var pathComponents: [String] = []
         var currentElement: Element? = self
-
-        var depth = 0 // Safety break for very deep or circular hierarchies
+        var depth = 0
         let maxDepth = 25
-        var tempLogs: [String] = [] // Temporary logs for calls within the loop
 
-        dLog(
-            "generatePathString started for element: \(self.briefDescription(option: .default, isDebugLoggingEnabled: isDebugLoggingEnabled, currentDebugLogs: &tempLogs)) upTo: \(ancestor?.briefDescription(option: .default, isDebugLoggingEnabled: isDebugLoggingEnabled, currentDebugLogs: &tempLogs) ?? "nil")"
-        )
+        // self.briefDescription and ancestor?.briefDescription now use GlobalAXLogger
+        // Assumes self.briefDescription() has been refactored in Element+Description.swift
+        let ancestorDesc = ancestor?.briefDescription(option: .smart) ?? "nil"
+        let logMessage1 =
+            "generatePathString started for element: \(self.briefDescription(option: .smart)) upTo: \(ancestorDesc)"
+        axDebugLog(logMessage1)
 
         while let element = currentElement, depth < maxDepth {
-            tempLogs.removeAll() // Clear for each iteration
-            let briefDesc = element.briefDescription(
-                option: .default,
-                isDebugLoggingEnabled: isDebugLoggingEnabled,
-                currentDebugLogs: &tempLogs
-            )
+            // All calls to element.briefDescription(), element.role(), element.parent()
+            // are now using their refactored, logger-less signatures.
+            // Internal logging happens within those methods via GlobalAXLogger.
+            // Assumes these methods are refactored in Element+Properties.swift and Element+Description.swift
+            let briefDesc = element.briefDescription(option: .smart)
             pathComponents.append(briefDesc)
-            currentDebugLogs.append(contentsOf: tempLogs) // Append logs from briefDescription
 
-            if let ancestor = ancestor, element == ancestor {
-                dLog("generatePathString: Reached specified ancestor: \(briefDesc)")
-                break // Reached the specified ancestor
+            if let ancestor, element == ancestor {
+                axDebugLog("Reached specified ancestor: \(briefDesc)")
+                break
             }
 
-            // Check role to prevent going above application or a window if its parent is the app
-            tempLogs.removeAll()
-            let role = element.role(isDebugLoggingEnabled: isDebugLoggingEnabled, currentDebugLogs: &tempLogs)
-            currentDebugLogs.append(contentsOf: tempLogs)
-
-            tempLogs.removeAll()
-            let parentElement = element.parent(
-                isDebugLoggingEnabled: isDebugLoggingEnabled,
-                currentDebugLogs: &tempLogs
-            )
-            currentDebugLogs.append(contentsOf: tempLogs)
-
-            tempLogs.removeAll()
-            let parentRole = parentElement?.role(
-                isDebugLoggingEnabled: isDebugLoggingEnabled,
-                currentDebugLogs: &tempLogs
-            )
-            currentDebugLogs.append(contentsOf: tempLogs)
+            let role = element.role()
+            let parentElement = element.parent()
+            let parentRole = parentElement?.role()
 
             if role == AXRoleNames.kAXApplicationRole ||
-                (role == AXRoleNames.kAXWindowRole && parentRole == AXRoleNames.kAXApplicationRole && ancestor == nil) {
-                dLog(
-                    "generatePathString: Stopping at \(role == AXRoleNames.kAXApplicationRole ? "Application" : "Window under App"): \(briefDesc)"
-                )
+                (role == AXRoleNames.kAXWindowRole && parentRole == AXRoleNames.kAXApplicationRole && ancestor == nil)
+            {
+                let logMessage2 =
+                    "Stopping at \(role == AXRoleNames.kAXApplicationRole ? "Application" : "Window under App"): \(briefDesc)"
+                axDebugLog(logMessage2)
                 break
             }
 
             currentElement = parentElement
             depth += 1
-            if currentElement == nil && role != AXRoleNames.kAXApplicationRole {
+            if currentElement == nil, role != AXRoleNames.kAXApplicationRole {
                 let orphanLog = "< Orphaned element path component: \(briefDesc) (role: \(role ?? "nil")) >"
-                dLog("generatePathString: Unexpected orphan: \(orphanLog)")
+                axWarningLog("Unexpected orphan in path generation: \(orphanLog)") // Changed to warning
                 pathComponents.append(orphanLog)
                 break
             }
         }
         if depth >= maxDepth {
-            dLog("generatePathString: Reached max depth (\(maxDepth)). Path might be truncated.")
+            axWarningLog("Reached max depth (\(maxDepth)) for path generation. Path might be truncated.") // Changed to
+            // warning
             pathComponents.append("<...max_depth_reached...>")
         }
 
         let finalPath = pathComponents.reversed().joined(separator: " -> ")
-        dLog("generatePathString finished. Path: \(finalPath)")
+        axDebugLog("generatePathString finished. Path: \(finalPath)")
         return finalPath
     }
 
     // New function to return path components as an array
     @MainActor
-    public func generatePathArray(
-        upTo ancestor: Element? = nil,
-        isDebugLoggingEnabled: Bool,
-        currentDebugLogs: inout [String]
-    ) -> [String] {
-        func dLog(_ message: String) { if isDebugLoggingEnabled && false { currentDebugLogs.append(message) } }
+    func generatePathArray(upTo ancestor: Element? = nil) -> [String] { // Removed logging params
         var pathComponents: [String] = []
         var currentElement: Element? = self
-
         var depth = 0
         let maxDepth = 25
-        var tempLogs: [String] = []
 
-        dLog(
-            "generatePathArray started for element: \(self.briefDescription(option: .default, isDebugLoggingEnabled: isDebugLoggingEnabled, currentDebugLogs: &tempLogs)) upTo: \(ancestor?.briefDescription(option: .default, isDebugLoggingEnabled: isDebugLoggingEnabled, currentDebugLogs: &tempLogs) ?? "nil")"
-        )
-        currentDebugLogs.append(contentsOf: tempLogs); tempLogs.removeAll()
+        let logMessage3 =
+            "generatePathArray started for element: \(self.briefDescription(option: .smart)) upTo: \(ancestor?.briefDescription(option: .smart) ?? "nil")"
+        axDebugLog(logMessage3)
 
         while let element = currentElement, depth < maxDepth {
-            tempLogs.removeAll()
-            let briefDesc = element.briefDescription(
-                option: .default,
-                isDebugLoggingEnabled: isDebugLoggingEnabled,
-                currentDebugLogs: &tempLogs
-            )
+            let briefDesc = element.briefDescription(option: .smart)
+            let dump = element.dump()
             pathComponents.append(briefDesc)
-            currentDebugLogs.append(contentsOf: tempLogs); tempLogs.removeAll()
+            pathComponents.append(dump)
 
-            if let ancestor = ancestor, element == ancestor {
-                dLog("generatePathArray: Reached specified ancestor: \(briefDesc)")
+            if let ancestor, element == ancestor {
+                axDebugLog("Reached specified ancestor: \(briefDesc)")
                 break
             }
 
-            tempLogs.removeAll()
-            let role = element.role(isDebugLoggingEnabled: isDebugLoggingEnabled, currentDebugLogs: &tempLogs)
-            currentDebugLogs.append(contentsOf: tempLogs); tempLogs.removeAll()
-
-            tempLogs.removeAll()
-            let parentElement = element.parent(
-                isDebugLoggingEnabled: isDebugLoggingEnabled,
-                currentDebugLogs: &tempLogs
-            )
-            currentDebugLogs.append(contentsOf: tempLogs); tempLogs.removeAll()
-
-            tempLogs.removeAll()
-            let parentRole = parentElement?.role(
-                isDebugLoggingEnabled: isDebugLoggingEnabled,
-                currentDebugLogs: &tempLogs
-            )
-            currentDebugLogs.append(contentsOf: tempLogs); tempLogs.removeAll()
+            let role = element.role()
+            let parentElement = element.parent()
+            let parentRole = parentElement?.role()
 
             if role == AXRoleNames.kAXApplicationRole ||
-                (role == AXRoleNames.kAXWindowRole && parentRole == AXRoleNames.kAXApplicationRole && ancestor == nil) {
-                dLog(
-                    "generatePathArray: Stopping at \(role == AXRoleNames.kAXApplicationRole ? "Application" : "Window under App"): \(briefDesc)"
-                )
+                (role == AXRoleNames.kAXWindowRole && parentRole == AXRoleNames.kAXApplicationRole && ancestor == nil)
+            {
+                let logMessage4 =
+                    "Stopping at \(role == AXRoleNames.kAXApplicationRole ? "Application" : "Window under App"): \(briefDesc)"
+                axDebugLog(logMessage4)
                 break
             }
 
             currentElement = parentElement
             depth += 1
-            if currentElement == nil && role != AXRoleNames.kAXApplicationRole {
+            if currentElement == nil, role != AXRoleNames.kAXApplicationRole {
                 let orphanLog = "< Orphaned element path component: \(briefDesc) (role: \(role ?? "nil")) >"
-                dLog("generatePathArray: Unexpected orphan: \(orphanLog)")
+                axWarningLog("Unexpected orphan in path generation: \(orphanLog)")
                 pathComponents.append(orphanLog)
                 break
             }
         }
         if depth >= maxDepth {
-            dLog("generatePathArray: Reached max depth (\(maxDepth)). Path might be truncated.")
+            axWarningLog("Reached max depth (\(maxDepth)) for path generation. Path might be truncated.")
             pathComponents.append("<...max_depth_reached...>")
         }
 
         let reversedPathComponents = Array(pathComponents.reversed())
-        dLog("generatePathArray finished. Path components: \(reversedPathComponents.joined(separator: "/"))") // Log for debugging
+        axDebugLog("generatePathArray finished. Path components: \(reversedPathComponents.joined(separator: "/"))")
         return reversedPathComponents
     }
 }

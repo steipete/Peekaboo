@@ -20,7 +20,7 @@ let package = Package(
         .target(
             name: "Peekaboo",
             dependencies: [
-                .product(name: "AXorcistLib", package: "AXorcist"),
+                .product(name: "AXorcist", package: "AXorcist"),
             ],
             path: "Peekaboo",
             exclude: ["PeekabooApp.swift", "Info.plist"],

@@ -1,5 +1,5 @@
 import ArgumentParser
-import AXorcistLib
+import AXorcist
 import CoreGraphics
 import Foundation
 
@@ -15,11 +15,12 @@ struct HotkeyCommand: AsyncParsableCommand {
             multiple keys simultaneously, like Cmd+C for copy or Cmd+Shift+T.
 
             EXAMPLES:
-              peekaboo hotkey --keys "cmd,c"          # Copy
+              peekaboo hotkey --keys "cmd,c"          # Copy (comma-separated)
+              peekaboo hotkey --keys "cmd c"          # Copy (space-separated)
               peekaboo hotkey --keys "cmd,v"          # Paste
+              peekaboo hotkey --keys "cmd a"          # Select all
               peekaboo hotkey --keys "cmd,shift,t"    # Reopen closed tab
-              peekaboo hotkey --keys "cmd,space"      # Spotlight
-              peekaboo hotkey --keys "ctrl,a"         # Select all (in terminal)
+              peekaboo hotkey --keys "cmd space"      # Spotlight
 
             KEY NAMES:
               Modifiers: cmd, shift, alt/option, ctrl, fn
@@ -31,7 +32,7 @@ struct HotkeyCommand: AsyncParsableCommand {
             The keys are pressed in the order given and released in reverse order.
         """)
 
-    @Option(help: "Comma-separated list of keys to press")
+    @Option(help: "Keys to press (comma-separated or space-separated)")
     var keys: String
 
     @Option(help: "Delay between key press and release in milliseconds")
@@ -44,8 +45,15 @@ struct HotkeyCommand: AsyncParsableCommand {
         let startTime = Date()
 
         do {
-            // Parse key names
-            let keyNames = self.keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+            // Parse key names - support both comma-separated and space-separated
+            let keyNames: [String]
+            if self.keys.contains(",") {
+                // Comma-separated format: "cmd,c" or "cmd, c"
+                keyNames = self.keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+            } else {
+                // Space-separated format: "cmd c" or "cmd a"
+                keyNames = self.keys.split(separator: " ").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+            }
 
             guard !keyNames.isEmpty else {
                 throw ValidationError("No keys specified")

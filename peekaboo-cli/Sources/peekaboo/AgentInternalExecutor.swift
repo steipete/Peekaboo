@@ -1,5 +1,5 @@
 import AppKit
-import AXorcistLib
+import AXorcist
 import Foundation
 
 /// Internal executor for agent commands that uses native functions instead of CLI
