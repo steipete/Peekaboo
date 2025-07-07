@@ -106,7 +106,6 @@ Packages/
 Package.pins
 Package.resolved
 .swiftpm/
-*.xcodeproj
 
 ## Playgrounds
 playground.xcworkspace
@@ -120,7 +119,6 @@ timeline.xctimeline
 
 ## CocoaPods (if used)
 Pods/
-*.xcworkspace
 
 ## Carthage (if used)
 Carthage/Build/
