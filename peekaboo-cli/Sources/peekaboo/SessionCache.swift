@@ -85,8 +85,11 @@ actor SessionCache {
             Logger.shared.debug("Using latest session: \(latestSession)")
         } else if createIfNeeded {
             // Only create new session if explicitly allowed (for see command)
-            self.sessionId = String(ProcessInfo.processInfo.processIdentifier)
-            Logger.shared.debug("Creating new session with PID: \(self.sessionId)")
+            // Use timestamp-based ID instead of PID for cross-process compatibility
+            let timestamp = Int(Date().timeIntervalSince1970 * 1000) // milliseconds
+            let randomSuffix = Int.random(in: 1000...9999)
+            self.sessionId = "\(timestamp)-\(randomSuffix)"
+            Logger.shared.debug("Creating new session: \(self.sessionId)")
         } else {
             // No valid session found and not allowed to create
             throw PeekabooError.noValidSessionFound
@@ -208,6 +211,8 @@ actor SessionCache {
 
         // Copy screenshot to session directory as raw.png
         let rawPath = cacheDir.appendingPathComponent("raw.png")
+        // Remove existing file if it exists
+        try? FileManager.default.removeItem(at: rawPath)
         try FileManager.default.copyItem(atPath: path, toPath: rawPath.path)
         data.screenshotPath = rawPath.path
 
@@ -309,9 +314,12 @@ actor SessionCache {
         let roleDescription = element.roleDescription()
         let identifier = element.identifier()
         let value = element.value() as? String
-
-        // Use the most descriptive property as the label
-        let label = description ?? help ?? roleDescription ?? title
+        
+        // Try to get the AXLabel attribute directly (common for buttons with numeric/text labels)
+        let axLabel = element.attribute(Attribute<String>("AXLabel"))
+        
+        // Use the actual label if available, otherwise fall back to other descriptive properties
+        let label = axLabel ?? description ?? help ?? roleDescription ?? title ?? value
 
         // Get element bounds
         let position = element.position()

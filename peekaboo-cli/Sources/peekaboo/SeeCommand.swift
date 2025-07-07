@@ -65,9 +65,9 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         Logger.shared.verbose("Starting see command execution")
 
         // Always create a new session for see command
-        let sessionId = String(ProcessInfo.processInfo.processIdentifier)
-        Logger.shared.verbose("Creating new session with ID: \(sessionId)")
-        let sessionCache = try SessionCache(sessionId: sessionId, createIfNeeded: true)
+        // Let SessionCache generate its own ID for cross-process compatibility
+        Logger.shared.verbose("Creating new session")
+        let sessionCache = try SessionCache(sessionId: nil, createIfNeeded: true)
 
         do {
             // Perform capture based on mode
@@ -145,6 +145,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
                         id: element.id,
                         role: element.role,
                         title: element.title,
+                        label: element.label,
+                        identifier: element.identifier,
                         is_actionable: element.isActionable,
                         keyboard_shortcut: element.keyboardShortcut
                     )
@@ -552,6 +554,8 @@ struct UIElementSummary: Codable {
     let id: String
     let role: String
     let title: String?
+    let label: String?
+    let identifier: String?
     let is_actionable: Bool
     let keyboard_shortcut: String?
 }

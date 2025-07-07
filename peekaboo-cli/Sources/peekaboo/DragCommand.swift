@@ -181,7 +181,7 @@ private func resolvePoint(
         let sessionId = try await resolveSessionId(session)
         let sessionCache = try SessionCache(sessionId: sessionId)
 
-        guard let sessionData = try await sessionCache.load() else {
+        guard let sessionData = await sessionCache.load() else {
             throw DragError.sessionNotFound(sessionId)
         }
 

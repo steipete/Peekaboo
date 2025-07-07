@@ -68,7 +68,7 @@ struct PeekabooCommandExecutor {
                 cliArgs.append("--window-title")
                 cliArgs.append(title)
             }
-            // Note: see command creates sessions, doesn't use them
+            // Note: see command creates sessions, doesn't accept them as input
 
         case "click":
             if let element = args["element"] as? String {
@@ -180,7 +180,15 @@ struct PeekabooCommandExecutor {
             }
             cliArgs.append(action)
             hasSubcommand = true
-            cliArgs.append(name)
+            
+            // For app commands, the name is NOT a flag, it's a positional argument
+            // But some actions like "switch" use --to flag
+            if action == "switch" {
+                cliArgs.append("--to")
+                cliArgs.append(name)
+            } else {
+                cliArgs.append(name)
+            }
 
         case "wait":
             // Map wait to sleep command but preserve the command structure
@@ -197,6 +205,148 @@ struct PeekabooCommandExecutor {
             }
             // Add duration in milliseconds
             cliArgs.append(String(Int(duration * 1000)))
+            
+        case "analyze_screenshot":
+            // Map to analyze command
+            cliArgs[0] = "analyze"
+            guard let screenshotPath = args["screenshot_path"] as? String else {
+                throw AgentError.invalidArguments("analyze_screenshot requires 'screenshot_path' parameter")
+            }
+            cliArgs.append(screenshotPath)
+            
+            if let question = args["question"] as? String {
+                cliArgs.append(question)
+            }
+            
+        case "list":
+            guard let target = args["target"] as? String else {
+                throw AgentError.invalidArguments("List command requires 'target' parameter")
+            }
+            cliArgs.append(target)
+            hasSubcommand = true
+            
+            if target == "windows", let app = args["app"] as? String {
+                cliArgs.append("--app")
+                cliArgs.append(app)
+            }
+            
+        case "menu":
+            cliArgs.append("click") // Default to click subcommand
+            hasSubcommand = true
+            
+            if let app = args["app"] as? String {
+                cliArgs.append("--app")
+                cliArgs.append(app)
+            }
+            if let item = args["item"] as? String {
+                cliArgs.append("--item")
+                cliArgs.append(item)
+            }
+            if let path = args["path"] as? String {
+                cliArgs.append("--path")
+                cliArgs.append(path)
+            }
+            
+        case "dialog":
+            guard let action = args["action"] as? String else {
+                throw AgentError.invalidArguments("Dialog command requires 'action' parameter")
+            }
+            
+            switch action {
+            case "click":
+                cliArgs.append("click")
+                hasSubcommand = true
+                if let button = args["button"] as? String {
+                    cliArgs.append("--button")
+                    cliArgs.append(button)
+                }
+            case "input":
+                cliArgs.append("input")
+                hasSubcommand = true
+                if let text = args["text"] as? String {
+                    cliArgs.append("--text")
+                    cliArgs.append(text)
+                }
+                if let field = args["field"] as? String {
+                    cliArgs.append("--field")
+                    cliArgs.append(field)
+                }
+            case "dismiss":
+                cliArgs.append("dismiss")
+                hasSubcommand = true
+            default:
+                throw AgentError.invalidArguments("Unknown dialog action: \(action)")
+            }
+            
+        case "drag":
+            if let from = args["from"] as? String {
+                cliArgs.append("--from")
+                cliArgs.append(from)
+            } else if let fromCoords = args["from_coords"] as? String {
+                cliArgs.append("--from-coords")
+                cliArgs.append(fromCoords)
+            }
+            
+            if let to = args["to"] as? String {
+                cliArgs.append("--to")
+                cliArgs.append(to)
+            } else if let toCoords = args["to_coords"] as? String {
+                cliArgs.append("--to-coords")
+                cliArgs.append(toCoords)
+            }
+            
+            if let duration = args["duration"] as? Int {
+                cliArgs.append("--duration")
+                cliArgs.append(String(duration))
+            }
+            
+            if let sessionId = args["session_id"] as? String {
+                cliArgs.append("--session")
+                cliArgs.append(sessionId)
+            }
+            
+        case "dock":
+            guard let action = args["action"] as? String else {
+                throw AgentError.invalidArguments("Dock command requires 'action' parameter")
+            }
+            cliArgs.append(action)
+            hasSubcommand = true
+            
+            if let app = args["app"] as? String {
+                cliArgs.append(app)
+            }
+            
+            if action == "right-click", let select = args["select"] as? String {
+                cliArgs.append("--select")
+                cliArgs.append(select)
+            }
+            
+        case "swipe":
+            if let from = args["from"] as? String {
+                cliArgs.append("--from")
+                cliArgs.append(from)
+            } else if let fromCoords = args["from_coords"] as? String {
+                cliArgs.append("--from-coords")
+                cliArgs.append(fromCoords)
+            }
+            
+            if let to = args["to"] as? String {
+                cliArgs.append("--to")
+                cliArgs.append(to)
+            } else if let toCoords = args["to_coords"] as? String {
+                cliArgs.append("--to-coords")
+                cliArgs.append(toCoords)
+            }
+            
+            if let duration = args["duration"] as? Int {
+                cliArgs.append("--duration")
+                cliArgs.append(String(duration))
+            }
+            
+            if let sessionId = args["session_id"] as? String {
+                cliArgs.append("--session")
+                cliArgs.append(sessionId)
+            }
 
         default:
             // For unknown commands, pass through all arguments
@@ -209,9 +359,9 @@ struct PeekabooCommandExecutor {
         }
         
         // Add json-output flag after subcommands and arguments
-        if shouldDeferJsonOutput || !hasSubcommand {
-            cliArgs.append("--json-output")
-        }
+        // For commands with subcommands, we always add it at the end
+        // For commands without subcommands, we also add it
+        cliArgs.append("--json-output")
 
         return cliArgs
     }
