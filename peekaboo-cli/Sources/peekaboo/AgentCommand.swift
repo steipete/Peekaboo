@@ -137,32 +137,38 @@ struct OpenAIAgent {
         
         // Create assistant
         let assistant = try await createAssistant()
-        defer {
-            // Clean up assistant
-            Task {
-                try? await deleteAssistant(assistant.id)
-            }
-        }
         
         // Create thread
         let thread = try await createThread()
         
+        // Store IDs for cleanup
+        let assistantId = assistant.id
+        let threadId = thread.id
+        
+        defer {
+            // Clean up assistant and thread
+            Task {
+                try? await deleteAssistant(assistantId)
+                try? await deleteThread(threadId)
+            }
+        }
+        
         // Add initial message
-        try await addMessage(threadId: thread.id, content: task)
+        try await addMessage(threadId: threadId, content: task)
         
         // Run the assistant
         var steps: [AgentResult.Step] = []
         var stepCount = 0
         
         while stepCount < maxSteps {
-            let run = try await createRun(threadId: thread.id, assistantId: assistant.id)
+            let run = try await createRun(threadId: threadId, assistantId: assistant.id)
             
             // Poll for completion
-            var runStatus = try await getRun(threadId: thread.id, runId: run.id)
+            var runStatus = try await getRun(threadId: threadId, runId: run.id)
             
             while runStatus.status == "in_progress" || runStatus.status == "queued" {
                 try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-                runStatus = try await getRun(threadId: thread.id, runId: run.id)
+                runStatus = try await getRun(threadId: threadId, runId: run.id)
             }
             
             if runStatus.status == "requires_action" {
@@ -211,14 +217,37 @@ struct OpenAIAgent {
                 if !dryRun {
                     // Submit tool outputs
                     try await submitToolOutputs(
-                        threadId: thread.id,
+                        threadId: threadId,
                         runId: run.id,
                         toolOutputs: toolOutputs
                     )
+                    
+                    // Wait for the run to complete after submitting tool outputs
+                    runStatus = try await getRun(threadId: threadId, runId: run.id)
+                    while runStatus.status == "in_progress" || runStatus.status == "queued" {
+                        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                        runStatus = try await getRun(threadId: threadId, runId: run.id)
+                    }
+                    
+                    // Check if completed after tool outputs
+                    if runStatus.status == "completed" {
+                        // Get the final message
+                        let messages = try await getMessages(threadId: threadId)
+                        let summary = messages.first?.content.first?.text?.value
+                        
+                        // Clean up session
+                        await SessionManager.shared.removeSession(sessionId)
+                        
+                        return AgentResult(
+                            steps: steps,
+                            summary: summary,
+                            success: true
+                        )
+                    }
                 }
             } else if runStatus.status == "completed" {
                 // Get the final message
-                let messages = try await getMessages(threadId: thread.id)
+                let messages = try await getMessages(threadId: threadId)
                 let summary = messages.first?.content.first?.text?.value
                 
                 // Clean up session
@@ -229,8 +258,11 @@ struct OpenAIAgent {
                     summary: summary,
                     success: true
                 )
-            } else {
+            } else if runStatus.status == "failed" || runStatus.status == "cancelled" || runStatus.status == "expired" {
                 throw AgentError.apiError("Assistant run failed with status: \(runStatus.status)")
+            } else {
+                // For any other status, continue the loop
+                continue
             }
         }
         
@@ -294,6 +326,13 @@ struct OpenAIAgent {
         _ = try await session.retryableData(for: request, retryConfig: retryConfig)
     }
     
+    private func deleteThread(_ threadId: String) async throws {
+        let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)")!
+        let request = URLRequest.openAIRequest(url: url, method: "DELETE", apiKey: apiKey, betaHeader: "assistants=v2")
+        
+        _ = try await session.retryableData(for: request, retryConfig: retryConfig)
+    }
+    
     private func createThread() async throws -> Thread {
         let url = URL(string: "https://api.openai.com/v1/threads")!
         var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
@@ -319,7 +358,97 @@ struct OpenAIAgent {
         let runData = ["assistant_id": assistantId]
         request.httpBody = try JSONSerialization.data(withJSONObject: runData)
         
-        return try await session.retryableDataTask(for: request, decodingType: Run.self, retryConfig: retryConfig)
+        do {
+            return try await session.retryableDataTask(for: request, decodingType: Run.self, retryConfig: retryConfig)
+        } catch let error as AgentError {
+            // If thread already has active run, wait and retry
+            if case .apiError(let message) = error,
+               message.contains("already has an active run") {
+                
+                // Extract the run ID from error message like "run_abc123"
+                let components = message.components(separatedBy: " ")
+                if let runIdComponent = components.last(where: { $0.starts(with: "run_") }) {
+                    let existingRunId = runIdComponent.trimmingCharacters(in: .punctuationCharacters)
+                    
+                    if verbose {
+                        print("⏳ Found existing run: \(existingRunId), checking status...")
+                    }
+                    
+                    // Check the status of the existing run
+                    do {
+                        let existingRun = try await getRun(threadId: threadId, runId: existingRunId)
+                        
+                        if verbose {
+                            print("   Existing run status: \(existingRun.status)")
+                        }
+                        
+                        // If the run is done, try creating a new one immediately
+                        if existingRun.status == "completed" || existingRun.status == "failed" || 
+                           existingRun.status == "cancelled" || existingRun.status == "expired" {
+                            if verbose {
+                                print("   Run is finished, creating new run...")
+                            }
+                            return try await session.retryableDataTask(for: request, decodingType: Run.self, retryConfig: retryConfig)
+                        }
+                        
+                        // If run requires action, we need to handle it differently
+                        if existingRun.status == "requires_action" {
+                            if verbose {
+                                print("   Run requires action - cancelling it...")
+                            }
+                            
+                            // Cancel the existing run that's waiting for tool outputs
+                            try await cancelRun(threadId: threadId, runId: existingRunId)
+                            
+                            // Wait a moment for cancellation to process
+                            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                            
+                            // Now create a new run
+                            return try await session.retryableDataTask(for: request, decodingType: Run.self, retryConfig: retryConfig)
+                        }
+                        
+                        // If still in progress, wait for it
+                        if existingRun.status == "in_progress" || existingRun.status == "queued" {
+                            if verbose {
+                                print("   Run still in progress, waiting...")
+                            }
+                            
+                            // Poll until the run completes
+                            var pollCount = 0
+                            while pollCount < 10 { // Max 10 seconds
+                                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                                let status = try await getRun(threadId: threadId, runId: existingRunId)
+                                
+                                if status.status != "in_progress" && status.status != "queued" {
+                                    if verbose {
+                                        print("   Existing run completed with status: \(status.status)")
+                                    }
+                                    break
+                                }
+                                pollCount += 1
+                            }
+                            
+                            // Try creating a new run now
+                            return try await session.retryableDataTask(for: request, decodingType: Run.self, retryConfig: retryConfig)
+                        }
+                    } catch {
+                        if verbose {
+                            print("   Could not check existing run status: \(error)")
+                        }
+                    }
+                }
+                
+                // Fallback to simple wait and retry
+                if verbose {
+                    print("⏳ Thread has active run, waiting...")
+                }
+                try await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+                
+                // Try once more
+                return try await session.retryableDataTask(for: request, decodingType: Run.self, retryConfig: retryConfig)
+            }
+            throw error
+        }
     }
     
     private func getRun(threadId: String, runId: String) async throws -> Run {
@@ -346,6 +475,14 @@ struct OpenAIAgent {
         
         let messageList = try await session.retryableDataTask(for: request, decodingType: MessageList.self, retryConfig: retryConfig)
         return messageList.data
+    }
+    
+    private func cancelRun(threadId: String, runId: String) async throws {
+        let url = URL(string: "https://api.openai.com/v1/threads/\(threadId)/runs/\(runId)/cancel")!
+        var request = URLRequest.openAIRequest(url: url, apiKey: apiKey, betaHeader: "assistants=v2")
+        request.httpBody = "{}".data(using: .utf8)
+        
+        _ = try await session.retryableData(for: request, retryConfig: retryConfig)
     }
 }
 
