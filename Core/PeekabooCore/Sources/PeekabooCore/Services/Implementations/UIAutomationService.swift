@@ -1,327 +1,474 @@
 import Foundation
 import CoreGraphics
-import AXorcist
+@preconcurrency import AXorcist
 import AppKit
+import ApplicationServices
 
 /// Default implementation of UI automation operations using AXorcist
 public final class UIAutomationService: UIAutomationServiceProtocol {
     
-    private let sessionManager: SessionManagerProtocol
+    let sessionManager: SessionManagerProtocol
     
     public init(sessionManager: SessionManagerProtocol? = nil) {
         self.sessionManager = sessionManager ?? SessionManager()
     }
     
     public func detectElements(in imageData: Data, sessionId: String?) async throws -> ElementDetectionResult {
-        // Create or use existing session
-        let session = sessionId ?? (try await sessionManager.createSession())
-        
-        // TODO: This is a placeholder - actual implementation would:
-        // 1. Save the screenshot
-        // 2. Use AXorcist to build UI tree
-        // 3. Map UI elements to screen coordinates
-        // 4. Generate element IDs and annotations
-        
-        // For now, return empty result
-        return ElementDetectionResult(
-            sessionId: session,
-            screenshotPath: "/tmp/screenshot.png",
-            elements: DetectedElements(),
-            metadata: DetectionMetadata(
-                detectionTime: 0.1,
-                elementCount: 0,
-                method: "AXorcist"
-            )
+        // Use the enhanced implementation
+        return try await detectElementsEnhanced(
+            in: imageData,
+            sessionId: sessionId,
+            applicationName: nil,
+            windowTitle: nil,
+            windowBounds: nil
         )
     }
     
     public func click(target: ClickTarget, clickType: ClickType, sessionId: String?) async throws {
-        try await MainActor.run {
-            do {
-                switch target {
-                case .elementId(let id):
-                    // Get element from session
-                    if let sessionId = sessionId,
-                        let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId),
-                        let element = detectionResult.elements.findById(id) {
-                        // Click at element center
-                        let center = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
-                        try performClick(at: center, clickType: clickType)
-                    } else {
-                        throw UIAutomationError.elementNotFound(id)
-                    }
-                    
-                case .coordinates(let point):
-                    // Direct coordinate click
-                    try performClick(at: point, clickType: clickType)
-                    
-                case .query(let query):
-                    // Find element by text/label and click
-                    if let element = findElementByQuery(query) {
-                        if let frame = element.frame() {
-                            let center = CGPoint(x: frame.midX, y: frame.midY)
-                            try performClick(at: center, clickType: clickType)
-                        } else {
-                            throw UIAutomationError.clickFailed("Element has no frame")
-                        }
-                    } else {
-                        throw UIAutomationError.elementNotFoundByQuery(query)
-                    }
-                }
-            } catch {
-                // Re-throw as our error type
-                if let uiError = error as? UIAutomationError {
-                    throw uiError
+        do {
+            switch target {
+            case .elementId(let id):
+                // Get element from session
+                if let sessionId = sessionId,
+                    let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId),
+                    let element = detectionResult.elements.findById(id) {
+                    // Click at element center
+                    let center = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
+                    try await performClick(at: center, clickType: clickType)
                 } else {
-                    throw UIAutomationError.clickFailed(error.localizedDescription)
+                    throw UIAutomationError.elementNotFound(id)
                 }
+                
+            case .coordinates(let point):
+                // Direct coordinate click
+                try await performClick(at: point, clickType: clickType)
+                
+            case .query(let query):
+                // Find element by text/label and click
+                let elementInfo = await MainActor.run { () -> (found: Bool, frame: CGRect?) in
+                    if let element = findElementByQuery(query) {
+                        return (true, element.frame())
+                    }
+                    return (false, nil)
+                }
+                
+                if elementInfo.found {
+                    if let frame = elementInfo.frame {
+                        let center = CGPoint(x: frame.midX, y: frame.midY)
+                        try await performClick(at: center, clickType: clickType)
+                    } else {
+                        throw UIAutomationError.clickFailed("Element has no frame")
+                    }
+                } else {
+                    throw UIAutomationError.elementNotFoundByQuery(query)
+                }
+            }
+        } catch {
+            // Re-throw as our error type
+            if let uiError = error as? UIAutomationError {
+                throw uiError
+            } else {
+                throw UIAutomationError.clickFailed(error.localizedDescription)
             }
         }
     }
     
     public func type(text: String, target: String?, clearExisting: Bool, typingDelay: Int, sessionId: String?) async throws {
-        try await MainActor.run {
-            do {
-                // If target specified, find and focus element first
-                if let target = target {
-                    if let element = findElementByIdOrQuery(target, sessionId: sessionId) {
-                        // Focus the element first
-                        try element.setFocused(true)
-                        Thread.sleep(forTimeInterval: 0.1)
+        do {
+            // If target specified, find and focus element first
+            if let target = target {
+                var elementFound = false
+                var elementFrame: CGRect?
+                
+                // First check if target is an element ID from session
+                if let sessionId = sessionId,
+                   target.count >= 2,
+                   target.first?.isLetter == true,
+                   target.dropFirst().allSatisfy({ $0.isNumber || $0 == "_" }) {
+                    // This looks like an element ID (e.g., "B1", "Window1_T2")
+                    if let uiElement = try? await sessionManager.getElement(sessionId: sessionId, elementId: target) {
+                        elementFrame = uiElement.frame
                         
-                        if clearExisting {
-                            // Clear existing text
+                        // Click on the element to focus it
+                        let center = CGPoint(x: elementFrame!.midX, y: elementFrame!.midY)
+                        try await performClick(at: center, clickType: .single)
+                        elementFound = true
+                    }
+                }
+                
+                // If not found as ID, try as query
+                if !elementFound {
+                    elementFound = await MainActor.run { () -> Bool in
+                        if let element = findElementByQuery(target) {
+                            // Focus the element
+                            _ = element.setValue(true, forAttribute: AXAttributeNames.kAXFocusedAttribute)
+                            return true
+                        }
+                        return false
+                    }
+                }
+                
+                if elementFound {
+                    try await Task.sleep(nanoseconds: UInt64(0.1 * 1_000_000_000))
+                    
+                    if clearExisting {
+                        // Clear existing text
+                        await MainActor.run {
                             if let event = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: true) {
                                 event.flags = .maskCommand
-                                event.unicodeString = "a"
+                                event.keyboardSetUnicodeString(stringLength: 1, unicodeString: [0x61]) // 'a' in unicode
                                 event.post(tap: .cghidEventTap)
                             }
-                            Thread.sleep(forTimeInterval: 0.05)
-                            
+                        }
+                        try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000))
+                        
+                        await MainActor.run {
                             if let deleteEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0x33, keyDown: true) { // Delete key
                                 deleteEvent.post(tap: .cghidEventTap)
                             }
-                            Thread.sleep(forTimeInterval: 0.05)
                         }
-                        
-                        // Type the text
-                        typeTextWithDelay(text, delay: TimeInterval(typingDelay) / 1000.0)
-                    } else {
-                        throw UIAutomationError.elementNotFound(target)
+                        try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000))
                     }
+                    
+                    // Type the text
+                    try await typeTextWithDelay(text, delay: TimeInterval(typingDelay) / 1000.0)
                 } else {
-                    // Type at current focus
-                    if clearExisting {
-                        // Clear current field
+                    throw UIAutomationError.elementNotFound(target)
+                }
+            } else {
+                // Type at current focus
+                if clearExisting {
+                    // Clear current field
+                    await MainActor.run {
                         if let event = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: true) {
                             event.flags = .maskCommand
-                            event.unicodeString = "a"
+                            event.keyboardSetUnicodeString(stringLength: 1, unicodeString: [0x61]) // 'a' in unicode
                             event.post(tap: .cghidEventTap)
                         }
-                        Thread.sleep(forTimeInterval: 0.05)
-                        
+                    }
+                    try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000))
+                    
+                    await MainActor.run {
                         if let deleteEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0x33, keyDown: true) { // Delete key
                             deleteEvent.post(tap: .cghidEventTap)
                         }
-                        Thread.sleep(forTimeInterval: 0.05)
                     }
-                    
-                    typeTextWithDelay(text, delay: TimeInterval(typingDelay) / 1000.0)
+                    try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000))
                 }
-            } catch {
-                if let uiError = error as? UIAutomationError {
-                    throw uiError
-                } else {
-                    throw UIAutomationError.typeFailed(error.localizedDescription)
-                }
+                
+                try await typeTextWithDelay(text, delay: TimeInterval(typingDelay) / 1000.0)
+            }
+        } catch {
+            if let uiError = error as? UIAutomationError {
+                throw uiError
+            } else {
+                throw UIAutomationError.typeFailed(error.localizedDescription)
             }
         }
     }
     
-    public func scroll(direction: ScrollDirection, amount: Int, target: String?, smooth: Bool, sessionId: String?) async throws {
-        try await MainActor.run {
-            do {
-                let scrollPoint: CGPoint
-                
-                if let target = target {
-                    // Scroll on specific element
-                    if let element = findElementByIdOrQuery(target, sessionId: sessionId) {
-                        if let frame = element.frame() {
-                            scrollPoint = CGPoint(x: frame.midX, y: frame.midY)
-                        } else {
-                            throw UIAutomationError.scrollFailed("Element has no frame")
-                        }
+    public func scroll(direction: ScrollDirection, amount: Int, target: String?, smooth: Bool, delay: Int, sessionId: String?) async throws {
+        do {
+            let scrollPoint: CGPoint
+            
+            if let target = target {
+                // Scroll on specific element
+                if let element = await MainActor.run(body: { findElementByIdOrQuery(target, sessionId: sessionId) }) {
+                    if let frame = await MainActor.run(body: { element.frame() }) {
+                        scrollPoint = CGPoint(x: frame.midX, y: frame.midY)
                     } else {
-                        throw UIAutomationError.elementNotFound(target)
+                        throw UIAutomationError.scrollFailed("Element has no frame")
                     }
                 } else {
-                    // Scroll at current mouse position
-                    let mouseLocation = NSEvent.mouseLocation
-                    // Convert from NSScreen coordinates to Core Graphics coordinates
-                    let screenHeight = NSScreen.main?.frame.height ?? 0
-                    scrollPoint = CGPoint(x: mouseLocation.x, y: screenHeight - mouseLocation.y)
+                    throw UIAutomationError.elementNotFound(target)
                 }
-                
-                // Perform scroll using CGEvents
-                let scrollAmount = smooth ? amount : amount * 10 // Adjust for smooth scrolling
-                
-                if let scrollEvent = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 2, wheel1: 0, wheel2: 0, wheel3: 0) {
-                    switch direction {
-                    case .up:
-                        scrollEvent.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: Int64(scrollAmount))
-                    case .down:
-                        scrollEvent.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: Int64(-scrollAmount))
-                    case .left:
-                        scrollEvent.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: Int64(scrollAmount))
-                    case .right:
-                        scrollEvent.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: Int64(-scrollAmount))
-                    }
+            } else {
+                // Scroll at current mouse position
+                let mouseLocation = await MainActor.run { CGEvent(source: nil)?.location ?? CGPoint.zero }
+                scrollPoint = mouseLocation
+            }
+            
+            // Calculate scroll deltas (matching original ScrollCommand behavior)
+            let (deltaX, deltaY) = getScrollDeltas(for: direction)
+            
+            // Determine tick count and size
+            let tickCount = smooth ? amount * 3 : amount
+            let tickSize = smooth ? 1 : 3
+            
+            for _ in 0..<tickCount {
+                // Create scroll event using the same API as original
+                await MainActor.run {
+                    let scrollEvent = CGEvent(
+                        scrollWheelEvent2Source: nil,
+                        units: .line,
+                        wheelCount: 1,
+                        wheel1: Int32(deltaY * tickSize),
+                        wheel2: Int32(deltaX * tickSize),
+                        wheel3: 0)
                     
-                    scrollEvent.location = scrollPoint
-                    scrollEvent.post(tap: .cghidEventTap)
+                    // Set the location for the scroll event
+                    scrollEvent?.location = scrollPoint
+                    
+                    // Post the event
+                    scrollEvent?.post(tap: .cghidEventTap)
                 }
-            } catch {
-                if let uiError = error as? UIAutomationError {
-                    throw uiError
-                } else {
-                    throw UIAutomationError.scrollFailed(error.localizedDescription)
+                
+                // Delay between ticks
+                if delay > 0 {
+                    try await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000)
                 }
             }
+        } catch {
+            if let uiError = error as? UIAutomationError {
+                throw uiError
+            } else {
+                throw UIAutomationError.scrollFailed(error.localizedDescription)
+            }
+        }
+    }
+    
+    private func getScrollDeltas(for direction: ScrollDirection) -> (deltaX: Int, deltaY: Int) {
+        switch direction {
+        case .up:
+            (0, 5) // Positive Y scrolls up
+        case .down:
+            (0, -5) // Negative Y scrolls down
+        case .left:
+            (5, 0) // Positive X scrolls left
+        case .right:
+            (-5, 0) // Negative X scrolls right
         }
     }
     
     public func hotkey(keys: String, holdDuration: Int) async throws {
-        try await MainActor.run {
-            do {
-                // Parse comma-separated keys
-                let keyArray = keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                
-                // Build modifier flags
-                var modifierFlags = CGEventFlags()
-                var regularKeys: [String] = []
-                
-                for key in keyArray {
-                    switch key.lowercased() {
-                    case "cmd", "command":
-                        modifierFlags.insert(.maskCommand)
-                    case "ctrl", "control":
-                        modifierFlags.insert(.maskControl)
-                    case "opt", "option", "alt":
-                        modifierFlags.insert(.maskAlternate)
-                    case "shift":
-                        modifierFlags.insert(.maskShift)
-                    case "fn", "function":
-                        modifierFlags.insert(.maskSecondaryFn)
-                    default:
-                        regularKeys.append(key)
-                    }
+        do {
+            // Parse comma-separated keys
+            let keyArray = keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            
+            // Build modifier flags
+            var modifierFlags = CGEventFlags()
+            var regularKeys: [String] = []
+            
+            for key in keyArray {
+                switch key.lowercased() {
+                case "cmd", "command":
+                    modifierFlags.insert(.maskCommand)
+                case "ctrl", "control":
+                    modifierFlags.insert(.maskControl)
+                case "opt", "option", "alt":
+                    modifierFlags.insert(.maskAlternate)
+                case "shift":
+                    modifierFlags.insert(.maskShift)
+                case "fn", "function":
+                    modifierFlags.insert(.maskSecondaryFn)
+                default:
+                    regularKeys.append(key)
                 }
+            }
+            
+            // Press the key combination
+            if !regularKeys.isEmpty, let firstKey = regularKeys.first {
+                // Map common key names to virtual key codes
+                let virtualKey = await MainActor.run { mapKeyToVirtualCode(firstKey) }
                 
-                // Press the key combination
-                if !regularKeys.isEmpty, let firstKey = regularKeys.first {
-                    // Map common key names to virtual key codes
-                    let virtualKey = mapKeyToVirtualCode(firstKey)
-                    
+                await MainActor.run {
                     if let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: true) {
                         keyDown.flags = modifierFlags
                         keyDown.post(tap: .cghidEventTap)
-                        
-                        // Hold duration
-                        Thread.sleep(forTimeInterval: TimeInterval(holdDuration) / 1000.0)
-                        
-                        if let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: false) {
-                            keyUp.flags = modifierFlags
-                            keyUp.post(tap: .cghidEventTap)
-                        }
                     }
-                } else {
-                    // Just modifier keys
+                }
+                
+                // Hold duration
+                try await Task.sleep(nanoseconds: UInt64(TimeInterval(holdDuration) / 1000.0 * 1_000_000_000))
+                
+                await MainActor.run {
+                    if let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: false) {
+                        keyUp.flags = modifierFlags
+                        keyUp.post(tap: .cghidEventTap)
+                    }
+                }
+            } else {
+                // Just modifier keys
+                await MainActor.run {
                     if let event = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true) {
                         event.flags = modifierFlags
                         event.post(tap: .cghidEventTap)
-                        
-                        Thread.sleep(forTimeInterval: TimeInterval(holdDuration) / 1000.0)
-                        
-                        if let upEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) {
-                            upEvent.flags = []
-                            upEvent.post(tap: .cghidEventTap)
-                        }
                     }
                 }
-            } catch {
-                if let uiError = error as? UIAutomationError {
-                    throw uiError
-                } else {
-                    throw UIAutomationError.hotkeyFailed(error.localizedDescription)
+                
+                try await Task.sleep(nanoseconds: UInt64(TimeInterval(holdDuration) / 1000.0 * 1_000_000_000))
+                
+                await MainActor.run {
+                    if let upEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) {
+                        upEvent.flags = []
+                        upEvent.post(tap: .cghidEventTap)
+                    }
                 }
+            }
+        } catch {
+            if let uiError = error as? UIAutomationError {
+                throw uiError
+            } else {
+                throw UIAutomationError.hotkeyFailed(error.localizedDescription)
             }
         }
     }
     
     public func swipe(from: CGPoint, to: CGPoint, duration: Int, steps: Int) async throws {
-        await MainActor.run {
-            do {
-                // Create mouse down event at start point
+        do {
+            // Create and post mouse down event at start point
+            await MainActor.run {
                 guard let mouseDown = CGEvent(
                     mouseEventSource: nil,
                     mouseType: .leftMouseDown,
                     mouseCursorPosition: from,
                     mouseButton: .left
                 ) else {
-                    throw UIAutomationError.swipeFailed("Failed to create mouse down event")
+                    return
                 }
-                
-                // Post mouse down
                 mouseDown.post(tap: .cghidEventTap)
+            }
+            
+            // Calculate step increments
+            let deltaX = (to.x - from.x) / CGFloat(steps)
+            let deltaY = (to.y - from.y) / CGFloat(steps)
+            let stepDuration = TimeInterval(duration) / TimeInterval(steps) / 1000.0
+            
+            // Perform drag in steps
+            for i in 1...steps {
+                let currentPoint = CGPoint(
+                    x: from.x + (deltaX * CGFloat(i)),
+                    y: from.y + (deltaY * CGFloat(i))
+                )
                 
-                // Calculate step increments
-                let deltaX = (to.x - from.x) / CGFloat(steps)
-                let deltaY = (to.y - from.y) / CGFloat(steps)
-                let stepDuration = TimeInterval(duration) / TimeInterval(steps) / 1000.0
-                
-                // Perform drag in steps
-                for i in 1...steps {
-                    let currentPoint = CGPoint(
-                        x: from.x + (deltaX * CGFloat(i)),
-                        y: from.y + (deltaY * CGFloat(i))
-                    )
-                    
+                await MainActor.run {
                     guard let dragEvent = CGEvent(
                         mouseEventSource: nil,
                         mouseType: .leftMouseDragged,
                         mouseCursorPosition: currentPoint,
                         mouseButton: .left
                     ) else {
-                        throw UIAutomationError.swipeFailed("Failed to create drag event")
+                        return
                     }
-                    
                     dragEvent.post(tap: .cghidEventTap)
-                    Thread.sleep(forTimeInterval: stepDuration)
                 }
                 
-                // Create mouse up event at end point
+                try await Task.sleep(nanoseconds: UInt64(stepDuration * 1_000_000_000))
+            }
+            
+            // Create and post mouse up event at end point
+            await MainActor.run {
                 guard let mouseUp = CGEvent(
                     mouseEventSource: nil,
                     mouseType: .leftMouseUp,
                     mouseCursorPosition: to,
                     mouseButton: .left
                 ) else {
-                    throw UIAutomationError.swipeFailed("Failed to create mouse up event")
+                    return
                 }
-                
                 mouseUp.post(tap: .cghidEventTap)
-            } catch {
-                if let uiError = error as? UIAutomationError {
-                    throw uiError
-                } else {
-                    throw UIAutomationError.swipeFailed(error.localizedDescription)
-                }
+            }
+        } catch {
+            if let uiError = error as? UIAutomationError {
+                throw uiError
+            } else {
+                throw UIAutomationError.swipeFailed(error.localizedDescription)
             }
         }
     }
     
     public func hasAccessibilityPermission() async -> Bool {
         return AXIsProcessTrusted()
+    }
+    
+    public func typeActions(_ actions: [TypeAction], typingDelay: Int, sessionId: String?) async throws -> TypeResult {
+        var totalChars = 0
+        var keyPresses = 0
+        
+        for action in actions {
+            switch action {
+            case .text(let string):
+                // Type the string using CoreGraphics events
+                let delaySeconds = Double(typingDelay) / 1000.0
+                for character in string {
+                    await MainActor.run {
+                        if let event = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true) {
+                            event.keyboardSetUnicodeString(stringLength: 1, unicodeString: [character.utf16.first ?? 0])
+                            event.post(tap: .cghidEventTap)
+                            
+                            if let upEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) {
+                                upEvent.keyboardSetUnicodeString(stringLength: 1, unicodeString: [character.utf16.first ?? 0])
+                                upEvent.post(tap: .cghidEventTap)
+                            }
+                        }
+                    }
+                    
+                    if delaySeconds > 0 {
+                        try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+                    }
+                }
+                totalChars += string.count
+                
+            case .key(let key):
+                // Type special key
+                let virtualKey = await MainActor.run { mapSpecialKeyToVirtualCode(key) }
+                
+                await MainActor.run {
+                    if let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: true) {
+                        keyDown.post(tap: .cghidEventTap)
+                    }
+                }
+                
+                try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000)) // Small delay between down and up
+                
+                await MainActor.run {
+                    if let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: virtualKey, keyDown: false) {
+                        keyUp.post(tap: .cghidEventTap)
+                    }
+                }
+                
+                keyPresses += 1
+                
+                if typingDelay > 0 {
+                    try await Task.sleep(nanoseconds: UInt64(Double(typingDelay) / 1000.0 * 1_000_000_000))
+                }
+                
+            case .clear:
+                // Clear field by selecting all (Cmd+A) and deleting
+                await MainActor.run {
+                    if let event = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: true) {
+                        event.flags = .maskCommand
+                        event.post(tap: .cghidEventTap)
+                    }
+                    
+                    if let event = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: false) {
+                        event.flags = .maskCommand
+                        event.post(tap: .cghidEventTap)
+                    }
+                }
+                
+                try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000))
+                
+                // Press delete
+                await MainActor.run {
+                    if let deleteEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0x33, keyDown: true) {
+                        deleteEvent.post(tap: .cghidEventTap)
+                    }
+                    
+                    if let deleteUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0x33, keyDown: false) {
+                        deleteUpEvent.post(tap: .cghidEventTap)
+                    }
+                }
+                
+                keyPresses += 2 // Cmd+A and Delete
+                
+                if typingDelay > 0 {
+                    try await Task.sleep(nanoseconds: UInt64(Double(typingDelay) / 1000.0 * 1_000_000_000))
+                }
+            }
+        }
+        
+        return TypeResult(totalCharacters: totalChars, keyPresses: keyPresses)
     }
     
     /// Wait for an element to appear and become actionable
@@ -345,7 +492,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                         // Verify element is still actionable at its location
                         if let liveElement = await findElementAtLocation(
                             frame: element.bounds,
-                            role: element.type.axRole ?? ""
+                            role: convertElementTypeToAXRole(element.type)
                         ) {
                             if await isElementActionable(liveElement) {
                                 return WaitForElementResult(
@@ -364,7 +511,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                             let detectedElement = DetectedElement(
                                 id: "Q\(abs(query.hashValue))",
                                 type: .other,
-                                label: await MainActor.run { element.title() ?? element.label() },
+                                label: await MainActor.run { element.title() ?? element.roleDescription() ?? element.descriptionText() },
                                 value: await MainActor.run { element.value() as? String },
                                 bounds: frame,
                                 isEnabled: true
@@ -398,10 +545,153 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         throw UIAutomationError.elementNotFoundWithinTimeout(timeout)
     }
     
+    public func drag(from: CGPoint, to: CGPoint, duration: Int, steps: Int, modifiers: String?) async throws {
+        do {
+            // Parse modifiers
+            let eventFlags = parseModifierKeys(modifiers)
+            
+            // Calculate step increments
+            let deltaX = to.x - from.x
+            let deltaY = to.y - from.y
+            let stepDuration = duration / steps
+            let stepDelayNanos = UInt64(stepDuration) * 1_000_000 // Convert milliseconds to nanoseconds
+            
+            // Mouse down at start point
+            await MainActor.run {
+                guard let mouseDown = CGEvent(
+                    mouseEventSource: nil,
+                    mouseType: .leftMouseDown,
+                    mouseCursorPosition: from,
+                    mouseButton: .left
+                ) else {
+                    return
+                }
+                mouseDown.flags = eventFlags
+                mouseDown.post(tap: .cghidEventTap)
+            }
+            
+            // Drag through intermediate points
+            for i in 1...steps {
+                let progress = Double(i) / Double(steps)
+                let currentX = from.x + (deltaX * progress)
+                let currentY = from.y + (deltaY * progress)
+                let currentPoint = CGPoint(x: currentX, y: currentY)
+                
+                await MainActor.run {
+                    guard let dragEvent = CGEvent(
+                        mouseEventSource: nil,
+                        mouseType: .leftMouseDragged,
+                        mouseCursorPosition: currentPoint,
+                        mouseButton: .left
+                    ) else {
+                        return
+                    }
+                    dragEvent.flags = eventFlags
+                    dragEvent.post(tap: .cghidEventTap)
+                }
+                
+                if stepDelayNanos > 0 {
+                    try await Task.sleep(nanoseconds: stepDelayNanos)
+                }
+            }
+            
+            // Mouse up at end point
+            await MainActor.run {
+                guard let mouseUp = CGEvent(
+                    mouseEventSource: nil,
+                    mouseType: .leftMouseUp,
+                    mouseCursorPosition: to,
+                    mouseButton: .left
+                ) else {
+                    return
+                }
+                mouseUp.flags = eventFlags
+                mouseUp.post(tap: .cghidEventTap)
+            }
+        } catch {
+            if let uiError = error as? UIAutomationError {
+                throw uiError
+            } else {
+                throw UIAutomationError.dragFailed(error.localizedDescription)
+            }
+        }
+    }
+    
+    public func moveMouse(to: CGPoint, duration: Int, steps: Int) async throws {
+        if duration == 0 || steps <= 1 {
+            // Instant movement
+            await MainActor.run {
+                guard let moveEvent = CGEvent(
+                    mouseEventSource: nil,
+                    mouseType: .mouseMoved,
+                    mouseCursorPosition: to,
+                    mouseButton: .left
+                ) else {
+                    return
+                }
+                moveEvent.post(tap: .cghidEventTap)
+            }
+        } else {
+            // Smooth movement with intermediate steps
+            let currentLocation = await MainActor.run { CGEvent(source: nil)?.location ?? CGPoint.zero }
+            let deltaX = to.x - currentLocation.x
+            let deltaY = to.y - currentLocation.y
+            let stepDuration = duration / steps
+            let stepDelayNanos = UInt64(stepDuration) * 1_000_000 // Convert milliseconds to nanoseconds
+            
+            for i in 1...steps {
+                let progress = Double(i) / Double(steps)
+                let currentX = currentLocation.x + (deltaX * progress)
+                let currentY = currentLocation.y + (deltaY * progress)
+                let currentPoint = CGPoint(x: currentX, y: currentY)
+                
+                await MainActor.run {
+                    guard let moveEvent = CGEvent(
+                        mouseEventSource: nil,
+                        mouseType: .mouseMoved,
+                        mouseCursorPosition: currentPoint,
+                        mouseButton: .left
+                    ) else {
+                        return
+                    }
+                    moveEvent.post(tap: .cghidEventTap)
+                }
+                
+                if i < steps && stepDelayNanos > 0 {
+                    try await Task.sleep(nanoseconds: stepDelayNanos)
+                }
+            }
+        }
+    }
+    
     // MARK: - Private Helpers
     
+    private func parseModifierKeys(_ modifierString: String?) -> CGEventFlags {
+        guard let modString = modifierString else { return [] }
+        
+        var flags: CGEventFlags = []
+        let modifiers = modString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+        
+        for modifier in modifiers {
+            switch modifier {
+            case "cmd", "command":
+                flags.insert(.maskCommand)
+            case "shift":
+                flags.insert(.maskShift)
+            case "option", "opt", "alt":
+                flags.insert(.maskAlternate)
+            case "ctrl", "control":
+                flags.insert(.maskControl)
+            default:
+                break
+            }
+        }
+        
+        return flags
+    }
+    
     @MainActor
-    private func typeTextWithDelay(_ text: String, delay: TimeInterval) {
+    private func typeTextWithDelay(_ text: String, delay: TimeInterval) async throws {
         for character in text {
             if let event = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true) {
                 event.keyboardSetUnicodeString(stringLength: 1, unicodeString: [character.utf16.first ?? 0])
@@ -414,8 +704,27 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             }
             
             if delay > 0 {
-                Thread.sleep(forTimeInterval: delay)
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
+        }
+    }
+    
+    @MainActor
+    private func mapSpecialKeyToVirtualCode(_ key: SpecialKey) -> CGKeyCode {
+        switch key {
+        case .return: return 0x24
+        case .tab: return 0x30
+        case .escape: return 0x35
+        case .delete: return 0x33
+        case .space: return 0x31
+        case .leftArrow: return 0x7B
+        case .rightArrow: return 0x7C
+        case .upArrow: return 0x7E
+        case .downArrow: return 0x7D
+        case .pageUp: return 0x74
+        case .pageDown: return 0x79
+        case .home: return 0x73
+        case .end: return 0x77
         }
     }
     
@@ -490,22 +799,22 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     }
     
     @MainActor
-    private func performClick(at point: CGPoint, clickType: ClickType) throws {
+    private func performClick(at point: CGPoint, clickType: ClickType) async throws {
         // Use CoreGraphics events for clicking
         let mouseButton = clickType.mouseButton == .right ? CGMouseButton.right : CGMouseButton.left
         let clickCount = clickType.clickCount
         
         // Move to position first
-        var moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: mouseButton)
+        let moveEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: mouseButton)
         moveEvent?.post(tap: .cghidEventTap)
         
         // Small delay to ensure position is registered
-        Thread.sleep(forTimeInterval: 0.05)
+        try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000))
         
         // Perform click(s)
         for _ in 0..<clickCount {
             // Mouse down
-            var downEvent = CGEvent(
+            let downEvent = CGEvent(
                 mouseEventSource: nil,
                 mouseType: mouseButton == .right ? .rightMouseDown : .leftMouseDown,
                 mouseCursorPosition: point,
@@ -514,10 +823,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             downEvent?.post(tap: .cghidEventTap)
             
             // Small delay
-            Thread.sleep(forTimeInterval: 0.05)
+            try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000))
             
             // Mouse up
-            var upEvent = CGEvent(
+            let upEvent = CGEvent(
                 mouseEventSource: nil,
                 mouseType: mouseButton == .right ? .rightMouseUp : .leftMouseUp,
                 mouseCursorPosition: point,
@@ -527,12 +836,11 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             
             // Delay between clicks for double-click
             if clickCount > 1 {
-                Thread.sleep(forTimeInterval: 0.1)
+                try await Task.sleep(nanoseconds: UInt64(0.1 * 1_000_000_000))
             }
         }
     }
     
-    @MainActor
     private func findElementAtLocation(
         frame: CGRect,
         role: String
@@ -542,13 +850,16 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         
         // Try to find element at this point using AXorcist's static method
         // We need to find which app owns this location first
-        for app in NSWorkspace.shared.runningApplications {
-            if let foundElement = Element.elementAtPoint(centerPoint, pid: app.processIdentifier) {
-                // Verify it's the right type of element
-                if foundElement.role() == role {
-                    return foundElement
+        return await MainActor.run {
+            for app in NSWorkspace.shared.runningApplications {
+                if let foundElement = Element.elementAtPoint(centerPoint, pid: app.processIdentifier) {
+                    // Verify it's the right type of element
+                    if foundElement.role() == role {
+                        return foundElement
+                    }
                 }
             }
+            return nil
         }
         
         return nil
@@ -610,7 +921,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             return element
         }
         
-        if let label = element.label(), label.localizedCaseInsensitiveContains(query) {
+        if let description = element.descriptionText(), description.localizedCaseInsensitiveContains(query) {
             return element
         }
         
@@ -634,13 +945,30 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         return nil
     }
     
+    private func convertElementTypeToAXRole(_ type: ElementType) -> String {
+        switch type {
+        case .button: return "AXButton"
+        case .textField: return "AXTextField"
+        case .link: return "AXLink"
+        case .image: return "AXImage"
+        case .group: return "AXGroup"
+        case .slider: return "AXSlider"
+        case .checkbox: return "AXCheckBox"
+        case .menu: return "AXMenu"
+        case .other: return "AXUnknown"
+        }
+    }
+    
     @MainActor
     private func findElementByIdOrQuery(_ target: String, sessionId: String?) -> Element? {
         // First try as element ID from session
         if let sessionId = sessionId {
-            // This needs to be async but the function isn't async, so we'll handle it differently
-            // For now, just try as query
-            return findElementByQuery(target)
+            // Check if target looks like an element ID (e.g., "B1", "T2", etc.)
+            if target.count >= 2 && target.first?.isLetter == true && target.dropFirst().allSatisfy({ $0.isNumber }) {
+                // This looks like an element ID, but we can't do async lookup here
+                // The calling code should handle this case
+                return nil
+            }
         }
         
         // Otherwise try as query
@@ -659,6 +987,8 @@ public enum UIAutomationError: LocalizedError {
     case scrollFailed(String)
     case hotkeyFailed(String)
     case swipeFailed(String)
+    case dragFailed(String)
+    case mouseMoveFailed(String)
     
     public var errorDescription: String? {
         switch self {
@@ -678,6 +1008,10 @@ public enum UIAutomationError: LocalizedError {
             return "Hotkey failed: \(reason)"
         case .swipeFailed(let reason):
             return "Swipe failed: \(reason)"
+        case .dragFailed(let reason):
+            return "Drag failed: \(reason)"
+        case .mouseMoveFailed(let reason):
+            return "Mouse move failed: \(reason)"
         }
     }
 }
@@ -703,14 +1037,14 @@ extension ClickType {
 extension ElementType {
     var axRole: String? {
         switch self {
-        case .button: return kAXButtonRole
-        case .textField: return kAXTextFieldRole
-        case .link: return kAXLinkRole
-        case .image: return kAXImageRole
-        case .group: return kAXGroupRole
-        case .slider: return kAXSliderRole
-        case .checkbox: return kAXCheckBoxRole
-        case .menu: return kAXMenuRole
+        case .button: return "AXButton"
+        case .textField: return "AXTextField"
+        case .link: return "AXLink"
+        case .image: return "AXImage"
+        case .group: return "AXGroup"
+        case .slider: return "AXSlider"
+        case .checkbox: return "AXCheckBox"
+        case .menu: return "AXMenu"
         default: return nil
         }
     }

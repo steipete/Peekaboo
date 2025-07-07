@@ -1,0 +1,472 @@
+import Foundation
+import CoreGraphics
+@preconcurrency import AXorcist
+import AppKit
+
+/// Enhanced UI automation service with full element detection capabilities
+/// This file contains the additional functionality needed for the SeeCommandV2
+public extension UIAutomationService {
+    
+    /// Enhanced element detection that builds a full UI map using AXorcist
+    func detectElementsEnhanced(
+        in imageData: Data,
+        sessionId: String?,
+        applicationName: String? = nil,
+        windowTitle: String? = nil,
+        windowBounds: CGRect? = nil
+    ) async throws -> ElementDetectionResult {
+        let startTime = Date()
+        
+        // Create or use existing session
+        let session: String
+        if let existingSessionId = sessionId {
+            session = existingSessionId
+        } else {
+            session = try await sessionManager.createSession()
+        }
+        
+        // Save the screenshot temporarily
+        let tempPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(session)_screenshot.png")
+            .path
+        try imageData.write(to: URL(fileURLWithPath: tempPath))
+        
+        // Build UI map using AXorcist
+        let detectedElements = try await buildUIMap(
+            applicationName: applicationName,
+            windowTitle: windowTitle,
+            windowBounds: windowBounds
+        )
+        
+        // Create metadata with enhanced information
+        let metadata = DetectionMetadata(
+            detectionTime: Date().timeIntervalSince(startTime),
+            elementCount: detectedElements.all.count,
+            method: "AXorcist",
+            warnings: buildMetadataWarnings(
+                applicationName: applicationName,
+                windowTitle: windowTitle,
+                windowBounds: windowBounds
+            )
+        )
+        
+        return ElementDetectionResult(
+            sessionId: session,
+            screenshotPath: tempPath,
+            elements: detectedElements,
+            metadata: metadata
+        )
+    }
+    
+    /// Build UI element map for the specified application
+    @MainActor
+    private func buildUIMap(
+        applicationName: String?,
+        windowTitle: String?,
+        windowBounds: CGRect?
+    ) async throws -> DetectedElements {
+        var buttons: [DetectedElement] = []
+        var textFields: [DetectedElement] = []
+        var links: [DetectedElement] = []
+        var images: [DetectedElement] = []
+        var groups: [DetectedElement] = []
+        var sliders: [DetectedElement] = []
+        var checkboxes: [DetectedElement] = []
+        var menus: [DetectedElement] = []
+        var other: [DetectedElement] = []
+        
+        var roleCounters: [String: Int] = [:]
+        
+        // Find the application if specified
+        let targetApp: NSRunningApplication?
+        if let appName = applicationName {
+            targetApp = NSWorkspace.shared.runningApplications.first(where: {
+                $0.localizedName == appName || $0.bundleIdentifier == appName
+            })
+        } else {
+            // Get frontmost application
+            targetApp = NSWorkspace.shared.frontmostApplication
+        }
+        
+        guard let app = targetApp else {
+            // Return empty elements if no app found
+            return DetectedElements()
+        }
+        
+        // Create AXUIElement for the application
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        
+        // Get windows to process
+        let windows: [Element]
+        
+        if let windowTitle = windowTitle {
+            // Find specific window by title
+            windows = appElement.windows()?.filter { element in
+                element.title() == windowTitle
+            } ?? []
+        } else {
+            // Process only the frontmost window to match screenshot
+            if let frontWindow = appElement.windows()?.first {
+                windows = [frontWindow]
+            } else {
+                windows = []
+            }
+        }
+        
+        // Process each window
+        for window in windows {
+            await processElement(
+                window,
+                roleCounters: &roleCounters,
+                buttons: &buttons,
+                textFields: &textFields,
+                links: &links,
+                images: &images,
+                groups: &groups,
+                sliders: &sliders,
+                checkboxes: &checkboxes,
+                menus: &menus,
+                other: &other,
+                windowBounds: windowBounds
+            )
+        }
+        
+        return DetectedElements(
+            buttons: buttons,
+            textFields: textFields,
+            links: links,
+            images: images,
+            groups: groups,
+            sliders: sliders,
+            checkboxes: checkboxes,
+            menus: menus,
+            other: other
+        )
+    }
+    
+    /// Recursively process an element and its children
+    @MainActor
+    private func processElement(
+        _ element: Element,
+        roleCounters: inout [String: Int],
+        buttons: inout [DetectedElement],
+        textFields: inout [DetectedElement],
+        links: inout [DetectedElement],
+        images: inout [DetectedElement],
+        groups: inout [DetectedElement],
+        sliders: inout [DetectedElement],
+        checkboxes: inout [DetectedElement],
+        menus: inout [DetectedElement],
+        other: inout [DetectedElement],
+        windowBounds: CGRect?
+    ) async {
+        // Get element properties
+        let role = element.role() ?? "AXGroup"
+        let title = element.title()
+        let label = element.descriptionText() // AXorcist doesn't have label(), use descriptionText()
+        let value = element.value() as? String
+        let description = element.help() // Use help() for additional description
+        let identifier = element.identifier()
+        let isEnabled = element.isEnabled() ?? true
+        
+        // Get element bounds
+        guard let position = element.position(),
+              let size = element.size(),
+              size.width > 0,
+              size.height > 0 else {
+            // Skip elements without valid bounds
+            return
+        }
+        
+        let frame = CGRect(x: position.x, y: position.y, width: size.width, height: size.height)
+        
+        // Determine element type
+        let elementType = elementTypeFromRole(role)
+        
+        // Generate ID
+        let prefix = idPrefixForType(elementType)
+        let counter = (roleCounters[prefix] ?? 0) + 1
+        roleCounters[prefix] = counter
+        let elementId = "\(prefix)\(counter)"
+        
+        // Build attributes
+        var attributes: [String: String] = [:]
+        if let title = title { attributes["title"] = title }
+        if let description = description { attributes["description"] = description }
+        if let identifier = identifier { attributes["identifier"] = identifier }
+        
+        // Detect keyboard shortcut
+        if let shortcut = detectKeyboardShortcut(
+            role: role,
+            title: title,
+            label: label,
+            description: description
+        ) {
+            attributes["keyboardShortcut"] = shortcut
+        }
+        
+        // Create detected element
+        let detectedElement = DetectedElement(
+            id: elementId,
+            type: elementType,
+            label: label ?? title ?? value,
+            value: value,
+            bounds: frame,
+            isEnabled: isEnabled && isActionableRole(role),
+            isSelected: nil,
+            attributes: attributes
+        )
+        
+        // Add to appropriate array
+        switch elementType {
+        case .button:
+            buttons.append(detectedElement)
+        case .textField:
+            textFields.append(detectedElement)
+        case .link:
+            links.append(detectedElement)
+        case .image:
+            images.append(detectedElement)
+        case .group:
+            groups.append(detectedElement)
+        case .slider:
+            sliders.append(detectedElement)
+        case .checkbox:
+            checkboxes.append(detectedElement)
+        case .menu:
+            menus.append(detectedElement)
+        case .other:
+            other.append(detectedElement)
+        }
+        
+        // Process children recursively
+        if let children = element.children() {
+            for child in children {
+                await processElement(
+                    child,
+                    roleCounters: &roleCounters,
+                    buttons: &buttons,
+                    textFields: &textFields,
+                    links: &links,
+                    images: &images,
+                    groups: &groups,
+                    sliders: &sliders,
+                    checkboxes: &checkboxes,
+                    menus: &menus,
+                    other: &other,
+                    windowBounds: windowBounds
+                )
+            }
+        }
+    }
+    
+    /// Map AX role to element type
+    private func elementTypeFromRole(_ role: String) -> ElementType {
+        switch role {
+        case "AXButton":
+            return .button
+        case "AXTextField", "AXTextArea":
+            return .textField
+        case "AXLink":
+            return .link
+        case "AXImage":
+            return .image
+        case "AXGroup":
+            return .group
+        case "AXSlider":
+            return .slider
+        case "AXCheckBox":
+            return .checkbox
+        case "AXMenu", "AXMenuItem":
+            return .menu
+        default:
+            return .other
+        }
+    }
+    
+    /// Get ID prefix for element type
+    private func idPrefixForType(_ type: ElementType) -> String {
+        switch type {
+        case .button: return "B"
+        case .textField: return "T"
+        case .link: return "L"
+        case .image: return "I"
+        case .group: return "G"
+        case .slider: return "S"
+        case .checkbox: return "C"
+        case .menu: return "M"
+        case .other: return "O"
+        }
+    }
+    
+    /// Check if a role is actionable
+    private func isActionableRole(_ role: String) -> Bool {
+        let actionableRoles = [
+            "AXButton",
+            "AXTextField",
+            "AXTextArea",
+            "AXCheckBox",
+            "AXRadioButton",
+            "AXPopUpButton",
+            "AXLink",
+            "AXMenuItem",
+            "AXSlider",
+            "AXComboBox",
+            "AXSegmentedControl"
+        ]
+        return actionableRoles.contains(role)
+    }
+    
+    /// Detect keyboard shortcut for common UI elements
+    private func detectKeyboardShortcut(
+        role: String,
+        title: String?,
+        label: String?,
+        description: String?
+    ) -> String? {
+        // Check for common formatting buttons
+        let allText = [title, label, description]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+        
+        // Common text formatting shortcuts
+        if allText.contains("bold") {
+            return "cmd+b"
+        } else if allText.contains("italic") {
+            return "cmd+i"
+        } else if allText.contains("underline") {
+            return "cmd+u"
+        } else if allText.contains("strikethrough") {
+            return "cmd+shift+x"
+        }
+        
+        // Common app shortcuts
+        if allText.contains("save") && !allText.contains("save as") {
+            return "cmd+s"
+        } else if allText.contains("save as") {
+            return "cmd+shift+s"
+        } else if allText.contains("open") {
+            return "cmd+o"
+        } else if allText.contains("new") {
+            return "cmd+n"
+        } else if allText.contains("close") {
+            return "cmd+w"
+        } else if allText.contains("quit") {
+            return "cmd+q"
+        } else if allText.contains("print") {
+            return "cmd+p"
+        }
+        
+        // Edit menu shortcuts
+        if allText.contains("copy") {
+            return "cmd+c"
+        } else if allText.contains("cut") {
+            return "cmd+x"
+        } else if allText.contains("paste") {
+            return "cmd+v"
+        } else if allText.contains("undo") {
+            return "cmd+z"
+        } else if allText.contains("redo") {
+            return "cmd+shift+z"
+        }
+        
+        return nil
+    }
+    
+    /// Build metadata warnings array with window information
+    private func buildMetadataWarnings(
+        applicationName: String?,
+        windowTitle: String?,
+        windowBounds: CGRect?
+    ) -> [String] {
+        var warnings: [String] = []
+        
+        // Store metadata in warnings array (temporary until service layer is enhanced)
+        if let app = applicationName {
+            warnings.append("APP:\(app)")
+        }
+        if let window = windowTitle {
+            warnings.append("WINDOW:\(window)")
+        }
+        if let bounds = windowBounds,
+           let boundsData = try? JSONEncoder().encode(bounds),
+           let boundsString = String(data: boundsData, encoding: .utf8) {
+            warnings.append("BOUNDS:\(boundsString)")
+        }
+        
+        return warnings
+    }
+}
+
+// MARK: - Menu Bar Extraction (Future Enhancement)
+
+public extension UIAutomationService {
+    
+    /// Extract menu bar information for an application
+    @MainActor
+    func extractMenuBar(for applicationName: String) async throws -> MenuBarInfo? {
+        // Find the application
+        guard let app = NSWorkspace.shared.runningApplications.first(where: {
+            $0.localizedName == applicationName || $0.bundleIdentifier == applicationName
+        }) else {
+            return nil
+        }
+        
+        // Create AXUIElement for the application
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        
+        // Get the menu bar
+        guard let menuBar = appElement.menuBar() else {
+            return nil
+        }
+        
+        // Get all top-level menus
+        let topLevelMenus = menuBar.children() ?? []
+        var menus: [MenuInfo] = []
+        
+        for menuElement in topLevelMenus {
+            // Get menu title
+            guard let menuTitle = menuElement.title() else { continue }
+            
+            // Skip the Apple menu (first menu)
+            if menuTitle.isEmpty { continue }
+            
+            let isEnabled = menuElement.isEnabled() ?? true
+            
+            // Note: We can't get submenu items without opening the menu
+            // which would be visually disruptive
+            let menu = MenuInfo(
+                title: menuTitle,
+                enabled: isEnabled,
+                itemCount: 0 // Would need to open menu to count
+            )
+            menus.append(menu)
+        }
+        
+        return MenuBarInfo(menus: menus)
+    }
+}
+
+/// Menu bar information
+public struct MenuBarInfo: Sendable {
+    public let menus: [MenuInfo]
+    
+    public init(menus: [MenuInfo]) {
+        self.menus = menus
+    }
+}
+
+/// Individual menu information
+public struct MenuInfo: Sendable {
+    public let title: String
+    public let enabled: Bool
+    public let itemCount: Int
+    
+    public init(title: String, enabled: Bool, itemCount: Int) {
+        self.title = title
+        self.enabled = enabled
+        self.itemCount = itemCount
+    }
+}

@@ -1,0 +1,120 @@
+import Foundation
+import CoreGraphics
+
+/// Protocol defining Dock interaction operations
+public protocol DockServiceProtocol: Sendable {
+    /// List all items in the Dock
+    /// - Parameter includeAll: Include separators and spacers
+    /// - Returns: Array of Dock items
+    func listDockItems(includeAll: Bool) async throws -> [DockItem]
+    
+    /// Launch an application from the Dock
+    /// - Parameter appName: Name of the application in the Dock
+    func launchFromDock(appName: String) async throws
+    
+    /// Right-click a Dock item and optionally select from context menu
+    /// - Parameters:
+    ///   - appName: Name of the application in the Dock
+    ///   - menuItem: Optional menu item to select from context menu
+    func rightClickDockItem(appName: String, menuItem: String?) async throws
+    
+    /// Hide the Dock (enable auto-hide)
+    func hideDock() async throws
+    
+    /// Show the Dock (disable auto-hide)
+    func showDock() async throws
+    
+    /// Get current Dock visibility state
+    /// - Returns: True if Dock is auto-hidden
+    func isDockAutoHidden() async -> Bool
+    
+    /// Find a specific Dock item by name
+    /// - Parameter name: Name or partial name of the item
+    /// - Returns: Dock item if found
+    func findDockItem(name: String) async throws -> DockItem
+}
+
+/// Information about a Dock item
+public struct DockItem: Sendable, Codable, Equatable {
+    /// Zero-based index in the Dock
+    public let index: Int
+    
+    /// Display title of the item
+    public let title: String
+    
+    /// Type of Dock item
+    public let itemType: DockItemType
+    
+    /// Whether the application is currently running (for app items)
+    public let isRunning: Bool?
+    
+    /// Bundle identifier (for applications)
+    public let bundleIdentifier: String?
+    
+    /// Position in screen coordinates
+    public let position: CGPoint?
+    
+    /// Size of the Dock item
+    public let size: CGSize?
+    
+    public init(
+        index: Int,
+        title: String,
+        itemType: DockItemType,
+        isRunning: Bool? = nil,
+        bundleIdentifier: String? = nil,
+        position: CGPoint? = nil,
+        size: CGSize? = nil
+    ) {
+        self.index = index
+        self.title = title
+        self.itemType = itemType
+        self.isRunning = isRunning
+        self.bundleIdentifier = bundleIdentifier
+        self.position = position
+        self.size = size
+    }
+}
+
+/// Type of Dock item
+public enum DockItemType: String, Sendable, Codable {
+    case application = "application"
+    case folder = "folder"
+    case file = "file"
+    case url = "url"
+    case separator = "separator"
+    case spacer = "spacer"
+    case minimizedWindow = "minimized_window"
+    case trash = "trash"
+    case unknown = "unknown"
+}
+
+/// Errors specific to Dock operations
+public enum DockError: LocalizedError {
+    case dockNotFound
+    case dockListNotFound
+    case itemNotFound(String)
+    case menuItemNotFound(String)
+    case positionNotFound
+    case launchFailed(String)
+    case scriptError(String)
+    
+    public var errorDescription: String? {
+        switch self {
+        case .dockNotFound:
+            return "Dock application not found"
+        case .dockListNotFound:
+            return "Dock item list not found"
+        case .itemNotFound(let item):
+            return "Dock item '\(item)' not found"
+        case .menuItemNotFound(let item):
+            return "Menu item '\(item)' not found in context menu"
+        case .positionNotFound:
+            return "Could not determine Dock item position"
+        case .launchFailed(let app):
+            return "Failed to launch '\(app)' from Dock"
+        case .scriptError(let error):
+            return "Script error: \(error)"
+        }
+    }
+}

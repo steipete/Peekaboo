@@ -154,6 +154,102 @@ public final class ApplicationService: ApplicationServiceProtocol {
         try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
     }
     
+    public func quitApplication(identifier: String, force: Bool = false) async throws -> Bool {
+        let app = try await findApplication(identifier: identifier)
+        
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            throw ApplicationError.notFound(identifier)
+        }
+        
+        let success = force ? runningApp.forceTerminate() : runningApp.terminate()
+        
+        // Wait a bit for the termination to complete
+        if success {
+            try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+        }
+        
+        return success
+    }
+    
+    public func hideApplication(identifier: String) async throws {
+        let app = try await findApplication(identifier: identifier)
+        
+        await MainActor.run {
+            let axApp = AXUIElementCreateApplication(app.processIdentifier)
+            let appElement = Element(axApp)
+            
+            do {
+                try appElement.performAction(Attribute<String>("AXHide"))
+            } catch {
+                // Fallback to NSRunningApplication method
+                if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
+                    runningApp.hide()
+                }
+            }
+        }
+    }
+    
+    public func unhideApplication(identifier: String) async throws {
+        let app = try await findApplication(identifier: identifier)
+        
+        await MainActor.run {
+            let axApp = AXUIElementCreateApplication(app.processIdentifier)
+            let appElement = Element(axApp)
+            
+            do {
+                try appElement.performAction(Attribute<String>("AXUnhide"))
+            } catch {
+                // Fallback to activating the app if unhide fails
+                if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
+                    runningApp.activate()
+                }
+            }
+        }
+    }
+    
+    public func hideOtherApplications(identifier: String) async throws {
+        let app = try await findApplication(identifier: identifier)
+        
+        await MainActor.run {
+            let axApp = AXUIElementCreateApplication(app.processIdentifier)
+            let appElement = Element(axApp)
+            
+            do {
+                // Use custom attribute for hide others action
+                try appElement.performAction(Attribute<String>("AXHideOthers"))
+            } catch {
+                // Fallback: hide each app individually
+                let workspace = NSWorkspace.shared
+                for runningApp in workspace.runningApplications {
+                    if runningApp.processIdentifier != app.processIdentifier &&
+                       runningApp.activationPolicy == .regular &&
+                       runningApp.bundleIdentifier != "com.apple.finder" {
+                        runningApp.hide()
+                    }
+                }
+            }
+        }
+    }
+    
+    public func showAllApplications() async throws {
+        await MainActor.run {
+            let systemWide = Element.systemWide()
+            
+            do {
+                // Use custom attribute for show all action
+                try systemWide.performAction(Attribute<String>("AXShowAll"))
+            } catch {
+                // Fallback: unhide each hidden app
+                let workspace = NSWorkspace.shared
+                for runningApp in workspace.runningApplications {
+                    if runningApp.isHidden && runningApp.activationPolicy == .regular {
+                        runningApp.unhide()
+                    }
+                }
+            }
+        }
+    }
+    
     // MARK: - Private Helpers
     
     private func createApplicationInfo(from app: NSRunningApplication) -> ServiceApplicationInfo {

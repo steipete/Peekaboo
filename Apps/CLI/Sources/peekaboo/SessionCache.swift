@@ -640,16 +640,21 @@ actor SessionCache {
 }
 
 enum PeekabooError: LocalizedError {
-    case windowNotFound
+    case windowNotFound(String)
     case elementNotFound
     case interactionFailed(String)
     case sessionNotFound
     case noValidSessionFound
+    case applicationNotFound(String)
+    case ambiguousAppIdentifier(String)
+    case noFrontmostApplication
+    case timeout(String)
+    case operationFailed(String)
 
     var errorDescription: String? {
         switch self {
-        case .windowNotFound:
-            "Window not found"
+        case .windowNotFound(let message):
+            message.isEmpty ? "Window not found" : message
         case .elementNotFound:
             "UI element not found"
         case let .interactionFailed(reason):
@@ -658,6 +663,16 @@ enum PeekabooError: LocalizedError {
             "Session not found or expired"
         case .noValidSessionFound:
             "No valid session found. Run 'peekaboo see' first to create a session, or specify an explicit --session parameter."
+        case .applicationNotFound(let app):
+            "Application '\(app)' not found"
+        case .ambiguousAppIdentifier(let identifier):
+            "Multiple applications match '\(identifier)'"
+        case .noFrontmostApplication:
+            "No frontmost application found"
+        case .timeout(let operation):
+            "Operation timed out: \(operation)"
+        case .operationFailed(let reason):
+            "Operation failed: \(reason)"
         }
     }
 }

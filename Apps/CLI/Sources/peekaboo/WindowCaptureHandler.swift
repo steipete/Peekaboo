@@ -118,7 +118,7 @@ struct WindowCaptureHandler {
             return window
         } else if let windowIndex {
             guard windowIndex >= 0, windowIndex < windows.count else {
-                throw CaptureError.invalidWindowIndex(windowIndex)
+                throw CaptureError.invalidWindowIndex(windowIndex, availableCount: windows.count)
             }
             return windows[windowIndex]
         } else {

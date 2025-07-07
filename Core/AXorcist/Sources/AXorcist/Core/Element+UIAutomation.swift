@@ -119,11 +119,9 @@ public extension Element {
     @MainActor func typeText(_ text: String, delay: TimeInterval = 0.005, clearFirst: Bool = false) throws {
         // Focus the element first
         if attribute(Attribute<Bool>.focused) != true {
-            do {
-                try performAction(Action(AXAttributeNames.kAXFocusedAttribute))
-            } catch {
-                // Some elements can't be focused directly, that's OK
-            }
+            // Try to focus the element
+            _ = setValue(true, forAttribute: Attribute<Bool>.focused.rawValue)
+            // Some elements can't be focused directly, that's OK
         }
         
         // Clear existing text if requested
@@ -181,7 +179,6 @@ public extension Element {
         guard let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else {
             throw UIAutomationError.failedToCreateEvent
         }
-        let chars = Array(string.utf16)
         chars.withUnsafeBufferPointer { buffer in
             keyUp.keyboardSetUnicodeString(stringLength: chars.count, unicodeString: buffer.baseAddress!)
         }
@@ -459,16 +456,8 @@ public extension Element {
     
     /// Find element at a specific screen location
     @MainActor static func elementAt(_ point: CGPoint, role: String? = nil) -> Element? {
-        // Get system-wide element
-        let systemWide = Element.systemWide()
-        
-        // Create search criteria
-        var element: Element?
-        do {
-            element = try Element.elementAtPoint(point)
-        } catch {
-            return nil
-        }
+        // Get element at point
+        let element = Element.elementAtPoint(point)
         
         // If role specified, check if matches
         if let role = role, let found = element {

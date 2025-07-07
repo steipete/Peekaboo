@@ -47,18 +47,18 @@ public final class MenuService: MenuServiceProtocol {
     public func clickMenuItem(app: String, itemPath: String) async throws {
         let appInfo = try await applicationService.findApplication(identifier: app)
         
+        // Parse menu path
+        let pathComponents = itemPath.split(separator: ">").map { $0.trimmingCharacters(in: .whitespaces) }
+        
+        // Perform all menu operations within MainActor context
         try await MainActor.run {
             // Get AX element for the application
             let axApp = AXUIElementCreateApplication(appInfo.processIdentifier)
             let appElement = Element(axApp)
             
-            // Get menu bar
             guard let menuBar = appElement.menuBar() else {
                 throw MenuError.menuBarNotFound
             }
-            
-            // Parse menu path
-            let pathComponents = itemPath.split(separator: ">").map { $0.trimmingCharacters(in: .whitespaces) }
             
             // Navigate menu hierarchy
             var currentElement: Element = menuBar
@@ -74,22 +74,28 @@ public final class MenuService: MenuServiceProtocol {
                 
                 // If this is the last component, click it
                 if index == pathComponents.count - 1 {
-                    try menuItem.performAction(.press)
+                    try menuItem.performAction(Attribute<String>("AXPress"))
                 } else {
                     // Otherwise, open the submenu
-                    try menuItem.performAction(.press)
+                    try menuItem.performAction(Attribute<String>("AXPress"))
                     
-                    // Wait for submenu to appear
-                    try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+                    // Note: We can't use Task.sleep inside MainActor.run
+                    // The submenu should be available immediately after clicking
                     
                     // Get the submenu
-                    guard let submenu = menuItem.children()?.first else {
+                    guard let submenuChildren = menuItem.children(),
+                          let submenu = submenuChildren.first else {
                         throw MenuError.submenuNotFound(component)
                     }
                     
                     currentElement = submenu
                 }
             }
+        }
+        
+        // If we need a delay between menu operations, do it outside MainActor
+        if pathComponents.count > 1 {
+            try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000)) // 50ms
         }
     }
     
