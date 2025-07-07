@@ -3,8 +3,8 @@ set -e
 
 echo "Building Swift CLI..."
 
-# Change to peekaboo-cli directory
-cd "$(dirname "$0")/../peekaboo-cli"
+# Change to CLI directory
+cd "$(dirname "$0")/../Apps/CLI"
 
 # Build the Swift CLI in release mode
 swift build --configuration release

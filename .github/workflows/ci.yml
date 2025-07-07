@@ -28,11 +28,11 @@ jobs:
     
     - name: Build Swift CLI for tests
       run: |
-        cd peekaboo-cli
+        cd Apps/CLI
         swift build -c release
         # Copy the binary to the expected location
-        cp .build/release/peekaboo ../peekaboo
-        cd ..
+        cp .build/release/peekaboo ../../peekaboo
+        cd ../..
         # Make it executable
         chmod +x peekaboo
         # Verify it exists
@@ -85,13 +85,13 @@ jobs:
     
     - name: Build Swift CLI
       run: |
-        cd peekaboo-cli
+        cd Apps/CLI
         swift build -c release
     
     - name: Run Swift tests
       timeout-minutes: 15
       run: |
-        cd peekaboo-cli
+        cd Apps/CLI
         swift test --parallel --filter "ImageCommandTests|ImageAnalyzeIntegrationTests|ConfigCommandTests|ListCommandTests|VersionTests|ModelsTests|JSONOutputTests|ErrorHandlingTests|FileHandlingTests|ConfigurationTests"
       env:
         CI: true

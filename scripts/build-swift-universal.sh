@@ -1,9 +1,8 @@
 #!/bin/bash
 set -e # Exit immediately if a command exits with a non-zero status.
 
-PROJECT_ROOT_REL=".." # Relative path to project root from peekaboo-cli
-PROJECT_ROOT=$(cd "$(dirname "$0")/$PROJECT_ROOT_REL" && pwd)
-SWIFT_PROJECT_PATH="$PROJECT_ROOT/peekaboo-cli"
+PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+SWIFT_PROJECT_PATH="$PROJECT_ROOT/Apps/CLI"
 FINAL_BINARY_NAME="peekaboo"
 FINAL_BINARY_PATH="$PROJECT_ROOT/$FINAL_BINARY_NAME"
 
@@ -22,7 +21,7 @@ rm -rf "$SWIFT_PROJECT_PATH/.build"
 rm -f "$ARM64_BINARY_TEMP" "$X86_64_BINARY_TEMP" "$FINAL_BINARY_PATH.tmp"
 
 echo "📦 Reading version from package.json..."
-VERSION=$(node -p "require('$PROJECT_ROOT/package.json').version")
+VERSION=$(node -p "require('$PROJECT_ROOT/Server/package.json').version")
 echo "Version: $VERSION"
 
 echo "💉 Injecting version into Swift code..."
