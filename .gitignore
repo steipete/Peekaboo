@@ -36,7 +36,7 @@ lerna-debug.log*
 .env.production.local
 
 # TypeScript
-dist/
+Server/dist/
 build/
 *.js.map
 
@@ -137,19 +137,19 @@ iOSInjectionProject/
 
 ## Compiled CLI binary
 /peekaboo
-peekaboo-cli/.build/
-peekaboo-cli/DerivedData/
-peekaboo-cli/.swiftpm/
-peekaboo-cli/*.bc
+Apps/CLI/.build/
+Apps/CLI/DerivedData/
+Apps/CLI/.swiftpm/
+Apps/CLI/*.bc
 
 ## Swift build artifacts
 *.hmap
 *.ipa
 
-## GUI specific
-GUI/Peekaboo/.build/
-GUI/Peekaboo/DerivedData/
-GUI/Peekaboo/.swiftpm/
+## Mac app specific
+Apps/Mac/.build/
+Apps/Mac/DerivedData/
+Apps/Mac/.swiftpm/
 
 # Temporary files
 *.tmp
@@ -163,8 +163,8 @@ Thumbs.db
 *.tgz
 
 # Auto-generated version file
-peekaboo-cli/Sources/peekaboo/Version.swift
-/peekaboo-cli/peekaboo
+Apps/CLI/Sources/peekaboo/Version.swift
+Apps/CLI/peekaboo
 
 # Release artifacts
 /release/
