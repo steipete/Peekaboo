@@ -9,6 +9,10 @@
       "filename" : "ghost.peek3@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
+    },
+    {
+      "idiom" : "universal",
+      "scale" : "3x"
     }
   ],
   "info" : {
