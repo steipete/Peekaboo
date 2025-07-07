@@ -175,8 +175,8 @@ actor SessionManager {
 
 extension Tool {
     func encodeParameters() throws -> Data {
-        guard let params = function.parameters as? [String: Any],
-              JSONSerialization.isValidJSONObject(params) else {
+        let params = function.parameters.dictionary
+        guard JSONSerialization.isValidJSONObject(params) else {
             throw AgentError.invalidArguments("Invalid function parameters")
         }
         return try JSONSerialization.data(withJSONObject: params, options: [])

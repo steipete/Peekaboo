@@ -216,11 +216,11 @@ struct CloseSubcommand: AsyncParsableCommand {
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             // Try to find the close button
-            if let closeButton = await window.closeButton() {
+            if let closeButton = window.closeButton() {
                 // Press the close button
-                try await closeButton.performAction(.press)
+                try closeButton.performAction(.press)
 
-                let data = await WindowActionResult(
+                let data = WindowActionResult(
                     action: "close",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
@@ -234,11 +234,11 @@ struct CloseSubcommand: AsyncParsableCommand {
                 }
             } else {
                 // Fallback: try to perform close action on the window itself
-                let supportedActions = await window.supportedActions() ?? []
+                let supportedActions = window.supportedActions() ?? []
                 if supportedActions.contains("AXClose") {
-                    try await window.performAction("AXClose")
+                    try window.performAction("AXClose")
 
-                    let data = await WindowActionResult(
+                    let data = WindowActionResult(
                         action: "close",
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
@@ -295,11 +295,11 @@ struct MinimizeSubcommand: AsyncParsableCommand {
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             // Try to find the minimize button
-            if let minimizeButton = await window.minimizeButton() {
+            if let minimizeButton = window.minimizeButton() {
                 // Press the minimize button
-                try await minimizeButton.performAction(.press)
+                try minimizeButton.performAction(.press)
 
-                let data = await WindowActionResult(
+                let data = WindowActionResult(
                     action: "minimize",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
@@ -313,9 +313,9 @@ struct MinimizeSubcommand: AsyncParsableCommand {
                 }
             } else {
                 // Fallback: try to set minimized attribute
-                let error = await window.setMinimized(true)
+                let error = window.setMinimized(true)
                 if error == .success {
-                    let data = await WindowActionResult(
+                    let data = WindowActionResult(
                         action: "minimize",
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
@@ -372,11 +372,11 @@ struct MaximizeSubcommand: AsyncParsableCommand {
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             // Try to find the zoom/maximize button
-            if let zoomButton = await window.zoomButton() {
+            if let zoomButton = window.zoomButton() {
                 // Press the zoom button
-                try await zoomButton.performAction(.press)
+                try zoomButton.performAction(.press)
 
-                let data = await WindowActionResult(
+                let data = WindowActionResult(
                     action: "maximize",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
@@ -388,11 +388,11 @@ struct MaximizeSubcommand: AsyncParsableCommand {
                 } else {
                     print("Successfully maximized window '\(data.window_title ?? "Untitled")' of \(data.app_name)")
                 }
-            } else if let fullScreenButton = await window.fullScreenButton() {
+            } else if let fullScreenButton = window.fullScreenButton() {
                 // Try full screen button
-                try await fullScreenButton.performAction(.press)
+                try fullScreenButton.performAction(.press)
 
-                let data = await WindowActionResult(
+                let data = WindowActionResult(
                     action: "maximize",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
@@ -406,9 +406,9 @@ struct MaximizeSubcommand: AsyncParsableCommand {
                 }
             } else {
                 // Fallback: try to set full screen attribute
-                let error = await window.setFullScreen(true)
+                let error = window.setFullScreen(true)
                 if error == .success {
-                    let data = await WindowActionResult(
+                    let data = WindowActionResult(
                         action: "maximize",
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
@@ -471,10 +471,10 @@ struct MoveSubcommand: AsyncParsableCommand {
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             let newPosition = CGPoint(x: x, y: y)
-            let error = await window.setPosition(newPosition)
+            let error = window.setPosition(newPosition)
 
             if error == .success {
-                let data = await WindowActionResult(
+                let data = WindowActionResult(
                     action: "move",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
@@ -544,10 +544,10 @@ struct ResizeSubcommand: AsyncParsableCommand {
             let (app, window) = try await findTargetWindow(options: windowOptions)
 
             let newSize = CGSize(width: width, height: height)
-            let error = await window.setSize(newSize)
+            let error = window.setSize(newSize)
 
             if error == .success {
-                let data = await WindowActionResult(
+                let data = WindowActionResult(
                     action: "resize",
                     success: true,
                     app_name: app.localizedName ?? "Unknown",
@@ -624,15 +624,15 @@ struct SetBoundsSubcommand: AsyncParsableCommand {
 
             // Set position first
             let newPosition = CGPoint(x: x, y: y)
-            var error = await window.setPosition(newPosition)
+            var error = window.setPosition(newPosition)
 
             if error == .success {
                 // Then set size
                 let newSize = CGSize(width: width, height: height)
-                error = await window.setSize(newSize)
+                error = window.setSize(newSize)
 
                 if error == .success {
-                    let data = await WindowActionResult(
+                    let data = WindowActionResult(
                         action: "set-bounds",
                         success: true,
                         app_name: app.localizedName ?? "Unknown",
@@ -698,12 +698,12 @@ struct FocusSubcommand: AsyncParsableCommand {
             app.activate()
 
             // Then raise the window
-            let supportedActions = await window.supportedActions() ?? []
+            let supportedActions = window.supportedActions() ?? []
             if supportedActions.contains(AXActionNames.kAXRaiseAction) {
-                try await window.performAction(.raise)
+                try window.performAction(.raise)
             }
 
-            let data = await WindowActionResult(
+            let data = WindowActionResult(
                 action: "focus",
                 success: true,
                 app_name: app.localizedName ?? "Unknown",

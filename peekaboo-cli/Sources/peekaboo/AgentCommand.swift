@@ -232,14 +232,19 @@ struct OpenAIAgent {
                     )
 
                     if !dryRun {
-                        // Add session ID to arguments
+                        // Add session ID to arguments only for commands that need it
                         var modifiedArgs = toolCall.function.arguments
-                        if let data = modifiedArgs.data(using: .utf8),
-                           var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                            json["session_id"] = sessionId
-                            if let newData = try? JSONSerialization.data(withJSONObject: json),
-                               let newString = String(data: newData, encoding: .utf8) {
-                                modifiedArgs = newString
+                        let commandsNeedingSession = ["click", "type", "drag", "swipe"]
+                        let commandName = toolCall.function.name.replacingOccurrences(of: "peekaboo_", with: "")
+                        
+                        if commandsNeedingSession.contains(commandName) {
+                            if let data = modifiedArgs.data(using: .utf8),
+                               var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                                json["session_id"] = sessionId
+                                if let newData = try? JSONSerialization.data(withJSONObject: json),
+                                   let newString = String(data: newData, encoding: .utf8) {
+                                    modifiedArgs = newString
+                                }
                             }
                         }
 
@@ -339,15 +344,22 @@ struct OpenAIAgent {
 
     private func createAssistant() async throws -> Assistant {
         let tools = [
-            Self.makePeekabooTool("see", "Capture screenshot and identify UI elements"),
+            Self.makePeekabooTool("see", "Capture screenshot and analyze what's visible with vision AI"),
             Self.makePeekabooTool("click", "Click on UI elements or coordinates"),
             Self.makePeekabooTool("type", "Type text into UI elements"),
             Self.makePeekabooTool("scroll", "Scroll content in any direction"),
             Self.makePeekabooTool("hotkey", "Press keyboard shortcuts"),
             Self.makePeekabooTool("image", "Capture screenshots of apps or screen"),
-            Self.makePeekabooTool("window", "Manipulate application windows"),
-            Self.makePeekabooTool("app", "Control applications (launch, quit, focus)"),
-            Self.makePeekabooTool("wait", "Wait for a specified duration")
+            Self.makePeekabooTool("window", "Manipulate application windows (close, minimize, maximize, move, resize, focus)"),
+            Self.makePeekabooTool("app", "Control applications (launch, quit, focus, hide, unhide)"),
+            Self.makePeekabooTool("wait", "Wait for a specified duration in seconds"),
+            Self.makePeekabooTool("analyze_screenshot", "Analyze a screenshot using vision AI to understand UI elements and content"),
+            Self.makePeekabooTool("list", "List all running applications on macOS. Use with target='apps' to get a list of all running applications."),
+            Self.makePeekabooTool("menu", "Click menu bar items in applications"),
+            Self.makePeekabooTool("dialog", "Interact with system dialogs and alerts (click buttons, input text, dismiss)"),
+            Self.makePeekabooTool("drag", "Perform drag and drop operations between UI elements or coordinates"),
+            Self.makePeekabooTool("dock", "Interact with the macOS Dock (launch apps, right-click items)"),
+            Self.makePeekabooTool("swipe", "Perform swipe gestures for navigation and scrolling")
         ]
 
         let assistantRequest = CreateAssistantRequest(
@@ -356,17 +368,47 @@ struct OpenAIAgent {
             description: "An AI agent that can see and interact with macOS UI",
             instructions: """
             You are a helpful AI agent that can see and interact with the macOS desktop.
-            You have access to various Peekaboo commands to capture screenshots, click elements, type text, and more.
+            You have access to comprehensive Peekaboo commands for UI automation:
+
+            VISION & SCREENSHOTS:
+            - 'see': Capture screenshots and map UI elements (use analyze=true for vision analysis)
+            - 'analyze_screenshot': Analyze any screenshot with vision AI
+            - 'image': Take screenshots of specific apps or screens
+
+            UI INTERACTION:
+            - 'click': Click on elements or coordinates
+            - 'type': Type text into UI elements
+            - 'scroll': Scroll in any direction
+            - 'hotkey': Press keyboard shortcuts
+            - 'drag': Drag and drop between elements
+            - 'swipe': Perform swipe gestures
+
+            APPLICATION CONTROL:
+            - 'app': Launch, quit, focus, hide, or unhide applications
+            - 'window': Close, minimize, maximize, move, resize, or focus windows
+            - 'menu': Click menu bar items
+            - 'dock': Interact with Dock items
+            - 'dialog': Handle system dialogs and alerts
+
+            DISCOVERY & UTILITY:
+            - 'list': List running apps or windows - USE THIS TO LIST APPLICATIONS!
+            - 'wait': Pause execution for specified duration
 
             When given a task:
-            1. First use 'see' to capture a screenshot and understand the current state
-            2. Break down the task into specific actions
-            3. Execute each action using the appropriate Peekaboo command
-            4. Verify results with screenshots when needed
-            5. Retry if something doesn't work as expected
+            1. **TO LIST APPLICATIONS**: Use 'list' with target='apps' - DO NOT use Activity Monitor or screenshots!
+            2. **TO LIST WINDOWS**: Use 'list' with target='windows' and app='AppName'
+            3. For UI interaction: Use 'see' to capture screenshots and map UI elements
+            4. Break down complex tasks into specific actions
+            5. Execute each action using the appropriate command
+            6. Verify results when needed
+            
+            CRITICAL INSTRUCTIONS:
+            - When asked to "list applications" or "show running apps", ALWAYS use: list(target="apps")
+            - Do NOT launch Activity Monitor to list apps - use the list command!
+            - Do NOT take screenshots to find running apps - use the list command!
 
-            Always verify the current state before taking actions. Be precise with UI interactions.
-            Use the session_id to maintain state across commands.
+            Always maintain session_id across related commands for element tracking.
+            Be precise with UI interactions and verify the current state before acting.
             """,
             tools: tools
         )

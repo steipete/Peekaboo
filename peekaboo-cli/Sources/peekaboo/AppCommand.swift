@@ -134,9 +134,9 @@ struct AppCommand: AsyncParsableCommand {
                         success: true,
                         data: AnyCodable([
                             "action": "launch",
-                            "app": launchedApp?.localizedName ?? app,
-                            "bundle_id": launchedApp?.bundleIdentifier ?? bundleId ?? "",
-                            "pid": launchedApp?.processIdentifier as Any ?? 0,
+                            "app": (launchedApp?.localizedName ?? app) as Any,
+                            "bundle_id": (launchedApp?.bundleIdentifier ?? bundleId ?? "") as Any,
+                            "pid": (launchedApp?.processIdentifier ?? 0) as Any,
                             "activated": !background
                         ])
                     )
@@ -470,8 +470,8 @@ struct AppCommand: AsyncParsableCommand {
                             success: true,
                             data: AnyCodable([
                                 "action": "switch",
-                                "app": app.title() ?? appName,
-                                "pid": app.pid() ?? 0
+                                "app": app.title() ?? appName as Any,
+                                "pid": app.pid() ?? 0 as Any
                             ])
                         )
                         outputJSON(response)

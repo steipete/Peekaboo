@@ -21,6 +21,11 @@ struct JSONParameters: Codable {
     init(_ json: [String: Any]) {
         self.json = json
     }
+    
+    /// Access the underlying JSON dictionary
+    var dictionary: [String: Any] {
+        return json
+    }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
@@ -118,9 +123,9 @@ extension OpenAIAgent {
                         "type": "string",
                         "description": "Specific window title to capture"
                     ],
-                    "session_id": [
-                        "type": "string",
-                        "description": "Session ID for tracking UI state across commands"
+                    "analyze": [
+                        "type": "boolean",
+                        "description": "If true, also analyze the screenshot with vision AI to understand content"
                     ]
                 ],
                 "required": []
@@ -302,6 +307,169 @@ extension OpenAIAgent {
                     ]
                 ],
                 "required": ["duration"]
+            ]
+            
+        case "analyze_screenshot":
+            [
+                "type": "object",
+                "properties": [
+                    "screenshot_path": [
+                        "type": "string",
+                        "description": "Path to the screenshot to analyze"
+                    ],
+                    "question": [
+                        "type": "string",
+                        "description": "What to analyze or look for in the screenshot"
+                    ]
+                ],
+                "required": ["screenshot_path", "question"]
+            ]
+            
+        case "list":
+            [
+                "type": "object",
+                "properties": [
+                    "target": [
+                        "type": "string",
+                        "enum": ["apps", "windows"],
+                        "description": "What to list: 'apps' for all running applications, 'windows' for windows of a specific app"
+                    ],
+                    "app": [
+                        "type": "string",
+                        "description": "Application name (only needed when target is 'windows')"
+                    ]
+                ],
+                "required": ["target"]
+            ]
+            
+        case "menu":
+            [
+                "type": "object",
+                "properties": [
+                    "app": [
+                        "type": "string",
+                        "description": "Application name"
+                    ],
+                    "item": [
+                        "type": "string",
+                        "description": "Menu item to click (e.g., 'New Window')"
+                    ],
+                    "path": [
+                        "type": "string",
+                        "description": "Menu path for nested items (e.g., 'File > New > Window')"
+                    ]
+                ],
+                "required": ["app"]
+            ]
+            
+        case "dialog":
+            [
+                "type": "object",
+                "properties": [
+                    "action": [
+                        "type": "string",
+                        "enum": ["click", "input", "dismiss"],
+                        "description": "Action to perform on the dialog"
+                    ],
+                    "button": [
+                        "type": "string",
+                        "description": "Button text to click (e.g., 'OK', 'Cancel', 'Save')"
+                    ],
+                    "text": [
+                        "type": "string",
+                        "description": "Text to input into dialog field"
+                    ],
+                    "field": [
+                        "type": "string",
+                        "description": "Field name or label for input action"
+                    ]
+                ],
+                "required": ["action"]
+            ]
+            
+        case "drag":
+            [
+                "type": "object",
+                "properties": [
+                    "from": [
+                        "type": "string",
+                        "description": "Source element ID (e.g., 'B1', 'T2')"
+                    ],
+                    "from_coords": [
+                        "type": "string",
+                        "description": "Source coordinates as 'x,y' (e.g., '100,200')"
+                    ],
+                    "to": [
+                        "type": "string",
+                        "description": "Destination element ID"
+                    ],
+                    "to_coords": [
+                        "type": "string",
+                        "description": "Destination coordinates as 'x,y'"
+                    ],
+                    "duration": [
+                        "type": "integer",
+                        "description": "Duration of drag in milliseconds"
+                    ],
+                    "session_id": [
+                        "type": "string",
+                        "description": "Session ID for element mapping"
+                    ]
+                ],
+                "required": []
+            ]
+            
+        case "dock":
+            [
+                "type": "object",
+                "properties": [
+                    "action": [
+                        "type": "string",
+                        "enum": ["launch", "right-click", "hide", "show"],
+                        "description": "Action to perform on Dock"
+                    ],
+                    "app": [
+                        "type": "string",
+                        "description": "Application name in Dock"
+                    ],
+                    "select": [
+                        "type": "string",
+                        "description": "Menu item to select after right-click"
+                    ]
+                ],
+                "required": ["action"]
+            ]
+            
+        case "swipe":
+            [
+                "type": "object",
+                "properties": [
+                    "from": [
+                        "type": "string",
+                        "description": "Start element ID"
+                    ],
+                    "from_coords": [
+                        "type": "string",
+                        "description": "Start coordinates as 'x,y'"
+                    ],
+                    "to": [
+                        "type": "string",
+                        "description": "End element ID"
+                    ],
+                    "to_coords": [
+                        "type": "string",
+                        "description": "End coordinates as 'x,y'"
+                    ],
+                    "duration": [
+                        "type": "integer",
+                        "description": "Duration of swipe in milliseconds"
+                    ],
+                    "session_id": [
+                        "type": "string",
+                        "description": "Session ID for element mapping"
+                    ]
+                ],
+                "required": []
             ]
 
         default:
