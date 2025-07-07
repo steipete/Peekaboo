@@ -26,12 +26,15 @@ public final class PeekabooServices: Sendable {
     
     /// Initialize with default service implementations
     public init() {
+        let apps = ApplicationService()
+        let sess = SessionManager()
+        
         self.screenCapture = ScreenCaptureService()
-        self.applications = ApplicationService()
-        self.automation = UIAutomationService()
-        self.windows = WindowManagementService()
+        self.applications = apps
+        self.automation = UIAutomationService(sessionManager: sess)
+        self.windows = WindowManagementService(applicationService: apps)
         self.menus = MenuService()
-        self.sessions = SessionManager()
+        self.sessions = sess
     }
     
     /// Initialize with custom service implementations (for testing)
