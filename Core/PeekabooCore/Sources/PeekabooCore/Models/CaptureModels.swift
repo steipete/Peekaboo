@@ -52,6 +52,7 @@ public enum CaptureMode: String, CaseIterable, Codable, Sendable {
     case window
     case multi
     case frontmost
+    case area
 }
 
 /// Supported image formats for screenshot output.
