@@ -1,23 +1,23 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("SessionCache Tests")
+@Suite("SessionCache Tests", .serialized)
 struct SessionCacheTests {
     let testSessionId: String
     let sessionCache: SessionCache
 
     init() async throws {
-        testSessionId = UUID().uuidString
-        sessionCache = try SessionCache(sessionId: testSessionId)
+        self.testSessionId = UUID().uuidString
+        self.sessionCache = try SessionCache(sessionId: self.testSessionId)
 
         // Clean up any existing session
-        try? await sessionCache.clear()
+        try? await self.sessionCache.clear()
     }
 
     @Test("Session ID is correctly initialized")
     func sessionInitialization() async throws {
-        #expect(await sessionCache.sessionId == testSessionId)
+        #expect(await self.sessionCache.sessionId == self.testSessionId)
     }
 
     @Test("Default session ID uses latest session or process ID")
@@ -27,10 +27,11 @@ struct SessionCacheTests {
             .appendingPathComponent(".peekaboo/session")
         try? FileManager.default.removeItem(at: sessionsDir)
 
-        // With no existing sessions and createIfNeeded = true, it should use PID
+        // With no existing sessions and createIfNeeded = true, it should use timestamp-based ID
         let defaultCache = try SessionCache(sessionId: nil, createIfNeeded: true)
-        let expectedPID = String(ProcessInfo.processInfo.processIdentifier)
-        #expect(await defaultCache.sessionId == expectedPID)
+        let sessionId = await defaultCache.sessionId
+        // Session ID should be timestamp-random format (e.g., 1751889198010-5978)
+        #expect(sessionId.matches(of: /^\d{13}-\d{4}$/).count == 1)
 
         // With no existing sessions and createIfNeeded = false, it should throw
         #expect(throws: Error.self) {
@@ -40,13 +41,15 @@ struct SessionCacheTests {
         // Create a new session with a specific ID
         let testSession = try SessionCache(sessionId: "test-session-123")
         let testData = SessionCache.SessionData(
+            version: SessionCache.SessionData.currentVersion,
             screenshotPath: nil,
             annotatedPath: nil,
             uiMap: [:],
             lastUpdateTime: Date(),
             applicationName: "Test",
-            windowTitle: "Test Window"
-        )
+            windowTitle: "Test Window",
+            windowBounds: nil,
+            menuBar: nil)
         try await testSession.save(testData)
 
         // Now a new SessionCache with no ID should use the latest session
@@ -54,7 +57,7 @@ struct SessionCacheTests {
         #expect(await latestCache.sessionId == "test-session-123")
     }
 
-    @Test("Session cache uses ~/.peekaboo/session/<PID>/ directory structure")
+    @Test("Session cache uses ~/.peekaboo/session/<sessionId>/ directory structure")
     func sessionDirectoryStructure() async throws {
         let cache = try SessionCache(sessionId: "test-12345")
         let paths = await cache.getSessionPaths()
@@ -69,6 +72,7 @@ struct SessionCacheTests {
     func saveAndLoadSessionData() async throws {
         // Create test data
         let testData = SessionCache.SessionData(
+            version: SessionCache.SessionData.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [
@@ -81,18 +85,19 @@ struct SessionCacheTests {
                     value: nil,
                     frame: CGRect(x: 100, y: 200, width: 80, height: 30),
                     isActionable: true
-                )
+                ),
             ],
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window"
-        )
+            windowTitle: "Test Window",
+            windowBounds: nil,
+            menuBar: nil)
 
         // Save data
-        try await sessionCache.save(testData)
+        try await self.sessionCache.save(testData)
 
         // Load data
-        let loadedData = try #require(await sessionCache.load())
+        let loadedData = try #require(await self.sessionCache.load())
         #expect(loadedData.screenshotPath == "/tmp/test.png")
         #expect(loadedData.applicationName == "TestApp")
         #expect(loadedData.windowTitle == "Test Window")
@@ -116,6 +121,7 @@ struct SessionCacheTests {
     func findElementsMatching() async throws {
         // Create test data with multiple elements
         let testData = SessionCache.SessionData(
+            version: SessionCache.SessionData.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [
@@ -158,14 +164,15 @@ struct SessionCacheTests {
                     value: nil,
                     frame: CGRect(x: 50, y: 50, width: 300, height: 200),
                     isActionable: false
-                )
+                ),
             ],
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window"
-        )
+            windowTitle: "Test Window",
+            windowBounds: nil,
+            menuBar: nil)
 
-        try await sessionCache.save(testData)
+        try await self.sessionCache.save(testData)
 
         // Test finding by title
         let saveElements = await sessionCache.findElements(matching: "save")
@@ -199,6 +206,7 @@ struct SessionCacheTests {
     @Test("Get element by ID returns correct element")
     func getElementById() async throws {
         let testData = SessionCache.SessionData(
+            version: SessionCache.SessionData.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [
@@ -211,14 +219,15 @@ struct SessionCacheTests {
                     value: nil,
                     frame: CGRect(x: 100, y: 100, width: 50, height: 30),
                     isActionable: true
-                )
+                ),
             ],
             lastUpdateTime: Date(),
             applicationName: nil,
-            windowTitle: nil
-        )
+            windowTitle: nil,
+            windowBounds: nil,
+            menuBar: nil)
 
-        try await sessionCache.save(testData)
+        try await self.sessionCache.save(testData)
 
         // Test getting existing element
         let element = await sessionCache.getElement(id: "B1")
@@ -233,22 +242,24 @@ struct SessionCacheTests {
     @Test("Clear session removes all data")
     func clearSession() async throws {
         let testData = SessionCache.SessionData(
+            version: SessionCache.SessionData.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [:],
             lastUpdateTime: Date(),
             applicationName: nil,
-            windowTitle: nil
-        )
+            windowTitle: nil,
+            windowBounds: nil,
+            menuBar: nil)
 
-        try await sessionCache.save(testData)
+        try await self.sessionCache.save(testData)
 
         // Verify data exists
         let loadedData = await sessionCache.load()
         #expect(loadedData != nil)
 
         // Clear session
-        try await sessionCache.clear()
+        try await self.sessionCache.clear()
 
         // Verify data is gone
         let clearedData = await sessionCache.load()
@@ -266,7 +277,7 @@ struct SessionCacheTests {
         ("AXRadioButton", "R"),
         ("AXSlider", "S"),
         ("AXUnknown", "G"),
-        ("AXGroup", "G")
+        ("AXGroup", "G"),
     ])
     func elementIDGeneration(role: String, expectedPrefix: String) {
         #expect(ElementIDGenerator.prefix(for: role) == expectedPrefix)
@@ -302,11 +313,10 @@ struct SessionCacheTests {
         try testData.write(to: URL(fileURLWithPath: sourcePath))
 
         // Update screenshot
-        try await sessionCache.updateScreenshot(
+        try await self.sessionCache.updateScreenshot(
             path: sourcePath,
             application: "TestApp",
-            window: "TestWindow"
-        )
+            window: "TestWindow")
 
         // Verify raw.png was created in session directory
         let paths = await sessionCache.getSessionPaths()
@@ -328,19 +338,19 @@ struct SessionCacheTests {
         // by saving multiple times rapidly
 
         let testData = SessionCache.SessionData(
+            version: SessionCache.SessionData.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [:],
             lastUpdateTime: Date(),
             applicationName: "AtomicTest",
-            windowTitle: "Atomic Window"
-        )
+            windowTitle: "Atomic Window")
 
         // Save multiple times rapidly
         for i in 0..<5 {
             var modifiedData = testData
             modifiedData.windowTitle = "Atomic Window \(i)"
-            try await sessionCache.save(modifiedData)
+            try await self.sessionCache.save(modifiedData)
         }
 
         // Verify final state

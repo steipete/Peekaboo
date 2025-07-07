@@ -1,5 +1,5 @@
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import CoreGraphics
 import Foundation
 
@@ -27,8 +27,7 @@ struct SwipeCommand: AsyncParsableCommand {
 
             The swipe includes a configurable duration to control the
             speed of the drag gesture.
-        """
-    )
+        """)
 
     @Option(help: "Source element ID")
     var from: String?
@@ -62,10 +61,9 @@ struct SwipeCommand: AsyncParsableCommand {
 
         do {
             // Validate inputs
-            guard (from != nil || fromCoords != nil) && (to != nil || toCoords != nil) else {
+            guard self.from != nil || self.fromCoords != nil, self.to != nil || self.toCoords != nil else {
                 throw ValidationError(
-                    "Must specify both source (--from or --from-coords) and destination (--to or --to-coords)"
-                )
+                    "Must specify both source (--from or --from-coords) and destination (--to or --to-coords)")
             }
 
             // Get source and destination points
@@ -78,35 +76,32 @@ struct SwipeCommand: AsyncParsableCommand {
                 to: destPoint,
                 duration: duration,
                 steps: steps,
-                rightButton: rightButton
-            )
+                rightButton: rightButton)
 
             // Output results
-            if jsonOutput {
+            if self.jsonOutput {
                 let output = SwipeResult(
                     success: true,
                     fromLocation: ["x": sourcePoint.x, "y": sourcePoint.y],
                     toLocation: ["x": destPoint.x, "y": destPoint.y],
                     distance: result.distance,
-                    duration: duration,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
+                    duration: self.duration,
+                    executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Swipe completed")
                 print("📍 From: (\(Int(sourcePoint.x)), \(Int(sourcePoint.y)))")
                 print("📍 To: (\(Int(destPoint.x)), \(Int(destPoint.y)))")
                 print("📏 Distance: \(Int(result.distance)) pixels")
-                print("⏱️  Duration: \(duration)ms")
+                print("⏱️  Duration: \(self.duration)ms")
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
 
         } catch {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
-                    code: .INTERNAL_SWIFT_ERROR
-                )
+                    code: .INTERNAL_SWIFT_ERROR)
             } else {
                 var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
                 print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
@@ -134,7 +129,8 @@ struct SwipeCommand: AsyncParsableCommand {
             let parts = coords.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             guard parts.count == 2,
                   let x = Double(parts[0]),
-                  let y = Double(parts[1]) else {
+                  let y = Double(parts[1])
+            else {
                 throw ValidationError("Invalid coordinates format. Use: x,y")
             }
 
@@ -150,8 +146,8 @@ struct SwipeCommand: AsyncParsableCommand {
         to: CGPoint,
         duration: Int,
         steps: Int,
-        rightButton: Bool
-    ) async throws -> InternalSwipeResult {
+        rightButton: Bool) async throws -> InternalSwipeResult
+    {
         let distance = sqrt(pow(to.x - from.x, 2) + pow(to.y - from.y, 2))
         let stepDelay = max(1, duration / steps)
 
@@ -166,8 +162,7 @@ struct SwipeCommand: AsyncParsableCommand {
             mouseEventSource: nil,
             mouseType: downEventType,
             mouseCursorPosition: from,
-            mouseButton: buttonType
-        )
+            mouseButton: buttonType)
         mouseDown?.post(tap: .cghidEventTap)
 
         // Small initial delay
@@ -178,15 +173,13 @@ struct SwipeCommand: AsyncParsableCommand {
             let progress = Double(i) / Double(steps)
             let intermediatePoint = CGPoint(
                 x: from.x + (to.x - from.x) * progress,
-                y: from.y + (to.y - from.y) * progress
-            )
+                y: from.y + (to.y - from.y) * progress)
 
             let dragEvent = CGEvent(
                 mouseEventSource: nil,
                 mouseType: dragEventType,
                 mouseCursorPosition: intermediatePoint,
-                mouseButton: buttonType
-            )
+                mouseButton: buttonType)
             dragEvent?.post(tap: .cghidEventTap)
 
             // Delay between movements
@@ -200,8 +193,7 @@ struct SwipeCommand: AsyncParsableCommand {
             mouseEventSource: nil,
             mouseType: upEventType,
             mouseCursorPosition: to,
-            mouseButton: buttonType
-        )
+            mouseButton: buttonType)
         mouseUp?.post(tap: .cghidEventTap)
 
         return InternalSwipeResult(distance: distance)

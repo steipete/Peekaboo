@@ -14,26 +14,26 @@ final class Logger: @unchecked Sendable {
     private init() {}
 
     func setJsonOutputMode(_ enabled: Bool) {
-        queue.sync(flags: .barrier) {
+        self.queue.sync(flags: .barrier) {
             self.isJsonOutputMode = enabled
             // Don't clear logs automatically - let tests manage this explicitly
         }
     }
 
     func setVerboseMode(_ enabled: Bool) {
-        queue.sync(flags: .barrier) {
+        self.queue.sync(flags: .barrier) {
             self.verboseMode = enabled
         }
     }
 
     var isVerbose: Bool {
-        queue.sync {
+        self.queue.sync {
             self.verboseMode
         }
     }
 
     func verbose(_ message: String) {
-        queue.async(flags: .barrier) {
+        self.queue.async(flags: .barrier) {
             guard self.verboseMode else { return }
 
             let timestamp = ISO8601DateFormatter().string(from: Date())
@@ -48,7 +48,7 @@ final class Logger: @unchecked Sendable {
     }
 
     func debug(_ message: String) {
-        queue.async(flags: .barrier) {
+        self.queue.async(flags: .barrier) {
             if self.isJsonOutputMode {
                 self.debugLogs.append(message)
             } else {
@@ -58,7 +58,7 @@ final class Logger: @unchecked Sendable {
     }
 
     func info(_ message: String) {
-        queue.async(flags: .barrier) {
+        self.queue.async(flags: .barrier) {
             if self.isJsonOutputMode {
                 self.debugLogs.append("INFO: \(message)")
             } else {
@@ -68,7 +68,7 @@ final class Logger: @unchecked Sendable {
     }
 
     func warn(_ message: String) {
-        queue.async(flags: .barrier) {
+        self.queue.async(flags: .barrier) {
             if self.isJsonOutputMode {
                 self.debugLogs.append("WARN: \(message)")
             } else {
@@ -78,7 +78,7 @@ final class Logger: @unchecked Sendable {
     }
 
     func error(_ message: String) {
-        queue.async(flags: .barrier) {
+        self.queue.async(flags: .barrier) {
             if self.isJsonOutputMode {
                 self.debugLogs.append("ERROR: \(message)")
             } else {
@@ -88,20 +88,20 @@ final class Logger: @unchecked Sendable {
     }
 
     func getDebugLogs() -> [String] {
-        queue.sync {
+        self.queue.sync {
             self.debugLogs
         }
     }
 
     func clearDebugLogs() {
-        queue.sync(flags: .barrier) {
+        self.queue.sync(flags: .barrier) {
             self.debugLogs.removeAll()
         }
     }
 
     /// For testing - ensures all pending operations are complete
     func flush() {
-        queue.sync(flags: .barrier) {
+        self.queue.sync(flags: .barrier) {
             // This ensures all pending async operations are complete
         }
     }

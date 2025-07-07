@@ -19,8 +19,7 @@ struct SleepCommand: AsyncParsableCommand {
               peekaboo sleep 3000        # Sleep for 3 seconds
 
             The duration is specified in milliseconds.
-        """
-    )
+        """)
 
     @Argument(help: "Duration to sleep in milliseconds")
     var duration: Int
@@ -32,13 +31,12 @@ struct SleepCommand: AsyncParsableCommand {
         let startTime = Date()
 
         // Validate duration
-        guard duration > 0 else {
+        guard self.duration > 0 else {
             let error = ValidationError("Duration must be positive")
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
-                    code: .INVALID_ARGUMENT
-                )
+                    code: .INVALID_ARGUMENT)
             } else {
                 var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
                 print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
@@ -47,17 +45,16 @@ struct SleepCommand: AsyncParsableCommand {
         }
 
         // Perform sleep
-        try await Task.sleep(nanoseconds: UInt64(duration) * 1_000_000)
+        try await Task.sleep(nanoseconds: UInt64(self.duration) * 1_000_000)
 
         let actualDuration = Date().timeIntervalSince(startTime) * 1000 // Convert to ms
 
         // Output results
-        if jsonOutput {
+        if self.jsonOutput {
             let output = SleepResult(
                 success: true,
                 requested_duration: duration,
-                actual_duration: Int(actualDuration)
-            )
+                actual_duration: Int(actualDuration))
             outputSuccessCodable(data: output)
         } else {
             let seconds = Double(duration) / 1000.0

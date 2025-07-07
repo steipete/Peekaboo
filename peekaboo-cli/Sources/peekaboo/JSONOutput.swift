@@ -16,12 +16,12 @@ struct JSONResponse: Codable {
         data: Any? = nil,
         messages: [String]? = nil,
         debugLogs: [String] = [],
-        error: ErrorInfo? = nil
-    ) {
+        error: ErrorInfo? = nil)
+    {
         self.success = success
         self.data = data.map(AnyCodable.init)
         self.messages = messages
-        debug_logs = debugLogs
+        self.debug_logs = debugLogs
         self.error = error
     }
 }
@@ -95,24 +95,24 @@ struct AnyCodable: Codable {
             // Handle Codable types by encoding them directly
             try AnyEncodable(codable).encode(to: encoder)
         } else {
-            try encodeValue(value, to: &container)
+            try self.encodeValue(self.value, to: &container)
         }
     }
 
     private func encodeValue(_ value: Any, to container: inout SingleValueEncodingContainer) throws {
-        if try encodePrimitive(value, to: &container) {
+        if try self.encodePrimitive(value, to: &container) {
             return
         }
 
-        if try encodeCollection(value, to: &container) {
+        if try self.encodeCollection(value, to: &container) {
             return
         }
 
-        if try encodeNil(value, to: &container) {
+        if try self.encodeNil(value, to: &container) {
             return
         }
 
-        try encodeDefault(value, to: &container)
+        try self.encodeDefault(value, to: &container)
     }
 
     private func encodePrimitive(_ value: Any, to container: inout SingleValueEncodingContainer) throws -> Bool {
@@ -172,7 +172,7 @@ struct AnyCodable: Codable {
     private func encodeDefault(_ value: Any, to container: inout SingleValueEncodingContainer) throws {
         // Check if it's an optional with nil value
         let mirror = Mirror(reflecting: value)
-        if mirror.displayStyle == .optional && mirror.children.isEmpty {
+        if mirror.displayStyle == .optional, mirror.children.isEmpty {
             try container.encodeNil()
         } else {
             // Try to encode as a string representation
@@ -184,23 +184,22 @@ struct AnyCodable: Codable {
         let container = try decoder.singleValueContainer()
 
         if container.decodeNil() {
-            value = NSNull()
+            self.value = NSNull()
         } else if let bool = try? container.decode(Bool.self) {
-            value = bool
+            self.value = bool
         } else if let int = try? container.decode(Int.self) {
-            value = int
+            self.value = int
         } else if let double = try? container.decode(Double.self) {
-            value = double
+            self.value = double
         } else if let string = try? container.decode(String.self) {
-            value = string
+            self.value = string
         } else if let array = try? container.decode([AnyCodable].self) {
-            value = array.map(\.value)
+            self.value = array.map(\.value)
         } else if let dict = try? container.decode([String: AnyCodable].self) {
-            value = dict.mapValues { $0.value }
+            self.value = dict.mapValues { $0.value }
         } else {
             throw DecodingError.dataCorrupted(
-                DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Cannot decode value")
-            )
+                DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Cannot decode value"))
         }
     }
 }
@@ -214,7 +213,7 @@ private struct AnyEncodable: Encodable {
     }
 
     func encode(to encoder: Encoder) throws {
-        try encodable.encode(to: encoder)
+        try self.encodable.encode(to: encoder)
     }
 }
 
@@ -255,8 +254,7 @@ func outputSuccess(data: Any? = nil, messages: [String]? = nil) {
 func outputSuccessCodable(data: some Codable, messages: [String]? = nil) {
     let debugLogs = Logger.shared.getDebugLogs()
     let response = CodableJSONResponse(
-        success: true, data: data, messages: messages, debug_logs: debugLogs
-    )
+        success: true, data: data, messages: messages, debug_logs: debugLogs)
     outputJSONCodable(response)
 }
 

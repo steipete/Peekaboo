@@ -1,8 +1,8 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("App Command Tests")
+@Suite("App Command Tests", .serialized)
 struct AppCommandTests {
     @Test("App command exists")
     func appCommandExists() {
@@ -92,7 +92,7 @@ struct AppCommandTests {
 
 // MARK: - App Command Integration Tests
 
-@Suite("App Command Integration Tests", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+@Suite("App Command Integration Tests", .serialized, .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
 struct AppCommandIntegrationTests {
     @Test("Launch application")
     func launchApp() async throws {
@@ -100,7 +100,7 @@ struct AppCommandIntegrationTests {
             "app", "launch",
             "--app", "TextEdit",
             "--wait",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -119,7 +119,7 @@ struct AppCommandIntegrationTests {
         let hideOutput = try await runCommand([
             "app", "hide",
             "--app", "TextEdit",
-            "--json-output"
+            "--json-output",
         ])
 
         let hideData = try JSONDecoder().decode(JSONResponse.self, from: hideOutput.data(using: .utf8)!)
@@ -129,7 +129,7 @@ struct AppCommandIntegrationTests {
         let showOutput = try await runCommand([
             "app", "show",
             "--app", "TextEdit",
-            "--json-output"
+            "--json-output",
         ])
 
         let showData = try JSONDecoder().decode(JSONResponse.self, from: showOutput.data(using: .utf8)!)
@@ -142,7 +142,7 @@ struct AppCommandIntegrationTests {
         let cycleOutput = try await runCommand([
             "app", "switch",
             "--cycle",
-            "--json-output"
+            "--json-output",
         ])
 
         let cycleData = try JSONDecoder().decode(JSONResponse.self, from: cycleOutput.data(using: .utf8)!)
@@ -152,7 +152,7 @@ struct AppCommandIntegrationTests {
         let switchOutput = try await runCommand([
             "app", "switch",
             "--to", "Finder",
-            "--json-output"
+            "--json-output",
         ])
 
         let switchData = try JSONDecoder().decode(JSONResponse.self, from: switchOutput.data(using: .utf8)!)
@@ -165,14 +165,15 @@ struct AppCommandIntegrationTests {
             "app", "quit",
             "--app", "TextEdit",
             "--save-changes",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
         // App might not be running
         if data.success {
             if let quitData = data.data?.value as? [String: Any],
-               let results = quitData["quit_apps"] as? [[String: Any]] {
+               let results = quitData["quit_apps"] as? [[String: Any]]
+            {
                 #expect(!results.isEmpty)
             }
         }
@@ -184,7 +185,7 @@ struct AppCommandIntegrationTests {
             "app", "hide",
             "--app", "Finder",
             "--others",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)

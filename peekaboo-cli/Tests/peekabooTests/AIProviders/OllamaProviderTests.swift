@@ -1,5 +1,5 @@
-@testable import peekaboo
 import XCTest
+@testable import peekaboo
 
 final class OllamaProviderTests: XCTestCase {
     override func setUp() {
@@ -39,8 +39,7 @@ final class OllamaProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: mockTagsResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         let provider = TestableOllamaProvider(model: "llava:latest", session: session)
 
@@ -72,8 +71,7 @@ final class OllamaProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: mockTagsResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         let provider = TestableOllamaProvider(model: "llava:latest", session: session)
 
@@ -97,8 +95,7 @@ final class OllamaProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: nil,
             response: nil,
-            error: URLError(.cannotConnectToHost)
-        )
+            error: URLError(.cannotConnectToHost))
 
         let provider = TestableOllamaProvider(session: session)
 
@@ -137,8 +134,7 @@ final class OllamaProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: mockGenerateResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         let provider = TestableOllamaProvider(session: session)
         let result = try await provider.analyze(imageBase64: "fake-base64", question: "What is this?")
@@ -164,8 +160,7 @@ final class OllamaProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: mockGenerateResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         let provider = TestableOllamaProvider(session: session)
         let result = try await provider.analyze(imageBase64: "fake-base64", question: "")
@@ -183,8 +178,7 @@ final class OllamaProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: "Model not found".data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         let provider = TestableOllamaProvider(session: session)
 
@@ -214,8 +208,7 @@ final class OllamaProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: mockGenerateResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         let provider = TestableOllamaProvider(session: session)
 
@@ -253,8 +246,7 @@ final class OllamaProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: mockTagsResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         // Test exact match
         let provider1 = TestableOllamaProvider(model: "llava:latest", session: session)
@@ -280,22 +272,22 @@ private class TestableOllamaProvider: OllamaProvider {
     private let customBaseURL: String?
 
     var testBaseURL: URL {
-        let urlString = customBaseURL ?? ProcessInfo.processInfo
+        let urlString = self.customBaseURL ?? ProcessInfo.processInfo
             .environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
         return URL(string: urlString)!
     }
 
     init(model: String = "llava:latest", session: URLSession? = nil, baseURL: String? = nil) {
-        testSession = session
-        customBaseURL = baseURL
+        self.testSession = session
+        self.customBaseURL = baseURL
         super.init(model: model)
     }
 
     override var session: URLSession {
-        testSession ?? URLSession.shared
+        self.testSession ?? URLSession.shared
     }
 
     override var baseURL: URL {
-        testBaseURL
+        self.testBaseURL
     }
 }

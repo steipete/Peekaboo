@@ -1,5 +1,5 @@
-@testable import peekaboo
 import XCTest
+@testable import peekaboo
 
 final class OpenAIProviderTests: XCTestCase {
     override func setUp() {
@@ -84,8 +84,7 @@ final class OpenAIProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: mockResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         let provider = TestableOpenAIProvider(apiKey: "test-key", session: session)
         let result = try await provider.analyze(imageBase64: "fake-base64", question: "What is this?")
@@ -119,8 +118,7 @@ final class OpenAIProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: mockResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         let provider = TestableOpenAIProvider(apiKey: "test-key", session: session)
         let result = try await provider.analyze(imageBase64: "fake-base64", question: "")
@@ -138,8 +136,7 @@ final class OpenAIProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: "Unauthorized".data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 401, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         let provider = TestableOpenAIProvider(apiKey: "invalid-key", session: session)
 
@@ -160,8 +157,7 @@ final class OpenAIProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: "Internal Server Error".data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 500, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         let provider = TestableOpenAIProvider(apiKey: "test-key", session: session)
 
@@ -192,8 +188,7 @@ final class OpenAIProviderTests: XCTestCase {
         MockURLProtocol.mockResponses[url] = (
             data: mockResponse.data(using: .utf8),
             response: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil),
-            error: nil
-        )
+            error: nil)
 
         let provider = TestableOpenAIProvider(apiKey: "test-key", session: session)
 
@@ -213,16 +208,16 @@ private class TestableOpenAIProvider: OpenAIProvider {
     private let testSession: URLSession?
 
     init(apiKey: String? = nil, session: URLSession? = nil) {
-        testAPIKey = apiKey
-        testSession = session
+        self.testAPIKey = apiKey
+        self.testSession = session
         super.init(model: "gpt-4o")
     }
 
     override var apiKey: String? {
-        testAPIKey
+        self.testAPIKey
     }
 
     override var session: URLSession {
-        testSession ?? URLSession.shared
+        self.testSession ?? URLSession.shared
     }
 }

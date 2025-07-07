@@ -13,8 +13,8 @@ struct MockSuccessProvider: AIProvider {
         name: String = "mock",
         model: String = "test-model",
         mockResponse: String = "Mock analysis result",
-        mockDelay: TimeInterval = 0
-    ) {
+        mockDelay: TimeInterval = 0)
+    {
         self.name = name
         self.model = model
         self.mockResponse = mockResponse
@@ -35,16 +35,14 @@ struct MockSuccessProvider: AIProvider {
                 modelAvailable: true,
                 serverReachable: true,
                 apiKeyPresent: true,
-                modelList: ["test-model", "other-model"]
-            )
-        )
+                modelList: ["test-model", "other-model"]))
     }
 
     func analyze(imageBase64: String, question: String) async throws -> String {
-        if mockDelay > 0 {
-            try await Task.sleep(nanoseconds: UInt64(mockDelay * 1_000_000_000))
+        if self.mockDelay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.mockDelay * 1_000_000_000))
         }
-        return mockResponse
+        return self.mockResponse
     }
 }
 
@@ -68,18 +66,16 @@ struct MockFailureProvider: AIProvider {
     func checkAvailability() async -> AIProviderStatus {
         AIProviderStatus(
             available: false,
-            error: error.localizedDescription,
+            error: self.error.localizedDescription,
             details: AIProviderDetails(
                 modelAvailable: false,
                 serverReachable: false,
                 apiKeyPresent: false,
-                modelList: nil
-            )
-        )
+                modelList: nil))
     }
 
     func analyze(imageBase64: String, question: String) async throws -> String {
-        throw error
+        throw self.error
     }
 }
 
@@ -106,9 +102,7 @@ struct MockUnavailableProvider: AIProvider {
                 modelAvailable: false,
                 serverReachable: false,
                 apiKeyPresent: true,
-                modelList: []
-            )
-        )
+                modelList: []))
     }
 
     func analyze(imageBase64: String, question: String) async throws -> String {
@@ -131,7 +125,8 @@ class MockURLProtocol: URLProtocol {
 
     override func startLoading() {
         guard let url = request.url,
-              let mockResponse = MockURLProtocol.mockResponses[url] else {
+              let mockResponse = MockURLProtocol.mockResponses[url]
+        else {
             client?.urlProtocol(self, didFailWithError: URLError(.badURL))
             return
         }
@@ -156,6 +151,6 @@ class MockURLProtocol: URLProtocol {
     }
 
     static func reset() {
-        mockResponses.removeAll()
+        self.mockResponses.removeAll()
     }
 }

@@ -1,15 +1,15 @@
 import CoreGraphics
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("SwipeCommand Tests")
+@Suite("SwipeCommand Tests", .serialized)
 struct SwipeCommandTests {
     @Test("Swipe command parses from and to coordinates")
     func parseCoordinates() throws {
         let command = try SwipeCommand.parse([
             "--from-coords", "100,200",
-            "--to-coords", "300,400"
+            "--to-coords", "300,400",
         ])
         #expect(command.fromCoords == "100,200")
         #expect(command.toCoords == "300,400")
@@ -24,7 +24,7 @@ struct SwipeCommandTests {
             "--to-coords", "250,300",
             "--duration", "1000",
             "--steps", "30",
-            "--json-output"
+            "--json-output",
         ])
         #expect(command.fromCoords == "50,100")
         #expect(command.toCoords == "250,300")
@@ -64,8 +64,7 @@ struct SwipeCommandTests {
             toLocation: ["x": 300.0, "y": 400.0],
             distance: 282.84, // sqrt((300-100)² + (400-200)²)
             duration: 500,
-            executionTime: 0.52
-        )
+            executionTime: 0.52)
 
         #expect(result.success == true)
         #expect(result.fromLocation["x"] == 100.0)
@@ -99,8 +98,7 @@ struct SwipeCommandTests {
         } else {
             #expect(parts
                 .count != 2 || (parts.count >= 1 && Double(parts[0]) == nil) ||
-                (parts.count >= 2 && Double(parts[1]) == nil)
-            )
+                (parts.count >= 2 && Double(parts[1]) == nil))
         }
     }
 
@@ -111,7 +109,7 @@ struct SwipeCommandTests {
             ((0, 0), (3, 4), 5.0), // 3-4-5 triangle
             ((0, 0), (0, 10), 10.0), // Vertical line
             ((0, 0), (10, 0), 10.0), // Horizontal line
-            ((100, 100), (100, 100), 0.0) // Same point
+            ((100, 100), (100, 100), 0.0), // Same point
         ]
 
         for testCase in testCases {

@@ -1,5 +1,5 @@
 import AppKit
-import AXorcist
+import AXorcistLib
 import CoreGraphics
 import Foundation
 
@@ -42,9 +42,9 @@ final class WindowManager: Sendable {
             let aIsStandard = a.subrole == "AXStandardWindow"
             let bIsStandard = b.subrole == "AXStandardWindow"
 
-            if aIsStandard && !bIsStandard {
+            if aIsStandard, !bIsStandard {
                 return true
-            } else if !aIsStandard && bIsStandard {
+            } else if !aIsStandard, bIsStandard {
                 return false
             }
 
@@ -64,7 +64,7 @@ final class WindowManager: Sendable {
         }
 
         let windowList = try fetchWindowList(includeOffScreen: includeOffScreen)
-        let windows = extractWindowsForPID(pid, from: windowList)
+        let windows = self.extractWindowsForPID(pid, from: windowList)
 
         // Logger.shared.debug("Found \(windows.count) windows for PID \(pid)")
         return windows.sorted { $0.windowIndex < $1.windowIndex }
@@ -99,12 +99,13 @@ final class WindowManager: Sendable {
     private static func parseWindowInfo(_ info: [String: Any], targetPID: pid_t, index: Int) -> WindowData? {
         guard let windowPID = info[kCGWindowOwnerPID as String] as? Int32,
               windowPID == targetPID,
-              let windowID = info[kCGWindowNumber as String] as? CGWindowID else {
+              let windowID = info[kCGWindowNumber as String] as? CGWindowID
+        else {
             return nil
         }
 
         let title = info[kCGWindowName as String] as? String ?? "Untitled"
-        let bounds = extractWindowBounds(from: info)
+        let bounds = self.extractWindowBounds(from: info)
         let isOnScreen = info[kCGWindowIsOnscreen as String] as? Bool ?? true
 
         return WindowData(
@@ -112,8 +113,7 @@ final class WindowManager: Sendable {
             title: title,
             bounds: bounds,
             isOnScreen: isOnScreen,
-            windowIndex: index
-        )
+            windowIndex: index)
     }
 
     private static func extractWindowBounds(from windowInfo: [String: Any]) -> CGRect {
@@ -133,8 +133,8 @@ final class WindowManager: Sendable {
         pid: pid_t,
         includeOffScreen: Bool = false,
         includeBounds: Bool = false,
-        includeIDs: Bool = false
-    ) throws(WindowError) -> [WindowInfo] {
+        includeIDs: Bool = false) throws(WindowError) -> [WindowInfo]
+    {
         let windowDataArray = try getWindowsForApp(pid: pid, includeOffScreen: includeOffScreen)
 
         return windowDataArray.map { windowData in
@@ -146,10 +146,8 @@ final class WindowManager: Sendable {
                     x: Int(windowData.bounds.origin.x),
                     y: Int(windowData.bounds.origin.y),
                     width: Int(windowData.bounds.size.width),
-                    height: Int(windowData.bounds.size.height)
-                ) : nil,
-                is_on_screen: includeOffScreen ? windowData.isOnScreen : nil
-            )
+                    height: Int(windowData.bounds.size.height)) : nil,
+                is_on_screen: includeOffScreen ? windowData.isOnScreen : nil)
         }
     }
 }

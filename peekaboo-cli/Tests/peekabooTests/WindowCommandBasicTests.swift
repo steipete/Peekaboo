@@ -1,8 +1,8 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("Window Command Basic Tests")
+@Suite("Window Command Basic Tests", .serialized)
 struct WindowCommandBasicTests {
     @Test("Window command exists")
     func windowCommandExists() {
@@ -50,10 +50,9 @@ struct WindowCommandBasicTests {
                     "x": Int(bounds.origin.x),
                     "y": Int(bounds.origin.y),
                     "width": Int(bounds.width),
-                    "height": Int(bounds.height)
-                ]
-            ])
-        )
+                    "height": Int(bounds.height),
+                ],
+            ]))
 
         #expect(successJSON.success == true)
         #expect(successJSON.error == nil)
@@ -64,16 +63,14 @@ struct WindowCommandBasicTests {
             error: JSONError(
                 code: ErrorCode.WINDOW_MANIPULATION_ERROR.rawValue,
                 message: "Failed to move window",
-                details: ["app": "TestApp", "reason": "Window not found"]
-            )
-        )
+                details: ["app": "TestApp", "reason": "Window not found"]))
 
         #expect(errorJSON.success == false)
         #expect(errorJSON.error?.code == "WINDOW_MANIPULATION_ERROR")
     }
 }
 
-@Suite("Window Command Error Handling Tests")
+@Suite("Window Command Error Handling Tests", .serialized)
 struct WindowCommandErrorHandlingTests {
     @Test("App not found error formatting")
     func appNotFoundError() async throws {
@@ -81,8 +78,7 @@ struct WindowCommandErrorHandlingTests {
         let error = JSONError(
             code: ErrorCode.APP_NOT_FOUND.rawValue,
             message: "Application 'NonExistentApp' not found",
-            details: ["requested_app": "NonExistentApp"]
-        )
+            details: ["requested_app": "NonExistentApp"])
 
         #expect(error.code == "APP_NOT_FOUND")
         #expect(error.message.contains("NonExistentApp"))
@@ -93,8 +89,7 @@ struct WindowCommandErrorHandlingTests {
         let error = JSONError(
             code: ErrorCode.WINDOW_NOT_FOUND.rawValue,
             message: "No window found with title 'NonExistent'",
-            details: ["app": "Finder", "window_title": "NonExistent"]
-        )
+            details: ["app": "Finder", "window_title": "NonExistent"])
 
         #expect(error.code == "WINDOW_NOT_FOUND")
         #expect(error.message.contains("NonExistent"))
@@ -105,15 +100,14 @@ struct WindowCommandErrorHandlingTests {
         let error = JSONError(
             code: ErrorCode.PERMISSION_ERROR_ACCESSIBILITY.rawValue,
             message: "Accessibility permission is required for window manipulation",
-            details: ["operation": "minimize"]
-        )
+            details: ["operation": "minimize"])
 
         #expect(error.code == "PERMISSION_ERROR_ACCESSIBILITY")
         #expect(error.message.contains("Accessibility"))
     }
 }
 
-@Suite("Window Target Resolution Tests")
+@Suite("Window Target Resolution Tests", .serialized)
 struct WindowTargetResolutionTests {
     @Test("PID format parsing")
     func pIDFormatParsing() {
@@ -145,7 +139,7 @@ struct WindowTargetResolutionTests {
             "com.apple.finder",
             "com.apple.TextEdit",
             "org.mozilla.firefox",
-            "com.microsoft.VSCode"
+            "com.microsoft.VSCode",
         ]
 
         for bundleID in bundleIDs {

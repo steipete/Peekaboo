@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("File Handling Tests")
 struct FileHandlingTests {
@@ -9,7 +9,7 @@ struct FileHandlingTests {
     struct FileNameGeneratorTests {
         @Test("Generates default filename with timestamp", arguments: [
             ImageFormat.png,
-            ImageFormat.jpg
+            ImageFormat.jpg,
         ])
         func generateDefaultFilename(format: ImageFormat) {
             let filename = FileNameGenerator.generateFileName(format: format)
@@ -48,8 +48,7 @@ struct FileHandlingTests {
             let filename = FileNameGenerator.generateFileName(
                 appName: "Safari",
                 windowIndex: 0,
-                format: .png
-            )
+                format: .png)
 
             #expect(filename.hasPrefix("Safari_window_0_"))
             #expect(filename.hasSuffix(".png"))
@@ -61,14 +60,14 @@ struct FileHandlingTests {
         let tempDir: URL
 
         init() throws {
-            tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            self.tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: self.tempDir, withIntermediateDirectories: true)
         }
 
         @Test("Saves PNG image")
         func savePNGImage() throws {
-            let image = createTestImage()
-            let outputPath = tempDir.appendingPathComponent("test.png").path
+            let image = self.createTestImage()
+            let outputPath = self.tempDir.appendingPathComponent("test.png").path
 
             try ImageSaver.saveImage(image, to: outputPath, format: .png)
 
@@ -83,8 +82,8 @@ struct FileHandlingTests {
 
         @Test("Saves JPEG image")
         func saveJPEGImage() throws {
-            let image = createTestImage()
-            let outputPath = tempDir.appendingPathComponent("test.jpg").path
+            let image = self.createTestImage()
+            let outputPath = self.tempDir.appendingPathComponent("test.jpg").path
 
             try ImageSaver.saveImage(image, to: outputPath, format: .jpg)
 
@@ -99,8 +98,8 @@ struct FileHandlingTests {
 
         @Test("Creates parent directories if needed")
         func createsParentDirectories() throws {
-            let image = createTestImage()
-            let nestedPath = tempDir
+            let image = self.createTestImage()
+            let nestedPath = self.tempDir
                 .appendingPathComponent("nested")
                 .appendingPathComponent("deep")
                 .appendingPathComponent("test.png")
@@ -113,7 +112,7 @@ struct FileHandlingTests {
 
         @Test("Throws error for invalid path")
         func throwsErrorForInvalidPath() throws {
-            let image = createTestImage()
+            let image = self.createTestImage()
             let invalidPath = "/invalid\0path/test.png" // Null character makes it invalid
 
             #expect(throws: CaptureError.self) {
@@ -134,8 +133,7 @@ struct FileHandlingTests {
                 bitsPerComponent: 8,
                 bytesPerRow: 4 * width,
                 space: colorSpace,
-                bitmapInfo: bitmapInfo.rawValue
-            )!
+                bitmapInfo: bitmapInfo.rawValue)!
 
             // Draw a simple red rectangle
             context.setFillColor(red: 1, green: 0, blue: 0, alpha: 1)
@@ -150,8 +148,8 @@ struct FileHandlingTests {
         let tempDir: URL
 
         init() throws {
-            tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            self.tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: self.tempDir, withIntermediateDirectories: true)
         }
 
         @Test("Resolves file paths")
@@ -162,8 +160,7 @@ struct FileHandlingTests {
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: filePath,
                 fileName: fileName,
-                isSingleCapture: true
-            )
+                isSingleCapture: true)
 
             #expect(resolved == filePath)
         }
@@ -171,12 +168,11 @@ struct FileHandlingTests {
         @Test("Resolves directory paths")
         func resolvesDirectoryPaths() {
             let fileName = "screenshot.png"
-            let dirPath = tempDir.path
+            let dirPath = self.tempDir.path
 
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: dirPath,
-                fileName: fileName
-            )
+                fileName: fileName)
 
             #expect(resolved == "\(dirPath)/\(fileName)")
         }
@@ -187,8 +183,7 @@ struct FileHandlingTests {
 
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: nil,
-                fileName: fileName
-            )
+                fileName: fileName)
 
             // Should use default save path
             let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
@@ -203,8 +198,7 @@ struct FileHandlingTests {
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: filePath,
                 fileName: fileName,
-                isSingleCapture: false
-            )
+                isSingleCapture: false)
 
             // Should append screen info to filename
             #expect(resolved.contains("_1_20250101_120000"))
@@ -219,8 +213,7 @@ struct FileHandlingTests {
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: filePath,
                 fileName: fileName,
-                isSingleCapture: false
-            )
+                isSingleCapture: false)
 
             // Should append window info to filename
             #expect(resolved.contains("_Safari_window_0_20250101_120000"))
@@ -237,8 +230,7 @@ struct FileHandlingTests {
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: pathTraversal,
                 fileName: fileName,
-                isSingleCapture: true
-            )
+                isSingleCapture: true)
 
             #expect(resolved == pathTraversal)
         }

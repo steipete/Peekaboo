@@ -140,7 +140,7 @@ describe('clean tool integration', () => {
       const response = await client.request('tools/call', {
         name: 'clean',
         arguments: {
-          session: '12345',
+          session: '1751889198010-5978',  // Use timestamp-based format
           dry_run: true
         }
       });
@@ -180,7 +180,7 @@ describe('clean tool integration', () => {
       const response = await client.request('tools/call', {
         name: 'clean',
         arguments: {
-          session: '99999999',
+          session: '9999999999999-9999',  // Use invalid timestamp-based format
           dry_run: true
         }
       });

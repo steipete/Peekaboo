@@ -1,6 +1,6 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("AnalyzeCommand Tests")
 struct AnalyzeCommandTests {
@@ -19,18 +19,18 @@ struct AnalyzeCommandTests {
             0x54, 0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00,
             0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xDD, 0x8D,
             0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, // IEND chunk
-            0x44, 0xAE, 0x42, 0x60, 0x82
+            0x44, 0xAE, 0x42, 0x60, 0x82,
         ])
-        try pngData.write(to: URL(fileURLWithPath: testImagePath))
+        try pngData.write(to: URL(fileURLWithPath: self.testImagePath))
     }
 
     @Test("Analyze with mock provider")
     func analyzeWithMockProvider() async throws {
         // Clean up any test files
-        try? FileManager.default.removeItem(atPath: testImagePath)
+        try? FileManager.default.removeItem(atPath: self.testImagePath)
 
         // Create test image
-        try createTestImage()
+        try self.createTestImage()
         defer {
             try? FileManager.default.removeItem(atPath: testImagePath)
         }
@@ -51,7 +51,7 @@ struct AnalyzeCommandTests {
         let command = try AnalyzeCommand.parse(args)
 
         // Verify the command properties are set correctly
-        #expect(command.imagePath == testImagePath)
+        #expect(command.imagePath == self.testImagePath)
         #expect(command.question == "What is this?")
         #expect(command.provider == "auto")
         #expect(command.jsonOutput == false)
@@ -78,8 +78,7 @@ struct AnalyzeCommandTests {
         let error = AnalyzeError.unsupportedFormat("txt")
         #expect(
             error.errorDescription ==
-                "Unsupported image format: .txt. Supported formats: .png, .jpg, .jpeg, .webp"
-        )
+                "Unsupported image format: .txt. Supported formats: .png, .jpg, .jpeg, .webp")
     }
 
     @Test("Analyze error no providers configured")
@@ -87,8 +86,7 @@ struct AnalyzeCommandTests {
         let error = AnalyzeError.noProvidersConfigured
         #expect(
             error.errorDescription ==
-                "AI analysis not configured. Set the PEEKABOO_AI_PROVIDERS environment variable."
-        )
+                "AI analysis not configured. Set the PEEKABOO_AI_PROVIDERS environment variable.")
     }
 }
 
@@ -111,18 +109,18 @@ struct AnalyzeIntegrationTests {
             0x54, 0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00,
             0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xDD, 0x8D,
             0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, // IEND chunk
-            0x44, 0xAE, 0x42, 0x60, 0x82
+            0x44, 0xAE, 0x42, 0x60, 0x82,
         ])
-        try pngData.write(to: URL(fileURLWithPath: tempImagePath))
+        try pngData.write(to: URL(fileURLWithPath: self.tempImagePath))
     }
 
     @Test("End-to-end with mock providers")
     func endToEndWithMockProviders() async throws {
         // Clean up before test
-        try? FileManager.default.removeItem(atPath: tempImagePath)
+        try? FileManager.default.removeItem(atPath: self.tempImagePath)
 
         // Create test image
-        try createTestPNG()
+        try self.createTestPNG()
         defer {
             try? FileManager.default.removeItem(atPath: tempImagePath)
         }
@@ -131,7 +129,7 @@ struct AnalyzeIntegrationTests {
         // This is complex without modifying the main code structure
 
         // For now, we verify the basic structure
-        #expect(FileManager.default.fileExists(atPath: tempImagePath))
+        #expect(FileManager.default.fileExists(atPath: self.tempImagePath))
 
         // Test that we can read and base64 encode the image
         let imageData = try Data(contentsOf: URL(fileURLWithPath: tempImagePath))

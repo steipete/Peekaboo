@@ -1,0 +1,61 @@
+# SwiftLint configuration for AXorcist
+
+# Exclude build and package directories
+excluded:
+  - .build
+  - Package.swift
+  - Pods
+
+# Configure line length limits
+line_length:
+  warning: 120
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+# Configure type body length - temporarily relaxed during refactoring
+type_body_length:
+  warning: 350
+  error: 1200  # Temporarily higher limit
+
+# Configure function body length
+function_body_length:
+  warning: 50
+  error: 100
+
+# Configure cyclomatic complexity
+cyclomatic_complexity:
+  warning: 10
+  error: 20
+
+# Disable some problematic rules temporarily
+disabled_rules:
+  - todo                    # Allow TODO comments during development
+  - force_cast             # Allow force casting in accessibility code
+  - force_unwrapping       # Allow force unwrapping in certain cases
+
+# Opt-in rules to enable
+opt_in_rules:
+  - array_init
+  - closure_spacing
+  - contains_over_first_not_nil
+  - empty_count
+  - explicit_init
+  - fallthrough
+  - fatal_error_message
+  - first_where
+  - joined_default_parameter
+  - literal_expression_end_indentation
+  - multiline_arguments
+  - multiline_parameters
+  - operator_usage_whitespace
+  - overridden_super_call
+  - pattern_matching_keywords
+  - private_outlet
+  - prohibited_super_call
+  - redundant_nil_coalescing
+  - single_test_class
+  - sorted_first_last
+  - switch_case_alignment
+  - unneeded_parentheses_in_closure_argument
+  - vertical_parameter_alignment_on_call

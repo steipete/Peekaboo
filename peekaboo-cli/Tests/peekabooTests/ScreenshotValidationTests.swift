@@ -1,14 +1,14 @@
 import AppKit
 import CoreGraphics
-@testable import peekaboo
 import ScreenCaptureKit
 import Testing
+@testable import peekaboo
 
 @Suite(
     "Screenshot Validation Tests",
+    .serialized,
     .tags(.localOnly, .screenshot, .integration),
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
-)
+    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
 struct ScreenshotValidationTests {
     // MARK: - Image Analysis Tests
 
@@ -16,7 +16,7 @@ struct ScreenshotValidationTests {
     @MainActor
     func validateScreenshotContent() async throws {
         // Create a temporary test window with known content
-        let testWindow = createTestWindow(withContent: .text("PEEKABOO_TEST_12345"))
+        let testWindow = self.createTestWindow(withContent: .text("PEEKABOO_TEST_12345"))
         defer { testWindow.close() }
 
         // Give window time to render
@@ -28,7 +28,7 @@ struct ScreenshotValidationTests {
         let outputPath = "/tmp/peekaboo-content-test.png"
         defer { try? FileManager.default.removeItem(atPath: outputPath) }
 
-        _ = try await captureWindowToFile(windowID: windowID, path: outputPath, format: .png)
+        _ = try await self.captureWindowToFile(windowID: windowID, path: outputPath, format: .png)
 
         // Load and analyze the image
         guard let image = NSImage(contentsOfFile: outputPath) else {
@@ -48,7 +48,7 @@ struct ScreenshotValidationTests {
     @MainActor
     func visualRegressionTest() async throws {
         // Create test window with specific visual pattern
-        let testWindow = createTestWindow(withContent: .grid)
+        let testWindow = self.createTestWindow(withContent: .grid)
         defer { testWindow.close() }
 
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
@@ -63,13 +63,13 @@ struct ScreenshotValidationTests {
             try? FileManager.default.removeItem(atPath: currentPath)
         }
 
-        _ = try await captureWindowToFile(windowID: windowID, path: baselinePath, format: .png)
+        _ = try await self.captureWindowToFile(windowID: windowID, path: baselinePath, format: .png)
 
         // Make a small change (in real tests, this would be application state change)
         try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
 
         // Capture current
-        _ = try await captureWindowToFile(windowID: windowID, path: currentPath, format: .png)
+        _ = try await self.captureWindowToFile(windowID: windowID, path: currentPath, format: .png)
 
         // Compare images
         let baselineImage = NSImage(contentsOfFile: baselinePath)
@@ -85,7 +85,7 @@ struct ScreenshotValidationTests {
     @Test("Test different image formats", .tags(.formats))
     @MainActor
     func imageFormats() async throws {
-        let testWindow = createTestWindow(withContent: .gradient)
+        let testWindow = self.createTestWindow(withContent: .gradient)
         defer { testWindow.close() }
 
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
@@ -98,7 +98,7 @@ struct ScreenshotValidationTests {
             let path = "/tmp/peekaboo-format-test.\(format.rawValue)"
             defer { try? FileManager.default.removeItem(atPath: path) }
 
-            _ = try await captureWindowToFile(windowID: windowID, path: path, format: format)
+            _ = try await self.captureWindowToFile(windowID: windowID, path: path, format: format)
 
             #expect(FileManager.default.fileExists(atPath: path))
 
@@ -124,12 +124,12 @@ struct ScreenshotValidationTests {
         print("Found \(screens.count) display(s)")
 
         for (index, screen) in screens.enumerated() {
-            let displayID = getDisplayID(for: screen)
+            let displayID = self.getDisplayID(for: screen)
             let outputPath = "/tmp/peekaboo-display-\(index).png"
             defer { try? FileManager.default.removeItem(atPath: outputPath) }
 
             do {
-                _ = try await captureDisplayToFile(displayID: displayID, path: outputPath, format: .png)
+                _ = try await self.captureDisplayToFile(displayID: displayID, path: outputPath, format: .png)
 
                 #expect(FileManager.default.fileExists(atPath: outputPath))
 
@@ -170,7 +170,7 @@ struct ScreenshotValidationTests {
     @Test("Screenshot capture performance", .tags(.performance))
     @MainActor
     func capturePerformance() async throws {
-        let testWindow = createTestWindow(withContent: .solid(.white))
+        let testWindow = self.createTestWindow(withContent: .solid(.white))
         defer { testWindow.close() }
 
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
@@ -185,7 +185,7 @@ struct ScreenshotValidationTests {
             defer { try? FileManager.default.removeItem(atPath: path) }
 
             let start = CFAbsoluteTimeGetCurrent()
-            _ = try await captureWindowToFile(windowID: windowID, path: path, format: .png)
+            _ = try await self.captureWindowToFile(windowID: windowID, path: path, format: .png)
             let duration = CFAbsoluteTimeGetCurrent() - start
 
             captureTimes.append(duration)
@@ -220,8 +220,7 @@ struct ScreenshotValidationTests {
             contentRect: NSRect(x: 100, y: 100, width: 400, height: 300),
             styleMask: [.titled, .closable],
             backing: .buffered,
-            defer: false
-        )
+            defer: false)
 
         window.title = "Peekaboo Test Window"
         window.isReleasedWhenClosed = false
@@ -239,7 +238,7 @@ struct ScreenshotValidationTests {
                 NSColor.red.cgColor,
                 NSColor.yellow.cgColor,
                 NSColor.green.cgColor,
-                NSColor.blue.cgColor
+                NSColor.blue.cgColor,
             ]
             contentView.layer?.addSublayer(gradient)
         case let .text(string):
@@ -263,14 +262,14 @@ struct ScreenshotValidationTests {
     private func captureWindowToFile(
         windowID: CGWindowID,
         path: String,
-        format: ImageFormat
-    ) async throws -> ImageCaptureData {
+        format: ImageFormat) async throws -> ImageCaptureData
+    {
         // Use modern ScreenCaptureKit API instead of deprecated CGWindowListCreateImage
         let image = try await captureWindowWithScreenCaptureKit(windowID: windowID)
 
         // Save to file
         let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
-        try saveImage(nsImage, to: path, format: format)
+        try self.saveImage(nsImage, to: path, format: format)
 
         return ImageCaptureData(saved_files: [
             SavedFile(
@@ -279,8 +278,7 @@ struct ScreenshotValidationTests {
                 window_title: nil,
                 window_id: nil,
                 window_index: nil,
-                mime_type: format == .png ? "image/png" : "image/jpeg"
-            )
+                mime_type: format == .png ? "image/png" : "image/jpeg"),
         ])
     }
 
@@ -305,15 +303,14 @@ struct ScreenshotValidationTests {
         // Capture the image
         return try await SCScreenshotManager.captureImage(
             contentFilter: filter,
-            configuration: configuration
-        )
+            configuration: configuration)
     }
 
     private func captureDisplayToFile(
         displayID: CGDirectDisplayID,
         path: String,
-        format: ImageFormat
-    ) async throws -> ImageCaptureData {
+        format: ImageFormat) async throws -> ImageCaptureData
+    {
         let availableContent = try await SCShareableContent.current
 
         guard let scDisplay = availableContent.displays.first(where: { $0.displayID == displayID }) else {
@@ -329,11 +326,10 @@ struct ScreenshotValidationTests {
 
         let image = try await SCScreenshotManager.captureImage(
             contentFilter: filter,
-            configuration: configuration
-        )
+            configuration: configuration)
 
         let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
-        try saveImage(nsImage, to: path, format: format)
+        try self.saveImage(nsImage, to: path, format: format)
 
         return ImageCaptureData(saved_files: [
             SavedFile(
@@ -342,14 +338,14 @@ struct ScreenshotValidationTests {
                 window_title: nil,
                 window_id: nil,
                 window_index: nil,
-                mime_type: format == .png ? "image/png" : "image/jpeg"
-            )
+                mime_type: format == .png ? "image/png" : "image/jpeg"),
         ])
     }
 
     private func saveImage(_ image: NSImage, to path: String, format: ImageFormat) throws {
         guard let tiffData = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData) else {
+              let bitmap = NSBitmapImageRep(data: tiffData)
+        else {
             throw CaptureError.fileWriteError(path, nil)
         }
 

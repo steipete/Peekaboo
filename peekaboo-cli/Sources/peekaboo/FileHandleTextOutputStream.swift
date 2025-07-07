@@ -10,6 +10,6 @@ struct FileHandleTextOutputStream: TextOutputStream {
 
     mutating func write(_ string: String) {
         guard let data = string.data(using: .utf8) else { return }
-        fileHandle.write(data)
+        self.fileHandle.write(data)
     }
 }

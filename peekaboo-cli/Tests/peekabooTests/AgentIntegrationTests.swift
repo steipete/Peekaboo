@@ -1,16 +1,15 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("Agent Integration Tests", .tags(.integration))
+@Suite("Agent Integration Tests", .serialized, .tags(.integration))
 struct AgentIntegrationTests {
     // Only run these tests if explicitly enabled
     let runIntegrationTests = ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"
 
     @Test(
         "Agent can execute simple TextEdit task",
-        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
-    )
+        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
     func agentTextEditTask() async throws {
         guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
             throw TestError.missingAPIKey
@@ -24,7 +23,7 @@ struct AgentIntegrationTests {
             "agent",
             "Open TextEdit and type 'Peekaboo Agent Test'",
             "--json-output",
-            "--max-steps", "10"
+            "--max-steps", "10",
         ]
 
         // Execute the command
@@ -59,8 +58,7 @@ struct AgentIntegrationTests {
 
     @Test(
         "Agent handles window automation",
-        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
-    )
+        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
     func agentWindowAutomation() async throws {
         guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
             throw TestError.missingAPIKey
@@ -73,7 +71,7 @@ struct AgentIntegrationTests {
             "agent",
             "Open Safari, wait 2 seconds, then minimize it",
             "--json-output",
-            "--verbose"
+            "--verbose",
         ]
 
         let process = Process()
@@ -109,7 +107,7 @@ struct AgentIntegrationTests {
             "agent",
             "Click on all buttons in the current window",
             "--dry-run",
-            "--json-output"
+            "--json-output",
         ]
 
         let process = Process()
@@ -145,7 +143,7 @@ struct AgentIntegrationTests {
         // Direct invocation without "agent" subcommand
         let args = [
             "Take a screenshot of the current window",
-            "--json-output"
+            "--json-output",
         ]
 
         let process = Process()
@@ -177,7 +175,7 @@ struct AgentIntegrationTests {
             "agent",
             "Do 20 different things with various applications",
             "--max-steps", "3",
-            "--json-output"
+            "--json-output",
         ]
 
         let process = Process()

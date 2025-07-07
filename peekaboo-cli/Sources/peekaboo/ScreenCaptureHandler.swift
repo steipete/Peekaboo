@@ -11,9 +11,9 @@ struct ScreenCaptureHandler {
         let displays = try getActiveDisplays()
 
         if let screenIndex {
-            return try await captureSpecificScreen(displays: displays, screenIndex: screenIndex)
+            return try await self.captureSpecificScreen(displays: displays, screenIndex: screenIndex)
         } else {
-            return try await captureAllScreens(displays: displays)
+            return try await self.captureAllScreens(displays: displays)
         }
     }
 
@@ -21,7 +21,7 @@ struct ScreenCaptureHandler {
     private func getActiveDisplays() throws(CaptureError) -> [CGDirectDisplayID] {
         var displayCount: UInt32 = 0
         let result = CGGetActiveDisplayList(0, nil, &displayCount)
-        guard result == .success && displayCount > 0 else {
+        guard result == .success, displayCount > 0 else {
             throw CaptureError.noDisplaysAvailable
         }
 
@@ -37,36 +37,34 @@ struct ScreenCaptureHandler {
     /// Captures a specific screen by index
     private func captureSpecificScreen(
         displays: [CGDirectDisplayID],
-        screenIndex: Int
-    ) async throws(CaptureError) -> [SavedFile] {
-        if screenIndex >= 0 && screenIndex < displays.count {
+        screenIndex: Int) async throws(CaptureError) -> [SavedFile]
+    {
+        if screenIndex >= 0, screenIndex < displays.count {
             let displayID = displays[screenIndex]
             let labelSuffix = " (Index \(screenIndex))"
-            let isSingleCapture = displays.count == 1 || path != nil
-            return try await [captureSingleDisplay(
+            let isSingleCapture = displays.count == 1 || self.path != nil
+            return try await [self.captureSingleDisplay(
                 displayID: displayID,
                 index: screenIndex,
                 labelSuffix: labelSuffix,
-                isSingleCapture: isSingleCapture
-            )]
+                isSingleCapture: isSingleCapture)]
         } else {
             Logger.shared.debug("Screen index \(screenIndex) is out of bounds. Capturing all screens instead.")
             // When falling back to all screens, use fallback-aware capture to prevent filename conflicts
-            return try await captureAllScreensWithFallback(displays: displays)
+            return try await self.captureAllScreensWithFallback(displays: displays)
         }
     }
 
     /// Captures all screens
     private func captureAllScreens(displays: [CGDirectDisplayID]) async throws(CaptureError) -> [SavedFile] {
         var savedFiles: [SavedFile] = []
-        let isSingleCapture = displays.count == 1 && path != nil
+        let isSingleCapture = displays.count == 1 && self.path != nil
         for (index, displayID) in displays.enumerated() {
             let savedFile = try await captureSingleDisplay(
                 displayID: displayID,
                 index: index,
                 labelSuffix: "",
-                isSingleCapture: isSingleCapture
-            )
+                isSingleCapture: isSingleCapture)
             savedFiles.append(savedFile)
         }
         return savedFiles
@@ -74,15 +72,14 @@ struct ScreenCaptureHandler {
 
     /// Captures all screens with fallback naming
     private func captureAllScreensWithFallback(
-        displays: [CGDirectDisplayID]
-    ) async throws(CaptureError) -> [SavedFile] {
+        displays: [CGDirectDisplayID]) async throws(CaptureError) -> [SavedFile]
+    {
         var savedFiles: [SavedFile] = []
         for (index, displayID) in displays.enumerated() {
             let savedFile = try await captureSingleDisplayWithFallback(
                 displayID: displayID,
                 index: index,
-                labelSuffix: ""
-            )
+                labelSuffix: "")
             savedFiles.append(savedFile)
         }
         return savedFiles
@@ -93,16 +90,15 @@ struct ScreenCaptureHandler {
         displayID: CGDirectDisplayID,
         index: Int,
         labelSuffix: String,
-        isSingleCapture: Bool = false
-    ) async throws(CaptureError) -> SavedFile {
-        let fileName = FileNameGenerator.generateFileName(displayIndex: index, format: format)
+        isSingleCapture: Bool = false) async throws(CaptureError) -> SavedFile
+    {
+        let fileName = FileNameGenerator.generateFileName(displayIndex: index, format: self.format)
         let filePath = OutputPathResolver.getOutputPath(
-            basePath: path,
+            basePath: self.path,
             fileName: fileName,
-            isSingleCapture: isSingleCapture
-        )
+            isSingleCapture: isSingleCapture)
 
-        try await captureDisplay(displayID, to: filePath)
+        try await self.captureDisplay(displayID, to: filePath)
 
         return SavedFile(
             path: filePath,
@@ -110,25 +106,23 @@ struct ScreenCaptureHandler {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: format == .png ? "image/png" : "image/jpeg"
-        )
+            mime_type: self.format == .png ? "image/png" : "image/jpeg")
     }
 
     /// Captures a single display with fallback naming
     private func captureSingleDisplayWithFallback(
         displayID: CGDirectDisplayID,
         index: Int,
-        labelSuffix: String
-    ) async throws(CaptureError) -> SavedFile {
-        let fileName = FileNameGenerator.generateFileName(displayIndex: index, format: format)
+        labelSuffix: String) async throws(CaptureError) -> SavedFile
+    {
+        let fileName = FileNameGenerator.generateFileName(displayIndex: index, format: self.format)
         // Fallback mode means multiple screens, so never single capture
         let filePath = OutputPathResolver.getOutputPathWithFallback(
-            basePath: path,
+            basePath: self.path,
             fileName: fileName,
-            isSingleCapture: false
-        )
+            isSingleCapture: false)
 
-        try await captureDisplay(displayID, to: filePath)
+        try await self.captureDisplay(displayID, to: filePath)
 
         return SavedFile(
             path: filePath,
@@ -136,14 +130,13 @@ struct ScreenCaptureHandler {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: format == .png ? "image/png" : "image/jpeg"
-        )
+            mime_type: self.format == .png ? "image/png" : "image/jpeg")
     }
 
     /// Captures a display to the specified path
     private func captureDisplay(_ displayID: CGDirectDisplayID, to path: String) async throws(CaptureError) {
         do {
-            try await ScreenCapture.captureDisplay(displayID, to: path, format: format)
+            try await ScreenCapture.captureDisplay(displayID, to: path, format: self.format)
         } catch let error as CaptureError {
             // Re-throw CaptureError as-is
             throw error

@@ -1,7 +1,7 @@
 import AppKit
 import ApplicationServices
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import Foundation
 
 // MARK: - Verbose Protocol
@@ -36,9 +36,7 @@ func handleApplicationError(_ error: ApplicationError, jsonOutput: Bool) {
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: errorCode
-            )
-        )
+                code: errorCode))
         outputJSON(response)
     } else {
         print("❌ \(error.localizedDescription)")
@@ -51,9 +49,7 @@ func handleGenericError(_ error: Error, jsonOutput: Bool) {
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: .UNKNOWN_ERROR
-            )
-        )
+                code: .UNKNOWN_ERROR))
         outputJSON(response)
     } else {
         print("❌ Error: \(error.localizedDescription)")
@@ -66,9 +62,7 @@ func handleValidationError(_ error: Error, jsonOutput: Bool) {
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: .VALIDATION_ERROR
-            )
-        )
+                code: .VALIDATION_ERROR))
         outputJSON(response)
     } else {
         print("❌ \(error.localizedDescription)")

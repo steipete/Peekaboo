@@ -11,6 +11,13 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    // Run tests sequentially to avoid OS-level conflicts
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
     include: [
       "**/tests/unit/**/*.test.ts",
       // Include all integration tests

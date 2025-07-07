@@ -1,8 +1,8 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("Dock Command Tests")
+@Suite("Dock Command Tests", .serialized)
 struct DockCommandTests {
     @Test("Dock command exists")
     func dockCommandExists() {
@@ -78,20 +78,21 @@ struct DockCommandTests {
 
 // MARK: - Dock Command Integration Tests
 
-@Suite("Dock Command Integration Tests", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+@Suite("Dock Command Integration Tests", .serialized, .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
 struct DockCommandIntegrationTests {
     @Test("List Dock items")
     func listDockItems() async throws {
         let output = try await runCommand([
             "dock", "list",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
         #expect(data.success == true)
 
         if let dockData = data.data?.value as? [String: Any],
-           let items = dockData["items"] as? [[String: Any]] {
+           let items = dockData["items"] as? [[String: Any]]
+        {
             #expect(!items.isEmpty)
 
             // Check for common Dock items
@@ -105,7 +106,7 @@ struct DockCommandIntegrationTests {
         let output = try await runCommand([
             "dock", "click",
             "--app", "Finder",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -122,7 +123,7 @@ struct DockCommandIntegrationTests {
         // Hide Dock
         let hideOutput = try await runCommand([
             "dock", "hide",
-            "--json-output"
+            "--json-output",
         ])
 
         let hideData = try JSONDecoder().decode(JSONResponse.self, from: hideOutput.data(using: .utf8)!)
@@ -134,7 +135,7 @@ struct DockCommandIntegrationTests {
         // Show Dock
         let showOutput = try await runCommand([
             "dock", "show",
-            "--json-output"
+            "--json-output",
         ])
 
         let showData = try JSONDecoder().decode(JSONResponse.self, from: showOutput.data(using: .utf8)!)
@@ -146,7 +147,7 @@ struct DockCommandIntegrationTests {
         let output = try await runCommand([
             "dock", "right-click",
             "--app", "Finder",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -163,13 +164,14 @@ struct DockCommandIntegrationTests {
         let appsOutput = try await runCommand([
             "dock", "list",
             "--type", "apps",
-            "--json-output"
+            "--json-output",
         ])
 
         let appsData = try JSONDecoder().decode(JSONResponse.self, from: appsOutput.data(using: .utf8)!)
         if appsData.success {
             if let dockData = appsData.data?.value as? [String: Any],
-               let items = dockData["items"] as? [[String: Any]] {
+               let items = dockData["items"] as? [[String: Any]]
+            {
                 // All items should be applications
                 for item in items {
                     if let subrole = item["subrole"] as? String {

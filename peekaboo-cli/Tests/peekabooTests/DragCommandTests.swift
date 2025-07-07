@@ -1,8 +1,8 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("Drag Command Tests")
+@Suite("Drag Command Tests", .serialized)
 struct DragCommandTests {
     @Test("Drag command exists")
     func dragCommandExists() {
@@ -84,7 +84,7 @@ struct DragCommandTests {
 
 // MARK: - Drag Command Integration Tests
 
-@Suite("Drag Command Integration Tests", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+@Suite("Drag Command Integration Tests", .serialized, .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
 struct DragCommandIntegrationTests {
     @Test("Drag between coordinates")
     func dragBetweenCoordinates() async throws {
@@ -93,7 +93,7 @@ struct DragCommandIntegrationTests {
             "--from-coords", "100,100",
             "--to-coords", "300,300",
             "--duration", "500",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -115,7 +115,7 @@ struct DragCommandIntegrationTests {
             "--from", "B1",
             "--to-coords", "500,500",
             "--session", "test-session",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -132,7 +132,7 @@ struct DragCommandIntegrationTests {
             "--from-coords", "200,200",
             "--to-coords", "400,400",
             "--modifiers", "cmd,option",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -149,7 +149,7 @@ struct DragCommandIntegrationTests {
             "drag",
             "--from-coords", "100,100",
             "--to-app", "Trash",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -167,7 +167,7 @@ struct DragCommandIntegrationTests {
             "--from-coords", "50,50",
             "--to-coords", "150,150",
             "--duration", "2000",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)

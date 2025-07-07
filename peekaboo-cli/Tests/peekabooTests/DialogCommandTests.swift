@@ -1,8 +1,8 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("Dialog Command Tests")
+@Suite("Dialog Command Tests", .serialized)
 struct DialogCommandTests {
     @Test("Dialog command exists")
     func dialogCommandExists() {
@@ -90,14 +90,14 @@ struct DialogCommandTests {
 
 @Suite(
     "Dialog Command Integration Tests",
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
-)
+    .serialized,
+    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
 struct DialogCommandIntegrationTests {
     @Test("List active dialogs")
     func listActiveDialogs() async throws {
         let output = try await runCommand([
             "dialog", "list",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -118,7 +118,7 @@ struct DialogCommandIntegrationTests {
         let output = try await runCommand([
             "dialog", "click",
             "--button", "OK",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -134,7 +134,7 @@ struct DialogCommandIntegrationTests {
             "dialog", "input",
             "--text", "Test input",
             "--field", "Name",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -149,7 +149,7 @@ struct DialogCommandIntegrationTests {
         let output = try await runCommand([
             "dialog", "dismiss",
             "--force",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -167,7 +167,7 @@ struct DialogCommandIntegrationTests {
             "--path", "/tmp",
             "--name", "test.txt",
             "--select", "Save",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)

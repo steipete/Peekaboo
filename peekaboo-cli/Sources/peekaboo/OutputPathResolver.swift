@@ -8,37 +8,35 @@ struct OutputPathResolver: Sendable {
         basePath: String?,
         fileName: String,
         screenIndex: Int? = nil,
-        isSingleCapture: Bool = false
-    ) -> String {
+        isSingleCapture: Bool = false) -> String
+    {
         if let basePath {
-            validatePath(basePath)
-            return determineOutputPath(
+            self.validatePath(basePath)
+            return self.determineOutputPath(
                 basePath: basePath,
                 fileName: fileName,
                 screenIndex: screenIndex,
-                isSingleCapture: isSingleCapture
-            )
+                isSingleCapture: isSingleCapture)
         } else {
             let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
-            return handleDirectoryBasePath(basePath: defaultPath, fileName: fileName)
+            return self.handleDirectoryBasePath(basePath: defaultPath, fileName: fileName)
         }
     }
 
     static func getOutputPathWithFallback(
         basePath: String?,
         fileName: String,
-        isSingleCapture: Bool = false
-    ) -> String {
+        isSingleCapture: Bool = false) -> String
+    {
         if let basePath {
-            validatePath(basePath)
-            return determineOutputPathWithFallback(
+            self.validatePath(basePath)
+            return self.determineOutputPathWithFallback(
                 basePath: basePath,
                 fileName: fileName,
-                isSingleCapture: isSingleCapture
-            )
+                isSingleCapture: isSingleCapture)
         } else {
             let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
-            return handleDirectoryBasePath(basePath: defaultPath, fileName: fileName)
+            return self.handleDirectoryBasePath(basePath: defaultPath, fileName: fileName)
         }
     }
 
@@ -46,31 +44,30 @@ struct OutputPathResolver: Sendable {
         basePath: String,
         fileName: String,
         screenIndex: Int? = nil,
-        isSingleCapture: Bool = false
-    ) -> String {
+        isSingleCapture: Bool = false) -> String
+    {
         // Check if basePath looks like a file (has extension and doesn't end with /)
         // Exclude special directory cases like "." and ".."
         let isLikelyFile = basePath.contains(".") && !basePath.hasSuffix("/") &&
             basePath != "." && basePath != ".."
 
         if isLikelyFile {
-            return handleFileBasePath(
+            return self.handleFileBasePath(
                 basePath: basePath,
                 fileName: fileName,
-                isSingleCapture: isSingleCapture
-            )
+                isSingleCapture: isSingleCapture)
         } else {
-            return handleDirectoryBasePath(basePath: basePath, fileName: fileName)
+            return self.handleDirectoryBasePath(basePath: basePath, fileName: fileName)
         }
     }
 
     private static func handleFileBasePath(
         basePath: String,
         fileName: String,
-        isSingleCapture: Bool
-    ) -> String {
+        isSingleCapture: Bool) -> String
+    {
         // Create parent directory if needed
-        createParentDirectoryIfNeeded(for: basePath)
+        self.createParentDirectoryIfNeeded(for: basePath)
 
         // If this is a single capture, use the file path as-is without appending metadata
         if isSingleCapture {
@@ -89,14 +86,14 @@ struct OutputPathResolver: Sendable {
             // e.g., "Finder_window_0_20250610_052730.png" -> "_Finder_window_0_20250610_052730"
             let fileNameWithoutExt = (fileName as NSString).deletingPathExtension
             let suffix = "_" + fileNameWithoutExt
-            return safeCombineFilename(basePath: basePath, suffix: suffix, extension: pathExtension)
+            return self.safeCombineFilename(basePath: basePath, suffix: suffix, extension: pathExtension)
         } else if isScreenCapture {
             // Screen capture - modify filename to include screen info
             // Extract screen info from fileName (e.g., "screen_1_20250608_120000.png" -> "1_20250608_120000")
             let fileNameWithoutExt = (fileName as NSString).deletingPathExtension
             let replacedText = fileNameWithoutExt.replacingOccurrences(of: "screen_", with: "")
             let screenSuffix = "_" + replacedText
-            return safeCombineFilename(basePath: basePath, suffix: screenSuffix, extension: pathExtension)
+            return self.safeCombineFilename(basePath: basePath, suffix: screenSuffix, extension: pathExtension)
         }
 
         return basePath
@@ -108,8 +105,7 @@ struct OutputPathResolver: Sendable {
             try FileManager.default.createDirectory(
                 atPath: basePath,
                 withIntermediateDirectories: true,
-                attributes: nil
-            )
+                attributes: nil)
         } catch {
             // Log but don't fail - maybe directory already exists
             // Logger.debug("Could not create directory \(basePath): \(error)")
@@ -119,13 +115,12 @@ struct OutputPathResolver: Sendable {
 
     private static func createParentDirectoryIfNeeded(for path: String) {
         let parentDir = (path as NSString).deletingLastPathComponent
-        if !parentDir.isEmpty && parentDir != "/" {
+        if !parentDir.isEmpty, parentDir != "/" {
             do {
                 try FileManager.default.createDirectory(
                     atPath: parentDir,
                     withIntermediateDirectories: true,
-                    attributes: nil
-                )
+                    attributes: nil)
             } catch {
                 // Log but don't fail - maybe directory already exists
                 // Logger.debug("Could not create parent directory \(parentDir): \(error)")
@@ -136,8 +131,8 @@ struct OutputPathResolver: Sendable {
     static func determineOutputPathWithFallback(
         basePath: String,
         fileName: String,
-        isSingleCapture: Bool = false
-    ) -> String {
+        isSingleCapture: Bool = false) -> String
+    {
         // Check if basePath looks like a file (has extension and doesn't end with /)
         // Exclude special directory cases like "." and ".."
         let isLikelyFile = basePath.contains(".") && !basePath.hasSuffix("/") &&
@@ -145,7 +140,7 @@ struct OutputPathResolver: Sendable {
 
         if isLikelyFile {
             // Create parent directory if needed
-            createParentDirectoryIfNeeded(for: basePath)
+            self.createParentDirectoryIfNeeded(for: basePath)
 
             // If this is a single capture, use the file path as-is
             if isSingleCapture {
@@ -160,9 +155,9 @@ struct OutputPathResolver: Sendable {
             let fileNameWithoutExt = (fileName as NSString).deletingPathExtension
             let screenSuffix = "_" + fileNameWithoutExt.replacingOccurrences(of: "screen_", with: "")
 
-            return safeCombineFilename(basePath: basePath, suffix: screenSuffix, extension: pathExtension)
+            return self.safeCombineFilename(basePath: basePath, suffix: screenSuffix, extension: pathExtension)
         } else {
-            return handleDirectoryBasePath(basePath: basePath, fileName: fileName)
+            return self.handleDirectoryBasePath(basePath: basePath, fileName: fileName)
         }
     }
 
@@ -186,8 +181,8 @@ struct OutputPathResolver: Sendable {
     private static func safeCombineFilename(
         basePath: String,
         suffix: String,
-        extension pathExtension: String
-    ) -> String {
+        extension pathExtension: String) -> String
+    {
         let directory = (basePath as NSString).deletingLastPathComponent
         let pathWithoutExt = (basePath as NSString).deletingPathExtension
         let baseNameWithoutExt = pathWithoutExt.components(separatedBy: "/").last ?? "capture"
@@ -203,7 +198,7 @@ struct OutputPathResolver: Sendable {
         // Account for: suffix + extension + dot before extension + safety buffer
         let suffixLength = suffix.utf8.count
         let extensionLength = pathExtension.utf8.count + 1 // +1 for the dot
-        let maxBaseNameLength = maxFilenameLength - suffixLength - extensionLength - safetyBuffer
+        let maxBaseNameLength = self.maxFilenameLength - suffixLength - extensionLength - self.safetyBuffer
 
         // Ensure maxBaseNameLength is not negative
         guard maxBaseNameLength > 0 else {

@@ -1,6 +1,6 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("ConfigCommand Tests")
 struct ConfigCommandTests {
@@ -10,9 +10,9 @@ struct ConfigCommandTests {
         let configPath: URL
 
         init() throws {
-            tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-            configPath = tempDir.appendingPathComponent("config.json")
+            self.tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            try FileManager.default.createDirectory(at: self.tempDir, withIntermediateDirectories: true)
+            self.configPath = self.tempDir.appendingPathComponent("config.json")
         }
 
         @Test("Creates default configuration file")
@@ -93,19 +93,15 @@ struct ConfigCommandTests {
                 aiProviders: Configuration.AIProviderConfig(
                     providers: "openai/gpt-4o,ollama/llava:latest",
                     openaiApiKey: "test-key",
-                    ollamaBaseUrl: "http://localhost:11434"
-                ),
+                    ollamaBaseUrl: "http://localhost:11434"),
                 defaults: Configuration.DefaultsConfig(
                     savePath: "~/Desktop",
                     imageFormat: "png",
                     captureMode: "window",
-                    captureFocus: "auto"
-                ),
+                    captureFocus: "auto"),
                 logging: Configuration.LoggingConfig(
                     level: "debug",
-                    path: "~/logs/peekaboo.log"
-                )
-            )
+                    path: "~/logs/peekaboo.log"))
 
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -125,8 +121,7 @@ struct ConfigCommandTests {
             let config = Configuration(
                 aiProviders: nil,
                 defaults: Configuration.DefaultsConfig(savePath: "~/Desktop"),
-                logging: nil
-            )
+                logging: nil)
 
             let data = try JSONEncoder().encode(config)
             let decoded = try JSONDecoder().decode(Configuration.self, from: data)
@@ -144,7 +139,7 @@ struct ConfigCommandTests {
             ("// Single line comment\n{\"key\": \"value\"}", "\n{\"key\": \"value\"}"),
             ("/* Multi\nline\ncomment */\n{\"key\": \"value\"}", "\n{\"key\": \"value\"}"),
             ("{\"key\": \"value\" // inline comment\n}", "{\"key\": \"value\" \n}"),
-            ("{\"url\": \"http://example.com\"}", "{\"url\": \"http://example.com\"}") // Preserve URLs
+            ("{\"url\": \"http://example.com\"}", "{\"url\": \"http://example.com\"}"), // Preserve URLs
         ])
         func testStripJSONComments(input: String, expected: String) {
             let manager = ConfigurationManager.shared

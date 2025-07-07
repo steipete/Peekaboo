@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("Annotation Drawing Integration Tests", .serialized)
 struct AnnotationIntegrationTests {
@@ -37,8 +37,7 @@ struct AnnotationIntegrationTests {
             applicationName: "AnnotationTest",
             windowTitle: "Test Window",
             suggestedName: "test",
-            windowBounds: CGRect(x: 200, y: 300, width: 600, height: 400)
-        )
+            windowBounds: CGRect(x: 200, y: 300, width: 600, height: 400))
 
         // Verify window bounds are captured
         #expect(captureResult.windowBounds != nil)
@@ -96,7 +95,7 @@ struct AnnotationIntegrationTests {
 
         // Create a simple test image
         let imageSize = NSSize(width: 800, height: 600)
-        let testImage = createTestImage(size: imageSize)
+        let testImage = self.createTestImage(size: imageSize)
 
         // Define test elements with known positions
         let testElements: [String: SessionCache.SessionData.UIElement] = [
@@ -109,20 +108,20 @@ struct AnnotationIntegrationTests {
                 value: nil,
                 frame: CGRect(x: 100, y: 100, width: 120, height: 40),
                 isActionable: true
-            )
+            ),
         ]
 
         // Create annotated image
         let annotatedImage = try await drawAnnotations(
             on: testImage,
             elements: testElements,
-            windowBounds: CGRect(x: 0, y: 0, width: 800, height: 600)
-        )
+            windowBounds: CGRect(x: 0, y: 0, width: 800, height: 600))
 
         // Save for manual inspection if needed
         if let tiffData = annotatedImage.tiffRepresentation,
            let bitmap = NSBitmapImageRep(data: tiffData),
-           let pngData = bitmap.representation(using: .png, properties: [:]) {
+           let pngData = bitmap.representation(using: .png, properties: [:])
+        {
             try pngData.write(to: URL(fileURLWithPath: "/tmp/test-overlay-accuracy.png"))
         }
 
@@ -138,8 +137,7 @@ struct AnnotationIntegrationTests {
             contentRect: NSRect(x: position.x, y: position.y, width: 600, height: 400),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
-            defer: false
-        )
+            defer: false)
         window.title = "Annotation Test Window"
         window.makeKeyAndOrderFront(nil)
         return window
@@ -147,7 +145,7 @@ struct AnnotationIntegrationTests {
 
     @MainActor
     private func createTestWindowWithButton() -> NSWindow {
-        let window = createTestWindow(at: CGPoint(x: 300, y: 400))
+        let window = self.createTestWindow(at: CGPoint(x: 300, y: 400))
 
         // Add a button at a known position
         let button = NSButton(frame: NSRect(x: 50, y: 50, width: 100, height: 30))
@@ -179,8 +177,8 @@ struct AnnotationIntegrationTests {
     private func drawAnnotations(
         on image: NSImage,
         elements: [String: SessionCache.SessionData.UIElement],
-        windowBounds: CGRect?
-    ) async throws -> NSImage {
+        windowBounds: CGRect?) async throws -> NSImage
+    {
         let annotatedImage = NSImage(size: image.size)
         annotatedImage.lockFocus()
 
@@ -209,8 +207,7 @@ struct AnnotationIntegrationTests {
                 x: elementFrame.origin.x,
                 y: image.size.height - elementFrame.origin.y - elementFrame.height,
                 width: elementFrame.width,
-                height: elementFrame.height
-            )
+                height: elementFrame.height)
 
             // Draw overlay
             NSColor.systemBlue.withAlphaComponent(0.3).setFill()
@@ -225,7 +222,7 @@ struct AnnotationIntegrationTests {
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: NSFont.systemFont(ofSize: 12, weight: .medium),
                 .foregroundColor: NSColor.white,
-                .backgroundColor: NSColor.black.withAlphaComponent(0.8)
+                .backgroundColor: NSColor.black.withAlphaComponent(0.8),
             ]
 
             let label = element.id
@@ -234,8 +231,7 @@ struct AnnotationIntegrationTests {
                 x: drawRect.origin.x + 4,
                 y: drawRect.origin.y + drawRect.height - labelSize.height - 4,
                 width: labelSize.width + 8,
-                height: labelSize.height + 4
-            )
+                height: labelSize.height + 4)
 
             NSColor.black.withAlphaComponent(0.8).setFill()
             NSBezierPath(roundedRect: labelRect, xRadius: 3, yRadius: 3).fill()

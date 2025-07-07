@@ -26,8 +26,7 @@ struct RunCommand: AsyncParsableCommand {
 
             Each step in the script corresponds to a Peekaboo command
             (see, click, type, scroll, etc.) with its parameters.
-        """
-    )
+        """)
 
     @Argument(help: "Path to the script file (.peekaboo.json)")
     var scriptPath: String
@@ -54,22 +53,20 @@ struct RunCommand: AsyncParsableCommand {
             // Execute script
             let results = try await executeScript(
                 script,
-                failFast: !noFailFast,
-                verbose: verbose,
-                jsonOutput: jsonOutput
-            )
+                failFast: !self.noFailFast,
+                verbose: self.verbose,
+                jsonOutput: self.jsonOutput)
 
             // Prepare output
             let output = ScriptExecutionResult(
                 success: results.allSatisfy(\.success),
-                scriptPath: scriptPath,
+                scriptPath: self.scriptPath,
                 description: script.description,
                 totalSteps: script.steps.count,
                 completedSteps: results.count { $0.success },
                 failedSteps: results.count { !$0.success },
                 executionTime: Date().timeIntervalSince(startTime),
-                steps: results
-            )
+                steps: results)
 
             // Write output
             if let outputPath = self.output {
@@ -78,10 +75,10 @@ struct RunCommand: AsyncParsableCommand {
                 let data = try encoder.encode(output)
                 try data.write(to: URL(fileURLWithPath: outputPath))
 
-                if !verbose && !jsonOutput {
+                if !self.verbose, !self.jsonOutput {
                     print("✅ Script completed. Results saved to: \(outputPath)")
                 }
-            } else if jsonOutput {
+            } else if self.jsonOutput {
                 outputSuccessCodable(data: output)
             } else {
                 // Human-readable output
@@ -115,7 +112,7 @@ struct RunCommand: AsyncParsableCommand {
             }
 
         } catch {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(message: error.localizedDescription, code: .INVALID_ARGUMENT)
             } else {
                 print("❌ Error: \(error.localizedDescription)")
@@ -145,15 +142,15 @@ struct RunCommand: AsyncParsableCommand {
         _ script: PeekabooScript,
         failFast: Bool,
         verbose: Bool,
-        jsonOutput: Bool
-    ) async throws -> [StepResult] {
+        jsonOutput: Bool) async throws -> [StepResult]
+    {
         var results: [StepResult] = []
         var sessionId: String?
 
         for (index, step) in script.steps.enumerated() {
             let stepNumber = index + 1
 
-            if verbose && !jsonOutput {
+            if verbose, !jsonOutput {
                 print("\n🔄 Step \(stepNumber)/\(script.steps.count): \(step.command)")
                 if let comment = step.comment {
                     print("   💬 \(comment)")
@@ -166,8 +163,7 @@ struct RunCommand: AsyncParsableCommand {
                 // Execute the step
                 let (output, newSessionId) = try await executeStep(
                     step,
-                    currentSessionId: sessionId
-                )
+                    currentSessionId: sessionId)
 
                 // Update session ID if a new one was created
                 if let newId = newSessionId {
@@ -181,12 +177,11 @@ struct RunCommand: AsyncParsableCommand {
                     success: true,
                     output: output,
                     error: nil,
-                    executionTime: Date().timeIntervalSince(stepStartTime)
-                )
+                    executionTime: Date().timeIntervalSince(stepStartTime))
 
                 results.append(result)
 
-                if verbose && !jsonOutput {
+                if verbose, !jsonOutput {
                     print("   ✅ Step \(stepNumber) completed in \(String(format: "%.2f", result.executionTime))s")
                 }
 
@@ -198,12 +193,11 @@ struct RunCommand: AsyncParsableCommand {
                     success: false,
                     output: nil,
                     error: error.localizedDescription,
-                    executionTime: Date().timeIntervalSince(stepStartTime)
-                )
+                    executionTime: Date().timeIntervalSince(stepStartTime))
 
                 results.append(result)
 
-                if verbose && !jsonOutput {
+                if verbose, !jsonOutput {
                     print("   ❌ Step \(stepNumber) failed: \(error.localizedDescription)")
                 }
 
@@ -218,8 +212,8 @@ struct RunCommand: AsyncParsableCommand {
 
     private func executeStep(
         _ step: ScriptStep,
-        currentSessionId: String?
-    ) async throws -> (output: String?, sessionId: String?) {
+        currentSessionId: String?) async throws -> (output: String?, sessionId: String?)
+    {
         // Build command arguments
         var args = [step.command]
 
@@ -361,7 +355,8 @@ struct RunCommand: AsyncParsableCommand {
             if let data = output.data(using: .utf8),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let responseData = json["data"] as? [String: Any],
-               let sessionId = responseData["session_id"] as? String {
+               let sessionId = responseData["session_id"] as? String
+            {
                 newSessionId = sessionId
             }
         }
@@ -396,23 +391,23 @@ struct ScriptStep: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        stepId = try container.decode(String.self, forKey: .stepId)
-        comment = try container.decodeIfPresent(String.self, forKey: .comment)
-        command = try container.decode(String.self, forKey: .command)
+        self.stepId = try container.decode(String.self, forKey: .stepId)
+        self.comment = try container.decodeIfPresent(String.self, forKey: .comment)
+        self.command = try container.decode(String.self, forKey: .command)
 
         // Decode params as dictionary with Any values
         if let paramsContainer = try? container.decodeIfPresent([String: AnyCodable].self, forKey: .params) {
-            params = paramsContainer.mapValues { $0.value }
+            self.params = paramsContainer.mapValues { $0.value }
         } else {
-            params = nil
+            self.params = nil
         }
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(stepId, forKey: .stepId)
-        try container.encodeIfPresent(comment, forKey: .comment)
-        try container.encode(command, forKey: .command)
+        try container.encode(self.stepId, forKey: .stepId)
+        try container.encodeIfPresent(self.comment, forKey: .comment)
+        try container.encode(self.command, forKey: .command)
 
         if let params {
             let codableParams = params.mapValues { AnyCodable($0) }

@@ -1,8 +1,8 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("Menu Command Tests")
+@Suite("Menu Command Tests", .serialized)
 struct MenuCommandTests {
     @Test("Menu command exists")
     func menuCommandExists() {
@@ -85,7 +85,7 @@ struct MenuCommandTests {
 
 // MARK: - Menu Command Integration Tests
 
-@Suite("Menu Command Integration Tests", .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+@Suite("Menu Command Integration Tests", .serialized, .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
 struct MenuCommandIntegrationTests {
     @Test("Click menu item in Finder")
     func clickFinderMenuItem() async throws {
@@ -93,7 +93,7 @@ struct MenuCommandIntegrationTests {
             "menu", "click",
             "--app", "Finder",
             "--path", "View > Show Path Bar",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -105,7 +105,7 @@ struct MenuCommandIntegrationTests {
         let output = try await runCommand([
             "menu", "list",
             "--app", "Finder",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
@@ -113,7 +113,8 @@ struct MenuCommandIntegrationTests {
 
         if let menuData = data.data,
            let dict = menuData.value as? [String: Any],
-           let structure = dict["menu_structure"] as? [[String: Any]] {
+           let structure = dict["menu_structure"] as? [[String: Any]]
+        {
             #expect(!structure.isEmpty)
 
             // Check for standard menus
@@ -129,13 +130,13 @@ struct MenuCommandIntegrationTests {
         let output = try await runCommand([
             "menu", "click-system",
             "--title", "Notification Center",
-            "--json-output"
+            "--json-output",
         ])
 
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
         // System menu items might not always be available
         if !data.success {
-            #expect(data.error?.code == .MENU_ITEM_NOT_FOUND)
+            #expect(data.error?.code == "MENU_ITEM_NOT_FOUND")
         }
     }
 }

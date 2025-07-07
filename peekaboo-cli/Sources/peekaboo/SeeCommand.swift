@@ -1,6 +1,6 @@
 import AppKit
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import CoreGraphics
 import Foundation
 
@@ -26,8 +26,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             OUTPUT:
               Returns a session ID that can be used with click, type, and other
               interaction commands. Also outputs the screenshot path and UI analysis.
-        """
-    )
+        """)
 
     @Option(help: "Application name to capture")
     var app: String?
@@ -76,7 +75,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             // Intelligently determine mode if not specified
             let effectiveMode: CaptureMode = if let specifiedMode = mode {
                 specifiedMode
-            } else if app != nil || windowTitle != nil {
+            } else if self.app != nil || self.windowTitle != nil {
                 // If app or window title is specified, default to window mode
                 .window
             } else {
@@ -89,17 +88,17 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             switch effectiveMode {
             case .screen:
                 Logger.shared.verbose("Capturing entire screen")
-                captureResult = try await captureScreen()
+                captureResult = try await self.captureScreen()
             case .window:
                 if let appName = app {
-                    Logger.shared.verbose("Capturing window for app: \(appName), title: \(windowTitle ?? "any")")
-                    captureResult = try await captureWindow(app: appName, title: windowTitle)
+                    Logger.shared.verbose("Capturing window for app: \(appName), title: \(self.windowTitle ?? "any")")
+                    captureResult = try await self.captureWindow(app: appName, title: self.windowTitle)
                 } else {
                     throw ValidationError("--app is required for window mode")
                 }
             case .frontmost:
                 Logger.shared.verbose("Capturing frontmost window")
-                captureResult = try await captureFrontmost()
+                captureResult = try await self.captureFrontmost()
             }
 
             // Save screenshot (already saved during capture)
@@ -110,35 +109,32 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
                 path: outputPath,
                 application: captureResult.applicationName,
                 window: captureResult.windowTitle,
-                windowBounds: captureResult.windowBounds
-            )
+                windowBounds: captureResult.windowBounds)
 
             // Generate annotated screenshot if requested
             var annotatedPath: String?
-            if annotate {
-                annotatedPath = try await generateAnnotatedScreenshot(
+            if self.annotate {
+                annotatedPath = try await self.generateAnnotatedScreenshot(
                     originalPath: outputPath,
-                    sessionCache: sessionCache
-                )
+                    sessionCache: sessionCache)
             }
 
             // Perform AI analysis if requested
             var analysisResult: String?
             if let prompt = analyze {
-                analysisResult = try await performAnalysis(
+                analysisResult = try await self.performAnalysis(
                     imagePath: outputPath,
-                    prompt: prompt
-                )
+                    prompt: prompt)
             }
 
             // Load session data for output
             let sessionData = await sessionCache.load()
             let elementCount = sessionData?.uiMap.count ?? 0
-            let interactableCount = sessionData?.uiMap.values.filter { $0.isActionable }.count ?? 0
+            let interactableCount = sessionData?.uiMap.values.count(where: { $0.isActionable }) ?? 0
             let sessionPaths = await sessionCache.getSessionPaths()
 
             // Prepare output
-            if jsonOutput {
+            if self.jsonOutput {
                 // Build UI element summaries
                 let uiElements: [UIElementSummary] = sessionData?.uiMap.values.map { element in
                     UIElementSummary(
@@ -148,9 +144,25 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
                         label: element.label,
                         identifier: element.identifier,
                         is_actionable: element.isActionable,
-                        keyboard_shortcut: element.keyboardShortcut
-                    )
+                        keyboard_shortcut: element.keyboardShortcut)
                 } ?? []
+
+                // Build menu bar summary
+                let menuBarSummary: MenuBarSummary? = sessionData?.menuBar.map { menuBarData in
+                    MenuBarSummary(
+                        menus: menuBarData.menus.map { menu in
+                            MenuBarSummary.MenuSummary(
+                                title: menu.title,
+                                item_count: menu.items.count,
+                                enabled: menu.enabled,
+                                items: menu.items.map { item in
+                                    MenuBarSummary.MenuItemSummary(
+                                        title: item.title,
+                                        enabled: item.enabled,
+                                        keyboard_shortcut: item.keyboardShortcut)
+                                })
+                        })
+                }
 
                 let output = SeeResult(
                     session_id: sessionCache.sessionId,
@@ -164,8 +176,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
                     capture_mode: effectiveMode.rawValue,
                     analysis_result: analysisResult,
                     execution_time: Date().timeIntervalSince(startTime),
-                    ui_elements: uiElements
-                )
+                    ui_elements: uiElements,
+                    menu_bar: menuBarSummary)
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Screenshot captured successfully")
@@ -182,6 +194,16 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
                 if let window = captureResult.windowTitle {
                     print("🪟 Window: \(window)")
                 }
+
+                // Display menu bar info
+                if let menuBar = sessionData?.menuBar {
+                    print("📋 Menu bar: \(menuBar.menus.count) menus")
+                    for menu in menuBar.menus {
+                        if menu.enabled, !menu.items.isEmpty {
+                            print("   • \(menu.title) (\(menu.items.count) items)")
+                        }
+                    }
+                }
                 if let analysis = analysisResult {
                     print("🤖 Analysis:")
                     print(analysis)
@@ -190,7 +212,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             }
 
         } catch {
-            if jsonOutput {
+            if self.jsonOutput {
                 ImageErrorHandler.handleError(error, jsonOutput: true)
             } else {
                 ImageErrorHandler.handleError(error, jsonOutput: false)
@@ -201,7 +223,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
 
     private func captureScreen() async throws -> CaptureResult {
         let suggestedName = "screen_\(Date().timeIntervalSince1970)"
-        let outputPath = path ?? FileNameGenerator.generateFileName(format: .png)
+        let outputPath = self.path ?? FileNameGenerator.generateFileName(format: .png)
 
         // Get primary display
         let displayID = CGMainDisplayID()
@@ -212,8 +234,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             applicationName: nil,
             windowTitle: nil,
             suggestedName: suggestedName,
-            windowBounds: nil
-        )
+            windowBounds: nil)
     }
 
     @MainActor
@@ -251,11 +272,10 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
 
         let appName = appInfo.localizedName ?? "Unknown"
         let suggestedName = appName.lowercased().replacingOccurrences(of: " ", with: "_")
-        let outputPath = path ?? FileNameGenerator.generateFileName(
+        let outputPath = self.path ?? FileNameGenerator.generateFileName(
             appName: appName,
             windowTitle: targetWindow.title,
-            format: .png
-        )
+            format: .png)
 
         try await ScreenCapture.captureWindow(targetWindow, to: outputPath)
 
@@ -264,8 +284,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             applicationName: appName,
             windowTitle: targetWindow.title,
             suggestedName: suggestedName,
-            windowBounds: targetWindow.bounds
-        )
+            windowBounds: targetWindow.bounds)
     }
 
     @MainActor
@@ -273,7 +292,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         // Get the actual topmost visible window from all applications
         let options: CGWindowListOption = [.excludeDesktopElements, .optionOnScreenOnly]
         guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]],
-              !windowList.isEmpty else {
+              !windowList.isEmpty
+        else {
             throw CaptureError.windowNotFound
         }
 
@@ -286,7 +306,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
                   let pid = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
                   let title = windowInfo[kCGWindowName as String] as? String,
                   !title.isEmpty,
-                  let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any] else {
+                  let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any]
+            else {
                 continue
             }
 
@@ -318,11 +339,10 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
 
         let appName = app.localizedName ?? "Unknown"
         let suggestedName = appName.lowercased().replacingOccurrences(of: " ", with: "_")
-        let outputPath = path ?? FileNameGenerator.generateFileName(
+        let outputPath = self.path ?? FileNameGenerator.generateFileName(
             appName: appName,
             windowTitle: windowData.title,
-            format: .png
-        )
+            format: .png)
 
         // Create WindowData for capture
         let window = WindowData(
@@ -330,8 +350,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             title: windowData.title,
             bounds: windowData.bounds,
             isOnScreen: true,
-            windowIndex: 0
-        )
+            windowIndex: 0)
 
         try await ScreenCapture.captureWindow(window, to: outputPath)
 
@@ -340,8 +359,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             applicationName: appName,
             windowTitle: windowData.title,
             suggestedName: suggestedName,
-            windowBounds: windowData.bounds
-        )
+            windowBounds: windowData.bounds)
     }
 
     private func saveScreenshot(_ captureResult: CaptureResult) throws -> String {
@@ -351,8 +369,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
 
     private func generateAnnotatedScreenshot(
         originalPath: String,
-        sessionCache: SessionCache
-    ) async throws -> String {
+        sessionCache: SessionCache) async throws -> String
+    {
         // Load the session data to get UI elements
         guard let sessionData = await sessionCache.load() else {
             return originalPath
@@ -363,15 +381,14 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         let annotatedPath = sessionPaths.annotated
 
         // Create annotated image
-        try await createAnnotatedImage(
+        try await self.createAnnotatedImage(
             from: originalPath,
             to: annotatedPath,
             uiElements: sessionData.uiMap,
-            windowBounds: sessionData.windowBounds
-        )
+            windowBounds: sessionData.windowBounds)
 
         // Log annotation info only in non-JSON mode
-        if !jsonOutput {
+        if !self.jsonOutput {
             let interactableElements = sessionData.uiMap.values.filter(\.isActionable)
             print("📝 Created annotated screenshot with \(interactableElements.count) interactive elements")
         }
@@ -384,8 +401,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         from sourcePath: String,
         to destinationPath: String,
         uiElements: [String: SessionCache.SessionData.UIElement],
-        windowBounds: CGRect?
-    ) async throws {
+        windowBounds: CGRect?) async throws
+    {
         // Load the original image
         guard let nsImage = NSImage(contentsOfFile: sourcePath) else {
             throw CaptureError.fileIOError("Failed to load image from \(sourcePath)")
@@ -405,8 +422,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             isPlanar: false,
             colorSpaceName: .calibratedRGB,
             bytesPerRow: 0,
-            bitsPerPixel: 0
-        ) else {
+            bitsPerPixel: 0)
+        else {
             throw CaptureError.captureFailure("Failed to create bitmap representation")
         }
 
@@ -422,7 +439,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         let textAttributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: fontSize, weight: .medium),
             .foregroundColor: NSColor.white,
-            .backgroundColor: NSColor.black.withAlphaComponent(0.8)
+            .backgroundColor: NSColor.black.withAlphaComponent(0.8),
         ]
 
         // Role-based colors from spec
@@ -435,7 +452,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             "AXRadioButton": NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0), // #8E8E93
             "AXSlider": NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0), // #8E8E93
             "AXPopUpButton": NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
-            "AXComboBox": NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0) // #007AFF
+            "AXComboBox": NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
         ]
 
         // Draw UI elements
@@ -456,8 +473,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
                 x: elementFrame.origin.x,
                 y: imageSize.height - elementFrame.origin.y - elementFrame.height, // Flip Y coordinate
                 width: elementFrame.width,
-                height: elementFrame.height
-            )
+                height: elementFrame.height)
 
             color.withAlphaComponent(0.3).setFill()
             rect.fill()
@@ -476,8 +492,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
                 x: rect.origin.x + 4,
                 y: rect.origin.y + rect.height - textSize.height - 4,
                 width: textSize.width + 8,
-                height: textSize.height + 4
-            )
+                height: textSize.height + 4)
 
             // Draw label background
             NSColor.black.withAlphaComponent(0.8).setFill()
@@ -517,8 +532,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
 
         return try await analyzer.analyze(
             imageBase64: base64String,
-            question: prompt
-        )
+            question: prompt)
     }
 }
 
@@ -547,6 +561,7 @@ struct SeeResult: Codable {
     let analysis_result: String?
     let execution_time: TimeInterval
     let ui_elements: [UIElementSummary]
+    let menu_bar: MenuBarSummary?
     var success: Bool = true
 }
 
@@ -558,4 +573,21 @@ struct UIElementSummary: Codable {
     let identifier: String?
     let is_actionable: Bool
     let keyboard_shortcut: String?
+}
+
+struct MenuBarSummary: Codable {
+    let menus: [MenuSummary]
+
+    struct MenuSummary: Codable {
+        let title: String
+        let item_count: Int
+        let enabled: Bool
+        let items: [MenuItemSummary]
+    }
+
+    struct MenuItemSummary: Codable {
+        let title: String
+        let enabled: Bool
+        let keyboard_shortcut: String?
+    }
 }

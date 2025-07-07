@@ -1,8 +1,8 @@
 import AppKit
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("WindowManager Tests", .tags(.windowManager, .unit))
+@Suite("WindowManager Tests", .serialized, .tags(.windowManager, .unit))
 struct WindowManagerTests {
     // MARK: - Get Windows For App Tests
 
@@ -90,8 +90,7 @@ struct WindowManagerTests {
             pid: app.processIdentifier,
             includeOffScreen: false,
             includeBounds: true,
-            includeIDs: true
-        )
+            includeIDs: true)
 
         // Verify WindowInfo structure
         if let firstInfo = windowInfos.first {
@@ -109,9 +108,8 @@ struct WindowManagerTests {
             (includeOffScreen: true, includeBounds: true, includeIDs: true),
             (includeOffScreen: false, includeBounds: true, includeIDs: true),
             (includeOffScreen: true, includeBounds: false, includeIDs: true),
-            (includeOffScreen: true, includeBounds: true, includeIDs: false)
-        ]
-    )
+            (includeOffScreen: true, includeBounds: true, includeIDs: false),
+        ])
     func windowRetrievalOptions(includeOffScreen: Bool, includeBounds: Bool, includeIDs: Bool) throws {
         let apps = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular }
 
@@ -123,8 +121,7 @@ struct WindowManagerTests {
             pid: app.processIdentifier,
             includeOffScreen: includeOffScreen,
             includeBounds: includeBounds,
-            includeIDs: includeIDs
-        )
+            includeIDs: includeIDs)
 
         // Verify options are respected
         for info in windowInfos {
@@ -149,8 +146,7 @@ struct WindowManagerTests {
 
     @Test(
         "Window retrieval performance",
-        arguments: 1...5
-    )
+        arguments: 1...5)
     func getWindowsPerformance(iteration: Int) throws {
         // Test performance of getting windows
         let apps = NSWorkspace.shared.runningApplications
@@ -163,7 +159,7 @@ struct WindowManagerTests {
 
 // MARK: - Extended Window Manager Tests
 
-@Suite("WindowManager Advanced Tests", .tags(.windowManager, .integration))
+@Suite("WindowManager Advanced Tests", .serialized, .tags(.windowManager, .integration))
 struct WindowManagerAdvancedTests {
     @Test("Multiple apps window retrieval", .tags(.integration))
     func multipleAppsWindows() throws {
@@ -204,8 +200,7 @@ struct WindowManagerAdvancedTests {
 
     @Test(
         "System apps window detection",
-        arguments: ["com.apple.finder", "com.apple.dock", "com.apple.systemuiserver"]
-    )
+        arguments: ["com.apple.finder", "com.apple.dock", "com.apple.systemuiserver"])
     func systemAppsWindows(bundleId: String) throws {
         let apps = NSWorkspace.shared.runningApplications
 

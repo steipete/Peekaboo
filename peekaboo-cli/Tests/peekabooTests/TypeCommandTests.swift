@@ -1,8 +1,8 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("TypeCommand Tests")
+@Suite("TypeCommand Tests", .serialized)
 struct TypeCommandTests {
     @Test("Type command parses text argument")
     func parseTextArgument() throws {
@@ -21,7 +21,7 @@ struct TypeCommandTests {
             "--clear",
             "--return",
             "--delay", "100",
-            "--json-output"
+            "--json-output",
         ])
         #expect(command.text == "test text")
         #expect(command.clear == true)
@@ -34,7 +34,7 @@ struct TypeCommandTests {
         (["--return"], true, false, false, nil),
         (["--escape"], false, true, false, nil),
         (["--delete"], false, false, true, nil),
-        (["--tab", "3"], false, false, false, 3)
+        (["--tab", "3"], false, false, false, 3),
     ])
     func parseSpecialKeys(args: [String], hasReturn: Bool, hasEscape: Bool, hasDelete: Bool, tabCount: Int?) throws {
         let command = try TypeCommand.parse(args)
@@ -74,8 +74,7 @@ struct TypeCommandTests {
             typedText: "Hello, world!",
             keyPresses: 13,
             totalCharacters: 13,
-            executionTime: 0.65
-        )
+            executionTime: 0.65)
 
         #expect(result.success == true)
         #expect(result.typedText == "Hello, world!")
@@ -88,7 +87,7 @@ struct TypeCommandTests {
     func parseSessionId() throws {
         let command = try TypeCommand.parse([
             "test",
-            "--session", "12345"
+            "--session", "12345",
         ])
         #expect(command.text == "test")
         #expect(command.session == "12345")
@@ -106,7 +105,7 @@ struct TypeCommandTests {
         let command = try TypeCommand.parse([
             "username@example.com",
             "--tab", "1", // Must provide value for --tab
-            "--return"
+            "--return",
         ])
         #expect(command.text == "username@example.com")
         #expect(command.tab == 1)

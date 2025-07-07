@@ -1,6 +1,6 @@
 import ApplicationServices
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import Foundation
 
 struct DialogCommand: AsyncParsableCommand {
@@ -31,17 +31,15 @@ struct DialogCommand: AsyncParsableCommand {
             InputSubcommand.self,
             FileSubcommand.self,
             DismissSubcommand.self,
-            ListSubcommand.self
-        ]
-    )
+            ListSubcommand.self,
+        ])
 
     // MARK: - Click Dialog Button
 
     struct ClickSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "click",
-            abstract: "Click a button in a dialog"
-        )
+            abstract: "Click a button in a dialog")
 
         @Option(help: "Button text to click (e.g., 'OK', 'Cancel', 'Save')")
         var button: String
@@ -64,31 +62,30 @@ struct DialogCommand: AsyncParsableCommand {
                     btn.title() == button ||
                         btn.title()?.contains(button) == true
                 }) else {
-                    throw DialogError.buttonNotFound(button)
+                    throw DialogError.buttonNotFound(self.button)
                 }
 
                 // Click the button
                 try targetButton.performAction(.press)
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "action": "dialog_click",
-                            "button": targetButton.title() ?? button,
-                            "window": dialog.title() ?? "Dialog"
-                        ])
-                    )
+                            "button": targetButton.title() ?? self.button,
+                            "window": dialog.title() ?? "Dialog",
+                        ]))
                     outputJSON(response)
                 } else {
-                    print("✓ Clicked '\(targetButton.title() ?? button)' button")
+                    print("✓ Clicked '\(targetButton.title() ?? self.button)' button")
                 }
 
             } catch let error as DialogError {
                 handleDialogError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -98,8 +95,7 @@ struct DialogCommand: AsyncParsableCommand {
     struct InputSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "input",
-            abstract: "Enter text in a dialog field"
-        )
+            abstract: "Enter text in a dialog field")
 
         @Option(help: "Text to enter")
         var text: String
@@ -161,7 +157,7 @@ struct DialogCommand: AsyncParsableCommand {
                 try field.performAction(.press)
 
                 // Clear if requested
-                if clear {
+                if self.clear {
                     // Select all and delete
                     let selectAll = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: true) // A
                     selectAll?.flags = .maskCommand
@@ -172,22 +168,21 @@ struct DialogCommand: AsyncParsableCommand {
                 }
 
                 // Type the text
-                for char in text {
+                for char in self.text {
                     typeCharacter(char)
                     usleep(10000) // 10ms between characters
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "action": "dialog_input",
                             "field": field.title() ?? "Text Field",
-                            "text_length": text.count,
-                            "cleared": clear
-                        ])
-                    )
+                            "text_length": self.text.count,
+                            "cleared": self.clear,
+                        ]))
                     outputJSON(response)
                 } else {
                     print("✓ Entered text in '\(field.title() ?? "field")'")
@@ -196,7 +191,7 @@ struct DialogCommand: AsyncParsableCommand {
             } catch let error as DialogError {
                 handleDialogError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -206,8 +201,7 @@ struct DialogCommand: AsyncParsableCommand {
     struct FileSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "file",
-            abstract: "Handle file save/open dialogs"
-        )
+            abstract: "Handle file save/open dialogs")
 
         @Option(help: "Full file path to navigate to")
         var path: String?
@@ -278,28 +272,27 @@ struct DialogCommand: AsyncParsableCommand {
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "action": "file_dialog",
                             "path": path,
                             "name": name,
-                            "button_clicked": select
-                        ])
-                    )
+                            "button_clicked": select,
+                        ]))
                     outputJSON(response)
                 } else {
                     print("✓ Handled file dialog")
                     if let p = path { print("  Path: \(p)") }
                     if let n = name { print("  Name: \(n)") }
-                    print("  Action: \(select)")
+                    print("  Action: \(self.select)")
                 }
 
             } catch let error as DialogError {
                 handleDialogError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -309,8 +302,7 @@ struct DialogCommand: AsyncParsableCommand {
     struct DismissSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "dismiss",
-            abstract: "Dismiss a dialog"
-        )
+            abstract: "Dismiss a dialog")
 
         @Flag(help: "Force dismiss with Escape key")
         var force = false
@@ -324,20 +316,19 @@ struct DialogCommand: AsyncParsableCommand {
         @MainActor
         mutating func run() async throws {
             do {
-                if force {
+                if self.force {
                     // Press Escape
                     let escape = CGEvent(keyboardEventSource: nil, virtualKey: 0x35, keyDown: true) // Escape
                     escape?.post(tap: .cghidEventTap)
 
                     // Output result
-                    if jsonOutput {
+                    if self.jsonOutput {
                         let response = JSONResponse(
                             success: true,
                             data: AnyCodable([
                                 "action": "dialog_dismiss",
-                                "method": "escape"
-                            ])
-                        )
+                                "method": "escape",
+                            ]))
                         outputJSON(response)
                     } else {
                         print("✓ Dismissed dialog with Escape")
@@ -357,15 +348,14 @@ struct DialogCommand: AsyncParsableCommand {
                             clicked = true
 
                             // Output result
-                            if jsonOutput {
+                            if self.jsonOutput {
                                 let response = JSONResponse(
                                     success: true,
                                     data: AnyCodable([
                                         "action": "dialog_dismiss",
                                         "method": "button",
-                                        "button": buttonName
-                                    ])
-                                )
+                                        "button": buttonName,
+                                    ]))
                                 outputJSON(response)
                             } else {
                                 print("✓ Dismissed dialog by clicking '\(buttonName)'")
@@ -382,7 +372,7 @@ struct DialogCommand: AsyncParsableCommand {
             } catch let error as DialogError {
                 handleDialogError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -392,8 +382,7 @@ struct DialogCommand: AsyncParsableCommand {
     struct ListSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
-            abstract: "List elements in current dialog"
-        )
+            abstract: "List elements in current dialog")
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
@@ -407,7 +396,7 @@ struct DialogCommand: AsyncParsableCommand {
                 // Collect dialog information
                 var dialogInfo: [String: Any] = [
                     "title": dialog.title() ?? "Untitled Dialog",
-                    "role": dialog.role() ?? "Unknown"
+                    "role": dialog.role() ?? "Unknown",
                 ]
 
                 // Get buttons
@@ -420,7 +409,7 @@ struct DialogCommand: AsyncParsableCommand {
                     [
                         "title": field.title() ?? "",
                         "value": field.value() as? String ?? "",
-                        "placeholder": field.attribute(Attribute<String>("AXPlaceholderValue")) ?? ""
+                        "placeholder": field.attribute(Attribute<String>("AXPlaceholderValue")) ?? "",
                     ]
                 }
 
@@ -429,11 +418,10 @@ struct DialogCommand: AsyncParsableCommand {
                 dialogInfo["text_elements"] = staticTexts.compactMap { $0.value() as? String }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
-                        data: AnyCodable(dialogInfo)
-                    )
+                        data: AnyCodable(dialogInfo))
                     outputJSON(response)
                 } else {
                     print("Dialog: \(dialogInfo["title"] ?? "Untitled")")
@@ -461,7 +449,7 @@ struct DialogCommand: AsyncParsableCommand {
             } catch let error as DialogError {
                 handleDialogError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -485,7 +473,7 @@ private func findDialog(withTitle title: String?) throws -> Element {
         let subrole = window.subrole() ?? ""
 
         // Check if it's a dialog-like window
-        if role == "AXWindow" && (subrole == "AXDialog" || subrole == "AXSystemDialog") {
+        if role == "AXWindow", subrole == "AXDialog" || subrole == "AXSystemDialog" {
             if let targetTitle = title {
                 if window.title() == targetTitle {
                     return window
@@ -578,7 +566,7 @@ private func typeCharacter(_ char: Character) {
         ".": (0x2F, false),
         "/": (0x2C, false),
         "-": (0x1B, false),
-        "_": (0x1B, true)
+        "_": (0x1B, true),
     ]
 
     if let (keyCode, needsShift) = keyMap[char] {
@@ -667,9 +655,7 @@ private func handleDialogError(_ error: DialogError, jsonOutput: Bool) {
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: ErrorCode(rawValue: error.errorCode) ?? .UNKNOWN_ERROR
-            )
-        )
+                code: ErrorCode(rawValue: error.errorCode) ?? .UNKNOWN_ERROR))
         outputJSON(response)
     } else {
         print("❌ \(error.localizedDescription)")

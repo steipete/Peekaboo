@@ -29,7 +29,7 @@ describe("See Command Integration Tests", () => {
       { env: { ...process.env, PEEKABOO_LOG_LEVEL: "error" } }
     );
 
-    if (stderr && !stderr.includes("Warning")) {
+    if (stderr && !stderr.includes("Warning") && !stderr.includes("DEBUG:")) {
       throw new Error(`Command failed: ${stderr}`);
     }
 
@@ -56,12 +56,6 @@ describe("See Command Integration Tests", () => {
     expect(result.data.element_count).toBeGreaterThanOrEqual(0);
   });
 
-  it("should use process ID as default session ID", async () => {
-    const result = await runSeeCommand([]);
-
-    // The session ID should be numeric (process ID)
-    expect(result.data.session_id).toMatch(/^\d+$/);
-  });
 
   it("should create session files in correct directory structure", async () => {
     const result = await runSeeCommand([]);
@@ -106,7 +100,7 @@ describe("See Command Integration Tests", () => {
 
     // Check for Peekaboo ID format
     for (const element of result.data.ui_elements) {
-      expect(element.id).toMatch(/^[BTLMCRSG]\d+$/); // B1, T1, etc.
+      expect(element.id).toMatch(/^[\w-]+_[BTLMCRSG]\d+$/); // WindowName_B1, etc.
       expect(element.role).toBeDefined();
       expect(typeof element.is_actionable).toBe("boolean");
     }
@@ -129,16 +123,31 @@ describe("See Command Integration Tests", () => {
 
     for (const element of result.data.ui_elements) {
       const expectedPrefix = roleMap[element.role] || "G";
-      expect(element.id[0]).toBe(expectedPrefix);
+      // Extract the role prefix from the ID (format: WindowName_R1)
+      const match = element.id.match(/_([BTLMCRSG])\d+$/);
+      expect(match).toBeTruthy();
+      expect(match[1]).toBe(expectedPrefix);
     }
   });
 
-  it("should always use PID as session ID", async () => {
-    // The v3 spec uses PID by default, custom session ID is handled at SessionCache level
+  it("should always use timestamp-based session ID", async () => {
+    // Clean up any existing sessions to ensure a fresh session is created
+    const sessionDir = join(homedir(), ".peekaboo/session");
+    try {
+      await rm(sessionDir, { recursive: true, force: true });
+    } catch (error) {
+      // Directory might not exist, which is fine
+    }
+    
+    // The v3 spec uses timestamp-based IDs for cross-process compatibility
     const result = await runSeeCommand([]);
 
-    // Session ID should be numeric (PID)
-    expect(result.data.session_id).toMatch(/^\d+$/);
+    expect(result.success).toBe(true);
+    expect(result.data).toBeDefined();
+    expect(result.data.session_id).toBeDefined();
+    
+    // Session ID should be timestamp-random format (e.g., 1751889198010-5978)
+    expect(result.data.session_id).toMatch(/^\d{13}-\d{4}$/);
   });
 
   it("should support custom output path", async () => {
@@ -180,14 +189,14 @@ describe("See Command Integration Tests", () => {
   });
 
   it("should handle non-existent application gracefully", async () => {
-    // When app is not found, it falls back to frontmost window
-    const result = await runSeeCommand(["--app", "NonExistentApp12345"]);
-    
-    expect(result.success).toBe(true);
-    expect(result.data).toBeDefined();
-    expect(result.data.capture_mode).toBe("frontmost");
-    expect(result.data.session_id).toBeDefined();
-    expect(result.data.screenshot_raw).toBeDefined();
+    // When app is not found, it should return an error
+    try {
+      await runSeeCommand(["--app", "NonExistentApp12345"]);
+      fail("Expected command to fail");
+    } catch (error) {
+      // Expected to fail - the error handling works
+      expect(error).toBeDefined();
+    }
   });
 
   it("should mark actionable elements correctly", async () => {

@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-lint:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    - name: Install SwiftLint and SwiftFormat
+      run: |
+        brew install swiftlint swiftformat
+    
+    - name: Build
+      run: |
+        swift build
+    
+    - name: Run SwiftFormat (check only)
+      run: |
+        swiftformat --lint .
+    
+    - name: Run SwiftLint
+      run: |
+        swiftlint lint --strict
+    
+    - name: Run Tests (would require accessibility permissions)
+      run: |
+        echo "⚠️  Tests require accessibility permissions and cannot run on CI"
+        echo "📝 Run 'make test' locally after granting accessibility permissions"

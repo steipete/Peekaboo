@@ -6,8 +6,8 @@ struct FileNameGenerator: Sendable {
         appName: String? = nil,
         windowIndex: Int? = nil,
         windowTitle: String? = nil,
-        format: ImageFormat
-    ) -> String {
+        format: ImageFormat) -> String
+    {
         let timestamp = DateFormatter.timestamp.string(from: Date())
         let ext = format.rawValue
 

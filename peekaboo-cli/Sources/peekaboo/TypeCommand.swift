@@ -1,5 +1,5 @@
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import CoreGraphics
 import Foundation
 
@@ -33,8 +33,7 @@ struct TypeCommand: AsyncParsableCommand {
             FOCUS MANAGEMENT:
               The command assumes an element is already focused.
               Use 'click' to focus an input field first.
-        """
-    )
+        """)
 
     @Argument(help: "Text to type")
     var text: String?
@@ -70,7 +69,7 @@ struct TypeCommand: AsyncParsableCommand {
             var actions: [TypeAction] = []
 
             // Build action sequence
-            if clear {
+            if self.clear {
                 actions.append(.clear)
             }
 
@@ -84,15 +83,15 @@ struct TypeCommand: AsyncParsableCommand {
                 }
             }
 
-            if escape {
+            if self.escape {
                 actions.append(.key(.escape))
             }
 
-            if delete {
+            if self.delete {
                 actions.append(.key(.delete))
             }
 
-            if `return` {
+            if self.return {
                 actions.append(.key(.return))
             }
 
@@ -104,18 +103,16 @@ struct TypeCommand: AsyncParsableCommand {
             // Execute type actions
             let typeResult = try await performTypeActions(
                 actions: actions,
-                delayMs: delay
-            )
+                delayMs: delay)
 
             // Output results
-            if jsonOutput {
+            if self.jsonOutput {
                 let output = TypeResult(
                     success: true,
                     typedText: text,
                     keyPresses: typeResult.keyPresses,
                     totalCharacters: typeResult.totalCharacters,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
+                    executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Typing completed")
@@ -130,11 +127,10 @@ struct TypeCommand: AsyncParsableCommand {
             }
 
         } catch {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
-                    code: .INTERNAL_SWIFT_ERROR
-                )
+                    code: .INTERNAL_SWIFT_ERROR)
             } else {
                 var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
                 print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
@@ -180,8 +176,7 @@ struct TypeCommand: AsyncParsableCommand {
 
         return InternalTypeResult(
             totalCharacters: totalChars,
-            keyPresses: keyPresses
-        )
+            keyPresses: keyPresses)
     }
 
     private func typeSpecialKey(_ key: SpecialKey) async throws {

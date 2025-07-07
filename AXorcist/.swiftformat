@@ -1,0 +1,15 @@
+# SwiftFormat configuration file
+
+# Set Swift version
+--swiftversion 5.9
+
+# Enable only safe formatting rules
+--rules trailingSpace,linebreakAtEndOfFile,consecutiveSpaces,duplicateImports,sortImports,indent
+
+# Indentation
+--indent 4
+
+# Exclude specific files/directories
+--exclude Pods
+--exclude .build
+--exclude Package.swift

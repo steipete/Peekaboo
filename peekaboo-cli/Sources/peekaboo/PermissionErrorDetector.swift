@@ -15,7 +15,7 @@ struct PermissionErrorDetector: Sendable {
             let screenCaptureKitDomains = [
                 "com.apple.screencapturekit",
                 "com.apple.screencapturekit.stream",
-                "SCStreamErrorDomain"
+                "SCStreamErrorDomain",
             ]
 
             if screenCaptureKitDomains.contains(nsError.domain) {
@@ -26,26 +26,27 @@ struct PermissionErrorDetector: Sendable {
             }
 
             // CoreGraphics error codes for screen capture
-            if nsError.domain == "com.apple.coregraphics" && nsError.code == 1002 {
+            if nsError.domain == "com.apple.coregraphics", nsError.code == 1002 {
                 // kCGErrorCannotComplete when permissions are denied
                 return true
             }
 
             // CGWindow errors
-            if nsError.domain == "com.apple.coreanimation" && nsError.code == 32 {
+            if nsError.domain == "com.apple.coreanimation", nsError.code == 32 {
                 return true
             }
 
             // Security error domain with specific code
-            if nsError.domain == "NSOSStatusErrorDomain" && nsError.code == -25201 {
+            if nsError.domain == "NSOSStatusErrorDomain", nsError.code == -25201 {
                 // errSecPrivacyViolation
                 return true
             }
         }
 
         // Only consider it a permission error if it mentions both "permission" and capture-related terms
-        if errorString.contains("permission") &&
-            (errorString.contains("capture") || errorString.contains("recording") || errorString.contains("screen")) {
+        if errorString.contains("permission"),
+           errorString.contains("capture") || errorString.contains("recording") || errorString.contains("screen")
+        {
             return true
         }
 

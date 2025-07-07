@@ -1,5 +1,5 @@
-@testable import peekaboo
 import XCTest
+@testable import peekaboo
 
 final class AIProviderTests: XCTestCase {
     // MARK: - AIProviderConfig Tests
@@ -81,8 +81,7 @@ final class AIProviderTests: XCTestCase {
         let provider = MockSuccessProvider(
             name: "test",
             model: "test-model",
-            mockResponse: "Test analysis result"
-        )
+            mockResponse: "Test analysis result")
 
         XCTAssertEqual(provider.name, "test")
         XCTAssertEqual(provider.model, "test-model")
@@ -101,8 +100,7 @@ final class AIProviderTests: XCTestCase {
 
     func testMockFailureProvider() async throws {
         let provider = MockFailureProvider(
-            error: .apiKeyMissing("Test API key error")
-        )
+            error: .apiKeyMissing("Test API key error"))
 
         let isAvailable = await provider.isAvailable
         XCTAssertFalse(isAvailable)

@@ -38,26 +38,24 @@ struct PermissionsCommand: AsyncParsableCommand {
         EXIT STATUS:
           0  All required permissions granted
           1  Missing required permissions
-        """
-    )
+        """)
 
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
     func run() async throws {
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         let screenRecording = PermissionsChecker.checkScreenRecordingPermission()
         let accessibility = PermissionsChecker.checkAccessibilityPermission()
 
         let permissions = ServerPermissions(
             screen_recording: screenRecording,
-            accessibility: accessibility
-        )
+            accessibility: accessibility)
 
         let data = ServerStatusData(permissions: permissions)
 
-        if jsonOutput {
+        if self.jsonOutput {
             outputSuccess(data: data)
         } else {
             print("Peekaboo Permissions Status:")

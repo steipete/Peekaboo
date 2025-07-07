@@ -18,7 +18,7 @@ enum AIProviderFactory {
 
     static func createProviders(from environmentVariable: String?) -> [AIProvider] {
         let configs = parseAIProviders(from: environmentVariable)
-        return configs.compactMap { createProvider(from: $0) }
+        return configs.compactMap { self.createProvider(from: $0) }
     }
 
     static func getDefaultModel(for provider: String) -> String {
@@ -44,8 +44,8 @@ enum AIProviderFactory {
     static func determineProvider(
         requestedType: String?,
         requestedModel: String?,
-        configuredProviders: [AIProvider]
-    ) async throws -> AIProvider {
+        configuredProviders: [AIProvider]) async throws -> AIProvider
+    {
         let providerType = requestedType ?? "auto"
 
         if providerType != "auto" {
@@ -54,16 +54,14 @@ enum AIProviderFactory {
                 $0.name.lowercased() == providerType.lowercased()
             }) else {
                 throw AIProviderError.notConfigured(
-                    "Provider '\(providerType)' is not enabled in PEEKABOO_AI_PROVIDERS configuration"
-                )
+                    "Provider '\(providerType)' is not enabled in PEEKABOO_AI_PROVIDERS configuration")
             }
 
             // Check if provider is available
             let status = await provider.checkAvailability()
             if !status.available {
                 throw AIProviderError.notConfigured(
-                    "Provider '\(providerType)' is configured but not currently available: \(status.error ?? "Unknown error")"
-                )
+                    "Provider '\(providerType)' is configured but not currently available: \(status.error ?? "Unknown error")")
             }
 
             // If a specific model was requested, we'd need to create a new instance
@@ -74,8 +72,7 @@ enum AIProviderFactory {
         // Auto mode - find first available provider
         guard let availableProvider = await findAvailableProvider(from: configuredProviders) else {
             throw AIProviderError.notConfigured(
-                "No configured AI providers are currently operational"
-            )
+                "No configured AI providers are currently operational")
         }
 
         return availableProvider

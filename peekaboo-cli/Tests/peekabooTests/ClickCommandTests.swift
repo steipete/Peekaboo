@@ -1,9 +1,9 @@
 import CoreGraphics
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("ClickCommand Tests")
+@Suite("ClickCommand Tests", .serialized)
 struct ClickCommandTests {
     @Test("Click command parses query argument")
     func parseQueryArgument() throws {
@@ -39,7 +39,7 @@ struct ClickCommandTests {
             "--session", "test-123",
             "--wait-for", "10000",
             "--double",
-            "--json-output"
+            "--json-output",
         ])
         #expect(command.query == "Submit")
         #expect(command.session == "test-123")
@@ -64,8 +64,7 @@ struct ClickCommandTests {
             clickedElement: "AXButton: Save",
             clickLocation: CGPoint(x: 150.0, y: 250.0),
             waitTime: 1.5,
-            executionTime: 2.0
-        )
+            executionTime: 2.0)
 
         #expect(result.success == true)
         #expect(result.clickedElement == "AXButton: Save")

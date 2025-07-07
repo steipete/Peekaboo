@@ -1,7 +1,7 @@
 import AppKit
 import ApplicationServices
 import ArgumentParser
-import AXorcist
+import AXorcistLib
 import Foundation
 
 struct AppCommand: AsyncParsableCommand {
@@ -34,17 +34,15 @@ struct AppCommand: AsyncParsableCommand {
             HideSubcommand.self,
             UnhideSubcommand.self,
             SwitchSubcommand.self,
-            ListSubcommand.self
-        ]
-    )
+            ListSubcommand.self,
+        ])
 
     // MARK: - Launch Application
 
     struct LaunchSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "launch",
-            abstract: "Launch an application"
-        )
+            abstract: "Launch an application")
 
         @Argument(help: "Application name or path")
         var app: String
@@ -75,7 +73,7 @@ struct AppCommand: AsyncParsableCommand {
                 if let bundleId {
                     if let url = workspace.urlForApplication(withBundleIdentifier: bundleId) {
                         let config = NSWorkspace.OpenConfiguration()
-                        config.activates = !background
+                        config.activates = !self.background
 
                         launchedApp = try await workspace.openApplication(at: url, configuration: config)
                         launched = true
@@ -84,7 +82,7 @@ struct AppCommand: AsyncParsableCommand {
                     }
                 } else {
                     // Try to find app by name
-                    let appName = app.hasSuffix(".app") ? app : "\(app).app"
+                    let appName = self.app.hasSuffix(".app") ? self.app : "\(self.app).app"
 
                     // Check common locations
                     let searchPaths = [
@@ -92,7 +90,7 @@ struct AppCommand: AsyncParsableCommand {
                         "/System/Applications",
                         "/Applications/Utilities",
                         "~/Applications",
-                        "/System/Library/CoreServices"
+                        "/System/Library/CoreServices",
                     ]
 
                     for path in searchPaths {
@@ -102,7 +100,7 @@ struct AppCommand: AsyncParsableCommand {
                         if FileManager.default.fileExists(atPath: appPath) {
                             let url = URL(fileURLWithPath: appPath)
                             let config = NSWorkspace.OpenConfiguration()
-                            config.activates = !background
+                            config.activates = !self.background
 
                             launchedApp = try await workspace.openApplication(at: url, configuration: config)
                             launched = true
@@ -111,38 +109,37 @@ struct AppCommand: AsyncParsableCommand {
                     }
 
                     if !launched {
-                        throw AppError.applicationNotFound(app)
+                        throw AppError.applicationNotFound(self.app)
                     }
                 }
 
                 // Wait until ready if requested
-                if waitUntilReady, let runningApp = launchedApp {
+                if self.waitUntilReady, let runningApp = launchedApp {
                     let startTime = Date()
                     let timeoutInterval = TimeInterval(timeout) / 1000.0
 
                     while !runningApp.isFinishedLaunching {
                         if Date().timeIntervalSince(startTime) > timeoutInterval {
-                            throw AppError.launchTimeout(app)
+                            throw AppError.launchTimeout(self.app)
                         }
                         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
                     }
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "action": "launch",
-                            "app": (launchedApp?.localizedName ?? app) as Any,
+                            "app": (launchedApp?.localizedName ?? self.app) as Any,
                             "bundle_id": (launchedApp?.bundleIdentifier ?? bundleId ?? "") as Any,
                             "pid": (launchedApp?.processIdentifier ?? 0) as Any,
-                            "activated": !background
-                        ])
-                    )
+                            "activated": !self.background,
+                        ]))
                     outputJSON(response)
                 } else {
-                    print("✓ Launched \(launchedApp?.localizedName ?? app)")
+                    print("✓ Launched \(launchedApp?.localizedName ?? self.app)")
                     if let pid = launchedApp?.processIdentifier {
                         print("  PID: \(pid)")
                     }
@@ -151,7 +148,7 @@ struct AppCommand: AsyncParsableCommand {
             } catch let error as AppError {
                 handleAppError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -161,8 +158,7 @@ struct AppCommand: AsyncParsableCommand {
     struct QuitSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "quit",
-            abstract: "Quit an application"
-        )
+            abstract: "Quit an application")
 
         @Option(help: "Application to quit")
         var app: String?
@@ -181,7 +177,7 @@ struct AppCommand: AsyncParsableCommand {
 
         @MainActor
         mutating func run() async throws {
-            guard app != nil || all else {
+            guard self.app != nil || self.all else {
                 throw ValidationError("Must specify either --app or --all")
             }
 
@@ -189,10 +185,11 @@ struct AppCommand: AsyncParsableCommand {
                 let workspace = NSWorkspace.shared
                 var quitApps: [NSRunningApplication] = []
 
-                if all {
+                if self.all {
                     // Get all running applications
                     let allApps = workspace.runningApplications
-                    let exceptions = except?.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } ?? []
+                    let exceptions = self.except?.split(separator: ",")
+                        .map { $0.trimmingCharacters(in: .whitespaces) } ?? []
 
                     quitApps = allApps.filter { app in
                         // Skip system apps and exceptions
@@ -201,7 +198,8 @@ struct AppCommand: AsyncParsableCommand {
 
                         // Always skip Finder and our own app
                         if bundleId == "com.apple.finder" || app.processIdentifier == ProcessInfo.processInfo
-                            .processIdentifier {
+                            .processIdentifier
+                        {
                             return false
                         }
 
@@ -228,25 +226,24 @@ struct AppCommand: AsyncParsableCommand {
                 var quitResults: [[String: Any]] = []
 
                 for app in quitApps {
-                    let success = force ? app.forceTerminate() : app.terminate()
+                    let success = self.force ? app.forceTerminate() : app.terminate()
                     quitResults.append([
                         "app": app.localizedName ?? "Unknown",
                         "bundle_id": app.bundleIdentifier ?? "",
                         "pid": app.processIdentifier,
-                        "success": success
+                        "success": success,
                     ])
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "action": "quit",
                             "force": force,
-                            "quit_apps": quitResults
-                        ])
-                    )
+                            "quit_apps": quitResults,
+                        ]))
                     outputJSON(response)
                 } else {
                     for result in quitResults {
@@ -263,7 +260,7 @@ struct AppCommand: AsyncParsableCommand {
             } catch let error as AppError {
                 handleAppError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -273,8 +270,7 @@ struct AppCommand: AsyncParsableCommand {
     struct HideSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "hide",
-            abstract: "Hide an application"
-        )
+            abstract: "Hide an application")
 
         @Option(help: "Application to hide")
         var app: String
@@ -290,7 +286,7 @@ struct AppCommand: AsyncParsableCommand {
             do {
                 let (app, _) = try await findApplication(identifier: app)
 
-                if others {
+                if self.others {
                     // Hide other applications
                     try app.performAction(Attribute<String>("AXHideOthers"))
                 } else {
@@ -299,17 +295,16 @@ struct AppCommand: AsyncParsableCommand {
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "action": others ? "hide_others" : "hide",
-                            "app": app.title() ?? self.app
-                        ])
-                    )
+                            "app": app.title() ?? self.app,
+                        ]))
                     outputJSON(response)
                 } else {
-                    if others {
+                    if self.others {
                         print("✓ Hid all other applications")
                     } else {
                         print("✓ Hid \(app.title() ?? self.app)")
@@ -319,7 +314,7 @@ struct AppCommand: AsyncParsableCommand {
             } catch let error as ApplicationError {
                 handleApplicationError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -329,8 +324,7 @@ struct AppCommand: AsyncParsableCommand {
     struct UnhideSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "unhide",
-            abstract: "Show a hidden application"
-        )
+            abstract: "Show a hidden application")
 
         @Option(help: "Application to show")
         var app: String?
@@ -343,24 +337,23 @@ struct AppCommand: AsyncParsableCommand {
 
         @MainActor
         mutating func run() async throws {
-            guard app != nil || all else {
+            guard self.app != nil || self.all else {
                 throw ValidationError("Must specify either --app or --all")
             }
 
             do {
-                if all {
+                if self.all {
                     // Show all applications
                     let systemWide = Element.systemWide()
                     try systemWide.performAction(Attribute<String>("AXShowAll"))
 
                     // Output result
-                    if jsonOutput {
+                    if self.jsonOutput {
                         let response = JSONResponse(
                             success: true,
                             data: AnyCodable([
-                                "action": "unhide_all"
-                            ])
-                        )
+                                "action": "unhide_all",
+                            ]))
                         outputJSON(response)
                     } else {
                         print("✓ Showed all hidden applications")
@@ -370,14 +363,13 @@ struct AppCommand: AsyncParsableCommand {
                     try app.performAction(.unhide)
 
                     // Output result
-                    if jsonOutput {
+                    if self.jsonOutput {
                         let response = JSONResponse(
                             success: true,
                             data: AnyCodable([
                                 "action": "unhide",
-                                "app": app.title() ?? appName
-                            ])
-                        )
+                                "app": app.title() ?? appName,
+                            ]))
                         outputJSON(response)
                     } else {
                         print("✓ Showed \(app.title() ?? appName)")
@@ -387,7 +379,7 @@ struct AppCommand: AsyncParsableCommand {
             } catch let error as ApplicationError {
                 handleApplicationError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -397,8 +389,7 @@ struct AppCommand: AsyncParsableCommand {
     struct SwitchSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "switch",
-            abstract: "Switch to another application"
-        )
+            abstract: "Switch to another application")
 
         @Option(name: .long, help: "Application to switch to")
         var to: String?
@@ -414,15 +405,15 @@ struct AppCommand: AsyncParsableCommand {
 
         @MainActor
         mutating func run() async throws {
-            guard to != nil || cycle else {
+            guard self.to != nil || self.cycle else {
                 throw ValidationError("Must specify either --to or --cycle")
             }
 
             do {
-                if cycle {
+                if self.cycle {
                     // Simulate Cmd+Tab or Cmd+Shift+Tab
                     let keyCode: CGKeyCode = 0x30 // Tab
-                    let flags: CGEventFlags = reverse ? [.maskCommand, .maskShift] : [.maskCommand]
+                    let flags: CGEventFlags = self.reverse ? [.maskCommand, .maskShift] : [.maskCommand]
 
                     let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true)
                     let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
@@ -434,17 +425,16 @@ struct AppCommand: AsyncParsableCommand {
                     keyUp?.post(tap: .cghidEventTap)
 
                     // Output result
-                    if jsonOutput {
+                    if self.jsonOutput {
                         let response = JSONResponse(
                             success: true,
                             data: AnyCodable([
                                 "action": "cycle",
-                                "direction": reverse ? "backward" : "forward"
-                            ])
-                        )
+                                "direction": reverse ? "backward" : "forward",
+                            ]))
                         outputJSON(response)
                     } else {
-                        print("✓ Cycled to \(reverse ? "previous" : "next") application")
+                        print("✓ Cycled to \(self.reverse ? "previous" : "next") application")
                     }
                 } else if let appName = to {
                     let (app, _) = try await findApplication(identifier: appName)
@@ -453,27 +443,27 @@ struct AppCommand: AsyncParsableCommand {
                     if let pid = app.pid() {
                         let workspace = NSWorkspace.shared
                         if let runningApp = workspace.runningApplications
-                            .first(where: { $0.processIdentifier == pid }) {
+                            .first(where: { $0.processIdentifier == pid })
+                        {
                             runningApp.activate()
 
                             // Wait for activation
                             let startTime = Date()
-                            while !runningApp.isActive && Date().timeIntervalSince(startTime) < 2.0 {
+                            while !runningApp.isActive, Date().timeIntervalSince(startTime) < 2.0 {
                                 try await Task.sleep(nanoseconds: 100_000_000) // 100ms
                             }
                         }
                     }
 
                     // Output result
-                    if jsonOutput {
+                    if self.jsonOutput {
                         let response = JSONResponse(
                             success: true,
                             data: AnyCodable([
                                 "action": "switch",
                                 "app": app.title() ?? appName as Any,
-                                "pid": app.pid() ?? 0 as Any
-                            ])
-                        )
+                                "pid": app.pid() ?? 0 as Any,
+                            ]))
                         outputJSON(response)
                     } else {
                         print("✓ Switched to \(app.title() ?? appName)")
@@ -483,7 +473,7 @@ struct AppCommand: AsyncParsableCommand {
             } catch let error as ApplicationError {
                 handleApplicationError(error, jsonOutput: jsonOutput)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
             }
         }
     }
@@ -493,8 +483,7 @@ struct AppCommand: AsyncParsableCommand {
     struct ListSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
-            abstract: "List running applications"
-        )
+            abstract: "List running applications")
 
         @Flag(help: "Include hidden applications")
         var includeHidden = false
@@ -510,11 +499,11 @@ struct AppCommand: AsyncParsableCommand {
             var apps = workspace.runningApplications
 
             // Filter applications
-            if !includeBackground {
+            if !self.includeBackground {
                 apps = apps.filter { $0.activationPolicy == .regular }
             }
 
-            if !includeHidden {
+            if !self.includeHidden {
                 apps = apps.filter { !$0.isHidden }
             }
 
@@ -531,19 +520,18 @@ struct AppCommand: AsyncParsableCommand {
                     "pid": app.processIdentifier,
                     "active": app.isActive,
                     "hidden": app.isHidden,
-                    "icon": app.icon != nil
+                    "icon": app.icon != nil,
                 ]
             }
 
             // Output result
-            if jsonOutput {
+            if self.jsonOutput {
                 let response = JSONResponse(
                     success: true,
                     data: AnyCodable([
                         "applications": appData,
-                        "count": appData.count
-                    ])
-                )
+                        "count": appData.count,
+                    ]))
                 outputJSON(response)
             } else {
                 print("Running applications:")
@@ -609,9 +597,7 @@ private func handleAppError(_ error: AppError, jsonOutput: Bool) {
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: ErrorCode(rawValue: error.errorCode) ?? .UNKNOWN_ERROR
-            )
-        )
+                code: ErrorCode(rawValue: error.errorCode) ?? .UNKNOWN_ERROR))
         outputJSON(response)
     } else {
         print("❌ \(error.localizedDescription)")

@@ -25,8 +25,7 @@ struct CleanCommand: AsyncParsableCommand {
               - raw.png: Original screenshot
               - annotated.png: Screenshot with UI markers (if generated)
               - map.json: UI element mapping data
-        """
-    )
+        """)
 
     @Flag(help: "Remove all session data")
     var allSessions = false
@@ -48,10 +47,10 @@ struct CleanCommand: AsyncParsableCommand {
 
         do {
             // Determine cache directory
-            let cacheDir = getCacheDirectory()
+            let cacheDir = self.getCacheDirectory()
 
             // Validate options
-            let optionCount = [allSessions, olderThan != nil, session != nil].count { $0 }
+            let optionCount = [allSessions, olderThan != nil, self.session != nil].count { $0 }
             guard optionCount == 1 else {
                 throw ValidationError("Specify exactly one of: --all-sessions, --older-than, or --session")
             }
@@ -59,27 +58,30 @@ struct CleanCommand: AsyncParsableCommand {
             // Perform cleanup based on option
             let result: CleanResult
 
-            if allSessions {
-                result = try await cleanAllSessions(cacheDir: cacheDir, dryRun: dryRun)
+            if self.allSessions {
+                result = try await self.cleanAllSessions(cacheDir: cacheDir, dryRun: self.dryRun)
             } else if let hours = olderThan {
-                result = try await cleanOldSessions(cacheDir: cacheDir, hours: hours, dryRun: dryRun)
+                result = try await self.cleanOldSessions(cacheDir: cacheDir, hours: hours, dryRun: self.dryRun)
             } else if let sessionId = session {
-                result = try await cleanSpecificSession(cacheDir: cacheDir, sessionId: sessionId, dryRun: dryRun)
+                result = try await self.cleanSpecificSession(
+                    cacheDir: cacheDir,
+                    sessionId: sessionId,
+                    dryRun: self.dryRun)
             } else {
                 throw ValidationError("No cleanup option specified")
             }
 
             // Output results
-            if jsonOutput {
+            if self.jsonOutput {
                 var output = result
                 output.executionTime = Date().timeIntervalSince(startTime)
                 outputSuccessCodable(data: output)
             } else {
-                printResults(result, dryRun: dryRun, executionTime: Date().timeIntervalSince(startTime))
+                self.printResults(result, dryRun: self.dryRun, executionTime: Date().timeIntervalSince(startTime))
             }
 
         } catch {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(message: error.localizedDescription, code: .INTERNAL_SWIFT_ERROR)
             } else {
                 var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
@@ -98,8 +100,7 @@ struct CleanCommand: AsyncParsableCommand {
         var result = CleanResult(
             sessionsRemoved: 0,
             bytesFreed: 0,
-            sessionDetails: []
-        )
+            sessionDetails: [])
 
         guard FileManager.default.fileExists(atPath: cacheDir.path) else {
             return result
@@ -108,8 +109,7 @@ struct CleanCommand: AsyncParsableCommand {
         let sessionDirs = try FileManager.default.contentsOfDirectory(
             at: cacheDir,
             includingPropertiesForKeys: [.creationDateKey, .fileSizeKey],
-            options: .skipsHiddenFiles
-        )
+            options: .skipsHiddenFiles)
 
         for sessionDir in sessionDirs {
             guard sessionDir.hasDirectoryPath else { continue }
@@ -121,8 +121,7 @@ struct CleanCommand: AsyncParsableCommand {
                 sessionId: sessionId,
                 path: sessionDir.path,
                 size: sessionSize,
-                creationDate: sessionDir.resourceValues(forKeys: [.creationDateKey]).creationDate
-            )
+                creationDate: sessionDir.resourceValues(forKeys: [.creationDateKey]).creationDate)
 
             result.sessionDetails.append(detail)
             result.sessionsRemoved += 1
@@ -140,8 +139,7 @@ struct CleanCommand: AsyncParsableCommand {
         var result = CleanResult(
             sessionsRemoved: 0,
             bytesFreed: 0,
-            sessionDetails: []
-        )
+            sessionDetails: [])
 
         guard FileManager.default.fileExists(atPath: cacheDir.path) else {
             return result
@@ -152,8 +150,7 @@ struct CleanCommand: AsyncParsableCommand {
         let sessionDirs = try FileManager.default.contentsOfDirectory(
             at: cacheDir,
             includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey],
-            options: .skipsHiddenFiles
-        )
+            options: .skipsHiddenFiles)
 
         for sessionDir in sessionDirs {
             guard sessionDir.hasDirectoryPath else { continue }
@@ -169,8 +166,7 @@ struct CleanCommand: AsyncParsableCommand {
                     sessionId: sessionId,
                     path: sessionDir.path,
                     size: sessionSize,
-                    creationDate: modDate
-                )
+                    creationDate: modDate)
 
                 result.sessionDetails.append(detail)
                 result.sessionsRemoved += 1
@@ -189,13 +185,13 @@ struct CleanCommand: AsyncParsableCommand {
         var result = CleanResult(
             sessionsRemoved: 0,
             bytesFreed: 0,
-            sessionDetails: []
-        )
+            sessionDetails: [])
 
         let sessionDir = cacheDir.appendingPathComponent(sessionId)
 
         guard FileManager.default.fileExists(atPath: sessionDir.path) else {
-            throw ValidationError("Session '\(sessionId)' not found")
+            // Return empty result instead of throwing error for non-existent session
+            return result
         }
 
         let sessionSize = try calculateDirectorySize(sessionDir)
@@ -204,8 +200,7 @@ struct CleanCommand: AsyncParsableCommand {
             sessionId: sessionId,
             path: sessionDir.path,
             size: sessionSize,
-            creationDate: sessionDir.resourceValues(forKeys: [.creationDateKey]).creationDate
-        )
+            creationDate: sessionDir.resourceValues(forKeys: [.creationDateKey]).creationDate)
 
         result.sessionDetails.append(detail)
         result.sessionsRemoved = 1
@@ -224,8 +219,7 @@ struct CleanCommand: AsyncParsableCommand {
         let enumerator = FileManager.default.enumerator(
             at: directory,
             includingPropertiesForKeys: [.fileSizeKey],
-            options: [.skipsHiddenFiles]
-        )
+            options: [.skipsHiddenFiles])
 
         while let fileURL = enumerator?.nextObject() as? URL {
             let fileSize = try fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
@@ -246,12 +240,12 @@ struct CleanCommand: AsyncParsableCommand {
         } else {
             let action = dryRun ? "Would remove" : "Removed"
             print("🗑️  \(action) \(result.sessionsRemoved) session\(result.sessionsRemoved == 1 ? "" : "s")")
-            print("💾 Space \(dryRun ? "to be freed" : "freed"): \(formatBytes(result.bytesFreed))")
+            print("💾 Space \(dryRun ? "to be freed" : "freed"): \(self.formatBytes(result.bytesFreed))")
 
             if result.sessionDetails.count <= 5 {
                 print("\nSessions:")
                 for detail in result.sessionDetails {
-                    print("  - \(detail.sessionId) (\(formatBytes(detail.size)))")
+                    print("  - \(detail.sessionId) (\(self.formatBytes(detail.size)))")
                 }
             }
         }

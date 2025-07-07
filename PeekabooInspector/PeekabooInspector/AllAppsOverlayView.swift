@@ -2,16 +2,25 @@ import SwiftUI
 
 struct AllAppsOverlayView: View {
     @ObservedObject var overlayManager: OverlayManager
-    
+
     private func shouldShowElement(_ element: OverlayManager.UIElement) -> Bool {
         guard element.isActionable else { return false }
-        
-        switch overlayManager.detailLevel {
+
+        switch self.overlayManager.detailLevel {
         case .essential:
             // Only show buttons, links, text fields
-            return ["AXButton", "AXLink", "AXTextField", "AXTextArea", 
-                   "AXCheckBox", "AXRadioButton", "AXPopUpButton", 
-                   "AXComboBox", "AXSlider", "AXMenuItem"].contains(element.role)
+            return [
+                "AXButton",
+                "AXLink",
+                "AXTextField",
+                "AXTextArea",
+                "AXCheckBox",
+                "AXRadioButton",
+                "AXPopUpButton",
+                "AXComboBox",
+                "AXSlider",
+                "AXMenuItem",
+            ].contains(element.role)
         case .moderate:
             // Show everything except groups
             return element.role != "AXGroup"
@@ -20,40 +29,40 @@ struct AllAppsOverlayView: View {
             return true
         }
     }
-    
+
     var body: some View {
         ZStack {
             // Debug: Remove tint, window is confirmed visible
             Color.clear
                 .contentShape(Rectangle())
                 .allowsHitTesting(false)
-            
+
             // Only show overlays when active
-            if overlayManager.isOverlayActive {
+            if self.overlayManager.isOverlayActive {
                 // Debug text to verify rendering
                 VStack {
-                    Text("Overlay Active - \(overlayManager.applications.count) apps")
+                    Text("Overlay Active - \(self.overlayManager.applications.count) apps")
                         .font(.largeTitle)
                         .foregroundColor(.red)
                         .background(Color.white)
-                    Text("Total elements: \(overlayManager.applications.reduce(0) { $0 + $1.elements.filter { shouldShowElement($0) }.count })")
+                    Text(
+                        "Total elements: \(self.overlayManager.applications.reduce(0) { $0 + $1.elements.count(where: { self.shouldShowElement($0) }) })")
                         .font(.title)
                         .foregroundColor(.red)
                         .background(Color.white)
                 }
                 .position(x: 400, y: 100)
-                
+
                 // Show overlays for all applications
-                ForEach(overlayManager.applications) { app in
+                ForEach(self.overlayManager.applications) { app in
                     // Show overlays based on detail level
-                    ForEach(app.elements.filter { shouldShowElement($0) }) { element in
-                        let isHovered = overlayManager.hoveredElement?.id == element.id
-                        
+                    ForEach(app.elements.filter { self.shouldShowElement($0) }) { element in
+                        let isHovered = self.overlayManager.hoveredElement?.id == element.id
+
                         ElementOverlay(
                             element: element,
-                            isHovered: isHovered
-                        )
-                        .allowsHitTesting(false)
+                            isHovered: isHovered)
+                            .allowsHitTesting(false)
                     }
                 }
             }

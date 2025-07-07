@@ -1,6 +1,6 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("SeeCommand Tests", .serialized)
 struct SeeCommandTests {
@@ -21,7 +21,7 @@ struct SeeCommandTests {
             "--app", "Safari",
             "--path", "/tmp/screenshot.png",
             "--annotate",
-            "--json-output"
+            "--json-output",
         ])
         #expect(command.app == "Safari")
         #expect(command.path == "/tmp/screenshot.png")
@@ -32,7 +32,7 @@ struct SeeCommandTests {
     @Test("See command handles different capture modes", arguments: [
         "screen",
         "window",
-        "frontmost"
+        "frontmost",
     ])
     func parseCaptureMode(modeString: String) throws {
         let command = try SeeCommand.parse(["--mode", modeString])
@@ -59,8 +59,10 @@ struct SeeCommandTests {
             id: "B1",
             role: "AXButton",
             title: "Save",
-            is_actionable: true
-        )
+            label: nil,
+            identifier: nil,
+            is_actionable: true,
+            keyboard_shortcut: nil)
 
         let result = SeeResult(
             session_id: "test-123",
@@ -74,8 +76,8 @@ struct SeeCommandTests {
             capture_mode: "frontmost",
             analysis_result: nil,
             execution_time: 1.5,
-            ui_elements: [element]
-        )
+            ui_elements: [element],
+            menu_bar: nil)
 
         #expect(result.session_id == "test-123")
         #expect(result.screenshot_raw == "/tmp/screenshot.png")
@@ -104,7 +106,7 @@ struct SeeCommandTests {
     @Test("See command with analyze option")
     func parseAnalyzeOption() throws {
         let command = try SeeCommand.parse([
-            "--analyze", "What is shown in this screenshot?"
+            "--analyze", "What is shown in this screenshot?",
         ])
         #expect(command.analyze == "What is shown in this screenshot?")
     }
@@ -113,7 +115,7 @@ struct SeeCommandTests {
     func parseWindowTitle() throws {
         let command = try SeeCommand.parse([
             "--app", "Safari",
-            "--window-title", "GitHub"
+            "--window-title", "GitHub",
         ])
         #expect(command.app == "Safari")
         #expect(command.windowTitle == "GitHub")

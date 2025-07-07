@@ -1,9 +1,9 @@
 import AppKit
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
-@Suite("PID Targeting Tests")
+@Suite("PID Targeting Tests", .serialized)
 struct PIDTargetingTests {
     @Test("Find application by valid PID", .enabled(if: ProcessInfo.processInfo.environment["CI"] == nil))
     func findByValidPID() throws {
@@ -34,7 +34,7 @@ struct PIDTargetingTests {
             "PID:abc", // Non-numeric PID
             "PID:-123", // Negative PID
             "PID:12.34", // Decimal PID
-            "PID:999999999" // Very large PID (likely non-existent)
+            "PID:999999999", // Very large PID (likely non-existent)
         ]
 
         for invalidPID in invalidPIDs {
@@ -56,8 +56,7 @@ struct PIDTargetingTests {
             // The message should contain information about the PID
             #expect(
                 message.contains("99999") || message == identifier,
-                "Error message '\(message)' should mention PID 99999"
-            )
+                "Error message '\(message)' should mention PID 99999")
         } catch {
             Issue.record("Unexpected error: \(error)")
         }

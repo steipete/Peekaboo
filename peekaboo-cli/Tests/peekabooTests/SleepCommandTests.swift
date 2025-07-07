@@ -1,6 +1,6 @@
 import Foundation
-@testable import peekaboo
 import Testing
+@testable import peekaboo
 
 @Suite("SleepCommand Tests")
 struct SleepCommandTests {
@@ -30,8 +30,7 @@ struct SleepCommandTests {
         let result = SleepResult(
             success: true,
             requested_duration: 1000,
-            actual_duration: 1001
-        )
+            actual_duration: 1001)
 
         #expect(result.success == true)
         #expect(result.requested_duration == 1000)
@@ -67,7 +66,7 @@ struct SleepCommandTests {
             (500, 0.5),
             (1000, 1.0),
             (1500, 1.5),
-            (10000, 10.0)
+            (10000, 10.0),
         ]
 
         for testCase in testCases {
