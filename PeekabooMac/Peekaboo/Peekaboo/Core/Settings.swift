@@ -14,15 +14,23 @@ final class Settings {
 
     var temperature: Double = 0.7 {
         didSet {
-            self.temperature = max(0, min(1, self.temperature))
-            self.save()
+            let clamped = max(0, min(1, temperature))
+            if temperature != clamped {
+                self.temperature = clamped
+            } else {
+                self.save()
+            }
         }
     }
 
     var maxTokens: Int = 16384 {
         didSet {
-            self.maxTokens = max(1, min(128_000, self.maxTokens))
-            self.save()
+            let clamped = max(1, min(128_000, maxTokens))
+            if maxTokens != clamped {
+                self.maxTokens = clamped
+            } else {
+                self.save()
+            }
         }
     }
 
