@@ -32,18 +32,35 @@ struct GeneralSettingsView: View {
     @Environment(Settings.self) private var settings
 
     var body: some View {
-        @Bindable var settings = settings
         Form {
             Section {
-                Toggle("Launch at login", isOn: $settings.launchAtLogin)
-                Toggle("Show in Dock", isOn: $settings.showInDock)
-                Toggle("Keep window on top", isOn: $settings.alwaysOnTop)
+                Toggle("Launch at login", isOn: Binding(
+                    get: { settings.launchAtLogin },
+                    set: { settings.launchAtLogin = $0 }
+                ))
+                Toggle("Show in Dock", isOn: Binding(
+                    get: { settings.showInDock },
+                    set: { settings.showInDock = $0 }
+                ))
+                Toggle("Keep window on top", isOn: Binding(
+                    get: { settings.alwaysOnTop },
+                    set: { settings.alwaysOnTop = $0 }
+                ))
             }
 
             Section("Features") {
-                Toggle("Enable voice activation", isOn: $settings.voiceActivationEnabled)
-                Toggle("Enable haptic feedback", isOn: $settings.hapticFeedbackEnabled)
-                Toggle("Enable sound effects", isOn: $settings.soundEffectsEnabled)
+                Toggle("Enable voice activation", isOn: Binding(
+                    get: { settings.voiceActivationEnabled },
+                    set: { settings.voiceActivationEnabled = $0 }
+                ))
+                Toggle("Enable haptic feedback", isOn: Binding(
+                    get: { settings.hapticFeedbackEnabled },
+                    set: { settings.hapticFeedbackEnabled = $0 }
+                ))
+                Toggle("Enable sound effects", isOn: Binding(
+                    get: { settings.soundEffectsEnabled },
+                    set: { settings.soundEffectsEnabled = $0 }
+                ))
             }
         }
         .formStyle(.grouped)
@@ -58,7 +75,6 @@ struct AISettingsView: View {
     @State private var showingAPIKey = false
 
     var body: some View {
-        @Bindable var settings = settings
         Form {
             Section("OpenAI Configuration") {
                 // API Key
@@ -67,10 +83,16 @@ struct AISettingsView: View {
                         .frame(width: 80, alignment: .trailing)
 
                     if self.showingAPIKey {
-                        TextField("sk-...", text: $settings.openAIAPIKey)
+                        TextField("sk-...", text: Binding(
+                            get: { settings.openAIAPIKey },
+                            set: { settings.openAIAPIKey = $0 }
+                        ))
                             .textFieldStyle(.roundedBorder)
                     } else {
-                        SecureField("sk-...", text: $settings.openAIAPIKey)
+                        SecureField("sk-...", text: Binding(
+                            get: { settings.openAIAPIKey },
+                            set: { settings.openAIAPIKey = $0 }
+                        ))
                             .textFieldStyle(.roundedBorder)
                     }
 
@@ -87,7 +109,10 @@ struct AISettingsView: View {
                     Text("Model")
                         .frame(width: 80, alignment: .trailing)
 
-                    Picker("", selection: $settings.selectedModel) {
+                    Picker("", selection: Binding(
+                        get: { settings.selectedModel },
+                        set: { settings.selectedModel = $0 }
+                    )) {
                         Text("GPT-4o").tag("gpt-4o")
                         Text("GPT-4o mini").tag("gpt-4o-mini")
                         Text("o1-preview").tag("o1-preview")
@@ -104,7 +129,10 @@ struct AISettingsView: View {
                     Text("Temperature")
                         .frame(width: 80, alignment: .trailing)
 
-                    Slider(value: $settings.temperature, in: 0...1, step: 0.1)
+                    Slider(value: Binding(
+                        get: { settings.temperature },
+                        set: { settings.temperature = $0 }
+                    ), in: 0...1, step: 0.1)
 
                     Text(String(format: "%.1f", self.settings.temperature))
                         .monospacedDigit()
@@ -116,7 +144,10 @@ struct AISettingsView: View {
                     Text("Max Tokens")
                         .frame(width: 80, alignment: .trailing)
 
-                    TextField("", value: $settings.maxTokens, format: .number)
+                    TextField("", value: Binding(
+                        get: { settings.maxTokens },
+                        set: { settings.maxTokens = $0 }
+                    ), format: .number)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 100)
 

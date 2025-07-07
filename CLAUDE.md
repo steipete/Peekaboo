@@ -5,6 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 To test this project interactive we can use:
 `PEEKABOO_AI_PROVIDERS="ollama/llava:latest" npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp@beta`
 
+## Recent Updates
+
+- **vtlog utility added** (2025-01-07): Adopted the vtlog logging utility from the VibeTunnel project. The script is located at `scripts/vtlog.sh` and provides easy access to PeekabooInspector's unified logging output. See the "Debugging with vtlog" section below for usage.
+
 
 ## Common Commands
 
@@ -22,6 +26,24 @@ npm run build:all
 # Build universal Swift binary with optimizations
 ./scripts/build-swift-universal.sh
 ```
+
+### Building PeekabooMac App
+**IMPORTANT**: Always use Xcode to build the PeekabooMac app, NOT Swift Package Manager.
+
+```bash
+# Open in Xcode
+open /Users/steipete/Projects/Peekaboo/PeekabooMac/Peekaboo/Peekaboo.xcodeproj
+
+# Build from command line using xcodebuild
+xcodebuild -scheme Peekaboo -configuration Debug build
+
+# Run from command line
+xcodebuild -scheme Peekaboo -configuration Debug build && \
+  open ~/Library/Developer/Xcode/DerivedData/Peekaboo-*/Build/Products/Debug/Peekaboo.app
+```
+
+**Note**: The PeekabooMac app requires proper Xcode project configuration with dependencies. 
+Do NOT use `swift build` for the Mac app.
 
 ### Testing
 ```bash
@@ -307,3 +329,91 @@ This project relies heavily on the **AXorcist** library for macOS accessibility 
 4. **Build Settings**: Ensure test targets have "Enable Testing Frameworks" set to "Yes" in Build Settings
 
 See `/docs/swift-testing-playbook.md` for comprehensive migration guide.
+
+## Debugging with vtlog
+
+The PeekabooInspector app uses macOS unified logging system. We provide a convenient `vtlog` script to simplify log access.
+
+### Quick Start with vtlog
+
+The `vtlog` script is located at `scripts/vtlog.sh`. It's designed to be context-friendly by default.
+
+**Default behavior: Shows last 50 lines from the past 5 minutes**
+
+```bash
+# Show recent logs (default: last 50 lines from past 5 minutes)
+./scripts/vtlog.sh
+
+# Stream logs continuously (like tail -f)
+./scripts/vtlog.sh -f
+
+# Show only errors
+./scripts/vtlog.sh -e
+
+# Show more lines
+./scripts/vtlog.sh -n 100
+
+# View logs from different time range
+./scripts/vtlog.sh -l 30m
+
+# Filter by category
+./scripts/vtlog.sh -c OverlayManager
+
+# Search for specific text
+./scripts/vtlog.sh -s "element selected"
+```
+
+### Common Use Cases
+
+```bash
+# Quick check for recent errors (context-friendly)
+./scripts/vtlog.sh -e
+
+# Debug overlay issues
+./scripts/vtlog.sh -c OverlayManager -n 100
+
+# Watch logs in real-time while testing
+./scripts/vtlog.sh -f
+
+# Find accessibility problems
+./scripts/vtlog.sh -s "AXError" -l 2h
+
+# Export comprehensive debug logs
+./scripts/vtlog.sh -d -l 1h --all -o ~/Desktop/peekaboo-debug.log
+
+# Get all logs without tail limit
+./scripts/vtlog.sh --all
+```
+
+### Available Categories (PeekabooInspector)
+- **OverlayManager** - UI overlay management and element tracking
+- **OverlayView** - Individual overlay window rendering
+- **InspectorView** - Main inspector UI
+- **AppOverlayView** - Application-specific overlay views
+
+### Manual Log Commands
+
+If you prefer using the native `log` command directly:
+
+```bash
+# Stream logs
+log stream --predicate 'subsystem == "com.steipete.PeekabooInspector"' --level info
+
+# Show historical logs
+log show --predicate 'subsystem == "com.steipete.PeekabooInspector"' --info --last 30m
+
+# Filter by category
+log stream --predicate 'subsystem == "com.steipete.PeekabooInspector" AND category == "OverlayManager"'
+```
+
+### Tips
+- Run `./scripts/vtlog.sh --help` for full documentation
+- Use `-d` flag for debug-level logs during development
+- The app logs persist after the app quits, useful for crash debugging
+- Add `--json` for machine-readable output
+
+### Note on CLI Logging
+The Peekaboo CLI tool currently uses custom file-based logging (not unified logging). CLI logs are:
+- Written to stderr in normal mode
+- Collected in JSON output when using `--json-output`
+- Controlled by `PEEKABOO_LOG_LEVEL` environment variable
