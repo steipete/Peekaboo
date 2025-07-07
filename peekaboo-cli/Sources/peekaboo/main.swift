@@ -105,28 +105,8 @@ struct Peekaboo: AsyncParsableCommand {
             DragCommand.self,
             AgentCommand.self
         ],
-        defaultSubcommand: nil
+        defaultSubcommand: AgentCommand.self  // Make agent the default when no subcommand is specified
     )
-    
-    // Support direct task invocation without 'agent' subcommand
-    @Argument(parsing: .remaining, help: ArgumentHelp("Task for AI agent to perform", visibility: .hidden))
-    var remainingArgs: [String] = []
-
-    mutating func run() async throws {
-        // Check if we have a direct task invocation
-        if !remainingArgs.isEmpty {
-            // Join all arguments as the task description
-            let task = remainingArgs.joined(separator: " ")
-            
-            // Create agent command with task
-            let agentArgs = ["agent", task]
-            var agent = try AgentCommand.parse(agentArgs)
-            try await agent.run()
-        } else {
-            // When no subcommand is provided, print help
-            print(Self.helpMessage())
-        }
-    }
 }
 
 /// Application entry point.
