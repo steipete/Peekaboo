@@ -12,14 +12,6 @@ struct AppOverlayView: View {
                     .contentShape(Rectangle())
                     .allowsHitTesting(false)
 
-                // Debug: Show which app's overlay this is
-                Text("Overlay for: \(self.app.name) (\(self.app.elements.count(where: { $0.isActionable })) elements)")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.red)
-                    .background(Color.white.opacity(0.9))
-                    .padding(8)
-                    .position(x: geometry.size.width / 2, y: 30)
-
                 // Only show elements for this specific app
                 self.elementOverlays
                 self.windowBoundaries

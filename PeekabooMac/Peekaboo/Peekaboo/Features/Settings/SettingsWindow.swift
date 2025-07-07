@@ -2,7 +2,7 @@ import Observation
 import SwiftUI
 
 struct SettingsWindow: View {
-    @Environment(Settings.self) private var settings
+    @Environment(PeekabooSettings.self) private var settings
     @Environment(Permissions.self) private var permissions
 
     var body: some View {
@@ -29,7 +29,7 @@ struct SettingsWindow: View {
 // MARK: - General Settings
 
 struct GeneralSettingsView: View {
-    @Environment(Settings.self) private var settings
+    @Environment(PeekabooSettings.self) private var settings
 
     var body: some View {
         Form {
@@ -71,7 +71,7 @@ struct GeneralSettingsView: View {
 // MARK: - AI Settings
 
 struct AISettingsView: View {
-    @Environment(Settings.self) private var settings
+    @Environment(PeekabooSettings.self) private var settings
     @State private var showingAPIKey = false
 
     var body: some View {
@@ -176,7 +176,7 @@ struct AISettingsView: View {
 // MARK: - Shortcuts Settings
 
 struct ShortcutsSettingsView: View {
-    @Environment(Settings.self) private var settings
+    @Environment(PeekabooSettings.self) private var settings
     @State private var recordingShortcut = false
 
     var body: some View {

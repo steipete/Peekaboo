@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 @Observable
-final class Settings {
+final class PeekabooSettings {
     // API Configuration
     var openAIAPIKey: String = "" {
         didSet { self.save() }

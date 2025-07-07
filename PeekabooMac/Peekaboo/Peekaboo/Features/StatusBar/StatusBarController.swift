@@ -11,7 +11,7 @@ final class StatusBarController: NSObject {
     private let sessionStore: SessionStore
     private let permissions: Permissions
     private let speechRecognizer: SpeechRecognizer
-    private let settings: Settings
+    private let settings: PeekabooSettings
 
     // Icon animation
     private var animationTimer: Timer?
@@ -36,7 +36,7 @@ final class StatusBarController: NSObject {
         sessionStore: SessionStore,
         permissions: Permissions,
         speechRecognizer: SpeechRecognizer,
-        settings: Settings)
+        settings: PeekabooSettings)
     {
         self.agent = agent
         self.sessionStore = sessionStore
@@ -170,14 +170,26 @@ final class StatusBarController: NSObject {
     }
 
     @objc private func openMainWindow() {
-        // Open window through SwiftUI
-        NSApp.sendAction(#selector(NSApplication.showHelp(_:)), to: nil, from: nil)
-        NSApp.activate(ignoringOtherApps: true)
+        // Check if window already exists by looking for windows with "Peekaboo" in the title
+        for window in NSApp.windows {
+            if window.title == "Peekaboo" || window.title.contains("Peekaboo") {
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                return
+            }
+        }
+        
+        // If window doesn't exist, post notification to open it
+        NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+        
+        // Give it a moment to create the window, then activate
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     @objc private func openSettings() {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        NSApp.activate(ignoringOtherApps: true)
+        SettingsOpener.openSettings()
     }
 
     @objc private func showAbout() {

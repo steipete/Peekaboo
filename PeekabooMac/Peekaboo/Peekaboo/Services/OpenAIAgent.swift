@@ -12,13 +12,17 @@ actor OpenAIAgent {
 
     // Tool executor protocol - to be implemented by the app
     let toolExecutor: ToolExecutor
+    
+    // Event delegate for real-time updates
+    weak var eventDelegate: AgentEventDelegate?
 
     init(
         apiKey: String,
         model: String = "gpt-4-turbo",
         verbose: Bool = false,
         maxSteps: Int = 20,
-        toolExecutor: ToolExecutor)
+        toolExecutor: ToolExecutor,
+        eventDelegate: AgentEventDelegate? = nil)
     {
         self.apiKey = apiKey
         self.model = model
@@ -26,12 +30,16 @@ actor OpenAIAgent {
         self.maxSteps = maxSteps
         self.session = URLSession.shared
         self.toolExecutor = toolExecutor
+        self.eventDelegate = eventDelegate
     }
 
     // MARK: - Public Methods
 
     func executeTask(_ task: String, dryRun: Bool = false) async throws -> AgentResult {
         self.logger.info("Starting task: \(task)")
+        
+        // Emit started event
+        await self.emitEvent(.started)
 
         // Create assistant
         let assistant = try await createAssistant()
@@ -96,6 +104,9 @@ actor OpenAIAgent {
                     if self.verbose {
                         self.logger.info("Executing tool: \(toolCall.function.name)")
                     }
+                    
+                    // Emit tool call started event
+                    await self.emitEvent(.toolCallStarted(name: toolCall.function.name, arguments: toolCall.function.arguments))
 
                     let output: String = if dryRun {
                         "[DRY RUN] Would execute: \(toolCall.function.name)"
@@ -109,6 +120,9 @@ actor OpenAIAgent {
                     stepCount += 1
 
                     toolOutputs.append((toolCallId: toolCall.id, output: output))
+                    
+                    // Emit tool call completed event
+                    await self.emitEvent(.toolCallCompleted(name: toolCall.function.name, result: output))
                 }
 
                 // Submit tool outputs
@@ -120,6 +134,14 @@ actor OpenAIAgent {
                 let assistantMessages = messages.filter { $0.role == "assistant" }
 
                 let summary = assistantMessages.last?.content.first?.text?.value
+                
+                // Emit assistant message if we have one
+                if let finalMessage = summary {
+                    await self.emitEvent(.assistantMessage(content: finalMessage))
+                }
+                
+                // Emit completed event
+                await self.emitEvent(.completed)
 
                 return AgentResult(
                     success: true,
@@ -127,7 +149,9 @@ actor OpenAIAgent {
                     error: nil)
 
             case .failed, .cancelled, .expired:
-                throw AgentError.commandFailed("Run ended with status: \(runStatus.status)")
+                let errorMessage = "Run ended with status: \(runStatus.status)"
+                await self.emitEvent(.error(message: errorMessage))
+                throw AgentError.commandFailed(errorMessage)
 
             default:
                 break
@@ -137,6 +161,17 @@ actor OpenAIAgent {
         throw AgentError.commandFailed("Exceeded maximum steps (\(self.maxSteps))")
     }
 
+    // MARK: - Event Handling
+    
+    private func emitEvent(_ event: AgentEvent) async {
+        guard let delegate = eventDelegate else { return }
+        
+        // Call delegate on a detached task to avoid actor isolation issues
+        Task.detached { @MainActor in
+            delegate.agentDidEmitEvent(event)
+        }
+    }
+    
     // MARK: - Private Methods
 
     private func createAssistant() async throws -> Assistant {

@@ -38,6 +38,15 @@ final class SessionStore {
         self.sessions[index].summary = summary
         self.saveSessions()
     }
+    
+    func updateLastMessage(_ message: SessionMessage, in session: Session) {
+        guard let sessionIndex = sessions.firstIndex(where: { $0.id == session.id }),
+              !sessions[sessionIndex].messages.isEmpty else { return }
+        
+        let lastIndex = sessions[sessionIndex].messages.count - 1
+        sessions[sessionIndex].messages[lastIndex] = message
+        self.saveSessions()
+    }
 
     private func loadSessions() {
         guard FileManager.default.fileExists(atPath: self.storageURL.path) else { return }
@@ -86,7 +95,7 @@ struct SessionMessage: Identifiable, Codable {
     let role: MessageRole
     let content: String
     let timestamp: Date
-    let toolCalls: [ToolCall]
+    var toolCalls: [ToolCall]
 
     init(role: MessageRole, content: String, toolCalls: [ToolCall] = []) {
         self.id = UUID()
@@ -106,8 +115,15 @@ enum MessageRole: String, Codable {
 struct ToolCall: Identifiable, Codable {
     let id: String
     let name: String
-    let arguments: [String: AnyCodable]
-    let result: String
+    let arguments: String
+    var result: String
+    
+    init(name: String, arguments: String, result: String = "") {
+        self.id = UUID().uuidString
+        self.name = name
+        self.arguments = arguments
+        self.result = result
+    }
 }
 
 // Helper for encoding/decoding heterogeneous dictionaries

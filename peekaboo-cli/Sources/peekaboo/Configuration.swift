@@ -47,27 +47,115 @@ struct Configuration: Codable {
 /// precedence (highest to lowest):
 /// 1. Command-line arguments
 /// 2. Environment variables
-/// 3. Configuration file (`~/.config/peekaboo/config.json`)
-/// 4. Built-in defaults
+/// 3. Configuration file (`~/.peekaboo/config.json`)
+/// 4. Credentials file (`~/.peekaboo/credentials`)
+/// 5. Built-in defaults
 ///
 /// The manager supports JSONC format (JSON with Comments) and environment variable
-/// expansion using `${VAR_NAME}` syntax.
+/// expansion using `${VAR_NAME}` syntax. Sensitive credentials are stored separately
+/// in a credentials file with restricted permissions.
 final class ConfigurationManager: @unchecked Sendable {
     static let shared = ConfigurationManager()
+    
+    /// Base directory for all Peekaboo configuration
+    static var baseDir: String {
+        NSString(string: "~/.peekaboo").expandingTildeInPath
+    }
+    
+    /// Legacy configuration directory (for migration)
+    static var legacyConfigDir: String {
+        NSString(string: "~/.config/peekaboo").expandingTildeInPath
+    }
 
     /// Default configuration file path
     static var configPath: String {
-        let configDir = NSString(string: "~/.config/peekaboo").expandingTildeInPath
-        return "\(configDir)/config.json"
+        "\(baseDir)/config.json"
+    }
+    
+    /// Legacy configuration file path (for migration)
+    static var legacyConfigPath: String {
+        "\(legacyConfigDir)/config.json"
+    }
+    
+    /// Credentials file path
+    static var credentialsPath: String {
+        "\(baseDir)/credentials"
     }
 
     /// Loaded configuration
     private var configuration: Configuration?
+    
+    /// Cached credentials
+    private var credentials: [String: String] = [:]
+    
+    /// Migrate from legacy configuration if needed
+    func migrateIfNeeded() throws {
+        let fileManager = FileManager.default
+        
+        // Check if legacy config exists but new config doesn't
+        if fileManager.fileExists(atPath: Self.legacyConfigPath) && 
+           !fileManager.fileExists(atPath: Self.configPath) {
+            
+            // Create new base directory
+            try fileManager.createDirectory(
+                atPath: Self.baseDir,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+            
+            // Copy config file
+            try fileManager.copyItem(
+                atPath: Self.legacyConfigPath,
+                toPath: Self.configPath
+            )
+            
+            // Load the config to extract any API keys
+            if let config = loadConfigurationFromPath(Self.configPath) {
+                var credentialsToSave: [String: String] = [:]
+                
+                // Extract OpenAI API key if it's hardcoded (not an env var reference)
+                if let apiKey = config.aiProviders?.openaiApiKey,
+                   !apiKey.hasPrefix("${"),
+                   !apiKey.isEmpty {
+                    credentialsToSave["OPENAI_API_KEY"] = apiKey
+                }
+                
+                // Save credentials if any were found
+                if !credentialsToSave.isEmpty {
+                    try saveCredentials(credentialsToSave)
+                    
+                    // Remove hardcoded API key from config and update it
+                    var updatedConfig = config
+                    if updatedConfig.aiProviders?.openaiApiKey != nil {
+                        updatedConfig.aiProviders?.openaiApiKey = nil
+                    }
+                    
+                    // Save updated config without hardcoded credentials
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = [.prettyPrinted]
+                    let data = try encoder.encode(updatedConfig)
+                    try data.write(to: URL(fileURLWithPath: Self.configPath))
+                }
+            }
+            
+            print("✅ Migrated configuration from \(Self.legacyConfigPath) to \(Self.configPath)")
+        }
+    }
 
     /// Load configuration from file
     func loadConfiguration() -> Configuration? {
-        let configPath = Self.configPath
-
+        // Try migration first
+        try? migrateIfNeeded()
+        
+        // Load credentials
+        loadCredentials()
+        
+        // Load configuration
+        return loadConfigurationFromPath(Self.configPath)
+    }
+    
+    /// Load configuration from a specific path
+    private func loadConfigurationFromPath(_ configPath: String) -> Configuration? {
         guard FileManager.default.fileExists(atPath: configPath) else {
             return nil
         }
@@ -84,14 +172,84 @@ final class ConfigurationManager: @unchecked Sendable {
 
             // Parse JSON
             if let expandedData = expandedJSON.data(using: .utf8) {
-                self.configuration = try JSONDecoder().decode(Configuration.self, from: expandedData)
-                return self.configuration
+                let config = try JSONDecoder().decode(Configuration.self, from: expandedData)
+                self.configuration = config
+                return config
             }
         } catch {
             print("Warning: Failed to load configuration from \(configPath): \(error)")
         }
 
         return nil
+    }
+    
+    /// Load credentials from file
+    private func loadCredentials() {
+        guard FileManager.default.fileExists(atPath: Self.credentialsPath) else {
+            return
+        }
+        
+        do {
+            let contents = try String(contentsOfFile: Self.credentialsPath)
+            let lines = contents.components(separatedBy: .newlines)
+            
+            for line in lines {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.isEmpty || trimmed.hasPrefix("#") {
+                    continue
+                }
+                
+                if let equalIndex = trimmed.firstIndex(of: "=") {
+                    let key = String(trimmed[..<equalIndex]).trimmingCharacters(in: .whitespaces)
+                    let value = String(trimmed[trimmed.index(after: equalIndex)...]).trimmingCharacters(in: .whitespaces)
+                    if !key.isEmpty && !value.isEmpty {
+                        credentials[key] = value
+                    }
+                }
+            }
+        } catch {
+            // Silently ignore credential loading errors
+        }
+    }
+    
+    /// Save credentials to file with proper permissions
+    func saveCredentials(_ newCredentials: [String: String]) throws {
+        // Merge with existing credentials
+        for (key, value) in newCredentials {
+            credentials[key] = value
+        }
+        
+        // Create directory if needed
+        try FileManager.default.createDirectory(
+            atPath: Self.baseDir,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
+        
+        // Build credentials file content
+        var lines: [String] = []
+        lines.append("# Peekaboo credentials file")
+        lines.append("# This file contains sensitive API keys and should not be shared")
+        lines.append("")
+        
+        for (key, value) in credentials.sorted(by: { $0.key < $1.key }) {
+            lines.append("\(key)=\(value)")
+        }
+        
+        let content = lines.joined(separator: "\n")
+        
+        // Write file with restricted permissions
+        try content.write(
+            to: URL(fileURLWithPath: Self.credentialsPath),
+            atomically: true,
+            encoding: .utf8
+        )
+        
+        // Set file permissions to 600 (readable/writable by owner only)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o600],
+            ofItemAtPath: Self.credentialsPath
+        )
     }
 
     /// Strip comments from JSONC content
@@ -266,11 +424,17 @@ final class ConfigurationManager: @unchecked Sendable {
 
     /// Get OpenAI API key with proper precedence
     func getOpenAIAPIKey() -> String? {
-        // Handle optional separately since getValue expects non-optional default
+        // 1. Environment variable (highest priority)
         if let envValue = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
             return envValue
         }
+        
+        // 2. Credentials file
+        if let credValue = credentials["OPENAI_API_KEY"] {
+            return credValue
+        }
 
+        // 3. Config file (for backwards compatibility, but discouraged)
         if let configValue = configuration?.aiProviders?.openaiApiKey {
             return configValue
         }
@@ -319,10 +483,13 @@ final class ConfigurationManager: @unchecked Sendable {
     /// Create default configuration file
     func createDefaultConfiguration() throws {
         let configPath = Self.configPath
-        let configDir = URL(fileURLWithPath: configPath).deletingLastPathComponent()
-
-        // Create directory if needed
-        try FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
+        
+        // Create directory with proper permissions
+        try FileManager.default.createDirectory(
+            atPath: Self.baseDir,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
 
         let defaultConfig = """
         {
@@ -332,9 +499,9 @@ final class ConfigurationManager: @unchecked Sendable {
             // Format: "provider/model,provider/model"
             // Supported providers: openai, ollama
             "providers": "openai/gpt-4o,ollama/llava:latest",
-
-            // OpenAI API key - can use environment variable expansion
-            // "openaiApiKey": "${OPENAI_API_KEY}",
+            
+            // NOTE: API keys should be stored in ~/.peekaboo/credentials
+            // or set as environment variables, not in this file
 
             // Ollama server URL (if not using default)
             // "ollamaBaseUrl": "http://localhost:11434"
@@ -361,11 +528,44 @@ final class ConfigurationManager: @unchecked Sendable {
             "level": "info",
 
             // Log file path
-            "path": "~/.config/peekaboo/logs/peekaboo.log"
+            "path": "~/.peekaboo/logs/peekaboo.log"
           }
         }
         """
 
         try defaultConfig.write(to: URL(fileURLWithPath: configPath), atomically: true, encoding: .utf8)
+        
+        // Create a sample credentials file if it doesn't exist
+        if !FileManager.default.fileExists(atPath: Self.credentialsPath) {
+            let sampleCredentials = """
+            # Peekaboo credentials file
+            # This file contains sensitive API keys and should not be shared
+            #
+            # Example:
+            # OPENAI_API_KEY=sk-...
+            # ANTHROPIC_API_KEY=sk-ant-...
+            """
+            
+            try sampleCredentials.write(
+                to: URL(fileURLWithPath: Self.credentialsPath),
+                atomically: true,
+                encoding: .utf8
+            )
+            
+            // Set proper permissions
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o600],
+                ofItemAtPath: Self.credentialsPath
+            )
+        }
+    }
+    
+    /// Set or update a credential
+    func setCredential(key: String, value: String) throws {
+        // Load existing credentials first
+        loadCredentials()
+        
+        // Update
+        try saveCredentials([key: value])
     }
 }

@@ -10,9 +10,11 @@ struct ConfigCommand: ParsableCommand {
         commandName: "config",
         abstract: "Manage Peekaboo configuration",
         discussion: """
-        The config command helps you manage Peekaboo's configuration file.
+        The config command helps you manage Peekaboo's configuration files.
 
-        Configuration file location: ~/.config/peekaboo/config.json
+        Configuration locations:
+        • Config file: ~/.peekaboo/config.json
+        • Credentials: ~/.peekaboo/credentials
 
         The configuration file uses JSONC format (JSON with Comments) and supports:
         • Comments using // and /* */
@@ -22,10 +24,14 @@ struct ConfigCommand: ParsableCommand {
         Configuration precedence (highest to lowest):
         1. Command-line arguments
         2. Environment variables
-        3. Configuration file
-        4. Built-in defaults
+        3. Credentials file (for API keys)
+        4. Configuration file
+        5. Built-in defaults
+        
+        API keys should be stored in the credentials file or set as environment variables,
+        not in the configuration file.
         """,
-        subcommands: [InitCommand.self, ShowCommand.self, EditCommand.self, ValidateCommand.self])
+        subcommands: [InitCommand.self, ShowCommand.self, EditCommand.self, ValidateCommand.self, SetCredentialCommand.self])
 
     /// Subcommand to create a default configuration file.
     ///
@@ -152,6 +158,7 @@ struct ConfigCommand: ParsableCommand {
                 let manager = ConfigurationManager.shared
                 _ = manager.loadConfiguration()
 
+                let credentialsPath = ConfigurationManager.credentialsPath
                 let effectiveConfig: [String: Any] = [
                     "aiProviders": [
                         "providers": manager.getAIProviders(cliValue: nil),
@@ -166,6 +173,7 @@ struct ConfigCommand: ParsableCommand {
                         "path": manager.getLogPath(),
                     ],
                     "configFile": FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND",
+                    "credentialsFile": FileManager.default.fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND",
                 ]
 
                 if self.jsonOutput {
@@ -186,8 +194,9 @@ struct ConfigCommand: ParsableCommand {
                     print("  Level: \(manager.getLogLevel())")
                     print("  Path: \(manager.getLogPath())")
                     print()
-                    print(
-                        "Config File: \(FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND")")
+                    print("Files:")
+                    print("  Config File: \(FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND")")
+                    print("  Credentials: \(FileManager.default.fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND")")
                 }
             }
         }
@@ -341,6 +350,52 @@ struct ConfigCommand: ParsableCommand {
                     print("  • Invalid JSON syntax")
                     print()
                     print("Run 'peekaboo config show' to view the raw file.")
+                }
+                throw ExitCode.failure
+            }
+        }
+    }
+    
+    /// Subcommand to set credentials securely.
+    ///
+    /// Stores API keys and other sensitive credentials in the credentials file
+    /// with proper file permissions (600).
+    struct SetCredentialCommand: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "set-credential",
+            abstract: "Set an API key or credential securely")
+        
+        @Argument(help: "The credential name (e.g., OPENAI_API_KEY)")
+        var key: String
+        
+        @Argument(help: "The credential value")
+        var value: String
+        
+        @Flag(name: .long, help: "Output JSON data for programmatic use")
+        var jsonOutput = false
+        
+        mutating func run() async throws {
+            do {
+                try ConfigurationManager.shared.setCredential(key: key, value: value)
+                
+                if self.jsonOutput {
+                    outputSuccess(data: [
+                        "message": "Credential set successfully",
+                        "key": key,
+                        "path": ConfigurationManager.credentialsPath,
+                    ])
+                } else {
+                    print("✅ Credential '\(key)' set successfully.")
+                    print("Stored in: \(ConfigurationManager.credentialsPath)")
+                }
+            } catch {
+                if self.jsonOutput {
+                    outputError(
+                        message: error.localizedDescription,
+                        code: .FILE_IO_ERROR,
+                        details: "Failed to save credential")
+                } else {
+                    print("❌ Failed to set credential: \(error)")
                 }
                 throw ExitCode.failure
             }
