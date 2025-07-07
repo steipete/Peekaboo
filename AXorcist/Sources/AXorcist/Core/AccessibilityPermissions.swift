@@ -4,7 +4,7 @@ import AppKit // For NSRunningApplication, NSAppleScript
 import ApplicationServices // For AXIsProcessTrusted(), AXUIElementCreateSystemWide(), etc.
 import Foundation
 
-private let kAXTrustedCheckOptionPromptKey = "AXTrustedCheckOptionPrompt"
+// Removed private let kAXTrustedCheckOptionPromptKey = "AXTrustedCheckOptionPrompt"
 
 // debug() is assumed to be globally available from Logging.swift
 // getParentProcessName() is assumed to be globally available from ProcessUtils.swift
@@ -23,138 +23,185 @@ public struct AXPermissionsStatus {
     }
 
     public func canAutomate(bundleID: String) -> Bool? {
-        return automationStatus[bundleID]
+        automationStatus[bundleID]
     }
 }
 
 @MainActor
-public func checkAccessibilityPermissions(isDebugLoggingEnabled: Bool, currentDebugLogs: inout [String]) throws {
-    // Define local dLog using passed-in parameters
-    func dLog(_ message: String) { if isDebugLoggingEnabled { currentDebugLogs.append(message) } }
+public func checkAccessibilityPermissions(promptIfNeeded: Bool = true) throws {
+    let hasPermissions = promptIfNeeded ?
+        AXPermissionHelpers.askForAccessibilityIfNeeded() :
+        AXPermissionHelpers.hasAccessibilityPermissions()
 
-    let trustedOptions = [kAXTrustedCheckOptionPromptKey: true] as CFDictionary
-    // tempLogs is already declared for getParentProcessName, which is good.
-    // var tempLogs: [String] = [] // This would be a re-declaration error if uncommented
-
-    if !AXIsProcessTrustedWithOptions(trustedOptions) {
-        // Use isDebugLoggingEnabled for the call to getParentProcessName
-        let parentName = getParentProcessName(
-            isDebugLoggingEnabled: isDebugLoggingEnabled,
-            currentDebugLogs: &currentDebugLogs
-        )
-        let errorDetail = parentName != nil ? "Hint: Grant accessibility permissions to '\(parentName!)'." :
+    if !hasPermissions {
+        let parentName = getParentProcessName()
+        let errorDetail = parentName != nil ? "Hint: Grant accessibility permissions to \(parentName!)." :
             "Hint: Ensure the application running this tool has Accessibility permissions."
-        dLog("Accessibility check failed (AXIsProcessTrustedWithOptions returned false). Details: \(errorDetail)")
+        axErrorLog("Accessibility check failed. Details: \(errorDetail)",
+                   file: #file,
+                   function: #function,
+                   line: #line)
         throw AccessibilityError.notAuthorized(errorDetail)
     } else {
-        dLog("Accessibility permissions are granted (AXIsProcessTrustedWithOptions returned true).")
+        axDebugLog("Accessibility permissions are granted.",
+                   file: #file,
+                   function: #function,
+                   line: #line)
     }
 }
 
-// @MainActor // Removed again for pragmatic stability
+@MainActor
 public func getPermissionsStatus(
-    checkAutomationFor bundleIDs: [String] = [],
-    isDebugLoggingEnabled: Bool,
-    currentDebugLogs: inout [String]
+    checkAutomationFor bundleIDs: [String] = []
 ) -> AXPermissionsStatus {
-    // Local dLog appends to currentDebugLogs
-    func dLog(_ message: String) { if isDebugLoggingEnabled { currentDebugLogs.append(message) } }
+    axDebugLog("Starting full permission status check.",
+               file: #file,
+               function: #function,
+               line: #line)
 
-    dLog("Starting full permission status check.")
+    let isProcessTrusted = AXPermissionHelpers.hasAccessibilityPermissions()
+    let isSandboxed = AXPermissionHelpers.isSandboxed()
 
-    // Check overall accessibility API status and process trust
-    let isProcessTrusted = AXIsProcessTrusted() // Non-prompting check
-    // let isApiEnabled = AXAPIEnabled() // System-wide check, REMOVED due to unavailability
-
-    if isDebugLoggingEnabled {
-        dLog("AXIsProcessTrusted() returned: \(isProcessTrusted)")
-        // dLog("AXAPIEnabled() returned: \(isApiEnabled) (Note: AXAPIEnabled is deprecated)") // Removed
-        if !isProcessTrusted {
-            let parentName = getParentProcessName(
-                isDebugLoggingEnabled: isDebugLoggingEnabled,
-                currentDebugLogs: &currentDebugLogs
-            )
-            let hint = parentName != nil ? "Hint: Grant accessibility permissions to '\(parentName!)'." :
-                "Hint: Ensure the application running this tool has Accessibility permissions."
-            currentDebugLogs.append("Process is not trusted for Accessibility. \(hint)")
-        }
-        // Removed isApiEnabled check block
+    if isSandboxed {
+        axWarningLog("Process is running in sandbox, some features may be limited.")
     }
 
+    logProcessTrustStatus(isProcessTrusted)
+
     var automationStatus: [String: Bool] = [:]
+    var collectedErrorMessages: [String] = []
 
-    if !bundleIDs
-        .isEmpty &&
-        isProcessTrusted { // Only check automation if basic permissions seem okay (removed isApiEnabled from condition)
-        if isDebugLoggingEnabled {
-            dLog("Checking automation permissions for bundle IDs: \(bundleIDs.joined(separator: ", "))") }
-        for bundleID in bundleIDs {
-            if NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-                .first != nil { // Changed from if let app = ...
-                let scriptSource = """
-                tell application id \"\(bundleID)\" to count windows
-                """
-                var errorDict: NSDictionary?
-                if let script = NSAppleScript(source: scriptSource) {
-                    if isDebugLoggingEnabled {
-                        dLog("Executing AppleScript against \(bundleID) to check automation status.") }
-                    let descriptor = script.executeAndReturnError(&errorDict) // descriptor is non-optional
-
-                    if errorDict == nil && descriptor.descriptorType != typeNull {
-                        // No error dictionary populated and descriptor is not typeNull, assume success for permissions.
-                        automationStatus[bundleID] = true
-                        if isDebugLoggingEnabled {
-                            dLog(
-                                "AppleScript execution against \(bundleID) succeeded " +
-                                    "(no errorDict, descriptor type: \(descriptor.descriptorType.description)). " +
-                                    "Automation permitted."
-                            )
-                        }
-                    } else {
-                        automationStatus[bundleID] = false
-                        if isDebugLoggingEnabled {
-                            let errorCode = errorDict?[NSAppleScript.errorNumber] as? Int ?? 0
-                            let errorMessage = errorDict?[NSAppleScript.errorMessage] as? String ?? "Unknown AppleScript error"
-                            let descriptorDetails = errorDict == nil ?
-                                "Descriptor was typeNull (type: \(descriptor.descriptorType.description)) but no errorDict." : ""
-                            currentDebugLogs.append(
-                                "AppleScript execution against \(bundleID) failed. " +
-                                    "Automation likely denied. Code: \(errorCode), Msg: \(errorMessage). \(descriptorDetails)"
-                            )
-                        }
-                    }
-                } else {
-                    if isDebugLoggingEnabled {
-                        currentDebugLogs.append("Could not initialize AppleScript for bundle ID '\(bundleID)'.") }
-                }
-            } else {
-                if isDebugLoggingEnabled {
-                    currentDebugLogs
-                        .append(
-                            "Application with bundle ID '\(bundleID)' is not running. Cannot check automation status."
-                        )
-                }
-                // automationStatus[bundleID] remains nil (not checked)
-            }
-        }
+    if !bundleIDs.isEmpty, isProcessTrusted {
+        let results = checkAutomationPermissions(for: bundleIDs)
+        automationStatus = results.automationStatus
+        collectedErrorMessages = results.errorMessages
     } else if !bundleIDs.isEmpty {
-        if isDebugLoggingEnabled {
-            dLog(
-                "Skipping automation permission checks because basic accessibility " +
-                    "(isProcessTrusted: \(isProcessTrusted)) is not met."
-            )
-        }
+        axDebugLog(
+            "Skipping automation permission checks because basic accessibility " +
+                "(isProcessTrusted: \(isProcessTrusted)) is not met.",
+            file: #file,
+            function: #function,
+            line: #line
+        )
     }
 
     let finalStatus = AXPermissionsStatus(
-        isAccessibilityApiEnabled: isProcessTrusted, // Base this on isProcessTrusted now
+        isAccessibilityApiEnabled: isProcessTrusted,
         isProcessTrustedForAccessibility: isProcessTrusted,
         automationStatus: automationStatus,
-        overallErrorMessages: currentDebugLogs // All logs collected so far become the messages
+        overallErrorMessages: collectedErrorMessages
     )
-    dLog(
+    axDebugLog(
         "Finished permission status check. isAccessibilityApiEnabled: \(finalStatus.isAccessibilityApiEnabled), " +
-            "isProcessTrusted: \(finalStatus.isProcessTrustedForAccessibility)"
+            "isProcessTrusted: \(finalStatus.isProcessTrustedForAccessibility)",
+        file: #file,
+        function: #function,
+        line: #line
     )
     return finalStatus
+}
+
+private func logProcessTrustStatus(_ isProcessTrusted: Bool) {
+    axDebugLog("AXIsProcessTrusted() returned: \(isProcessTrusted)",
+               file: #file,
+               function: #function,
+               line: #line)
+    if !isProcessTrusted {
+        let parentName = getParentProcessName()
+        let hint = parentName != nil ? "Hint: Grant accessibility permissions to \(parentName!)." :
+            "Hint: Ensure the application running this tool has Accessibility permissions."
+        axWarningLog("Process is not trusted for Accessibility. \(hint)",
+                     file: #file,
+                     function: #function,
+                     line: #line)
+    }
+}
+
+private func checkAutomationPermissions(
+    for bundleIDs: [String]
+) -> (automationStatus: [String: Bool], errorMessages: [String]) {
+    var automationStatus: [String: Bool] = [:]
+    var collectedErrorMessages: [String] = []
+
+    axDebugLog("Checking automation permissions for bundle IDs: \(bundleIDs.joined(separator: ", "))",
+               file: #file,
+               function: #function,
+               line: #line)
+
+    for bundleID in bundleIDs {
+        let result = checkSingleBundleAutomation(bundleID)
+        if let status = result.status {
+            automationStatus[bundleID] = status
+        }
+        if let error = result.errorMessage {
+            collectedErrorMessages.append(error)
+        }
+    }
+
+    return (automationStatus, collectedErrorMessages)
+}
+
+private func checkSingleBundleAutomation(_ bundleID: String) -> (status: Bool?, errorMessage: String?) {
+    guard NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first != nil else {
+        axDebugLog(
+            "Application with bundle ID '\(bundleID)' is not running. Cannot check automation status.",
+            file: #file,
+            function: #function,
+            line: #line
+        )
+        return (nil, nil)
+    }
+
+    let scriptSource = """
+    tell application id \"\(bundleID)\" to count windows
+    """
+
+    guard let script = NSAppleScript(source: scriptSource) else {
+        let errNoScript = "Could not initialize AppleScript for bundle ID '\(bundleID)'."
+        axErrorLog(errNoScript,
+                   file: #file,
+                   function: #function,
+                   line: #line)
+        return (nil, errNoScript)
+    }
+
+    return executeAppleScriptCheck(script, for: bundleID)
+}
+
+private func executeAppleScriptCheck(
+    _ script: NSAppleScript,
+    for bundleID: String
+) -> (status: Bool?, errorMessage: String?) {
+    var errorDict: NSDictionary?
+
+    axDebugLog("Executing AppleScript against \(bundleID) to check automation status.",
+               file: #file,
+               function: #function,
+               line: #line)
+
+    let descriptor = script.executeAndReturnError(&errorDict)
+
+    if errorDict == nil, descriptor.descriptorType != typeNull {
+        axDebugLog(
+            "AppleScript execution against \(bundleID) succeeded " +
+                "(no errorDict, descriptor type: \(descriptor.descriptorType.description)). " +
+                "Automation permitted.",
+            file: #file,
+            function: #function,
+            line: #line
+        )
+        return (true, nil)
+    } else {
+        let errorCode = errorDict?[NSAppleScript.errorNumber] as? Int ?? 0
+        let errorMessage = errorDict?[NSAppleScript.errorMessage] as? String ?? "Unknown AppleScript error"
+        let descriptorDetails = errorDict == nil ?
+            "Descriptor was typeNull (type: \(descriptor.descriptorType.description)) but no errorDict." : ""
+        let logMessage = "AppleScript execution against \(bundleID) failed. " +
+            "Automation likely denied. Code: \(errorCode), Msg: \(errorMessage). \(descriptorDetails)"
+        axWarningLog(logMessage,
+                     file: #file,
+                     function: #function,
+                     line: #line)
+        return (false, "Automation denied for \(bundleID): \(errorMessage) (Code: \(errorCode))")
+    }
 }

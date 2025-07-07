@@ -20,7 +20,7 @@ let package = Package(
             name: "peekaboo",
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                .product(name: "AXorcistLib", package: "AXorcist"),
+                .product(name: "AXorcist", package: "AXorcist"),
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency"),

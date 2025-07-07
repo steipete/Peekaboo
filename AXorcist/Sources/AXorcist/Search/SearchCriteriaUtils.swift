@@ -1,89 +1,83 @@
+// SearchCriteriaUtils.swift - Utility functions for handling search criteria
+
+import AppKit // For NSRunningApplication access
 import ApplicationServices
 import Foundation
 
-// Note: This file assumes AXAttributeNames.kAXRoleAttribute is available from AXAttributeNameConstants.swift
-// and ValueUnwrapper is available from its respective file.
+// GlobalAXLogger is assumed available
 
-// MARK: - PathHintComponent Definition
-@MainActor
-struct PathHintComponent {
-    let criteria: [String: String]
+// MARK: - Functions using undefined types (SearchCriteria, ProcessMatcherProtocol)
 
-    init?(pathSegment: String, isDebugLoggingEnabled: Bool, axorcJsonLogEnabled: Bool, currentDebugLogs: inout [String]) {
-        var parsedCriteria: [String: String] = [:]
-        let pairs = pathSegment.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        for pair in pairs {
-            let keyValue = pair.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            if keyValue.count == 2 {
-                parsedCriteria[String(keyValue[0])] = String(keyValue[1])
-            } else {
-                if isDebugLoggingEnabled && !axorcJsonLogEnabled {
-                    currentDebugLogs.append(AXorcist.formatDebugLogMessage("PathHintComponent: Invalid key-value pair: \(pair)", applicationName: nil, commandID: nil, file: #file, function: #function, line: #line))
-                }
-            }
-        }
-        if parsedCriteria.isEmpty && !pathSegment.isEmpty {
-            if isDebugLoggingEnabled && !axorcJsonLogEnabled {
-                currentDebugLogs.append(AXorcist.formatDebugLogMessage("PathHintComponent: Path segment \"\(pathSegment)\" parsed into empty criteria.", applicationName: nil, commandID: nil, file: #file, function: #function, line: #line))
-            }
-        }
-        self.criteria = parsedCriteria
-        if isDebugLoggingEnabled && !axorcJsonLogEnabled {
-            currentDebugLogs.append(AXorcist.formatDebugLogMessage("PathHintComponent initialized with criteria: \(self.criteria) from segment: \(pathSegment)", applicationName: nil, commandID: nil, file: #file, function: #function, line: #line))
-        }
-    }
+// These functions are commented out until the required types are defined
 
-    // Convenience initializer if criteria is already a dictionary
-    init(criteria: [String: String]) {
-        self.criteria = criteria
-    }
+/*
+ @MainActor
+ public func evaluateElementAgainstCriteria(
+     _ element: Element,
+     criteria: SearchCriteria,
+     appIdentifier: String?,
+     processMatcher: ProcessMatcherProtocol
+ ) -> (isMatch: Bool, logs: [AXLogEntry]) {
+     var logs: [AXLogEntry] = [] // Changed from axDebugLog to aggregated logs
 
-    func matches(element: Element, isDebugLoggingEnabled: Bool, axorcJsonLogEnabled: Bool, currentDebugLogs: inout [String]) -> Bool {
-        // Pass axorcJsonLogEnabled to criteriaMatch
-        return criteriaMatch(element: element, criteria: self.criteria, isDebugLoggingEnabled: isDebugLoggingEnabled, axorcJsonLogEnabled: axorcJsonLogEnabled, currentDebugLogs: &currentDebugLogs)
-    }
-}
+     // Check if the app identifier matches, if provided and different from current app
+     if let criteriaAppIdentifier = criteria.appIdentifier,
+        let currentAppIdentifier = appIdentifier,
+        criteriaAppIdentifier != currentAppIdentifier
+     {
+         logs.append(AXLogEntry(
+             level: .debug,
+             message: "SearchCriteriaUtils: Element \(element.briefDescription(option: ValueFormatOption.smart)) " +
+                      "app mismatch. Criteria wants '\(criteriaAppIdentifier)', " +
+                      "current is '\(currentAppIdentifier)'. No match."
+         ))
+         return (false, logs) // Early exit if app ID doesn't match
+     }
 
-// MARK: - Criteria Matching Helper
-@MainActor
-func criteriaMatch(element: Element, criteria: [String: String]?, isDebugLoggingEnabled: Bool, axorcJsonLogEnabled: Bool, currentDebugLogs: inout [String]) -> Bool {
-    guard let criteria = criteria, !criteria.isEmpty else {
-        return true // No criteria means an automatic match
-    }
+     // Check basic properties first (role, subrole, identifier, title, value using direct attribute calls)
+     if let criteriaRole = criteria.role, element.role() != criteriaRole { // role() is sync
+         logs.append(AXLogEntry(
+             level: .debug,
+             message: "SearchCriteriaUtils: Element \(element.briefDescription(option: ValueFormatOption.smart)) " +
+                      "role mismatch. Expected '\(criteriaRole)', got '\(element.role() ?? "nil")'."
+         ))
+         return (false, logs)
+     }
 
-    func cLog(_ message: String) {
-        // Use the passed-in axorcJsonLogEnabled parameter
-        if !axorcJsonLogEnabled && isDebugLoggingEnabled {
-            currentDebugLogs.append(AXorcist.formatDebugLogMessage(message, applicationName: nil, commandID: nil, file: #file, function: #function, line: #line))
-        }
-    }
-    var tempNilLogs: [String] = [] // For briefDescription calls that don't need to pollute main logs
+     // If all checks passed
+     logs.append(AXLogEntry(
+         level: .debug,
+         message: "SearchCriteriaUtils: Element \(element.briefDescription(option: ValueFormatOption.smart)) " +
+                  "matches all criteria for app '\(appIdentifier ?? "any")'."
+     ))
+     return (true, logs)
+ }
 
-    for (key, expectedValue) in criteria {
-        // Handle wildcard for role if specified
-        if key == AXAttributeNames.kAXRoleAttribute && expectedValue == "*" { continue }
-
-        var attributeValueCFType: CFTypeRef?
-        // Directly use underlyingElement for AX API calls
-        let error = AXUIElementCopyAttributeValue(element.underlyingElement, key as CFString, &attributeValueCFType)
-
-        guard error == .success, let actualValueCF = attributeValueCFType else {
-            cLog("Attribute \(key) not found or error \(error.rawValue) on element \(element.briefDescription(option: .default, isDebugLoggingEnabled: false, currentDebugLogs: &tempNilLogs)). No match.")
-            return false
-        }
-
-        // Use ValueUnwrapper to convert CFTypeRef to a Swift type
-        // Assuming ValueUnwrapper.unwrap is available and correctly handles logging parameters
-        let actualValueSwift: Any? = ValueUnwrapper.unwrap(actualValueCF, isDebugLoggingEnabled: isDebugLoggingEnabled, currentDebugLogs: &currentDebugLogs)
-        let actualValueString = String(describing: actualValueSwift ?? "nil_after_unwrap")
-
-        // Perform case-insensitive comparison or exact match
-        if !(actualValueString.localizedCaseInsensitiveContains(expectedValue) || actualValueString == expectedValue) {
-            cLog("Attribute '\(key)' mismatch: Expected '\(expectedValue)', Got '\(actualValueString)'. Element: \(element.briefDescription(option: .default, isDebugLoggingEnabled: false, currentDebugLogs: &tempNilLogs)). No match.")
-            return false
-        }
-        cLog("Attribute '\(key)' matched: Expected '\(expectedValue)', Got '\(actualValueString)'.")
-    }
-    cLog("All criteria matched for element: \(element.briefDescription(option: .default, isDebugLoggingEnabled: false, currentDebugLogs: &tempNilLogs)).")
-    return true
-}
+ @MainActor
+ public func elementMatchesAnyCriteria(
+     _ element: Element,
+     criteriaList: [SearchCriteria],
+     appIdentifier: String?,
+     processMatcher: ProcessMatcherProtocol
+ ) -> (isMatch: Bool, logs: [AXLogEntry]) {
+     var overallLogs: [AXLogEntry] = []
+     for criteria in criteriaList {
+         let result = evaluateElementAgainstCriteria(element, criteria: criteria, appIdentifier: appIdentifier, processMatcher: processMatcher)
+         overallLogs.append(contentsOf: result.logs)
+         if result.isMatch {
+             overallLogs.append(AXLogEntry(
+                 level: .debug,
+                 message: "SearchCriteriaUtils: Element \(element.briefDescription(option: ValueFormatOption.smart)) " +
+                          "matched one of the criteria for app '\(appIdentifier ?? "any")'."
+             ))
+             return (true, overallLogs)
+         }
+     }
+     overallLogs.append(AXLogEntry(
+         level: .debug,
+         message: "SearchCriteriaUtils: Element \(element.briefDescription(option: ValueFormatOption.smart)) " +
+                  "did not match any of the criteria for app '\(appIdentifier ?? "any")'."
+     ))
+     return (false, overallLogs)
+ }
+ */

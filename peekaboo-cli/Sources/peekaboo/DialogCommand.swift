@@ -1,6 +1,6 @@
 import ApplicationServices
 import ArgumentParser
-import AXorcistLib
+import AXorcist
 import Foundation
 
 struct DialogCommand: AsyncParsableCommand {

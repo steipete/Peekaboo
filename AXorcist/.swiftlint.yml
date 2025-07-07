@@ -28,6 +28,16 @@ cyclomatic_complexity:
   warning: 10
   error: 20
 
+# Configure identifier naming
+identifier_name:
+  min_length:
+    warning: 3
+    error: 2  # Allow 2-character names like x, y
+  excluded:
+    - x
+    - y
+    - id
+
 # Disable some problematic rules temporarily
 disabled_rules:
   - todo                    # Allow TODO comments during development

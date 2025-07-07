@@ -1,5 +1,5 @@
 import ArgumentParser
-import AXorcistLib
+import AXorcist
 import CoreGraphics
 import Foundation
 
@@ -15,9 +15,10 @@ struct TypeCommand: AsyncParsableCommand {
             It can type regular text or send special key combinations.
 
             EXAMPLES:
-              peekaboo type "Hello World"           # Type text
+              peekaboo type "Hello World"           # Type text (default: 5ms delay)
               peekaboo type "user@example.com"      # Type email
-              peekaboo type --delay 100             # Type with 100ms between keys
+              peekaboo type "text" --delay 0       # Type at maximum speed
+              peekaboo type "text" --delay 50      # Type slower (50ms between keys)
               peekaboo type "password" --return     # Type and press return
               peekaboo type --tab 3                 # Press tab 3 times
               peekaboo type "text" --clear          # Clear field first
@@ -42,7 +43,7 @@ struct TypeCommand: AsyncParsableCommand {
     var session: String?
 
     @Option(help: "Delay between keystrokes in milliseconds")
-    var delay: Int = 50
+    var delay: Int = 5
 
     @Flag(help: "Press return/enter after typing")
     var `return` = false

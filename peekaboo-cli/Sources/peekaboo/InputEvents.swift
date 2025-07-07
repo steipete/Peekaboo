@@ -50,7 +50,7 @@ enum InputEvents {
     // MARK: - Keyboard Events
 
     /// Types a string of text
-    static func typeString(_ text: String, delay: TimeInterval = 0.01) throws {
+    static func typeString(_ text: String, delay: TimeInterval = 0.005) throws {
         for character in text {
             try self.typeCharacter(character)
             if delay > 0 {

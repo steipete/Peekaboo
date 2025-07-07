@@ -1,7 +1,7 @@
 import AppKit
 import ApplicationServices
 import ArgumentParser
-import AXorcistLib
+import AXorcist
 import Foundation
 
 // MARK: - Verbose Protocol

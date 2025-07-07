@@ -131,6 +131,7 @@ struct OnboardingView: View {
 
 struct PermissionsView: View {
     @Environment(Permissions.self) private var permissions
+    @State private var permissionUpdateTrigger = 0
 
     var body: some View {
         VStack(spacing: 24) {
@@ -165,6 +166,14 @@ struct PermissionsView: View {
                     action: {
                         self.permissions.requestAccessibility()
                     })
+                
+                PermissionRow(
+                    title: "Automation",
+                    description: "Required to control applications and execute commands",
+                    status: self.permissions.appleScriptStatus,
+                    action: {
+                        self.permissions.requestAppleScript()
+                    })
             }
             .padding(20)
             .background(Color(NSColor.controlBackgroundColor))
@@ -179,14 +188,22 @@ struct PermissionsView: View {
             }
             .buttonStyle(.borderedProminent)
         }
-        .padding(32)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {
-            // Check permissions periodically
-            while !self.permissions.hasAllPermissions {
-                await self.permissions.check()
-                try? await Task.sleep(for: .seconds(2))
-            }
+            // Check permissions before first render
+            await self.permissions.check()
+            
+            // Start monitoring
+            self.permissions.startMonitoring()
+        }
+        .onDisappear {
+            self.permissions.stopMonitoring()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .permissionsUpdated)) { _ in
+            // Force UI update when permissions change
+            self.permissionUpdateTrigger += 1
         }
     }
 }

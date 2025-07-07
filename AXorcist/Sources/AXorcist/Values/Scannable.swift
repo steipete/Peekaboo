@@ -1,11 +1,13 @@
 import Foundation
 
 // MARK: - Scannable Protocol
+
 protocol Scannable {
     init?(_ scanner: Scanner)
 }
 
 // MARK: - Scannable Conformance
+
 extension Int: Scannable {
     init?(_ scanner: Scanner) {
         if let value: Int = scanner.scanInteger() { self = value } else { return nil }
@@ -35,6 +37,7 @@ extension Bool: Scannable {
     init?(_ scanner: Scanner) {
         scanner.scanWhitespaces()
         if let value: Bool = scanner
-            .scan(dictionary: ["true": true, "false": false], options: [.caseInsensitive]) { self = value } else { return nil }
+            .scan(dictionary: ["true": true, "false": false], options: [.caseInsensitive]) { self = value }
+        else { return nil }
     }
 }
