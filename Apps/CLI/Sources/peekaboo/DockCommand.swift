@@ -3,13 +3,20 @@ import ApplicationServices
 import ArgumentParser
 import AXorcist
 import Foundation
+import PeekabooCore
 
+/// Refactored DockCommand using PeekabooCore services
+///
+/// This version delegates Dock interactions to the service layer
+/// while maintaining the same command interface and JSON output compatibility.
 struct DockCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "dock",
-        abstract: "Interact with the macOS Dock",
+        abstract: "Interact with the macOS Dock using PeekabooCore services",
         discussion: """
-        Control Dock applications, folders, and settings.
+        This is a refactored version of the dock command that uses PeekabooCore services
+        instead of direct implementation. It maintains the same interface but delegates
+        Dock interactions to the service layer.
 
         EXAMPLES:
           # Launch an app from the Dock
@@ -46,48 +53,38 @@ struct DockCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        private var services: PeekabooServices { PeekabooServices.shared }
+
         @MainActor
         mutating func run() async throws {
+            Logger.shared.setJsonOutputMode(jsonOutput)
+
             do {
-                // Find Dock application
-                guard let dock = findDockApplication() else {
-                    throw DockError.dockNotFound
-                }
+                // Launch the app using the service
+                try await services.dock.launchFromDock(appName: app)
 
-                // Get Dock items
-                guard let dockList = dock.children()?.first(where: { $0.role() == "AXList" }) else {
-                    throw DockError.dockListNotFound
-                }
-
-                // Find the target app
-                let dockItems = dockList.children() ?? []
-                guard let targetItem = dockItems.first(where: { item in
-                    item.title() == app ||
-                        item.title()?.contains(app) == true
-                }) else {
-                    throw DockError.itemNotFound(self.app)
-                }
-
-                // Click the item
-                try targetItem.performAction(.press)
+                // Find the launched app's actual name using the service
+                let dockItem = try await services.dock.findDockItem(name: app)
 
                 // Output result
-                if self.jsonOutput {
+                if jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "action": "dock_launch",
-                            "app": targetItem.title() ?? self.app,
+                            "app": dockItem.title,
                         ]))
                     outputJSON(response)
                 } else {
-                    print("✓ Launched \(targetItem.title() ?? self.app) from Dock")
+                    print("✓ Launched \(dockItem.title) from Dock")
                 }
 
             } catch let error as DockError {
-                handleDockError(error, jsonOutput: jsonOutput)
+                handleDockServiceError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             }
         }
     }
@@ -108,97 +105,43 @@ struct DockCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        private var services: PeekabooServices { PeekabooServices.shared }
+
         @MainActor
         mutating func run() async throws {
+            Logger.shared.setJsonOutputMode(jsonOutput)
+
             do {
-                // Find Dock application
-                guard let dock = findDockApplication() else {
-                    throw DockError.dockNotFound
-                }
+                // Find the dock item first to get its actual name
+                let dockItem = try await services.dock.findDockItem(name: app)
 
-                // Get Dock items
-                guard let dockList = dock.children()?.first(where: { $0.role() == "AXList" }) else {
-                    throw DockError.dockListNotFound
-                }
-
-                // Find the target app
-                let dockItems = dockList.children() ?? []
-                guard let targetItem = dockItems.first(where: { item in
-                    item.title() == app ||
-                        item.title()?.contains(app) == true
-                }) else {
-                    throw DockError.itemNotFound(self.app)
-                }
-
-                // Get item position
-                guard let position = targetItem.position(),
-                      let size = targetItem.size()
-                else {
-                    throw DockError.positionNotFound
-                }
-
-                let center = CGPoint(
-                    x: position.x + size.width / 2,
-                    y: position.y + size.height / 2)
-
-                // Perform right-click
-                let rightMouseDown = CGEvent(
-                    mouseEventSource: nil,
-                    mouseType: .rightMouseDown,
-                    mouseCursorPosition: center,
-                    mouseButton: .right)
-
-                let rightMouseUp = CGEvent(
-                    mouseEventSource: nil,
-                    mouseType: .rightMouseUp,
-                    mouseCursorPosition: center,
-                    mouseButton: .right)
-
-                rightMouseDown?.post(tap: .cghidEventTap)
-                usleep(50000) // 50ms
-                rightMouseUp?.post(tap: .cghidEventTap)
-
-                // If menu item specified, click it
-                if let menuItem = select {
-                    // Wait for context menu
-                    try await Task.sleep(nanoseconds: 200_000_000) // 200ms
-
-                    // Find the menu
-                    if let menu = targetItem.children()?.first(where: { $0.role() == "AXMenu" }) {
-                        let menuItems = menu.children() ?? []
-                        guard let targetMenuItem = menuItems.first(where: { item in
-                            item.title() == menuItem ||
-                                item.title()?.contains(menuItem) == true
-                        }) else {
-                            throw DockError.menuItemNotFound(menuItem)
-                        }
-
-                        try targetMenuItem.performAction(.press)
-                    }
-                }
+                // Right-click the item using the service
+                try await services.dock.rightClickDockItem(appName: app, menuItem: select)
 
                 // Output result
-                if self.jsonOutput {
+                if jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "action": "dock_right_click",
-                            "app": targetItem.title() ?? self.app,
-                            "selected_item": self.select,
+                            "app": dockItem.title,
+                            "selected_item": select,
                         ]))
                     outputJSON(response)
                 } else {
                     if let selected = select {
-                        print("✓ Right-clicked \(self.app) and selected '\(selected)'")
+                        print("✓ Right-clicked \(dockItem.title) and selected '\(selected)'")
                     } else {
-                        print("✓ Right-clicked \(self.app) in Dock")
+                        print("✓ Right-clicked \(dockItem.title) in Dock")
                     }
                 }
 
             } catch let error as DockError {
-                handleDockError(error, jsonOutput: jsonOutput)
+                handleDockServiceError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             }
         }
     }
@@ -213,15 +156,17 @@ struct DockCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        private var services: PeekabooServices { PeekabooServices.shared }
+
         func run() async throws {
-            // Use AppleScript to hide Dock (more reliable than AX)
-            let script = "tell application \"System Events\" to set autohide of dock preferences to true"
+            Logger.shared.setJsonOutputMode(jsonOutput)
 
             do {
-                try await runAppleScript(script)
+                // Hide the Dock using the service
+                try await services.dock.hideDock()
 
                 // Output result
-                if self.jsonOutput {
+                if jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
@@ -231,8 +176,12 @@ struct DockCommand: AsyncParsableCommand {
                 } else {
                     print("✓ Dock hidden")
                 }
+            } catch let error as DockError {
+                handleDockServiceError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             }
         }
     }
@@ -247,15 +196,17 @@ struct DockCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        private var services: PeekabooServices { PeekabooServices.shared }
+
         func run() async throws {
-            // Use AppleScript to show Dock
-            let script = "tell application \"System Events\" to set autohide of dock preferences to false"
+            Logger.shared.setJsonOutputMode(jsonOutput)
 
             do {
-                try await runAppleScript(script)
+                // Show the Dock using the service
+                try await services.dock.showDock()
 
                 // Output result
-                if self.jsonOutput {
+                if jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
@@ -265,8 +216,12 @@ struct DockCommand: AsyncParsableCommand {
                 } else {
                     print("✓ Dock shown")
                 }
+            } catch let error as DockError {
+                handleDockServiceError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             }
         }
     }
@@ -284,54 +239,37 @@ struct DockCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        private var services: PeekabooServices { PeekabooServices.shared }
+
         @MainActor
         func run() async throws {
+            Logger.shared.setJsonOutputMode(jsonOutput)
+
             do {
-                // Find Dock application
-                guard let dock = findDockApplication() else {
-                    throw DockError.dockNotFound
-                }
+                // Get Dock items using the service
+                let dockItems = try await services.dock.listDockItems(includeAll: includeAll)
 
-                // Get Dock items
-                guard let dockList = dock.children()?.first(where: { $0.role() == "AXList" }) else {
-                    throw DockError.dockListNotFound
-                }
-
-                let dockItems = dockList.children() ?? []
-
-                // Collect item information
-                var itemsData: [[String: Any]] = []
-
-                for (index, item) in dockItems.enumerated() {
-                    let role = item.role() ?? ""
-                    let title = item.title() ?? ""
-                    let subrole = item.subrole() ?? ""
-
-                    // Skip separators unless includeAll
-                    if !self.includeAll, role == "AXSeparator" || subrole == "AXSeparator" {
-                        continue
-                    }
-
-                    var itemData: [String: Any] = [
-                        "index": index,
-                        "title": title,
-                        "role": role,
+                // Convert to output format
+                let itemsData = dockItems.map { item -> [String: Any] in
+                    var data: [String: Any] = [
+                        "index": item.index,
+                        "title": item.title,
+                        "type": item.itemType.rawValue,
                     ]
-
-                    if !subrole.isEmpty {
-                        itemData["subrole"] = subrole
+                    
+                    if let isRunning = item.isRunning {
+                        data["running"] = isRunning
                     }
-
-                    // Check if running
-                    if let isRunning = item.attribute(Attribute<Bool>("AXIsApplicationRunning")) {
-                        itemData["running"] = isRunning
+                    
+                    if let bundleId = item.bundleIdentifier {
+                        data["bundle_id"] = bundleId
                     }
-
-                    itemsData.append(itemData)
+                    
+                    return data
                 }
 
                 // Output result
-                if self.jsonOutput {
+                if jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
@@ -341,115 +279,54 @@ struct DockCommand: AsyncParsableCommand {
                     outputJSON(response)
                 } else {
                     print("Dock items:")
-                    for item in itemsData {
-                        let title = item["title"] as? String ?? "Untitled"
-                        let index = item["index"] as? Int ?? 0
-                        let running = item["running"] as? Bool ?? false
-
-                        let runningIndicator = running ? " •" : ""
-                        print("  [\(index)] \(title)\(runningIndicator)")
+                    for item in dockItems {
+                        let runningIndicator = (item.isRunning == true) ? " •" : ""
+                        let typeIndicator = item.itemType != .application ? " (\(item.itemType.rawValue))" : ""
+                        print("  [\(item.index)] \(item.title)\(typeIndicator)\(runningIndicator)")
                     }
-                    print("\nTotal: \(itemsData.count) items")
+                    print("\nTotal: \(dockItems.count) items")
                 }
 
             } catch let error as DockError {
-                handleDockError(error, jsonOutput: jsonOutput)
+                handleDockServiceError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             }
-        }
-    }
-}
-
-// MARK: - Helper Functions
-
-@MainActor
-private func findDockApplication() -> Element? {
-    let workspace = NSWorkspace.shared
-    guard let dockApp = workspace.runningApplications.first(where: {
-        $0.bundleIdentifier == "com.apple.dock"
-    }) else {
-        return nil
-    }
-
-    return Element(AXUIElementCreateApplication(dockApp.processIdentifier))
-}
-
-private func runAppleScript(_ script: String) async throws {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-    process.arguments = ["-e", script]
-
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    process.standardError = pipe
-
-    try process.run()
-    process.waitUntilExit()
-
-    if process.terminationStatus != 0 {
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let error = String(data: data, encoding: .utf8) ?? "Unknown error"
-        throw DockError.scriptError(error)
-    }
-}
-
-// MARK: - Dock Errors
-
-enum DockError: LocalizedError {
-    case dockNotFound
-    case dockListNotFound
-    case itemNotFound(String)
-    case menuItemNotFound(String)
-    case positionNotFound
-    case scriptError(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .dockNotFound:
-            "Dock application not found"
-        case .dockListNotFound:
-            "Dock item list not found"
-        case let .itemNotFound(item):
-            "Dock item '\(item)' not found"
-        case let .menuItemNotFound(item):
-            "Menu item '\(item)' not found"
-        case .positionNotFound:
-            "Could not determine Dock item position"
-        case let .scriptError(error):
-            "Script error: \(error)"
-        }
-    }
-
-    var errorCode: String {
-        switch self {
-        case .dockNotFound:
-            "DOCK_NOT_FOUND"
-        case .dockListNotFound:
-            "DOCK_LIST_NOT_FOUND"
-        case .itemNotFound:
-            "DOCK_ITEM_NOT_FOUND"
-        case .menuItemNotFound:
-            "MENU_ITEM_NOT_FOUND"
-        case .positionNotFound:
-            "POSITION_NOT_FOUND"
-        case .scriptError:
-            "SCRIPT_ERROR"
         }
     }
 }
 
 // MARK: - Error Handling
 
-private func handleDockError(_ error: DockError, jsonOutput: Bool) {
+private func handleDockServiceError(_ error: DockError, jsonOutput: Bool) {
+    let errorCode: ErrorCode
+    switch error {
+    case .dockNotFound:
+        errorCode = .DOCK_NOT_FOUND
+    case .dockListNotFound:
+        errorCode = .DOCK_LIST_NOT_FOUND
+    case .itemNotFound(_):
+        errorCode = .DOCK_ITEM_NOT_FOUND
+    case .menuItemNotFound(_):
+        errorCode = .MENU_ITEM_NOT_FOUND
+    case .positionNotFound:
+        errorCode = .POSITION_NOT_FOUND
+    case .launchFailed(_):
+        errorCode = .INTERACTION_FAILED  // Use existing error code
+    case .scriptError(_):
+        errorCode = .SCRIPT_ERROR
+    }
+    
     if jsonOutput {
         let response = JSONResponse(
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: ErrorCode(rawValue: error.errorCode) ?? .UNKNOWN_ERROR))
+                code: errorCode))
         outputJSON(response)
     } else {
-        print("❌ \(error.localizedDescription)")
+        fputs("❌ \(error.localizedDescription)\n", stderr)
     }
 }

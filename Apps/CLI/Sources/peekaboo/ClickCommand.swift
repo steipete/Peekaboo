@@ -1,17 +1,21 @@
 import AppKit
 import ArgumentParser
-import AXorcist
 import CoreGraphics
 import Foundation
+import PeekabooCore
 
-/// Clicks on UI elements identified in the current session.
-/// Supports element queries, coordinates, and smart waiting.
+/// Refactored ClickCommand using PeekabooCore services
+/// Clicks on UI elements identified in the current session using intelligent element finding and smart waiting.
 @available(macOS 14.0, *)
 struct ClickCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "click",
-        abstract: "Click on UI elements or coordinates",
+        abstract: "Click on UI elements or coordinates using PeekabooCore services",
         discussion: """
+            This is a refactored version of the click command that uses PeekabooCore services
+            instead of direct implementation. It maintains the same interface but delegates
+            all operations to the service layer.
+            
             The 'click' command interacts with UI elements captured by 'see'.
             It supports intelligent element finding, actionability checks, and
             automatic waiting for elements to become available.
@@ -57,29 +61,38 @@ struct ClickCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
+    private let services = PeekabooServices.shared
+
     mutating func run() async throws {
         let startTime = Date()
+        Logger.shared.setJsonOutputMode(jsonOutput)
 
         do {
-            // Load session (don't create new if not found)
-            let sessionCache = try SessionCache(sessionId: session, createIfNeeded: false)
-            guard await sessionCache.load() != nil else {
+            // Determine session ID - use provided or get most recent
+            let sessionId = session ?? (await services.sessions.getMostRecentSession())
+            guard let activeSessionId = sessionId else {
                 throw PeekabooError.sessionNotFound
             }
 
             // Determine click target
             let clickTarget: ClickTarget
+            let waitResult: WaitForElementResult
 
             if let elementId = on {
                 // Click by element ID with auto-wait
-                let element = try await waitForElement(
-                    elementId: elementId,
-                    sessionCache: sessionCache,
-                    timeout: waitFor)
-                clickTarget = .element(element)
+                clickTarget = .elementId(elementId)
+                waitResult = try await services.automation.waitForElement(
+                    target: clickTarget,
+                    timeout: TimeInterval(waitFor) / 1000.0,
+                    sessionId: activeSessionId
+                )
+                
+                if !waitResult.found {
+                    throw PeekabooError.elementNotFound
+                }
 
             } else if let coordString = coords {
-                // Click by coordinates
+                // Click by coordinates (no waiting needed)
                 let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
                 guard parts.count == 2,
                       let x = Double(parts[0]),
@@ -88,407 +101,133 @@ struct ClickCommand: AsyncParsableCommand {
                     throw ValidationError("Invalid coordinates format. Use: x,y")
                 }
                 clickTarget = .coordinates(CGPoint(x: x, y: y))
+                waitResult = WaitForElementResult(found: true, element: nil, waitTime: 0)
 
             } else if let searchQuery = query {
                 // Find element by query with auto-wait
-                let element = try await waitForElementByQuery(
-                    query: searchQuery,
-                    sessionCache: sessionCache,
-                    timeout: waitFor)
-                clickTarget = .element(element)
+                clickTarget = .query(searchQuery)
+                waitResult = try await services.automation.waitForElement(
+                    target: clickTarget,
+                    timeout: TimeInterval(waitFor) / 1000.0,
+                    sessionId: activeSessionId
+                )
+                
+                if !waitResult.found {
+                    throw PeekabooError.interactionFailed(
+                        "No actionable element found matching '\(searchQuery)' after \(waitFor)ms"
+                    )
+                }
 
             } else {
                 throw ValidationError("Specify an element query, --on, or --coords")
             }
 
+            // Determine click type
+            let clickType: ClickType = right ? .right : (double ? .double : .single)
+
             // Perform the click
-            let clickResult = try await performClick(
+            try await services.automation.click(
                 target: clickTarget,
-                clickType: ClickType(double: double, right: right))
+                clickType: clickType,
+                sessionId: activeSessionId
+            )
+
+            // Small delay to ensure click is processed
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+
+            // Prepare result
+            let clickLocation: CGPoint
+            let clickedElement: String?
+
+            switch clickTarget {
+            case .elementId(let id):
+                if let element = waitResult.element {
+                    clickLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
+                    clickedElement = formatElementInfo(element)
+                } else {
+                    // Shouldn't happen but handle gracefully
+                    clickLocation = .zero
+                    clickedElement = "Element ID: \(id)"
+                }
+                
+            case .coordinates(let point):
+                clickLocation = point
+                clickedElement = nil
+                
+            case .query(let query):
+                if let element = waitResult.element {
+                    clickLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
+                    clickedElement = formatElementInfo(element)
+                } else {
+                    // Use a default description
+                    clickLocation = .zero
+                    clickedElement = "Element matching: \(query)"
+                }
+            }
 
             // Output results
-            if self.jsonOutput {
-                let output = ClickResult(
+            if jsonOutput {
+                let result = ClickResult(
                     success: true,
-                    clickedElement: clickResult.elementInfo,
-                    clickLocation: clickResult.location,
-                    waitTime: clickResult.waitTime,
-                    executionTime: Date().timeIntervalSince(startTime))
-                outputSuccessCodable(data: output)
+                    clickedElement: clickedElement,
+                    clickLocation: clickLocation,
+                    waitTime: waitResult.waitTime,
+                    executionTime: Date().timeIntervalSince(startTime)
+                )
+                outputSuccessCodable(data: result)
             } else {
                 print("✅ Click successful")
-                if let info = clickResult.elementInfo {
+                if let info = clickedElement {
                     print("🎯 Clicked: \(info)")
                 }
-                print("📍 Location: (\(Int(clickResult.location.x)), \(Int(clickResult.location.y)))")
-                if clickResult.waitTime > 0 {
-                    print("⏳ Waited: \(String(format: "%.1f", clickResult.waitTime))s")
+                print("📍 Location: (\(Int(clickLocation.x)), \(Int(clickLocation.y)))")
+                if waitResult.waitTime > 0 {
+                    print("⏳ Waited: \(String(format: "%.1f", waitResult.waitTime))s")
                 }
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
 
         } catch {
-            if self.jsonOutput {
-                outputError(
-                    message: error.localizedDescription,
-                    code: .INTERNAL_SWIFT_ERROR)
-            } else {
-                var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
-                print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
-            }
+            handleError(error)
             throw ExitCode.failure
         }
     }
 
-    private func performClick(
-        target: ClickTarget,
-        clickType: ClickType) async throws -> InternalClickResult
-    {
-        // Get the click location and element info
-        let (clickLocation, elementInfo): (CGPoint, String?) = {
-            switch target {
-            case let .element(element):
-                // Calculate center of element
-                let center = CGPoint(
-                    x: element.frame.midX,
-                    y: element.frame.midY)
-
-                let info = "\(element.role): \(element.title ?? element.label ?? element.id)"
-                return (center, info)
-
-            case let .coordinates(point):
-                return (point, nil)
-            }
-        }()
-
-        // Perform the actual click using CoreGraphics events
-        let clickPoint = CGPoint(x: clickLocation.x, y: clickLocation.y)
-        let mouseButton: InputEvents.MouseButton = clickType.right ? .right : .left
-        let clickCount = clickType.double ? 2 : 1
-
-        try InputEvents.click(at: clickPoint, button: mouseButton, clickCount: clickCount)
-
-        // Small delay to ensure click is processed
-        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-
-        return InternalClickResult(
-            location: clickLocation,
-            elementInfo: elementInfo,
-            waitTime: 0 // Wait time is now handled in waitForElement
-        )
+    private func formatElementInfo(_ element: DetectedElement) -> String {
+        let roleDescription = element.type.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
+        let label = element.label ?? element.value ?? element.id
+        return "\(roleDescription): \(label)"
     }
 
-    @MainActor
-    private func waitForElement(
-        elementId: String,
-        sessionCache: SessionCache,
-        timeout: Int) async throws -> SessionCache.SessionData.UIElement
-    {
-        let startTime = Date()
-        let timeoutSeconds = Double(timeout) / 1000.0
-        let deadline = startTime.addingTimeInterval(timeoutSeconds)
-        let retryInterval: UInt64 = 100_000_000 // 100ms in nanoseconds
-
-        // Load session data to get element properties
-        guard let sessionData = await sessionCache.load(),
-              let targetElement = sessionData.uiMap[elementId]
-        else {
-            throw PeekabooError.elementNotFound
-        }
-
-        // Create a locator from the cached element's properties
-        let locator = ElementLocator(
-            role: targetElement.role,
-            title: targetElement.title,
-            label: targetElement.label,
-            value: targetElement.value,
-            description: targetElement.description,
-            help: targetElement.help,
-            roleDescription: targetElement.roleDescription,
-            identifier: targetElement.identifier)
-
-        while Date() < deadline {
-            // First try to find element at the stored location (fast path)
-            if let liveElement = try await findElementAtLocation(
-                frame: targetElement.frame,
-                role: targetElement.role,
-                in: sessionData.applicationName)
-            {
-                // Verify it matches our expected properties
-                if self.matchesLocator(element: liveElement, locator: locator) {
-                    if try await self.isElementActionable(liveElement) {
-                        // Return element with updated coordinates
-                        var updatedElement = targetElement
-                        updatedElement.frame = liveElement.frame() ?? targetElement.frame
-                        return updatedElement
-                    }
+    private func handleError(_ error: Error) {
+        if jsonOutput {
+            let errorCode: ErrorCode
+            if error is PeekabooError {
+                switch error as? PeekabooError {
+                case .sessionNotFound:
+                    errorCode = .SESSION_NOT_FOUND
+                case .elementNotFound:
+                    errorCode = .ELEMENT_NOT_FOUND
+                case .interactionFailed:
+                    errorCode = .INTERACTION_FAILED
+                default:
+                    errorCode = .INTERNAL_SWIFT_ERROR
                 }
+            } else if error is ValidationError {
+                errorCode = .INVALID_INPUT
+            } else {
+                errorCode = .INTERNAL_SWIFT_ERROR
             }
-
-            // If not found at stored location, search the entire UI tree
-            if let liveElement = try await findLiveElement(
-                matching: locator,
-                in: sessionData.applicationName)
-            {
-                if try await self.isElementActionable(liveElement) {
-                    // Return element with updated coordinates
-                    var updatedElement = targetElement
-                    updatedElement.frame = liveElement.frame() ?? targetElement.frame
-                    Logger.shared.debug("Element '\(elementId)' found at new location: \(updatedElement.frame)")
-                    return updatedElement
-                }
-            }
-
-            // Wait before retrying
-            try await Task.sleep(nanoseconds: retryInterval)
-        }
-
-        throw PeekabooError.interactionFailed(
-            "Element '\(elementId)' not found or not actionable after \(timeout)ms")
-    }
-
-    @MainActor
-    private func findElementAtLocation(
-        frame: CGRect,
-        role: String,
-        in appName: String?) async throws -> Element?
-    {
-        // Find the application using AXorcist
-        guard let appName,
-              let app = NSWorkspace.shared.runningApplications.first(where: {
-                  $0.localizedName == appName || $0.bundleIdentifier == appName
-              })
-        else {
-            return nil
-        }
-
-        // Create AXUIElement for the application
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        _ = Element(axApp)
-
-        // Get element at the center of the frame using AXorcist
-        let centerPoint = CGPoint(x: frame.midX, y: frame.midY)
-
-        // Use AXorcist's elementAtPoint static method
-        if let foundElement = Element.elementAtPoint(centerPoint, pid: app.processIdentifier) {
-            // Verify it's the right type of element using AXorcist's role() method
-            if foundElement.role() == role {
-                return foundElement
-            }
-        }
-
-        return nil
-    }
-
-    @MainActor
-    private func findLiveElement(
-        matching locator: ElementLocator,
-        in appName: String?) async throws -> Element?
-    {
-        // Find the application
-        guard let appName,
-              let app = NSWorkspace.shared.runningApplications.first(where: {
-                  $0.localizedName == appName || $0.bundleIdentifier == appName
-              })
-        else {
-            return nil
-        }
-
-        // Create AXUIElement for the application
-        let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        let appElement = Element(axApp)
-
-        // Search for matching element
-        return self.findMatchingElement(in: appElement, matching: locator)
-    }
-
-    @MainActor
-    private func findMatchingElement(
-        in element: Element,
-        matching locator: ElementLocator) -> Element?
-    {
-        // Check if current element matches
-        if self.matchesLocator(element: element, locator: locator) {
-            return element
-        }
-
-        // Recursively search children
-        if let children = element.children() {
-            for child in children {
-                if let match = findMatchingElement(in: child, matching: locator) {
-                    return match
-                }
-            }
-        }
-
-        return nil
-    }
-
-    @MainActor
-    private func matchesLocator(element: Element, locator: ElementLocator) -> Bool {
-        // Match by role (required)
-        guard let role = element.role() else { return false }
-        if role != locator.role {
-            return false
-        }
-
-        // For elements with unique identifiers, match those first
-        if let locatorId = locator.identifier, !locatorId.isEmpty {
-            return element.identifier() == locatorId
-        }
-
-        // For elements with labels (like "italic", "bold"), match by label
-        if let locatorLabel = locator.label, !locatorLabel.isEmpty {
-            // Check various label-like properties
-            let elementLabel = element.descriptionText() ?? element.help() ?? element.roleDescription() ?? element
-                .title()
-            return elementLabel == locatorLabel
-        }
-
-        // Match by title if specified
-        if let locatorTitle = locator.title, !locatorTitle.isEmpty {
-            return element.title() == locatorTitle
-        }
-
-        // Match by value if specified (for text fields, etc.)
-        if let locatorValue = locator.value, !locatorValue.isEmpty {
-            if let elementValue = element.value() as? String {
-                return elementValue == locatorValue
-            }
-        }
-
-        // For elements without any distinguishing properties, we need more context
-        // This handles cases like multiple identical checkboxes
-        // In this case, we should rely on position or other heuristics
-        let hasAnyProperty = (locator.identifier != nil && !locator.identifier!.isEmpty) ||
-            (locator.label != nil && !locator.label!.isEmpty) ||
-            (locator.title != nil && !locator.title!.isEmpty) ||
-            (locator.value != nil && !locator.value!.isEmpty)
-
-        // If the locator has no properties, it's likely a generic element
-        // We should not match based on role alone
-        return !hasAnyProperty
-    }
-
-    @MainActor
-    private func isElementActionable(_ element: Element) async throws -> Bool {
-        // Check if element is enabled
-        if !(element.isEnabled() ?? true) {
-            return false
-        }
-
-        // Check if element is visible (not hidden)
-        if element.isHidden() == true {
-            return false
-        }
-
-        // Check frame validity
-        guard let frame = element.frame() else {
-            return false
-        }
-        if frame.width <= 0 || frame.height <= 0 {
-            return false
-        }
-
-        // Check if element is on screen
-        if let mainScreen = NSScreen.main {
-            let screenBounds = mainScreen.frame
-            if !screenBounds.intersects(frame) {
-                return false
-            }
+            
+            outputError(
+                message: error.localizedDescription,
+                code: errorCode
+            )
         } else {
-            return false
+            var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
+            print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
         }
-
-        return true
     }
-
-    @MainActor
-    private func waitForElementByQuery(
-        query: String,
-        sessionCache: SessionCache,
-        timeout: Int) async throws -> SessionCache.SessionData.UIElement
-    {
-        let startTime = Date()
-        let timeoutSeconds = Double(timeout) / 1000.0
-        let deadline = startTime.addingTimeInterval(timeoutSeconds)
-        let retryInterval: UInt64 = 100_000_000 // 100ms in nanoseconds
-
-        // Load session data to get application context
-        guard let sessionData = await sessionCache.load() else {
-            throw PeekabooError.sessionNotFound
-        }
-
-        while Date() < deadline {
-            // Find elements matching the query from cached data
-            let elements = await sessionCache.findElements(matching: query)
-                .filter(\.isActionable)
-
-            // For each matching element, verify it's still live and actionable
-            for element in elements {
-                let locator = ElementLocator(
-                    role: element.role,
-                    title: element.title,
-                    label: element.label,
-                    value: element.value,
-                    description: element.description,
-                    help: element.help,
-                    roleDescription: element.roleDescription,
-                    identifier: element.identifier)
-
-                if let liveElement = try await findLiveElement(
-                    matching: locator,
-                    in: sessionData.applicationName)
-                {
-                    if try await self.isElementActionable(liveElement) {
-                        // Update element with live coordinates
-                        var updatedElement = element
-                        updatedElement.frame = liveElement.frame() ?? .zero
-                        return updatedElement
-                    }
-                }
-            }
-
-            // Wait before retrying
-            try await Task.sleep(nanoseconds: retryInterval)
-        }
-
-        throw PeekabooError.interactionFailed(
-            "No actionable element found matching '\(query)' after \(timeout)ms")
-    }
-}
-
-// MARK: - Supporting Types
-
-private struct ElementLocator {
-    let role: String
-    let title: String?
-    let label: String?
-    let value: String?
-    let description: String?
-    let help: String?
-    let roleDescription: String?
-    let identifier: String?
-}
-
-private enum ClickTarget {
-    case element(SessionCache.SessionData.UIElement)
-    case coordinates(CGPoint)
-}
-
-private struct ClickType {
-    let double: Bool
-    let right: Bool
-
-    func toAXClickType() -> String { // TODO: Change to AXMouseButton when available
-        self.right ? "right" : "left"
-    }
-}
-
-private struct InternalClickResult {
-    let location: CGPoint
-    let elementInfo: String?
-    let waitTime: Double
 }
 
 // MARK: - JSON Output Structure

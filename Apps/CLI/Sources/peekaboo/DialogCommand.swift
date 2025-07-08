@@ -2,13 +2,20 @@ import ApplicationServices
 import ArgumentParser
 import AXorcist
 import Foundation
+import PeekabooCore
 
+/// Refactored DialogCommand using PeekabooCore services
+///
+/// This version delegates dialog management to the service layer
+/// while maintaining the same command interface and JSON output compatibility.
 struct DialogCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "dialog",
-        abstract: "Interact with system dialogs and alerts",
+        abstract: "Interact with system dialogs and alerts using PeekabooCore services",
         discussion: """
-        Handle system dialogs, alerts, sheets, and file dialogs.
+        This is a refactored version of the dialog command that uses PeekabooCore services
+        instead of direct implementation. It maintains the same interface but delegates
+        dialog detection and interaction to the service layer.
 
         EXAMPLES:
           # Click a button in a dialog
@@ -39,7 +46,7 @@ struct DialogCommand: AsyncParsableCommand {
     struct ClickSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "click",
-            abstract: "Click a button in a dialog")
+            abstract: "Click a button in a dialog using DialogService")
 
         @Option(help: "Button text to click (e.g., 'OK', 'Cancel', 'Save')")
         var button: String
@@ -50,42 +57,39 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        private let services = PeekabooServices.shared
+
         @MainActor
         mutating func run() async throws {
+            Logger.shared.setJsonOutputMode(jsonOutput)
+
             do {
-                // Find the dialog
-                let dialog = try findDialog(withTitle: window)
-
-                // Find the button
-                let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
-                guard let targetButton = buttons.first(where: { btn in
-                    btn.title() == button ||
-                        btn.title()?.contains(button) == true
-                }) else {
-                    throw DialogError.buttonNotFound(self.button)
-                }
-
-                // Click the button
-                try targetButton.performAction(.press)
+                // Click the button using the service
+                let result = try await services.dialogs.clickButton(
+                    buttonText: button,
+                    windowTitle: window
+                )
 
                 // Output result
-                if self.jsonOutput {
+                if jsonOutput {
                     let response = JSONResponse(
-                        success: true,
+                        success: result.success,
                         data: AnyCodable([
                             "action": "dialog_click",
-                            "button": targetButton.title() ?? self.button,
-                            "window": dialog.title() ?? "Dialog",
+                            "button": result.details["button"] ?? button,
+                            "window": result.details["window"] ?? "Dialog",
                         ]))
                     outputJSON(response)
                 } else {
-                    print("✓ Clicked '\(targetButton.title() ?? self.button)' button")
+                    print("✓ Clicked '\(result.details["button"] ?? button)' button")
                 }
 
             } catch let error as DialogError {
-                handleDialogError(error, jsonOutput: jsonOutput)
+                handleDialogServiceError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             }
         }
     }
@@ -95,7 +99,7 @@ struct DialogCommand: AsyncParsableCommand {
     struct InputSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "input",
-            abstract: "Enter text in a dialog field")
+            abstract: "Enter text in a dialog field using DialogService")
 
         @Option(help: "Text to enter")
         var text: String
@@ -112,86 +116,45 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        private let services = PeekabooServices.shared
+
         @MainActor
         mutating func run() async throws {
+            Logger.shared.setJsonOutputMode(jsonOutput)
+
             do {
-                // Find the dialog
-                let dialog = try findDialog(withTitle: nil)
+                // Determine field identifier (index or label)
+                let fieldIdentifier = field ?? index.map { String($0) }
 
-                // Find text fields
-                let textFields = findTextFields(in: dialog)
-                guard !textFields.isEmpty else {
-                    throw DialogError.noTextFields
-                }
-
-                // Select target field
-                var targetField: Element?
-
-                if let fieldLabel = field {
-                    // Find by label
-                    targetField = textFields.first { field in
-                        field.title() == fieldLabel ||
-                            field.attribute(Attribute<String>("AXPlaceholderValue")) == fieldLabel ||
-                            field.descriptionText()?.contains(fieldLabel) == true
-                    }
-
-                    if targetField == nil {
-                        throw DialogError.fieldNotFound(fieldLabel)
-                    }
-                } else if let fieldIndex = index {
-                    // Find by index
-                    guard fieldIndex < textFields.count else {
-                        throw DialogError.invalidFieldIndex(fieldIndex)
-                    }
-                    targetField = textFields[fieldIndex]
-                } else {
-                    // Use first field
-                    targetField = textFields.first
-                }
-
-                guard let field = targetField else {
-                    throw DialogError.noTextFields
-                }
-
-                // Focus the field
-                try field.performAction(.press)
-
-                // Clear if requested
-                if self.clear {
-                    // Select all and delete
-                    let selectAll = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: true) // A
-                    selectAll?.flags = .maskCommand
-                    selectAll?.post(tap: .cghidEventTap)
-
-                    let deleteKey = CGEvent(keyboardEventSource: nil, virtualKey: 0x33, keyDown: true) // Delete
-                    deleteKey?.post(tap: .cghidEventTap)
-                }
-
-                // Type the text
-                for char in self.text {
-                    typeCharacter(char)
-                    usleep(10000) // 10ms between characters
-                }
+                // Enter text using the service
+                let result = try await services.dialogs.enterText(
+                    text: text,
+                    fieldIdentifier: fieldIdentifier,
+                    clearExisting: clear,
+                    windowTitle: nil
+                )
 
                 // Output result
-                if self.jsonOutput {
+                if jsonOutput {
                     let response = JSONResponse(
-                        success: true,
+                        success: result.success,
                         data: AnyCodable([
                             "action": "dialog_input",
-                            "field": field.title() ?? "Text Field",
-                            "text_length": self.text.count,
-                            "cleared": self.clear,
+                            "field": result.details["field"] ?? "Text Field",
+                            "text_length": result.details["text_length"] ?? String(text.count),
+                            "cleared": result.details["cleared"] ?? String(clear),
                         ]))
                     outputJSON(response)
                 } else {
-                    print("✓ Entered text in '\(field.title() ?? "field")'")
+                    print("✓ Entered text in '\(result.details["field"] ?? "field")'")
                 }
 
             } catch let error as DialogError {
-                handleDialogError(error, jsonOutput: jsonOutput)
+                handleDialogServiceError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             }
         }
     }
@@ -201,7 +164,7 @@ struct DialogCommand: AsyncParsableCommand {
     struct FileSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "file",
-            abstract: "Handle file save/open dialogs")
+            abstract: "Handle file save/open dialogs using DialogService")
 
         @Option(help: "Full file path to navigate to")
         var path: String?
@@ -215,84 +178,44 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        private let services = PeekabooServices.shared
+
         @MainActor
         mutating func run() async throws {
+            Logger.shared.setJsonOutputMode(jsonOutput)
+
             do {
-                // Find the file dialog
-                let dialog = try findFileDialog()
-
-                // Handle file path navigation
-                if let filePath = path {
-                    // Use Go To folder shortcut (Cmd+Shift+G)
-                    let cmdShiftG = CGEvent(keyboardEventSource: nil, virtualKey: 0x05, keyDown: true) // G
-                    cmdShiftG?.flags = [.maskCommand, .maskShift]
-                    cmdShiftG?.post(tap: .cghidEventTap)
-
-                    // Wait for go to sheet
-                    try await Task.sleep(nanoseconds: 200_000_000) // 200ms
-
-                    // Type the path
-                    for char in filePath {
-                        typeCharacter(char)
-                        usleep(5000) // 5ms between characters
-                    }
-
-                    // Press Enter
-                    let enter = CGEvent(keyboardEventSource: nil, virtualKey: 0x24, keyDown: true) // Return
-                    enter?.post(tap: .cghidEventTap)
-
-                    try await Task.sleep(nanoseconds: 100_000_000) // 100ms
-                }
-
-                // Handle file name
-                if let fileName = name {
-                    // Find the name field
-                    let textFields = findTextFields(in: dialog)
-                    if let nameField = textFields.first {
-                        // Clear and type new name
-                        try nameField.performAction(.press)
-
-                        // Select all
-                        let selectAll = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: true) // A
-                        selectAll?.flags = .maskCommand
-                        selectAll?.post(tap: .cghidEventTap)
-
-                        // Type the name
-                        for char in fileName {
-                            typeCharacter(char)
-                            usleep(5000) // 5ms between characters
-                        }
-                    }
-                }
-
-                // Click the action button
-                let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
-                if let actionButton = buttons.first(where: { $0.title() == select }) {
-                    try actionButton.performAction(.press)
-                }
+                // Handle file dialog using the service
+                let result = try await services.dialogs.handleFileDialog(
+                    path: path,
+                    filename: name,
+                    actionButton: select
+                )
 
                 // Output result
-                if self.jsonOutput {
+                if jsonOutput {
                     let response = JSONResponse(
-                        success: true,
+                        success: result.success,
                         data: AnyCodable([
                             "action": "file_dialog",
-                            "path": path,
-                            "name": name,
-                            "button_clicked": select,
+                            "path": result.details["path"],
+                            "name": result.details["filename"],
+                            "button_clicked": result.details["button_clicked"] ?? select,
                         ]))
                     outputJSON(response)
                 } else {
                     print("✓ Handled file dialog")
-                    if let p = path { print("  Path: \(p)") }
-                    if let n = name { print("  Name: \(n)") }
-                    print("  Action: \(self.select)")
+                    if let p = result.details["path"] { print("  Path: \(p)") }
+                    if let n = result.details["filename"] { print("  Name: \(n)") }
+                    print("  Action: \(result.details["button_clicked"] ?? select)")
                 }
 
             } catch let error as DialogError {
-                handleDialogError(error, jsonOutput: jsonOutput)
+                handleDialogServiceError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             }
         }
     }
@@ -302,7 +225,7 @@ struct DialogCommand: AsyncParsableCommand {
     struct DismissSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "dismiss",
-            abstract: "Dismiss a dialog")
+            abstract: "Dismiss a dialog using DialogService")
 
         @Flag(help: "Force dismiss with Escape key")
         var force = false
@@ -313,66 +236,45 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        private let services = PeekabooServices.shared
+
         @MainActor
         mutating func run() async throws {
+            Logger.shared.setJsonOutputMode(jsonOutput)
+
             do {
-                if self.force {
-                    // Press Escape
-                    let escape = CGEvent(keyboardEventSource: nil, virtualKey: 0x35, keyDown: true) // Escape
-                    escape?.post(tap: .cghidEventTap)
+                // Dismiss dialog using the service
+                let result = try await services.dialogs.dismissDialog(
+                    force: force,
+                    windowTitle: window
+                )
 
-                    // Output result
-                    if self.jsonOutput {
-                        let response = JSONResponse(
-                            success: true,
-                            data: AnyCodable([
-                                "action": "dialog_dismiss",
-                                "method": "escape",
-                            ]))
-                        outputJSON(response)
-                    } else {
-                        print("✓ Dismissed dialog with Escape")
-                    }
+                // Output result
+                if jsonOutput {
+                    let response = JSONResponse(
+                        success: result.success,
+                        data: AnyCodable([
+                            "action": "dialog_dismiss",
+                            "method": result.details["method"] ?? "unknown",
+                            "button": result.details["button"],
+                        ]))
+                    outputJSON(response)
                 } else {
-                    // Find and click Cancel or Close button
-                    let dialog = try findDialog(withTitle: window)
-                    let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
-
-                    // Look for common dismiss buttons
-                    let dismissButtons = ["Cancel", "Close", "Dismiss", "No", "Don't Save"]
-                    var clicked = false
-
-                    for buttonName in dismissButtons {
-                        if let button = buttons.first(where: { $0.title() == buttonName }) {
-                            try button.performAction(.press)
-                            clicked = true
-
-                            // Output result
-                            if self.jsonOutput {
-                                let response = JSONResponse(
-                                    success: true,
-                                    data: AnyCodable([
-                                        "action": "dialog_dismiss",
-                                        "method": "button",
-                                        "button": buttonName,
-                                    ]))
-                                outputJSON(response)
-                            } else {
-                                print("✓ Dismissed dialog by clicking '\(buttonName)'")
-                            }
-                            break
-                        }
-                    }
-
-                    if !clicked {
-                        throw DialogError.noDismissButton
+                    if result.details["method"] == "escape" {
+                        print("✓ Dismissed dialog with Escape")
+                    } else if let button = result.details["button"] {
+                        print("✓ Dismissed dialog by clicking '\(button)'")
+                    } else {
+                        print("✓ Dismissed dialog")
                     }
                 }
 
             } catch let error as DialogError {
-                handleDialogError(error, jsonOutput: jsonOutput)
+                handleDialogServiceError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             }
         }
     }
@@ -382,282 +284,124 @@ struct DialogCommand: AsyncParsableCommand {
     struct ListSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
-            abstract: "List elements in current dialog")
+            abstract: "List elements in current dialog using DialogService")
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        private let services = PeekabooServices.shared
+
         @MainActor
         func run() async throws {
-            do {
-                // Find any open dialog
-                let dialog = try findDialog(withTitle: nil)
+            Logger.shared.setJsonOutputMode(jsonOutput)
 
-                // Collect dialog information
+            do {
+                // List dialog elements using the service
+                let elements = try await services.dialogs.listDialogElements(windowTitle: nil)
+
+                // Prepare dialog info for output
                 var dialogInfo: [String: Any] = [
-                    "title": dialog.title() ?? "Untitled Dialog",
-                    "role": dialog.role() ?? "Unknown",
+                    "title": elements.dialogInfo.title,
+                    "role": elements.dialogInfo.role,
                 ]
 
-                // Get buttons
-                let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
-                dialogInfo["buttons"] = buttons.compactMap { $0.title() }
+                // Add buttons
+                dialogInfo["buttons"] = elements.buttons.map { $0.title }
 
-                // Get text fields
-                let textFields = findTextFields(in: dialog)
-                dialogInfo["text_fields"] = textFields.map { field in
+                // Add text fields
+                dialogInfo["text_fields"] = elements.textFields.map { field in
                     [
-                        "title": field.title() ?? "",
-                        "value": field.value() as? String ?? "",
-                        "placeholder": field.attribute(Attribute<String>("AXPlaceholderValue")) ?? "",
+                        "title": field.title ?? "",
+                        "value": field.value ?? "",
+                        "placeholder": field.placeholder ?? "",
                     ]
                 }
 
-                // Get static text
-                let staticTexts = dialog.children()?.filter { $0.role() == "AXStaticText" } ?? []
-                dialogInfo["text_elements"] = staticTexts.compactMap { $0.value() as? String }
+                // Add static texts
+                dialogInfo["text_elements"] = elements.staticTexts
 
                 // Output result
-                if self.jsonOutput {
+                if jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable(dialogInfo))
                     outputJSON(response)
                 } else {
-                    print("Dialog: \(dialogInfo["title"] ?? "Untitled")")
+                    print("Dialog: \(elements.dialogInfo.title)")
 
-                    if let buttons = dialogInfo["buttons"] as? [String], !buttons.isEmpty {
+                    if !elements.buttons.isEmpty {
                         print("\nButtons:")
-                        buttons.forEach { print("  • \($0)") }
+                        elements.buttons.forEach { print("  • \($0.title)") }
                     }
 
-                    if let fields = dialogInfo["text_fields"] as? [[String: String]], !fields.isEmpty {
+                    if !elements.textFields.isEmpty {
                         print("\nText Fields:")
-                        for field in fields {
-                            let title = field["title"] ?? "Untitled"
-                            let placeholder = field["placeholder"] ?? ""
+                        for field in elements.textFields {
+                            let title = field.title ?? "Untitled"
+                            let placeholder = field.placeholder ?? ""
                             print("  • \(title) [\(placeholder)]")
                         }
                     }
 
-                    if let texts = dialogInfo["text_elements"] as? [String], !texts.isEmpty {
+                    if !elements.staticTexts.isEmpty {
                         print("\nText:")
-                        texts.forEach { print("  \($0)") }
+                        elements.staticTexts.forEach { print("  \($0)") }
                     }
                 }
 
             } catch let error as DialogError {
-                handleDialogError(error, jsonOutput: jsonOutput)
+                handleDialogServiceError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: self.jsonOutput)
+                handleGenericError(error, jsonOutput: jsonOutput)
+                throw ExitCode(1)
             }
-        }
-    }
-}
-
-// MARK: - Helper Functions
-
-@MainActor
-private func findDialog(withTitle title: String?) throws -> Element {
-    // Get frontmost application
-    let systemWide = Element.systemWide()
-    guard let focusedApp = systemWide.focusedApplication() else {
-        throw DialogError.noActiveDialog
-    }
-
-    // Look for windows that are likely dialogs
-    let windows = focusedApp.windows() ?? []
-
-    for window in windows {
-        let role = window.role() ?? ""
-        let subrole = window.subrole() ?? ""
-
-        // Check if it's a dialog-like window
-        if role == "AXWindow", subrole == "AXDialog" || subrole == "AXSystemDialog" {
-            if let targetTitle = title {
-                if window.title() == targetTitle {
-                    return window
-                }
-            } else {
-                return window
-            }
-        }
-
-        // Check for sheets
-        if let sheet = window.children()?.first(where: { $0.role() == "AXSheet" }) {
-            if let targetTitle = title {
-                if sheet.title() == targetTitle {
-                    return sheet
-                }
-            } else {
-                return sheet
-            }
-        }
-    }
-
-    // Also check for floating panels
-    for window in windows {
-        if window.subrole() == "AXFloatingWindow" || window.subrole() == "AXSystemFloatingWindow" {
-            if let targetTitle = title {
-                if window.title() == targetTitle {
-                    return window
-                }
-            } else {
-                return window
-            }
-        }
-    }
-
-    throw DialogError.noActiveDialog
-}
-
-@MainActor
-private func findFileDialog() throws -> Element {
-    // File dialogs often have specific subroles
-    let systemWide = Element.systemWide()
-    guard let focusedApp = systemWide.focusedApplication() else {
-        throw DialogError.noActiveDialog
-    }
-
-    let windows = focusedApp.windows() ?? []
-
-    for window in windows {
-        // Check for save/open panels
-        if window.role() == "AXWindow" {
-            let title = window.title() ?? ""
-            if title.contains("Save") || title.contains("Open") || title.contains("Export") {
-                return window
-            }
-        }
-    }
-
-    throw DialogError.noFileDialog
-}
-
-@MainActor
-private func findTextFields(in element: Element) -> [Element] {
-    var fields: [Element] = []
-
-    func collectFields(from el: Element) {
-        if el.role() == "AXTextField" || el.role() == "AXTextArea" {
-            fields.append(el)
-        }
-
-        if let children = el.children() {
-            for child in children {
-                collectFields(from: child)
-            }
-        }
-    }
-
-    collectFields(from: element)
-    return fields
-}
-
-private func typeCharacter(_ char: Character) {
-    // Convert character to key code
-    // This is a simplified version - a full implementation would handle all characters
-    let keyMap: [Character: (CGKeyCode, Bool)] = [
-        "a": (0x00, false), "A": (0x00, true),
-        "b": (0x0B, false), "B": (0x0B, true),
-        "c": (0x08, false), "C": (0x08, true),
-        // ... add more mappings as needed
-        " ": (0x31, false),
-        ".": (0x2F, false),
-        "/": (0x2C, false),
-        "-": (0x1B, false),
-        "_": (0x1B, true),
-    ]
-
-    if let (keyCode, needsShift) = keyMap[char] {
-        if needsShift {
-            let shiftDown = CGEvent(keyboardEventSource: nil, virtualKey: 0x38, keyDown: true)
-            shiftDown?.post(tap: .cghidEventTap)
-        }
-
-        let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true)
-        let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
-
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
-
-        if needsShift {
-            let shiftUp = CGEvent(keyboardEventSource: nil, virtualKey: 0x38, keyDown: false)
-            shiftUp?.post(tap: .cghidEventTap)
-        }
-    } else {
-        // Fallback: type as unicode
-        let str = String(char)
-        let utf16 = Array(str.utf16)
-        let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true)
-        utf16.withUnsafeBufferPointer { buffer in
-            keyDown?.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
-        }
-        keyDown?.post(tap: .cghidEventTap)
-    }
-}
-
-// MARK: - Dialog Errors
-
-enum DialogError: LocalizedError {
-    case noActiveDialog
-    case noFileDialog
-    case buttonNotFound(String)
-    case fieldNotFound(String)
-    case invalidFieldIndex(Int)
-    case noTextFields
-    case noDismissButton
-
-    var errorDescription: String? {
-        switch self {
-        case .noActiveDialog:
-            "No active dialog found"
-        case .noFileDialog:
-            "No file dialog found"
-        case let .buttonNotFound(button):
-            "Button '\(button)' not found in dialog"
-        case let .fieldNotFound(field):
-            "Field '\(field)' not found in dialog"
-        case let .invalidFieldIndex(index):
-            "Invalid field index: \(index)"
-        case .noTextFields:
-            "No text fields found in dialog"
-        case .noDismissButton:
-            "No dismiss button found in dialog"
-        }
-    }
-
-    var errorCode: String {
-        switch self {
-        case .noActiveDialog:
-            "NO_ACTIVE_DIALOG"
-        case .noFileDialog:
-            "NO_FILE_DIALOG"
-        case .buttonNotFound:
-            "BUTTON_NOT_FOUND"
-        case .fieldNotFound:
-            "FIELD_NOT_FOUND"
-        case .invalidFieldIndex:
-            "INVALID_FIELD_INDEX"
-        case .noTextFields:
-            "NO_TEXT_FIELDS"
-        case .noDismissButton:
-            "NO_DISMISS_BUTTON"
         }
     }
 }
 
 // MARK: - Error Handling
 
-private func handleDialogError(_ error: DialogError, jsonOutput: Bool) {
+private func handleDialogServiceError(_ error: DialogError, jsonOutput: Bool) {
+    let errorCode: String
+    switch error {
+    case .noActiveDialog:
+        errorCode = "NO_ACTIVE_DIALOG"
+    case .noFileDialog:
+        errorCode = "NO_FILE_DIALOG"
+    case .buttonNotFound:
+        errorCode = "BUTTON_NOT_FOUND"
+    case .fieldNotFound:
+        errorCode = "FIELD_NOT_FOUND"
+    case .invalidFieldIndex:
+        errorCode = "INVALID_FIELD_INDEX"
+    case .noTextFields:
+        errorCode = "NO_TEXT_FIELDS"
+    case .noDismissButton:
+        errorCode = "NO_DISMISS_BUTTON"
+    }
+
     if jsonOutput {
         let response = JSONResponse(
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: ErrorCode(rawValue: error.errorCode) ?? .UNKNOWN_ERROR))
+                code: ErrorCode(rawValue: errorCode) ?? .UNKNOWN_ERROR))
         outputJSON(response)
     } else {
-        print("❌ \(error.localizedDescription)")
+        fputs("❌ \(error.localizedDescription)\n", stderr)
+    }
+}
+
+private func handleGenericError(_ error: Error, jsonOutput: Bool) {
+    if jsonOutput {
+        let response = JSONResponse(
+            success: false,
+            error: ErrorInfo(
+                message: error.localizedDescription,
+                code: .UNKNOWN_ERROR))
+        outputJSON(response)
+    } else {
+        fputs("❌ Error: \(error.localizedDescription)\n", stderr)
     }
 }

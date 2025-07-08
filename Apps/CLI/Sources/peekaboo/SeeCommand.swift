@@ -3,15 +3,20 @@ import ArgumentParser
 import AXorcist
 import CoreGraphics
 import Foundation
+import PeekabooCore
 
-/// Captures a screenshot and builds an interactive UI map.
-/// This is the foundation command for all GUI automation in Peekaboo 3.0.
+/// Refactored SeeCommand using PeekabooCore services
+/// Captures a screenshot and builds an interactive UI map using the service layer
 @available(macOS 14.0, *)
 struct SeeCommand: AsyncParsableCommand, VerboseCommand {
     static let configuration = CommandConfiguration(
         commandName: "see",
-        abstract: "Capture screen and map UI elements for interaction",
+        abstract: "Capture screen and map UI elements using PeekabooCore services",
         discussion: """
+            This is a refactored version of the 'see' command that uses PeekabooCore services
+            instead of direct implementation. It maintains the same interface but delegates
+            all operations to the service layer.
+            
             The 'see' command captures a screenshot and analyzes the UI hierarchy,
             creating an interactive map that subsequent commands can use.
 
@@ -58,161 +63,66 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         case frontmost
     }
 
+    private let services = PeekabooServices.shared
+
     mutating func run() async throws {
         configureVerboseLogging()
         let startTime = Date()
         Logger.shared.verbose("Starting see command execution")
 
-        // Always create a new session for see command
-        // Let SessionCache generate its own ID for cross-process compatibility
-        Logger.shared.verbose("Creating new session")
-        let sessionCache = try SessionCache(sessionId: nil, createIfNeeded: true)
-
         do {
-            // Perform capture based on mode
-            let captureResult: CaptureResult
-
-            // Intelligently determine mode if not specified
-            let effectiveMode: CaptureMode = if let specifiedMode = mode {
-                specifiedMode
-            } else if self.app != nil || self.windowTitle != nil {
-                // If app or window title is specified, default to window mode
-                .window
-            } else {
-                // Otherwise default to frontmost
-                .frontmost
+            // Check permissions
+            guard await services.screenCapture.hasScreenRecordingPermission() else {
+                throw CaptureError.screenRecordingPermissionDenied
             }
 
-            Logger.shared.verbose("Using capture mode: \(effectiveMode)")
-
-            switch effectiveMode {
-            case .screen:
-                Logger.shared.verbose("Capturing entire screen")
-                captureResult = try await self.captureScreen()
-            case .window:
-                if let appName = app {
-                    Logger.shared.verbose("Capturing window for app: \(appName), title: \(self.windowTitle ?? "any")")
-                    captureResult = try await self.captureWindow(app: appName, title: self.windowTitle)
-                } else {
-                    throw ValidationError("--app is required for window mode")
-                }
-            case .frontmost:
-                Logger.shared.verbose("Capturing frontmost window")
-                captureResult = try await self.captureFrontmost()
-            }
-
-            // Save screenshot (already saved during capture)
-            let outputPath = try saveScreenshot(captureResult)
-
-            // Update session cache with UI map
-            try await sessionCache.updateScreenshot(
-                path: outputPath,
-                application: captureResult.applicationName,
-                window: captureResult.windowTitle,
-                windowBounds: captureResult.windowBounds)
-
+            // Perform capture and element detection
+            let captureResult = try await performCaptureWithDetection()
+            
             // Generate annotated screenshot if requested
             var annotatedPath: String?
-            if self.annotate {
-                annotatedPath = try await self.generateAnnotatedScreenshot(
-                    originalPath: outputPath,
-                    sessionCache: sessionCache)
+            if annotate {
+                annotatedPath = try await generateAnnotatedScreenshot(
+                    sessionId: captureResult.sessionId,
+                    originalPath: captureResult.screenshotPath
+                )
             }
-
+            
             // Perform AI analysis if requested
             var analysisResult: String?
             if let prompt = analyze {
-                analysisResult = try await self.performAnalysis(
-                    imagePath: outputPath,
-                    prompt: prompt)
+                analysisResult = try await performAnalysis(
+                    imagePath: captureResult.screenshotPath,
+                    prompt: prompt
+                )
             }
-
-            // Load session data for output
-            let sessionData = await sessionCache.load()
-            let elementCount = sessionData?.uiMap.count ?? 0
-            let interactableCount = sessionData?.uiMap.values.count(where: { $0.isActionable }) ?? 0
-            let sessionPaths = await sessionCache.getSessionPaths()
-
-            // Prepare output
-            if self.jsonOutput {
-                // Build UI element summaries
-                let uiElements: [UIElementSummary] = sessionData?.uiMap.values.map { element in
-                    UIElementSummary(
-                        id: element.id,
-                        role: element.role,
-                        title: element.title,
-                        label: element.label,
-                        identifier: element.identifier,
-                        is_actionable: element.isActionable,
-                        keyboard_shortcut: element.keyboardShortcut)
-                } ?? []
-
-                // Build menu bar summary
-                let menuBarSummary: MenuBarSummary? = sessionData?.menuBar.map { menuBarData in
-                    MenuBarSummary(
-                        menus: menuBarData.menus.map { menu in
-                            MenuBarSummary.MenuSummary(
-                                title: menu.title,
-                                item_count: menu.items.count,
-                                enabled: menu.enabled,
-                                items: menu.items.map { item in
-                                    MenuBarSummary.MenuItemSummary(
-                                        title: item.title,
-                                        enabled: item.enabled,
-                                        keyboard_shortcut: item.keyboardShortcut)
-                                })
-                        })
-                }
-
-                let output = SeeResult(
-                    session_id: sessionCache.sessionId,
-                    screenshot_raw: sessionPaths.raw,
-                    screenshot_annotated: annotatedPath ?? sessionPaths.annotated,
-                    ui_map: sessionPaths.map,
-                    application_name: captureResult.applicationName,
-                    window_title: captureResult.windowTitle,
-                    element_count: elementCount,
-                    interactable_count: interactableCount,
-                    capture_mode: effectiveMode.rawValue,
-                    analysis_result: analysisResult,
-                    execution_time: Date().timeIntervalSince(startTime),
-                    ui_elements: uiElements,
-                    menu_bar: menuBarSummary)
-                outputSuccessCodable(data: output)
+            
+            // Output results
+            let executionTime = Date().timeIntervalSince(startTime)
+            if jsonOutput {
+                outputJSONResults(
+                    sessionId: captureResult.sessionId,
+                    screenshotPath: captureResult.screenshotPath,
+                    annotatedPath: annotatedPath,
+                    metadata: captureResult.metadata,
+                    elements: captureResult.elements,
+                    analysisResult: analysisResult,
+                    executionTime: executionTime
+                )
             } else {
-                print("✅ Screenshot captured successfully")
-                print("📍 Session ID: \(sessionCache.sessionId)")
-                print("🖼  Raw screenshot: \(sessionPaths.raw)")
-                if let annotated = annotatedPath {
-                    print("🎯 Annotated: \(annotated)")
-                }
-                print("🗺️  UI map: \(sessionPaths.map)")
-                print("🔍 Found \(elementCount) UI elements (\(interactableCount) interactive)")
-                if let app = captureResult.applicationName {
-                    print("📱 Application: \(app)")
-                }
-                if let window = captureResult.windowTitle {
-                    print("🪟 Window: \(window)")
-                }
-
-                // Display menu bar info
-                if let menuBar = sessionData?.menuBar {
-                    print("📋 Menu bar: \(menuBar.menus.count) menus")
-                    for menu in menuBar.menus {
-                        if menu.enabled, !menu.items.isEmpty {
-                            print("   • \(menu.title) (\(menu.items.count) items)")
-                        }
-                    }
-                }
-                if let analysis = analysisResult {
-                    print("🤖 Analysis:")
-                    print(analysis)
-                }
-                print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
+                outputTextResults(
+                    sessionId: captureResult.sessionId,
+                    screenshotPath: captureResult.screenshotPath,
+                    annotatedPath: annotatedPath,
+                    metadata: captureResult.metadata,
+                    elements: captureResult.elements,
+                    analysisResult: analysisResult,
+                    executionTime: executionTime
+                )
             }
-
+            
         } catch {
-            if self.jsonOutput {
+            if jsonOutput {
                 ImageErrorHandler.handleError(error, jsonOutput: true)
             } else {
                 ImageErrorHandler.handleError(error, jsonOutput: false)
@@ -221,196 +131,137 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         }
     }
 
-    private func captureScreen() async throws -> CaptureResult {
-        let suggestedName = "screen_\(Date().timeIntervalSince1970)"
-        let outputPath = self.path ?? FileNameGenerator.generateFileName(format: .png)
-
-        // Get primary display
-        let displayID = CGMainDisplayID()
-        try await ScreenCapture.captureDisplay(displayID, to: outputPath)
-
-        return CaptureResult(
-            outputPath: outputPath,
-            applicationName: nil,
-            windowTitle: nil,
-            suggestedName: suggestedName,
-            windowBounds: nil)
-    }
-
-    @MainActor
-    private func captureWindow(app: String, title: String?) async throws -> CaptureResult {
-        let appInfo = try ApplicationFinder.findApplication(identifier: app)
-
-        // Get the NSRunningApplication
-        guard let runningApp = NSWorkspace.shared.runningApplications.first(where: {
-            $0.processIdentifier == appInfo.processIdentifier
-        }) else {
-            throw CaptureError.appNotFound(appInfo.localizedName ?? app)
-        }
-
-        // Get windows with subrole information
-        let enhancedWindows = WindowManager.getWindowsWithSubroles(for: runningApp)
-        guard !enhancedWindows.isEmpty else {
-            throw CaptureError.windowNotFound
-        }
-
-        let targetWindow: WindowData
-        if let title {
-            // Look for exact match first, then partial match
-            if let match = enhancedWindows.first(where: { $0.window.title == title }) {
-                targetWindow = match.window
-            } else if let match = enhancedWindows.first(where: { $0.window.title.contains(title) }) {
-                targetWindow = match.window
+    private func performCaptureWithDetection() async throws -> CaptureAndDetectionResult {
+        let effectiveMode = determineMode()
+        Logger.shared.verbose("Using capture mode: \(effectiveMode)")
+        
+        // Capture screenshot based on mode
+        let captureResult: ScreenCaptureResult
+        
+        switch effectiveMode {
+        case .screen:
+            Logger.shared.verbose("Capturing entire screen")
+            captureResult = try await services.screenCapture.captureScreen(displayIndex: nil)
+            
+        case .window:
+            if let appName = app {
+                Logger.shared.verbose("Capturing window for app: \(appName), title: \(windowTitle ?? "any")")
+                
+                // Find specific window if title is provided
+                if let title = windowTitle {
+                    let windows = try await services.applications.listWindows(for: appName)
+                    if let windowIndex = windows.firstIndex(where: { $0.title.contains(title) }) {
+                        captureResult = try await services.screenCapture.captureWindow(
+                            appIdentifier: appName,
+                            windowIndex: windowIndex
+                        )
+                    } else {
+                        throw CaptureError.windowNotFound
+                    }
+                } else {
+                    captureResult = try await services.screenCapture.captureWindow(
+                        appIdentifier: appName,
+                        windowIndex: nil
+                    )
+                }
             } else {
-                throw CaptureError.windowNotFound
+                throw ValidationError("--app is required for window mode")
             }
+            
+        case .frontmost:
+            Logger.shared.verbose("Capturing frontmost window")
+            captureResult = try await services.screenCapture.captureFrontmost()
+        }
+        
+        // Save screenshot
+        let outputPath = try saveScreenshot(captureResult.imageData)
+        
+        // Detect UI elements
+        let detectionResult = try await services.uiAutomation.detectElements(
+            in: captureResult.imageData,
+            sessionId: nil
+        )
+        
+        // Store enhanced detection result with window metadata
+        let enhancedResult = ElementDetectionResult(
+            sessionId: detectionResult.sessionId,
+            screenshotPath: outputPath,
+            elements: detectionResult.elements,
+            metadata: DetectionMetadata(
+                detectionTime: detectionResult.metadata.detectionTime,
+                elementCount: detectionResult.metadata.elementCount,
+                method: detectionResult.metadata.method,
+                warnings: detectionResult.metadata.warnings,
+                applicationName: captureResult.metadata.applicationInfo?.name,
+                windowTitle: captureResult.metadata.windowInfo?.title,
+                windowBounds: captureResult.metadata.windowInfo?.bounds
+            )
+        )
+        
+        // Store the enhanced result in session
+        try await services.sessionManager.storeDetectionResult(
+            sessionId: detectionResult.sessionId,
+            result: enhancedResult
+        )
+        
+        return CaptureAndDetectionResult(
+            sessionId: detectionResult.sessionId,
+            screenshotPath: outputPath,
+            elements: detectionResult.elements,
+            metadata: enhancedResult.metadata
+        )
+    }
+    
+    private func saveScreenshot(_ imageData: Data) throws -> String {
+        let outputPath: String
+        
+        if let providedPath = path {
+            outputPath = NSString(string: providedPath).expandingTildeInPath
         } else {
-            // When no title specified, prefer standard windows over panels/dialogs
-            // The windows are already sorted with standard windows first
-            targetWindow = enhancedWindows.first!.window
+            let timestamp = Date().timeIntervalSince1970
+            let filename = "peekaboo_see_\(Int(timestamp)).png"
+            let defaultPath = ConfigurationManager.shared.getDefaultSavePath(
+                cliValue: nil,
+                defaultValue: FileManager.default.temporaryDirectory.path
+            )
+            outputPath = (defaultPath as NSString).appendingPathComponent(filename)
         }
-
-        let appName = appInfo.localizedName ?? "Unknown"
-        let suggestedName = appName.lowercased().replacingOccurrences(of: " ", with: "_")
-        let outputPath = self.path ?? FileNameGenerator.generateFileName(
-            appName: appName,
-            windowTitle: targetWindow.title,
-            format: .png)
-
-        try await ScreenCapture.captureWindow(targetWindow, to: outputPath)
-
-        return CaptureResult(
-            outputPath: outputPath,
-            applicationName: appName,
-            windowTitle: targetWindow.title,
-            suggestedName: suggestedName,
-            windowBounds: targetWindow.bounds)
+        
+        // Create directory if needed
+        let directory = (outputPath as NSString).deletingLastPathComponent
+        try FileManager.default.createDirectory(
+            atPath: directory,
+            withIntermediateDirectories: true
+        )
+        
+        // Save the image
+        try imageData.write(to: URL(fileURLWithPath: outputPath))
+        Logger.shared.verbose("Saved screenshot to: \(outputPath)")
+        
+        return outputPath
     }
-
-    @MainActor
-    private func captureFrontmost() async throws -> CaptureResult {
-        // Get the actual topmost visible window from all applications
-        let options: CGWindowListOption = [.excludeDesktopElements, .optionOnScreenOnly]
-        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]],
-              !windowList.isEmpty
-        else {
-            throw CaptureError.windowNotFound
-        }
-
-        // Find the first visible window with a valid title
-        var targetWindow: (windowID: CGWindowID, title: String, pid: pid_t, bounds: CGRect)?
-
-        for windowInfo in windowList {
-            // Skip windows without proper metadata
-            guard let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID,
-                  let pid = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
-                  let title = windowInfo[kCGWindowName as String] as? String,
-                  !title.isEmpty,
-                  let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any]
-            else {
-                continue
-            }
-
-            // Extract bounds
-            let x = boundsDict["X"] as? Double ?? 0
-            let y = boundsDict["Y"] as? Double ?? 0
-            let width = boundsDict["Width"] as? Double ?? 0
-            let height = boundsDict["Height"] as? Double ?? 0
-            let bounds = CGRect(x: x, y: y, width: width, height: height)
-
-            // Skip tiny windows
-            if width < 50 || height < 50 {
-                continue
-            }
-
-            targetWindow = (windowID: windowID, title: title, pid: pid, bounds: bounds)
-            break
-        }
-
-        guard let windowData = targetWindow else {
-            throw CaptureError.windowNotFound
-        }
-
-        // Get the application that owns this window
-        guard let app = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == windowData.pid })
-        else {
-            throw CaptureError.appNotFound("Could not find application for window")
-        }
-
-        let appName = app.localizedName ?? "Unknown"
-        let suggestedName = appName.lowercased().replacingOccurrences(of: " ", with: "_")
-        let outputPath = self.path ?? FileNameGenerator.generateFileName(
-            appName: appName,
-            windowTitle: windowData.title,
-            format: .png)
-
-        // Create WindowData for capture
-        let window = WindowData(
-            windowId: windowData.windowID,
-            title: windowData.title,
-            bounds: windowData.bounds,
-            isOnScreen: true,
-            windowIndex: 0)
-
-        try await ScreenCapture.captureWindow(window, to: outputPath)
-
-        return CaptureResult(
-            outputPath: outputPath,
-            applicationName: appName,
-            windowTitle: windowData.title,
-            suggestedName: suggestedName,
-            windowBounds: windowData.bounds)
-    }
-
-    private func saveScreenshot(_ captureResult: CaptureResult) throws -> String {
-        // Image is already saved, just return the path
-        captureResult.outputPath
-    }
-
+    
     private func generateAnnotatedScreenshot(
-        originalPath: String,
-        sessionCache: SessionCache) async throws -> String
-    {
-        // Load the session data to get UI elements
-        guard let sessionData = await sessionCache.load() else {
+        sessionId: String,
+        originalPath: String
+    ) async throws -> String {
+        // Get detection result from session
+        guard let detectionResult = try await services.sessionManager.getDetectionResult(sessionId: sessionId) else {
+            Logger.shared.warning("No detection result found for session")
             return originalPath
         }
-
-        // Get annotated path from session
-        let sessionPaths = await sessionCache.getSessionPaths()
-        let annotatedPath = sessionPaths.annotated
-
+        
         // Create annotated image
-        try await self.createAnnotatedImage(
-            from: originalPath,
-            to: annotatedPath,
-            uiElements: sessionData.uiMap,
-            windowBounds: sessionData.windowBounds)
-
-        // Log annotation info only in non-JSON mode
-        if !self.jsonOutput {
-            let interactableElements = sessionData.uiMap.values.filter(\.isActionable)
-            print("📝 Created annotated screenshot with \(interactableElements.count) interactive elements")
+        let annotatedPath = (originalPath as NSString).deletingPathExtension + "_annotated.png"
+        
+        // Load original image
+        guard let nsImage = NSImage(contentsOfFile: originalPath) else {
+            throw CaptureError.fileIOError("Failed to load image from \(originalPath)")
         }
-
-        return annotatedPath
-    }
-
-    @MainActor
-    private func createAnnotatedImage(
-        from sourcePath: String,
-        to destinationPath: String,
-        uiElements: [String: SessionCache.SessionData.UIElement],
-        windowBounds: CGRect?) async throws
-    {
-        // Load the original image
-        guard let nsImage = NSImage(contentsOfFile: sourcePath) else {
-            throw CaptureError.fileIOError("Failed to load image from \(sourcePath)")
-        }
-
+        
         // Get image size
         let imageSize = nsImage.size
-
+        
         // Create bitmap context
         guard let bitmapRep = NSBitmapImageRep(
             bitmapDataPlanes: nil,
@@ -426,14 +277,14 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         else {
             throw CaptureError.captureFailure("Failed to create bitmap representation")
         }
-
+        
         // Draw into context
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmapRep)
-
+        
         // Draw original image
         nsImage.draw(in: NSRect(origin: .zero, size: imageSize))
-
+        
         // Configure text attributes
         let fontSize: CGFloat = 14
         let textAttributes: [NSAttributedString.Key: Any] = [
@@ -441,112 +292,258 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             .foregroundColor: NSColor.white,
             .backgroundColor: NSColor.black.withAlphaComponent(0.8),
         ]
-
+        
         // Role-based colors from spec
-        let roleColors: [String: NSColor] = [
-            "AXButton": NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
-            "AXTextField": NSColor(red: 0.204, green: 0.78, blue: 0.349, alpha: 1.0), // #34C759
-            "AXTextArea": NSColor(red: 0.204, green: 0.78, blue: 0.349, alpha: 1.0), // #34C759
-            "AXLink": NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
-            "AXCheckBox": NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0), // #8E8E93
-            "AXRadioButton": NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0), // #8E8E93
-            "AXSlider": NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0), // #8E8E93
-            "AXPopUpButton": NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
-            "AXComboBox": NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
+        let roleColors: [ElementType: NSColor] = [
+            .button: NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
+            .textField: NSColor(red: 0.204, green: 0.78, blue: 0.349, alpha: 1.0), // #34C759
+            .link: NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
+            .checkbox: NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0), // #8E8E93
+            .slider: NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0), // #8E8E93
+            .menu: NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
         ]
-
+        
+        // Get window bounds for coordinate transformation
+        let windowBounds = detectionResult.metadata.windowBounds ?? .zero
+        
         // Draw UI elements
-        for (_, element) in uiElements where element.isActionable {
-            // Get color for role
-            let color = roleColors[element.role] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
-
+        for element in detectionResult.elements.all where element.isEnabled {
+            // Get color for element type
+            let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
+            
             // Transform coordinates from screen space to window-relative space
-            var elementFrame = element.frame
-            if let windowBounds {
+            var elementFrame = element.bounds
+            if windowBounds != .zero {
                 // Convert from screen coordinates to window-relative coordinates
                 elementFrame.origin.x -= windowBounds.origin.x
                 elementFrame.origin.y -= windowBounds.origin.y
             }
-
+            
             // Draw bounding box
             let rect = NSRect(
                 x: elementFrame.origin.x,
                 y: imageSize.height - elementFrame.origin.y - elementFrame.height, // Flip Y coordinate
                 width: elementFrame.width,
                 height: elementFrame.height)
-
+            
             color.withAlphaComponent(0.3).setFill()
             rect.fill()
-
+            
             color.setStroke()
             let path = NSBezierPath(rect: rect)
             path.lineWidth = 2
             path.stroke()
-
+            
             // Draw element ID label
             let idString = NSAttributedString(string: element.id, attributes: textAttributes)
             let textSize = idString.size()
-
+            
             // Position label in top-left corner of element with padding
             let labelRect = NSRect(
                 x: rect.origin.x + 4,
                 y: rect.origin.y + rect.height - textSize.height - 4,
                 width: textSize.width + 8,
                 height: textSize.height + 4)
-
+            
             // Draw label background
             NSColor.black.withAlphaComponent(0.8).setFill()
             NSBezierPath(roundedRect: labelRect, xRadius: 3, yRadius: 3).fill()
-
+            
             // Draw label text
             idString.draw(at: NSPoint(x: labelRect.origin.x + 4, y: labelRect.origin.y + 2))
         }
-
+        
         NSGraphicsContext.restoreGraphicsState()
-
+        
         // Save annotated image
         guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
             throw CaptureError.captureFailure("Failed to create PNG data")
         }
-
-        try pngData.write(to: URL(fileURLWithPath: destinationPath))
+        
+        try pngData.write(to: URL(fileURLWithPath: annotatedPath))
+        Logger.shared.verbose("Created annotated screenshot: \(annotatedPath)")
+        
+        // Log annotation info only in non-JSON mode
+        if !jsonOutput {
+            let interactableElements = detectionResult.elements.all.filter { $0.isEnabled }
+            print("📝 Created annotated screenshot with \(interactableElements.count) interactive elements")
+        }
+        
+        return annotatedPath
     }
-
+    
     private func performAnalysis(imagePath: String, prompt: String) async throws -> String {
-        // Get configured providers
-        let aiProvidersString = ConfigurationManager.shared.getAIProviders(cliValue: nil)
-        let configuredProviders = AIProviderFactory.createProviders(from: aiProvidersString)
-
-        guard !configuredProviders.isEmpty else {
-            throw CaptureError.invalidArgument("No AI providers configured")
+        // TODO: Implement using AI provider from services
+        // For now, return placeholder since AI provider is not yet in PeekabooCore
+        Logger.shared.warning("AI analysis not yet implemented in service layer")
+        return "AI analysis functionality will be available when AI providers are integrated into PeekabooCore services."
+    }
+    
+    private func determineMode() -> CaptureMode {
+        if let mode = self.mode {
+            return mode
+        } else if app != nil || windowTitle != nil {
+            // If app or window title is specified, default to window mode
+            return .window
+        } else {
+            // Otherwise default to frontmost
+            return .frontmost
         }
-
-        // Use first available provider
-        guard let analyzer = await AIProviderFactory.findAvailableProvider(from: configuredProviders) else {
-            throw CaptureError.invalidArgument("No AI provider available")
+    }
+    
+    // MARK: - Output Methods
+    
+    private func outputJSONResults(
+        sessionId: String,
+        screenshotPath: String,
+        annotatedPath: String?,
+        metadata: DetectionMetadata,
+        elements: DetectedElements,
+        analysisResult: String?,
+        executionTime: TimeInterval
+    ) {
+        // Build UI element summaries
+        let uiElements: [UIElementSummary] = elements.all.map { element in
+            UIElementSummary(
+                id: element.id,
+                role: element.type.rawValue,
+                title: element.attributes["title"],
+                label: element.label,
+                identifier: element.attributes["identifier"],
+                is_actionable: element.isEnabled,
+                keyboard_shortcut: element.attributes["keyboardShortcut"]
+            )
         }
-
-        // Read image and convert to base64
-        let imageData = try Data(contentsOf: URL(fileURLWithPath: imagePath))
-        let base64String = imageData.base64EncodedString()
-
-        return try await analyzer.analyze(
-            imageBase64: base64String,
-            question: prompt)
+        
+        // Build session paths
+        let sessionPaths = SessionPaths(
+            raw: screenshotPath,
+            annotated: annotatedPath ?? screenshotPath,
+            map: services.sessionManager.getSessionStoragePath() + "/\(sessionId)/map.json"
+        )
+        
+        let output = SeeResult(
+            session_id: sessionId,
+            screenshot_raw: sessionPaths.raw,
+            screenshot_annotated: sessionPaths.annotated,
+            ui_map: sessionPaths.map,
+            application_name: metadata.applicationName,
+            window_title: metadata.windowTitle,
+            element_count: metadata.elementCount,
+            interactable_count: elements.all.filter { $0.isEnabled }.count,
+            capture_mode: determineMode().rawValue,
+            analysis_result: analysisResult,
+            execution_time: executionTime,
+            ui_elements: uiElements,
+            menu_bar: nil // Menu bar extraction not yet implemented in service layer
+        )
+        
+        outputSuccessCodable(data: output)
+    }
+    
+    private func outputTextResults(
+        sessionId: String,
+        screenshotPath: String,
+        annotatedPath: String?,
+        metadata: DetectionMetadata,
+        elements: DetectedElements,
+        analysisResult: String?,
+        executionTime: TimeInterval
+    ) {
+        let sessionPaths = SessionPaths(
+            raw: screenshotPath,
+            annotated: annotatedPath ?? screenshotPath,
+            map: services.sessionManager.getSessionStoragePath() + "/\(sessionId)/map.json"
+        )
+        
+        let interactableCount = elements.all.filter { $0.isEnabled }.count
+        
+        print("✅ Screenshot captured successfully")
+        print("📍 Session ID: \(sessionId)")
+        print("🖼  Raw screenshot: \(sessionPaths.raw)")
+        if let annotated = annotatedPath {
+            print("🎯 Annotated: \(annotated)")
+        }
+        print("🗺️  UI map: \(sessionPaths.map)")
+        print("🔍 Found \(metadata.elementCount) UI elements (\(interactableCount) interactive)")
+        
+        if let app = metadata.applicationName {
+            print("📱 Application: \(app)")
+        }
+        if let window = metadata.windowTitle {
+            print("🪟 Window: \(window)")
+        }
+        
+        if let analysis = analysisResult {
+            print("🤖 Analysis:")
+            print(analysis)
+        }
+        
+        print("⏱️  Completed in \(String(format: "%.2f", executionTime))s")
     }
 }
 
 // MARK: - Supporting Types
 
-private struct CaptureResult {
-    let outputPath: String
-    let applicationName: String?
-    let windowTitle: String?
-    let suggestedName: String
-    let windowBounds: CGRect?
+private struct CaptureAndDetectionResult {
+    let sessionId: String
+    let screenshotPath: String
+    let elements: DetectedElements
+    let metadata: DetectionMetadata
 }
 
-// MARK: - JSON Output Structure
+private struct SessionPaths {
+    let raw: String
+    let annotated: String
+    let map: String
+}
+
+// MARK: - Extended Detection Metadata
+
+private extension DetectionMetadata {
+    var applicationName: String? {
+        warnings.first { $0.hasPrefix("APP:") }?.replacingOccurrences(of: "APP:", with: "")
+    }
+    
+    var windowTitle: String? {
+        warnings.first { $0.hasPrefix("WINDOW:") }?.replacingOccurrences(of: "WINDOW:", with: "")
+    }
+    
+    var windowBounds: CGRect? {
+        if let boundsString = warnings.first(where: { $0.hasPrefix("BOUNDS:") })?.replacingOccurrences(of: "BOUNDS:", with: ""),
+           let data = boundsString.data(using: .utf8),
+           let rect = try? JSONDecoder().decode(CGRect.self, from: data) {
+            return rect
+        }
+        return nil
+    }
+    
+    init(detectionTime: TimeInterval, elementCount: Int, method: String, warnings: [String] = [], 
+         applicationName: String? = nil, windowTitle: String? = nil, windowBounds: CGRect? = nil) {
+        var allWarnings = warnings
+        
+        // Store metadata in warnings array (temporary until service layer is enhanced)
+        if let app = applicationName {
+            allWarnings.append("APP:\(app)")
+        }
+        if let window = windowTitle {
+            allWarnings.append("WINDOW:\(window)")
+        }
+        if let bounds = windowBounds, let boundsData = try? JSONEncoder().encode(bounds), 
+           let boundsString = String(data: boundsData, encoding: .utf8) {
+            allWarnings.append("BOUNDS:\(boundsString)")
+        }
+        
+        self.init(
+            detectionTime: detectionTime,
+            elementCount: elementCount,
+            method: method,
+            warnings: allWarnings
+        )
+    }
+}
+
+// MARK: - JSON Output Structure (matching original)
 
 struct SeeResult: Codable {
     let session_id: String
@@ -577,14 +574,14 @@ struct UIElementSummary: Codable {
 
 struct MenuBarSummary: Codable {
     let menus: [MenuSummary]
-
+    
     struct MenuSummary: Codable {
         let title: String
         let item_count: Int
         let enabled: Bool
         let items: [MenuItemSummary]
     }
-
+    
     struct MenuItemSummary: Codable {
         let title: String
         let enabled: Bool

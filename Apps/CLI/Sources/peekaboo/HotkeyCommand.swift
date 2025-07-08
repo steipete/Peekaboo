@@ -1,16 +1,19 @@
 import ArgumentParser
-import AXorcist
-import CoreGraphics
 import Foundation
+import PeekabooCore
 
-/// Presses key combinations like Cmd+C, Ctrl+A, etc.
-/// Supports modifier keys and special keys.
+/// Refactored HotkeyCommand using PeekabooCore services
+/// Presses key combinations like Cmd+C, Ctrl+A, etc. using the UIAutomationService.
 @available(macOS 14.0, *)
 struct HotkeyCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "hotkey",
-        abstract: "Press keyboard shortcuts and key combinations",
+        abstract: "Press keyboard shortcuts and key combinations using PeekabooCore services",
         discussion: """
+            This is a refactored version of the hotkey command that uses PeekabooCore services
+            instead of direct implementation. It maintains the same interface but delegates
+            all operations to the service layer.
+            
             The 'hotkey' command simulates keyboard shortcuts by pressing
             multiple keys simultaneously, like Cmd+C for copy or Cmd+Shift+T.
 
@@ -38,11 +41,17 @@ struct HotkeyCommand: AsyncParsableCommand {
     @Option(help: "Delay between key press and release in milliseconds")
     var holdDuration: Int = 50
 
+    @Option(help: "Session ID (uses latest if not specified)")
+    var session: String?
+
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
+    private let services = PeekabooServices.shared
+
     mutating func run() async throws {
         let startTime = Date()
+        Logger.shared.setJsonOutputMode(jsonOutput)
 
         do {
             // Parse key names - support both comma-separated and space-separated
@@ -59,10 +68,14 @@ struct HotkeyCommand: AsyncParsableCommand {
                 throw ValidationError("No keys specified")
             }
 
-            // Perform hotkey using InputEvents utility
-            try InputEvents.performHotkey(
-                keys: keyNames,
-                holdDuration: Double(self.holdDuration) / 1000.0)
+            // Convert key names to comma-separated format for the service
+            let keysString = keyNames.joined(separator: ",")
+
+            // Perform hotkey using the automation service
+            try await services.automation.hotkey(
+                keys: keysString,
+                holdDuration: self.holdDuration
+            )
 
             // Output results
             if self.jsonOutput {
@@ -70,7 +83,8 @@ struct HotkeyCommand: AsyncParsableCommand {
                     success: true,
                     keys: keyNames,
                     keyCount: keyNames.count,
-                    executionTime: Date().timeIntervalSince(startTime))
+                    executionTime: Date().timeIntervalSince(startTime)
+                )
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Hotkey pressed")
@@ -79,15 +93,36 @@ struct HotkeyCommand: AsyncParsableCommand {
             }
 
         } catch {
-            if self.jsonOutput {
-                outputError(
-                    message: error.localizedDescription,
-                    code: .INVALID_ARGUMENT)
-            } else {
-                var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
-                print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
-            }
+            handleError(error)
             throw ExitCode.failure
+        }
+    }
+
+    private func handleError(_ error: Error) {
+        if jsonOutput {
+            let errorCode: ErrorCode
+            if error is PeekabooError {
+                switch error as? PeekabooError {
+                case .interactionFailed:
+                    errorCode = .INTERACTION_FAILED
+                case .permissionDenied:
+                    errorCode = .PERMISSION_DENIED_ACCESSIBILITY
+                default:
+                    errorCode = .INTERNAL_SWIFT_ERROR
+                }
+            } else if error is ValidationError {
+                errorCode = .INVALID_ARGUMENT
+            } else {
+                errorCode = .INTERNAL_SWIFT_ERROR
+            }
+            
+            outputError(
+                message: error.localizedDescription,
+                code: errorCode
+            )
+        } else {
+            var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
+            print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
         }
     }
 }

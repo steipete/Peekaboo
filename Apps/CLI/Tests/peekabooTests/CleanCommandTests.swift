@@ -2,15 +2,15 @@ import Testing
 import Foundation
 @testable import peekaboo
 
-/// Tests for CleanCommandV2
-@Suite("CleanCommandV2 Tests")
+/// Tests for CleanCommand
+@Suite("CleanCommand Tests")
 @available(macOS 14.0, *)
-struct CleanCommandV2Tests {
+struct CleanCommandTests {
     
     @Test("Clean command validation")
     func testCommandValidation() throws {
         // Test that specifying multiple options fails
-        var command = CleanCommandV2()
+        var command = CleanCommand()
         command.allSessions = true
         command.olderThan = 24
         
@@ -20,7 +20,7 @@ struct CleanCommandV2Tests {
     
     @Test("Dry run flag")
     func testDryRunFlag() {
-        var command = CleanCommandV2()
+        var command = CleanCommand()
         command.dryRun = true
         
         #expect(command.dryRun == true)
@@ -28,7 +28,7 @@ struct CleanCommandV2Tests {
     
     @Test("Format bytes helper")
     func testFormatBytes() {
-        let command = CleanCommandV2()
+        let command = CleanCommand()
         
         // Test various byte sizes
         #expect(command.formatBytes(1024) == "1 KB")

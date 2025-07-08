@@ -1,24 +1,27 @@
 import ArgumentParser
-import AXorcist
-import CoreGraphics
 import Foundation
+import PeekabooCore
 
-/// Types text into focused elements or sends keyboard input.
-/// Supports both text input and special key combinations.
+/// Refactored TypeCommand using PeekabooCore services
+/// Types text into focused elements or sends keyboard input using the UIAutomationService.
 @available(macOS 14.0, *)
 struct TypeCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "type",
-        abstract: "Type text or send keyboard input",
+        abstract: "Type text or send keyboard input using PeekabooCore services",
         discussion: """
+            This is a refactored version of the type command that uses PeekabooCore services
+            instead of direct implementation. It maintains the same interface but delegates
+            all operations to the service layer.
+            
             The 'type' command sends keyboard input to the focused element.
             It can type regular text or send special key combinations.
 
             EXAMPLES:
               peekaboo type "Hello World"           # Type text (default: 5ms delay)
               peekaboo type "user@example.com"      # Type email
-              peekaboo type "text" --delay 0       # Type at maximum speed
-              peekaboo type "text" --delay 50      # Type slower (50ms between keys)
+              peekaboo type "text" --delay 0        # Type at maximum speed
+              peekaboo type "text" --delay 50       # Type slower (50ms between keys)
               peekaboo type "password" --return     # Type and press return
               peekaboo type --tab 3                 # Press tab 3 times
               peekaboo type "text" --clear          # Clear field first
@@ -63,8 +66,11 @@ struct TypeCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
+    private let services = PeekabooServices.shared
+
     mutating func run() async throws {
         let startTime = Date()
+        Logger.shared.setJsonOutputMode(jsonOutput)
 
         do {
             var actions: [TypeAction] = []
@@ -101,19 +107,22 @@ struct TypeCommand: AsyncParsableCommand {
                 throw ValidationError("No input specified. Provide text or key flags.")
             }
 
-            // Execute type actions
-            let typeResult = try await performTypeActions(
-                actions: actions,
-                delayMs: delay)
+            // Execute type actions using the service
+            let typeResult = try await services.automation.typeActions(
+                actions,
+                typingDelay: delay,
+                sessionId: session
+            )
 
             // Output results
             if self.jsonOutput {
-                let output = TypeResult(
+                let output = TypeCommandResult(
                     success: true,
                     typedText: text,
                     keyPresses: typeResult.keyPresses,
                     totalCharacters: typeResult.totalCharacters,
-                    executionTime: Date().timeIntervalSince(startTime))
+                    executionTime: Date().timeIntervalSince(startTime)
+                )
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Typing completed")
@@ -128,133 +137,48 @@ struct TypeCommand: AsyncParsableCommand {
             }
 
         } catch {
-            if self.jsonOutput {
-                outputError(
-                    message: error.localizedDescription,
-                    code: .INTERNAL_SWIFT_ERROR)
-            } else {
-                var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
-                print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
-            }
+            handleError(error)
             throw ExitCode.failure
         }
     }
 
-    private func performTypeActions(actions: [TypeAction], delayMs: Int) async throws -> InternalTypeResult {
-        var totalChars = 0
-        var keyPresses = 0
-
-        for action in actions {
-            switch action {
-            case let .text(string):
-                // Type the string using CoreGraphics events
-                let delaySeconds = Double(delayMs) / 1000.0
-                try InputEvents.typeString(string, delay: delaySeconds)
-                totalChars += string.count
-
-            case let .key(key):
-                // Type special key
-                let specialKey = key.toInputEventKey()
-                try InputEvents.pressKey(specialKey)
-                keyPresses += 1
-
-                if delayMs > 0 {
-                    try await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
+    private func handleError(_ error: Error) {
+        if jsonOutput {
+            let errorCode: ErrorCode
+            if error is PeekabooError {
+                switch error as? PeekabooError {
+                case .sessionNotFound:
+                    errorCode = .SESSION_NOT_FOUND
+                case .elementNotFound:
+                    errorCode = .ELEMENT_NOT_FOUND
+                case .interactionFailed:
+                    errorCode = .INTERACTION_FAILED
+                default:
+                    errorCode = .INTERNAL_SWIFT_ERROR
                 }
-
-            case .clear:
-                // Clear field by selecting all (Cmd+A) and deleting
-                try InputEvents.performHotkey(keys: ["cmd", "a"])
-                try await Task.sleep(nanoseconds: 50_000_000) // 50ms
-                try InputEvents.pressKey(.delete)
-                keyPresses += 2
-
-                if delayMs > 0 {
-                    try await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
-                }
+            } else if error is ValidationError {
+                errorCode = .INVALID_INPUT
+            } else {
+                errorCode = .INTERNAL_SWIFT_ERROR
             }
-        }
-
-        return InternalTypeResult(
-            totalCharacters: totalChars,
-            keyPresses: keyPresses)
-    }
-
-    private func typeSpecialKey(_ key: SpecialKey) async throws {
-        // TODO: Implement special key handling using AXorcist
-        // For now, this is a placeholder
-    }
-}
-
-// MARK: - Supporting Types
-
-private enum TypeAction {
-    case text(String)
-    case key(SpecialKey)
-    case clear
-}
-
-private enum SpecialKey {
-    case `return`
-    case tab
-    case escape
-    case delete
-
-    func toInputEventKey() -> InputEvents.SpecialKey {
-        switch self {
-        case .return: .return
-        case .tab: .tab
-        case .escape: .escape
-        case .delete: .delete
+            
+            outputError(
+                message: error.localizedDescription,
+                code: errorCode
+            )
+        } else {
+            var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
+            print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
         }
     }
-}
-
-private struct InternalTypeResult {
-    let totalCharacters: Int
-    let keyPresses: Int
 }
 
 // MARK: - JSON Output Structure
 
-struct TypeResult: Codable {
+struct TypeCommandResult: Codable {
     let success: Bool
     let typedText: String?
     let keyPresses: Int
     let totalCharacters: Int
     let executionTime: TimeInterval
 }
-
-// MARK: - AXorcist Extensions
-
-// TODO: These extensions need to be implemented in AXorcist
-/*
- extension AXorcist {
-     /// Type a single character
-     func typeCharacter(_ char: Character) async throws {
-         let string = String(char)
-         try await self.typeString(string)
-     }
-
-     /// Press a key with optional modifiers
-     func keyPress(_ key: KeyCode, modifiers: CGEventFlags = []) async throws {
-         let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: key.rawValue, keyDown: true)
-         let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: key.rawValue, keyDown: false)
-
-         keyDown?.flags = modifiers
-         keyUp?.flags = modifiers
-
-         keyDown?.post(tap: .cghidEventTap)
-         keyUp?.post(tap: .cghidEventTap)
-     }
- }
-
- // Key codes for common keys
- private enum KeyCode: UInt16 {
-     case a = 0x00
-     case delete = 0x33
-     case tab = 0x30
-     case `return` = 0x24
-     case escape = 0x35
- }
- */

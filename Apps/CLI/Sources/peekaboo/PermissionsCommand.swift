@@ -1,7 +1,8 @@
 import ArgumentParser
 import Foundation
+import PeekabooCore
 
-/// Standalone command for checking system permissions.
+/// Standalone command for checking system permissions using PeekabooCore services.
 ///
 /// Provides a direct way to check permissions without going through the list subcommand.
 struct PermissionsCommand: AsyncParsableCommand {
@@ -46,8 +47,13 @@ struct PermissionsCommand: AsyncParsableCommand {
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
-        let screenRecording = PermissionsChecker.checkScreenRecordingPermission()
-        let accessibility = PermissionsChecker.checkAccessibilityPermission()
+        // Initialize services
+        let container = ServiceContainer.current
+        let services = try await container.getAllServicesV3()
+
+        // Get permissions from services
+        let screenRecording = await services.screenCapture.hasScreenRecordingPermission()
+        let accessibility = await services.automation.hasAccessibilityPermission()
 
         let permissions = ServerPermissions(
             screen_recording: screenRecording,

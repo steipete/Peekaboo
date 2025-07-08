@@ -44,6 +44,17 @@ Peekaboo bridges the gap between visual content on your screen and AI understand
 - **Non-intrusive capture** without changing window focus
 - **Automation scripting** - Chain commands together for complex workflows
 
+### 🏗️ Architecture
+
+Peekaboo uses a modern service-based architecture:
+
+- **PeekabooCore** - Shared services for screen capture, UI automation, window management, and more
+- **CLI** - Command-line interface that uses PeekabooCore services directly
+- **Mac App** - Native macOS app with 100x+ performance improvement over CLI spawning
+- **MCP Server** - Model Context Protocol server for AI assistants
+
+All components share the same core services, ensuring consistent behavior and optimal performance. See [Service API Reference](docs/service-api-reference.md) for detailed documentation.
+
 ## 🚀 Quick Start: CLI Tool
 
 ### Installation
