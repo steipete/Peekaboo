@@ -7,7 +7,8 @@ Of course. Here is the full and complete Software Design Document for Peekaboo 3
 **Motto:** *Breaking out of the ghost realm.*
 
 **Version:** 3.0
-**Status:** Final
+**Status:** Final (Updated January 2025)
+**Last Updated:** 2025-01-08
 
 #### **1. Vision & Scope**
 
@@ -18,7 +19,11 @@ Peekaboo 3.0 will be the definitive command-line framework for native macOS GUI 
 Previous versions of Peekaboo and similar tools have acted as "ghosts"—they could see the screen and understand its structure, but could not directly interact. Peekaboo 3.0 breaks out of this ghost realm by integrating a complete set of actions, allowing it to become a first-class **actor** on the macOS desktop.
 
 **1.3. Scope**
-This document specifies a **CLI-first framework**. The core product is a single, powerful `peekaboo` binary. This binary will be self-sufficient for all automation tasks. A server-based MCP wrapper is defined as a secondary component that *uses* the CLI, providing a persistent service layer for high-frequency agentic workflows.
+This document specifies a **comprehensive macOS automation ecosystem** consisting of:
+- **CLI Tool**: A powerful `peekaboo` binary for command-line automation
+- **Mac App**: A native macOS application with Inspector mode, AI agent integration, and visual debugging
+- **MCP Server**: A Model Context Protocol server for AI agent integration
+- **PeekabooCore**: A shared service layer providing direct API access for all components
 
 #### **2. Core Principles**
 
@@ -30,10 +35,13 @@ This document specifies a **CLI-first framework**. The core product is a single,
 
 #### **3. System Architecture**
 
-Peekaboo 3.0 consists of two primary components that work in tandem:
+Peekaboo 3.0 consists of multiple components built on a unified service layer:
 
-1.  **`peekaboo-cli` (The Native Core):** A compiled Swift executable that serves as the engine. It directly interfaces with macOS APIs.
-2.  **`@peekaboo/mcp` (The MCP Server & SDK):** An optional Node.js/TypeScript wrapper that provides a persistent server and a high-level client SDK for agent integration.
+1. **`PeekabooCore` (Service Layer):** A Swift library providing direct API access to all automation capabilities
+2. **`peekaboo-cli` (CLI Tool):** A compiled Swift executable for command-line usage
+3. **`Peekaboo.app` (Mac Application):** A native macOS app with Inspector mode and AI agent integration
+4. **`@peekaboo/mcp` (MCP Server):** A Node.js/TypeScript server implementing the Model Context Protocol
+5. **`AXorcist` (Accessibility Library):** Modern Swift wrapper around macOS Accessibility APIs
 
 ##### **3.1. The Process-Isolated Session Cache**
 
@@ -117,6 +125,8 @@ This is the evolution of the `AXorcist` project, refactored and expanded into th
 
 ##### **4.2. CLI Command Reference**
 
+**Note:** This section has been significantly expanded to include all implemented commands as of January 2025.
+
 **Global Flags (Available for All Commands)**
 
 *   **`--verbose`, `-v`**: Enable detailed logging output to stderr. Shows internal operations, timing information, and decision-making process.
@@ -187,6 +197,55 @@ This is particularly useful for:
     *   `--text "..."`: **Required.** The string to type.
 *   **Flags:**
     *   `--on <element_id>`: (Optional) The ID of the element to click first to ensure focus.
+
+**`peekaboo scroll --direction <dir> --amount <num> [--on <element_id>] [--session-id <id>]`**
+
+*   **Description:** Scrolls the mouse wheel in the specified direction.
+*   **Arguments:**
+    *   `--direction <dir>`: **Required.** Direction to scroll: `up`, `down`, `left`, or `right`.
+    *   `--amount <num>`: **Required.** Number of scroll units (lines/ticks).
+*   **Flags:**
+    *   `--on <element_id>`: (Optional) Element to position mouse over before scrolling.
+    *   `--session-id <id>`: (Optional) Session ID for element lookup.
+*   **Examples:**
+    ```bash
+    peekaboo scroll --direction down --amount 5
+    peekaboo scroll --direction up --amount 10 --on T1 --session-id 12345
+    ```
+
+**`peekaboo hotkey --keys <keys> [options]`**
+
+*   **Description:** Press keyboard shortcuts and key combinations.
+*   **Arguments:**
+    *   `--keys <keys>`: **Required.** Comma-separated list of keys (e.g., "cmd,c", "ctrl,alt,delete").
+*   **Supported Keys:**
+    *   Modifiers: `cmd`, `command`, `ctrl`, `control`, `alt`, `option`, `shift`, `fn`
+    *   Special: `escape`, `return`, `enter`, `tab`, `space`, `delete`, `backspace`
+    *   Navigation: `up`, `down`, `left`, `right`, `home`, `end`, `pageup`, `pagedown`
+    *   Function: `f1` through `f20`
+*   **Examples:**
+    ```bash
+    peekaboo hotkey --keys "cmd,c"                    # Copy
+    peekaboo hotkey --keys "cmd,shift,t"               # Reopen closed tab
+    peekaboo hotkey --keys "ctrl,alt,delete"           # Force quit
+    ```
+
+**`peekaboo swipe --from <source> --to <target> [options]`**
+
+*   **Description:** Perform swipe gestures between elements or coordinates.
+*   **Arguments:**
+    *   `--from <element_id>`: Source element ID (mutually exclusive with --from-coords).
+    *   `--to <element_id>`: Target element ID (mutually exclusive with --to-coords).
+    *   `--from-coords <x,y>`: Source coordinates.
+    *   `--to-coords <x,y>`: Target coordinates.
+*   **Flags:**
+    *   `--duration <ms>`: Duration of the swipe in milliseconds (default: 500).
+    *   `--session-id <id>`: Session ID for element lookup.
+*   **Examples:**
+    ```bash
+    peekaboo swipe --from B1 --to B5 --session-id 12345
+    peekaboo swipe --from-coords 100,200 --to-coords 300,400 --duration 1000
+    ```
 
 **`peekaboo run <path_to_script.json>`**
 
@@ -279,6 +338,120 @@ This is particularly useful for:
     peekaboo window resize --app Terminal --width 800 --height 600
     peekaboo window set-bounds --app Chrome --x 50 --y 50 --width 1024 --height 768
     peekaboo window focus --app "Visual Studio Code"
+    ```
+
+**`peekaboo analyze <image_path> <prompt> [options]`**
+
+*   **Description:** Analyze images using AI vision models (OpenAI GPT-4V or Ollama LLaVA).
+*   **Arguments:**
+    *   `<image_path>`: **Required.** Path to the image file to analyze.
+    *   `<prompt>`: **Required.** Natural language prompt describing what to analyze.
+*   **Flags:**
+    *   `--json-output`: Output results in JSON format
+    *   `--providers <providers>`: Override AI providers (default from PEEKABOO_AI_PROVIDERS env)
+*   **Environment:**
+    *   `PEEKABOO_AI_PROVIDERS`: Comma-separated list of providers (e.g., "openai/gpt-4o,ollama/llava:latest")
+    *   `OPENAI_API_KEY`: Required for OpenAI provider
+*   **Examples:**
+    ```bash
+    peekaboo analyze screenshot.png "What application is shown?"
+    peekaboo analyze ui.png "Describe all the buttons visible" --json-output
+    PEEKABOO_AI_PROVIDERS="ollama/llava:latest" peekaboo analyze image.png "What text is visible?"
+    ```
+
+**`peekaboo move --x <x> --y <y> [options]`**
+
+*   **Description:** Move the mouse cursor to specific coordinates without clicking.
+*   **Arguments:**
+    *   `--x <x>`: **Required.** X coordinate for mouse position.
+    *   `--y <y>`: **Required.** Y coordinate for mouse position.
+*   **Flags:**
+    *   `--duration <ms>`: Duration for smooth movement (default: instant)
+*   **Examples:**
+    ```bash
+    peekaboo move --x 500 --y 300
+    peekaboo move --x 100 --y 200 --duration 500
+    ```
+
+**`peekaboo clean [options]`**
+
+*   **Description:** Clean up session cache directories to free disk space.
+*   **Flags:**
+    *   `--all`: Clean all sessions regardless of age
+    *   `--older-than <hours>`: Clean sessions older than specified hours (default: 24)
+    *   `--dry-run`: Show what would be cleaned without deleting
+*   **Examples:**
+    ```bash
+    peekaboo clean                        # Clean sessions older than 24 hours
+    peekaboo clean --all                  # Clean all sessions
+    peekaboo clean --older-than 1         # Clean sessions older than 1 hour
+    peekaboo clean --dry-run              # Preview cleanup
+    ```
+
+**`peekaboo config <subcommand> [options]`**
+
+*   **Description:** Manage Peekaboo configuration settings.
+*   **Subcommands:**
+    *   `init`: Create default configuration file
+    *   `show`: Display current configuration
+    *   `edit`: Open configuration in default editor
+    *   `validate`: Validate configuration syntax
+    *   `set-credential`: Securely store API keys
+*   **Flags:**
+    *   `--effective`: Show merged configuration from all sources (for `show`)
+*   **Examples:**
+    ```bash
+    peekaboo config init                              # Create ~/.peekaboo/config.json
+    peekaboo config show                              # Display current config
+    peekaboo config show --effective                  # Show merged configuration
+    peekaboo config edit                              # Open in $EDITOR
+    peekaboo config set-credential OPENAI_API_KEY sk-... # Store API key securely
+    ```
+
+**`peekaboo permissions [options]`**
+
+*   **Description:** Check and display current permission status for Peekaboo.
+*   **Flags:**
+    *   `--json-output`: Output results in JSON format
+*   **Output:** Shows status of Screen Recording, Accessibility, and other required permissions.
+*   **Examples:**
+    ```bash
+    peekaboo permissions
+    peekaboo permissions --json-output
+    ```
+
+**`peekaboo image [options]`** *(Legacy command, maintained for compatibility)*
+
+*   **Description:** Capture screenshots with various options. Superseded by `see` command.
+*   **Options:**
+    *   `--app <identifier>`: Target application
+    *   `--mode <mode>`: Capture mode (screen, window, frontmost)
+    *   `--path <path>`: Output path for screenshot
+    *   `--window-title <title>`: Target window by title
+    *   `--exclude-shadow`: Exclude window shadow
+    *   `--json-output`: Output results in JSON format
+*   **Examples:**
+    ```bash
+    peekaboo image --app Safari --path screenshot.png
+    peekaboo image --mode screen --path desktop.png
+    ```
+
+**`peekaboo list <type> [options]`** *(Legacy command, maintained for compatibility)*
+
+*   **Description:** List various system information. Partially superseded by specific commands.
+*   **Types:**
+    *   `apps`: List running applications
+    *   `windows`: List windows for an application
+    *   `permissions`: List permission status (use `permissions` command instead)
+    *   `server_status`: List server and AI provider status
+*   **Options:**
+    *   `--app <identifier>`: Filter by application (for windows)
+    *   `--json-output`: Output results in JSON format
+*   **Examples:**
+    ```bash
+    peekaboo list apps --json-output
+    peekaboo list windows --app Finder
+    peekaboo list server_status
     ```
 
 **`peekaboo menu <subcommand> [options]`**
@@ -375,7 +548,7 @@ This is particularly useful for:
     peekaboo dialog dismiss --force
     ```
 
-**`peekaboo drag <options>`**
+**`peekaboo drag [options]`**
 
 *   **Description:** Perform drag and drop operations between UI elements, coordinates, or applications.
 *   **Options:**
@@ -383,15 +556,17 @@ This is particularly useful for:
     *   `--to <element_id>`: Target element ID
     *   `--from-coords <x,y>`: Source coordinates
     *   `--to-coords <x,y>`: Target coordinates
-    *   `--to-app <name>`: Target application (e.g., "Trash")
+    *   `--to-app <name>`: Target application (e.g., "Trash") - **Enhanced feature**
     *   `--duration <ms>`: Drag duration in milliseconds (default: 500)
     *   `--modifiers <keys>`: Modifier keys (e.g., "cmd,option")
-    *   `--session <id>`: Session ID for element lookup
+    *   `--session-id <id>`: Session ID for element lookup
+*   **Special Features:**
+    *   **Application Targeting:** The `--to-app` option allows dragging items directly to applications like Trash, making file operations intuitive.
 *   **Examples:**
     ```bash
-    peekaboo drag --from B1 --to T2 --session abc123
+    peekaboo drag --from B1 --to T2 --session-id 12345
     peekaboo drag --from-coords 100,200 --to-coords 500,400
-    peekaboo drag --from F1 --to-app Trash
+    peekaboo drag --from F1 --to-app Trash              # Drag file to Trash
     peekaboo drag --from-coords 50,50 --to-coords 300,300 --modifiers cmd,option
     ```
 
@@ -605,7 +780,151 @@ A configuration file at `~/.config/peekaboo/config.jsonc` allows for user-specif
     }
     ```
 
-#### **7. Component 2: `@peekaboo/mcp` (Server & SDK)**
+#### **5. Component 2: Peekaboo Mac Application**
+
+The Peekaboo Mac app is a native macOS application that showcases the full capabilities of PeekabooCore with a rich graphical interface.
+
+##### **5.1. Inspector Mode**
+
+The Inspector is Peekaboo's visual debugging and exploration tool:
+
+*   **Visual Overlay System:** Creates transparent overlay windows for each application
+*   **Element Highlighting:** Color-coded bounding boxes around UI elements
+*   **Hover Detection:** Real-time element information display on hover
+*   **Multi-App Support:** Tracks and overlays multiple applications simultaneously
+*   **Detail Levels:** 
+    *   Essential: Only interactive elements (buttons, links, text fields)
+    *   Moderate: Include static text and images
+    *   All: Show every accessibility element
+*   **Element Selection:** Click to select and copy element information
+*   **Keyboard Shortcuts:** 
+    *   `Cmd+Shift+I`: Toggle Inspector
+    *   `Escape`: Exit Inspector mode
+
+##### **5.2. AI Agent Integration**
+
+Built-in OpenAI-powered automation agent:
+
+*   **Natural Language Tasks:** Execute complex workflows from plain English descriptions
+*   **Real-Time Streaming:** Live updates showing agent thinking and actions
+*   **Session Management:** Track all agent interactions with full history
+*   **Tool Orchestration:** Agent can use all Peekaboo commands
+*   **Error Recovery:** Intelligent retry and error handling
+*   **Model Selection:** Support for GPT-4, GPT-4 Turbo, and future models
+
+##### **5.3. Status Bar Integration**
+
+Always-accessible menu bar presence:
+
+*   **Animated Ghost Icon:** Visual feedback during operations
+*   **Quick Actions Menu:** Launch Inspector, Agent, or quit
+*   **Popover Interface:** Compact UI for quick tasks
+*   **Session Status:** Current agent execution state
+*   **Keyboard Shortcuts:** Global hotkeys for common actions
+
+##### **5.4. Session Management**
+
+Comprehensive automation session tracking:
+
+*   **Persistent Storage:** Sessions saved to `~/Documents/Peekaboo/`
+*   **Message History:** Complete record of user prompts and agent responses
+*   **Metadata Tracking:** Timestamps, duration, model used, token counts
+*   **Session Replay:** Review past automation sequences
+*   **Export Options:** Save sessions as JSON for analysis
+
+##### **5.5. Speech Recognition**
+
+Voice-driven automation (experimental):
+
+*   **Continuous Listening:** Hands-free operation mode
+*   **Wake Words:** Configurable activation phrases
+*   **Transcription Display:** Real-time speech-to-text feedback
+*   **Privacy Controls:** Local processing options
+*   **Integration:** Works seamlessly with Agent mode
+
+##### **5.6. Onboarding & Setup**
+
+First-run experience:
+
+*   **API Key Configuration:** Guided OpenAI API key setup
+*   **Permission Requests:** Visual permission status and one-click grants
+*   **Tutorial Mode:** Interactive walkthrough of features
+*   **Settings Window:** Comprehensive preference management
+
+#### **6. PeekabooCore Service Architecture**
+
+PeekabooCore is the unified service layer that powers all Peekaboo applications.
+
+##### **6.1. Design Principles**
+
+*   **Protocol-Based:** Every service has a protocol for testability
+*   **Dependency Injection:** Services can be mocked for testing
+*   **Type Safety:** Swift's type system ensures correctness
+*   **Performance:** Direct API calls, no subprocess overhead
+*   **Async/Await:** Modern Swift concurrency throughout
+
+##### **6.2. Available Services**
+
+```swift
+public class PeekabooServices {
+    public static let shared = PeekabooServices()
+    
+    public let screenCapture: ScreenCaptureServiceProtocol
+    public let applications: ApplicationServiceProtocol
+    public let automation: UIAutomationServiceProtocol
+    public let windows: WindowManagementServiceProtocol
+    public let menu: MenuServiceProtocol
+    public let dock: DockServiceProtocol
+    public let dialogs: DialogServiceProtocol
+    public let sessions: SessionServiceProtocol
+    public let files: FileServiceProtocol
+    public let configuration: ConfigurationServiceProtocol
+    public let process: ProcessServiceProtocol
+    public let logging: LoggingServiceProtocol
+}
+```
+
+##### **6.3. Service Examples**
+
+**Screen Capture:**
+```swift
+let result = try await services.screenCapture.captureFrontmost()
+// Returns: CaptureResult with image data, app info, window info
+```
+
+**UI Automation:**
+```swift
+try await services.automation.click(
+    target: .elementId("B1", sessionId: "12345"),
+    options: ClickOptions(waitTimeout: 5.0, button: .left)
+)
+```
+
+**Window Management:**
+```swift
+try await services.windows.resizeWindow(
+    appIdentifier: .name("Safari"),
+    windowIdentifier: .index(0),
+    size: CGSize(width: 1200, height: 800)
+)
+```
+
+##### **6.4. Error Handling**
+
+Structured error types for each service domain:
+
+```swift
+public enum PeekabooError: Error {
+    case permissionDenied(PermissionType)
+    case elementNotFound(target: String, timeout: TimeInterval)
+    case applicationNotFound(identifier: String)
+    case ambiguousTarget(matches: [String])
+    case captureFailure(reason: String)
+    // ... comprehensive error cases
+}
+```
+
+#### **7. Component 3: `@peekaboo/mcp` (Server & SDK)**
 
 The MCP server is a **thin, stateless wrapper** around the CLI.
 
@@ -812,4 +1131,253 @@ This table summarizes the full suite of proposed interaction commands for Peekab
 | **`peekaboo swipe`** | `--from <id1> --to <id2>`<br>`[--session-id <id>]` | Drags the mouse from the center of one element to the center of another. |
 
 This expanded suite provides a complete, robust, and intuitive set of tools to fully emulate human interaction, allowing agents to effectively drive any macOS application.
+
+#### **8. Configuration & Environment**
+
+##### **8.1. Configuration System**
+
+Peekaboo uses a unified configuration system with multiple sources:
+
+*   **Configuration Directory:** `~/.peekaboo/` (migrated from `~/.config/peekaboo/`)
+*   **Main Config File:** `~/.peekaboo/config.json` (JSONC format with comments)
+*   **Credentials File:** `~/.peekaboo/credentials` (key=value format, chmod 600)
+*   **Precedence:** CLI args > Environment variables > Credentials file > Config file > Defaults
+
+**Example config.json:**
+```jsonc
+{
+  // AI Provider Settings
+  "aiProviders": {
+    "providers": "openai/gpt-4o,ollama/llava:latest",
+    "ollamaBaseUrl": "http://localhost:11434"
+  },
+  
+  // Default Settings
+  "defaults": {
+    "savePath": "~/Desktop/Screenshots",
+    "imageFormat": "png",
+    "captureMode": "window",
+    "waitForTimeoutMs": 5000
+  },
+  
+  // Logging
+  "logging": {
+    "level": "info",
+    "path": "~/.peekaboo/logs/peekaboo.log"
+  }
+}
+```
+
+**Example credentials file:**
+```
+# ~/.peekaboo/credentials (chmod 600)
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+##### **8.2. Environment Variables**
+
+*   `PEEKABOO_AI_PROVIDERS`: Comma-separated list of AI providers
+*   `PEEKABOO_LOG_LEVEL`: Logging verbosity (trace, debug, info, warn, error)
+*   `PEEKABOO_DEFAULT_SAVE_PATH`: Default screenshot save location
+*   `PEEKABOO_CLI_PATH`: Override bundled CLI path (for development)
+*   `OPENAI_API_KEY`: Required for OpenAI provider
+*   `PEEKABOO_OLLAMA_BASE_URL`: Custom Ollama server URL
+
+#### **9. Logging & Debugging**
+
+##### **9.1. vtlog Utility**
+
+Peekaboo includes a powerful log viewing utility for the Mac app:
+
+```bash
+# Show recent logs (last 50 lines from past 5 minutes)
+./scripts/vtlog.sh
+
+# Stream logs continuously
+./scripts/vtlog.sh -f
+
+# Show only errors
+./scripts/vtlog.sh -e
+
+# Filter by category
+./scripts/vtlog.sh -c OverlayManager
+
+# Search for specific text
+./scripts/vtlog.sh -s "element selected"
+```
+
+##### **9.2. Logging Categories**
+
+*   **OverlayManager:** UI overlay management
+*   **OverlayView:** Individual overlay rendering
+*   **InspectorView:** Main inspector UI
+*   **AppOverlayView:** Application-specific overlays
+
+##### **9.3. CLI Logging**
+
+The CLI uses structured logging with JSON output support:
+
+```bash
+# Enable debug logging
+PEEKABOO_LOG_LEVEL=debug peekaboo see --app Safari
+
+# Capture debug logs with JSON output
+peekaboo see --app Safari --json-output 2>debug.log
+```
+
+---
+
+### **Addendum B: Implementation Summary**
+
+This addendum summarizes the complete implementation as of January 2025, documenting all features and capabilities of the Peekaboo ecosystem.
+
+#### **B.1. Complete Command Reference**
+
+The following table lists all implemented CLI commands:
+
+| Category | Command | Description |
+|----------|---------|-------------|
+| **Vision & Analysis** | `see` | Primary vision command with annotations and AI analysis |
+| | `analyze` | AI-powered image analysis using vision models |
+| **Mouse Actions** | `click` | Left/right/middle click with multi-click support |
+| | `drag` | Drag & drop between elements, coordinates, or apps |
+| | `move` | Move cursor without clicking |
+| | `scroll` | Directional scrolling with configurable amount |
+| | `swipe` | Touch-like gesture between points |
+| **Keyboard Actions** | `type` | Type text strings with optional focus |
+| | `hotkey` | Press keyboard shortcuts and combinations |
+| **Window Management** | `window` | Close, minimize, maximize, move, resize, focus |
+| **Application Control** | `app` | Launch, quit, hide, show, switch applications |
+| **Menu Interactions** | `menu` | Click menu items, list menus, system menu extras |
+| **Dock Control** | `dock` | Launch apps, right-click, show/hide dock |
+| **Dialog Handling** | `dialog` | Click buttons, input text, handle file dialogs |
+| **Automation** | `agent` | AI-powered task automation with natural language |
+| | `run` | Execute batch scripts |
+| | `sleep` | Pause execution |
+| **System & Config** | `config` | Manage configuration and credentials |
+| | `permissions` | Check system permissions |
+| | `clean` | Manage session cache |
+| **Legacy** | `image` | Screenshot capture (use `see` instead) |
+| | `list` | System information queries |
+
+#### **B.2. Mac Application Features**
+
+The native macOS application includes:
+
+1. **Inspector Mode**
+   - Real-time UI element visualization
+   - Multi-application overlay support
+   - Hover information display
+   - Keyboard shortcuts (Cmd+Shift+I)
+
+2. **AI Agent Integration**
+   - Natural language automation
+   - Real-time execution streaming
+   - Session history and replay
+   - Model selection (GPT-4, GPT-4 Turbo)
+
+3. **Status Bar Presence**
+   - Always-accessible ghost icon
+   - Quick action menu
+   - Execution state feedback
+
+4. **Speech Recognition**
+   - Voice-driven commands
+   - Continuous listening mode
+   - Privacy-focused local processing
+
+5. **Session Management**
+   - Persistent session storage
+   - Full interaction history
+   - Export capabilities
+
+#### **B.3. Architectural Components**
+
+1. **PeekabooCore**
+   - Unified service layer for all apps
+   - Protocol-based design
+   - Direct API access (no subprocess overhead)
+   - Comprehensive error handling
+
+2. **Service Architecture**
+   ```
+   PeekabooServices.shared
+   ├── screenCapture
+   ├── applications
+   ├── automation
+   ├── windows
+   ├── menu
+   ├── dock
+   ├── dialogs
+   ├── sessions
+   ├── configuration
+   ├── process
+   └── logging
+   ```
+
+3. **Testing Infrastructure**
+   - Swift Testing framework (not XCTest)
+   - Integration test suite
+   - Test host application
+   - CI/CD compatible tests
+
+#### **B.4. Key Innovations**
+
+1. **Session Auto-Resolution**
+   - Commands automatically use recent sessions
+   - 10-minute validity window
+   - No manual session tracking needed
+
+2. **Drag to Applications**
+   - `drag --to-app Trash` for intuitive file operations
+   - Automatic app location resolution
+
+3. **Pure Accessibility Menu Discovery**
+   - Extract complete menu hierarchies without UI interaction
+   - Keyboard shortcut discovery
+   - AI-friendly menu exploration
+
+4. **Unified Configuration**
+   - Single config directory: `~/.peekaboo/`
+   - JSONC with comments support
+   - Secure credential storage
+   - Environment variable expansion
+
+5. **vtlog Debugging**
+   - Powerful log viewing for Mac app
+   - Category-based filtering
+   - Real-time streaming
+
+#### **B.5. AI Provider Support**
+
+1. **Multiple Providers**
+   - OpenAI GPT-4V/GPT-4o
+   - Ollama with LLaVA
+   - Automatic fallback
+   - Provider priority configuration
+
+2. **Native Implementation**
+   - Pure Swift HTTP client
+   - No external dependencies
+   - Async/await support
+
+#### **B.6. Performance Optimizations**
+
+1. **Direct Service Calls**
+   - Mac app uses PeekabooCore directly
+   - ~10x faster than subprocess spawning
+   - Type-safe Swift APIs
+
+2. **Parallel Processing**
+   - Concurrent accessibility tree traversal
+   - Batch element processing
+   - Optimized screenshot capture
+
+3. **Caching Strategy**
+   - Process-isolated session cache
+   - Atomic file operations
+   - Automatic cleanup
+
+This implementation represents a complete macOS automation ecosystem, suitable for both human users and AI agents, with performance, reliability, and extensibility as core design principles.
 
