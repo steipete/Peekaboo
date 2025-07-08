@@ -4,18 +4,13 @@ import CoreGraphics
 import Foundation
 import PeekabooCore
 
-/// Refactored MoveCommand using PeekabooCore services
 /// Moves the mouse cursor to specific coordinates or UI elements.
 @available(macOS 14.0, *)
 struct MoveCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "move",
-        abstract: "Move the mouse cursor to coordinates or UI elements using PeekabooCore services",
+        abstract: "Move the mouse cursor to coordinates or UI elements",
         discussion: """
-            This is a refactored version of the move command that uses PeekabooCore services
-            instead of direct implementation. It maintains the same interface but delegates
-            all operations to the service layer.
-            
             The 'move' command positions the mouse cursor at specific locations or
             on UI elements detected by 'see'. Supports instant and smooth movement.
 
@@ -62,26 +57,24 @@ struct MoveCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    private let services = PeekabooServices.shared
-
     mutating func run() async throws {
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Determine target location
             let targetLocation: CGPoint
             let targetDescription: String
 
-            if center {
+            if self.center {
                 // Move to screen center
                 guard let mainScreen = NSScreen.main else {
-                    throw ValidationError("No main screen found")
+                    throw ArgumentParser.ValidationError("No main screen found")
                 }
                 let screenFrame = mainScreen.frame
                 targetLocation = CGPoint(x: screenFrame.midX, y: screenFrame.midY)
                 targetDescription = "Screen center"
-                
+
             } else if let coordString = coordinates {
                 // Parse coordinates
                 let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -89,75 +82,82 @@ struct MoveCommand: AsyncParsableCommand {
                       let x = Double(parts[0]),
                       let y = Double(parts[1])
                 else {
-                    throw ValidationError("Invalid coordinates format. Use: x,y")
+                    throw ArgumentParser.ValidationError("Invalid coordinates format. Use: x,y")
                 }
                 targetLocation = CGPoint(x: x, y: y)
                 targetDescription = "Coordinates (\(Int(x)), \(Int(y)))"
-                
+
             } else if let elementId = id {
                 // Move to element by ID
-                let sessionId = session ?? (await services.sessions.getMostRecentSession())
+                let sessionId: String? = if let providedSession = session {
+                    providedSession
+                } else {
+                    await PeekabooServices.shared.sessions.getMostRecentSession()
+                }
                 guard let activeSessionId = sessionId else {
                     throw PeekabooError.sessionNotFound
                 }
-                
-                guard let detectionResult = try? await services.sessions.getDetectionResult(sessionId: activeSessionId),
-                      let element = detectionResult.elements.findById(elementId) else {
+
+                guard let detectionResult = try? await PeekabooServices.shared.sessions
+                    .getDetectionResult(sessionId: activeSessionId),
+                    let element = detectionResult.elements.findById(elementId)
+                else {
                     throw PeekabooError.elementNotFound
                 }
-                
+
                 targetLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
-                targetDescription = formatElementInfo(element)
-                
+                targetDescription = self.formatElementInfo(element)
+
             } else if let query = to {
                 // Find element by text/query
-                let sessionId = session ?? (await services.sessions.getMostRecentSession())
+                let sessionId: String? = if let providedSession = session {
+                    providedSession
+                } else {
+                    await PeekabooServices.shared.sessions.getMostRecentSession()
+                }
                 guard let activeSessionId = sessionId else {
                     throw PeekabooError.sessionNotFound
                 }
-                
+
                 // Wait for element to be available
-                let waitResult = try await services.automation.waitForElement(
+                let waitResult = try await PeekabooServices.shared.automation.waitForElement(
                     target: .query(query),
                     timeout: 5.0,
-                    sessionId: activeSessionId
-                )
-                
+                    sessionId: activeSessionId)
+
                 guard waitResult.found, let element = waitResult.element else {
                     throw PeekabooError.interactionFailed(
-                        "No element found matching '\(query)'"
-                    )
+                        "No element found matching '\(query)'")
                 }
-                
+
                 targetLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
-                targetDescription = formatElementInfo(element)
-                
+                targetDescription = self.formatElementInfo(element)
+
             } else {
-                throw ValidationError("Specify coordinates, --to, --id, or --center")
+                throw ArgumentParser.ValidationError("Specify coordinates, --to, --id, or --center")
             }
 
             // Determine movement duration
-            let moveDuration: Int
-            if let customDuration = duration {
-                moveDuration = customDuration
+            let moveDuration: Int = if let customDuration = duration {
+                customDuration
             } else {
-                moveDuration = smooth ? 500 : 0
+                self.smooth ? 500 : 0
             }
 
             // Get current mouse location for distance calculation
             let currentLocation = CGEvent(source: nil)?.location ?? CGPoint.zero
-            let distance = hypot(targetLocation.x - currentLocation.x, 
-                               targetLocation.y - currentLocation.y)
+            let distance = hypot(
+                targetLocation.x - currentLocation.x,
+                targetLocation.y - currentLocation.y)
 
             // Perform the movement
-            try await services.automation.moveMouse(
+            try await PeekabooServices.shared.automation.moveMouse(
                 to: targetLocation,
                 duration: moveDuration,
-                steps: smooth ? steps : 1
-            )
+                steps: self.smooth ? self.steps : 1)
 
             // Output results
-            if jsonOutput {
+            if self.jsonOutput {
                 let result = MoveResult(
                     success: true,
                     targetLocation: targetLocation,
@@ -166,22 +166,21 @@ struct MoveCommand: AsyncParsableCommand {
                     distance: distance,
                     duration: moveDuration,
                     smooth: smooth,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
+                    executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: result)
             } else {
                 print("✅ Mouse moved successfully")
                 print("🎯 Target: \(targetDescription)")
                 print("📍 Location: (\(Int(targetLocation.x)), \(Int(targetLocation.y)))")
                 print("📏 Distance: \(Int(distance)) pixels")
-                if smooth {
-                    print("🎬 Animation: \(moveDuration)ms with \(steps) steps")
+                if self.smooth {
+                    print("🎬 Animation: \(moveDuration)ms with \(self.steps) steps")
                 }
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
             throw ExitCode.failure
         }
     }
@@ -193,36 +192,36 @@ struct MoveCommand: AsyncParsableCommand {
     }
 
     private func handleError(_ error: Error) {
-        if jsonOutput {
-            let errorCode: ErrorCode
-            if error is PeekabooError {
+        if self.jsonOutput {
+            let errorCode: ErrorCode = if error is PeekabooError {
                 switch error as? PeekabooError {
                 case .sessionNotFound:
-                    errorCode = .SESSION_NOT_FOUND
+                    .SESSION_NOT_FOUND
                 case .elementNotFound:
-                    errorCode = .ELEMENT_NOT_FOUND
+                    .ELEMENT_NOT_FOUND
                 case .interactionFailed:
-                    errorCode = .INTERACTION_FAILED
+                    .INTERACTION_FAILED
                 default:
-                    errorCode = .INTERNAL_SWIFT_ERROR
+                    .INTERNAL_SWIFT_ERROR
                 }
-            } else if error is ValidationError {
-                errorCode = .INVALID_INPUT
-            } else if let uiError = error as? UIAutomationError {
-                switch uiError {
-                case .mouseMoveFailed:
-                    errorCode = .INTERACTION_FAILED
+            } else if error is ArgumentParser.ValidationError {
+                .INVALID_INPUT
+            } else if let standardError = error as? StandardizedError {
+                switch standardError.code {
+                case .interactionFailed:
+                    .INTERACTION_FAILED
+                case .invalidCoordinates:
+                    .INVALID_COORDINATES
                 default:
-                    errorCode = .INTERNAL_SWIFT_ERROR
+                    .INTERNAL_SWIFT_ERROR
                 }
             } else {
-                errorCode = .INTERNAL_SWIFT_ERROR
+                .INTERNAL_SWIFT_ERROR
             }
-            
+
             outputError(
                 message: error.localizedDescription,
-                code: errorCode
-            )
+                code: errorCode)
         } else {
             var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
             print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)

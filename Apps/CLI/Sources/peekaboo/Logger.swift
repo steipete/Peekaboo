@@ -1,5 +1,32 @@
 import Foundation
 
+/// Log level enumeration for structured logging
+public enum LogLevel: Int, Comparable {
+    case trace = 0 // Most verbose
+    case verbose = 1
+    case debug = 2
+    case info = 3
+    case warning = 4
+    case error = 5
+    case critical = 6 // Most severe
+
+    public static func < (lhs: LogLevel, rhs: LogLevel) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+
+    var name: String {
+        switch self {
+        case .trace: "TRACE"
+        case .verbose: "VERBOSE"
+        case .debug: "DEBUG"
+        case .info: "INFO"
+        case .warning: "WARN"
+        case .error: "ERROR"
+        case .critical: "CRITICAL"
+        }
+    }
+}
+
 /// Thread-safe logging utility for Peekaboo.
 ///
 /// Provides logging functionality that can switch between stderr output (for normal operation)
@@ -9,9 +36,31 @@ final class Logger: @unchecked Sendable {
     private var debugLogs: [String] = []
     private var isJsonOutputMode = false
     private var verboseMode = false
+    private var minimumLogLevel: LogLevel = .info
     private let queue = DispatchQueue(label: "logger.queue", attributes: .concurrent)
+    private let iso8601Formatter: ISO8601DateFormatter
 
-    private init() {}
+    // Performance tracking
+    private var performanceTimers: [String: Date] = [:]
+
+    private init() {
+        self.iso8601Formatter = ISO8601DateFormatter()
+        self.iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        // Check environment for log level
+        if let envLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
+            switch envLevel {
+            case "trace": self.minimumLogLevel = .trace
+            case "verbose": self.minimumLogLevel = .verbose
+            case "debug": self.minimumLogLevel = .debug
+            case "info": self.minimumLogLevel = .info
+            case "warning", "warn": self.minimumLogLevel = .warning
+            case "error": self.minimumLogLevel = .error
+            case "critical": self.minimumLogLevel = .critical
+            default: break
+            }
+        }
+    }
 
     func setJsonOutputMode(_ enabled: Bool) {
         self.queue.sync(flags: .barrier) {
@@ -23,6 +72,9 @@ final class Logger: @unchecked Sendable {
     func setVerboseMode(_ enabled: Bool) {
         self.queue.sync(flags: .barrier) {
             self.verboseMode = enabled
+            if enabled {
+                self.minimumLogLevel = .verbose
+            }
         }
     }
 
@@ -32,12 +84,26 @@ final class Logger: @unchecked Sendable {
         }
     }
 
-    func verbose(_ message: String) {
+    /// Log a message at a specific level
+    private func log(_ level: LogLevel, _ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
         self.queue.async(flags: .barrier) {
-            guard self.verboseMode else { return }
+            guard level >= self.minimumLogLevel || (level == .verbose && self.verboseMode) else { return }
 
-            let timestamp = ISO8601DateFormatter().string(from: Date())
-            let formattedMessage = "[\(timestamp)] VERBOSE: \(message)"
+            let timestamp = self.iso8601Formatter.string(from: Date())
+            var formattedMessage = "[\(timestamp)] \(level.name): \(message)"
+
+            // Add category if provided
+            if let category {
+                formattedMessage = "[\(timestamp)] \(level.name) [\(category)]: \(message)"
+            }
+
+            // Add metadata if provided
+            if let metadata, !metadata.isEmpty {
+                let metadataString = metadata
+                    .map { "\($0.key)=\($0.value)" }
+                    .joined(separator: ", ")
+                formattedMessage += " {\(metadataString)}"
+            }
 
             if self.isJsonOutputMode {
                 self.debugLogs.append(formattedMessage)
@@ -47,44 +113,84 @@ final class Logger: @unchecked Sendable {
         }
     }
 
-    func debug(_ message: String) {
+    func verbose(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+        self.log(.verbose, message, category: category, metadata: metadata)
+    }
+
+    func debug(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+        self.log(.debug, message, category: category, metadata: metadata)
+    }
+
+    func info(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+        self.log(.info, message, category: category, metadata: metadata)
+    }
+
+    func warn(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+        self.log(.warning, message, category: category, metadata: metadata)
+    }
+
+    func error(_ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
+        self.log(.error, message, category: category, metadata: metadata)
+    }
+
+    // MARK: - Performance Tracking
+
+    /// Start a performance timer
+    func startTimer(_ name: String) {
         self.queue.async(flags: .barrier) {
-            if self.isJsonOutputMode {
-                self.debugLogs.append(message)
-            } else {
-                fputs("DEBUG: \(message)\n", stderr)
+            self.performanceTimers[name] = Date()
+            if self.verboseMode {
+                let timestamp = self.iso8601Formatter.string(from: Date())
+                let message = "[\(timestamp)] VERBOSE [Performance]: Starting timer '\(name)'"
+                if self.isJsonOutputMode {
+                    self.debugLogs.append(message)
+                } else {
+                    fputs("\(message)\n", stderr)
+                }
             }
         }
     }
 
-    func info(_ message: String) {
+    /// Stop a performance timer and log the duration
+    func stopTimer(_ name: String, threshold: TimeInterval? = nil) {
         self.queue.async(flags: .barrier) {
-            if self.isJsonOutputMode {
-                self.debugLogs.append("INFO: \(message)")
-            } else {
-                fputs("INFO: \(message)\n", stderr)
+            guard let startTime = self.performanceTimers[name] else {
+                self.log(.warning, "Timer '\(name)' was not started", category: "Performance")
+                return
+            }
+
+            let duration = Date().timeIntervalSince(startTime)
+            self.performanceTimers.removeValue(forKey: name)
+
+            // Only log if verbose mode or if duration exceeds threshold
+            if self.verboseMode || (threshold != nil && duration > threshold!) {
+                let durationMs = Int(duration * 1000)
+                self.log(
+                    .verbose,
+                    "Timer '\(name)' completed",
+                    category: "Performance",
+                    metadata: ["duration_ms": durationMs])
             }
         }
     }
 
-    func warn(_ message: String) {
-        self.queue.async(flags: .barrier) {
-            if self.isJsonOutputMode {
-                self.debugLogs.append("WARN: \(message)")
-            } else {
-                fputs("WARN: \(message)\n", stderr)
-            }
-        }
+    // MARK: - Operation Tracking
+
+    /// Log the start of an operation
+    func operationStart(_ operation: String, metadata: [String: Any]? = nil) {
+        var meta = metadata ?? [:]
+        meta["operation"] = operation
+        self.verbose("Starting operation", category: "Operation", metadata: meta)
+        self.startTimer(operation)
     }
 
-    func error(_ message: String) {
-        self.queue.async(flags: .barrier) {
-            if self.isJsonOutputMode {
-                self.debugLogs.append("ERROR: \(message)")
-            } else {
-                fputs("ERROR: \(message)\n", stderr)
-            }
-        }
+    /// Log the completion of an operation
+    func operationComplete(_ operation: String, success: Bool = true, metadata: [String: Any]? = nil) {
+        var meta = metadata ?? [:]
+        meta["operation"] = operation
+        meta["success"] = success
+        self.verbose("Operation completed", category: "Operation", metadata: meta)
+        self.stopTimer(operation)
     }
 
     func getDebugLogs() -> [String] {

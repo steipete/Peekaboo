@@ -4,18 +4,12 @@ import AXorcist
 import Foundation
 import PeekabooCore
 
-/// Refactored DialogCommand using PeekabooCore services
-///
-/// This version delegates dialog management to the service layer
-/// while maintaining the same command interface and JSON output compatibility.
+/// Interact with system dialogs and alerts
 struct DialogCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "dialog",
-        abstract: "Interact with system dialogs and alerts using PeekabooCore services",
+        abstract: "Interact with system dialogs and alerts",
         discussion: """
-        This is a refactored version of the dialog command that uses PeekabooCore services
-        instead of direct implementation. It maintains the same interface but delegates
-        dialog detection and interaction to the service layer.
 
         EXAMPLES:
           # Click a button in a dialog
@@ -57,38 +51,35 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         @MainActor
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Click the button using the service
-                let result = try await services.dialogs.clickButton(
-                    buttonText: button,
-                    windowTitle: window
-                )
+                let result = try await PeekabooServices.shared.dialogs.clickButton(
+                    buttonText: self.button,
+                    windowTitle: self.window)
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: result.success,
                         data: AnyCodable([
                             "action": "dialog_click",
-                            "button": result.details["button"] ?? button,
+                            "button": result.details["button"] ?? self.button,
                             "window": result.details["window"] ?? "Dialog",
                         ]))
                     outputJSON(response)
                 } else {
-                    print("✓ Clicked '\(result.details["button"] ?? button)' button")
+                    print("✓ Clicked '\(result.details["button"] ?? self.button)' button")
                 }
 
             } catch let error as DialogError {
                 handleDialogServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -116,33 +107,30 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         @MainActor
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Determine field identifier (index or label)
-                let fieldIdentifier = field ?? index.map { String($0) }
+                let fieldIdentifier = self.field ?? self.index.map { String($0) }
 
                 // Enter text using the service
-                let result = try await services.dialogs.enterText(
-                    text: text,
+                let result = try await PeekabooServices.shared.dialogs.enterText(
+                    text: self.text,
                     fieldIdentifier: fieldIdentifier,
-                    clearExisting: clear,
-                    windowTitle: nil
-                )
+                    clearExisting: self.clear,
+                    windowTitle: nil)
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: result.success,
                         data: AnyCodable([
                             "action": "dialog_input",
                             "field": result.details["field"] ?? "Text Field",
-                            "text_length": result.details["text_length"] ?? String(text.count),
-                            "cleared": result.details["cleared"] ?? String(clear),
+                            "text_length": result.details["text_length"] ?? String(self.text.count),
+                            "cleared": result.details["cleared"] ?? String(self.clear),
                         ]))
                     outputJSON(response)
                 } else {
@@ -153,7 +141,7 @@ struct DialogCommand: AsyncParsableCommand {
                 handleDialogServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -178,43 +166,40 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         @MainActor
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Handle file dialog using the service
-                let result = try await services.dialogs.handleFileDialog(
-                    path: path,
-                    filename: name,
-                    actionButton: select
-                )
+                let result = try await PeekabooServices.shared.dialogs.handleFileDialog(
+                    path: self.path,
+                    filename: self.name,
+                    actionButton: self.select)
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: result.success,
                         data: AnyCodable([
                             "action": "file_dialog",
                             "path": result.details["path"],
                             "name": result.details["filename"],
-                            "button_clicked": result.details["button_clicked"] ?? select,
+                            "button_clicked": result.details["button_clicked"] ?? self.select,
                         ]))
                     outputJSON(response)
                 } else {
                     print("✓ Handled file dialog")
                     if let p = result.details["path"] { print("  Path: \(p)") }
                     if let n = result.details["filename"] { print("  Name: \(n)") }
-                    print("  Action: \(result.details["button_clicked"] ?? select)")
+                    print("  Action: \(result.details["button_clicked"] ?? self.select)")
                 }
 
             } catch let error as DialogError {
                 handleDialogServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -236,21 +221,18 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         @MainActor
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Dismiss dialog using the service
-                let result = try await services.dialogs.dismissDialog(
-                    force: force,
-                    windowTitle: window
-                )
+                let result = try await PeekabooServices.shared.dialogs.dismissDialog(
+                    force: self.force,
+                    windowTitle: self.window)
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: result.success,
                         data: AnyCodable([
@@ -273,7 +255,7 @@ struct DialogCommand: AsyncParsableCommand {
                 handleDialogServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -289,15 +271,13 @@ struct DialogCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         @MainActor
         func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // List dialog elements using the service
-                let elements = try await services.dialogs.listDialogElements(windowTitle: nil)
+                let elements = try await PeekabooServices.shared.dialogs.listDialogElements(windowTitle: nil)
 
                 // Prepare dialog info for output
                 var dialogInfo: [String: Any] = [
@@ -306,7 +286,7 @@ struct DialogCommand: AsyncParsableCommand {
                 ]
 
                 // Add buttons
-                dialogInfo["buttons"] = elements.buttons.map { $0.title }
+                dialogInfo["buttons"] = elements.buttons.map(\.title)
 
                 // Add text fields
                 dialogInfo["text_fields"] = elements.textFields.map { field in
@@ -321,7 +301,7 @@ struct DialogCommand: AsyncParsableCommand {
                 dialogInfo["text_elements"] = elements.staticTexts
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable(dialogInfo))
@@ -353,7 +333,7 @@ struct DialogCommand: AsyncParsableCommand {
                 handleDialogServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -363,22 +343,23 @@ struct DialogCommand: AsyncParsableCommand {
 // MARK: - Error Handling
 
 private func handleDialogServiceError(_ error: DialogError, jsonOutput: Bool) {
-    let errorCode: String
-    switch error {
+    let errorCode: ErrorCode = switch error {
     case .noActiveDialog:
-        errorCode = "NO_ACTIVE_DIALOG"
+        .NO_ACTIVE_DIALOG
+    case .dialogNotFound:
+        .ELEMENT_NOT_FOUND
     case .noFileDialog:
-        errorCode = "NO_FILE_DIALOG"
+        .ELEMENT_NOT_FOUND
     case .buttonNotFound:
-        errorCode = "BUTTON_NOT_FOUND"
+        .ELEMENT_NOT_FOUND
     case .fieldNotFound:
-        errorCode = "FIELD_NOT_FOUND"
+        .ELEMENT_NOT_FOUND
     case .invalidFieldIndex:
-        errorCode = "INVALID_FIELD_INDEX"
+        .INVALID_INPUT
     case .noTextFields:
-        errorCode = "NO_TEXT_FIELDS"
+        .ELEMENT_NOT_FOUND
     case .noDismissButton:
-        errorCode = "NO_DISMISS_BUTTON"
+        .ELEMENT_NOT_FOUND
     }
 
     if jsonOutput {
@@ -386,22 +367,9 @@ private func handleDialogServiceError(_ error: DialogError, jsonOutput: Bool) {
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: ErrorCode(rawValue: errorCode) ?? .UNKNOWN_ERROR))
+                code: errorCode))
         outputJSON(response)
     } else {
         fputs("❌ \(error.localizedDescription)\n", stderr)
-    }
-}
-
-private func handleGenericError(_ error: Error, jsonOutput: Bool) {
-    if jsonOutput {
-        let response = JSONResponse(
-            success: false,
-            error: ErrorInfo(
-                message: error.localizedDescription,
-                code: .UNKNOWN_ERROR))
-        outputJSON(response)
-    } else {
-        fputs("❌ Error: \(error.localizedDescription)\n", stderr)
     }
 }

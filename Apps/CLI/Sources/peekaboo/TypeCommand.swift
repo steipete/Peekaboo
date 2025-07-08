@@ -2,18 +2,13 @@ import ArgumentParser
 import Foundation
 import PeekabooCore
 
-/// Refactored TypeCommand using PeekabooCore services
 /// Types text into focused elements or sends keyboard input using the UIAutomationService.
 @available(macOS 14.0, *)
 struct TypeCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "type",
-        abstract: "Type text or send keyboard input using PeekabooCore services",
+        abstract: "Type text or send keyboard input",
         discussion: """
-            This is a refactored version of the type command that uses PeekabooCore services
-            instead of direct implementation. It maintains the same interface but delegates
-            all operations to the service layer.
-            
             The 'type' command sends keyboard input to the focused element.
             It can type regular text or send special key combinations.
 
@@ -48,8 +43,8 @@ struct TypeCommand: AsyncParsableCommand {
     @Option(help: "Delay between keystrokes in milliseconds")
     var delay: Int = 5
 
-    @Flag(help: "Press return/enter after typing")
-    var `return` = false
+    @Flag(name: .long, help: "Press return/enter after typing")
+    var pressReturn = false
 
     @Option(help: "Press tab N times")
     var tab: Int?
@@ -66,11 +61,9 @@ struct TypeCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    private let services = PeekabooServices.shared
-
     mutating func run() async throws {
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
             var actions: [TypeAction] = []
@@ -98,21 +91,20 @@ struct TypeCommand: AsyncParsableCommand {
                 actions.append(.key(.delete))
             }
 
-            if self.return {
+            if self.pressReturn {
                 actions.append(.key(.return))
             }
 
             // Validate we have something to do
             guard !actions.isEmpty else {
-                throw ValidationError("No input specified. Provide text or key flags.")
+                throw ArgumentParser.ValidationError("No input specified. Provide text or key flags.")
             }
 
             // Execute type actions using the service
-            let typeResult = try await services.automation.typeActions(
+            let typeResult = try await PeekabooServices.shared.automation.typeActions(
                 actions,
-                typingDelay: delay,
-                sessionId: session
-            )
+                typingDelay: self.delay,
+                sessionId: self.session)
 
             // Output results
             if self.jsonOutput {
@@ -121,8 +113,7 @@ struct TypeCommand: AsyncParsableCommand {
                     typedText: text,
                     keyPresses: typeResult.keyPresses,
                     totalCharacters: typeResult.totalCharacters,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
+                    executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Typing completed")
@@ -137,35 +128,33 @@ struct TypeCommand: AsyncParsableCommand {
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
             throw ExitCode.failure
         }
     }
 
     private func handleError(_ error: Error) {
-        if jsonOutput {
-            let errorCode: ErrorCode
-            if error is PeekabooError {
+        if self.jsonOutput {
+            let errorCode: ErrorCode = if error is PeekabooError {
                 switch error as? PeekabooError {
                 case .sessionNotFound:
-                    errorCode = .SESSION_NOT_FOUND
+                    .SESSION_NOT_FOUND
                 case .elementNotFound:
-                    errorCode = .ELEMENT_NOT_FOUND
+                    .ELEMENT_NOT_FOUND
                 case .interactionFailed:
-                    errorCode = .INTERACTION_FAILED
+                    .INTERACTION_FAILED
                 default:
-                    errorCode = .INTERNAL_SWIFT_ERROR
+                    .INTERNAL_SWIFT_ERROR
                 }
-            } else if error is ValidationError {
-                errorCode = .INVALID_INPUT
+            } else if error is ArgumentParser.ValidationError {
+                .INVALID_INPUT
             } else {
-                errorCode = .INTERNAL_SWIFT_ERROR
+                .INTERNAL_SWIFT_ERROR
             }
-            
+
             outputError(
                 message: error.localizedDescription,
-                code: errorCode
-            )
+                code: errorCode)
         } else {
             var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
             print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)

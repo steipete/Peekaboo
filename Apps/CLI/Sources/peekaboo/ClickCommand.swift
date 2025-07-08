@@ -4,18 +4,13 @@ import CoreGraphics
 import Foundation
 import PeekabooCore
 
-/// Refactored ClickCommand using PeekabooCore services
-/// Clicks on UI elements identified in the current session using intelligent element finding and smart waiting.
+/// Click on UI elements identified in the current session using intelligent element finding and smart waiting.
 @available(macOS 14.0, *)
 struct ClickCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "click",
-        abstract: "Click on UI elements or coordinates using PeekabooCore services",
+        abstract: "Click on UI elements or coordinates",
         discussion: """
-            This is a refactored version of the click command that uses PeekabooCore services
-            instead of direct implementation. It maintains the same interface but delegates
-            all operations to the service layer.
-            
             The 'click' command interacts with UI elements captured by 'see'.
             It supports intelligent element finding, actionability checks, and
             automatic waiting for elements to become available.
@@ -61,15 +56,17 @@ struct ClickCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    private let services = PeekabooServices.shared
-
     mutating func run() async throws {
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Determine session ID - use provided or get most recent
-            let sessionId = session ?? (await services.sessions.getMostRecentSession())
+            let sessionId: String? = if let providedSession = session {
+                providedSession
+            } else {
+                await PeekabooServices.shared.sessions.getMostRecentSession()
+            }
             guard let activeSessionId = sessionId else {
                 throw PeekabooError.sessionNotFound
             }
@@ -81,12 +78,11 @@ struct ClickCommand: AsyncParsableCommand {
             if let elementId = on {
                 // Click by element ID with auto-wait
                 clickTarget = .elementId(elementId)
-                waitResult = try await services.automation.waitForElement(
+                waitResult = try await PeekabooServices.shared.automation.waitForElement(
                     target: clickTarget,
-                    timeout: TimeInterval(waitFor) / 1000.0,
-                    sessionId: activeSessionId
-                )
-                
+                    timeout: TimeInterval(self.waitFor) / 1000.0,
+                    sessionId: activeSessionId)
+
                 if !waitResult.found {
                     throw PeekabooError.elementNotFound
                 }
@@ -98,7 +94,7 @@ struct ClickCommand: AsyncParsableCommand {
                       let x = Double(parts[0]),
                       let y = Double(parts[1])
                 else {
-                    throw ValidationError("Invalid coordinates format. Use: x,y")
+                    throw ArgumentParser.ValidationError("Invalid coordinates format. Use: x,y")
                 }
                 clickTarget = .coordinates(CGPoint(x: x, y: y))
                 waitResult = WaitForElementResult(found: true, element: nil, waitTime: 0)
@@ -106,31 +102,28 @@ struct ClickCommand: AsyncParsableCommand {
             } else if let searchQuery = query {
                 // Find element by query with auto-wait
                 clickTarget = .query(searchQuery)
-                waitResult = try await services.automation.waitForElement(
+                waitResult = try await PeekabooServices.shared.automation.waitForElement(
                     target: clickTarget,
-                    timeout: TimeInterval(waitFor) / 1000.0,
-                    sessionId: activeSessionId
-                )
-                
+                    timeout: TimeInterval(self.waitFor) / 1000.0,
+                    sessionId: activeSessionId)
+
                 if !waitResult.found {
                     throw PeekabooError.interactionFailed(
-                        "No actionable element found matching '\(searchQuery)' after \(waitFor)ms"
-                    )
+                        "No actionable element found matching '\(searchQuery)' after \(self.waitFor)ms")
                 }
 
             } else {
-                throw ValidationError("Specify an element query, --on, or --coords")
+                throw ArgumentParser.ValidationError("Specify an element query, --on, or --coords")
             }
 
             // Determine click type
-            let clickType: ClickType = right ? .right : (double ? .double : .single)
+            let clickType: ClickType = self.right ? .right : (self.double ? .double : .single)
 
             // Perform the click
-            try await services.automation.click(
+            try await PeekabooServices.shared.automation.click(
                 target: clickTarget,
                 clickType: clickType,
-                sessionId: activeSessionId
-            )
+                sessionId: activeSessionId)
 
             // Small delay to ensure click is processed
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
@@ -140,24 +133,24 @@ struct ClickCommand: AsyncParsableCommand {
             let clickedElement: String?
 
             switch clickTarget {
-            case .elementId(let id):
+            case let .elementId(id):
                 if let element = waitResult.element {
                     clickLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
-                    clickedElement = formatElementInfo(element)
+                    clickedElement = self.formatElementInfo(element)
                 } else {
                     // Shouldn't happen but handle gracefully
                     clickLocation = .zero
                     clickedElement = "Element ID: \(id)"
                 }
-                
-            case .coordinates(let point):
+
+            case let .coordinates(point):
                 clickLocation = point
                 clickedElement = nil
-                
-            case .query(let query):
+
+            case let .query(query):
                 if let element = waitResult.element {
                     clickLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
-                    clickedElement = formatElementInfo(element)
+                    clickedElement = self.formatElementInfo(element)
                 } else {
                     // Use a default description
                     clickLocation = .zero
@@ -166,14 +159,13 @@ struct ClickCommand: AsyncParsableCommand {
             }
 
             // Output results
-            if jsonOutput {
+            if self.jsonOutput {
                 let result = ClickResult(
                     success: true,
                     clickedElement: clickedElement,
                     clickLocation: clickLocation,
                     waitTime: waitResult.waitTime,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
+                    executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: result)
             } else {
                 print("✅ Click successful")
@@ -188,7 +180,7 @@ struct ClickCommand: AsyncParsableCommand {
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
             throw ExitCode.failure
         }
     }
@@ -200,29 +192,27 @@ struct ClickCommand: AsyncParsableCommand {
     }
 
     private func handleError(_ error: Error) {
-        if jsonOutput {
-            let errorCode: ErrorCode
-            if error is PeekabooError {
+        if self.jsonOutput {
+            let errorCode: ErrorCode = if error is PeekabooError {
                 switch error as? PeekabooError {
                 case .sessionNotFound:
-                    errorCode = .SESSION_NOT_FOUND
+                    .SESSION_NOT_FOUND
                 case .elementNotFound:
-                    errorCode = .ELEMENT_NOT_FOUND
+                    .ELEMENT_NOT_FOUND
                 case .interactionFailed:
-                    errorCode = .INTERACTION_FAILED
+                    .INTERACTION_FAILED
                 default:
-                    errorCode = .INTERNAL_SWIFT_ERROR
+                    .INTERNAL_SWIFT_ERROR
                 }
-            } else if error is ValidationError {
-                errorCode = .INVALID_INPUT
+            } else if error is ArgumentParser.ValidationError {
+                .INVALID_INPUT
             } else {
-                errorCode = .INTERNAL_SWIFT_ERROR
+                .INTERNAL_SWIFT_ERROR
             }
-            
+
             outputError(
                 message: error.localizedDescription,
-                code: errorCode
-            )
+                code: errorCode)
         } else {
             var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
             print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)

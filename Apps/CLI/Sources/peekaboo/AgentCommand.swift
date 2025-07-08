@@ -29,6 +29,9 @@ struct AgentCommand: AsyncParsableCommand {
 
     @Flag(name: .shortAndLong, help: "Enable verbose output showing agent reasoning")
     var verbose = false
+    
+    @Flag(name: .long, help: "Show detailed agent thoughts and reasoning")
+    var showThoughts = false
 
     @Flag(name: .long, help: "Dry run - show planned steps without executing")
     var dryRun = false
@@ -56,15 +59,20 @@ struct AgentCommand: AsyncParsableCommand {
         let agent = OpenAIAgent(
             apiKey: apiKey,
             model: model,
-            verbose: verbose,
-            maxSteps: maxSteps)
+            verbose: verbose || showThoughts,
+            maxSteps: maxSteps,
+            showThoughts: showThoughts)
 
         do {
-            if self.verbose, !self.jsonOutput {
-                print("🤖 Starting agent with task: \(self.task)")
-                print("⚙️  Model: \(self.model)")
-                print("⚙️  Max steps: \(self.maxSteps)")
-                print("⚙️  API Key: \(String(apiKey.prefix(10)))...")
+            if (self.verbose || self.showThoughts), !self.jsonOutput {
+                print("\n🎭 ═══════════════════════════════════════════════════════════════")
+                print("🎭 PEEKABOO AGENT COMEDY SHOW")
+                print("🎭 ═══════════════════════════════════════════════════════════════\n")
+                print("🎯 Task: \"\(self.task)\"")
+                print("🧠 Model: \(self.model)")
+                print("🔢 Max steps: \(self.maxSteps)")
+                print("🔑 API Key: \(String(apiKey.prefix(10)))***")
+                print("\n✨ Let the show begin! ✨\n")
             }
 
             let result = try await agent.executeTask(self.task, dryRun: self.dryRun)
@@ -75,8 +83,8 @@ struct AgentCommand: AsyncParsableCommand {
                     data: result,
                     error: nil)
                 outputAgentJSON(response)
-            } else {
-                // Human-readable output
+            } else if !(self.verbose || self.showThoughts) {
+                // Simple human-readable output when not in verbose/showThoughts mode
                 print("\n✅ Task completed successfully!")
                 print("\nSteps executed:")
                 for (index, step) in result.steps.enumerated() {
@@ -113,10 +121,20 @@ struct OpenAIAgent {
     let model: String
     let verbose: Bool
     let maxSteps: Int
+    let showThoughts: Bool
 
     private let session = URLSession.shared
-    private let executor = PeekabooCommandExecutor(verbose: false)
+    private let executor: PeekabooCommandExecutor
     private let retryConfig = RetryConfiguration.default
+    
+    init(apiKey: String, model: String, verbose: Bool, maxSteps: Int, showThoughts: Bool = false) {
+        self.apiKey = apiKey
+        self.model = model
+        self.verbose = verbose
+        self.maxSteps = maxSteps
+        self.showThoughts = showThoughts
+        self.executor = PeekabooCommandExecutor(verbose: false)
+    }
 
     struct AgentResult: Codable {
         let steps: [Step]
@@ -136,20 +154,30 @@ struct OpenAIAgent {
         let sessionId = await SessionManager.shared.createSession()
 
         // Create assistant
-        if self.verbose {
-            print("🔄 Creating assistant...")
+        if self.verbose || self.showThoughts {
+            print("🔧 Setting up the AI assistant...")
+            if self.showThoughts {
+                print("   💭 \"I need to understand how to control the Mac...\"")
+                print("   💭 \"Loading my knowledge about UI automation...\"")
+            }
         }
         let assistant = try await createAssistant()
-        if self.verbose {
-            print("✅ Assistant created: \(assistant.id)")
+        if self.verbose || self.showThoughts {
+            print("✅ Assistant ready! ID: \(assistant.id)")
+            if self.showThoughts {
+                print("   💭 \"Perfect! I can see screens, click things, and type text!\"")
+            }
         }
 
         // Create thread
-        if self.verbose {
-            print("🔄 Creating thread...")
+        if self.verbose || self.showThoughts {
+            print("\n📋 Creating conversation thread...")
+            if self.showThoughts {
+                print("   💭 \"Starting a new conversation about: \(task)\"")
+            }
         }
         let thread = try await createThread()
-        if self.verbose {
+        if self.verbose || self.showThoughts {
             print("✅ Thread created: \(thread.id)")
         }
 
@@ -194,8 +222,19 @@ struct OpenAIAgent {
 
             // Wait while in progress
             var pollCount = 0
+            let thinkingMessages = [
+                "🤔 Thinking about the best approach...",
+                "🧠 Analyzing the situation...",
+                "💡 Coming up with a plan...",
+                "🎯 Determining next steps...",
+                "✨ Working my AI magic..."
+            ]
+            
             while runStatus.status == .inProgress || runStatus.status == .queued {
-                if self.verbose, pollCount % 5 == 0 { // Log every 5 seconds
+                if self.showThoughts, pollCount % 3 == 0 { // Show thinking every 3 seconds
+                    let messageIndex = (pollCount / 3) % thinkingMessages.count
+                    print(thinkingMessages[messageIndex])
+                } else if self.verbose, pollCount % 5 == 0 { // Log every 5 seconds
                     print("⏳ Run \(run.id) status: \(runStatus.status) [\(pollCount)s]")
                 }
                 try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
@@ -216,9 +255,61 @@ struct OpenAIAgent {
 
                 var toolOutputs: [(toolCallId: String, output: String)] = []
 
-                for toolCall in toolCalls {
-                    if self.verbose, !dryRun {
-                        print("🔧 Executing: \(toolCall.function.name) with args: \(toolCall.function.arguments)")
+                for (_, toolCall) in toolCalls.enumerated() {
+                    stepCount += 1
+                    
+                    if self.verbose || self.showThoughts, !dryRun {
+                        print("\n🎬 ═══════════════════════════════════════════════════════")
+                        print("🎬 STEP \(stepCount): \(toolCall.function.name.replacingOccurrences(of: "peekaboo_", with: "").uppercased())")
+                        print("🎬 ═══════════════════════════════════════════════════════")
+                        
+                        if self.showThoughts {
+                            // Parse the command to show what the agent is thinking
+                            let commandName = toolCall.function.name.replacingOccurrences(of: "peekaboo_", with: "")
+                            if let data = toolCall.function.arguments.data(using: .utf8),
+                               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                                
+                                switch commandName {
+                                case "see":
+                                    print("   💭 \"Let me take a screenshot to see what's on screen...\"")
+                                    if let app = args["app"] as? String {
+                                        print("   💭 \"I'll focus on the \(app) application\"")
+                                    }
+                                case "click":
+                                    if let element = args["element"] as? String {
+                                        print("   💭 \"I need to click on '\(element)'...\"")
+                                    } else if let x = args["x"], let y = args["y"] {
+                                        print("   💭 \"I'll click at coordinates (\(x), \(y))\"")
+                                    }
+                                case "type":
+                                    if let text = args["text"] as? String {
+                                        print("   💭 \"Time to type: '\(text)'\"")
+                                        print("   💭 \"I'll make sure to type it carefully...\"")
+                                    }
+                                case "app":
+                                    if let action = args["action"] as? String, let name = args["name"] as? String {
+                                        print("   💭 \"I need to \(action) the \(name) application\"")
+                                    }
+                                case "window":
+                                    if let action = args["action"] as? String {
+                                        print("   💭 \"Let me \(action) this window...\"")
+                                    }
+                                case "hotkey":
+                                    if let keys = args["keys"] as? [String] {
+                                        print("   💭 \"Pressing shortcut: \(keys.joined(separator: "+"))\"")
+                                    }
+                                case "wait":
+                                    if let duration = args["duration"] as? Double {
+                                        print("   💭 \"I'll wait \(duration) seconds for things to settle...\"")
+                                    }
+                                default:
+                                    print("   💭 \"Executing \(commandName) command...\"")
+                                }
+                            }
+                        }
+                        
+                        print("\n🔧 Command: \(toolCall.function.name)")
+                        print("📊 Arguments: \(toolCall.function.arguments)")
                     }
 
                     let step = AgentResult.Step(
@@ -246,17 +337,67 @@ struct OpenAIAgent {
                             }
                         }
 
+                        if self.showThoughts {
+                            print("\n⏳ Executing command...")
+                        }
+                        
                         let output = try await executor.executeFunction(
                             name: toolCall.function.name,
                             arguments: modifiedArgs)
-                        if self.verbose {
-                            print("   ✅ Tool output: \(output.prefix(100))...")
+                        
+                        if self.verbose || self.showThoughts {
+                            // Parse output to show results nicely
+                            if let data = output.data(using: .utf8),
+                               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                               let success = json["success"] as? Bool {
+                                
+                                if success {
+                                    print("\n✅ SUCCESS!")
+                                    
+                                    if self.showThoughts {
+                                        let commandName = toolCall.function.name.replacingOccurrences(of: "peekaboo_", with: "")
+                                        switch commandName {
+                                        case "see":
+                                            if let resultData = json["data"] as? [String: Any],
+                                               let elements = resultData["elements"] as? [[String: Any]] {
+                                                print("   💭 \"I can see \(elements.count) UI elements on the screen!\"")
+                                                if elements.count > 3 {
+                                                    print("   💭 \"Let me show you the first few...\"")
+                                                    for (idx, element) in elements.prefix(3).enumerated() {
+                                                        if let desc = element["description"] as? String {
+                                                            print("   📍 Element \(idx + 1): \(desc)")
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        case "click":
+                                            print("   💭 \"Click successful! The UI should be responding now...\"")
+                                        case "type":
+                                            print("   💭 \"Text typed successfully!\"")
+                                        case "app":
+                                            print("   💭 \"Application command executed!\"")
+                                        case "wait":
+                                            print("   💭 \"Waited patiently... Ready for the next step!\"")
+                                        default:
+                                            print("   💭 \"Command completed successfully!\"")
+                                        }
+                                    }
+                                } else {
+                                    print("\n❌ Command failed")
+                                    if let error = json["error"] as? [String: Any],
+                                       let message = error["message"] as? String {
+                                        print("   Error: \(message)")
+                                    }
+                                }
+                            } else if self.verbose {
+                                print("\n📝 Raw output: \(output.prefix(200))...")
+                            }
                         }
+                        
                         toolOutputs.append((toolCallId: toolCall.id, output: output))
                     }
 
                     steps.append(step)
-                    stepCount += 1
                 }
 
                 if !dryRun {
@@ -291,13 +432,21 @@ struct OpenAIAgent {
 
             case .completed:
                 // Get the final message
-                if self.verbose {
-                    print("📥 Getting final messages...")
+                if self.verbose || self.showThoughts {
+                    print("\n🎉 ═══════════════════════════════════════════════════════")
+                    print("🎉 TASK COMPLETED!")
+                    print("🎉 ═══════════════════════════════════════════════════════")
                 }
                 let messages = try await getMessages(threadId: threadId)
                 let summary = messages.first?.content.first?.text?.value
-                if self.verbose, let summary {
-                    print("📋 Summary: \(summary)")
+                if (self.verbose || self.showThoughts), let summary {
+                    print("\n📋 Agent's Summary:")
+                    print("   \"\(summary)\"")
+                    
+                    if self.showThoughts {
+                        print("\n   💭 \"That was fun! I completed \(stepCount) steps to finish your task!\"")
+                        print("   💭 \"Hope you enjoyed the show! 🎭\"")
+                    }
                 }
 
                 // Clean up session
@@ -382,9 +531,9 @@ struct OpenAIAgent {
 
             UI INTERACTION:
             - 'click': Click on elements or coordinates
-            - 'type': Type text into UI elements
+            - 'type': Type text into the currently focused element (no element parameter needed)
             - 'scroll': Scroll in any direction
-            - 'hotkey': Press keyboard shortcuts
+            - 'hotkey': Press keyboard shortcuts - provide keys as array: ["cmd", "s"] or ["cmd", "shift", "d"]
             - 'drag': Drag and drop between elements
             - 'swipe': Perform swipe gestures
 
@@ -393,6 +542,7 @@ struct OpenAIAgent {
             - 'window': Close, minimize, maximize, move, resize, or focus windows
             - 'menu': Menu bar interaction - use subcommand='list' to discover menus, subcommand='click' to click items
               Example: menu(app="Calculator", subcommand="list") to list all menus
+              Note: Use plain ellipsis "..." instead of Unicode "…" in menu paths (e.g., "Save..." not "Save…")
             - 'dock': Interact with Dock items
             - 'dialog': Handle system dialogs and alerts
 
@@ -408,6 +558,15 @@ struct OpenAIAgent {
             5. Break down complex tasks into specific actions
             6. Execute each action using the appropriate command
             7. Verify results when needed
+            
+            IMPORTANT APP BEHAVIORS:
+            - Check window_count in app launch response
+            - If window_count is 0, the app has no windows - use 'hotkey' ["cmd", "n"] to create new document/window
+            - Document-based apps (text editors, note apps, etc.) often launch without windows
+            
+            SAVING FILES:
+            - After opening Save dialog, type the filename then use 'hotkey' with ["cmd", "s"] or ["return"] to save
+            - To navigate to Desktop in save dialog: use 'hotkey' with ["cmd", "shift", "d"]
 
             CRITICAL INSTRUCTIONS:
             - When asked to "list applications" or "show running apps", ALWAYS use: list(target="apps")

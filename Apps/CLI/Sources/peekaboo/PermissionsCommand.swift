@@ -2,6 +2,21 @@ import ArgumentParser
 import Foundation
 import PeekabooCore
 
+// Permission status structures for JSON output
+struct PermissionStatus: Codable {
+    let screenRecording: Bool
+    let accessibility: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case screenRecording = "screen_recording"
+        case accessibility
+    }
+}
+
+struct PermissionStatusData: Codable {
+    let permissions: PermissionStatus
+}
+
 /// Standalone command for checking system permissions using PeekabooCore services.
 ///
 /// Provides a direct way to check permissions without going through the list subcommand.
@@ -47,21 +62,17 @@ struct PermissionsCommand: AsyncParsableCommand {
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
-        // Initialize services
-        let container = ServiceContainer.current
-        let services = try await container.getAllServicesV3()
+        // Get permissions from PeekabooCore services
+        let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
+        let accessibility = await PeekabooServices.shared.automation.hasAccessibilityPermission()
 
-        // Get permissions from services
-        let screenRecording = await services.screenCapture.hasScreenRecordingPermission()
-        let accessibility = await services.automation.hasAccessibilityPermission()
-
-        let permissions = ServerPermissions(
-            screen_recording: screenRecording,
+        // Create permission status
+        let permissions = PermissionStatus(
+            screenRecording: screenRecording,
             accessibility: accessibility)
 
-        let data = ServerStatusData(permissions: permissions)
-
         if self.jsonOutput {
+            let data = PermissionStatusData(permissions: permissions)
             outputSuccess(data: data)
         } else {
             print("Peekaboo Permissions Status:")

@@ -52,11 +52,10 @@ struct PeekabooCommandExecutor {
 
     private func buildCommandArguments(command: String, args: [String: Any]) throws -> [String] {
         var cliArgs = [command]
-        var hasSubcommand = false
 
         // Defer adding json-output for commands with subcommands
         let commandsWithSubcommands = ["app", "list", "config", "window", "menu", "dock", "dialog"]
-        let shouldDeferJsonOutput = commandsWithSubcommands.contains(command)
+        _ = commandsWithSubcommands.contains(command)
 
         switch command {
         case "see":
@@ -101,6 +100,16 @@ struct PeekabooCommandExecutor {
                 cliArgs.append("--session")
                 cliArgs.append(sessionId)
             }
+            
+            // Handle element parameter (agent might send this but we don't use it directly)
+            // Just log it for now but don't add to command
+            if let element = args["element"] as? String {
+                // Element context is noted but not passed to CLI
+                // The type command will type into the focused element
+                if self.verbose {
+                    print("   Note: Agent wants to type into '\(element)'")
+                }
+            }
 
             if let clearFirst = args["clear_first"] as? Bool, clearFirst {
                 cliArgs.append("--clear")
@@ -121,10 +130,17 @@ struct PeekabooCommandExecutor {
             }
 
         case "hotkey":
-            guard let keys = args["keys"] as? [String] else {
-                throw AgentError.invalidArguments("Hotkey command requires 'keys' array")
+            // Handle both array and comma-separated string formats
+            var keyString: String
+            if let keys = args["keys"] as? [String] {
+                keyString = keys.joined(separator: ",")
+            } else if let keys = args["keys"] as? String {
+                keyString = keys
+            } else {
+                throw AgentError.invalidArguments("Hotkey command requires 'keys' (array or string)")
             }
-            cliArgs.append(contentsOf: keys)
+            cliArgs.append("--keys")
+            cliArgs.append(keyString)
 
         case "image":
             if let app = args["app"] as? String {
@@ -149,7 +165,7 @@ struct PeekabooCommandExecutor {
                 throw AgentError.invalidArguments("Window command requires 'action' parameter")
             }
             cliArgs.append(action)
-            hasSubcommand = true
+            // hasSubcommand removed
 
             if let app = args["app"] as? String {
                 cliArgs.append("--app")
@@ -180,7 +196,7 @@ struct PeekabooCommandExecutor {
                 throw AgentError.invalidArguments("App command requires 'action' and 'name' parameters")
             }
             cliArgs.append(action)
-            hasSubcommand = true
+            // hasSubcommand removed
 
             // For app commands, the name is NOT a flag, it's a positional argument
             // But some actions like "switch" use --to flag
@@ -224,7 +240,7 @@ struct PeekabooCommandExecutor {
                 throw AgentError.invalidArguments("List command requires 'target' parameter")
             }
             cliArgs.append(target)
-            hasSubcommand = true
+            // hasSubcommand removed
 
             if target == "windows", let app = args["app"] as? String {
                 cliArgs.append("--app")
@@ -235,7 +251,7 @@ struct PeekabooCommandExecutor {
             // Check for subcommand - default to click if not specified
             let subcommand = args["subcommand"] as? String ?? "click"
             cliArgs.append(subcommand)
-            hasSubcommand = true
+            // hasSubcommand removed
 
             if let app = args["app"] as? String {
                 cliArgs.append("--app")
@@ -258,14 +274,14 @@ struct PeekabooCommandExecutor {
             switch action {
             case "click":
                 cliArgs.append("click")
-                hasSubcommand = true
+                // hasSubcommand removed
                 if let button = args["button"] as? String {
                     cliArgs.append("--button")
                     cliArgs.append(button)
                 }
             case "input":
                 cliArgs.append("input")
-                hasSubcommand = true
+                // hasSubcommand removed
                 if let text = args["text"] as? String {
                     cliArgs.append("--text")
                     cliArgs.append(text)
@@ -276,7 +292,7 @@ struct PeekabooCommandExecutor {
                 }
             case "dismiss":
                 cliArgs.append("dismiss")
-                hasSubcommand = true
+            // hasSubcommand removed
             default:
                 throw AgentError.invalidArguments("Unknown dialog action: \(action)")
             }
@@ -313,7 +329,7 @@ struct PeekabooCommandExecutor {
                 throw AgentError.invalidArguments("Dock command requires 'action' parameter")
             }
             cliArgs.append(action)
-            hasSubcommand = true
+            // hasSubcommand removed
 
             if let app = args["app"] as? String {
                 cliArgs.append(app)

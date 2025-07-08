@@ -5,19 +5,12 @@ import AXorcist
 import Foundation
 import PeekabooCore
 
-/// Refactored AppCommand using PeekabooCore services
-///
-/// This version delegates application discovery and launching to the service layer
-/// while maintaining the same command interface and JSON output compatibility.
+/// Control macOS applications
 struct AppCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "app",
-        abstract: "Manage application lifecycle using PeekabooCore services",
+        abstract: "Control applications - launch, quit, hide, show, and switch between apps",
         discussion: """
-        This is a refactored version of the app command that uses PeekabooCore services
-        instead of direct implementation. It maintains the same interface but delegates
-        application discovery and launching to the service layer.
-
         EXAMPLES:
           # Launch an application
           peekaboo app launch "Visual Studio Code"
@@ -49,7 +42,7 @@ struct AppCommand: AsyncParsableCommand {
     struct LaunchSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "launch",
-            abstract: "Launch an application using ApplicationService")
+            abstract: "Launch an application")
 
         @Argument(help: "Application name or path")
         var app: String
@@ -69,52 +62,71 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         @MainActor
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
-                let identifier = bundleId ?? app
-                
+                let identifier = self.bundleId ?? self.app
+
                 // Launch the application using the service
-                let appInfo = try await services.applications.launchApplication(identifier: identifier)
-                
+                let appInfo = try await PeekabooServices.shared.applications.launchApplication(identifier: identifier)
+
                 // If not background, activate it
-                if !background {
-                    try await services.applications.activateApplication(identifier: identifier)
+                if !self.background {
+                    try await PeekabooServices.shared.applications.activateApplication(identifier: identifier)
                 }
-                
+
                 // Wait until ready if requested
-                if waitUntilReady {
+                if self.waitUntilReady {
                     let startTime = Date()
                     let timeoutInterval = TimeInterval(timeout) / 1000.0
-                    
+
                     while true {
                         if let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier),
-                           runningApp.isFinishedLaunching {
+                           runningApp.isFinishedLaunching
+                        {
                             break
                         }
-                        
+
                         if Date().timeIntervalSince(startTime) > timeoutInterval {
-                            throw AppError.launchTimeout(app)
+                            throw AppError.launchTimeout(self.app)
                         }
                         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
                     }
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
+                    var responseData: [String: Any] = [
+                        "action": "launch",
+                        "app": appInfo.name,
+                        "bundle_id": appInfo.bundleIdentifier ?? "",
+                        "pid": appInfo.processIdentifier,
+                        "activated": !self.background,
+                    ]
+                    
+                    // Wait a moment for windows to appear
+                    try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
+                    
+                    // Check if the app has windows
+                    let windows = try? await PeekabooServices.shared.windows.listWindows(
+                        target: .application(appInfo.name)
+                    )
+                    let windowCount = windows?.count ?? 0
+                    responseData["window_count"] = windowCount
+                    
+                    // Add helpful context based on window state
+                    if windowCount == 0 {
+                        responseData["note"] = "Application launched but has no visible windows. Most document-based apps require creating a new document with 'hotkey' ['cmd', 'n']."
+                        responseData["suggestion"] = "Try 'hotkey' with ['cmd', 'n'] to create a new window/document."
+                    } else {
+                        responseData["note"] = "Application launched successfully with \(windowCount) window(s) visible."
+                    }
+                    
                     let response = JSONResponse(
                         success: true,
-                        data: AnyCodable([
-                            "action": "launch",
-                            "app": appInfo.name,
-                            "bundle_id": appInfo.bundleIdentifier ?? "",
-                            "pid": appInfo.processIdentifier,
-                            "activated": !background,
-                        ]))
+                        data: AnyCodable(responseData))
                     outputJSON(response)
                 } else {
                     print("✓ Launched \(appInfo.name)")
@@ -128,7 +140,7 @@ struct AppCommand: AsyncParsableCommand {
                 handleAppError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -156,26 +168,21 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         @MainActor
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
-            guard app != nil || all else {
+            guard self.app != nil || self.all else {
                 throw ValidationError("Must specify either --app or --all")
             }
 
             do {
-                let workspace = NSWorkspace.shared
-                var quitApps: [NSRunningApplication] = []
-
                 var quitResults: [[String: Any]] = []
 
-                if all {
+                if self.all {
                     // Get all running applications using the service
-                    let serviceApps = try await services.applications.listApplications()
-                    let exceptions = except?.split(separator: ",")
+                    let serviceApps = try await PeekabooServices.shared.applications.listApplications()
+                    let exceptions = self.except?.split(separator: ",")
                         .map { $0.trimmingCharacters(in: .whitespaces) } ?? []
 
                     for appInfo in serviceApps {
@@ -183,8 +190,9 @@ struct AppCommand: AsyncParsableCommand {
                         guard let bundleId = appInfo.bundleIdentifier else { continue }
 
                         // Always skip Finder and our own app
-                        if bundleId == "com.apple.finder" || 
-                           appInfo.processIdentifier == ProcessInfo.processInfo.processIdentifier {
+                        if bundleId == "com.apple.finder" ||
+                            appInfo.processIdentifier == ProcessInfo.processInfo.processIdentifier
+                        {
                             continue
                         }
 
@@ -194,11 +202,10 @@ struct AppCommand: AsyncParsableCommand {
                         }
 
                         // Quit the app using the service
-                        let success = try await services.applications.quitApplication(
+                        let success = try await PeekabooServices.shared.applications.quitApplication(
                             identifier: appInfo.name,
-                            force: force
-                        )
-                        
+                            force: self.force)
+
                         quitResults.append([
                             "app": appInfo.name,
                             "bundle_id": bundleId,
@@ -209,12 +216,12 @@ struct AppCommand: AsyncParsableCommand {
                 } else if let appName = app {
                     // Find and quit specific app using the service
                     do {
-                        let appInfo = try await services.applications.findApplication(identifier: appName)
-                        let success = try await services.applications.quitApplication(
+                        let appInfo = try await PeekabooServices.shared.applications
+                            .findApplication(identifier: appName)
+                        let success = try await PeekabooServices.shared.applications.quitApplication(
                             identifier: appName,
-                            force: force
-                        )
-                        
+                            force: self.force)
+
                         quitResults.append([
                             "app": appInfo.name,
                             "bundle_id": appInfo.bundleIdentifier ?? "",
@@ -227,7 +234,7 @@ struct AppCommand: AsyncParsableCommand {
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
@@ -252,7 +259,7 @@ struct AppCommand: AsyncParsableCommand {
                 handleAppError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -274,26 +281,24 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         @MainActor
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Find the application using the service
-                let appInfo = try await services.applications.findApplication(identifier: app)
+                let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: self.app)
 
-                if others {
+                if self.others {
                     // Hide other applications using the service
-                    try await services.applications.hideOtherApplications(identifier: app)
+                    try await PeekabooServices.shared.applications.hideOtherApplications(identifier: self.app)
                 } else {
                     // Hide this application using the service
-                    try await services.applications.hideApplication(identifier: app)
+                    try await PeekabooServices.shared.applications.hideApplication(identifier: self.app)
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
@@ -302,7 +307,7 @@ struct AppCommand: AsyncParsableCommand {
                         ]))
                     outputJSON(response)
                 } else {
-                    if others {
+                    if self.others {
                         print("✓ Hid all other applications")
                     } else {
                         print("✓ Hid \(appInfo.name)")
@@ -313,7 +318,7 @@ struct AppCommand: AsyncParsableCommand {
                 handleApplicationServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -335,23 +340,21 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         @MainActor
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
-            guard app != nil || all else {
+            guard self.app != nil || self.all else {
                 throw ValidationError("Must specify either --app or --all")
             }
 
             do {
-                if all {
+                if self.all {
                     // Show all applications using the service
-                    try await services.applications.showAllApplications()
+                    try await PeekabooServices.shared.applications.showAllApplications()
 
                     // Output result
-                    if jsonOutput {
+                    if self.jsonOutput {
                         let response = JSONResponse(
                             success: true,
                             data: AnyCodable([
@@ -363,11 +366,11 @@ struct AppCommand: AsyncParsableCommand {
                     }
                 } else if let appName = app {
                     // Find and unhide the application using the service
-                    let appInfo = try await services.applications.findApplication(identifier: appName)
-                    try await services.applications.unhideApplication(identifier: appName)
+                    let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: appName)
+                    try await PeekabooServices.shared.applications.unhideApplication(identifier: appName)
 
                     // Output result
-                    if jsonOutput {
+                    if self.jsonOutput {
                         let response = JSONResponse(
                             success: true,
                             data: AnyCodable([
@@ -384,7 +387,7 @@ struct AppCommand: AsyncParsableCommand {
                 handleApplicationServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -409,21 +412,19 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         @MainActor
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
-            guard to != nil || cycle else {
+            guard self.to != nil || self.cycle else {
                 throw ValidationError("Must specify either --to or --cycle")
             }
 
             do {
-                if cycle {
+                if self.cycle {
                     // Simulate Cmd+Tab or Cmd+Shift+Tab
                     let keyCode: CGKeyCode = 0x30 // Tab
-                    let flags: CGEventFlags = reverse ? [.maskCommand, .maskShift] : [.maskCommand]
+                    let flags: CGEventFlags = self.reverse ? [.maskCommand, .maskShift] : [.maskCommand]
 
                     let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true)
                     let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
@@ -435,7 +436,7 @@ struct AppCommand: AsyncParsableCommand {
                     keyUp?.post(tap: .cghidEventTap)
 
                     // Output result
-                    if jsonOutput {
+                    if self.jsonOutput {
                         let response = JSONResponse(
                             success: true,
                             data: AnyCodable([
@@ -444,15 +445,15 @@ struct AppCommand: AsyncParsableCommand {
                             ]))
                         outputJSON(response)
                     } else {
-                        print("✓ Cycled to \(reverse ? "previous" : "next") application")
+                        print("✓ Cycled to \(self.reverse ? "previous" : "next") application")
                     }
                 } else if let appName = to {
                     // Find and activate the application using the service
-                    let appInfo = try await services.applications.findApplication(identifier: appName)
-                    try await services.applications.activateApplication(identifier: appName)
+                    let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: appName)
+                    try await PeekabooServices.shared.applications.activateApplication(identifier: appName)
 
                     // Output result
-                    if jsonOutput {
+                    if self.jsonOutput {
                         let response = JSONResponse(
                             success: true,
                             data: AnyCodable([
@@ -470,7 +471,7 @@ struct AppCommand: AsyncParsableCommand {
                 handleApplicationServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -492,22 +493,20 @@ struct AppCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Get all applications from the service
-                var apps = try await services.applications.listApplications()
+                var apps = try await PeekabooServices.shared.applications.listApplications()
 
                 // Filter based on flags
-                if !includeBackground {
+                if !self.includeBackground {
                     // Filter out background apps (those without regular activation policy)
                     // Since service already filters prohibited apps, we keep all returned apps
                 }
 
-                if !includeHidden {
+                if !self.includeHidden {
                     apps = apps.filter { !$0.isHidden }
                 }
 
@@ -524,7 +523,7 @@ struct AppCommand: AsyncParsableCommand {
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
@@ -546,7 +545,7 @@ struct AppCommand: AsyncParsableCommand {
                 }
 
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -608,8 +607,11 @@ private func handleApplicationServiceError(_ error: ApplicationError, jsonOutput
     switch error {
     case let .notFound(identifier):
         appError = .applicationNotFound(identifier)
-    case let .ambiguousIdentifier(identifier, _):
-        appError = .applicationNotFound("Multiple apps match '\(identifier)'")
+    case let .ambiguous(identifier, apps):
+        let appNames = apps.map { $0.localizedName ?? "Unknown" }.joined(separator: ", ")
+        appError = .applicationNotFound("Multiple apps match '\(identifier)': \(appNames)")
+    case let .ambiguousIdentifier(identifier, candidates):
+        appError = .applicationNotFound("Multiple apps match '\(identifier)': \(candidates)")
     case .noFrontmostApplication:
         appError = .applicationNotFound("No frontmost application")
     case let .notInstalled(identifier):
@@ -617,19 +619,6 @@ private func handleApplicationServiceError(_ error: ApplicationError, jsonOutput
     case let .activationFailed(identifier):
         appError = .activationFailed(identifier)
     }
-    
-    handleAppError(appError, jsonOutput: jsonOutput)
-}
 
-private func handleGenericError(_ error: Error, jsonOutput: Bool) {
-    if jsonOutput {
-        let response = JSONResponse(
-            success: false,
-            error: ErrorInfo(
-                message: error.localizedDescription,
-                code: .UNKNOWN_ERROR))
-        outputJSON(response)
-    } else {
-        fputs("❌ Error: \(error.localizedDescription)\n", stderr)
-    }
+    handleAppError(appError, jsonOutput: jsonOutput)
 }

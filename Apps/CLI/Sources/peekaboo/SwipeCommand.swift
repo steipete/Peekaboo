@@ -1,22 +1,17 @@
 import AppKit
 import ArgumentParser
+import AXorcist
 import CoreGraphics
 import Foundation
 import PeekabooCore
-import AXorcist
 
-/// Refactored SwipeCommand using PeekabooCore services
 /// Performs swipe gestures using intelligent element finding and service-based architecture.
 @available(macOS 14.0, *)
 struct SwipeCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "swipe",
-        abstract: "Perform swipe gestures using PeekabooCore services",
+        abstract: "Perform swipe gestures",
         discussion: """
-        This is a refactored version of the swipe command that uses PeekabooCore services
-        instead of direct implementation. It maintains the same interface but delegates
-        all operations to the service layer.
-        
         Performs a drag/swipe gesture between two points or elements.
         Useful for drag-and-drop operations and gesture-based interactions.
 
@@ -71,26 +66,30 @@ struct SwipeCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    private let services = PeekabooServices.shared
-
     mutating func run() async throws {
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Validate inputs
-            guard from != nil || fromCoords != nil, to != nil || toCoords != nil else {
-                throw ValidationError(
+            guard self.from != nil || self.fromCoords != nil, self.to != nil || self.toCoords != nil else {
+                throw ArgumentParser.ValidationError(
                     "Must specify both source (--from or --from-coords) and destination (--to or --to-coords)")
             }
 
             // Note: Right-button swipe is not supported in the current implementation
-            if rightButton {
-                throw ValidationError("Right-button swipe is not currently supported. Please use the standard swipe command for right-button gestures.")
+            if self.rightButton {
+                throw ArgumentParser
+                    .ValidationError(
+                        "Right-button swipe is not currently supported. Please use the standard swipe command for right-button gestures.")
             }
 
             // Determine session ID - use provided or get most recent
-            let sessionId = session ?? (await services.sessions.getMostRecentSession())
+            let sessionId: String? = if let providedSession = session {
+                providedSession
+            } else {
+                await PeekabooServices.shared.sessions.getMostRecentSession()
+            }
 
             // Get source and destination points
             let sourcePoint = try await resolvePoint(
@@ -108,11 +107,11 @@ struct SwipeCommand: AsyncParsableCommand {
                 waitTimeout: 5.0)
 
             // Perform swipe using UIAutomationService
-            try await services.automation.swipe(
+            try await PeekabooServices.shared.automation.swipe(
                 from: sourcePoint,
                 to: destPoint,
-                duration: duration,
-                steps: steps)
+                duration: self.duration,
+                steps: self.steps)
 
             // Calculate distance for output
             let distance = sqrt(pow(destPoint.x - sourcePoint.x, 2) + pow(destPoint.y - sourcePoint.y, 2))
@@ -121,13 +120,13 @@ struct SwipeCommand: AsyncParsableCommand {
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
 
             // Output results
-            if jsonOutput {
+            if self.jsonOutput {
                 let output = SwipeResult(
                     success: true,
                     fromLocation: ["x": sourcePoint.x, "y": sourcePoint.y],
                     toLocation: ["x": destPoint.x, "y": destPoint.y],
                     distance: distance,
-                    duration: duration,
+                    duration: self.duration,
                     executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: output)
             } else {
@@ -135,12 +134,12 @@ struct SwipeCommand: AsyncParsableCommand {
                 print("📍 From: (\(Int(sourcePoint.x)), \(Int(sourcePoint.y)))")
                 print("📍 To: (\(Int(destPoint.x)), \(Int(destPoint.y)))")
                 print("📏 Distance: \(Int(distance)) pixels")
-                print("⏱️  Duration: \(duration)ms")
+                print("⏱️  Duration: \(self.duration)ms")
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
             throw ExitCode.failure
         }
     }
@@ -159,26 +158,25 @@ struct SwipeCommand: AsyncParsableCommand {
                   let x = Double(parts[0]),
                   let y = Double(parts[1])
             else {
-                throw ValidationError("Invalid coordinates format: '\(coordString)'. Expected 'x,y'")
+                throw ArgumentParser.ValidationError("Invalid coordinates format: '\(coordString)'. Expected 'x,y'")
             }
             return CGPoint(x: x, y: y)
         } else if let element = elementId, let activeSessionId = sessionId {
             // Resolve from session using waitForElement
             let target = ClickTarget.elementId(element)
-            let waitResult = try await services.automation.waitForElement(
+            let waitResult = try await PeekabooServices.shared.automation.waitForElement(
                 target: target,
                 timeout: waitTimeout,
-                sessionId: activeSessionId
-            )
-            
+                sessionId: activeSessionId)
+
             if !waitResult.found {
                 throw PeekabooError.elementNotFound
             }
-            
+
             guard let foundElement = waitResult.element else {
                 throw PeekabooError.interactionFailed("Element '\(element)' found but has no bounds")
             }
-            
+
             // Return center of element
             return CGPoint(
                 x: foundElement.bounds.origin.x + foundElement.bounds.width / 2,
@@ -191,10 +189,10 @@ struct SwipeCommand: AsyncParsableCommand {
     }
 
     private func handleError(_ error: Error) {
-        if jsonOutput {
+        if self.jsonOutput {
             let errorCode: ErrorCode
             let message: String
-            
+
             if let peekabooError = error as? PeekabooError {
                 switch peekabooError {
                 case .sessionNotFound:
@@ -203,21 +201,21 @@ struct SwipeCommand: AsyncParsableCommand {
                 case .elementNotFound:
                     errorCode = .ELEMENT_NOT_FOUND
                     message = "Element not found"
-                case .interactionFailed(let msg):
+                case let .interactionFailed(msg):
                     errorCode = .INTERACTION_FAILED
                     message = msg
                 default:
                     errorCode = .INTERNAL_SWIFT_ERROR
                     message = error.localizedDescription
                 }
-            } else if error is ValidationError {
+            } else if error is ArgumentParser.ValidationError {
                 errorCode = .INVALID_INPUT
                 message = error.localizedDescription
             } else {
                 errorCode = .INTERNAL_SWIFT_ERROR
                 message = error.localizedDescription
             }
-            
+
             outputError(message: message, code: errorCode)
         } else {
             var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)

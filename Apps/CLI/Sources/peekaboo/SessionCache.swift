@@ -653,7 +653,7 @@ enum PeekabooError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .windowNotFound(let message):
+        case let .windowNotFound(message):
             message.isEmpty ? "Window not found" : message
         case .elementNotFound:
             "UI element not found"
@@ -663,15 +663,15 @@ enum PeekabooError: LocalizedError {
             "Session not found or expired"
         case .noValidSessionFound:
             "No valid session found. Run 'peekaboo see' first to create a session, or specify an explicit --session parameter."
-        case .applicationNotFound(let app):
+        case let .applicationNotFound(app):
             "Application '\(app)' not found"
-        case .ambiguousAppIdentifier(let identifier):
+        case let .ambiguousAppIdentifier(identifier):
             "Multiple applications match '\(identifier)'"
         case .noFrontmostApplication:
             "No frontmost application found"
-        case .timeout(let operation):
+        case let .timeout(operation):
             "Operation timed out: \(operation)"
-        case .operationFailed(let reason):
+        case let .operationFailed(reason):
             "Operation failed: \(reason)"
         }
     }

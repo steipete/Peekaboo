@@ -1,22 +1,17 @@
 import AppKit
 import ArgumentParser
+import AXorcist
 import CoreGraphics
 import Foundation
 import PeekabooCore
-import AXorcist
 
-/// Refactored DragCommand using PeekabooCore services
-/// Performs drag and drop operations using intelligent element finding and service-based architecture.
+/// Perform drag and drop operations using intelligent element finding
 @available(macOS 14.0, *)
 struct DragCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "drag",
-        abstract: "Perform drag and drop operations using PeekabooCore services",
+        abstract: "Perform drag and drop operations",
         discussion: """
-        This is a refactored version of the drag command that uses PeekabooCore services
-        instead of direct implementation. It maintains the same interface but delegates
-        all operations to the service layer.
-        
         Execute click-and-drag operations for moving elements, selecting text, or dragging files.
 
         EXAMPLES:
@@ -67,24 +62,26 @@ struct DragCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    private let services = PeekabooServices.shared
-
     mutating func run() async throws {
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Validate inputs
-            guard from != nil || fromCoords != nil else {
-                throw ValidationError("Must specify either --from or --from-coords")
+            guard self.from != nil || self.fromCoords != nil else {
+                throw ArgumentParser.ValidationError("Must specify either --from or --from-coords")
             }
 
-            guard to != nil || toCoords != nil || toApp != nil else {
-                throw ValidationError("Must specify either --to, --to-coords, or --to-app")
+            guard self.to != nil || self.toCoords != nil || self.toApp != nil else {
+                throw ArgumentParser.ValidationError("Must specify either --to, --to-coords, or --to-app")
             }
 
             // Determine session ID - use provided or get most recent
-            let sessionId = session ?? (await services.sessions.getMostRecentSession())
+            let sessionId: String? = if let providedSession = session {
+                providedSession
+            } else {
+                await PeekabooServices.shared.sessions.getMostRecentSession()
+            }
 
             // Resolve starting point
             let startPoint = try await resolvePoint(
@@ -95,47 +92,45 @@ struct DragCommand: AsyncParsableCommand {
                 waitTimeout: 5.0)
 
             // Resolve ending point
-            let endPoint: CGPoint
-            if let targetApp = toApp {
+            let endPoint: CGPoint = if let targetApp = toApp {
                 // Find application window or dock item
-                endPoint = try await findApplicationPoint(targetApp)
+                try await self.findApplicationPoint(targetApp)
             } else {
-                endPoint = try await resolvePoint(
-                    elementId: to,
-                    coords: toCoords,
+                try await self.resolvePoint(
+                    elementId: self.to,
+                    coords: self.toCoords,
                     sessionId: sessionId,
                     description: "to",
                     waitTimeout: 5.0)
             }
 
             // Perform the drag using UIAutomationService
-            try await services.automation.drag(
+            try await PeekabooServices.shared.automation.drag(
                 from: startPoint,
                 to: endPoint,
-                duration: duration,
-                steps: steps,
-                modifiers: modifiers)
+                duration: self.duration,
+                steps: self.steps,
+                modifiers: self.modifiers)
 
             // Small delay to ensure drag is processed
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
 
             // Output results
-            if jsonOutput {
+            if self.jsonOutput {
                 let result = DragResult(
                     success: true,
                     from: ["x": Int(startPoint.x), "y": Int(startPoint.y)],
                     to: ["x": Int(endPoint.x), "y": Int(endPoint.y)],
-                    duration: duration,
-                    steps: steps,
-                    modifiers: modifiers ?? "none",
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
+                    duration: self.duration,
+                    steps: self.steps,
+                    modifiers: self.modifiers ?? "none",
+                    executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: result)
             } else {
                 print("✅ Drag successful")
                 print("📍 From: (\(Int(startPoint.x)), \(Int(startPoint.y)))")
                 print("📍 To: (\(Int(endPoint.x)), \(Int(endPoint.y)))")
-                print("⏱️  Duration: \(duration)ms with \(steps) steps")
+                print("⏱️  Duration: \(self.duration)ms with \(self.steps) steps")
                 if let mods = modifiers {
                     print("⌨️  Modifiers: \(mods)")
                 }
@@ -143,7 +138,7 @@ struct DragCommand: AsyncParsableCommand {
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
             throw ExitCode.failure
         }
     }
@@ -162,34 +157,33 @@ struct DragCommand: AsyncParsableCommand {
                   let x = Double(parts[0]),
                   let y = Double(parts[1])
             else {
-                throw ValidationError("Invalid coordinates format: '\(coordString)'. Expected 'x,y'")
+                throw ArgumentParser.ValidationError("Invalid coordinates format: '\(coordString)'. Expected 'x,y'")
             }
             return CGPoint(x: x, y: y)
         } else if let element = elementId, let activeSessionId = sessionId {
             // Resolve from session using waitForElement
             let target = ClickTarget.elementId(element)
-            let waitResult = try await services.automation.waitForElement(
+            let waitResult = try await PeekabooServices.shared.automation.waitForElement(
                 target: target,
                 timeout: waitTimeout,
-                sessionId: activeSessionId
-            )
-            
+                sessionId: activeSessionId)
+
             if !waitResult.found {
                 throw PeekabooError.elementNotFound
             }
-            
+
             guard let foundElement = waitResult.element else {
                 throw PeekabooError.interactionFailed("Element '\(element)' found but has no bounds")
             }
-            
+
             // Return center of element
             return CGPoint(
                 x: foundElement.bounds.origin.x + foundElement.bounds.width / 2,
                 y: foundElement.bounds.origin.y + foundElement.bounds.height / 2)
         } else if elementId != nil {
-            throw ValidationError("Session ID required when using element IDs")
+            throw ArgumentParser.ValidationError("Session ID required when using element IDs")
         } else {
-            throw ValidationError("No \(description) point specified")
+            throw ArgumentParser.ValidationError("No \(description) point specified")
         }
     }
 
@@ -201,7 +195,7 @@ struct DragCommand: AsyncParsableCommand {
             if let dock = findDockApplication() {
                 if let dockList = dock.children()?.first(where: { $0.role() == "AXList" }) {
                     let items = dockList.children() ?? []
-                    
+
                     // Trash is typically the last item
                     if let trash = items.last {
                         if let position = trash.position(),
@@ -219,23 +213,23 @@ struct DragCommand: AsyncParsableCommand {
 
         // Try to find application window using ApplicationService
         do {
-            let app = try await services.applications.findApplication(identifier: appName)
-            let windows = try await services.applications.listWindows(for: appName)
-            
+            _ = try await PeekabooServices.shared.applications.findApplication(identifier: appName)
+            let windows = try await PeekabooServices.shared.applications.listWindows(for: appName)
+
             if let firstWindow = windows.first {
                 // Return center of window
                 return CGPoint(
                     x: firstWindow.bounds.origin.x + firstWindow.bounds.width / 2,
                     y: firstWindow.bounds.origin.y + firstWindow.bounds.height / 2)
             }
-            
+
             throw PeekabooError.windowNotFound("No window found for application '\(appName)'")
         } catch {
             // If not found as running app, try dock
             if let dock = findDockApplication() {
                 if let dockList = dock.children()?.first(where: { $0.role() == "AXList" }) {
                     let items = dockList.children() ?? []
-                    
+
                     if let appItem = items.first(where: { item in
                         item.title() == appName ||
                             item.title()?.contains(appName) == true
@@ -250,7 +244,7 @@ struct DragCommand: AsyncParsableCommand {
                     }
                 }
             }
-            
+
             throw PeekabooError.applicationNotFound(appName)
         }
     }
@@ -263,15 +257,15 @@ struct DragCommand: AsyncParsableCommand {
         }) else {
             return nil
         }
-        
+
         return Element(AXUIElementCreateApplication(dockApp.processIdentifier))
     }
 
     private func handleError(_ error: Error) {
-        if jsonOutput {
+        if self.jsonOutput {
             let errorCode: ErrorCode
             let message: String
-            
+
             if let peekabooError = error as? PeekabooError {
                 switch peekabooError {
                 case .sessionNotFound:
@@ -280,27 +274,27 @@ struct DragCommand: AsyncParsableCommand {
                 case .elementNotFound:
                     errorCode = .ELEMENT_NOT_FOUND
                     message = "Element not found"
-                case .applicationNotFound(let app):
+                case let .applicationNotFound(app):
                     errorCode = .APP_NOT_FOUND
                     message = "Application not found: \(app)"
-                case .windowNotFound(let msg):
+                case let .windowNotFound(msg):
                     errorCode = .WINDOW_NOT_FOUND
                     message = msg
-                case .interactionFailed(let msg):
+                case let .interactionFailed(msg):
                     errorCode = .INTERACTION_FAILED
                     message = msg
                 default:
                     errorCode = .INTERNAL_SWIFT_ERROR
                     message = error.localizedDescription
                 }
-            } else if error is ValidationError {
+            } else if error is ArgumentParser.ValidationError {
                 errorCode = .INVALID_INPUT
                 message = error.localizedDescription
             } else {
                 errorCode = .INTERNAL_SWIFT_ERROR
                 message = error.localizedDescription
             }
-            
+
             outputError(message: message, code: errorCode)
         } else {
             var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
