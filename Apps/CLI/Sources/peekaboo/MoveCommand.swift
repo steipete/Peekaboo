@@ -7,9 +7,9 @@ import PeekabooCore
 /// Refactored MoveCommand using PeekabooCore services
 /// Moves the mouse cursor to specific coordinates or UI elements.
 @available(macOS 14.0, *)
-struct MoveCommandV2: AsyncParsableCommand {
+struct MoveCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "move-v2",
+        commandName: "move",
         abstract: "Move the mouse cursor to coordinates or UI elements using PeekabooCore services",
         discussion: """
             This is a refactored version of the move command that uses PeekabooCore services
@@ -20,11 +20,11 @@ struct MoveCommandV2: AsyncParsableCommand {
             on UI elements detected by 'see'. Supports instant and smooth movement.
 
             EXAMPLES:
-              peekaboo move-v2 100,200                 # Move to coordinates
-              peekaboo move-v2 --to "Submit Button"    # Move to element by text
-              peekaboo move-v2 --id B3                 # Move to element by ID
-              peekaboo move-v2 500,300 --smooth        # Smooth movement
-              peekaboo move-v2 --center                # Move to screen center
+              peekaboo move 100,200                 # Move to coordinates
+              peekaboo move --to "Submit Button"    # Move to element by text
+              peekaboo move --id B3                 # Move to element by ID
+              peekaboo move 500,300 --smooth        # Smooth movement
+              peekaboo move --center                # Move to screen center
 
             MOVEMENT MODES:
               - Instant (default): Immediate cursor positioning

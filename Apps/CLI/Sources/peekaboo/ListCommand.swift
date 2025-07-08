@@ -1,16 +1,21 @@
 import AppKit
 import ArgumentParser
 import Foundation
+import PeekabooCore
 
-/// Command for listing applications, windows, and checking server status.
+/// Refactored ListCommand using PeekabooCore services
 ///
-/// Provides subcommands to inspect running applications, enumerate windows,
-/// and verify system permissions required for screenshot operations.
+/// This version delegates all operations to the service layer while maintaining
+/// the same command interface and JSON output compatibility.
 struct ListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List running applications, windows, or check permissions",
+        abstract: "List running applications, windows, or check permissions (service-based)",
         discussion: """
+        This is a refactored version of the list command that uses PeekabooCore services
+        instead of direct implementation. It maintains the same interface but delegates
+        all operations to the service layer.
+        
         SYNOPSIS:
           peekaboo list SUBCOMMAND [OPTIONS]
 
@@ -21,23 +26,14 @@ struct ListCommand: AsyncParsableCommand {
 
           peekaboo list windows --app Safari             # List Safari windows
           peekaboo list windows --app "Visual Studio Code"
-          peekaboo list windows --app PID:12345
           peekaboo list windows --app Chrome --include-details bounds,ids
 
           peekaboo list permissions                      # Check permissions
-
-          # Scripting examples
-          peekaboo list apps --json-output | jq '.data.applications[] | select(.is_active)'
-          peekaboo list windows --app Safari --json-output | jq '.data.windows[].window_title'
 
         SUBCOMMANDS:
           apps          List all running applications with process IDs
           windows       List windows for a specific application  
           permissions   Check permissions required for Peekaboo
-
-        OUTPUT FORMAT:
-          Default output is human-readable text.
-          Use --json-output for machine-readable JSON format.
         """,
         subcommands: [AppsSubcommand.self, WindowsSubcommand.self, PermissionsSubcommand.self],
         defaultSubcommand: AppsSubcommand.self)
@@ -47,87 +43,64 @@ struct ListCommand: AsyncParsableCommand {
     }
 }
 
-/// Subcommand for listing all running applications.
-///
-/// Displays information about running applications including their process IDs,
-/// bundle identifiers, activation status, and window counts.
+/// Subcommand for listing all running applications using services.
 struct AppsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "apps",
         abstract: "List all running applications with details",
         discussion: """
-        SYNOPSIS:
-          peekaboo list apps [--json-output]
-
-        DESCRIPTION:
-          Lists all running applications with their process IDs, bundle
-          identifiers, and window counts. Applications are sorted by name.
-
-        EXAMPLES:
-          peekaboo list apps
-          peekaboo list apps | grep Safari
-          peekaboo list apps | wc -l                     # Count running apps
-
-          # JSON output for scripting
-          peekaboo list apps --json-output | jq '.data.applications[] | select(.is_active)'
-          peekaboo list apps --json-output | jq -r '.data.applications[].app_name'
-          peekaboo list apps --json-output | jq '.data.applications[] | select(.window_count > 3)'
-
-        OUTPUT FIELDS:
-          - Application name
-          - Bundle identifier (e.g., com.apple.Safari)
-          - Process ID (PID)
-          - Status (Active/Background)
-          - Window count
+        Lists all running applications using the ApplicationService from PeekabooCore.
+        Applications are sorted by name and include process IDs, bundle identifiers,
+        and activation status.
         """)
 
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
+    private let services = PeekabooServices.shared
+
     func run() async throws {
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        Logger.shared.setJsonOutputMode(jsonOutput)
 
         do {
-            try PermissionsChecker.requireScreenRecordingPermission()
+            // Check permissions using the service
+            guard await services.screenCapture.hasScreenRecordingPermission() else {
+                throw CaptureError.screenRecordingPermissionDenied
+            }
 
-            let applications = ApplicationFinder.getAllRunningApplications()
+            // Get applications from the service
+            let serviceApps = try await services.applications.listApplications()
+            
+            // Convert to CLI model format for compatibility
+            let applications = serviceApps.map { app in
+                ApplicationInfo(
+                    app_name: app.name,
+                    bundle_id: app.bundleIdentifier ?? "unknown",
+                    pid: app.processIdentifier,
+                    is_active: app.isActive,
+                    window_count: app.windowCount
+                )
+            }
+
             let data = ApplicationListData(applications: applications)
 
-            if self.jsonOutput {
+            if jsonOutput {
                 outputSuccess(data: data)
             } else {
-                self.printApplicationList(applications)
+                printApplicationList(applications)
             }
 
         } catch {
-            self.handleError(error)
-            throw ExitCode(Int32(1))
+            handleError(error)
+            throw ExitCode(1)
         }
     }
 
     private func handleError(_ error: Error) {
-        let captureError: CaptureError = if let err = error as? CaptureError {
-            err
-        } else if let appError = error as? ApplicationError {
-            switch appError {
-            case let .notFound(identifier):
-                .appNotFound(identifier)
-            case let .ambiguous(identifier, _):
-                .invalidArgument("Ambiguous application identifier: '\(identifier)'")
-            }
-        } else {
-            .unknownError(error.localizedDescription)
-        }
+        let captureError = mapErrorToCaptureError(error)
 
-        if self.jsonOutput {
-            let code: ErrorCode = switch captureError {
-            case .screenRecordingPermissionDenied:
-                .PERMISSION_ERROR_SCREEN_RECORDING
-            case .accessibilityPermissionDenied:
-                .PERMISSION_ERROR_ACCESSIBILITY
-            default:
-                .INTERNAL_SWIFT_ERROR
-            }
+        if jsonOutput {
+            let code = mapCaptureErrorToCode(captureError)
             outputError(
                 message: captureError.localizedDescription,
                 code: code,
@@ -135,15 +108,14 @@ struct AppsSubcommand: AsyncParsableCommand {
         } else {
             fputs("Error: \(captureError.localizedDescription)\n", stderr)
         }
-        // Don't call exit() here - let the caller handle process termination
     }
 
-    func printApplicationList(_ applications: [ApplicationInfo]) {
-        let output = self.formatApplicationList(applications)
+    private func printApplicationList(_ applications: [ApplicationInfo]) {
+        let output = formatApplicationList(applications)
         print(output)
     }
 
-    func formatApplicationList(_ applications: [ApplicationInfo]) -> String {
+    private func formatApplicationList(_ applications: [ApplicationInfo]) -> String {
         var output = "Running Applications (\(applications.count)):\n\n"
 
         for (index, app) in applications.enumerated() {
@@ -162,46 +134,14 @@ struct AppsSubcommand: AsyncParsableCommand {
     }
 }
 
-/// Subcommand for listing windows of a specific application.
-///
-/// Enumerates all windows belonging to a target application with optional
-/// details like bounds, window IDs, and off-screen status.
+/// Subcommand for listing windows of a specific application using services.
 struct WindowsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "windows",
         abstract: "List all windows for a specific application",
         discussion: """
-        SYNOPSIS:
-          peekaboo list windows --app APPLICATION [--include-details DETAILS] [--json-output]
-
-        DESCRIPTION:
-          Lists all windows for the specified application. Windows are listed
-          in z-order (frontmost first).
-
-        EXAMPLES:
-          peekaboo list windows --app Safari
-          peekaboo list windows --app "Visual Studio Code"
-          peekaboo list windows --app com.apple.Terminal
-          peekaboo list windows --app PID:12345
-
-          # Include additional details
-          peekaboo list windows --app Chrome --include-details bounds
-          peekaboo list windows --app Finder --include-details bounds,ids,off_screen
-
-          # JSON output for scripting
-          peekaboo list windows --app Safari --json-output | jq -r '.data.windows[].window_title'
-          peekaboo list windows --app Terminal --include-details bounds --json-output | \
-            jq '.data.windows[] | select(.bounds.width > 1000)'
-
-        APPLICATION IDENTIFIERS:
-          name       Application name (fuzzy matching supported)
-          bundle     Bundle identifier (e.g., com.apple.Safari)
-          PID:xxxxx  Process ID with PID: prefix
-
-        DETAIL OPTIONS:
-          off_screen Include off-screen windows
-          bounds     Include window position and size (x, y, width, height)
-          ids        Include CGWindowID values for window manipulation
+        Lists all windows for the specified application using PeekabooCore services.
+        Windows are listed in z-order (frontmost first) with optional details.
         """)
 
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
@@ -213,27 +153,43 @@ struct WindowsSubcommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
+    private let services = PeekabooServices.shared
+
     func run() async throws {
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        Logger.shared.setJsonOutputMode(jsonOutput)
 
         do {
-            try PermissionsChecker.requireScreenRecordingPermission()
+            // Check permissions
+            guard await services.screenCapture.hasScreenRecordingPermission() else {
+                throw CaptureError.screenRecordingPermissionDenied
+            }
 
-            // Find the target application
-            let targetApp = try ApplicationFinder.findApplication(identifier: self.app)
+            // Find the target application using the service
+            let targetApp = try await services.applications.findApplication(identifier: app)
 
             // Parse include details options
-            let detailOptions = self.parseIncludeDetails()
+            let detailOptions = parseIncludeDetails()
 
-            // Get windows for the app
-            let windows = try WindowManager.getWindowsInfoForApp(
-                pid: targetApp.processIdentifier,
-                includeOffScreen: detailOptions.contains(.off_screen),
-                includeBounds: detailOptions.contains(.bounds),
-                includeIDs: detailOptions.contains(.ids))
+            // Get windows for the app using the service
+            let serviceWindows = try await services.applications.listWindows(for: app)
+            
+            // Convert to CLI model format with requested details
+            let windows = serviceWindows.enumerated().map { index, window in
+                WindowInfo(
+                    window_title: window.title,
+                    window_id: detailOptions.contains(.ids) ? UInt32(window.windowID) : nil,
+                    bounds: detailOptions.contains(.bounds) ? WindowBounds(
+                        x: Int(window.bounds.origin.x),
+                        y: Int(window.bounds.origin.y),
+                        width: Int(window.bounds.size.width),
+                        height: Int(window.bounds.size.height)
+                    ) : nil,
+                    is_on_screen: detailOptions.contains(.off_screen) ? !window.isMinimized : nil
+                )
+            }
 
             let targetAppInfo = TargetApplicationInfo(
-                app_name: targetApp.localizedName ?? "Unknown",
+                app_name: targetApp.name,
                 bundle_id: targetApp.bundleIdentifier,
                 pid: targetApp.processIdentifier)
 
@@ -241,43 +197,23 @@ struct WindowsSubcommand: AsyncParsableCommand {
                 windows: windows,
                 target_application_info: targetAppInfo)
 
-            if self.jsonOutput {
+            if jsonOutput {
                 outputSuccess(data: data)
             } else {
-                self.printWindowList(data)
+                printWindowList(data)
             }
 
         } catch {
-            self.handleError(error)
-            throw ExitCode(Int32(1))
+            handleError(error)
+            throw ExitCode(1)
         }
     }
 
     private func handleError(_ error: Error) {
-        let captureError: CaptureError = if let err = error as? CaptureError {
-            err
-        } else if let appError = error as? ApplicationError {
-            switch appError {
-            case let .notFound(identifier):
-                .appNotFound(identifier)
-            case let .ambiguous(identifier, _):
-                .invalidArgument("Ambiguous application identifier: '\(identifier)'")
-            }
-        } else {
-            .unknownError(error.localizedDescription)
-        }
+        let captureError = mapErrorToCaptureError(error)
 
-        if self.jsonOutput {
-            let code: ErrorCode = switch captureError {
-            case .screenRecordingPermissionDenied:
-                .PERMISSION_ERROR_SCREEN_RECORDING
-            case .accessibilityPermissionDenied:
-                .PERMISSION_ERROR_ACCESSIBILITY
-            case .appNotFound:
-                .APP_NOT_FOUND
-            default:
-                .INTERNAL_SWIFT_ERROR
-            }
+        if jsonOutput {
+            let code = mapCaptureErrorToCode(captureError)
             outputError(
                 message: captureError.localizedDescription,
                 code: code,
@@ -285,7 +221,6 @@ struct WindowsSubcommand: AsyncParsableCommand {
         } else {
             fputs("Error: \(captureError.localizedDescription)\n", stderr)
         }
-        // Don't call exit() here - let the caller handle process termination
     }
 
     private func parseIncludeDetails() -> Set<WindowDetailOption> {
@@ -342,46 +277,27 @@ struct WindowsSubcommand: AsyncParsableCommand {
     }
 }
 
-/// Subcommand for checking system permissions required for Peekaboo.
-///
-/// Verifies that required permissions (Screen Recording) and optional
-/// permissions (Accessibility) are granted for proper operation.
+/// Subcommand for checking system permissions using services.
 struct PermissionsSubcommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "permissions",
         abstract: "Check system permissions required for Peekaboo",
         discussion: """
-        SYNOPSIS:
-          peekaboo list permissions [--json-output]
-
-        DESCRIPTION:
-          Checks system permissions required for Peekaboo operations. Use this
-          command to troubleshoot permission issues or verify installation.
-
-        EXAMPLES:
-          peekaboo list permissions
-          peekaboo list permissions --json-output
-
-          # Check specific permission
-          peekaboo list permissions --json-output | jq '.data.permissions.screen_recording'
-
-        STATUS CHECKS:
-          Screen Recording  Required for all screenshot operations
-          Accessibility     Optional, needed for window focus control
-
-        EXIT STATUS:
-          0  All required permissions granted
-          1  Missing required permissions
+        Checks system permissions using PeekabooCore services.
+        Verifies Screen Recording (required) and Accessibility (optional) permissions.
         """)
 
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
-    func run() async throws {
-        Logger.shared.setJsonOutputMode(self.jsonOutput)
+    private let services = PeekabooServices.shared
 
-        let screenRecording = PermissionsChecker.checkScreenRecordingPermission()
-        let accessibility = PermissionsChecker.checkAccessibilityPermission()
+    func run() async throws {
+        Logger.shared.setJsonOutputMode(jsonOutput)
+
+        // Check permissions using the services
+        let screenRecording = await services.screenCapture.hasScreenRecordingPermission()
+        let accessibility = await services.automation.hasAccessibilityPermission()
 
         let permissions = ServerPermissions(
             screen_recording: screenRecording,
@@ -389,7 +305,7 @@ struct PermissionsSubcommand: AsyncParsableCommand {
 
         let data = ServerStatusData(permissions: permissions)
 
-        if self.jsonOutput {
+        if jsonOutput {
             outputSuccess(data: data)
         } else {
             print("Server Permissions Status:")
@@ -399,18 +315,53 @@ struct PermissionsSubcommand: AsyncParsableCommand {
     }
 }
 
-/// System permissions status for Peekaboo operations.
-///
-/// Indicates whether Screen Recording (required) and Accessibility (optional)
-/// permissions have been granted.
-struct ServerPermissions: Codable {
-    let screen_recording: Bool
-    let accessibility: Bool
+// MARK: - Helper Functions
+
+/// Maps various errors to CaptureError for consistent handling
+private func mapErrorToCaptureError(_ error: Error) -> CaptureError {
+    if let captureError = error as? CaptureError {
+        return captureError
+    } else if let appError = error as? ApplicationError {
+        switch appError {
+        case let .notFound(identifier):
+            return .appNotFound(identifier)
+        case let .ambiguousIdentifier(identifier, _):
+            return .invalidArgument("Ambiguous application identifier: '\(identifier)'")
+        case .noFrontmostApplication:
+            return .invalidArgument("No frontmost application")
+        case let .notInstalled(identifier):
+            return .appNotFound("Application not installed: \(identifier)")
+        case let .activationFailed(identifier):
+            return .invalidArgument("Failed to activate application: \(identifier)")
+        }
+    } else if let screenError = error as? ScreenCaptureError {
+        switch screenError {
+        case .noScreenRecordingPermission:
+            return .screenRecordingPermissionDenied
+        case .noAccessibilityPermission:
+            return .accessibilityPermissionDenied
+        case .captureFailure(let reason):
+            return .captureFailed(reason)
+        case .invalidDisplayIndex:
+            return .invalidArgument("Invalid display index")
+        case .noWindows:
+            return .windowNotFound("No windows found")
+        }
+    } else {
+        return .unknownError(error.localizedDescription)
+    }
 }
 
-/// Container for server status information.
-///
-/// Wraps permission status data for JSON output.
-struct ServerStatusData: Codable {
-    let permissions: ServerPermissions
+/// Maps CaptureError to ErrorCode for JSON output
+private func mapCaptureErrorToCode(_ error: CaptureError) -> ErrorCode {
+    switch error {
+    case .screenRecordingPermissionDenied:
+        return .PERMISSION_ERROR_SCREEN_RECORDING
+    case .accessibilityPermissionDenied:
+        return .PERMISSION_ERROR_ACCESSIBILITY
+    case .appNotFound:
+        return .APP_NOT_FOUND
+    default:
+        return .INTERNAL_SWIFT_ERROR
+    }
 }

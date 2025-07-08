@@ -1,17 +1,20 @@
 import ArgumentParser
 import Foundation
+import PeekabooCore
 
-/// Cleans up session cache and temporary files.
-/// Provides maintenance utilities for Peekaboo's session management.
+/// Refactored CleanCommand using PeekabooCore FileService
+///
+/// This version delegates file system operations to the service layer
+/// while maintaining the same command interface and output compatibility.
 @available(macOS 14.0, *)
 struct CleanCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "clean",
-        abstract: "Clean up session cache and temporary files",
+        abstract: "Clean up session cache and temporary files using FileService",
         discussion: """
-            The 'clean' command provides utilities for managing Peekaboo's
-            session cache and temporary files. Use this to free up disk space
-            and remove orphaned session data.
+            This is a refactored version of the clean command that uses PeekabooCore FileService
+            instead of direct file system operations. It maintains the same interface but delegates
+            all file operations to the service layer.
 
             EXAMPLES:
               peekaboo clean --all-sessions       # Remove all session data
@@ -42,44 +45,66 @@ struct CleanCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
+    private let services = PeekabooServices.shared
+
     mutating func run() async throws {
         let startTime = Date()
 
         do {
-            // Determine cache directory
-            let cacheDir = self.getCacheDirectory()
-
             // Validate options
             let optionCount = [allSessions, olderThan != nil, self.session != nil].count { $0 }
             guard optionCount == 1 else {
                 throw ValidationError("Specify exactly one of: --all-sessions, --older-than, or --session")
             }
 
-            // Perform cleanup based on option
+            // Perform cleanup based on option using the FileService
             let result: CleanResult
 
             if self.allSessions {
-                result = try await self.cleanAllSessions(cacheDir: cacheDir, dryRun: self.dryRun)
+                result = try await services.files.cleanAllSessions(dryRun: self.dryRun)
             } else if let hours = olderThan {
-                result = try await self.cleanOldSessions(cacheDir: cacheDir, hours: hours, dryRun: self.dryRun)
+                result = try await services.files.cleanOldSessions(hours: hours, dryRun: self.dryRun)
             } else if let sessionId = session {
-                result = try await self.cleanSpecificSession(
-                    cacheDir: cacheDir,
+                result = try await services.files.cleanSpecificSession(
                     sessionId: sessionId,
                     dryRun: self.dryRun)
             } else {
                 throw ValidationError("No cleanup option specified")
             }
 
+            // Calculate execution time
+            let executionTime = Date().timeIntervalSince(startTime)
+
             // Output results
             if self.jsonOutput {
                 var output = result
-                output.executionTime = Date().timeIntervalSince(startTime)
-                outputSuccessCodable(data: output)
+                output.executionTime = executionTime
+                outputJSON(JSONResponse(
+                    success: true,
+                    data: AnyCodable([
+                        "sessions_removed": output.sessionsRemoved,
+                        "bytes_freed": output.bytesFreed,
+                        "session_details": output.sessionDetails.map { detail in
+                            [
+                                "session_id": detail.sessionId,
+                                "path": detail.path,
+                                "size": detail.size,
+                                "creation_date": detail.creationDate?.timeIntervalSince1970 ?? 0,
+                                "modification_date": detail.modificationDate?.timeIntervalSince1970 ?? 0
+                            ]
+                        },
+                        "dry_run": output.dryRun,
+                        "execution_time": output.executionTime ?? 0,
+                        "success": true
+                    ])
+                ))
             } else {
-                self.printResults(result, dryRun: self.dryRun, executionTime: Date().timeIntervalSince(startTime))
+                self.printResults(result, executionTime: executionTime)
             }
 
+        } catch let error as FileServiceError {
+            handleFileServiceError(error, jsonOutput: self.jsonOutput)
+            throw ExitCode(1)
         } catch {
             if self.jsonOutput {
                 outputError(message: error.localizedDescription, code: .INTERNAL_SWIFT_ERROR)
@@ -91,146 +116,8 @@ struct CleanCommand: AsyncParsableCommand {
         }
     }
 
-    private func getCacheDirectory() -> URL {
-        let homeDir = FileManager.default.homeDirectoryForCurrentUser
-        return homeDir.appendingPathComponent(".peekaboo/session")
-    }
-
-    private func cleanAllSessions(cacheDir: URL, dryRun: Bool) async throws -> CleanResult {
-        var result = CleanResult(
-            sessionsRemoved: 0,
-            bytesFreed: 0,
-            sessionDetails: [])
-
-        guard FileManager.default.fileExists(atPath: cacheDir.path) else {
-            return result
-        }
-
-        let sessionDirs = try FileManager.default.contentsOfDirectory(
-            at: cacheDir,
-            includingPropertiesForKeys: [.creationDateKey, .fileSizeKey],
-            options: .skipsHiddenFiles)
-
-        for sessionDir in sessionDirs {
-            guard sessionDir.hasDirectoryPath else { continue }
-
-            let sessionSize = try calculateDirectorySize(sessionDir)
-            let sessionId = sessionDir.lastPathComponent
-
-            let detail = try SessionDetail(
-                sessionId: sessionId,
-                path: sessionDir.path,
-                size: sessionSize,
-                creationDate: sessionDir.resourceValues(forKeys: [.creationDateKey]).creationDate)
-
-            result.sessionDetails.append(detail)
-            result.sessionsRemoved += 1
-            result.bytesFreed += sessionSize
-
-            if !dryRun {
-                try FileManager.default.removeItem(at: sessionDir)
-            }
-        }
-
-        return result
-    }
-
-    private func cleanOldSessions(cacheDir: URL, hours: Int, dryRun: Bool) async throws -> CleanResult {
-        var result = CleanResult(
-            sessionsRemoved: 0,
-            bytesFreed: 0,
-            sessionDetails: [])
-
-        guard FileManager.default.fileExists(atPath: cacheDir.path) else {
-            return result
-        }
-
-        let cutoffDate = Date().addingTimeInterval(-Double(hours) * 3600)
-
-        let sessionDirs = try FileManager.default.contentsOfDirectory(
-            at: cacheDir,
-            includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey],
-            options: .skipsHiddenFiles)
-
-        for sessionDir in sessionDirs {
-            guard sessionDir.hasDirectoryPath else { continue }
-
-            let modificationDate = try sessionDir.resourceValues(forKeys: [.contentModificationDateKey])
-                .contentModificationDate
-
-            if let modDate = modificationDate, modDate < cutoffDate {
-                let sessionSize = try calculateDirectorySize(sessionDir)
-                let sessionId = sessionDir.lastPathComponent
-
-                let detail = SessionDetail(
-                    sessionId: sessionId,
-                    path: sessionDir.path,
-                    size: sessionSize,
-                    creationDate: modDate)
-
-                result.sessionDetails.append(detail)
-                result.sessionsRemoved += 1
-                result.bytesFreed += sessionSize
-
-                if !dryRun {
-                    try FileManager.default.removeItem(at: sessionDir)
-                }
-            }
-        }
-
-        return result
-    }
-
-    private func cleanSpecificSession(cacheDir: URL, sessionId: String, dryRun: Bool) async throws -> CleanResult {
-        var result = CleanResult(
-            sessionsRemoved: 0,
-            bytesFreed: 0,
-            sessionDetails: [])
-
-        let sessionDir = cacheDir.appendingPathComponent(sessionId)
-
-        guard FileManager.default.fileExists(atPath: sessionDir.path) else {
-            // Return empty result instead of throwing error for non-existent session
-            return result
-        }
-
-        let sessionSize = try calculateDirectorySize(sessionDir)
-
-        let detail = try SessionDetail(
-            sessionId: sessionId,
-            path: sessionDir.path,
-            size: sessionSize,
-            creationDate: sessionDir.resourceValues(forKeys: [.creationDateKey]).creationDate)
-
-        result.sessionDetails.append(detail)
-        result.sessionsRemoved = 1
-        result.bytesFreed = sessionSize
-
-        if !dryRun {
-            try FileManager.default.removeItem(at: sessionDir)
-        }
-
-        return result
-    }
-
-    private func calculateDirectorySize(_ directory: URL) throws -> Int64 {
-        var totalSize: Int64 = 0
-
-        let enumerator = FileManager.default.enumerator(
-            at: directory,
-            includingPropertiesForKeys: [.fileSizeKey],
-            options: [.skipsHiddenFiles])
-
-        while let fileURL = enumerator?.nextObject() as? URL {
-            let fileSize = try fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-            totalSize += Int64(fileSize)
-        }
-
-        return totalSize
-    }
-
-    private func printResults(_ result: CleanResult, dryRun: Bool, executionTime: TimeInterval) {
-        if dryRun {
+    private func printResults(_ result: CleanResult, executionTime: TimeInterval) {
+        if result.dryRun {
             print("🔍 Dry run mode - no files will be deleted")
             print("")
         }
@@ -238,9 +125,9 @@ struct CleanCommand: AsyncParsableCommand {
         if result.sessionsRemoved == 0 {
             print("✅ No sessions to clean")
         } else {
-            let action = dryRun ? "Would remove" : "Removed"
+            let action = result.dryRun ? "Would remove" : "Removed"
             print("🗑️  \(action) \(result.sessionsRemoved) session\(result.sessionsRemoved == 1 ? "" : "s")")
-            print("💾 Space \(dryRun ? "to be freed" : "freed"): \(self.formatBytes(result.bytesFreed))")
+            print("💾 Space \(result.dryRun ? "to be freed" : "freed"): \(self.formatBytes(result.bytesFreed))")
 
             if result.sessionDetails.count <= 5 {
                 print("\nSessions:")
@@ -260,19 +147,25 @@ struct CleanCommand: AsyncParsableCommand {
     }
 }
 
-// MARK: - Output Models
+// MARK: - Error Handling
 
-struct CleanResult: Codable {
-    var sessionsRemoved: Int
-    var bytesFreed: Int64
-    var sessionDetails: [SessionDetail]
-    var executionTime: TimeInterval?
-    var success: Bool = true
-}
-
-struct SessionDetail: Codable {
-    let sessionId: String
-    let path: String
-    let size: Int64
-    let creationDate: Date?
+private func handleFileServiceError(_ error: FileServiceError, jsonOutput: Bool) {
+    let errorCode: ErrorCode
+    switch error {
+    case .sessionNotFound:
+        errorCode = .SESSION_NOT_FOUND
+    case .directoryNotFound:
+        errorCode = .FILE_IO_ERROR
+    case .insufficientPermissions:
+        errorCode = .PERMISSION_DENIED
+    case .fileSystemError:
+        errorCode = .FILE_IO_ERROR
+    }
+    
+    if jsonOutput {
+        outputError(message: error.localizedDescription, code: errorCode)
+    } else {
+        var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
+        print("❌ \(error.localizedDescription)", to: &localStandardErrorStream)
+    }
 }

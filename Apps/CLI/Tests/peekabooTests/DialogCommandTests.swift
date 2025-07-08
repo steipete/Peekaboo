@@ -2,16 +2,16 @@ import Foundation
 import Testing
 @testable import peekaboo
 
-@Suite("Dialog Command Tests", .serialized)
+@Suite("Dialog Command  Tests", .serialized)
 struct DialogCommandTests {
-    @Test("Dialog command exists")
+    @Test("Dialog  command exists")
     func dialogCommandExists() {
         let config = DialogCommand.configuration
         #expect(config.commandName == "dialog")
-        #expect(config.abstract.contains("system dialogs"))
+        #expect(config.abstract.contains("PeekabooCore services"))
     }
 
-    @Test("Dialog command has expected subcommands")
+    @Test("Dialog  command has expected subcommands")
     func dialogSubcommands() {
         let subcommands = DialogCommand.configuration.subcommands
         #expect(subcommands.count == 5)
@@ -24,26 +24,28 @@ struct DialogCommandTests {
         #expect(subcommandNames.contains("list"))
     }
 
-    @Test("Dialog click command help")
+    @Test("Dialog  click command help")
     func dialogClickHelp() async throws {
         let output = try await runCommand(["dialog", "click", "--help"])
 
         #expect(output.contains("Click a button in a dialog"))
         #expect(output.contains("--button"))
-        #expect(output.contains("--title"))
+        #expect(output.contains("--window"))
+        #expect(output.contains("DialogService"))
     }
 
-    @Test("Dialog input command help")
+    @Test("Dialog  input command help")
     func dialogInputHelp() async throws {
         let output = try await runCommand(["dialog", "input", "--help"])
 
-        #expect(output.contains("Enter text in dialog fields"))
+        #expect(output.contains("Enter text in a dialog field"))
         #expect(output.contains("--text"))
         #expect(output.contains("--field"))
         #expect(output.contains("--clear"))
+        #expect(output.contains("DialogService"))
     }
 
-    @Test("Dialog file command help")
+    @Test("Dialog  file command help")
     func dialogFileHelp() async throws {
         let output = try await runCommand(["dialog", "file", "--help"])
 
@@ -51,49 +53,55 @@ struct DialogCommandTests {
         #expect(output.contains("--path"))
         #expect(output.contains("--name"))
         #expect(output.contains("--select"))
+        #expect(output.contains("DialogService"))
     }
 
-    @Test("Dialog dismiss command help")
+    @Test("Dialog  dismiss command help")
     func dialogDismissHelp() async throws {
         let output = try await runCommand(["dialog", "dismiss", "--help"])
 
         #expect(output.contains("Dismiss a dialog"))
         #expect(output.contains("--force"))
-        #expect(output.contains("--button"))
+        #expect(output.contains("--window"))
+        #expect(output.contains("DialogService"))
     }
 
-    @Test("Dialog error codes")
-    func dialogErrorCodes() {
-        #expect(ErrorCode.NO_ACTIVE_DIALOG.rawValue == "NO_ACTIVE_DIALOG")
-        #expect(ErrorCode.ELEMENT_NOT_FOUND.rawValue == "ELEMENT_NOT_FOUND")
+    @Test("Dialog  list command help")
+    func dialogListHelp() async throws {
+        let output = try await runCommand(["dialog", "list", "--help"])
+
+        #expect(output.contains("List elements in current dialog"))
+        #expect(output.contains("DialogService"))
     }
 
-    @Test("Dialog button options")
-    func dialogButtonOptions() {
-        // Test standard button names
-        let buttons = ["OK", "Cancel", "Save", "Don't Save", "Yes", "No"]
-        for button in buttons {
-            let cmd = ["dialog", "click", "--button", button]
-            #expect(cmd.count == 5)
-        }
+    @Test("Dialog  error handling")
+    func dialogErrorHandling() {
+        // Test that DialogError enum values are properly mapped
+        #expect(DialogError.noActiveDialog.localizedDescription.contains("No active dialog"))
+        #expect(DialogError.noFileDialog.localizedDescription.contains("No file dialog"))
+        #expect(DialogError.buttonNotFound("OK").localizedDescription.contains("Button 'OK' not found"))
+        #expect(DialogError.fieldNotFound("Password").localizedDescription.contains("Field 'Password' not found"))
+        #expect(DialogError.invalidFieldIndex(3).localizedDescription.contains("Invalid field index: 3"))
+        #expect(DialogError.noTextFields.localizedDescription.contains("No text fields"))
+        #expect(DialogError.noDismissButton.localizedDescription.contains("No dismiss button"))
     }
 
-    @Test("File dialog validation")
-    func fileDialogValidation() {
-        // Test that we can specify both path and name
-        let cmd = ["dialog", "file", "--path", "/Users/test", "--name", "document.txt", "--select", "Save"]
-        #expect(cmd.count == 9)
+    @Test("Dialog  service integration")
+    func dialogServiceIntegration() {
+        // Verify that PeekabooServices includes the dialog service
+        let services = PeekabooServices.shared
+        let _ = services.dialogs // This should compile without errors
     }
 }
 
-// MARK: - Dialog Command Integration Tests
+// MARK: - Dialog Command  Integration Tests
 
 @Suite(
-    "Dialog Command Integration Tests",
+    "Dialog Command  Integration Tests",
     .serialized,
     .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
 struct DialogCommandIntegrationTests {
-    @Test("List active dialogs")
+    @Test("List active dialogs with ")
     func listActiveDialogs() async throws {
         let output = try await runCommand([
             "dialog", "list",
@@ -112,7 +120,7 @@ struct DialogCommandIntegrationTests {
         }
     }
 
-    @Test("Dialog click workflow")
+    @Test("Dialog  click workflow")
     func dialogClickWorkflow() async throws {
         // This would click a button if a dialog is present
         let output = try await runCommand([
@@ -128,7 +136,7 @@ struct DialogCommandIntegrationTests {
         }
     }
 
-    @Test("Dialog input workflow")
+    @Test("Dialog  input workflow")
     func dialogInputWorkflow() async throws {
         let output = try await runCommand([
             "dialog", "input",
@@ -144,7 +152,7 @@ struct DialogCommandIntegrationTests {
         }
     }
 
-    @Test("Dialog dismiss with escape")
+    @Test("Dialog  dismiss with escape")
     func dialogDismissEscape() async throws {
         let output = try await runCommand([
             "dialog", "dismiss",
@@ -160,7 +168,7 @@ struct DialogCommandIntegrationTests {
         }
     }
 
-    @Test("File dialog handling")
+    @Test("File dialog  handling")
     func fileDialogHandling() async throws {
         let output = try await runCommand([
             "dialog", "file",
@@ -173,12 +181,12 @@ struct DialogCommandIntegrationTests {
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
         if !data.success {
             // Expected if no file dialog is open
-            #expect(data.error?.code == .NO_ACTIVE_DIALOG || data.error?.code == .ELEMENT_NOT_FOUND)
+            #expect(data.error?.code == .NO_ACTIVE_DIALOG || data.error?.code == .NO_FILE_DIALOG)
         } else {
             if let fileData = data.data?.value as? [String: Any] {
                 #expect(fileData["action"] as? String == "file_dialog")
                 #expect(fileData["path"] as? String == "/tmp")
-                #expect(fileData["filename"] as? String == "test.txt")
+                #expect(fileData["name"] as? String == "test.txt")
             }
         }
     }

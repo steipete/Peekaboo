@@ -80,50 +80,33 @@ struct Peekaboo: AsyncParsableCommand {
         """,
         version: Version.current,
         subcommands: [
-            // Original commands
+            // Core commands
             ImageCommand.self,
             ListCommand.self,
             AnalyzeCommand.self,
             ConfigCommand.self,
             PermissionsCommand.self,
-            // Service-based refactored commands
-            ImageCommandV2.self,
-            ListCommandV2.self,
-            ConfigCommandV2.self,
-            PermissionsCommandV2.self,
-            // New v3 interaction commands
+            // Interaction commands
             SeeCommand.self,
-            SeeCommandV2.self,
             ClickCommand.self,
-            ClickCommandV2.self,
             TypeCommand.self,
-            TypeCommandV2.self,
             ScrollCommand.self,
-            ScrollCommandV2.self,
             HotkeyCommand.self,
-            HotkeyCommandV2.self,
             SwipeCommand.self,
-            SwipeCommandV2.self,
+            DragCommand.self,
+            MoveCommand.self,
+            // System commands
             RunCommand.self,
-            RunCommandV2.self,
             SleepCommand.self,
             CleanCommand.self,
-            CleanCommandV2.self,
             WindowCommand.self,
-            WindowCommandV2.self,
-            // System interaction commands
             MenuCommand.self,
-            MenuCommandV2.self,
             AppCommand.self,
-            AppCommandV2.self,
             DockCommand.self,
-            DockCommandV2.self,
             DialogCommand.self,
-            DialogCommandV2.self,
-            DragCommand.self,
-            DragCommandV2.self,
-            MoveCommandV2.self,
+            // Agent commands
             AgentCommand.self,
+            SimpleAgentCommand.self,
         ],
         // defaultSubcommand: AgentCommand.self // Temporarily disable default subcommand
     )

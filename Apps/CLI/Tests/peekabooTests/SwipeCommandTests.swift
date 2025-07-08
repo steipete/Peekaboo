@@ -5,7 +5,7 @@ import Testing
 
 @Suite("SwipeCommand Tests", .serialized)
 struct SwipeCommandTests {
-    @Test("Swipe command parses from and to coordinates")
+    @Test("SwipeCommand parses from and to coordinates")
     func parseCoordinates() throws {
         let command = try SwipeCommand.parse([
             "--from-coords", "100,200",
@@ -14,10 +14,10 @@ struct SwipeCommandTests {
         #expect(command.fromCoords == "100,200")
         #expect(command.toCoords == "300,400")
         #expect(command.duration == 500) // default
-        #expect(command.steps == 20) // default is 20, not 10
+        #expect(command.steps == 20) // default
     }
 
-    @Test("Swipe command parses all options")
+    @Test("SwipeCommand parses all options")
     func parseAllOptions() throws {
         let command = try SwipeCommand.parse([
             "--from-coords", "50,100",
@@ -33,7 +33,33 @@ struct SwipeCommandTests {
         #expect(command.jsonOutput)
     }
 
-    @Test("Swipe command requires both from and to")
+    @Test("SwipeCommand parses element IDs with session")
+    func parseElementIds() throws {
+        let command = try SwipeCommand.parse([
+            "--from", "B1",
+            "--to", "T2",
+            "--session", "test-session-123",
+        ])
+        #expect(command.from == "B1")
+        #expect(command.to == "T2")
+        #expect(command.session == "test-session-123")
+    }
+
+    @Test("SwipeCommand parses mixed inputs")
+    func parseMixedInputs() throws {
+        let command = try SwipeCommand.parse([
+            "--from", "B1",
+            "--to-coords", "500,600",
+            "--session", "test-session",
+            "--duration", "750",
+        ])
+        #expect(command.from == "B1")
+        #expect(command.toCoords == "500,600")
+        #expect(command.session == "test-session")
+        #expect(command.duration == 750)
+    }
+
+    @Test("SwipeCommand requires both from and to")
     func requiresFromAndTo() throws {
         // Parsing succeeds but validation would fail at runtime
         // Missing both
@@ -56,7 +82,23 @@ struct SwipeCommandTests {
         #expect(cmd3.toCoords == "300,400")
     }
 
-    @Test("Swipe result structure")
+    @Test("SwipeCommand right button flag")
+    func rightButtonFlag() throws {
+        let command = try SwipeCommand.parse([
+            "--from-coords", "100,200",
+            "--to-coords", "300,400",
+            "--right-button",
+        ])
+        #expect(command.rightButton == true)
+
+        let command2 = try SwipeCommand.parse([
+            "--from-coords", "100,200",
+            "--to-coords", "300,400",
+        ])
+        #expect(command2.rightButton == false)
+    }
+
+    @Test("SwipeCommand result structure")
     func swipeResultStructure() {
         let result = SwipeResult(
             success: true,
@@ -84,7 +126,9 @@ struct SwipeCommandTests {
         ("invalid", false),
         ("100", false),
         ("100,200,300", false),
-        ("", false)
+        ("", false),
+        ("100, 200", true), // with spaces
+        (" 100 , 200 ", true), // with extra spaces
     ])
     func validateCoordinateFormat(coords: String, isValid: Bool) {
         // This tests the coordinate parsing logic
@@ -110,6 +154,7 @@ struct SwipeCommandTests {
             ((0, 0), (0, 10), 10.0), // Vertical line
             ((0, 0), (10, 0), 10.0), // Horizontal line
             ((100, 100), (100, 100), 0.0), // Same point
+            ((10, 20), (30, 40), 28.284), // Diagonal
         ]
 
         for testCase in testCases {

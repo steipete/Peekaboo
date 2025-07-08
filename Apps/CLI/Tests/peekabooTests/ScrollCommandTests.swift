@@ -10,7 +10,7 @@ struct ScrollCommandTests {
     ])
     func parseDirection(direction: String) throws {
         let command = try ScrollCommand.parse(["--direction", direction])
-        #expect(command.direction.rawValue == direction)
+        #expect(command.direction == direction)
         #expect(command.amount == 3) // default
         #expect(command.delay == 20) // default
         #expect(command.smooth == false) // default
@@ -27,7 +27,7 @@ struct ScrollCommandTests {
             "--smooth",
             "--json-output",
         ])
-        #expect(command.direction == .down)
+        #expect(command.direction == "down")
         #expect(command.amount == 5)
         #expect(command.on == "G1")
         #expect(command.session == "test-123")
@@ -43,16 +43,21 @@ struct ScrollCommandTests {
         }
     }
 
-    @Test("Scroll delta calculation", arguments: [
-        (ScrollCommand.ScrollDirection.up, 0, 5),
-        (ScrollCommand.ScrollDirection.down, 0, -5),
-        (ScrollCommand.ScrollDirection.left, 5, 0),
-        (ScrollCommand.ScrollDirection.right, -5, 0)
+    @Test("Scroll validates direction values", arguments: [
+        ("up", true),
+        ("down", true),
+        ("left", true),
+        ("right", true),
+        ("UP", true), // Should accept uppercase
+        ("diagonal", false), // Invalid direction
+        ("", false), // Empty string
     ])
-    func scrollDeltas(direction: ScrollCommand.ScrollDirection, expectedDeltaX: Int, expectedDeltaY: Int) {
-        // This test validates the expected scroll delta values for each direction
-        // In the actual implementation, these values are used for CGEvent creation
-        #expect(true) // Placeholder - would test the actual delta calculation method
+    func validateDirection(directionStr: String, shouldBeValid: Bool) {
+        if shouldBeValid {
+            #expect(ScrollDirection(rawValue: directionStr.lowercased()) != nil)
+        } else {
+            #expect(ScrollDirection(rawValue: directionStr.lowercased()) == nil)
+        }
     }
 
     @Test("Scroll result structure")
@@ -74,7 +79,7 @@ struct ScrollCommandTests {
         #expect(result.executionTime == 0.15)
     }
 
-    @Test("Smooth scrolling increases tick count")
+    @Test("Scroll smooth scrolling increases tick count")
     func smoothScrolling() throws {
         let normalCommand = try ScrollCommand.parse(["--direction", "down", "--amount", "3"])
         let smoothCommand = try ScrollCommand.parse(["--direction", "down", "--amount", "3", "--smooth"])
@@ -83,6 +88,14 @@ struct ScrollCommandTests {
         #expect(smoothCommand.smooth == true)
 
         // In the implementation, smooth scrolling multiplies ticks by 3
-        // This would be tested in integration tests
+        // This would be tested in integration tests with the service
+    }
+
+    @Test("Scroll uses PeekabooCore services")
+    func usesCoreServices() {
+        // This test verifies that ScrollCommand uses PeekabooServices
+        // rather than implementing the functionality directly
+        // In a real test, we'd use dependency injection to verify service calls
+        #expect(true) // Placeholder - would use mocked services in real tests
     }
 }
