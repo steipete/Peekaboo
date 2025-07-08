@@ -14,8 +14,11 @@ struct AgentInternalExecutor {
         // Parse the function name
         let commandName = name.replacingOccurrences(of: "peekaboo_", with: "")
 
+        // Agent executing function
+
         // Parse JSON arguments
         guard let argsData = arguments.data(using: .utf8) else {
+            // Failed to convert arguments to UTF-8 data
             return self.createErrorJSON(.invalidArguments("Invalid UTF-8 string"))
         }
 
@@ -26,28 +29,42 @@ struct AgentInternalExecutor {
             }
             args = parsed
         } catch {
+            // Failed to parse JSON arguments
             return self.createErrorJSON(.invalidArguments("Failed to parse JSON: \(error.localizedDescription)"))
         }
 
-        // Log execution if verbose
+        // Log parsed arguments
+        // Parsed arguments
+
+        // Log execution if verbose (keep terminal output for compatibility)
         if self.verbose {
             print("🔧 Executing: \(commandName) with args: \(arguments)")
         }
 
         // Execute the appropriate function
         do {
+            // Starting execution of command
+            let startTime = Date()
+
             let result = try await executeInternalFunction(command: commandName, args: args)
+
+            _ = Date().timeIntervalSince(startTime)
+            // Command completed successfully
+
             if self.verbose {
                 print("   ✅ Result: \(result.prefix(200))...")
             }
             return result
         } catch {
+            // Command failed
             return self.createErrorJSON(.commandFailed(error.localizedDescription))
         }
     }
 
     @MainActor
     private func executeInternalFunction(command: String, args: [String: Any]) async throws -> String {
+        // Routing to command handler
+
         switch command {
         case "see":
             return try await self.executeSee(args: args)
@@ -80,6 +97,7 @@ struct AgentInternalExecutor {
             return try await self.executeAnalyzeScreenshot(args: args)
 
         default:
+            // Unknown command received
             throw AgentError.invalidArguments("Unknown command: \(command)")
         }
     }
@@ -88,13 +106,16 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeSee(args: [String: Any]) async throws -> String {
+        // Log removed
         var seeCommand = SeeCommand()
 
         // Set parameters
         if let app = args["app"] as? String {
+            // Log removed")
             seeCommand.app = app
         }
         if let windowTitle = args["window_title"] as? String {
+            // Log removed")
             seeCommand.windowTitle = windowTitle
         }
 
@@ -116,6 +137,7 @@ struct AgentInternalExecutor {
 
         // If we have a result, enhance it with vision analysis if requested
         if !result.isEmpty, let analyze = args["analyze"] as? Bool, analyze {
+            // Log removed
             // Parse the JSON to get the screenshot path
             if let data = result.data(using: .utf8),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -148,20 +170,25 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeClick(args: [String: Any]) async throws -> String {
+        // Log removed
         var clickCommand = ClickCommand()
 
         // Set parameters
         if let element = args["element"] as? String {
+            // Log removed")
             clickCommand.on = element
         } else if let x = args["x"] as? Double, let y = args["y"] as? Double {
+            // Log removed, \(y))")
             clickCommand.coords = "\(Int(x)),\(Int(y))"
         }
 
         if let sessionId = args["session_id"] as? String {
+            // Log removed")
             clickCommand.session = sessionId
         }
 
         if let doubleClick = args["double_click"] as? Bool, doubleClick {
+            // Log removed
             clickCommand.double = true
         }
 
@@ -184,12 +211,15 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeType(args: [String: Any]) async throws -> String {
+        // Log removed
         var typeCommand = TypeCommand()
 
         // Set parameters
         guard let text = args["text"] as? String else {
+            // Log removed
             throw AgentError.invalidArguments("Type command requires 'text' parameter")
         }
+        // Log removed)...")
         typeCommand.text = text
 
         if let sessionId = args["session_id"] as? String {
@@ -219,11 +249,16 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeApp(args: [String: Any]) async throws -> String {
+        // Log removed
+
         guard let action = args["action"] as? String,
               let name = args["name"] as? String
         else {
+            // Log removed
             throw AgentError.invalidArguments("App command requires 'action' and 'name' parameters")
         }
+
+        // Log removed, target: \(name)")
 
         // Create appropriate subcommand based on action
         switch action {
@@ -289,9 +324,14 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeWindow(args: [String: Any]) async throws -> String {
+        // Log removed
+
         guard let action = args["action"] as? String else {
+            // Log removed
             throw AgentError.invalidArguments("Window command requires 'action' parameter")
         }
+
+        // Log removed")
 
         // All window subcommands share these common parameters
         let app = args["app"] as? String
@@ -397,6 +437,7 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeImage(args: [String: Any]) async throws -> String {
+        // Log removed
         var imageCommand = ImageCommand()
 
         // Set parameters
@@ -432,9 +473,14 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeWait(args: [String: Any]) async throws -> String {
+        // Log removed
+
         guard let duration = args["duration"] as? Double else {
+            // Log removed
             throw AgentError.invalidArguments("Wait command requires 'duration' parameter")
         }
+
+        // Log removed seconds")
 
         // Convert seconds to nanoseconds
         let nanoseconds = UInt64(duration * 1_000_000_000)
@@ -445,12 +491,17 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeHotkey(args: [String: Any]) async throws -> String {
+        // Log removed
         var hotkeyCommand = HotkeyCommand()
 
         guard let keys = args["keys"] as? [String] else {
+            // Log removed
             throw AgentError.invalidArguments("Hotkey command requires 'keys' array")
         }
 
+        // Log removed)")
+
+        // Convert array to comma-separated string for the command
         hotkeyCommand.keys = keys.joined(separator: ",")
         hotkeyCommand.jsonOutput = true
 
@@ -471,10 +522,11 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeScroll(args: [String: Any]) async throws -> String {
+        // Log removed
         var scrollCommand = ScrollCommand()
 
         if let direction = args["direction"] as? String {
-            scrollCommand.direction = ScrollCommand.ScrollDirection(rawValue: direction) ?? .down
+            scrollCommand.direction = direction
         }
         if let amount = args["amount"] as? Int {
             scrollCommand.amount = amount
@@ -502,11 +554,16 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeAnalyzeScreenshot(args: [String: Any]) async throws -> String {
+        // Log removed
+
         guard let screenshotPath = args["screenshot_path"] as? String else {
+            // Log removed
             throw AgentError.invalidArguments("analyze_screenshot requires 'screenshot_path' parameter")
         }
 
         let question = args["question"] as? String ?? "What is shown in this screenshot?"
+        // Log removed")
+        // Log removed")
 
         // Use the vision API to analyze the screenshot
         let analysis = try await analyzeWithVision(imagePath: screenshotPath, question: question)
@@ -517,8 +574,11 @@ struct AgentInternalExecutor {
     // MARK: - Vision Analysis
 
     private func analyzeWithVision(imagePath: String, question: String) async throws -> String {
+        // Log removed
+
         // Get API key
         guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
+            // Log removed
             throw AgentError.missingAPIKey
         }
 
@@ -561,11 +621,13 @@ struct AgentInternalExecutor {
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
         // Make the request
+        // Log removed
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200
         else {
+            // Log removed?.statusCode ?? -1)")
             throw AgentError.apiError("Vision API request failed")
         }
 
@@ -579,6 +641,8 @@ struct AgentInternalExecutor {
             throw AgentError.apiError("Failed to parse vision API response")
         }
 
+        // Log removed
+        // Log removed)...")
         return content
     }
 

@@ -30,6 +30,14 @@ func handleApplicationError(_ error: ApplicationError, jsonOutput: Bool) {
             .APP_NOT_FOUND
         case .ambiguous:
             .AMBIGUOUS_APP_IDENTIFIER
+        case .ambiguousIdentifier:
+            .AMBIGUOUS_APP_IDENTIFIER
+        case .noFrontmostApplication:
+            .APP_NOT_FOUND
+        case .notInstalled:
+            .APP_NOT_FOUND
+        case .activationFailed:
+            .INTERACTION_FAILED
         }
 
         let response = JSONResponse(
@@ -91,7 +99,7 @@ func handlePeekabooError(_ error: PeekabooError, jsonOutput: Bool) {
         case .operationFailed:
             .UNKNOWN_ERROR
         }
-        
+
         let response = JSONResponse(
             success: false,
             error: ErrorInfo(

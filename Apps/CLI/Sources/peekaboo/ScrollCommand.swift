@@ -3,19 +3,14 @@ import CoreGraphics
 import Foundation
 import PeekabooCore
 
-/// Refactored ScrollCommand using PeekabooCore services
 /// Scrolls the mouse wheel in a specified direction.
 /// Supports scrolling on specific elements or at the current mouse position.
 @available(macOS 14.0, *)
 struct ScrollCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "scroll",
-        abstract: "Scroll the mouse wheel in any direction using PeekabooCore services",
+        abstract: "Scroll the mouse wheel in any direction",
         discussion: """
-            This is a refactored version of the scroll command that uses PeekabooCore services
-            instead of direct implementation. It maintains the same interface but delegates
-            all operations to the service layer.
-            
             The 'scroll' command simulates mouse wheel scrolling events.
             It can scroll up, down, left, or right by a specified amount.
 
@@ -56,116 +51,114 @@ struct ScrollCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    private let services = PeekabooServices.shared
-
     mutating func run() async throws {
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Parse direction
             guard let scrollDirection = ScrollDirection(rawValue: direction.lowercased()) else {
-                throw ValidationError("Invalid direction. Use: up, down, left, or right")
+                throw ArgumentParser.ValidationError("Invalid direction. Use: up, down, left, or right")
             }
 
             // Determine session ID if element target is specified
-            let sessionId: String? = if on != nil {
-                session ?? (await services.sessions.getMostRecentSession())
+            let sessionId: String? = if self.on != nil {
+                if let providedSession = session {
+                    providedSession
+                } else {
+                    await PeekabooServices.shared.sessions.getMostRecentSession()
+                }
             } else {
                 nil
             }
 
             // Perform scroll using the service
-            try await services.automation.scroll(
+            try await PeekabooServices.shared.automation.scroll(
                 direction: scrollDirection,
-                amount: amount,
-                target: on,
-                smooth: smooth,
-                delay: delay,
-                sessionId: sessionId
-            )
+                amount: self.amount,
+                target: self.on,
+                smooth: self.smooth,
+                delay: self.delay,
+                sessionId: sessionId)
 
             // Calculate total ticks for output
-            let totalTicks = smooth ? amount * 3 : amount
+            let totalTicks = self.smooth ? self.amount * 3 : self.amount
 
             // Determine scroll location for output
-            let scrollLocation: CGPoint
-            if let elementId = on {
+            let scrollLocation: CGPoint = if let elementId = on {
                 // Try to get element location from session
                 if let activeSessionId = sessionId,
-                   let detectionResult = try? await services.sessions.getDetectionResult(sessionId: activeSessionId),
-                   let element = detectionResult.elements.findById(elementId) {
-                    scrollLocation = CGPoint(
+                   let detectionResult = try? await PeekabooServices.shared.sessions
+                       .getDetectionResult(sessionId: activeSessionId),
+                       let element = detectionResult.elements.findById(elementId)
+                {
+                    CGPoint(
                         x: element.bounds.midX,
-                        y: element.bounds.midY
-                    )
+                        y: element.bounds.midY)
                 } else {
                     // Fallback to zero if element not found (scroll still happened though)
-                    scrollLocation = .zero
+                    .zero
                 }
             } else {
                 // Get current mouse position
-                scrollLocation = CGEvent(source: nil)?.location ?? .zero
+                CGEvent(source: nil)?.location ?? .zero
             }
 
             // Output results
-            if jsonOutput {
+            if self.jsonOutput {
                 let output = ScrollResult(
                     success: true,
                     direction: direction,
                     amount: amount,
                     location: ["x": scrollLocation.x, "y": scrollLocation.y],
                     totalTicks: totalTicks,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
+                    executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Scroll completed")
-                print("🎯 Direction: \(direction)")
-                print("📊 Amount: \(amount) ticks")
-                if on != nil {
+                print("🎯 Direction: \(self.direction)")
+                print("📊 Amount: \(self.amount) ticks")
+                if self.on != nil {
                     print("📍 Location: (\(Int(scrollLocation.x)), \(Int(scrollLocation.y)))")
                 }
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
             throw ExitCode.failure
         }
     }
 
     private func handleError(_ error: Error) {
-        if jsonOutput {
-            let errorCode: ErrorCode
-            if error is PeekabooError {
+        if self.jsonOutput {
+            let errorCode: ErrorCode = if error is PeekabooError {
                 switch error as? PeekabooError {
                 case .sessionNotFound:
-                    errorCode = .SESSION_NOT_FOUND
+                    .SESSION_NOT_FOUND
                 case .elementNotFound:
-                    errorCode = .ELEMENT_NOT_FOUND
+                    .ELEMENT_NOT_FOUND
                 default:
-                    errorCode = .INTERNAL_SWIFT_ERROR
+                    .INTERNAL_SWIFT_ERROR
                 }
-            } else if error is ValidationError {
-                errorCode = .INVALID_INPUT
-            } else if let uiError = error as? UIAutomationError {
-                switch uiError {
+            } else if error is ArgumentParser.ValidationError {
+                .INVALID_INPUT
+            } else if let standardError = error as? StandardizedError {
+                switch standardError.code {
                 case .elementNotFound:
-                    errorCode = .ELEMENT_NOT_FOUND
-                case .scrollFailed:
-                    errorCode = .INTERACTION_FAILED
+                    .ELEMENT_NOT_FOUND
+                case .interactionFailed:
+                    .INTERACTION_FAILED
                 default:
-                    errorCode = .INTERNAL_SWIFT_ERROR
+                    .INTERNAL_SWIFT_ERROR
                 }
             } else {
-                errorCode = .INTERNAL_SWIFT_ERROR
+                .INTERNAL_SWIFT_ERROR
             }
-            
+
             outputError(
                 message: error.localizedDescription,
-                code: errorCode
-            )
+                code: errorCode)
         } else {
             var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
             print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)

@@ -1,5 +1,22 @@
 import Foundation
 
+/// Helper class for managing JSON output and debug logs
+public class JSONOutput {
+    private var debugLogs: [String] = []
+
+    func addDebugLog(_ message: String) {
+        self.debugLogs.append(message)
+    }
+
+    func getDebugLogs() -> [String] {
+        self.debugLogs
+    }
+
+    func clearDebugLogs() {
+        self.debugLogs.removeAll()
+    }
+}
+
 /// Standard JSON response format for Peekaboo API output.
 ///
 /// Provides a consistent structure for success/error responses including
@@ -78,6 +95,7 @@ enum ErrorCode: String, Codable {
     case AGENT_ERROR
     case INTERACTION_FAILED
     case TIMEOUT
+    case INVALID_INPUT
 }
 
 /// Type-erased codable wrapper for encoding arbitrary data.

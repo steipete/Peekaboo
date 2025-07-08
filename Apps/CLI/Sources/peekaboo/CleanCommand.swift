@@ -2,19 +2,13 @@ import ArgumentParser
 import Foundation
 import PeekabooCore
 
-/// Refactored CleanCommand using PeekabooCore FileService
-///
-/// This version delegates file system operations to the service layer
-/// while maintaining the same command interface and output compatibility.
+/// Clean up session cache and temporary files
 @available(macOS 14.0, *)
 struct CleanCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "clean",
-        abstract: "Clean up session cache and temporary files using FileService",
+        abstract: "Clean up session cache and temporary files",
         discussion: """
-            This is a refactored version of the clean command that uses PeekabooCore FileService
-            instead of direct file system operations. It maintains the same interface but delegates
-            all file operations to the service layer.
 
             EXAMPLES:
               peekaboo clean --all-sessions       # Remove all session data
@@ -45,8 +39,6 @@ struct CleanCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    private let services = PeekabooServices.shared
-
     mutating func run() async throws {
         let startTime = Date()
 
@@ -61,11 +53,11 @@ struct CleanCommand: AsyncParsableCommand {
             let result: CleanResult
 
             if self.allSessions {
-                result = try await services.files.cleanAllSessions(dryRun: self.dryRun)
+                result = try await PeekabooServices.shared.files.cleanAllSessions(dryRun: self.dryRun)
             } else if let hours = olderThan {
-                result = try await services.files.cleanOldSessions(hours: hours, dryRun: self.dryRun)
+                result = try await PeekabooServices.shared.files.cleanOldSessions(hours: hours, dryRun: self.dryRun)
             } else if let sessionId = session {
-                result = try await services.files.cleanSpecificSession(
+                result = try await PeekabooServices.shared.files.cleanSpecificSession(
                     sessionId: sessionId,
                     dryRun: self.dryRun)
             } else {
@@ -90,14 +82,13 @@ struct CleanCommand: AsyncParsableCommand {
                                 "path": detail.path,
                                 "size": detail.size,
                                 "creation_date": detail.creationDate?.timeIntervalSince1970 ?? 0,
-                                "modification_date": detail.modificationDate?.timeIntervalSince1970 ?? 0
+                                "modification_date": detail.modificationDate?.timeIntervalSince1970 ?? 0,
                             ]
                         },
                         "dry_run": output.dryRun,
                         "execution_time": output.executionTime ?? 0,
-                        "success": true
-                    ])
-                ))
+                        "success": true,
+                    ])))
             } else {
                 self.printResults(result, executionTime: executionTime)
             }
@@ -150,18 +141,17 @@ struct CleanCommand: AsyncParsableCommand {
 // MARK: - Error Handling
 
 private func handleFileServiceError(_ error: FileServiceError, jsonOutput: Bool) {
-    let errorCode: ErrorCode
-    switch error {
+    let errorCode: ErrorCode = switch error {
     case .sessionNotFound:
-        errorCode = .SESSION_NOT_FOUND
+        .SESSION_NOT_FOUND
     case .directoryNotFound:
-        errorCode = .FILE_IO_ERROR
+        .FILE_IO_ERROR
     case .insufficientPermissions:
-        errorCode = .PERMISSION_DENIED
+        .PERMISSION_DENIED
     case .fileSystemError:
-        errorCode = .FILE_IO_ERROR
+        .FILE_IO_ERROR
     }
-    
+
     if jsonOutput {
         outputError(message: error.localizedDescription, code: errorCode)
     } else {

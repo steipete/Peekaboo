@@ -5,18 +5,12 @@ import AXorcist
 import Foundation
 import PeekabooCore
 
-/// Refactored DockCommand using PeekabooCore services
-///
-/// This version delegates Dock interactions to the service layer
-/// while maintaining the same command interface and JSON output compatibility.
+/// Interact with the macOS Dock
 struct DockCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "dock",
-        abstract: "Interact with the macOS Dock using PeekabooCore services",
+        abstract: "Interact with the macOS Dock",
         discussion: """
-        This is a refactored version of the dock command that uses PeekabooCore services
-        instead of direct implementation. It maintains the same interface but delegates
-        Dock interactions to the service layer.
 
         EXAMPLES:
           # Launch an app from the Dock
@@ -57,17 +51,17 @@ struct DockCommand: AsyncParsableCommand {
 
         @MainActor
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Launch the app using the service
-                try await services.dock.launchFromDock(appName: app)
+                try await self.services.dock.launchFromDock(appName: self.app)
 
                 // Find the launched app's actual name using the service
-                let dockItem = try await services.dock.findDockItem(name: app)
+                let dockItem = try await services.dock.findDockItem(name: self.app)
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
@@ -83,7 +77,7 @@ struct DockCommand: AsyncParsableCommand {
                 handleDockServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -109,23 +103,23 @@ struct DockCommand: AsyncParsableCommand {
 
         @MainActor
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Find the dock item first to get its actual name
-                let dockItem = try await services.dock.findDockItem(name: app)
+                let dockItem = try await services.dock.findDockItem(name: self.app)
 
                 // Right-click the item using the service
-                try await services.dock.rightClickDockItem(appName: app, menuItem: select)
+                try await self.services.dock.rightClickDockItem(appName: self.app, menuItem: self.select)
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
                             "action": "dock_right_click",
                             "app": dockItem.title,
-                            "selected_item": select,
+                            "selected_item": self.select,
                         ]))
                     outputJSON(response)
                 } else {
@@ -140,7 +134,7 @@ struct DockCommand: AsyncParsableCommand {
                 handleDockServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -159,14 +153,14 @@ struct DockCommand: AsyncParsableCommand {
         private var services: PeekabooServices { PeekabooServices.shared }
 
         func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Hide the Dock using the service
-                try await services.dock.hideDock()
+                try await self.services.dock.hideDock()
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
@@ -180,7 +174,7 @@ struct DockCommand: AsyncParsableCommand {
                 handleDockServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -199,14 +193,14 @@ struct DockCommand: AsyncParsableCommand {
         private var services: PeekabooServices { PeekabooServices.shared }
 
         func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Show the Dock using the service
-                try await services.dock.showDock()
+                try await self.services.dock.showDock()
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
@@ -220,7 +214,7 @@ struct DockCommand: AsyncParsableCommand {
                 handleDockServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -243,11 +237,11 @@ struct DockCommand: AsyncParsableCommand {
 
         @MainActor
         func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Get Dock items using the service
-                let dockItems = try await services.dock.listDockItems(includeAll: includeAll)
+                let dockItems = try await services.dock.listDockItems(includeAll: self.includeAll)
 
                 // Convert to output format
                 let itemsData = dockItems.map { item -> [String: Any] in
@@ -256,20 +250,20 @@ struct DockCommand: AsyncParsableCommand {
                         "title": item.title,
                         "type": item.itemType.rawValue,
                     ]
-                    
+
                     if let isRunning = item.isRunning {
                         data["running"] = isRunning
                     }
-                    
+
                     if let bundleId = item.bundleIdentifier {
                         data["bundle_id"] = bundleId
                     }
-                    
+
                     return data
                 }
 
                 // Output result
-                if jsonOutput {
+                if self.jsonOutput {
                     let response = JSONResponse(
                         success: true,
                         data: AnyCodable([
@@ -291,7 +285,7 @@ struct DockCommand: AsyncParsableCommand {
                 handleDockServiceError(error, jsonOutput: jsonOutput)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error, jsonOutput: jsonOutput)
+                handleGenericError(error, jsonOutput: self.jsonOutput)
                 throw ExitCode(1)
             }
         }
@@ -301,24 +295,23 @@ struct DockCommand: AsyncParsableCommand {
 // MARK: - Error Handling
 
 private func handleDockServiceError(_ error: DockError, jsonOutput: Bool) {
-    let errorCode: ErrorCode
-    switch error {
+    let errorCode: ErrorCode = switch error {
     case .dockNotFound:
-        errorCode = .DOCK_NOT_FOUND
+        .DOCK_NOT_FOUND
     case .dockListNotFound:
-        errorCode = .DOCK_LIST_NOT_FOUND
-    case .itemNotFound(_):
-        errorCode = .DOCK_ITEM_NOT_FOUND
-    case .menuItemNotFound(_):
-        errorCode = .MENU_ITEM_NOT_FOUND
+        .DOCK_LIST_NOT_FOUND
+    case .itemNotFound:
+        .DOCK_ITEM_NOT_FOUND
+    case .menuItemNotFound:
+        .MENU_ITEM_NOT_FOUND
     case .positionNotFound:
-        errorCode = .POSITION_NOT_FOUND
-    case .launchFailed(_):
-        errorCode = .INTERACTION_FAILED  // Use existing error code
-    case .scriptError(_):
-        errorCode = .SCRIPT_ERROR
+        .POSITION_NOT_FOUND
+    case .launchFailed:
+        .INTERACTION_FAILED // Use existing error code
+    case .scriptError:
+        .SCRIPT_ERROR
     }
-    
+
     if jsonOutput {
         let response = JSONResponse(
             success: false,

@@ -8,10 +8,10 @@ import PeekabooCore
 struct RunCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "run",
-        abstract: "Execute a Peekaboo automation script ( - uses services)",
+        abstract: "Execute a Peekaboo automation script",
         discussion: """
             The 'run' command executes a batch script containing multiple
-            Peekaboo commands in sequence using the new service architecture.
+            Peekaboo commands in sequence.
             Scripts are JSON files that define a series of UI automation steps.
 
             EXAMPLES:
@@ -49,13 +49,13 @@ struct RunCommand: AsyncParsableCommand {
 
         do {
             // Initialize services
-            let services = try ServiceContainer.shared
+            let services = PeekabooServices.shared
 
             // Load and validate script
-            let script = try await services.processService.loadScript(from: scriptPath)
+            let script = try await services.process.loadScript(from: self.scriptPath)
 
             // Execute script
-            let results = try await services.processService.executeScript(
+            let results = try await services.process.executeScript(
                 script,
                 failFast: !self.noFailFast,
                 verbose: self.verbose)

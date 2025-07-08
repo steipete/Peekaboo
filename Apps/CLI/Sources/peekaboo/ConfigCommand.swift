@@ -2,18 +2,13 @@ import ArgumentParser
 import Foundation
 import PeekabooCore
 
-/// Refactored ConfigCommand using PeekabooCore's ConfigurationManager
-/// Provides subcommands to create, view, edit, and validate configuration
+/// Manage Peekaboo configuration files and settings
 @available(macOS 14.0, *)
 struct ConfigCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "config",
-        abstract: "Manage Peekaboo configuration using PeekabooCore",
+        abstract: "Manage Peekaboo configuration",
         discussion: """
-        This is a refactored version of the 'config' command that uses PeekabooCore's
-        ConfigurationManager directly. It maintains the same interface but delegates
-        all operations to the core library.
-        
         The config command helps you manage Peekaboo's configuration files.
 
         Configuration locations:
@@ -31,11 +26,17 @@ struct ConfigCommand: ParsableCommand {
         3. Credentials file (for API keys)
         4. Configuration file
         5. Built-in defaults
-        
+
         API keys should be stored in the credentials file or set as environment variables,
         not in the configuration file.
         """,
-        subcommands: [InitCommand.self, ShowCommand.self, EditCommand.self, ValidateCommand.self, SetCredentialCommand.self])
+        subcommands: [
+            InitCommand.self,
+            ShowCommand.self,
+            EditCommand.self,
+            ValidateCommand.self,
+            SetCredentialCommand.self,
+        ])
 
     /// Subcommand to create a default configuration file
     struct InitCommand: AsyncParsableCommand {
@@ -59,8 +60,7 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: "Configuration file already exists. Use --force to overwrite.",
-                        details: "Path: \(configPath)"
-                    )
+                        details: "Path: \(configPath)")
                     outputJSON(errorOutput)
                 } else {
                     print("Configuration file already exists at: \(configPath)")
@@ -78,8 +78,7 @@ struct ConfigCommand: ParsableCommand {
                         data: [
                             "message": "Configuration file created successfully",
                             "path": configPath,
-                        ]
-                    )
+                        ])
                     outputJSON(successOutput)
                 } else {
                     print("✅ Configuration file created at: \(configPath)")
@@ -92,8 +91,7 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: error.localizedDescription,
-                        details: "Path: \(configPath)"
-                    )
+                        details: "Path: \(configPath)")
                     outputJSON(errorOutput)
                 } else {
                     print("❌ Failed to create configuration file: \(error)")
@@ -127,8 +125,7 @@ struct ConfigCommand: ParsableCommand {
                             error: true,
                             code: "FILE_IO_ERROR",
                             message: "No configuration file found",
-                            details: "Path: \(configPath). Run 'peekaboo config init' to create one."
-                        )
+                            details: "Path: \(configPath). Run 'peekaboo config init' to create one.")
                         outputJSON(errorOutput)
                     } else {
                         print("No configuration file found at: \(configPath)")
@@ -150,8 +147,8 @@ struct ConfigCommand: ParsableCommand {
                             let errorOutput = ErrorOutput(
                                 error: true,
                                 code: "FILE_IO_ERROR",
-                                message: "Failed to parse configuration file"
-                            )
+                                message: "Failed to parse configuration file",
+                                details: nil)
                             outputJSON(errorOutput)
                             throw ExitCode.failure
                         }
@@ -163,8 +160,8 @@ struct ConfigCommand: ParsableCommand {
                         let errorOutput = ErrorOutput(
                             error: true,
                             code: "FILE_IO_ERROR",
-                            message: error.localizedDescription
-                        )
+                            message: error.localizedDescription,
+                            details: nil)
                         outputJSON(errorOutput)
                     } else {
                         print("Failed to read configuration file: \(error)")
@@ -190,14 +187,14 @@ struct ConfigCommand: ParsableCommand {
                         "path": manager.getLogPath(),
                     ],
                     "configFile": FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND",
-                    "credentialsFile": FileManager.default.fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND",
+                    "credentialsFile": FileManager.default
+                        .fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND",
                 ]
 
                 if self.jsonOutput {
                     let successOutput = SuccessOutput(
                         success: true,
-                        data: effectiveConfig
-                    )
+                        data: effectiveConfig)
                     outputJSON(successOutput)
                 } else {
                     print("Effective Configuration (after merging all sources):")
@@ -216,8 +213,10 @@ struct ConfigCommand: ParsableCommand {
                     print("  Path: \(manager.getLogPath())")
                     print()
                     print("Files:")
-                    print("  Config File: \(FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND")")
-                    print("  Credentials: \(FileManager.default.fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND")")
+                    print(
+                        "  Config File: \(FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND")")
+                    print(
+                        "  Credentials: \(FileManager.default.fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND")")
                 }
             }
         }
@@ -292,8 +291,7 @@ struct ConfigCommand: ParsableCommand {
                             error: true,
                             code: "UNKNOWN_ERROR",
                             message: "Editor exited with non-zero status: \(process.terminationStatus)",
-                            details: "Editor: \(editorCommand)"
-                        )
+                            details: "Editor: \(editorCommand)")
                         outputJSON(errorOutput)
                     } else {
                         print("Editor exited with status: \(process.terminationStatus)")
@@ -306,8 +304,7 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "UNKNOWN_ERROR",
                         message: error.localizedDescription,
-                        details: "Editor: \(editorCommand)"
-                    )
+                        details: "Editor: \(editorCommand)")
                     outputJSON(errorOutput)
                 } else {
                     print("Failed to open editor: \(error)")
@@ -335,8 +332,7 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: "No configuration file found",
-                        details: "Path: \(configPath). Run 'peekaboo config init' to create one."
-                    )
+                        details: "Path: \(configPath). Run 'peekaboo config init' to create one.")
                     outputJSON(errorOutput)
                 } else {
                     print("No configuration file found at: \(configPath)")
@@ -372,8 +368,7 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: "Failed to parse configuration file. Check for syntax errors.",
-                        details: "Path: \(configPath). Common issues: trailing commas, unclosed comments, invalid JSON syntax."
-                    )
+                        details: "Path: \(configPath). Common issues: trailing commas, unclosed comments, invalid JSON syntax.")
                     outputJSON(errorOutput)
                 } else {
                     print("❌ Configuration is invalid!")
@@ -389,26 +384,26 @@ struct ConfigCommand: ParsableCommand {
             }
         }
     }
-    
+
     /// Subcommand to set credentials securely
     struct SetCredentialCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "set-credential",
             abstract: "Set an API key or credential securely")
-        
+
         @Argument(help: "The credential name (e.g., OPENAI_API_KEY)")
         var key: String
-        
+
         @Argument(help: "The credential value")
         var value: String
-        
+
         @Flag(name: .long, help: "Output JSON data for programmatic use")
         var jsonOutput = false
-        
+
         mutating func run() async throws {
             do {
-                try ConfigurationManager.shared.setCredential(key: key, value: value)
-                
+                try ConfigurationManager.shared.setCredential(key: self.key, value: self.value)
+
                 if self.jsonOutput {
                     let data: [String: Any] = [
                         "message": "Credential set successfully",
@@ -418,7 +413,7 @@ struct ConfigCommand: ParsableCommand {
                     let successOutput = SuccessOutput(success: true, data: data)
                     outputJSON(successOutput)
                 } else {
-                    print("✅ Credential '\(key)' set successfully.")
+                    print("✅ Credential '\(self.key)' set successfully.")
                     print("Stored in: \(ConfigurationManager.credentialsPath)")
                 }
             } catch {
@@ -427,8 +422,7 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: error.localizedDescription,
-                        details: "Failed to save credential"
-                    )
+                        details: "Failed to save credential")
                     outputJSON(errorOutput)
                 } else {
                     print("❌ Failed to set credential: \(error)")
@@ -444,15 +438,15 @@ struct ConfigCommand: ParsableCommand {
 private struct SuccessOutput: Encodable {
     let success: Bool
     let data: [String: Any]
-    
+
     enum CodingKeys: String, CodingKey {
         case success, data
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(success, forKey: .success)
-        try container.encode(JSONValue(data), forKey: .data)
+        try container.encode(self.success, forKey: .success)
+        try container.encode(JSONValue(self.data), forKey: .data)
     }
 }
 
@@ -465,14 +459,14 @@ private struct ErrorOutput: Encodable {
 
 private struct JSONValue: Encodable {
     let value: Any
-    
+
     init(_ value: Any) {
         self.value = value
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        
+
         if let dict = value as? [String: Any] {
             try container.encode(dict.mapValues { JSONValue($0) })
         } else if let array = value as? [Any] {
@@ -485,19 +479,20 @@ private struct JSONValue: Encodable {
             try container.encode(double)
         } else if let bool = value as? Bool {
             try container.encode(bool)
-        } else if value is NSNull {
+        } else if self.value is NSNull {
             try container.encodeNil()
         } else {
-            try container.encode(String(describing: value))
+            try container.encode(String(describing: self.value))
         }
     }
 }
 
-private func outputJSON<T: Encodable>(_ value: T) {
+private func outputJSON(_ value: some Encodable) {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     if let data = try? encoder.encode(value),
-       let json = String(data: data, encoding: .utf8) {
+       let json = String(data: data, encoding: .utf8)
+    {
         print(json)
     }
 }

@@ -400,4 +400,8 @@ final class ApplicationFinder: Sendable {
 enum ApplicationError: Error, Sendable {
     case notFound(String)
     case ambiguous(String, [NSRunningApplication])
+    case ambiguousIdentifier(String, String) // identifier, candidates as string
+    case noFrontmostApplication
+    case notInstalled(String)
+    case activationFailed(String)
 }

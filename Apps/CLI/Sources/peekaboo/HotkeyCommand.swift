@@ -2,18 +2,13 @@ import ArgumentParser
 import Foundation
 import PeekabooCore
 
-/// Refactored HotkeyCommand using PeekabooCore services
 /// Presses key combinations like Cmd+C, Ctrl+A, etc. using the UIAutomationService.
 @available(macOS 14.0, *)
 struct HotkeyCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "hotkey",
-        abstract: "Press keyboard shortcuts and key combinations using PeekabooCore services",
+        abstract: "Press keyboard shortcuts and key combinations",
         discussion: """
-            This is a refactored version of the hotkey command that uses PeekabooCore services
-            instead of direct implementation. It maintains the same interface but delegates
-            all operations to the service layer.
-            
             The 'hotkey' command simulates keyboard shortcuts by pressing
             multiple keys simultaneously, like Cmd+C for copy or Cmd+Shift+T.
 
@@ -47,35 +42,31 @@ struct HotkeyCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
-    private let services = PeekabooServices.shared
-
     mutating func run() async throws {
         let startTime = Date()
-        Logger.shared.setJsonOutputMode(jsonOutput)
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
             // Parse key names - support both comma-separated and space-separated
-            let keyNames: [String]
-            if self.keys.contains(",") {
+            let keyNames: [String] = if self.keys.contains(",") {
                 // Comma-separated format: "cmd,c" or "cmd, c"
-                keyNames = self.keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+                self.keys.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
             } else {
                 // Space-separated format: "cmd c" or "cmd a"
-                keyNames = self.keys.split(separator: " ").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+                self.keys.split(separator: " ").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
             }
 
             guard !keyNames.isEmpty else {
-                throw ValidationError("No keys specified")
+                throw ArgumentParser.ValidationError("No keys specified")
             }
 
             // Convert key names to comma-separated format for the service
             let keysString = keyNames.joined(separator: ",")
 
             // Perform hotkey using the automation service
-            try await services.automation.hotkey(
+            try await PeekabooServices.shared.automation.hotkey(
                 keys: keysString,
-                holdDuration: self.holdDuration
-            )
+                holdDuration: self.holdDuration)
 
             // Output results
             if self.jsonOutput {
@@ -83,8 +74,7 @@ struct HotkeyCommand: AsyncParsableCommand {
                     success: true,
                     keys: keyNames,
                     keyCount: keyNames.count,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
+                    executionTime: Date().timeIntervalSince(startTime))
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Hotkey pressed")
@@ -93,33 +83,31 @@ struct HotkeyCommand: AsyncParsableCommand {
             }
 
         } catch {
-            handleError(error)
+            self.handleError(error)
             throw ExitCode.failure
         }
     }
 
     private func handleError(_ error: Error) {
-        if jsonOutput {
-            let errorCode: ErrorCode
-            if error is PeekabooError {
+        if self.jsonOutput {
+            let errorCode: ErrorCode = if error is PeekabooError {
                 switch error as? PeekabooError {
                 case .interactionFailed:
-                    errorCode = .INTERACTION_FAILED
-                case .permissionDenied:
-                    errorCode = .PERMISSION_DENIED_ACCESSIBILITY
+                    .INTERACTION_FAILED
+                case let .operationFailed(msg) where msg.contains("accessibility"):
+                    .PERMISSION_ERROR_ACCESSIBILITY
                 default:
-                    errorCode = .INTERNAL_SWIFT_ERROR
+                    .INTERNAL_SWIFT_ERROR
                 }
-            } else if error is ValidationError {
-                errorCode = .INVALID_ARGUMENT
+            } else if error is ArgumentParser.ValidationError {
+                .INVALID_ARGUMENT
             } else {
-                errorCode = .INTERNAL_SWIFT_ERROR
+                .INTERNAL_SWIFT_ERROR
             }
-            
+
             outputError(
                 message: error.localizedDescription,
-                code: errorCode
-            )
+                code: errorCode)
         } else {
             var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
             print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)

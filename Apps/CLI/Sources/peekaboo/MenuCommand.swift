@@ -3,16 +3,21 @@ import ArgumentParser
 import Foundation
 import PeekabooCore
 
-/// Refactored MenuCommand using PeekabooCore services
+/// Menu-specific errors
+enum MenuError: Error {
+    case menuBarNotFound
+    case menuItemNotFound(String)
+    case submenuNotFound(String)
+    case menuExtraNotFound
+    case menuOperationFailed(String)
+}
+
+/// Interact with application menu bar items and system menu extras
 struct MenuCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "menu",
-        abstract: "Interact with application menu bar using PeekabooCore services",
+        abstract: "Interact with application menu bar",
         discussion: """
-        This is a refactored version of the menu command that uses PeekabooCore services
-        instead of direct implementation. It maintains the same interface but delegates
-        all operations to the service layer.
-        
         Provides access to application menu bar items and system menu extras.
 
         EXAMPLES:
@@ -54,10 +59,8 @@ struct MenuCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             // Validate inputs
             guard self.item != nil || self.path != nil else {
@@ -71,12 +74,12 @@ struct MenuCommand: AsyncParsableCommand {
             do {
                 // Construct the menu path
                 let menuPath = self.path ?? self.item!
-                
+
                 // Click the menu item using the service
-                try await services.menu.clickMenuItem(app: app, itemPath: menuPath)
-                
+                try await PeekabooServices.shared.menu.clickMenuItem(app: self.app, itemPath: menuPath)
+
                 // Get app info for response
-                let appInfo = try await services.applications.findApplication(identifier: app)
+                let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: self.app)
 
                 // Output result
                 if self.jsonOutput {
@@ -84,8 +87,7 @@ struct MenuCommand: AsyncParsableCommand {
                         action: "menu_click",
                         app: appInfo.name,
                         menu_path: menuPath,
-                        clicked_item: menuPath
-                    )
+                        clicked_item: menuPath)
                     outputSuccess(data: data)
                 } else {
                     print("✓ Clicked menu item: \(menuPath)")
@@ -98,13 +100,13 @@ struct MenuCommand: AsyncParsableCommand {
                 handleApplicationError(error)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error)
+                self.handleGenericError(error)
                 throw ExitCode(1)
             }
         }
-        
+
         private func handleMenuError(_ error: MenuError) {
-            if jsonOutput {
+            if self.jsonOutput {
                 let errorCode: ErrorCode = switch error {
                 case .menuBarNotFound:
                     .MENU_BAR_NOT_FOUND
@@ -114,37 +116,36 @@ struct MenuCommand: AsyncParsableCommand {
                     .MENU_ITEM_NOT_FOUND
                 case .menuExtraNotFound:
                     .MENU_ITEM_NOT_FOUND
+                case .menuOperationFailed:
+                    .INTERACTION_FAILED
                 }
-                
+
                 outputError(
                     message: error.localizedDescription,
                     code: errorCode,
-                    details: "Failed to click menu item"
-                )
+                    details: "Failed to click menu item")
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
         }
-        
+
         private func handleApplicationError(_ error: ApplicationError) {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
                     code: .APP_NOT_FOUND,
-                    details: "Application not found"
-                )
+                    details: "Application not found")
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
         }
-        
+
         private func handleGenericError(_ error: Error) {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu operation failed"
-                )
+                    details: "Menu operation failed")
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
             }
@@ -167,24 +168,26 @@ struct MenuCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Click the menu extra
-                try await services.menu.clickMenuExtra(title: title)
-                
+                try await PeekabooServices.shared.menu.clickMenuExtra(title: self.title)
+
                 // If an item was specified, we would need to click it after the menu appears
                 // This would require additional service functionality
                 if let itemToClick = item {
                     // Wait for menu to appear
                     try await Task.sleep(nanoseconds: 200_000_000) // 200ms
-                    
-                    // TODO: This would require additional menu extra item clicking functionality
-                    // For now, we'll just mention it's not implemented
-                    fputs("Warning: Clicking items within menu extras is not yet implemented in the service layer\n", stderr)
+
+                    // Note: Clicking menu items within menu extras would require
+                    // additional functionality in the service layer to identify
+                    // and interact with the opened menu from the menu extra.
+                    // For now, we just warn that this is not fully implemented.
+                    fputs(
+                        "Warning: Clicking menu items within menu extras is not yet implemented\n",
+                        stderr)
                 }
 
                 // Output result
@@ -192,8 +195,7 @@ struct MenuCommand: AsyncParsableCommand {
                     let data = MenuExtraClickResult(
                         action: "menu_extra_click",
                         menu_extra: title,
-                        clicked_item: item ?? self.title
-                    )
+                        clicked_item: item ?? self.title)
                     outputSuccess(data: data)
                 } else {
                     if let clickedItem = item {
@@ -207,30 +209,41 @@ struct MenuCommand: AsyncParsableCommand {
                 handleMenuError(error)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error)
+                self.handleGenericError(error)
                 throw ExitCode(1)
             }
         }
-        
+
         private func handleMenuError(_ error: MenuError) {
-            if jsonOutput {
+            if self.jsonOutput {
+                let errorCode: ErrorCode = switch error {
+                case .menuBarNotFound:
+                    .MENU_BAR_NOT_FOUND
+                case .menuItemNotFound:
+                    .MENU_ITEM_NOT_FOUND
+                case .submenuNotFound:
+                    .MENU_ITEM_NOT_FOUND
+                case .menuExtraNotFound:
+                    .MENU_ITEM_NOT_FOUND
+                case .menuOperationFailed:
+                    .INTERACTION_FAILED
+                }
+
                 outputError(
                     message: error.localizedDescription,
-                    code: .MENU_ITEM_NOT_FOUND,
-                    details: "Failed to click menu extra"
-                )
+                    code: errorCode,
+                    details: "Failed to click menu extra")
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
         }
-        
+
         private func handleGenericError(_ error: Error) {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu extra operation failed"
-                )
+                    details: "Menu extra operation failed")
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
             }
@@ -253,25 +266,23 @@ struct MenuCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
-        private let services = PeekabooServices.shared
-
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Get menu structure from service
-                let menuStructure = try await services.menu.listMenus(for: app)
+                let menuStructure = try await PeekabooServices.shared.menu.listMenus(for: self.app)
 
                 // Filter out disabled items if requested
-                let filteredMenus = includeDisabled ? menuStructure.menus : filterDisabledMenus(menuStructure.menus)
+                let filteredMenus = self.includeDisabled ? menuStructure.menus : self
+                    .filterDisabledMenus(menuStructure.menus)
 
                 // Output result
                 if self.jsonOutput {
                     let data = MenuListData(
                         app: menuStructure.application.name,
                         bundle_id: menuStructure.application.bundleIdentifier,
-                        menu_structure: convertMenusToJSON(filteredMenus)
-                    )
+                        menu_structure: self.convertMenusToJSON(filteredMenus))
                     outputSuccess(data: data)
                 } else {
                     print("Menu structure for \(menuStructure.application.name):")
@@ -287,23 +298,23 @@ struct MenuCommand: AsyncParsableCommand {
                 handleMenuError(error)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error)
+                self.handleGenericError(error)
                 throw ExitCode(1)
             }
         }
-        
+
         private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
-            return menus.compactMap { menu in
+            menus.compactMap { menu in
                 guard menu.isEnabled else { return nil }
-                let filteredItems = filterDisabledItems(menu.items)
+                let filteredItems = self.filterDisabledItems(menu.items)
                 return Menu(title: menu.title, items: filteredItems, isEnabled: menu.isEnabled)
             }
         }
-        
+
         private func filterDisabledItems(_ items: [MenuItem]) -> [MenuItem] {
-            return items.compactMap { item in
+            items.compactMap { item in
                 guard item.isEnabled else { return nil }
-                let filteredSubmenu = filterDisabledItems(item.submenu)
+                let filteredSubmenu = self.filterDisabledItems(item.submenu)
                 return MenuItem(
                     title: item.title,
                     keyboardShortcut: item.keyboardShortcut,
@@ -311,75 +322,74 @@ struct MenuCommand: AsyncParsableCommand {
                     isChecked: item.isChecked,
                     isSeparator: item.isSeparator,
                     submenu: filteredSubmenu,
-                    path: item.path
-                )
+                    path: item.path)
             }
         }
-        
+
         private func convertMenusToJSON(_ menus: [Menu]) -> [[String: Any]] {
-            return menus.map { menu in
+            menus.map { menu in
                 var menuData: [String: Any] = [
                     "title": menu.title,
-                    "enabled": menu.isEnabled
+                    "enabled": menu.isEnabled,
                 ]
-                
+
                 if !menu.items.isEmpty {
-                    menuData["items"] = convertMenuItemsToJSON(menu.items)
+                    menuData["items"] = self.convertMenuItemsToJSON(menu.items)
                 }
-                
+
                 return menuData
             }
         }
-        
+
         private func convertMenuItemsToJSON(_ items: [MenuItem]) -> [[String: Any]] {
-            return items.map { item in
+            items.map { item in
                 var itemData: [String: Any] = [
                     "title": item.title,
-                    "enabled": item.isEnabled
+                    "enabled": item.isEnabled,
                 ]
-                
+
                 if let shortcut = item.keyboardShortcut {
                     itemData["shortcut"] = shortcut.displayString
                 }
-                
+
                 if item.isChecked {
                     itemData["checked"] = true
                 }
-                
+
                 if item.isSeparator {
                     itemData["separator"] = true
                 }
-                
+
                 if !item.submenu.isEmpty {
-                    itemData["items"] = convertMenuItemsToJSON(item.submenu)
+                    itemData["items"] = self.convertMenuItemsToJSON(item.submenu)
                 }
-                
+
                 return itemData
             }
         }
 
         private func printMenu(_ menu: Menu, indent: Int) {
             let spacing = String(repeating: "  ", count: indent)
-            
+
             var line = "\(spacing)\(menu.title)"
             if !menu.isEnabled {
                 line += " (disabled)"
             }
             print(line)
-            
+
             for item in menu.items {
                 self.printMenuItem(item, indent: indent + 1)
             }
         }
-        
+
         private func printMenuItem(_ item: MenuItem, indent: Int) {
             let spacing = String(repeating: "  ", count: indent)
-            
+
             if item.isSeparator {
                 print("\(spacing)---")
                 return
             }
-            
+
             var line = "\(spacing)\(item.title)"
             if !item.isEnabled {
                 line += " (disabled)"
@@ -391,43 +401,53 @@ struct MenuCommand: AsyncParsableCommand {
                 line += " [\(shortcut.displayString)]"
             }
             print(line)
-            
+
             for subitem in item.submenu {
                 self.printMenuItem(subitem, indent: indent + 1)
             }
         }
-        
+
         private func handleApplicationError(_ error: ApplicationError) {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
                     code: .APP_NOT_FOUND,
-                    details: "Application not found"
-                )
+                    details: "Application not found")
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
         }
-        
+
         private func handleMenuError(_ error: MenuError) {
-            if jsonOutput {
+            if self.jsonOutput {
+                let errorCode: ErrorCode = switch error {
+                case .menuBarNotFound:
+                    .MENU_BAR_NOT_FOUND
+                case .menuItemNotFound:
+                    .MENU_ITEM_NOT_FOUND
+                case .submenuNotFound:
+                    .MENU_ITEM_NOT_FOUND
+                case .menuExtraNotFound:
+                    .MENU_ITEM_NOT_FOUND
+                case .menuOperationFailed:
+                    .INTERACTION_FAILED
+                }
+
                 outputError(
                     message: error.localizedDescription,
-                    code: .MENU_BAR_NOT_FOUND,
-                    details: "Failed to list menus"
-                )
+                    code: errorCode,
+                    details: "Failed to list menus")
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
         }
-        
+
         private func handleGenericError(_ error: Error) {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu list operation failed"
-                )
+                    details: "Menu list operation failed")
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
             }
@@ -450,55 +470,54 @@ struct MenuCommand: AsyncParsableCommand {
         @Flag(help: "Include item frames (pixel positions)")
         var includeFrames = false
 
-        private let services = PeekabooServices.shared
-
         mutating func run() async throws {
-            Logger.shared.setJsonOutputMode(jsonOutput)
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
                 // Get frontmost application menus
-                let frontmostMenus = try await services.menu.listFrontmostMenus()
-                
+                let frontmostMenus = try await PeekabooServices.shared.menu.listFrontmostMenus()
+
                 // Get system menu extras
-                let menuExtras = try await services.menu.listMenuExtras()
-                
+                let menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
+
                 // Filter if needed
-                let filteredMenus = includeDisabled ? frontmostMenus.menus : filterDisabledMenus(frontmostMenus.menus)
-                
+                let filteredMenus = self.includeDisabled ? frontmostMenus.menus : self
+                    .filterDisabledMenus(frontmostMenus.menus)
+
                 // Output results
                 if self.jsonOutput {
                     var appData: [String: Any] = [
                         "app_name": frontmostMenus.application.name,
                         "bundle_id": frontmostMenus.application.bundleIdentifier ?? "unknown",
                         "pid": frontmostMenus.application.processIdentifier,
-                        "menus": convertMenusToJSON(filteredMenus)
+                        "menus": self.convertMenusToJSON(filteredMenus),
                     ]
-                    
+
                     // Add menu extras
                     var extraData: [[String: Any]] = []
                     for extra in menuExtras {
                         var itemData: [String: Any] = [
                             "type": "status_item",
                             "title": extra.title,
-                            "enabled": true
+                            "enabled": true,
                         ]
-                        
-                        if includeFrames {
+
+                        if self.includeFrames {
                             itemData["frame"] = [
                                 "x": extra.position.x,
                                 "y": extra.position.y,
-                                "width": 0,  // Menu extras don't have size in our current model
-                                "height": 0
+                                "width": 0, // Menu extras don't have size in our current model
+                                "height": 0,
                             ]
                         }
-                        
+
                         extraData.append(itemData)
                     }
-                    
+
                     if !extraData.isEmpty {
                         appData["status_items"] = extraData
                     }
-                    
+
                     let data = ["apps": [appData]]
                     outputSuccess(data: data)
                 } else {
@@ -506,12 +525,12 @@ struct MenuCommand: AsyncParsableCommand {
                     for menu in filteredMenus {
                         self.printFullMenu(menu, indent: 0)
                     }
-                    
+
                     if !menuExtras.isEmpty {
                         print("\n=== System Menu Extras ===")
                         for extra in menuExtras {
                             print("  \(extra.title)")
-                            if includeFrames {
+                            if self.includeFrames {
                                 print("    Position: (\(Int(extra.position.x)), \(Int(extra.position.y)))")
                             }
                         }
@@ -522,23 +541,23 @@ struct MenuCommand: AsyncParsableCommand {
                 handleMenuError(error)
                 throw ExitCode(1)
             } catch {
-                handleGenericError(error)
+                self.handleGenericError(error)
                 throw ExitCode(1)
             }
         }
-        
+
         private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
-            return menus.compactMap { menu in
+            menus.compactMap { menu in
                 guard menu.isEnabled else { return nil }
-                let filteredItems = filterDisabledItems(menu.items)
+                let filteredItems = self.filterDisabledItems(menu.items)
                 return Menu(title: menu.title, items: filteredItems, isEnabled: menu.isEnabled)
             }
         }
-        
+
         private func filterDisabledItems(_ items: [MenuItem]) -> [MenuItem] {
-            return items.compactMap { item in
+            items.compactMap { item in
                 guard item.isEnabled else { return nil }
-                let filteredSubmenu = filterDisabledItems(item.submenu)
+                let filteredSubmenu = self.filterDisabledItems(item.submenu)
                 return MenuItem(
                     title: item.title,
                     keyboardShortcut: item.keyboardShortcut,
@@ -546,75 +565,74 @@ struct MenuCommand: AsyncParsableCommand {
                     isChecked: item.isChecked,
                     isSeparator: item.isSeparator,
                     submenu: filteredSubmenu,
-                    path: item.path
-                )
+                    path: item.path)
             }
         }
-        
+
         private func convertMenusToJSON(_ menus: [Menu]) -> [[String: Any]] {
-            return menus.map { menu in
+            menus.map { menu in
                 var menuData: [String: Any] = [
                     "title": menu.title,
-                    "enabled": menu.isEnabled
+                    "enabled": menu.isEnabled,
                 ]
-                
+
                 if !menu.items.isEmpty {
-                    menuData["items"] = convertMenuItemsToJSON(menu.items)
+                    menuData["items"] = self.convertMenuItemsToJSON(menu.items)
                 }
-                
+
                 return menuData
             }
         }
-        
+
         private func convertMenuItemsToJSON(_ items: [MenuItem]) -> [[String: Any]] {
-            return items.map { item in
+            items.map { item in
                 var itemData: [String: Any] = [
                     "title": item.title,
-                    "enabled": item.isEnabled
+                    "enabled": item.isEnabled,
                 ]
-                
+
                 if let shortcut = item.keyboardShortcut {
                     itemData["shortcut"] = shortcut.displayString
                 }
-                
+
                 if item.isChecked {
                     itemData["checked"] = true
                 }
-                
+
                 if item.isSeparator {
                     itemData["separator"] = true
                 }
-                
+
                 if !item.submenu.isEmpty {
-                    itemData["items"] = convertMenuItemsToJSON(item.submenu)
+                    itemData["items"] = self.convertMenuItemsToJSON(item.submenu)
                 }
-                
+
                 return itemData
             }
         }
 
         private func printFullMenu(_ menu: Menu, indent: Int) {
             let spacing = String(repeating: "  ", count: indent)
-            
+
             var line = "\(spacing)\(menu.title)"
             if !menu.isEnabled {
                 line += " (disabled)"
             }
             print(line)
-            
+
             for item in menu.items {
                 self.printMenuItem(item, indent: indent + 1)
             }
         }
-        
+
         private func printMenuItem(_ item: MenuItem, indent: Int) {
             let spacing = String(repeating: "  ", count: indent)
-            
+
             if item.isSeparator {
                 print("\(spacing)---")
                 return
             }
-            
+
             var line = "\(spacing)\(item.title)"
             if !item.isEnabled {
                 line += " (disabled)"
@@ -626,31 +644,42 @@ struct MenuCommand: AsyncParsableCommand {
                 line += " [\(shortcut.displayString)]"
             }
             print(line)
-            
+
             for subitem in item.submenu {
                 self.printMenuItem(subitem, indent: indent + 1)
             }
         }
-        
+
         private func handleMenuError(_ error: MenuError) {
-            if jsonOutput {
+            if self.jsonOutput {
+                let errorCode: ErrorCode = switch error {
+                case .menuBarNotFound:
+                    .MENU_BAR_NOT_FOUND
+                case .menuItemNotFound:
+                    .MENU_ITEM_NOT_FOUND
+                case .submenuNotFound:
+                    .MENU_ITEM_NOT_FOUND
+                case .menuExtraNotFound:
+                    .MENU_ITEM_NOT_FOUND
+                case .menuOperationFailed:
+                    .INTERACTION_FAILED
+                }
+
                 outputError(
                     message: error.localizedDescription,
-                    code: .MENU_BAR_NOT_FOUND,
-                    details: "Failed to list menus"
-                )
+                    code: errorCode,
+                    details: "Failed to list menus")
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
         }
-        
+
         private func handleGenericError(_ error: Error) {
-            if jsonOutput {
+            if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu list operation failed"
-                )
+                    details: "Menu list operation failed")
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
             }
@@ -673,48 +702,34 @@ struct MenuExtraClickResult: Codable {
     let clicked_item: String
 }
 
-struct MenuListData: Codable {
+struct MenuListData: Encodable {
     let app: String
     let bundle_id: String?
     let menu_structure: [[String: Any]]
-    
+
     enum CodingKeys: String, CodingKey {
         case app
         case bundle_id
         case menu_structure
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(app, forKey: .app)
-        try container.encodeIfPresent(bundle_id, forKey: .bundle_id)
-        
+        try container.encode(self.app, forKey: .app)
+        try container.encodeIfPresent(self.bundle_id, forKey: .bundle_id)
+
         // Convert menu structure to AnyCodable for encoding
-        let codableMenuStructure = menu_structure.map { AnyCodable($0) }
+        let codableMenuStructure = self.menu_structure.map { AnyCodable($0) }
         try container.encode(codableMenuStructure, forKey: .menu_structure)
     }
 }
 
 // MARK: - Helper Functions
 
-private func outputSuccess<T: Encodable>(data: T) {
+private func outputSuccess(data: some Encodable) {
     let response = JSONResponse(
         success: true,
         data: data,
-        debugLogs: Logger.shared.getLogs()
-    )
-    outputJSON(response)
-}
-
-private func outputError(message: String, code: ErrorCode, details: String? = nil) {
-    let response = JSONResponse(
-        success: false,
-        error: ErrorInfo(
-            message: message,
-            code: code,
-            details: details
-        ),
-        debugLogs: Logger.shared.getLogs()
-    )
+        debugLogs: Logger.shared.getDebugLogs())
     outputJSON(response)
 }
