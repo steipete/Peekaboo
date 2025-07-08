@@ -18,7 +18,10 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         }
         
         if !success {
-            throw WindowError.operationFailed("close")
+            throw OperationError.interactionFailed(
+                action: "close window",
+                reason: "Window close operation failed"
+            )
         }
     }
     
@@ -28,7 +31,10 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         }
         
         if !success {
-            throw WindowError.operationFailed("minimize")
+            throw OperationError.interactionFailed(
+                action: "minimize window",
+                reason: "Window minimize operation failed"
+            )
         }
     }
     
@@ -38,7 +44,10 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         }
         
         if !success {
-            throw WindowError.operationFailed("maximize")
+            throw OperationError.interactionFailed(
+                action: "maximize window",
+                reason: "Window maximize operation failed"
+            )
         }
     }
     
@@ -48,7 +57,10 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         }
         
         if !success {
-            throw WindowError.operationFailed("move")
+            throw OperationError.interactionFailed(
+                action: "move window",
+                reason: "Window move operation failed"
+            )
         }
     }
     
@@ -58,7 +70,10 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         }
         
         if !success {
-            throw WindowError.operationFailed("resize")
+            throw OperationError.interactionFailed(
+                action: "resize window",
+                reason: "Window resize operation failed"
+            )
         }
     }
     
@@ -68,7 +83,10 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         }
         
         if !success {
-            throw WindowError.operationFailed("set bounds")
+            throw OperationError.interactionFailed(
+                action: "set window bounds",
+                reason: "Window bounds operation failed"
+            )
         }
     }
     
@@ -78,7 +96,10 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         }
         
         if !success {
-            throw WindowError.operationFailed("focus")
+            throw OperationError.interactionFailed(
+                action: "focus window",
+                reason: "Window focus operation failed"
+            )
         }
     }
     
@@ -105,7 +126,10 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         case .index(let app, let index):
             let windows = try await applicationService.listWindows(for: app)
             guard index >= 0 && index < windows.count else {
-                throw WindowError.invalidIndex(index, availableCount: windows.count)
+                throw ValidationError.invalidInput(
+                    field: "windowIndex",
+                    reason: "Index \(index) is out of range. Available windows: 0-\(windows.count-1)"
+                )
             }
             return [windows[index]]
             
@@ -125,7 +149,13 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
                 }
             }
             
-            throw WindowError.windowNotFound(id: id)
+            var context = ErrorContext()
+            context.add("windowId", id)
+            throw NotFoundError(
+                code: .windowNotFound,
+                userMessage: "Window with ID \(id) not found",
+                context: context.build()
+            )
         }
     }
     
@@ -191,7 +221,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         let appElement = Element(axApp)
         
         guard let windows = appElement.windows(), !windows.isEmpty else {
-            throw WindowError.noWindows(app: app.name)
+            throw NotFoundError.window(app: app.name)
         }
         
         return windows[0]
@@ -203,11 +233,14 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         let appElement = Element(axApp)
         
         guard let windows = appElement.windows() else {
-            throw WindowError.noWindows(app: app.name)
+            throw NotFoundError.window(app: app.name)
         }
         
         guard index >= 0 && index < windows.count else {
-            throw WindowError.invalidIndex(index, availableCount: windows.count)
+            throw ValidationError.invalidInput(
+                field: "windowIndex",
+                reason: "Index \(index) is out of range. Available windows: 0-\(windows.count-1)"
+            )
         }
         
         return windows[index]
@@ -229,7 +262,13 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             }
         }
         
-        throw WindowError.windowNotFoundByTitle(titleSubstring)
+        var context = ErrorContext()
+        context.add("titleSubstring", titleSubstring)
+        throw NotFoundError(
+            code: .windowNotFound,
+            userMessage: "No window found with title containing '\(titleSubstring)'",
+            context: context.build()
+        )
     }
     
     @MainActor
@@ -248,30 +287,12 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             }
         }
         
-        throw WindowError.windowNotFound(id: id)
-    }
-}
-
-/// Errors specific to window operations
-public enum WindowError: LocalizedError {
-    case operationFailed(String)
-    case noWindows(app: String)
-    case windowNotFound(id: Int)
-    case windowNotFoundByTitle(String)
-    case invalidIndex(Int, availableCount: Int)
-    
-    public var errorDescription: String? {
-        switch self {
-        case .operationFailed(let operation):
-            return "Failed to \(operation) window"
-        case .noWindows(let app):
-            return "No windows found for application: \(app)"
-        case .windowNotFound(let id):
-            return "Window not found with ID: \(id)"
-        case .windowNotFoundByTitle(let title):
-            return "No window found with title containing: \(title)"
-        case .invalidIndex(let index, let count):
-            return "Invalid window index \(index). Available windows: 0-\(count-1)"
-        }
+        var context = ErrorContext()
+        context.add("windowId", id)
+        throw NotFoundError(
+            code: .windowNotFound,
+            userMessage: "Window with ID \(id) not found",
+            context: context.build()
+        )
     }
 }

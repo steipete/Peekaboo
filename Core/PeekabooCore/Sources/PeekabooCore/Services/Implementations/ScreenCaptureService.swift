@@ -5,28 +5,48 @@ import AppKit
 
 /// Default implementation of screen capture operations
 public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
+    private let logger: CategoryLogger
     
-    public init() {}
+    public init(loggingService: LoggingServiceProtocol? = nil) {
+        let logging = loggingService ?? PeekabooServices.shared.logging
+        self.logger = logging.logger(category: LoggingService.Category.screenCapture)
+    }
     
     public func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
+        let correlationId = UUID().uuidString
+        logger.info("Starting screen capture", metadata: ["displayIndex": displayIndex ?? "main"], correlationId: correlationId)
+        
+        let measurementId = logger.startPerformanceMeasurement(operation: "captureScreen", correlationId: correlationId)
+        defer {
+            logger.endPerformanceMeasurement(measurementId: measurementId, metadata: ["displayIndex": displayIndex ?? "main"])
+        }
+        
         // Check permissions first
+        logger.debug("Checking screen recording permission", correlationId: correlationId)
         guard await hasScreenRecordingPermission() else {
-            throw CaptureError.permissionDeniedScreenRecording
+            logger.error("Screen recording permission denied", correlationId: correlationId)
+            throw PermissionError.screenRecording()
         }
         
         // Get available displays
+        logger.debug("Fetching shareable content", correlationId: correlationId)
         let content = try await SCShareableContent.current
         let displays = content.displays
         
+        logger.debug("Found displays", metadata: ["count": displays.count], correlationId: correlationId)
         guard !displays.isEmpty else {
-            throw CaptureError.noDisplaysFound
+            logger.error("No displays found", correlationId: correlationId)
+            throw OperationError.captureFailed(reason: "No displays available for capture")
         }
         
         // Select display
         let targetDisplay: SCDisplay
         if let index = displayIndex {
             guard index >= 0 && index < displays.count else {
-                throw CaptureError.invalidDisplayIndex(index, availableCount: displays.count)
+                throw ValidationError.invalidInput(
+                    field: "displayIndex",
+                    reason: "Index \(index) is out of range. Available displays: 0-\(displays.count-1)"
+                )
             }
             targetDisplay = displays[index]
         } else {
@@ -34,9 +54,27 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             targetDisplay = displays.first!
         }
         
-        // Create screenshot
-        let image = try await createScreenshot(of: targetDisplay)
-        let imageData = try image.pngData()
+        // Create screenshot with retry logic
+        logger.debug("Creating screenshot of display", metadata: ["displayID": targetDisplay.displayID], correlationId: correlationId)
+        
+        let image = try await RetryHandler.withRetry(
+            policy: .standard,
+            operation: {
+                try await self.createScreenshot(of: targetDisplay)
+            }
+        )
+        
+        let imageData: Data
+        do {
+            imageData = try image.pngData()
+        } catch {
+            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
+        }
+        
+        logger.debug("Screenshot created", metadata: [
+            "imageSize": "\(image.width)x\(image.height)",
+            "dataSize": imageData.count
+        ], correlationId: correlationId)
         
         // Create metadata
         let metadata = CaptureMetadata(
@@ -57,13 +95,35 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     }
     
     public func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
+        let correlationId = UUID().uuidString
+        logger.info("Starting window capture", metadata: [
+            "appIdentifier": appIdentifier,
+            "windowIndex": windowIndex ?? "frontmost"
+        ], correlationId: correlationId)
+        
+        let measurementId = logger.startPerformanceMeasurement(operation: "captureWindow", correlationId: correlationId)
+        defer {
+            logger.endPerformanceMeasurement(measurementId: measurementId, metadata: [
+                "appIdentifier": appIdentifier,
+                "windowIndex": windowIndex ?? "frontmost"
+            ])
+        }
+        
         // Check permissions
+        logger.debug("Checking screen recording permission", correlationId: correlationId)
         guard await hasScreenRecordingPermission() else {
-            throw CaptureError.permissionDeniedScreenRecording
+            logger.error("Screen recording permission denied", correlationId: correlationId)
+            throw PermissionError.screenRecording()
         }
         
         // Find application
+        logger.debug("Finding application", metadata: ["identifier": appIdentifier], correlationId: correlationId)
         let app = try await findApplication(matching: appIdentifier)
+        logger.debug("Found application", metadata: [
+            "name": app.name,
+            "pid": app.processIdentifier,
+            "bundleId": app.bundleIdentifier ?? "unknown"
+        ], correlationId: correlationId)
         
         // Get windows for the application
         let content = try await SCShareableContent.current
@@ -71,15 +131,20 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             window.owningApplication?.processID == app.processIdentifier
         }
         
+        logger.debug("Found windows for application", metadata: ["count": appWindows.count], correlationId: correlationId)
         guard !appWindows.isEmpty else {
-            throw CaptureError.noWindowsFound(app.name)
+            logger.error("No windows found for application", metadata: ["appName": app.name], correlationId: correlationId)
+            throw NotFoundError.window(app: app.name)
         }
         
         // Select window
         let targetWindow: SCWindow
         if let index = windowIndex {
             guard index >= 0 && index < appWindows.count else {
-                throw CaptureError.invalidWindowIndex(index, availableCount: appWindows.count)
+                throw ValidationError.invalidInput(
+                    field: "windowIndex",
+                    reason: "Index \(index) is out of range. Available windows: 0-\(appWindows.count-1)"
+                )
             }
             targetWindow = appWindows[index]
         } else {
@@ -87,9 +152,20 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             targetWindow = appWindows.first!
         }
         
-        // Create screenshot
-        let image = try await createScreenshot(of: targetWindow)
-        let imageData = try image.pngData()
+        // Create screenshot with retry logic
+        let image = try await RetryHandler.withRetry(
+            policy: .standard,
+            operation: {
+                try await self.createScreenshot(of: targetWindow)
+            }
+        )
+        
+        let imageData: Data
+        do {
+            imageData = try image.pngData()
+        } catch {
+            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
+        }
         
         // Create metadata
         let metadata = CaptureMetadata(
@@ -113,31 +189,70 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     }
     
     public func captureFrontmost() async throws -> CaptureResult {
+        let correlationId = UUID().uuidString
+        logger.info("Starting frontmost window capture", correlationId: correlationId)
+        
+        let measurementId = logger.startPerformanceMeasurement(operation: "captureFrontmost", correlationId: correlationId)
+        defer {
+            logger.endPerformanceMeasurement(measurementId: measurementId)
+        }
+        
         // Check permissions
+        logger.debug("Checking screen recording permission", correlationId: correlationId)
         guard await hasScreenRecordingPermission() else {
-            throw CaptureError.permissionDeniedScreenRecording
+            logger.error("Screen recording permission denied", correlationId: correlationId)
+            throw PermissionError.screenRecording()
         }
         
         // Get frontmost application
         guard let frontmostApp = NSWorkspace.shared.frontmostApplication else {
-            throw CaptureError.noFrontmostApplication
+            logger.error("No frontmost application found", correlationId: correlationId)
+            throw NotFoundError.application("frontmost")
         }
         
         let appIdentifier = frontmostApp.bundleIdentifier ?? frontmostApp.localizedName ?? "Unknown"
+        logger.debug("Found frontmost application", metadata: [
+            "name": frontmostApp.localizedName ?? "unknown",
+            "bundleId": frontmostApp.bundleIdentifier ?? "none",
+            "pid": frontmostApp.processIdentifier
+        ], correlationId: correlationId)
+        
         return try await captureWindow(appIdentifier: appIdentifier, windowIndex: nil)
     }
     
     public func captureArea(_ rect: CGRect) async throws -> CaptureResult {
+        let correlationId = UUID().uuidString
+        logger.info("Starting area capture", metadata: [
+            "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)"
+        ], correlationId: correlationId)
+        
+        let measurementId = logger.startPerformanceMeasurement(operation: "captureArea", correlationId: correlationId)
+        defer {
+            logger.endPerformanceMeasurement(measurementId: measurementId, metadata: [
+                "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)"
+            ])
+        }
+        
         // Check permissions
+        logger.debug("Checking screen recording permission", correlationId: correlationId)
         guard await hasScreenRecordingPermission() else {
-            throw CaptureError.permissionDeniedScreenRecording
+            logger.error("Screen recording permission denied", correlationId: correlationId)
+            throw PermissionError.screenRecording()
         }
         
         // Find display containing the rect
+        logger.debug("Finding display containing rect", correlationId: correlationId)
         let content = try await SCShareableContent.current
         guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
-            throw CaptureError.invalidCaptureArea
+            logger.error("No display contains the specified area", metadata: [
+                "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)"
+            ], correlationId: correlationId)
+            throw ValidationError.invalidInput(
+                field: "captureArea",
+                reason: "The specified area is not within any display bounds"
+            )
         }
+        logger.debug("Found display for area", metadata: ["displayID": display.displayID], correlationId: correlationId)
         
         // Create content filter for the area
         let filter = SCContentFilter(display: display, excludingWindows: [])
@@ -149,9 +264,20 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         config.height = Int(rect.height)
         config.showsCursor = false
         
-        // Capture the area
-        let image = try await captureWithStream(filter: filter, configuration: config)
-        let imageData = try image.pngData()
+        // Capture the area with retry logic
+        let image = try await RetryHandler.withRetry(
+            policy: .standard,
+            operation: {
+                try await self.captureWithStream(filter: filter, configuration: config)
+            }
+        )
+        
+        let imageData: Data
+        do {
+            imageData = try image.pngData()
+        } catch {
+            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
+        }
         
         // Create metadata
         let metadata = CaptureMetadata(
@@ -228,9 +354,14 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     
     private func findApplication(matching identifier: String) async throws -> ServiceApplicationInfo {
         let runningApps = NSWorkspace.shared.runningApplications
+        logger.trace("Searching for application", metadata: [
+            "identifier": identifier,
+            "runningAppsCount": runningApps.count
+        ])
         
         // Try exact bundle ID match first
         if let app = runningApps.first(where: { $0.bundleIdentifier == identifier }) {
+            logger.trace("Found app by exact bundle ID match", metadata: ["bundleId": identifier])
             return ServiceApplicationInfo(
                 processIdentifier: app.processIdentifier,
                 bundleIdentifier: app.bundleIdentifier,
@@ -246,6 +377,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         if let app = runningApps.first(where: { 
             $0.localizedName?.lowercased() == lowercaseIdentifier 
         }) {
+            logger.trace("Found app by name match", metadata: ["name": app.localizedName ?? "unknown"])
             return ServiceApplicationInfo(
                 processIdentifier: app.processIdentifier,
                 bundleIdentifier: app.bundleIdentifier,
@@ -274,11 +406,17 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 isHidden: app.isHidden
             )
         } else if matches.count > 1 {
-            let names = matches.compactMap { $0.localizedName }.joined(separator: ", ")
-            throw CaptureError.ambiguousAppIdentifier(identifier, candidates: names)
+            let names = matches.compactMap { $0.localizedName }
+            logger.warning("Ambiguous app identifier", metadata: [
+                "identifier": identifier,
+                "candidates": names.joined(separator: ", "),
+                "count": matches.count
+            ])
+            throw ValidationError.ambiguousAppIdentifier(identifier, matches: names)
         }
         
-        throw CaptureError.appNotFound(identifier)
+        logger.warning("Application not found", metadata: ["identifier": identifier])
+        throw NotFoundError.application(identifier)
     }
 }
 
@@ -297,7 +435,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
         guard type == .screen else { return }
         
         guard let imageBuffer = sampleBuffer.imageBuffer else {
-            continuation?.resume(throwing: CaptureError.captureFailed("No image buffer"))
+            continuation?.resume(throwing: OperationError.captureFailed(reason: "No image buffer in sample"))
             continuation = nil
             return
         }
@@ -306,7 +444,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
         let context = CIContext()
         
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-            continuation?.resume(throwing: CaptureError.captureFailed("Failed to create CGImage"))
+            continuation?.resume(throwing: OperationError.captureFailed(reason: "Failed to create CGImage from buffer"))
             continuation = nil
             return
         }
@@ -326,7 +464,7 @@ extension CGImage {
         guard let tiffData = nsImage.tiffRepresentation,
               let bitmapRep = NSBitmapImageRep(data: tiffData),
               let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
-            throw CaptureError.imageConversionFailed
+            throw OperationError.captureFailed(reason: "Failed to convert CGImage to PNG data")
         }
         return pngData
     }

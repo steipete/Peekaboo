@@ -22,7 +22,13 @@ public final class MenuService: MenuServiceProtocol {
             
             // Get menu bar
             guard let menuBar = appElement.menuBar() else {
-                throw MenuError.menuBarNotFound
+                var context = ErrorContext()
+                context.add("application", appInfo.name)
+                throw NotFoundError(
+                    code: .menuNotFound,
+                    userMessage: "Menu bar not found for application '\(appInfo.name)'",
+                    context: context.build()
+                )
             }
             
             // Collect all menus
@@ -57,7 +63,13 @@ public final class MenuService: MenuServiceProtocol {
             let appElement = Element(axApp)
             
             guard let menuBar = appElement.menuBar() else {
-                throw MenuError.menuBarNotFound
+                var context = ErrorContext()
+                context.add("application", appInfo.name)
+                throw NotFoundError(
+                    code: .menuNotFound,
+                    userMessage: "Menu bar not found for application '\(appInfo.name)'",
+                    context: context.build()
+                )
             }
             
             // Navigate menu hierarchy
@@ -69,15 +81,37 @@ public final class MenuService: MenuServiceProtocol {
                 
                 // Find matching menu item
                 guard let menuItem = findMenuItem(named: component, in: children) else {
-                    throw MenuError.menuItemNotFound(component)
+                    var context = ErrorContext()
+                    context.add("menuItem", component)
+                    context.add("path", itemPath)
+                    context.add("application", appInfo.name)
+                    throw NotFoundError(
+                        code: .menuNotFound,
+                        userMessage: "Menu item '\(component)' not found in path '\(itemPath)'",
+                        context: context.build()
+                    )
                 }
                 
                 // If this is the last component, click it
                 if index == pathComponents.count - 1 {
-                    try menuItem.performAction(Attribute<String>("AXPress"))
+                    do {
+                        try menuItem.performAction(Attribute<String>("AXPress"))
+                    } catch {
+                        throw OperationError.interactionFailed(
+                            action: "click menu item",
+                            reason: "Failed to click menu item '\(component)'"
+                        )
+                    }
                 } else {
                     // Otherwise, open the submenu
-                    try menuItem.performAction(Attribute<String>("AXPress"))
+                    do {
+                        try menuItem.performAction(Attribute<String>("AXPress"))
+                    } catch {
+                        throw OperationError.interactionFailed(
+                            action: "open submenu",
+                            reason: "Failed to open submenu '\(component)'"
+                        )
+                    }
                     
                     // Note: We can't use Task.sleep inside MainActor.run
                     // The submenu should be available immediately after clicking
@@ -85,7 +119,15 @@ public final class MenuService: MenuServiceProtocol {
                     // Get the submenu
                     guard let submenuChildren = menuItem.children(),
                           let submenu = submenuChildren.first else {
-                        throw MenuError.submenuNotFound(component)
+                        var context = ErrorContext()
+                        context.add("submenu", component)
+                        context.add("path", itemPath)
+                        context.add("application", appInfo.name)
+                        throw NotFoundError(
+                            code: .menuNotFound,
+                            userMessage: "Submenu '\(component)' not found",
+                            context: context.build()
+                        )
                     }
                     
                     currentElement = submenu
@@ -106,7 +148,11 @@ public final class MenuService: MenuServiceProtocol {
             
             // Find menu bar
             guard let menuBar = systemWide.menuBar() else {
-                throw MenuError.menuBarNotFound
+                throw NotFoundError(
+                    code: .menuNotFound,
+                    userMessage: "System menu bar not found",
+                    context: ["type": "system_menu_bar"]
+                )
             }
             
             // Find menu extras (they're typically in a specific group)
@@ -114,7 +160,13 @@ public final class MenuService: MenuServiceProtocol {
             
             // Menu extras are usually in the last group
             guard let menuExtrasGroup = menuBarItems.last(where: { $0.role() == "AXGroup" }) else {
-                throw MenuError.menuExtraNotFound(title)
+                var context = ErrorContext()
+                context.add("menuExtra", title)
+                throw NotFoundError(
+                    code: .menuNotFound,
+                    userMessage: "Menu extras group not found in system menu bar",
+                    context: context.build()
+                )
             }
             
             // Find the specific menu extra
@@ -124,11 +176,25 @@ public final class MenuService: MenuServiceProtocol {
                 element.help() == title ||
                 element.descriptionText()?.contains(title) == true
             }) else {
-                throw MenuError.menuExtraNotFound(title)
+                var context = ErrorContext()
+                context.add("menuExtra", title)
+                context.add("availableExtras", extras.count)
+                throw NotFoundError(
+                    code: .menuNotFound,
+                    userMessage: "Menu extra '\(title)' not found in system menu bar",
+                    context: context.build()
+                )
             }
             
-            // Click the menu extra
-            try menuExtra.performAction(.press)
+            // Click the menu extra with retry logic
+            do {
+                try menuExtra.performAction(.press)
+            } catch {
+                throw OperationError.interactionFailed(
+                    action: "click menu extra",
+                    reason: "Failed to click menu extra '\(title)'"
+                )
+            }
         }
     }
     
@@ -304,28 +370,6 @@ public final class MenuService: MenuServiceProtocol {
             key: cmdChar,
             displayString: displayParts.joined()
         )
-    }
-}
-
-// MARK: - Menu Errors
-
-public enum MenuError: LocalizedError {
-    case menuBarNotFound
-    case menuItemNotFound(String)
-    case submenuNotFound(String)
-    case menuExtraNotFound(String)
-    
-    public var errorDescription: String? {
-        switch self {
-        case .menuBarNotFound:
-            return "Menu bar not found for application"
-        case let .menuItemNotFound(item):
-            return "Menu item '\(item)' not found"
-        case let .submenuNotFound(menu):
-            return "Submenu '\(menu)' not found"
-        case let .menuExtraNotFound(extra):
-            return "Menu extra '\(extra)' not found in system menu bar"
-        }
     }
 }
 

@@ -47,7 +47,10 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// Cached credentials
     private var credentials: [String: String] = [:]
     
-    private init() {}
+    private init() {
+        // Load configuration on init, but don't crash if it fails
+        _ = loadConfiguration()
+    }
     
     /// Migrate from legacy configuration if needed
     public func migrateIfNeeded() throws {
@@ -121,6 +124,8 @@ public final class ConfigurationManager: @unchecked Sendable {
             return nil
         }
 
+        var expandedJSON = ""
+        
         do {
             let data = try Data(contentsOf: URL(fileURLWithPath: configPath))
             let jsonString = String(data: data, encoding: .utf8) ?? ""
@@ -129,13 +134,36 @@ public final class ConfigurationManager: @unchecked Sendable {
             let cleanedJSON = self.stripJSONComments(from: jsonString)
 
             // Expand environment variables
-            let expandedJSON = self.expandEnvironmentVariables(in: cleanedJSON)
+            expandedJSON = self.expandEnvironmentVariables(in: cleanedJSON)
 
             // Parse JSON
             if let expandedData = expandedJSON.data(using: .utf8) {
                 let config = try JSONDecoder().decode(Configuration.self, from: expandedData)
                 self.configuration = config
                 return config
+            }
+        } catch let error as DecodingError {
+            // Provide more detailed error information for JSON decoding errors
+            switch error {
+            case .keyNotFound(let key, let context):
+                print("Warning: JSON key not found '\(key.stringValue)' at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+            case .typeMismatch(let type, let context):
+                print("Warning: Type mismatch for type '\(type)' at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+            case .valueNotFound(let type, let context):
+                print("Warning: Value not found for type '\(type)' at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+            case .dataCorrupted(let context):
+                print("Warning: Data corrupted at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+                if let underlyingError = context.underlyingError {
+                    print("Underlying error: \(underlyingError)")
+                }
+            @unknown default:
+                print("Warning: Unknown decoding error: \(error)")
+            }
+            
+            // For debugging, print the cleaned JSON
+            if expandedJSON.count < 5000 {  // Only print if reasonably sized
+                print("Cleaned JSON that failed to parse:")
+                print(expandedJSON)
             }
         } catch {
             print("Warning: Failed to load configuration from \(configPath): \(error)")

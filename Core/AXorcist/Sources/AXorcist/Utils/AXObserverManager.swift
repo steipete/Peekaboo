@@ -2,6 +2,38 @@ import ApplicationServices
 import CoreFoundation
 import Foundation
 
+/// Manages accessibility observers for monitoring UI element changes.
+///
+/// `AXObserverManager` provides a centralized system for managing accessibility observers
+/// that monitor changes to UI elements. It handles observer lifecycle, notification routing,
+/// and ensures proper cleanup of resources.
+///
+/// ## Overview
+///
+/// The manager:
+/// - Creates and manages AXObserver instances for monitoring UI elements
+/// - Routes notifications to appropriate callbacks
+/// - Handles observer lifecycle and cleanup
+/// - Provides thread-safe observer management
+///
+/// This is a singleton class that should be accessed via ``shared``.
+///
+/// ## Topics
+///
+/// ### Getting the Shared Instance
+///
+/// - ``shared``
+///
+/// ### Managing Observers
+///
+/// - ``addObserver(for:notification:callback:)``
+/// - ``removeObserver(for:notification:)``
+/// - ``removeAllObservers(for:)``
+///
+/// ### Types
+///
+/// - ``AXNotificationCallback``
+/// - ``ObserverError``
 @MainActor
 public class AXObserverManager {
     // MARK: Lifecycle

@@ -3,10 +3,12 @@ import CoreGraphics
 @preconcurrency import AXorcist
 import AppKit
 import ApplicationServices
+import os.log
 
 /// Default implementation of UI automation operations using AXorcist
 public final class UIAutomationService: UIAutomationServiceProtocol {
     
+    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "UIAutomationService")
     let sessionManager: SessionManagerProtocol
     
     public init(sessionManager: SessionManagerProtocol? = nil) {
@@ -36,7 +38,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                     let center = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
                     try await performClick(at: center, clickType: clickType)
                 } else {
-                    throw UIAutomationError.elementNotFound(id)
+                    throw NotFoundError.element(id)
                 }
                 
             case .coordinates(let point):
@@ -57,10 +59,13 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                         let center = CGPoint(x: frame.midX, y: frame.midY)
                         try await performClick(at: center, clickType: clickType)
                     } else {
-                        throw UIAutomationError.clickFailed("Element has no frame")
+                        throw OperationError.interactionFailed(
+                            action: "click",
+                            reason: "Element has no frame"
+                        )
                     }
                 } else {
-                    throw UIAutomationError.elementNotFoundByQuery(query)
+                    throw NotFoundError.element(query)
                 }
             }
         } catch {
@@ -68,7 +73,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             if let uiError = error as? UIAutomationError {
                 throw uiError
             } else {
-                throw UIAutomationError.clickFailed(error.localizedDescription)
+                throw OperationError.interactionFailed(
+                    action: "click",
+                    reason: error.localizedDescription
+                )
             }
         }
     }
@@ -133,7 +141,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                     // Type the text
                     try await typeTextWithDelay(text, delay: TimeInterval(typingDelay) / 1000.0)
                 } else {
-                    throw UIAutomationError.elementNotFound(target)
+                    throw NotFoundError.element(target)
                 }
             } else {
                 // Type at current focus
@@ -162,7 +170,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             if let uiError = error as? UIAutomationError {
                 throw uiError
             } else {
-                throw UIAutomationError.typeFailed(error.localizedDescription)
+                throw OperationError.interactionFailed(
+                    action: "type",
+                    reason: error.localizedDescription
+                )
             }
         }
     }
@@ -173,14 +184,20 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             
             if let target = target {
                 // Scroll on specific element
-                if let element = await MainActor.run(body: { findElementByIdOrQuery(target, sessionId: sessionId) }) {
-                    if let frame = await MainActor.run(body: { element.frame() }) {
-                        scrollPoint = CGPoint(x: frame.midX, y: frame.midY)
-                    } else {
-                        throw UIAutomationError.scrollFailed("Element has no frame")
+                let elementFrame = await MainActor.run { () -> CGRect? in
+                    if let element = findElementByIdOrQuery(target, sessionId: sessionId) {
+                        return element.frame()
                     }
+                    return nil
+                }
+                
+                if let frame = elementFrame {
+                    scrollPoint = CGPoint(x: frame.midX, y: frame.midY)
                 } else {
-                    throw UIAutomationError.elementNotFound(target)
+                    throw OperationError.interactionFailed(
+                        action: "scroll",
+                        reason: "Element has no frame"
+                    )
                 }
             } else {
                 // Scroll at current mouse position
@@ -222,7 +239,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             if let uiError = error as? UIAutomationError {
                 throw uiError
             } else {
-                throw UIAutomationError.scrollFailed(error.localizedDescription)
+                throw OperationError.interactionFailed(
+                    action: "scroll",
+                    reason: error.localizedDescription
+                )
             }
         }
     }
@@ -309,7 +329,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             if let uiError = error as? UIAutomationError {
                 throw uiError
             } else {
-                throw UIAutomationError.hotkeyFailed(error.localizedDescription)
+                throw OperationError.interactionFailed(
+                    action: "hotkey",
+                    reason: error.localizedDescription
+                )
             }
         }
     }
@@ -368,11 +391,16 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                 }
                 mouseUp.post(tap: .cghidEventTap)
             }
+            
+            logger.info("Swipe operation completed successfully")
         } catch {
             if let uiError = error as? UIAutomationError {
                 throw uiError
             } else {
-                throw UIAutomationError.swipeFailed(error.localizedDescription)
+                throw OperationError.interactionFailed(
+                    action: "swipe",
+                    reason: error.localizedDescription
+                )
             }
         }
     }
@@ -505,23 +533,29 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                     }
                     
                 case .query(let query):
-                    if let element = await MainActor.run(body: { findElementByQuery(query) }) {
-                        if await isElementActionable(element) {
-                            let frame = await MainActor.run { element.frame() } ?? .zero
-                            let detectedElement = DetectedElement(
-                                id: "Q\(abs(query.hashValue))",
-                                type: .other,
-                                label: await MainActor.run { element.title() ?? element.roleDescription() ?? element.descriptionText() },
-                                value: await MainActor.run { element.value() as? String },
-                                bounds: frame,
-                                isEnabled: true
-                            )
-                            return WaitForElementResult(
-                                found: true,
-                                element: detectedElement,
-                                waitTime: Date().timeIntervalSince(startTime)
-                            )
+                    let elementInfo = await MainActor.run { () -> (element: Element, frame: CGRect, label: String?)? in
+                        if let element = findElementByQuery(query) {
+                            let frame = element.frame() ?? .zero
+                            let label = element.title() ?? element.roleDescription() ?? element.descriptionText()
+                            return (element, frame, label)
                         }
+                        return nil
+                    }
+                    
+                    if let info = elementInfo, await isElementActionable(info.element) {
+                        let detectedElement = DetectedElement(
+                            id: "Q\(abs(query.hashValue))",
+                            type: .other,
+                            label: info.label,
+                            value: await MainActor.run { info.element.value() as? String },
+                            bounds: info.frame,
+                            isEnabled: true
+                        )
+                        return WaitForElementResult(
+                            found: true,
+                            element: detectedElement,
+                            waitTime: Date().timeIntervalSince(startTime)
+                        )
                     }
                     
                 case .coordinates:
@@ -542,7 +576,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         }
         
         // Timeout reached
-        throw UIAutomationError.elementNotFoundWithinTimeout(timeout)
+        throw OperationError.timeout(
+            operation: "waitForElement",
+            duration: timeout
+        )
     }
     
     public func drag(from: CGPoint, to: CGPoint, duration: Int, steps: Int, modifiers: String?) async throws {
@@ -612,7 +649,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             if let uiError = error as? UIAutomationError {
                 throw uiError
             } else {
-                throw UIAutomationError.dragFailed(error.localizedDescription)
+                throw OperationError.interactionFailed(
+                    action: "drag",
+                    reason: error.localizedDescription
+                )
             }
         }
     }
@@ -861,8 +901,6 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             }
             return nil
         }
-        
-        return nil
     }
     
     @MainActor
@@ -916,6 +954,26 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     
     @MainActor
     private func findMatchingElementInTree(element: Element, query: String) -> Element? {
+        return findMatchingElementInTree(element: element, query: query, depth: 0, visitedElements: Set())
+    }
+    
+    @MainActor
+    private func findMatchingElementInTree(element: Element, query: String, depth: Int, visitedElements: Set<Element>) -> Element? {
+        // Prevent infinite recursion with depth limit
+        let maxDepth = 50
+        guard depth < maxDepth else {
+            logger.warning("Reached maximum depth (\(maxDepth)) while searching for '\(query)'")
+            return nil
+        }
+        
+        // Prevent circular references
+        var newVisitedElements = visitedElements
+        guard !newVisitedElements.contains(element) else {
+            logger.debug("Circular reference detected in UI tree")
+            return nil
+        }
+        newVisitedElements.insert(element)
+        
         // Check if current element matches
         if let title = element.title(), title.localizedCaseInsensitiveContains(query) {
             return element
@@ -929,14 +987,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             return element
         }
         
-        if let description = element.descriptionText(), description.localizedCaseInsensitiveContains(query) {
-            return element
-        }
-        
-        // Recursively search children
+        // Recursively search children with depth tracking
         if let children = element.children() {
             for child in children {
-                if let match = findMatchingElementInTree(element: child, query: query) {
+                if let match = findMatchingElementInTree(element: child, query: query, depth: depth + 1, visitedElements: newVisitedElements) {
                     return match
                 }
             }
@@ -962,7 +1016,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     @MainActor
     private func findElementByIdOrQuery(_ target: String, sessionId: String?) -> Element? {
         // First try as element ID from session
-        if let sessionId = sessionId {
+        if sessionId != nil {
             // Check if target looks like an element ID (e.g., "B1", "T2", etc.)
             if target.count >= 2 && target.first?.isLetter == true && target.dropFirst().allSatisfy({ $0.isNumber }) {
                 // This looks like an element ID, but we can't do async lookup here
@@ -978,43 +1032,6 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
 
 // MARK: - UI Automation Errors
 
-public enum UIAutomationError: LocalizedError {
-    case elementNotFound(String)
-    case elementNotFoundByQuery(String)
-    case elementNotFoundWithinTimeout(TimeInterval)
-    case clickFailed(String)
-    case typeFailed(String)
-    case scrollFailed(String)
-    case hotkeyFailed(String)
-    case swipeFailed(String)
-    case dragFailed(String)
-    case mouseMoveFailed(String)
-    
-    public var errorDescription: String? {
-        switch self {
-        case .elementNotFound(let id):
-            return "Element not found: \(id)"
-        case .elementNotFoundByQuery(let query):
-            return "No element found matching: \(query)"
-        case .elementNotFoundWithinTimeout(let timeout):
-            return "Element not found within \(String(format: "%.1f", timeout))s timeout"
-        case .clickFailed(let reason):
-            return "Click failed: \(reason)"
-        case .typeFailed(let reason):
-            return "Type failed: \(reason)"
-        case .scrollFailed(let reason):
-            return "Scroll failed: \(reason)"
-        case .hotkeyFailed(let reason):
-            return "Hotkey failed: \(reason)"
-        case .swipeFailed(let reason):
-            return "Swipe failed: \(reason)"
-        case .dragFailed(let reason):
-            return "Drag failed: \(reason)"
-        case .mouseMoveFailed(let reason):
-            return "Mouse move failed: \(reason)"
-        }
-    }
-}
 
 // MARK: - Extensions
 

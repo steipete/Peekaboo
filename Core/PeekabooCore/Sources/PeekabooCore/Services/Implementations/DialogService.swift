@@ -2,13 +2,34 @@ import Foundation
 import AppKit
 import AXorcist
 import ApplicationServices
+import os.log
+
+/// Dialog-specific errors
+public enum DialogError: Error {
+    case noActiveDialog
+    case dialogNotFound
+    case noFileDialog
+    case buttonNotFound(String)
+    case fieldNotFound
+    case invalidFieldIndex
+    case noTextFields
+    case noDismissButton
+}
 
 /// Default implementation of dialog management operations
 public final class DialogService: DialogServiceProtocol {
+    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "DialogService")
     
-    public init() {}
+    public init() {
+        logger.debug("DialogService initialized")
+    }
     
     public func findActiveDialog(windowTitle: String?) async throws -> DialogInfo {
+        logger.info("Finding active dialog")
+        if let title = windowTitle {
+            logger.debug("Looking for window with title: \(title)")
+        }
+        
         return try await MainActor.run {
             let element = try findDialogElement(withTitle: windowTitle)
             
@@ -24,34 +45,48 @@ public final class DialogService: DialogServiceProtocol {
             let size = element.size() ?? .zero
             let bounds = CGRect(origin: position, size: size)
             
-            return DialogInfo(
+            let info = DialogInfo(
                 title: title,
                 role: role,
                 subrole: subrole,
                 isFileDialog: isFileDialog,
                 bounds: bounds
             )
+            
+            logger.info("✅ Found dialog: \(title), file dialog: \(isFileDialog)")
+            return info
         }
     }
     
     public func clickButton(buttonText: String, windowTitle: String?) async throws -> DialogActionResult {
+        logger.info("Clicking button: \(buttonText)")
+        if let title = windowTitle {
+            logger.debug("In window: \(title)")
+        }
+        
         return try await MainActor.run {
             let dialog = try findDialogElement(withTitle: windowTitle)
             
             // Find buttons
             let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
+            logger.debug("Found \(buttons.count) buttons in dialog")
             
             // Find target button (exact match or contains)
             guard let targetButton = buttons.first(where: { btn in
                 btn.title() == buttonText || btn.title()?.contains(buttonText) == true
             }) else {
-                throw DialogError.buttonNotFound(buttonText)
+                throw NotFoundError(
+                    code: .elementNotFound,
+                    userMessage: "Button '\(buttonText)' not found in dialog.",
+                    context: ["button": buttonText, "dialog": dialog.title() ?? "Dialog"]
+                )
             }
             
             // Click the button
+            logger.debug("Clicking button: \(targetButton.title() ?? buttonText)")
             try targetButton.performAction(.press)
             
-            return DialogActionResult(
+            let result = DialogActionResult(
                 success: true,
                 action: .clickButton,
                 details: [
@@ -59,18 +94,34 @@ public final class DialogService: DialogServiceProtocol {
                     "window": dialog.title() ?? "Dialog"
                 ]
             )
+            
+            logger.info("✅ Successfully clicked button: \(targetButton.title() ?? buttonText)")
+            return result
         }
     }
     
     public func enterText(text: String, fieldIdentifier: String?, clearExisting: Bool, windowTitle: String?) async throws -> DialogActionResult {
-        // First, find the dialog and field on MainActor
-        let (dialog, targetField) = try await MainActor.run {
+        logger.info("Entering text into dialog field")
+        logger.debug("Text length: \(text.count) chars, clear existing: \(clearExisting)")
+        if let identifier = fieldIdentifier {
+            logger.debug("Target field: \(identifier)")
+        }
+        
+        // Perform all operations within MainActor context
+        return try await MainActor.run {
             let dialog = try findDialogElement(withTitle: windowTitle)
             
             // Find text fields
             let textFields = collectTextFields(from: dialog)
+            logger.debug("Found \(textFields.count) text fields")
+            
             guard !textFields.isEmpty else {
-                throw DialogError.noTextFields
+                logger.error("No text fields found in dialog")
+                throw NotFoundError(
+                    code: .elementNotFound,
+                    userMessage: "No text fields found in dialog.",
+                    context: ["dialog": dialog.title() ?? "Dialog"]
+                )
             }
             
             // Select target field
@@ -80,7 +131,11 @@ public final class DialogService: DialogServiceProtocol {
                 // Try to parse as index
                 if let index = Int(identifier) {
                     guard index < textFields.count else {
-                        throw DialogError.invalidFieldIndex(index)
+                        throw ValidationError(
+                            code: .invalidInput,
+                            userMessage: "Invalid field index: \(index). Dialog has \(textFields.count) fields.",
+                            context: ["field": "index", "value": String(index), "count": String(textFields.count)]
+                        )
                     }
                     targetField = textFields[index]
                 } else {
@@ -90,7 +145,11 @@ public final class DialogService: DialogServiceProtocol {
                         field.attribute(Attribute<String>("AXPlaceholderValue")) == identifier ||
                         field.descriptionText()?.contains(identifier) == true
                     }) else {
-                        throw DialogError.fieldNotFound(identifier)
+                        throw NotFoundError(
+                            code: .elementNotFound,
+                            userMessage: "Text field '\(identifier)' not found in dialog.",
+                            context: ["field": identifier, "dialog": dialog.title() ?? "Dialog"]
+                        )
                     }
                     targetField = field
                 }
@@ -100,14 +159,13 @@ public final class DialogService: DialogServiceProtocol {
             }
             
             // Focus the field
+            logger.debug("Focusing text field")
             try targetField.performAction(.press)
             
-            return (dialog, targetField)
-        }
-        
-        // Clear if requested
-        if clearExisting {
-            await MainActor.run {
+            // Clear if requested
+            if clearExisting {
+                logger.debug("Clearing existing text")
+                
                 // Select all (Cmd+A)
                 let selectAll = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: true) // A
                 selectAll?.flags = .maskCommand
@@ -116,77 +174,89 @@ public final class DialogService: DialogServiceProtocol {
                 // Delete
                 let deleteKey = CGEvent(keyboardEventSource: nil, virtualKey: 0x33, keyDown: true) // Delete
                 deleteKey?.post(tap: .cghidEventTap)
+                
+                // Small delay
+                usleep(50_000) // 50ms
             }
             
-            // Small delay
-            try await Task.sleep(nanoseconds: 50_000_000) // 50ms
-        }
-        
-        // Type the text
-        for char in text {
-            try await MainActor.run {
+            // Type the text
+            logger.debug("Typing text into field")
+            for char in text {
                 try typeCharacter(char)
+                usleep(10_000) // 10ms between characters
             }
-            try await Task.sleep(nanoseconds: 10_000_000) // 10ms between characters
+            
+            let result = DialogActionResult(
+                success: true,
+                action: .enterText,
+                details: [
+                    "field": targetField.title() ?? "Text Field",
+                    "text_length": String(text.count),
+                    "cleared": String(clearExisting)
+                ]
+            )
+            
+            logger.info("✅ Successfully entered text into field")
+            return result
         }
-        
-        return DialogActionResult(
-            success: true,
-            action: .enterText,
-            details: [
-                "field": await MainActor.run { targetField.title() } ?? "Text Field",
-                "text_length": String(text.count),
-                "cleared": String(clearExisting)
-            ]
-        )
     }
     
     public func handleFileDialog(path: String?, filename: String?, actionButton: String = "Save") async throws -> DialogActionResult {
-        // First find the dialog
-        let dialog = try await MainActor.run {
-            try findFileDialogElement()
+        logger.info("Handling file dialog")
+        if let path = path {
+            logger.debug("Path: \(path)")
         }
+        if let filename = filename {
+            logger.debug("Filename: \(filename)")
+        }
+        logger.debug("Action button: \(actionButton)")
         
-        var details: [String: String] = [:]
-        
-        // Handle path navigation
-        if let filePath = path {
-            await MainActor.run {
+        // Perform all operations within MainActor context
+        return try await MainActor.run {
+            let dialog = try findFileDialogElement()
+            var details: [String: String] = [:]
+            
+            // Handle path navigation
+            if let filePath = path {
+                logger.debug("Navigating to path using Cmd+Shift+G")
+                
                 // Use Go To folder shortcut (Cmd+Shift+G)
                 let cmdShiftG = CGEvent(keyboardEventSource: nil, virtualKey: 0x05, keyDown: true) // G
                 cmdShiftG?.flags = [.maskCommand, .maskShift]
                 cmdShiftG?.post(tap: .cghidEventTap)
-            }
-            
-            // Wait for go to sheet
-            try await Task.sleep(nanoseconds: 200_000_000) // 200ms
-            
-            // Type the path
-            for char in filePath {
-                try await MainActor.run {
+                
+                // Wait for go to sheet
+                usleep(200_000) // 200ms
+                
+                // Type the path
+                for char in filePath {
                     try typeCharacter(char)
+                    usleep(5_000) // 5ms between characters
                 }
-                try await Task.sleep(nanoseconds: 5_000_000) // 5ms between characters
-            }
-            
-            // Press Enter
-            await MainActor.run {
+                
+                // Press Enter
                 let enter = CGEvent(keyboardEventSource: nil, virtualKey: 0x24, keyDown: true) // Return
                 enter?.post(tap: .cghidEventTap)
+                
+                usleep(100_000) // 100ms
+                details["path"] = filePath
             }
             
-            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
-            details["path"] = filePath
-        }
-        
-        // Handle filename
-        if let fileName = filename {
-            // Find the name field (usually the first text field)
-            let nameField = try await MainActor.run {
+            // Handle filename
+            if let fileName = filename {
+                logger.debug("Setting filename in dialog")
+                
+                // Find the name field (usually the first text field)
                 let textFields = collectTextFields(from: dialog)
                 guard let field = textFields.first else {
-                    throw DialogError.noTextFields
+                    logger.error("No text fields found in file dialog")
+                    throw NotFoundError(
+                    code: .elementNotFound,
+                    userMessage: "No text fields found in dialog.",
+                    context: ["dialog": dialog.title() ?? "Dialog"]
+                )
                 }
+                
                 // Focus and clear the field
                 try field.performAction(.press)
                 
@@ -195,46 +265,51 @@ public final class DialogService: DialogServiceProtocol {
                 selectAll?.flags = .maskCommand
                 selectAll?.post(tap: .cghidEventTap)
                 
-                return field
-            }
-            
-            try await Task.sleep(nanoseconds: 50_000_000) // 50ms
-            
-            // Type the filename
-            for char in fileName {
-                try await MainActor.run {
+                usleep(50_000) // 50ms
+                
+                // Type the filename
+                for char in fileName {
                     try typeCharacter(char)
+                    usleep(5_000) // 5ms between characters
                 }
-                try await Task.sleep(nanoseconds: 5_000_000) // 5ms between characters
+                
+                details["filename"] = fileName
             }
             
-            details["filename"] = fileName
-        }
-        
-        // Click the action button
-        try await MainActor.run {
+            // Click the action button
             let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
+            logger.debug("Found \(buttons.count) buttons, looking for: \(actionButton)")
+            
             if let button = buttons.first(where: { $0.title() == actionButton }) {
+                logger.debug("Clicking action button: \(actionButton)")
                 try button.performAction(.press)
                 details["button_clicked"] = actionButton
             }
+            
+            let result = DialogActionResult(
+                success: true,
+                action: .handleFileDialog,
+                details: details
+            )
+            
+            logger.info("✅ Successfully handled file dialog")
+            return result
         }
-        
-        return DialogActionResult(
-            success: true,
-            action: .handleFileDialog,
-            details: details
-        )
     }
     
     public func dismissDialog(force: Bool, windowTitle: String?) async throws -> DialogActionResult {
+        logger.info("Dismissing dialog (force: \(force))")
+        
         if force {
             await MainActor.run {
+                logger.debug("Force dismissing with Escape key")
+                
                 // Press Escape
                 let escape = CGEvent(keyboardEventSource: nil, virtualKey: 0x35, keyDown: true) // Escape
                 escape?.post(tap: .cghidEventTap)
             }
             
+            logger.info("✅ Dialog dismissed with Escape key")
             return DialogActionResult(
                 success: true,
                 action: .dismiss,
@@ -242,17 +317,23 @@ public final class DialogService: DialogServiceProtocol {
             )
         } else {
             return try await MainActor.run {
+                logger.debug("Looking for dismiss button")
+                
                 // Find and click dismiss button
                 let dialog = try findDialogElement(withTitle: windowTitle)
                 let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
+                logger.debug("Found \(buttons.count) buttons in dialog")
                 
                 // Look for common dismiss buttons
                 let dismissButtons = ["Cancel", "Close", "Dismiss", "No", "Don't Save"]
+                logger.debug("Looking for dismiss buttons: \(dismissButtons.joined(separator: ", "))")
                 
                 for buttonName in dismissButtons {
                     if let button = buttons.first(where: { $0.title() == buttonName }) {
+                        logger.debug("Found dismiss button: \(buttonName)")
                         try button.performAction(.press)
                         
+                        logger.info("✅ Dialog dismissed by clicking: \(buttonName)")
                         return DialogActionResult(
                             success: true,
                             action: .dismiss,
@@ -264,21 +345,33 @@ public final class DialogService: DialogServiceProtocol {
                     }
                 }
                 
-                throw DialogError.noDismissButton
+                logger.error("No dismiss button found in dialog")
+                throw NotFoundError(
+                    code: .elementNotFound,
+                    userMessage: "No dismiss button found in dialog.",
+                    context: ["dialog": dialog.title() ?? "Dialog", "searched_buttons": dismissButtons.joined(separator: ", ")]
+                )
             }
         }
     }
     
     public func listDialogElements(windowTitle: String?) async throws -> DialogElements {
-        let dialog = try await MainActor.run {
-            try findDialogElement(withTitle: windowTitle)
+        logger.info("Listing dialog elements")
+        if let title = windowTitle {
+            logger.debug("For window: \(title)")
         }
         
+        // Get dialog info first (this is already properly structured)
         let dialogInfo = try await findActiveDialog(windowTitle: windowTitle)
         
-        return await MainActor.run {
+        // Then collect all elements within MainActor context
+        return try await MainActor.run {
+            let dialog = try findDialogElement(withTitle: windowTitle)
+            
             // Collect buttons
             let axButtons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
+            logger.debug("Found \(axButtons.count) buttons")
+            
             let buttons = axButtons.compactMap { btn -> DialogButton? in
                 guard let title = btn.title() else { return nil }
                 let isEnabled = btn.isEnabled() ?? true
@@ -293,6 +386,8 @@ public final class DialogService: DialogServiceProtocol {
             
             // Collect text fields
             let axTextFields = collectTextFields(from: dialog)
+            logger.debug("Found \(axTextFields.count) text fields")
+            
             let textFields = axTextFields.enumerated().map { index, field in
                 DialogTextField(
                     title: field.title(),
@@ -306,6 +401,7 @@ public final class DialogService: DialogServiceProtocol {
             // Collect static texts
             let axStaticTexts = dialog.children()?.filter { $0.role() == "AXStaticText" } ?? []
             let staticTexts = axStaticTexts.compactMap { $0.value() as? String }
+            logger.debug("Found \(staticTexts.count) static texts")
             
             // Collect other elements
             let otherAxElements = dialog.children()?.filter { element in
@@ -323,13 +419,16 @@ public final class DialogService: DialogServiceProtocol {
                 )
             }
             
-            return DialogElements(
+            let elements = DialogElements(
                 dialogInfo: dialogInfo,
                 buttons: buttons,
                 textFields: textFields,
                 staticTexts: staticTexts,
                 otherElements: otherElements
             )
+            
+            logger.info("✅ Listed \(buttons.count) buttons, \(textFields.count) fields, \(staticTexts.count) texts")
+            return elements
         }
     }
     
@@ -337,14 +436,22 @@ public final class DialogService: DialogServiceProtocol {
     
     @MainActor
     private func findDialogElement(withTitle title: String?) throws -> Element {
+        logger.debug("Finding dialog element")
+        
         // Get frontmost application
         let systemWide = Element.systemWide()
         guard let focusedApp = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) else {
-            throw DialogError.noActiveDialog
+            logger.error("No focused application found")
+            throw NotFoundError(
+                code: .elementNotFound,
+                userMessage: "No active dialog window found.",
+                context: ["reason": "no_focused_application"]
+            )
         }
         
         // Look for windows that are likely dialogs
         let windows = focusedApp.windows() ?? []
+        logger.debug("Checking \(windows.count) windows for dialogs")
         
         for window in windows {
             let role = window.role() ?? ""
@@ -354,9 +461,11 @@ public final class DialogService: DialogServiceProtocol {
             if role == "AXWindow" && (subrole == "AXDialog" || subrole == "AXSystemDialog") {
                 if let targetTitle = title {
                     if window.title() == targetTitle {
+                        logger.debug("Found dialog with title: \(targetTitle)")
                         return window
                     }
                 } else {
+                    logger.debug("Found dialog: \(window.title() ?? "Untitled")")
                     return window
                 }
             }
@@ -394,7 +503,11 @@ public final class DialogService: DialogServiceProtocol {
         // File dialogs often have specific subroles
         let systemWide = Element.systemWide()
         guard let focusedApp = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) else {
-            throw DialogError.noActiveDialog
+            throw NotFoundError(
+                code: .elementNotFound,
+                userMessage: "No active dialog window found.",
+                context: ["reason": "no_focused_application"]
+            )
         }
         
         let windows = focusedApp.windows() ?? []
@@ -410,7 +523,11 @@ public final class DialogService: DialogServiceProtocol {
             }
         }
         
-        throw DialogError.noFileDialog
+        throw NotFoundError(
+            code: .elementNotFound,
+            userMessage: "No file dialog (Save/Open) found.",
+            context: ["dialog_type": "file_dialog"]
+        )
     }
     
     @MainActor
@@ -433,6 +550,7 @@ public final class DialogService: DialogServiceProtocol {
         return fields
     }
     
+    @MainActor
     private func typeCharacter(_ char: Character) throws {
         // Extended key mapping
         let keyMap: [Character: (CGKeyCode, Bool)] = [
@@ -521,32 +639,3 @@ public final class DialogService: DialogServiceProtocol {
     }
 }
 
-/// Errors specific to dialog operations
-public enum DialogError: LocalizedError {
-    case noActiveDialog
-    case noFileDialog
-    case buttonNotFound(String)
-    case fieldNotFound(String)
-    case invalidFieldIndex(Int)
-    case noTextFields
-    case noDismissButton
-    
-    public var errorDescription: String? {
-        switch self {
-        case .noActiveDialog:
-            return "No active dialog found"
-        case .noFileDialog:
-            return "No file dialog found"
-        case .buttonNotFound(let button):
-            return "Button '\(button)' not found in dialog"
-        case .fieldNotFound(let field):
-            return "Field '\(field)' not found in dialog"
-        case .invalidFieldIndex(let index):
-            return "Invalid field index: \(index)"
-        case .noTextFields:
-            return "No text fields found in dialog"
-        case .noDismissButton:
-            return "No dismiss button found in dialog"
-        }
-    }
-}
