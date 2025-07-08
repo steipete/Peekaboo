@@ -105,30 +105,3 @@ public struct StepExecutionResult: Sendable {
         self.sessionId = sessionId
     }
 }
-
-/// Errors that can occur during script processing
-public enum ProcessServiceError: LocalizedError, Sendable {
-    case scriptNotFound(String)
-    case invalidScriptFormat(String)
-    case unknownCommand(String)
-    case stepExecutionFailed(String)
-    case missingRequiredParameter(command: String, parameter: String)
-    case invalidParameterValue(command: String, parameter: String, value: String)
-    
-    public var errorDescription: String? {
-        switch self {
-        case .scriptNotFound(let path):
-            return "Script file not found: \(path)"
-        case .invalidScriptFormat(let reason):
-            return "Invalid script format: \(reason)"
-        case .unknownCommand(let command):
-            return "Unknown command: \(command)"
-        case .stepExecutionFailed(let reason):
-            return "Step execution failed: \(reason)"
-        case .missingRequiredParameter(let command, let parameter):
-            return "Missing required parameter '\(parameter)' for command '\(command)'"
-        case .invalidParameterValue(let command, let parameter, let value):
-            return "Invalid value '\(value)' for parameter '\(parameter)' in command '\(command)'"
-        }
-    }
-}

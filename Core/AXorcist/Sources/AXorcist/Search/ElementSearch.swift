@@ -10,6 +10,42 @@ private let logger = Logger(label: "AXorcist.ElementSearch")
 
 // MARK: - Main Element Finding Orchestration
 
+/// Provides sophisticated UI element search capabilities using accessibility APIs.
+///
+/// `ElementSearch` implements advanced search algorithms for finding UI elements
+/// based on various criteria including text content, element type, attributes,
+/// and hierarchical paths. It supports both exhaustive searches and optimized
+/// path-based navigation.
+///
+/// ## Overview
+///
+/// The search system:
+/// - Supports multiple search criteria with flexible matching
+/// - Optimizes searches using path hints when available
+/// - Handles complex element hierarchies efficiently
+/// - Provides timeout protection for long searches
+/// - Supports fuzzy text matching and attribute-based filtering
+///
+/// ## Topics
+///
+/// ### Primary Search Function
+///
+/// - ``findTargetElement(for:locator:maxDepthForSearch:)``
+///
+/// ### Search Types
+///
+/// - ``Locator`` - Combines search criteria with path hints
+/// - ``SearchCriterion`` - Individual search conditions
+/// - ``PathStep`` - Navigation steps for path-based search
+///
+/// ### Helper Functions
+///
+/// - ``collectAllUIElements(_:maxDepth:)``
+/// - ``findElementByCriteria(startingFrom:criteria:depth:)``
+class ElementSearch {
+    // This is a placeholder for documentation - the actual implementation uses free functions
+}
+
 /**
  Unified function to find a target element based on application, locator (criteria and/or JSON path hint).
  This is the primary entry point for handlers.

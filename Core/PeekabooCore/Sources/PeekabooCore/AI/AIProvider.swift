@@ -17,7 +17,7 @@ public protocol AIProvider {
 ///
 /// Contains availability status, error messages if unavailable,
 /// and detailed diagnostic information.
-public struct AIProviderStatus {
+public struct AIProviderStatus: Sendable {
     public let available: Bool
     public let error: String?
     public let details: AIProviderDetails?
@@ -33,7 +33,7 @@ public struct AIProviderStatus {
 ///
 /// Provides granular information about why a provider might be unavailable,
 /// including server connectivity, API key presence, and model availability.
-public struct AIProviderDetails {
+public struct AIProviderDetails: Sendable {
     public let modelAvailable: Bool?
     public let serverReachable: Bool?
     public let apiKeyPresent: Bool?

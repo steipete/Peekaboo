@@ -35,7 +35,11 @@ public actor ProcessService: ProcessServiceProtocol {
         let url = URL(fileURLWithPath: path)
         
         guard FileManager.default.fileExists(atPath: url.path) else {
-            throw ProcessServiceError.scriptNotFound(path)
+            throw NotFoundError(
+                code: .fileNotFound,
+                userMessage: "Script file not found: \(path)",
+                context: ["path": path]
+            )
         }
         
         do {
@@ -43,7 +47,11 @@ public actor ProcessService: ProcessServiceProtocol {
             let decoder = JSONDecoder()
             return try decoder.decode(PeekabooScript.self, from: data)
         } catch {
-            throw ProcessServiceError.invalidScriptFormat(error.localizedDescription)
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Invalid script format: \(error.localizedDescription)",
+                context: ["field": "script", "reason": error.localizedDescription]
+            )
         }
     }
     
@@ -145,7 +153,11 @@ public actor ProcessService: ProcessServiceProtocol {
             return try await executeAppCommand(step)
             
         default:
-            throw ProcessServiceError.unknownCommand(step.command)
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Unknown command: \(step.command)",
+                context: ["field": "command", "value": step.command]
+            )
         }
     }
     
@@ -261,7 +273,11 @@ public actor ProcessService: ProcessServiceProtocol {
     
     private func executeClickCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
         guard let effectiveSessionId = sessionId ?? step.params?["session"]?.value as? String else {
-            throw ProcessServiceError.missingRequiredParameter(command: "click", parameter: "session")
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Missing required parameter 'session' for command 'click'",
+                context: ["command": "click", "parameter": "session"]
+            )
         }
         
         let query = step.params?["query"]?.value as? String
@@ -272,7 +288,11 @@ public actor ProcessService: ProcessServiceProtocol {
         
         // Get session detection result
         guard let _ = try await sessionManager.getDetectionResult(sessionId: effectiveSessionId) else {
-            throw ProcessServiceError.stepExecutionFailed("Session not found: \(effectiveSessionId)")
+            throw NotFoundError(
+                code: .sessionNotFound,
+                userMessage: "Session not found: \(effectiveSessionId)",
+                context: ["session_id": effectiveSessionId]
+            )
         }
         
         // Determine click target
@@ -282,7 +302,11 @@ public actor ProcessService: ProcessServiceProtocol {
         } else if let query = query {
             clickTarget = .query(query)
         } else {
-            throw ProcessServiceError.missingRequiredParameter(command: "click", parameter: "query or element")
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Missing required parameter 'query' or 'element' for command 'click'",
+                context: ["command": "click", "parameters": "query or element"]
+            )
         }
         
         // Perform click
@@ -301,7 +325,11 @@ public actor ProcessService: ProcessServiceProtocol {
     
     private func executeTypeCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
         guard let text = step.params?["text"]?.value as? String else {
-            throw ProcessServiceError.missingRequiredParameter(command: "type", parameter: "text")
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Missing required parameter 'text' for command 'type'",
+                context: ["command": "type", "parameter": "text"]
+            )
         }
         
         let clearFirst = step.params?["clear-first"]?.value as? Bool ?? false
@@ -435,7 +463,11 @@ public actor ProcessService: ProcessServiceProtocol {
               let fromY = step.params?["from-y"]?.value as? Double,
               let toX = step.params?["to-x"]?.value as? Double,
               let toY = step.params?["to-y"]?.value as? Double else {
-            throw ProcessServiceError.missingRequiredParameter(command: "drag", parameter: "coordinates")
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Missing required coordinates for drag command",
+                context: ["command": "drag", "parameters": "from-x, from-y, to-x, to-y"]
+            )
         }
         
         let duration = step.params?["duration"]?.value as? Double ?? 1.0
@@ -459,7 +491,11 @@ public actor ProcessService: ProcessServiceProtocol {
     
     private func executeHotkeyCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
         guard let key = step.params?["key"]?.value as? String else {
-            throw ProcessServiceError.missingRequiredParameter(command: "hotkey", parameter: "key")
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Missing required parameter 'key' for command 'hotkey'",
+                context: ["command": "hotkey", "parameter": "key"]
+            )
         }
         
         let modifiers = parseModifiers(from: step.params)
@@ -516,7 +552,11 @@ public actor ProcessService: ProcessServiceProtocol {
         }
         
         guard let window = targetWindow else {
-            throw ProcessServiceError.stepExecutionFailed("No window found")
+            throw NotFoundError(
+                code: .windowNotFound,
+                userMessage: "No window found matching the specified criteria",
+                context: ["app": app ?? "any", "title": title ?? "any", "index": String(index ?? -1)]
+            )
         }
         
         // Perform the action
@@ -540,7 +580,11 @@ public actor ProcessService: ProcessServiceProtocol {
                 try await windowManagementService.resizeWindow(target: .windowId(window.windowID), to: CGSize(width: width, height: height))
             }
         default:
-            throw ProcessServiceError.invalidParameterValue(command: "window", parameter: "action", value: action)
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Invalid action '\(action)' for window command",
+                context: ["command": "window", "parameter": "action", "value": action]
+            )
         }
         
         return StepExecutionResult(
@@ -551,7 +595,11 @@ public actor ProcessService: ProcessServiceProtocol {
     
     private func executeMenuCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
         guard let menuPath = step.params?["path"]?.value as? String else {
-            throw ProcessServiceError.missingRequiredParameter(command: "menu", parameter: "path")
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Missing required parameter 'path' for command 'menu'",
+                context: ["command": "menu", "parameter": "path"]
+            )
         }
         
         let app = step.params?["app"]?.value as? String
@@ -586,7 +634,11 @@ public actor ProcessService: ProcessServiceProtocol {
             
         case "click":
             guard let itemName = step.params?["item"]?.value as? String else {
-                throw ProcessServiceError.missingRequiredParameter(command: "dock", parameter: "item")
+                throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Missing required parameter 'item' for dock command",
+                context: ["command": "dock", "parameter": "item", "action": action]
+            )
             }
             try await dockService.launchFromDock(appName: itemName)
             return StepExecutionResult(
@@ -596,10 +648,18 @@ public actor ProcessService: ProcessServiceProtocol {
             
         case "add":
             guard let path = step.params?["path"]?.value as? String else {
-                throw ProcessServiceError.missingRequiredParameter(command: "dock", parameter: "path")
+                throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Missing required parameter 'path' for dock add command",
+                context: ["command": "dock", "parameter": "path", "action": "add"]
+            )
             }
             // Dock service doesn't support adding items directly
-            throw ProcessServiceError.stepExecutionFailed("Adding items to Dock is not supported")
+            throw OperationError(
+                code: .interactionFailed,
+                userMessage: "Adding items to Dock is not supported",
+                context: ["action": "dock_add", "reason": "unsupported_operation"]
+            )
             return StepExecutionResult(
                 output: ["added": path],
                 sessionId: nil
@@ -607,24 +667,40 @@ public actor ProcessService: ProcessServiceProtocol {
             
         case "remove":
             guard let itemName = step.params?["item"]?.value as? String else {
-                throw ProcessServiceError.missingRequiredParameter(command: "dock", parameter: "item")
+                throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Missing required parameter 'item' for dock command",
+                context: ["command": "dock", "parameter": "item", "action": action]
+            )
             }
             // Dock service doesn't support removing items directly
-            throw ProcessServiceError.stepExecutionFailed("Removing items from Dock is not supported")
+            throw OperationError(
+                code: .interactionFailed,
+                userMessage: "Removing items from Dock is not supported",
+                context: ["action": "dock_remove", "reason": "unsupported_operation"]
+            )
             return StepExecutionResult(
                 output: ["removed": itemName],
                 sessionId: nil
             )
             
         default:
-            throw ProcessServiceError.invalidParameterValue(command: "dock", parameter: "action", value: action)
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Invalid action '\(action)' for dock command",
+                context: ["command": "dock", "parameter": "action", "value": action]
+            )
         }
     }
     
     private func executeAppCommand(_ step: ScriptStep) async throws -> StepExecutionResult {
         let action = step.params?["action"]?.value as? String ?? "launch"
         guard let appName = step.params?["name"]?.value as? String else {
-            throw ProcessServiceError.missingRequiredParameter(command: "app", parameter: "name")
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Missing required parameter 'name' for command 'app'",
+                context: ["command": "app", "parameter": "name"]
+            )
         }
         
         switch action.lowercased() {
@@ -664,7 +740,11 @@ public actor ProcessService: ProcessServiceProtocol {
             )
             
         default:
-            throw ProcessServiceError.invalidParameterValue(command: "app", parameter: "action", value: action)
+            throw ValidationError(
+                code: .invalidInput,
+                userMessage: "Invalid action '\(action)' for app command",
+                context: ["command": "app", "parameter": "action", "value": action]
+            )
         }
     }
     

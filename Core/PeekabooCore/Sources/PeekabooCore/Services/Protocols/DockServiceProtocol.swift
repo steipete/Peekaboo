@@ -88,33 +88,3 @@ public enum DockItemType: String, Sendable, Codable {
     case trash = "trash"
     case unknown = "unknown"
 }
-
-/// Errors specific to Dock operations
-public enum DockError: LocalizedError {
-    case dockNotFound
-    case dockListNotFound
-    case itemNotFound(String)
-    case menuItemNotFound(String)
-    case positionNotFound
-    case launchFailed(String)
-    case scriptError(String)
-    
-    public var errorDescription: String? {
-        switch self {
-        case .dockNotFound:
-            return "Dock application not found"
-        case .dockListNotFound:
-            return "Dock item list not found"
-        case .itemNotFound(let item):
-            return "Dock item '\(item)' not found"
-        case .menuItemNotFound(let item):
-            return "Menu item '\(item)' not found in context menu"
-        case .positionNotFound:
-            return "Could not determine Dock item position"
-        case .launchFailed(let app):
-            return "Failed to launch '\(app)' from Dock"
-        case .scriptError(let error):
-            return "Script error: \(error)"
-        }
-    }
-}

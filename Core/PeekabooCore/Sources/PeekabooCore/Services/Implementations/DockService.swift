@@ -4,6 +4,17 @@ import AppKit
 import ApplicationServices
 import CoreGraphics
 
+/// Dock-specific errors
+public enum DockError: Error {
+    case dockNotFound
+    case dockListNotFound
+    case itemNotFound(String)
+    case menuItemNotFound(String)
+    case positionNotFound
+    case launchFailed(String)
+    case scriptError(String)
+}
+
 /// Default implementation of Dock interaction operations using AXorcist
 public final class DockService: DockServiceProtocol {
     
@@ -13,12 +24,20 @@ public final class DockService: DockServiceProtocol {
         return try await MainActor.run {
             // Find Dock application
             guard let dock = findDockApplication() else {
-                throw DockError.dockNotFound
+                throw NotFoundError(
+                    code: .applicationNotFound,
+                    userMessage: "Dock application not found or not running.",
+                    context: ["bundle_id": "com.apple.dock"]
+                )
             }
             
             // Get Dock items list
             guard let dockList = dock.children()?.first(where: { $0.role() == "AXList" }) else {
-                throw DockError.dockListNotFound
+                throw NotFoundError(
+                    code: .elementNotFound,
+                    userMessage: "Dock item list not found.",
+                    context: ["element": "AXList", "parent": "Dock"]
+                )
             }
             
             let dockElements = dockList.children() ?? []
@@ -98,7 +117,11 @@ public final class DockService: DockServiceProtocol {
                 try dockElement.performAction(.press)
             }
         } catch {
-            throw DockError.launchFailed(appName)
+            throw OperationError(
+                code: .interactionFailed,
+                userMessage: "Failed to launch '\(appName)' from Dock.",
+                context: ["action": "launch", "app": appName, "reason": error.localizedDescription]
+            )
         }
         
         // Wait a bit for the launch to initiate
@@ -113,7 +136,11 @@ public final class DockService: DockServiceProtocol {
             // Get item position and size
             guard let position = element.position(),
                   let size = element.size() else {
-                throw DockError.positionNotFound
+                throw OperationError(
+                    code: .interactionFailed,
+                    userMessage: "Could not determine Dock item position for '\(appName)'.",
+                    context: ["action": "get_position", "app": appName]
+                )
             }
             
             let centerPoint = CGPoint(
@@ -173,13 +200,21 @@ public final class DockService: DockServiceProtocol {
                         item.title() == targetMenuItem ||
                         item.title()?.contains(targetMenuItem) == true
                     }) else {
-                        throw DockError.menuItemNotFound(targetMenuItem)
+                        throw NotFoundError(
+                            code: .menuNotFound,
+                            userMessage: "Menu item '\(targetMenuItem)' not found in context menu.",
+                            context: ["menu_item": targetMenuItem, "app": appName]
+                        )
                     }
                     
                     try targetItem.performAction(.press)
                 } else {
                     // If we can't find the menu, throw an error
-                    throw DockError.menuItemNotFound("Could not find context menu")
+                    throw NotFoundError(
+                        code: .menuNotFound,
+                        userMessage: "Context menu not found after right-clicking '\(appName)'.",
+                        context: ["app": appName, "action": "right_click"]
+                    )
                 }
             }
         }
@@ -240,7 +275,11 @@ public final class DockService: DockServiceProtocol {
             return partialMatches[0]
         }
         
-        throw DockError.itemNotFound(name)
+        throw NotFoundError(
+            code: .elementNotFound,
+            userMessage: "Dock item '\(name)' not found.",
+            context: ["item": name, "location": "dock"]
+        )
     }
     
     // MARK: - Private Helpers
@@ -342,7 +381,11 @@ public final class DockService: DockServiceProtocol {
                     if process.terminationStatus != 0 {
                         let data = pipe.fileHandleForReading.readDataToEndOfFile()
                         let error = String(data: data, encoding: .utf8) ?? "Unknown error"
-                        continuation.resume(throwing: DockError.scriptError(error))
+                        continuation.resume(throwing: OperationError(
+                            code: .interactionFailed,
+                            userMessage: "AppleScript execution failed: \(error)",
+                            context: ["script_type": "dock_control", "error": error]
+                        ))
                     } else if captureOutput {
                         let data = pipe.fileHandleForReading.readDataToEndOfFile()
                         let output = String(data: data, encoding: .utf8) ?? ""

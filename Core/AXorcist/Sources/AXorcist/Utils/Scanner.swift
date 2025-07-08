@@ -2,7 +2,50 @@
 
 import Foundation
 
-// Scanner class from Scanner
+/// A lightweight string scanning utility for parsing text.
+///
+/// `Scanner` provides efficient character-by-character scanning of strings with
+/// support for character sets, string literals, and pattern matching. It maintains
+/// a current position and allows for forward scanning operations.
+///
+/// ## Overview
+///
+/// The scanner:
+/// - Maintains a current position in the string
+/// - Supports scanning based on character sets
+/// - Can scan for specific strings or patterns
+/// - Provides utilities for identifier parsing
+/// - Allows peeking at upcoming characters without advancing
+///
+/// This is an internal utility class used by AXorcist for parsing various string formats.
+///
+/// ## Topics
+///
+/// ### Creating a Scanner
+///
+/// - ``init(string:)``
+///
+/// ### Scanner State
+///
+/// - ``string``
+/// - ``location``
+/// - ``isAtEnd``
+/// - ``remainingString``
+///
+/// ### Character Set Scanning
+///
+/// - ``scanUpToCharacters(in:)``
+/// - ``scanCharacters(from:)``
+///
+/// ### String Scanning
+///
+/// - ``scanString(_:)``
+/// - ``scanUpToString(_:)``
+///
+/// ### Character Sets
+///
+/// - ``identifierFirstCharSet``
+/// - ``identifierFollowingCharSet``
 class Scanner {
     // MARK: Lifecycle
 
