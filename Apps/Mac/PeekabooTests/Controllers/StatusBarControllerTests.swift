@@ -7,13 +7,13 @@ import Testing
 struct StatusBarControllerTests {
     @Test("Controller initializes with status item")
     func initialization() {
-        let settings = Settings()
+        let settings = PeekabooSettings()
         let sessionStore = SessionStore()
         let permissions = Permissions()
         let agent = PeekabooAgent(
             settings: settings,
             sessionStore: sessionStore)
-        let speechRecognizer = SpeechRecognizer()
+        let speechRecognizer = SpeechRecognizer(settings: settings)
         _ = StatusBarController(
             agent: agent,
             sessionStore: sessionStore,
@@ -28,13 +28,13 @@ struct StatusBarControllerTests {
 
     @Test("Menu contains expected items")
     func menuItems() {
-        let settings = Settings()
+        let settings = PeekabooSettings()
         let sessionStore = SessionStore()
         let permissions = Permissions()
         let agent = PeekabooAgent(
             settings: settings,
             sessionStore: sessionStore)
-        let speechRecognizer = SpeechRecognizer()
+        let speechRecognizer = SpeechRecognizer(settings: settings)
         _ = StatusBarController(
             agent: agent,
             sessionStore: sessionStore,
@@ -51,13 +51,13 @@ struct StatusBarControllerTests {
 
     @Test("Icon animation states")
     func iconStates() {
-        let settings = Settings()
+        let settings = PeekabooSettings()
         let sessionStore = SessionStore()
         let permissions = Permissions()
         let agent = PeekabooAgent(
             settings: settings,
             sessionStore: sessionStore)
-        let speechRecognizer = SpeechRecognizer()
+        let speechRecognizer = SpeechRecognizer(settings: settings)
         _ = StatusBarController(
             agent: agent,
             sessionStore: sessionStore,
@@ -71,13 +71,13 @@ struct StatusBarControllerTests {
 
     @Test("Popover presentation")
     func popoverPresentation() {
-        let settings = Settings()
+        let settings = PeekabooSettings()
         let sessionStore = SessionStore()
         let permissions = Permissions()
         let agent = PeekabooAgent(
             settings: settings,
             sessionStore: sessionStore)
-        let speechRecognizer = SpeechRecognizer()
+        let speechRecognizer = SpeechRecognizer(settings: settings)
         _ = StatusBarController(
             agent: agent,
             sessionStore: sessionStore,

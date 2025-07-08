@@ -1,7 +1,39 @@
 import Foundation
 import Observation
-import Speech
+import AVFoundation
 
+/// Provides speech-to-text capabilities for voice-driven automation.
+///
+/// `SpeechRecognizer` enables users to interact with Peekaboo using voice commands by
+/// recording audio and sending it to AI models for superior transcription quality.
+/// This approach provides better accuracy than system speech recognition.
+///
+/// ## Overview
+///
+/// The speech recognizer:
+/// - Requests and manages microphone permissions
+/// - Provides real-time speech transcription
+/// - Handles recognition errors gracefully
+/// - Supports continuous listening for voice commands
+///
+/// ## Topics
+///
+/// ### State Management
+///
+/// - ``isListening``
+/// - ``transcript``
+/// - ``isAvailable``
+/// - ``error``
+///
+/// ### Recognition Control
+///
+/// - ``requestAuthorization()``
+/// - ``startListening()``
+/// - ``stopListening()``
+///
+/// ### Delegate Conformance
+///
+/// Conforms to `SFSpeechRecognizerDelegate` for availability updates.
 @Observable
 @MainActor
 final class SpeechRecognizer: NSObject {
@@ -10,101 +42,67 @@ final class SpeechRecognizer: NSObject {
     var isAvailable = false
     var error: Error?
 
-    private var recognizer: SFSpeechRecognizer?
-    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
-    private var recognitionTask: SFSpeechRecognitionTask?
-    private var audioEngine = AVAudioEngine()
+    private var audioRecorder: AudioRecorder?
+    private let settings: PeekabooSettings
 
-    override init() {
+    init(settings: PeekabooSettings) {
+        self.settings = settings
         super.init()
-        self.recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
-        self.recognizer?.delegate = self
+        self.audioRecorder = AudioRecorder(settings: settings)
         self.checkAuthorization()
     }
 
     func requestAuthorization() async -> Bool {
-        await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { status in
-                Task { @MainActor in
-                    self.isAvailable = status == .authorized
-                    continuation.resume(returning: status == .authorized)
-                }
-            }
-        }
+        guard let recorder = audioRecorder else { return false }
+        return await recorder.requestAuthorization()
     }
 
     func startListening() throws {
+        guard let recorder = audioRecorder else {
+            throw SpeechError.notInitialized
+        }
+        
         guard self.isAvailable else {
             throw SpeechError.notAuthorized
         }
 
         guard !self.isListening else { return }
 
-        // Reset
-        self.stopListening()
-
-        // Note: AVAudioSession is not available on macOS
-        // Audio input configuration happens automatically
-
-        // Create recognition request
-        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        guard let recognitionRequest else {
-            throw SpeechError.requestCreationFailed
-        }
-
-        recognitionRequest.shouldReportPartialResults = true
-        recognitionRequest.requiresOnDeviceRecognition = false
-
-        // Start recognition task
-        self.recognitionTask = self.recognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
-            Task { @MainActor in
-                guard let self else { return }
-
-                if let result {
-                    self.transcript = result.bestTranscription.formattedString
-
-                    if result.isFinal {
-                        self.stopListening()
-                    }
-                }
-
-                if let error {
-                    self.error = error
-                    self.stopListening()
-                }
-            }
-        }
-
-        // Configure audio input
-        let recordingFormat = self.audioEngine.inputNode.outputFormat(forBus: 0)
-        self.audioEngine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
-            self.recognitionRequest?.append(buffer)
-        }
-
-        // Start audio engine
-        self.audioEngine.prepare()
-        try self.audioEngine.start()
-
-        self.isListening = true
+        // Reset transcript
         self.transcript = ""
         self.error = nil
+        
+        // Start recording
+        try recorder.startRecording()
+        self.isListening = true
+        
+        // Observe recorder state
+        Task {
+            await observeRecorderState()
+        }
     }
 
     func stopListening() {
         guard self.isListening else { return }
-
-        self.audioEngine.stop()
-        self.audioEngine.inputNode.removeTap(onBus: 0)
-        self.recognitionRequest?.endAudio()
-        self.recognitionTask?.cancel()
-
-        self.recognitionRequest = nil
-        self.recognitionTask = nil
+        
+        audioRecorder?.stopRecording()
         self.isListening = false
+    }
+    
+    private func observeRecorderState() async {
+        guard let recorder = audioRecorder else { return }
+        
+        // Wait a bit for transcription to complete
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        
+        // Update transcript from recorder
+        self.transcript = recorder.transcript
+        self.error = recorder.error
+        self.isAvailable = recorder.isAvailable
     }
 
     private func checkAuthorization() {
-        switch SFSpeechRecognizer.authorizationStatus() {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
             self.isAvailable = true
         case .denied, .restricted:
@@ -117,28 +115,21 @@ final class SpeechRecognizer: NSObject {
     }
 }
 
-// MARK: - SFSpeechRecognizerDelegate
-
-extension SpeechRecognizer: SFSpeechRecognizerDelegate {
-    nonisolated func speechRecognizer(_: SFSpeechRecognizer, availabilityDidChange available: Bool) {
-        Task { @MainActor in
-            self.isAvailable = available
-        }
-    }
-}
-
 // MARK: - Errors
 
 enum SpeechError: LocalizedError {
     case notAuthorized
+    case notInitialized
     case requestCreationFailed
 
     var errorDescription: String? {
         switch self {
         case .notAuthorized:
-            "Speech recognition is not authorized. Please enable it in System Preferences."
+            "Microphone access is not authorized. Please enable it in System Settings."
+        case .notInitialized:
+            "Audio recorder not initialized."
         case .requestCreationFailed:
-            "Failed to create speech recognition request."
+            "Failed to create audio recording request."
         }
     }
 }

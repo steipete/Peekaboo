@@ -2,6 +2,7 @@ import Foundation
 import os.log
 import PeekabooCore
 import CoreGraphics
+import ApplicationServices
 
 /// Tool executor that bridges between the OpenAI agent and PeekabooCore services
 final class PeekabooToolExecutor: ToolExecutor {
@@ -14,65 +15,102 @@ final class PeekabooToolExecutor: ToolExecutor {
     }
     
     nonisolated func executeTool(name: String, arguments: String) async -> String {
+        await MainActor.run {
+            logger.info("🔧 Executing tool: \(name)")
+            logger.debug("Arguments: \(arguments)")
+        }
+        
         // Parse the JSON arguments
         guard let argumentData = arguments.data(using: .utf8),
               let args = try? JSONSerialization.jsonObject(with: argumentData) as? [String: Any]
         else {
+            await MainActor.run {
+                logger.error("Failed to parse arguments for tool \(name): \(arguments)")
+            }
             return self.createErrorOutput("Invalid arguments: \(arguments)")
         }
         
         do {
+            let startTime = Date()
+            
             // Execute tool based on name
+            let result: String
             switch name {
             case "see":
-                return try await self.executeSee(args: args)
+                result = try await self.executeSee(args: args)
                 
             case "click":
-                return try await self.executeClick(args: args)
+                result = try await self.executeClick(args: args)
                 
             case "type":
-                return try await self.executeType(args: args)
+                result = try await self.executeType(args: args)
                 
             case "hotkey":
-                return try await self.executeHotkey(args: args)
+                result = try await self.executeHotkey(args: args)
                 
             case "list":
-                return try await self.executeList(args: args)
+                result = try await self.executeList(args: args)
                 
             case "window":
-                return try await self.executeWindow(args: args)
+                result = try await self.executeWindow(args: args)
                 
             case "app":
-                return try await self.executeApp(args: args)
+                result = try await self.executeApp(args: args)
                 
             case "wait":
-                return try await self.executeWait(args: args)
+                result = try await self.executeWait(args: args)
                 
             case "menu":
-                return try await self.executeMenu(args: args)
+                result = try await self.executeMenu(args: args)
                 
             case "image":
-                return try await self.executeImage(args: args)
+                result = try await self.executeImage(args: args)
                 
             case "scroll":
-                return try await self.executeScroll(args: args)
+                result = try await self.executeScroll(args: args)
                 
             case "drag":
-                return try await self.executeDrag(args: args)
+                result = try await self.executeDrag(args: args)
                 
             case "swipe":
-                return try await self.executeSwipe(args: args)
+                result = try await self.executeSwipe(args: args)
                 
             case "dialog":
-                return try await self.executeDialog(args: args)
+                result = try await self.executeDialog(args: args)
                 
             case "dock":
-                return try await self.executeDock(args: args)
+                result = try await self.executeDock(args: args)
+                
+            case "move":
+                result = try await self.executeMove(args: args)
+                
+            case "sleep":
+                result = try await self.executeSleep(args: args)
+                
+            case "analyze":
+                result = try await self.executeAnalyze(args: args)
+                
+            case "permissions":
+                result = try await self.executePermissions(args: args)
                 
             default:
+                await MainActor.run {
+                    logger.error("Unknown tool requested: \(name)")
+                }
                 return self.createErrorOutput("Unknown tool: \(name)")
             }
+            
+            let executionTime = Date().timeIntervalSince(startTime)
+            await MainActor.run {
+                logger.info("✅ Tool \(name) completed in \(String(format: "%.2f", executionTime))s")
+                logger.debug("Result preview: \(result.prefix(200))...")
+            }
+            
+            return result
         } catch {
+            await MainActor.run {
+                logger.error("❌ Tool \(name) failed: \(error.localizedDescription)")
+            }
             return self.createErrorOutput(error.localizedDescription)
         }
     }
@@ -81,23 +119,38 @@ final class PeekabooToolExecutor: ToolExecutor {
     
     private func executeSee(args: [String: Any]) async throws -> String {
         let sessionId = args["session_id"] as? String ?? UUID().uuidString
+        await MainActor.run {
+            logger.info("Executing 'see' command with session: \(sessionId)")
+        }
         
         // Determine what to capture
         let captureResult: CaptureResult
         if let appName = args["app"] as? String {
+            await MainActor.run {
+                logger.debug("Capturing window for app: \(appName)")
+            }
             captureResult = try await services.screenCapture.captureWindow(
                 appIdentifier: appName,
                 windowIndex: nil
             )
         } else {
+            await MainActor.run {
+                logger.debug("Capturing frontmost window")
+            }
             captureResult = try await services.screenCapture.captureFrontmost()
         }
         
         // Detect elements
+        await MainActor.run {
+            logger.debug("Detecting UI elements in captured image")
+        }
         let detectionResult = try await services.automation.detectElements(
             in: captureResult.imageData,
             sessionId: sessionId
         )
+        await MainActor.run {
+            logger.info("Detected \(detectionResult.elements.all.count) elements")
+        }
         
         // Store in session
         try await services.sessions.storeDetectionResult(
@@ -110,12 +163,12 @@ final class PeekabooToolExecutor: ToolExecutor {
             "success": true,
             "session_id": sessionId,
             "screenshot_path": captureResult.savedPath ?? "",
-            "app_name": captureResult.applicationName ?? "Unknown",
-            "window_title": captureResult.windowTitle ?? "",
-            "elements": detectionResult.elements.map { element in
+            "app_name": captureResult.metadata.applicationInfo?.name ?? "Unknown",
+            "window_title": captureResult.metadata.windowInfo?.title ?? "",
+            "elements": detectionResult.elements.all.map { element in
                 [
                     "id": element.id,
-                    "type": element.type,
+                    "type": element.type.rawValue,
                     "label": element.label ?? "",
                     "bounds": [
                         "x": element.bounds.minX,
@@ -123,7 +176,7 @@ final class PeekabooToolExecutor: ToolExecutor {
                         "width": element.bounds.width,
                         "height": element.bounds.height
                     ],
-                    "properties": element.properties
+                    "properties": element.attributes
                 ]
             }
         ]
@@ -135,16 +188,26 @@ final class PeekabooToolExecutor: ToolExecutor {
         let sessionId = args["session_id"] as? String
         let delay = args["delay"] as? Double
         
+        await MainActor.run {
+            logger.info("Executing 'click' command")
+            if let sessionId = sessionId {
+                logger.debug("Using session: \(sessionId)")
+            }
+        }
+        
         // Add delay if specified
         if let delay = delay {
             try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
         }
         
-        let clickType = ClickType.left // Default to left click
+        let clickType = ClickType.single // Default to single click
         
         if let elementId = args["element_id"] as? String {
+            await MainActor.run {
+                logger.debug("Clicking on element: \(elementId)")
+            }
             try await services.automation.click(
-                target: .element(elementId),
+                target: .elementId(elementId),
                 clickType: clickType,
                 sessionId: sessionId
             )
@@ -156,8 +219,11 @@ final class PeekabooToolExecutor: ToolExecutor {
                 throw PeekabooError.invalidInput("Invalid position format: \(position)")
             }
             
+            await MainActor.run {
+                logger.debug("Clicking at coordinates: (\(x), \(y))")
+            }
             try await services.automation.click(
-                target: .position(CGPoint(x: x, y: y)),
+                target: .coordinates(CGPoint(x: x, y: y)),
                 clickType: clickType,
                 sessionId: sessionId
             )
@@ -181,6 +247,11 @@ final class PeekabooToolExecutor: ToolExecutor {
         let clearFirst = args["clear_first"] as? Bool ?? false
         let sessionId = args["session_id"] as? String
         
+        await MainActor.run {
+            logger.info("Executing 'type' command")
+            logger.debug("Text length: \(text.count) chars, clear first: \(clearFirst)")
+        }
+        
         try await services.automation.type(
             text: text,
             target: nil, // Type into currently focused element
@@ -202,6 +273,10 @@ final class PeekabooToolExecutor: ToolExecutor {
             throw PeekabooError.invalidInput("Keys parameter is required")
         }
         
+        await MainActor.run {
+            logger.info("Executing 'hotkey' command: \(keys)")
+        }
+        
         try await services.automation.hotkey(keys: keys, holdDuration: 100)
         
         let response: [String: Any] = [
@@ -217,17 +292,24 @@ final class PeekabooToolExecutor: ToolExecutor {
             throw PeekabooError.invalidInput("Target parameter is required")
         }
         
+        await MainActor.run {
+            logger.info("Executing 'list' command for target: \(target)")
+        }
+        
         let response: [String: Any]
         
         switch target {
         case "apps":
-            let apps = try await services.applications.listRunningApplications()
+            let apps = try await services.applications.listApplications()
+            await MainActor.run {
+                logger.debug("Found \(apps.count) applications")
+            }
             response = [
                 "success": true,
                 "apps": apps.map { app in
                     [
                         "name": app.name,
-                        "bundle_id": app.bundleIdentifier,
+                        "bundle_id": app.bundleIdentifier ?? "",
                         "pid": app.processIdentifier,
                         "is_active": app.isActive,
                         "is_hidden": app.isHidden
@@ -237,12 +319,23 @@ final class PeekabooToolExecutor: ToolExecutor {
             
         case "windows":
             let appName = args["app"] as? String
-            let windows = try await services.windows.listWindows(appIdentifier: appName)
+            if let appName = appName {
+                await MainActor.run {
+                    logger.debug("Listing windows for app: \(appName)")
+                }
+            }
+            let windows = if let appName = appName {
+                try await services.windows.listWindows(target: .application(appName))
+            } else {
+                try await services.windows.listWindows(target: .frontmost)
+            }
+            await MainActor.run {
+                logger.debug("Found \(windows.count) windows")
+            }
             response = [
                 "success": true,
                 "windows": windows.map { window in
                     [
-                        "app_name": window.appName,
                         "title": window.title,
                         "index": window.index,
                         "bounds": [
@@ -252,7 +345,7 @@ final class PeekabooToolExecutor: ToolExecutor {
                             "height": window.bounds.height
                         ],
                         "is_minimized": window.isMinimized,
-                        "is_main": window.isMain
+                        "is_main": window.isMainWindow
                     ]
                 }
             ]
@@ -272,15 +365,28 @@ final class PeekabooToolExecutor: ToolExecutor {
         let appName = args["app"] as? String
         let title = args["title"] as? String
         
+        await MainActor.run {
+            logger.info("Executing 'window' command with action: \(action)")
+            if let appName = appName {
+                logger.debug("Target app: \(appName)")
+            }
+            if let title = title {
+                logger.debug("Target window: \(title)")
+            }
+        }
+        
         switch action {
         case "close":
-            try await services.windows.closeWindow(appIdentifier: appName, windowTitle: title)
+            let target = self.determineWindowTarget(appName: appName, title: title)
+            try await services.windows.closeWindow(target: target)
             
         case "minimize":
-            try await services.windows.minimizeWindow(appIdentifier: appName, windowTitle: title)
+            let target = self.determineWindowTarget(appName: appName, title: title)
+            try await services.windows.minimizeWindow(target: target)
             
         case "maximize":
-            try await services.windows.maximizeWindow(appIdentifier: appName, windowTitle: title)
+            let target = self.determineWindowTarget(appName: appName, title: title)
+            try await services.windows.maximizeWindow(target: target)
             
         case "move":
             guard let position = args["position"] as? String else {
@@ -292,11 +398,8 @@ final class PeekabooToolExecutor: ToolExecutor {
                   let y = Double(components[1]) else {
                 throw PeekabooError.invalidInput("Invalid position format: \(position)")
             }
-            try await services.windows.moveWindow(
-                appIdentifier: appName,
-                windowTitle: title,
-                to: CGPoint(x: x, y: y)
-            )
+            let target = self.determineWindowTarget(appName: appName, title: title)
+            try await services.windows.moveWindow(target: target, to: CGPoint(x: x, y: y))
             
         case "resize":
             guard let size = args["size"] as? String else {
@@ -308,14 +411,12 @@ final class PeekabooToolExecutor: ToolExecutor {
                   let height = Double(components[1]) else {
                 throw PeekabooError.invalidInput("Invalid size format: \(size)")
             }
-            try await services.windows.resizeWindow(
-                appIdentifier: appName,
-                windowTitle: title,
-                to: CGSize(width: width, height: height)
-            )
+            let target = self.determineWindowTarget(appName: appName, title: title)
+            try await services.windows.resizeWindow(target: target, to: CGSize(width: width, height: height))
             
         case "focus":
-            try await services.windows.focusWindow(appIdentifier: appName, windowTitle: title)
+            let target = self.determineWindowTarget(appName: appName, title: title)
+            try await services.windows.focusWindow(target: target)
             
         default:
             throw PeekabooError.invalidInput("Invalid action: \(action)")
@@ -335,15 +436,19 @@ final class PeekabooToolExecutor: ToolExecutor {
             throw PeekabooError.invalidInput("Action and app parameters are required")
         }
         
+        await MainActor.run {
+            logger.info("Executing 'app' command: \(action) for app: \(appName)")
+        }
+        
         switch action {
         case "launch":
-            try await services.applications.launchApplication(identifier: appName)
+            _ = try await services.applications.launchApplication(identifier: appName)
             
         case "quit":
-            try await services.applications.quitApplication(identifier: appName)
+            let _ = try await services.applications.quitApplication(identifier: appName, force: false)
             
         case "focus":
-            try await services.applications.focusApplication(identifier: appName)
+            try await services.applications.activateApplication(identifier: appName)
             
         case "hide":
             try await services.applications.hideApplication(identifier: appName)
@@ -368,6 +473,10 @@ final class PeekabooToolExecutor: ToolExecutor {
             throw PeekabooError.invalidInput("Seconds parameter is required")
         }
         
+        await MainActor.run {
+            logger.info("Executing 'wait' command for \(seconds) seconds")
+        }
+        
         try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
         
         let response: [String: Any] = [
@@ -384,12 +493,26 @@ final class PeekabooToolExecutor: ToolExecutor {
             throw PeekabooError.invalidInput("Action and app parameters are required")
         }
         
+        await MainActor.run {
+            logger.info("Executing 'menu' command: \(action) for app: \(appName)")
+        }
+        
         switch action {
         case "list":
-            let items = try await services.menu.listMenuItems(appIdentifier: appName)
+            let menuStructure = try await services.menu.listMenus(for: appName)
+            await MainActor.run {
+                logger.debug("Found \(menuStructure.menus.count) menus")
+            }
             let response: [String: Any] = [
                 "success": true,
-                "menu_items": self.formatMenuItems(items)
+                "app_name": menuStructure.application.name,
+                "menus": menuStructure.menus.map { menu in
+                    [
+                        "title": menu.title,
+                        "enabled": menu.isEnabled,
+                        "items": self.formatMenuItems(menu.items)
+                    ]
+                }
             ]
             return try self.createJSONOutput(response)
             
@@ -397,7 +520,10 @@ final class PeekabooToolExecutor: ToolExecutor {
             guard let menuPath = args["menu_path"] as? String else {
                 throw PeekabooError.invalidInput("Menu path is required for click action")
             }
-            try await services.menu.clickMenuItem(appIdentifier: appName, menuPath: menuPath)
+            await MainActor.run {
+                logger.debug("Clicking menu item: \(menuPath)")
+            }
+            try await services.menu.clickMenuItem(app: appName, itemPath: menuPath)
             let response: [String: Any] = [
                 "success": true,
                 "message": "Menu item clicked successfully"
@@ -410,28 +536,45 @@ final class PeekabooToolExecutor: ToolExecutor {
     }
     
     private func executeImage(args: [String: Any]) async throws -> String {
+        await MainActor.run {
+            logger.info("Executing 'image' command")
+        }
+        
         let captureResult: CaptureResult
         
         if let appName = args["app"] as? String {
             let windowIndex = args["window_index"] as? Int
+            await MainActor.run {
+                logger.debug("Capturing window for app: \(appName), index: \(windowIndex ?? 0)")
+            }
             captureResult = try await services.screenCapture.captureWindow(
                 appIdentifier: appName,
                 windowIndex: windowIndex
             )
         } else if let screenIndex = args["screen_index"] as? Int {
+            await MainActor.run {
+                logger.debug("Capturing screen at index: \(screenIndex)")
+            }
             captureResult = try await services.screenCapture.captureScreen(displayIndex: screenIndex)
         } else {
             // Default to frontmost window
+            await MainActor.run {
+                logger.debug("Capturing frontmost window")
+            }
             captureResult = try await services.screenCapture.captureFrontmost()
+        }
+        
+        await MainActor.run {
+            logger.info("Image captured successfully: \(captureResult.savedPath ?? "<unsaved>")")
         }
         
         let response: [String: Any] = [
             "success": true,
             "path": captureResult.savedPath ?? "",
-            "app_name": captureResult.applicationName ?? "Unknown",
-            "window_title": captureResult.windowTitle ?? "",
-            "width": Int(captureResult.imageSize.width),
-            "height": Int(captureResult.imageSize.height)
+            "app_name": captureResult.metadata.applicationInfo?.name ?? "Unknown",
+            "window_title": captureResult.metadata.windowInfo?.title ?? "",
+            "width": Int(captureResult.metadata.size.width),
+            "height": Int(captureResult.metadata.size.height)
         ]
         
         return try self.createJSONOutput(response)
@@ -442,6 +585,13 @@ final class PeekabooToolExecutor: ToolExecutor {
         let amount = args["amount"] as? Int ?? 5
         let sessionId = args["session_id"] as? String
         let target = args["element_id"] as? String
+        
+        await MainActor.run {
+            logger.info("Executing 'scroll' command: \(directionString) by \(amount) units")
+            if let target = target {
+                logger.debug("Target element: \(target)")
+            }
+        }
         
         let direction: ScrollDirection
         switch directionString.lowercased() {
@@ -474,44 +624,75 @@ final class PeekabooToolExecutor: ToolExecutor {
         let sessionId = args["session_id"] as? String
         let duration = args["duration"] as? Double ?? 0.5
         
-        let fromTarget: DragTarget
-        let toTarget: DragTarget
+        await MainActor.run {
+            logger.info("Executing 'drag' command with duration: \(duration)s")
+        }
         
-        // Parse from target
-        if let fromElementId = args["from_element_id"] as? String {
-            fromTarget = .element(fromElementId)
-        } else if let fromPosition = args["from_position"] as? String {
+        // Variables will be defined below
+        
+        // Parse from coordinates
+        let fromPoint: CGPoint
+        if let fromPosition = args["from_position"] as? String {
+            await MainActor.run {
+                logger.debug("Drag from position: \(fromPosition)")
+            }
             let components = fromPosition.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             guard components.count == 2,
                   let x = Double(components[0]),
                   let y = Double(components[1]) else {
                 throw PeekabooError.invalidInput("Invalid from_position format: \(fromPosition)")
             }
-            fromTarget = .position(CGPoint(x: x, y: y))
+            fromPoint = CGPoint(x: x, y: y)
+        } else if let fromElementId = args["from_element_id"] as? String,
+                  let sessionId = sessionId,
+                  let result = try? await services.sessions.getDetectionResult(sessionId: sessionId),
+                  let element = result.elements.all.first(where: { $0.id == fromElementId }) {
+            await MainActor.run {
+                logger.debug("Drag from element: \(fromElementId)")
+            }
+            fromPoint = CGPoint(
+                x: element.bounds.midX,
+                y: element.bounds.midY
+            )
         } else {
             throw PeekabooError.invalidInput("Either from_element_id or from_position is required")
         }
         
-        // Parse to target
-        if let toElementId = args["to_element_id"] as? String {
-            toTarget = .element(toElementId)
-        } else if let toPosition = args["to_position"] as? String {
+        // Parse to coordinates
+        let toPoint: CGPoint
+        if let toPosition = args["to_position"] as? String {
+            await MainActor.run {
+                logger.debug("Drag to position: \(toPosition)")
+            }
             let components = toPosition.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             guard components.count == 2,
                   let x = Double(components[0]),
                   let y = Double(components[1]) else {
                 throw PeekabooError.invalidInput("Invalid to_position format: \(toPosition)")
             }
-            toTarget = .position(CGPoint(x: x, y: y))
+            toPoint = CGPoint(x: x, y: y)
+        } else if let toElementId = args["to_element_id"] as? String,
+                  let sessionId = sessionId,
+                  let result = try? await services.sessions.getDetectionResult(sessionId: sessionId),
+                  let element = result.elements.all.first(where: { $0.id == toElementId }) {
+            await MainActor.run {
+                logger.debug("Drag to element: \(toElementId)")
+            }
+            toPoint = CGPoint(
+                x: element.bounds.midX,
+                y: element.bounds.midY
+            )
         } else {
             throw PeekabooError.invalidInput("Either to_element_id or to_position is required")
         }
         
+        // Execute drag
         try await services.automation.drag(
-            from: fromTarget,
-            to: toTarget,
-            duration: duration,
-            sessionId: sessionId
+            from: fromPoint,
+            to: toPoint,
+            duration: Int(duration * 1000),
+            steps: 10,
+            modifiers: nil
         )
         
         let response: [String: Any] = [
@@ -528,6 +709,10 @@ final class PeekabooToolExecutor: ToolExecutor {
         let duration = args["duration"] as? Double ?? 0.5
         let sessionId = args["session_id"] as? String
         
+        await MainActor.run {
+            logger.info("Executing 'swipe' command: \(directionString) for \(distance) points")
+        }
+        
         let direction: SwipeDirection
         switch directionString.lowercased() {
         case "up": direction = .up
@@ -540,10 +725,13 @@ final class PeekabooToolExecutor: ToolExecutor {
         
         let startPoint: CGPoint
         if let elementId = args["element_id"] as? String {
+            await MainActor.run {
+                logger.debug("Swiping from element: \(elementId)")
+            }
             // Get element center from session
             guard let sessionId = sessionId,
-                  let session = try? await services.sessions.getSession(sessionId: sessionId),
-                  let element = session.detectionResults.first?.elements.first(where: { $0.id == elementId }) else {
+                  let result = try? await services.sessions.getDetectionResult(sessionId: sessionId),
+                  let element = result.elements.all.first(where: { $0.id == elementId }) else {
                 throw PeekabooError.elementNotFound(elementId)
             }
             startPoint = CGPoint(
@@ -558,17 +746,36 @@ final class PeekabooToolExecutor: ToolExecutor {
                 throw PeekabooError.invalidInput("Invalid position format: \(position)")
             }
             startPoint = CGPoint(x: x, y: y)
+            await MainActor.run {
+                logger.debug("Swiping from position: (\(x), \(y))")
+            }
         } else {
             // Default to center of screen
             startPoint = CGPoint(x: 500, y: 500) // This should be improved to get actual screen center
+            await MainActor.run {
+                logger.debug("Using default center position for swipe")
+            }
         }
         
+        // Calculate end point based on direction and distance
+        let endPoint: CGPoint
+        switch direction {
+        case .up:
+            endPoint = CGPoint(x: startPoint.x, y: startPoint.y - CGFloat(distance))
+        case .down:
+            endPoint = CGPoint(x: startPoint.x, y: startPoint.y + CGFloat(distance))
+        case .left:
+            endPoint = CGPoint(x: startPoint.x - CGFloat(distance), y: startPoint.y)
+        case .right:
+            endPoint = CGPoint(x: startPoint.x + CGFloat(distance), y: startPoint.y)
+        }
+        
+        // Execute swipe as a drag operation
         try await services.automation.swipe(
-            direction: direction,
-            distance: distance,
-            startPoint: startPoint,
-            duration: duration,
-            sessionId: sessionId
+            from: startPoint,
+            to: endPoint,
+            duration: Int(duration * 1000),
+            steps: 20
         )
         
         let response: [String: Any] = [
@@ -583,16 +790,36 @@ final class PeekabooToolExecutor: ToolExecutor {
         let action = args["action"] as? String ?? "accept"
         let buttonText = args["button_text"] as? String
         
+        await MainActor.run {
+            logger.info("Executing 'dialog' command with action: \(action)")
+            if let buttonText = buttonText {
+                logger.debug("Target button: \(buttonText)")
+            }
+        }
+        
         switch action {
         case "accept":
-            try await services.dialogs.acceptDialog(buttonText: buttonText)
+            if let buttonText = buttonText {
+                _ = try await services.dialogs.clickButton(buttonText: buttonText, windowTitle: nil)
+            } else {
+                // Click the default OK/Yes button
+                _ = try await services.dialogs.clickButton(buttonText: "OK", windowTitle: nil)
+            }
         case "dismiss":
-            try await services.dialogs.dismissDialog(buttonText: buttonText)
+            if let buttonText = buttonText {
+                _ = try await services.dialogs.clickButton(buttonText: buttonText, windowTitle: nil)
+            } else {
+                // Dismiss using force (ESC key)
+                _ = try await services.dialogs.dismissDialog(force: true, windowTitle: nil)
+            }
         case "input":
             guard let text = args["text"] as? String else {
                 throw PeekabooError.invalidInput("Text parameter is required for input action")
             }
-            try await services.dialogs.inputText(text)
+            await MainActor.run {
+                logger.debug("Entering text into dialog: \(text.prefix(50))...")
+            }
+            _ = try await services.dialogs.enterText(text: text, fieldIdentifier: nil, clearExisting: true, windowTitle: nil)
         default:
             throw PeekabooError.invalidInput("Invalid dialog action: \(action)")
         }
@@ -606,22 +833,35 @@ final class PeekabooToolExecutor: ToolExecutor {
     }
     
     private func executeDock(args: [String: Any]) async throws -> String {
+        await MainActor.run {
+            logger.info("Executing 'dock' command")
+        }
+        
         if let action = args["action"] as? String, action == "list" {
-            let items = try await services.dock.listDockItems()
+            await MainActor.run {
+                logger.debug("Listing dock items")
+            }
+            let items = try await services.dock.listDockItems(includeAll: false)
+            await MainActor.run {
+                logger.debug("Found \(items.count) dock items")
+            }
             let response: [String: Any] = [
                 "success": true,
                 "dock_items": items.map { item in
                     [
                         "title": item.title,
-                        "type": item.type,
-                        "app_name": item.appName ?? "",
-                        "is_running": item.isRunning
+                        "type": item.itemType.rawValue,
+                        "bundle_id": item.bundleIdentifier ?? "",
+                        "is_running": item.isRunning ?? false
                     ]
                 }
             ]
             return try self.createJSONOutput(response)
         } else if let appName = args["app"] as? String {
-            try await services.dock.clickDockItem(appName: appName)
+            await MainActor.run {
+                logger.debug("Launching app from dock: \(appName)")
+            }
+            try await services.dock.launchFromDock(appName: appName)
             let response: [String: Any] = [
                 "success": true,
                 "message": "Clicked dock item: \(appName)"
@@ -632,7 +872,207 @@ final class PeekabooToolExecutor: ToolExecutor {
         }
     }
     
+    private func executeMove(args: [String: Any]) async throws -> String {
+        await MainActor.run {
+            logger.info("Executing 'move' command")
+        }
+        
+        let toPoint: CGPoint
+        let sessionId = args["session_id"] as? String
+        
+        if let position = args["position"] as? String {
+            await MainActor.run {
+                logger.debug("Moving to position: \(position)")
+            }
+            let components = position.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard components.count == 2,
+                  let x = Double(components[0]),
+                  let y = Double(components[1]) else {
+                throw PeekabooError.invalidInput("Invalid position format: \(position)")
+            }
+            toPoint = CGPoint(x: x, y: y)
+        } else if let elementId = args["element_id"] as? String {
+            await MainActor.run {
+                logger.debug("Moving to element: \(elementId)")
+            }
+            guard let sessionId = sessionId,
+                  let result = try? await services.sessions.getDetectionResult(sessionId: sessionId),
+                  let element = result.elements.all.first(where: { $0.id == elementId }) else {
+                throw PeekabooError.elementNotFound(elementId)
+            }
+            toPoint = CGPoint(
+                x: element.bounds.midX,
+                y: element.bounds.midY
+            )
+        } else if let text = args["text"] as? String, let sessionId = sessionId {
+            await MainActor.run {
+                logger.debug("Moving to text: \(text)")
+            }
+            // Find element by text
+            guard let result = try? await services.sessions.getDetectionResult(sessionId: sessionId),
+                  let element = result.elements.all.first(where: { ($0.label ?? "").contains(text) }) else {
+                throw PeekabooError.elementNotFound("Element with text: \(text)")
+            }
+            toPoint = CGPoint(
+                x: element.bounds.midX,
+                y: element.bounds.midY
+            )
+        } else {
+            throw PeekabooError.invalidInput("Either position, element_id, or text is required")
+        }
+        
+        // Move mouse to position
+        try await services.automation.moveMouse(to: toPoint, duration: 0, steps: 1)
+        
+        let response: [String: Any] = [
+            "success": true,
+            "message": "Mouse moved to (\(Int(toPoint.x)), \(Int(toPoint.y)))"
+        ]
+        
+        return try self.createJSONOutput(response)
+    }
+    
+    private func executeSleep(args: [String: Any]) async throws -> String {
+        let duration = args["duration"] as? Double ?? 1.0
+        
+        await MainActor.run {
+            logger.info("Executing 'sleep' command for \(duration) seconds")
+        }
+        
+        try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+        
+        let response: [String: Any] = [
+            "success": true,
+            "message": "Slept for \(duration) seconds"
+        ]
+        
+        return try self.createJSONOutput(response)
+    }
+    
+    private func executeAnalyze(args: [String: Any]) async throws -> String {
+        guard let imagePath = args["image_path"] as? String else {
+            throw PeekabooError.invalidInput("Image path is required")
+        }
+        
+        let prompt = args["prompt"] as? String ?? "What is shown in this image?"
+        let providerName = args["provider"] as? String
+        
+        await MainActor.run {
+            logger.info("Executing 'analyze' command on image: \(imagePath)")
+            logger.debug("Prompt: \(prompt)")
+        }
+        
+        // Read image data
+        let url = URL(fileURLWithPath: (imagePath as NSString).expandingTildeInPath)
+        guard let imageData = try? Data(contentsOf: url),
+              let base64String = imageData.base64EncodedString() as String? else {
+            throw PeekabooError.invalidInput("Failed to read image at path: \(imagePath)")
+        }
+        
+        // Get AI providers from environment or use default
+        let providerList = ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] ?? "openai/gpt-4o,ollama/llava:latest"
+        let providers = AIProviderFactory.createProviders(from: providerList)
+        
+        // Try to use specific provider if requested
+        var analysisResult: String?
+        var usedProvider: String?
+        var usedModel: String?
+        
+        if let providerName = providerName,
+           let provider = providers.first(where: { $0.name.lowercased() == providerName.lowercased() }) {
+            do {
+                analysisResult = try await provider.analyze(imageBase64: base64String, question: prompt)
+                usedProvider = provider.name
+                usedModel = provider.model
+            } catch {
+                await MainActor.run {
+                    logger.error("Provider \(providerName) failed: \(error.localizedDescription)")
+                }
+            }
+        }
+        
+        // Fall back to trying all providers
+        if analysisResult == nil {
+            for provider in providers {
+                if await provider.isAvailable {
+                    do {
+                        analysisResult = try await provider.analyze(imageBase64: base64String, question: prompt)
+                        usedProvider = provider.name
+                        usedModel = provider.model
+                        break
+                    } catch {
+                        await MainActor.run {
+                            logger.warning("Provider \(provider.name) failed: \(error.localizedDescription)")
+                        }
+                    }
+                }
+            }
+        }
+        
+        guard let result = analysisResult,
+              let provider = usedProvider,
+              let model = usedModel else {
+            throw PeekabooError.invalidInput("No AI provider available to analyze image")
+        }
+        
+        await MainActor.run {
+            logger.info("Analysis completed successfully with \(provider)/\(model)")
+            logger.debug("Result preview: \(result.prefix(200))...")
+        }
+        
+        let response: [String: Any] = [
+            "success": true,
+            "analysis": result,
+            "provider": provider,
+            "model": model
+        ]
+        
+        return try self.createJSONOutput(response)
+    }
+    
+    private func executePermissions(args: [String: Any]) async throws -> String {
+        await MainActor.run {
+            logger.info("Executing 'permissions' command")
+        }
+        
+        // Check screen recording permission
+        let hasScreenRecording = CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID) != nil
+        
+        // Check accessibility permission  
+        let hasAccessibility = AXIsProcessTrusted()
+        
+        await MainActor.run {
+            logger.debug("Permission check completed - Screen Recording: \(hasScreenRecording), Accessibility: \(hasAccessibility)")
+        }
+        
+        let response: [String: Any] = [
+            "success": true,
+            "permissions": [
+                "screen_recording": [
+                    "status": hasScreenRecording ? "authorized" : "denied",
+                    "message": hasScreenRecording ? "Screen Recording permission is granted" : "Screen Recording permission is required"
+                ],
+                "accessibility": [
+                    "status": hasAccessibility ? "authorized" : "denied",  
+                    "message": hasAccessibility ? "Accessibility permission is granted" : "Accessibility permission is required"
+                ]
+            ]
+        ]
+        
+        return try self.createJSONOutput(response)
+    }
+    
     // MARK: - Helper Methods
+    
+    private func determineWindowTarget(appName: String?, title: String?) -> WindowTarget {
+        if let title = title {
+            return .title(title)
+        } else if let appName = appName {
+            return .application(appName)
+        } else {
+            return .frontmost
+        }
+    }
     
     private func formatMenuItems(_ items: [MenuItem]) -> [[String: Any]] {
         items.map { item in
@@ -640,13 +1080,13 @@ final class PeekabooToolExecutor: ToolExecutor {
                 "title": item.title,
                 "path": item.path,
                 "enabled": item.isEnabled,
-                "has_submenu": item.hasSubmenu
+                "has_submenu": !item.submenu.isEmpty
             ]
-            if let shortcut = item.shortcut {
-                dict["shortcut"] = shortcut
+            if let shortcut = item.keyboardShortcut {
+                dict["shortcut"] = shortcut.displayString
             }
-            if !item.children.isEmpty {
-                dict["children"] = formatMenuItems(item.children)
+            if !item.submenu.isEmpty {
+                dict["children"] = formatMenuItems(item.submenu)
             }
             return dict
         }
@@ -695,6 +1135,10 @@ final class PeekabooToolExecutor: ToolExecutor {
             self.makePeekabooTool("drag", "Perform drag and drop operations"),
             self.makePeekabooTool("dock", "Interact with the macOS Dock"),
             self.makePeekabooTool("swipe", "Perform swipe gestures"),
+            self.makePeekabooTool("move", "Move mouse cursor to specific location"),
+            self.makePeekabooTool("sleep", "Pause execution for specified duration"),
+            self.makePeekabooTool("analyze", "Analyze images using AI vision models"),
+            self.makePeekabooTool("permissions", "Check system permissions status"),
         ]
     }
     
@@ -728,7 +1172,10 @@ final class PeekabooToolExecutor: ToolExecutor {
         - 'list': List running apps or windows
         - 'menu': Discover and click menu items
         - 'dialog': Handle system dialogs
-        - 'wait': Pause execution
+        - 'sleep': Pause execution
+        - 'analyze': Analyze images with AI vision
+        - 'permissions': Check system permissions
+        - 'move': Move mouse cursor to position
         
         When given a task:
         1. Use 'see' to understand the current UI state
@@ -884,6 +1331,37 @@ final class PeekabooToolExecutor: ToolExecutor {
                     "action": Property(type: "string", description: "Dock action", enum: ["list", "click"]),
                     "app": Property(type: "string", description: "App name to click in dock"),
                 ],
+                required: [])
+            
+        case "move":
+            FunctionParameters(
+                properties: [
+                    "position": Property(type: "string", description: "Target position (x,y)"),
+                    "element_id": Property(type: "string", description: "Element ID to move to"),
+                    "text": Property(type: "string", description: "Text to find and move to"),
+                    "session_id": Property(type: "string", description: "Session ID for element lookup"),
+                ],
+                required: [])
+            
+        case "sleep":
+            FunctionParameters(
+                properties: [
+                    "duration": Property(type: "number", description: "Duration to sleep in seconds"),
+                ],
+                required: ["duration"])
+            
+        case "analyze":
+            FunctionParameters(
+                properties: [
+                    "image_path": Property(type: "string", description: "Path to image file to analyze"),
+                    "prompt": Property(type: "string", description: "Question or prompt about the image"),
+                    "provider": Property(type: "string", description: "AI provider to use (optional)"),
+                ],
+                required: ["image_path"])
+            
+        case "permissions":
+            FunctionParameters(
+                properties: [:],
                 required: [])
             
         default:

@@ -14,8 +14,8 @@ enum SettingsOpener {
     /// Opens the Settings window using the environment action via notification
     /// This is needed for cases where we can't use SettingsLink (e.g., from menu bar)
     static func openSettings() {
-        // Temporarily show dock icon for window activation
-        NSApp.setActivationPolicy(.regular)
+        // Let DockIconManager handle dock visibility
+        DockIconManager.shared.temporarilyShowDock()
         
         Task { @MainActor in
             // Small delay to ensure dock icon is visible
@@ -48,14 +48,12 @@ enum SettingsOpener {
                 // Temporarily raise window level to ensure it's on top
                 settingsWindow.level = .floating
                 
-                // Reset level and dock icon after a short delay
+                // Reset level after a short delay
                 Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(100))
                     settingsWindow.level = .normal
                     
-                    // Hide dock icon again after window is shown
-                    try? await Task.sleep(for: .milliseconds(500))
-                    NSApp.setActivationPolicy(.accessory)
+                    // DockIconManager will handle dock visibility automatically
                 }
             }
         }

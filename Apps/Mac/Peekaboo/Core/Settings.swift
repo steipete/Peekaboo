@@ -1,6 +1,44 @@
 import Foundation
 import Observation
+import ServiceManagement
 
+/// Application settings and preferences manager.
+///
+/// `PeekabooSettings` manages all user-configurable settings for the Peekaboo application,
+/// including API configuration, UI preferences, and behavior options. Settings are automatically
+/// persisted to UserDefaults and synchronized across app launches.
+///
+/// ## Overview
+///
+/// The settings manager handles:
+/// - OpenAI API configuration for agent functionality
+/// - Model selection and generation parameters
+/// - UI preferences like window behavior and shortcuts
+/// - Application behavior settings
+///
+/// All properties are observable and automatically save changes to UserDefaults.
+///
+/// ## Topics
+///
+/// ### API Configuration
+///
+/// - ``openAIAPIKey``
+/// - ``selectedModel``
+/// - ``temperature``
+/// - ``maxTokens``
+/// - ``hasValidAPIKey``
+///
+/// ### UI Preferences
+///
+/// - ``alwaysOnTop``
+/// - ``showInDock``
+/// - ``launchAtLogin``
+/// - ``globalShortcut``
+///
+/// ### Persistence
+///
+/// - ``load()``
+/// - ``save()``
 @Observable
 final class PeekabooSettings {
     // API Configuration
@@ -8,7 +46,7 @@ final class PeekabooSettings {
         didSet { self.save() }
     }
 
-    var selectedModel: String = "gpt-4o" {
+    var selectedModel: String = "gpt-4.1" {
         didSet { self.save() }
     }
 
@@ -39,12 +77,32 @@ final class PeekabooSettings {
         didSet { self.save() }
     }
 
-    var showInDock: Bool = false {
-        didSet { self.save() }
+    var showInDock: Bool = true {
+        didSet { 
+            self.save()
+            // Update dock visibility when preference changes
+            Task { @MainActor in
+                DockIconManager.shared.updateDockVisibility()
+            }
+        }
     }
 
     var launchAtLogin: Bool = false {
-        didSet { self.save() }
+        didSet { 
+            self.save()
+            // Update launch at login status
+            do {
+                if launchAtLogin {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+            } catch {
+                print("Failed to update launch at login: \(error)")
+                // Revert the change if it failed
+                self.launchAtLogin = !launchAtLogin
+            }
+        }
     }
 
     var globalShortcut: String = "⌘⇧Space" {
@@ -52,7 +110,7 @@ final class PeekabooSettings {
     }
 
     // Features
-    var voiceActivationEnabled: Bool = false {
+    var voiceActivationEnabled: Bool = true {
         didSet { self.save() }
     }
 
@@ -80,18 +138,32 @@ final class PeekabooSettings {
 
     private func load() {
         self.openAIAPIKey = self.userDefaults.string(forKey: "\(self.keyPrefix)openAIAPIKey") ?? ""
-        self.selectedModel = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedModel") ?? "gpt-4o"
+        self.selectedModel = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedModel") ?? "gpt-4.1"
         self.temperature = self.userDefaults.double(forKey: "\(self.keyPrefix)temperature")
         if self.temperature == 0 { self.temperature = 0.7 } // Default if not set
         self.maxTokens = self.userDefaults.integer(forKey: "\(self.keyPrefix)maxTokens")
         if self.maxTokens == 0 { self.maxTokens = 16384 } // Default if not set
 
         self.alwaysOnTop = self.userDefaults.bool(forKey: "\(self.keyPrefix)alwaysOnTop")
-        self.showInDock = self.userDefaults.bool(forKey: "\(self.keyPrefix)showInDock")
-        self.launchAtLogin = self.userDefaults.bool(forKey: "\(self.keyPrefix)launchAtLogin")
+        // Default showInDock to true if not previously set
+        if self.userDefaults.object(forKey: "\(self.keyPrefix)showInDock") == nil {
+            self.showInDock = true
+            self.userDefaults.set(true, forKey: "\(self.keyPrefix)showInDock")
+        } else {
+            self.showInDock = self.userDefaults.bool(forKey: "\(self.keyPrefix)showInDock")
+        }
+        // Check actual launch at login status
+        self.launchAtLogin = SMAppService.mainApp.status == .enabled
+        self.userDefaults.set(self.launchAtLogin, forKey: "\(self.keyPrefix)launchAtLogin")
         self.globalShortcut = self.userDefaults.string(forKey: "\(self.keyPrefix)globalShortcut") ?? "⌘⇧Space"
 
-        self.voiceActivationEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)voiceActivationEnabled")
+        // Default voiceActivationEnabled to true if not previously set
+        if self.userDefaults.object(forKey: "\(self.keyPrefix)voiceActivationEnabled") == nil {
+            self.voiceActivationEnabled = true
+            self.userDefaults.set(true, forKey: "\(self.keyPrefix)voiceActivationEnabled")
+        } else {
+            self.voiceActivationEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)voiceActivationEnabled")
+        }
         self.hapticFeedbackEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)hapticFeedbackEnabled")
         self.soundEffectsEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)soundEffectsEnabled")
 
@@ -163,7 +235,7 @@ final class PeekabooSettings {
                             if provider.starts(with: "openai/") {
                                 let model = String(provider.dropFirst("openai/".count))
                                 // Only override if it's a valid model
-                                if ["gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini"].contains(model) {
+                                if ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "o3", "o3-pro", "o4-mini"].contains(model) {
                                     self.selectedModel = model
                                     break
                                 }

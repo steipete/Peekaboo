@@ -7,12 +7,12 @@ import Testing
 struct MainViewTests {
     @Test("View modes toggle correctly")
     func viewModes() {
-        let settings = Settings()
+        let settings = PeekabooSettings()
         let sessionStore = SessionStore()
         let agent = PeekabooAgent(
             settings: settings,
             sessionStore: sessionStore)
-        let speechRecognizer = SpeechRecognizer()
+        let speechRecognizer = SpeechRecognizer(settings: settings)
 
         // Note: We can't directly test SwiftUI views easily without UI testing
         // This test verifies the services are properly initialized

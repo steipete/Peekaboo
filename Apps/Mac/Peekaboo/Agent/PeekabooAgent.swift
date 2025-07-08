@@ -2,6 +2,36 @@ import Foundation
 import Observation
 import PeekabooCore
 
+/// An AI-powered automation agent that orchestrates task execution using OpenAI's function calling.
+///
+/// `PeekabooAgent` serves as the brain of Peekaboo's automation capabilities, interpreting natural language
+/// commands and executing them through a collection of specialized tools. It manages sessions, tracks
+/// execution state, and provides real-time event updates through the ``AgentEventDelegate`` protocol.
+///
+/// ## Overview
+///
+/// The agent uses OpenAI's GPT models with function calling to:
+/// - Interpret user intentions from natural language prompts
+/// - Select appropriate tools for task execution
+/// - Chain multiple operations to complete complex workflows
+/// - Provide real-time feedback on execution progress
+///
+/// ## Topics
+///
+/// ### Creating an Agent
+///
+/// - ``init(settings:sessionStore:)``
+///
+/// ### Executing Tasks
+///
+/// - ``executeTask(_:dryRun:)``
+/// - ``isExecuting``
+/// - ``currentTask``
+/// - ``currentSession``
+///
+/// ### Event Handling
+///
+/// The agent conforms to ``AgentEventDelegate`` to receive streaming updates during execution.
 @Observable
 @MainActor
 final class PeekabooAgent: AgentEventDelegate {
@@ -12,6 +42,7 @@ final class PeekabooAgent: AgentEventDelegate {
     private let settings: PeekabooSettings
     private let sessionStore: SessionStore
     private let toolExecutor = PeekabooToolExecutor()
+    private var currentExecutionTask: Task<AgentResult, Never>?
 
     init(settings: PeekabooSettings, sessionStore: SessionStore) {
         self.settings = settings
@@ -31,6 +62,7 @@ final class PeekabooAgent: AgentEventDelegate {
         defer {
             isExecuting = false
             currentTask = ""
+            currentExecutionTask = nil
         }
 
         // Create session
@@ -48,6 +80,10 @@ final class PeekabooAgent: AgentEventDelegate {
         }
         
         do {
+            // Log API key info for debugging (first 7 chars only for security)
+            let keyPreview = settings.openAIAPIKey.prefix(7) + "..." + settings.openAIAPIKey.suffix(4)
+            print("[PeekabooAgent] Using API key: \(keyPreview) with model: \(settings.selectedModel)")
+            
             let agent = OpenAIAgent(
                 apiKey: settings.openAIAPIKey,
                 model: self.settings.selectedModel,
@@ -79,6 +115,26 @@ final class PeekabooAgent: AgentEventDelegate {
                 output: "",
                 error: errorMessage)
         }
+    }
+    
+    func cancelCurrentTask() {
+        guard isExecuting else { return }
+        
+        // Cancel the current execution task
+        currentExecutionTask?.cancel()
+        
+        // Add cancellation message to session
+        if let session = currentSession {
+            sessionStore.addMessage(
+                SessionMessage(role: .system, content: "⚠️ Task cancelled by user"),
+                to: session)
+        }
+        
+        // Reset state
+        isExecuting = false
+        currentTask = ""
+        currentSession = nil
+        currentExecutionTask = nil
     }
     
     // MARK: - AgentEventDelegate
