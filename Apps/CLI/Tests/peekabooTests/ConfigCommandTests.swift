@@ -3,7 +3,6 @@ import ArgumentParser
 import Foundation
 @testable import peekaboo
 
-@available(macOS 14.0, *)
 @Suite("ConfigCommand Tests")
 struct ConfigCommandTests {
     

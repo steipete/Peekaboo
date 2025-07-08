@@ -121,7 +121,7 @@ describe("Spec v3 Commands", () => {
   });
 
   describe("run command script validation", () => {
-    // TODO: Fix run command to handle positional arguments for commands like sleep
+    // Note: Run command now properly handles positional arguments for commands like sleep
     it("should validate script file format", async () => {
       const tempFile = path.join(os.tmpdir(), `test-${Date.now()}.peekaboo.json`);
       

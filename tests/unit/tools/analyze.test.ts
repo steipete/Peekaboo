@@ -4,21 +4,21 @@ import {
   analyzeToolHandler,
   analyzeToolSchema,
   AnalyzeToolInput,
-} from "../../../src/tools/analyze";
-import { readImageAsBase64 } from "../../../src/utils/peekaboo-cli";
+} from "../../../Server/src/tools/analyze";
+import { readImageAsBase64 } from "../../../Server/src/utils/peekaboo-cli";
 import {
   parseAIProviders,
   isProviderAvailable,
   analyzeImageWithProvider,
   getDefaultModelForProvider,
   determineProviderAndModel,
-} from "../../../src/utils/ai-providers";
-import { ToolContext, AIProvider } from "../../../src/types";
+} from "../../../Server/src/utils/ai-providers";
+import { ToolContext, AIProvider } from "../../../Server/src/types";
 import path from "path"; // Import path for extname
 
 // Mocks
-vi.mock("../../../src/utils/peekaboo-cli");
-vi.mock("../../../src/utils/ai-providers");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
+vi.mock("../../../Server/src/utils/ai-providers");
 
 const mockReadImageAsBase64 = readImageAsBase64 as vi.MockedFunction<
   typeof readImageAsBase64

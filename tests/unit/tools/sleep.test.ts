@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { sleepToolHandler, sleepToolSchema } from "../../../src/tools/sleep.js";
-import type { ToolContext, SleepInput } from "../../../src/types/index.js";
-import * as peekabooCliModule from "../../../src/utils/peekaboo-cli.js";
+import { sleepToolHandler, sleepToolSchema } from "../../../Server/src/tools/sleep";
+import type { ToolContext, SleepInput } from "../../../Server/src/types/index";
+import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
-vi.mock("../../../src/utils/peekaboo-cli.js");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 describe("sleep tool", () => {
   let mockContext: ToolContext;

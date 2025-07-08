@@ -2,6 +2,7 @@
 import ArgumentParser
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("ImageCommand Tests", .serialized, .tags(.imageCapture, .unit))
@@ -558,7 +559,7 @@ struct ImageCommandPathHandlingTests {
         let result = OutputPathResolver.getOutputPath(basePath: nil, fileName: fileName)
 
         // When basePath is nil, it should use the configured default path
-        let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
+        let defaultPath = peekaboo.ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
         let expectedPath = "\(defaultPath)/\(fileName)"
 
         #expect(result == expectedPath)

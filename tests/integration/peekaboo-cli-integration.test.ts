@@ -9,9 +9,9 @@ import {
   listToolHandler,
   imageToolSchema,
   listToolSchema,
-} from "../../src/tools"; // Adjusted import path for schemas
-import { initializeSwiftCliPath } from "../../src/utils/peekaboo-cli";
-import { Result } from "@modelcontextprotocol/sdk/types.js"; // Corrected SDK import path and type
+} from "../../Server/src/tools"; // Adjusted import path for schemas
+import { initializeSwiftCliPath } from "../../Server/src/utils/peekaboo-cli";
+import { Result } from "@modelcontextprotocol/sdk/types"; // Corrected SDK import path and type
 
 // Define a more specific type for content items used in Peekaboo
 interface PeekabooContentItem {

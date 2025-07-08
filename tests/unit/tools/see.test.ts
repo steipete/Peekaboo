@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { seeToolHandler, seeToolSchema } from "../../../src/tools/see.js";
-import type { ToolContext, SeeInput } from "../../../src/types/index.js";
-import * as peekabooCliModule from "../../../src/utils/peekaboo-cli.js";
-import * as imageSummaryModule from "../../../src/utils/image-summary.js";
+import { seeToolHandler, seeToolSchema } from "../../../Server/src/tools/see";
+import type { ToolContext, SeeInput } from "../../../Server/src/types/index";
+import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
+import * as imageSummaryModule from "../../../Server/src/utils/image-summary";
 
-vi.mock("../../../src/utils/peekaboo-cli.js");
-vi.mock("../../../src/utils/image-summary.js");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
+vi.mock("../../../Server/src/utils/image-summary");
 
 describe("see tool", () => {
   let mockContext: ToolContext;

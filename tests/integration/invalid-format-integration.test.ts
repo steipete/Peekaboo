@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { imageToolHandler } from "../../src/tools/image";
-import { initializeSwiftCliPath } from "../../src/utils/peekaboo-cli";
+import { imageToolHandler } from "../../Server/src/tools/image";
+import { initializeSwiftCliPath } from "../../Server/src/utils/peekaboo-cli";
 import { pino } from "pino";
 import * as fs from "fs/promises";
 import * as path from "path";

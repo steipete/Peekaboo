@@ -3,7 +3,6 @@ import Foundation
 import ArgumentParser
 @testable import peekaboo
 
-@available(macOS 14.0, *)
 @Suite("MoveCommand Tests")
 struct MoveCommandTests {
     

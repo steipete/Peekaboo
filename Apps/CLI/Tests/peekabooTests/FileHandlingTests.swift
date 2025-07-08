@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("File Handling Tests")
@@ -186,7 +187,7 @@ struct FileHandlingTests {
                 fileName: fileName)
 
             // Should use default save path
-            let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
+            let defaultPath = peekaboo.ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
             #expect(resolved == "\(defaultPath)/\(fileName)")
         }
 

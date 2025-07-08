@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { scrollToolHandler, scrollToolSchema } from "../../../src/tools/scroll.js";
-import type { ToolContext, ScrollInput } from "../../../src/types/index.js";
-import * as peekabooCliModule from "../../../src/utils/peekaboo-cli.js";
+import { scrollToolHandler, scrollToolSchema } from "../../../Server/src/tools/scroll";
+import type { ToolContext, ScrollInput } from "../../../Server/src/types/index";
+import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
-vi.mock("../../../src/utils/peekaboo-cli.js");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 describe("scroll tool", () => {
   let mockContext: ToolContext;

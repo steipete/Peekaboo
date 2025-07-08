@@ -1,5 +1,7 @@
 import Foundation
 import Testing
+import PeekabooCore
+import AXorcist
 @testable import peekaboo
 
 @Suite("RunCommand Tests", .serialized)
@@ -75,7 +77,7 @@ struct RunCommandTests {
                 stepNumber: 1,
                 command: "see",
                 success: true,
-                output: "{\"success\": true}",
+                output: AnyCodable(["success": true]),
                 error: nil,
                 executionTime: 1.5),
             StepResult(

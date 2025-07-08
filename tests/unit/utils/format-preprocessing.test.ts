@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { buildSwiftCliArgs } from "../../../src/utils/image-cli-args";
+import { buildSwiftCliArgs } from "../../../Server/src/utils/image-cli-args";
 
 describe("Format Preprocessing in Swift CLI Args", () => {
   it("should use preprocessed format in Swift CLI arguments", async () => {
     // Import and test the schema preprocessing
-    const { imageToolSchema } = await import("../../../src/types/index.js");
+    const { imageToolSchema } = await import("../../../Server/src/types/index");
     
     // Test that invalid format gets preprocessed correctly
     const inputWithInvalidFormat = { format: "bmp", path: "/tmp/test.png" };
@@ -24,7 +24,7 @@ describe("Format Preprocessing in Swift CLI Args", () => {
   });
   
   it("should handle various invalid formats consistently", async () => {
-    const { imageToolSchema } = await import("../../../src/types/index.js");
+    const { imageToolSchema } = await import("../../../Server/src/types/index");
     
     const invalidFormats = ["bmp", "gif", "webp", "tiff", "xyz"];
     
@@ -45,7 +45,7 @@ describe("Format Preprocessing in Swift CLI Args", () => {
   });
   
   it("should pass through valid formats correctly", async () => {
-    const { imageToolSchema } = await import("../../../src/types/index.js");
+    const { imageToolSchema } = await import("../../../Server/src/types/index");
     
     const validCases = [
       { input: "png", expected: "png" },
@@ -70,7 +70,7 @@ describe("Format Preprocessing in Swift CLI Args", () => {
   });
   
   it("should handle data format for Swift CLI (converts to png)", async () => {
-    const { imageToolSchema } = await import("../../../src/types/index.js");
+    const { imageToolSchema } = await import("../../../Server/src/types/index");
     
     const input = { format: "data", path: "/tmp/test.png" };
     const preprocessedInput = imageToolSchema.parse(input);

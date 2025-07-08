@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { runToolHandler, runToolSchema } from "../../../src/tools/run.js";
-import type { ToolContext, RunInput } from "../../../src/types/index.js";
-import * as peekabooCliModule from "../../../src/utils/peekaboo-cli.js";
+import { runToolHandler, runToolSchema } from "../../../Server/src/tools/run";
+import type { ToolContext, RunInput } from "../../../Server/src/types/index";
+import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 import * as fs from "fs/promises";
 
-vi.mock("../../../src/utils/peekaboo-cli.js");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 vi.mock("fs/promises");
 
 describe("run tool", () => {

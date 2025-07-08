@@ -1,22 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { imageToolHandler } from "../../../src/tools/image";
-import { buildSwiftCliArgs, resolveImagePath } from "../../../src/utils/image-cli-args";
-import { executeSwiftCli, readImageAsBase64 } from "../../../src/utils/peekaboo-cli";
+import { imageToolHandler } from "../../../Server/src/tools/image";
+import { buildSwiftCliArgs, resolveImagePath } from "../../../Server/src/utils/image-cli-args";
+import { executeSwiftCli, readImageAsBase64 } from "../../../Server/src/utils/peekaboo-cli";
 import { mockSwiftCli } from "../../mocks/peekaboo-cli.mock";
 import { pino } from "pino";
-import { ImageInput } from "../../../src/types";
+import { ImageInput } from "../../../Server/src/types";
 import * as fs from "fs/promises";
 import * as path from "path";
 
 // Mock the Swift CLI utility
-vi.mock("../../../src/utils/peekaboo-cli");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 // Mock fs/promises
 vi.mock("fs/promises");
 
 // Mock image-cli-args module
-vi.mock("../../../src/utils/image-cli-args", async () => {
-  const actual = await vi.importActual("../../../src/utils/image-cli-args");
+vi.mock("../../../Server/src/utils/image-cli-args", async () => {
+  const actual = await vi.importActual("../../../Server/src/utils/image-cli-args");
   return {
     ...actual,
     resolveImagePath: vi.fn(),
@@ -24,18 +24,18 @@ vi.mock("../../../src/utils/image-cli-args", async () => {
 });
 
 // Mock image-analysis module
-vi.mock("../../../src/utils/image-analysis", () => ({
+vi.mock("../../../Server/src/utils/image-analysis", () => ({
   performAutomaticAnalysis: vi.fn(),
 }));
 
 // Mock AI providers
-vi.mock("../../../src/utils/ai-providers", () => ({
+vi.mock("../../../Server/src/utils/ai-providers", () => ({
   parseAIProviders: vi.fn(),
   analyzeImageWithProvider: vi.fn(),
 }));
 
-import { performAutomaticAnalysis } from "../../../src/utils/image-analysis";
-import { parseAIProviders } from "../../../src/utils/ai-providers";
+import { performAutomaticAnalysis } from "../../../Server/src/utils/image-analysis";
+import { parseAIProviders } from "../../../Server/src/utils/ai-providers";
 
 const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<typeof executeSwiftCli>;
 const mockReadImageAsBase64 = readImageAsBase64 as vi.MockedFunction<typeof readImageAsBase64>;
@@ -110,7 +110,7 @@ describe("Image Tool - Edge Cases", () => {
 
   describe("Format parameter case-insensitivity and aliases", () => {
     it("should handle uppercase PNG format", async () => {
-      const { imageToolSchema } = await import("../../../src/types/index.js");
+      const { imageToolSchema } = await import("../../../Server/src/types/index.js");
       
       mockResolveImagePath.mockResolvedValue({
         effectivePath: "/tmp/test.png",
@@ -134,7 +134,7 @@ describe("Image Tool - Edge Cases", () => {
     });
 
     it("should handle mixed case JPG format", async () => {
-      const { imageToolSchema } = await import("../../../src/types/index.js");
+      const { imageToolSchema } = await import("../../../Server/src/types/index.js");
       
       mockResolveImagePath.mockResolvedValue({
         effectivePath: "/tmp/test.jpg",
@@ -158,7 +158,7 @@ describe("Image Tool - Edge Cases", () => {
     });
 
     it("should handle 'jpeg' as alias for 'jpg'", async () => {
-      const { imageToolSchema } = await import("../../../src/types/index.js");
+      const { imageToolSchema } = await import("../../../Server/src/types/index.js");
       
       mockResolveImagePath.mockResolvedValue({
         effectivePath: "/tmp/test.jpg",
@@ -182,7 +182,7 @@ describe("Image Tool - Edge Cases", () => {
     });
 
     it("should handle uppercase 'JPEG' alias", async () => {
-      const { imageToolSchema } = await import("../../../src/types/index.js");
+      const { imageToolSchema } = await import("../../../Server/src/types/index.js");
       
       mockResolveImagePath.mockResolvedValue({
         effectivePath: "/tmp/test.jpg",
@@ -206,7 +206,7 @@ describe("Image Tool - Edge Cases", () => {
     });
 
     it("should handle 'DATA' in uppercase", async () => {
-      const { imageToolSchema } = await import("../../../src/types/index.js");
+      const { imageToolSchema } = await import("../../../Server/src/types/index.js");
       
       mockResolveImagePath.mockResolvedValue({
         effectivePath: MOCK_TEMP_IMAGE_DIR,

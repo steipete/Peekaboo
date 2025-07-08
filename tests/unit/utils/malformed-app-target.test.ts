@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildSwiftCliArgs } from "../../../src/utils/image-cli-args";
+import { buildSwiftCliArgs } from "../../../Server/src/utils/image-cli-args";
 
 describe("Malformed App Target Parsing", () => {
   it("should handle multiple leading colons correctly", () => {

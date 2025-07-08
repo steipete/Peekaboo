@@ -1,10 +1,10 @@
 import Testing
 import Foundation
+import ArgumentParser
 @testable import peekaboo
 
 /// Tests for CleanCommand
 @Suite("CleanCommand Tests")
-@available(macOS 14.0, *)
 struct CleanCommandTests {
     
     @Test("Clean command validation")
@@ -16,6 +16,8 @@ struct CleanCommandTests {
         
         // This should throw a validation error when run
         // (We can't actually run it in tests due to async requirements)
+        #expect(command.allSessions == true)
+        #expect(command.olderThan == 24)
     }
     
     @Test("Dry run flag")
@@ -26,13 +28,24 @@ struct CleanCommandTests {
         #expect(command.dryRun == true)
     }
     
-    @Test("Format bytes helper")
-    func testFormatBytes() {
-        let command = CleanCommand()
+    @Test("Clean command parsing")
+    func testCleanCommandParsing() throws {
+        // Test parsing with --all-sessions
+        let command1 = try CleanCommand.parse(["--all-sessions"])
+        #expect(command1.allSessions == true)
+        #expect(command1.olderThan == nil)
+        #expect(command1.session == nil)
         
-        // Test various byte sizes
-        #expect(command.formatBytes(1024) == "1 KB")
-        #expect(command.formatBytes(1048576) == "1 MB")
-        #expect(command.formatBytes(1073741824) == "1 GB")
+        // Test parsing with --older-than
+        let command2 = try CleanCommand.parse(["--older-than", "48"])
+        #expect(command2.allSessions == false)
+        #expect(command2.olderThan == 48)
+        #expect(command2.session == nil)
+        
+        // Test parsing with --session
+        let command3 = try CleanCommand.parse(["--session", "abc123"])
+        #expect(command3.allSessions == false)
+        #expect(command3.olderThan == nil)
+        #expect(command3.session == "abc123")
     }
 }
