@@ -3,6 +3,37 @@ import Observation
 
 // MARK: - Session Management
 
+/// Manages the persistence and lifecycle of automation sessions.
+///
+/// `SessionStore` provides a centralized store for all Peekaboo automation sessions, handling
+/// persistence to disk, session creation, and message management. Sessions are automatically
+/// saved to the user's Documents folder and restored on app launch.
+///
+/// ## Overview
+///
+/// Each session represents a complete interaction with the Peekaboo agent, containing:
+/// - User prompts and agent responses
+/// - Tool execution records
+/// - Timestamps and execution metadata
+/// - Session summaries for quick reference
+///
+/// ## Topics
+///
+/// ### Managing Sessions
+///
+/// - ``sessions``
+/// - ``currentSession``
+/// - ``createSession(title:)``
+///
+/// ### Working with Messages
+///
+/// - ``addMessage(_:to:)``
+/// - ``updateSummary(_:for:)``
+/// - ``updateLastMessage(_:in:)``
+///
+/// ### Persistence
+///
+/// Sessions are automatically persisted to `~/Documents/Peekaboo/sessions.json` and loaded on initialization.
 @Observable
 final class SessionStore {
     var sessions: [Session] = []
@@ -47,6 +78,10 @@ final class SessionStore {
         sessions[sessionIndex].messages[lastIndex] = message
         self.saveSessions()
     }
+    
+    func selectSession(_ session: Session) {
+        self.currentSession = session
+    }
 
     private func loadSessions() {
         guard FileManager.default.fileExists(atPath: self.storageURL.path) else { return }
@@ -61,7 +96,7 @@ final class SessionStore {
         }
     }
 
-    private func saveSessions() {
+    func saveSessions() {
         do {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601

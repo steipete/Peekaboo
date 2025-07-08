@@ -308,6 +308,11 @@ actor OpenAIAgent {
             throw AgentError.rateLimited(retryAfter: retryAfter)
 
         default:
+            // Log the raw error response for debugging
+            if let errorString = String(data: data, encoding: .utf8) {
+                self.logger.error("OpenAI API Error Response: \(errorString)")
+            }
+            
             if let errorData = try? JSONDecoder().decode(OpenAIError.self, from: data) {
                 throw AgentError.apiError(errorData.error.message)
             }

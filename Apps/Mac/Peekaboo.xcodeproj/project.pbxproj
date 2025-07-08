@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		7814F1902E1C0950000995F8 /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 7814F18F2E1C0950000995F8 /* AXorcist */; };
+		782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 782555012E1CA0ED00F1D8DF /* AXorcist */; };
+		782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */ = {isa = PBXBuildFile; productRef = 782555042E1CA10900F1D8DF /* PeekabooCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +30,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				7814F1902E1C0950000995F8 /* AXorcist in Frameworks */,
+				782555022E1CA0ED00F1D8DF /* AXorcist in Frameworks */,
+				782555052E1CA10900F1D8DF /* PeekabooCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +75,8 @@
 			name = Peekaboo;
 			packageProductDependencies = (
 				7814F18F2E1C0950000995F8 /* AXorcist */,
+				782555012E1CA0ED00F1D8DF /* AXorcist */,
+				782555042E1CA10900F1D8DF /* PeekabooCore */,
 			);
 			productName = Peekaboo;
 			productReference = 7814F1062E1BD4C8000995F8 /* Peekaboo.app */;
@@ -101,7 +107,8 @@
 			mainGroup = 7814F0FD2E1BD4C8000995F8;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				7814F18E2E1C0950000995F8 /* XCLocalSwiftPackageReference "../../AXorcist" */,
+				782555002E1CA0ED00F1D8DF /* XCLocalSwiftPackageReference "../../Core/AXorcist" */,
+				782555032E1CA10900F1D8DF /* XCLocalSwiftPackageReference "../../Core/PeekabooCore" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7814F1072E1BD4C8000995F8 /* Products */;
@@ -362,9 +369,13 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		7814F18E2E1C0950000995F8 /* XCLocalSwiftPackageReference "../../AXorcist" */ = {
+		782555002E1CA0ED00F1D8DF /* XCLocalSwiftPackageReference "../../Core/AXorcist" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../AXorcist;
+			relativePath = ../../Core/AXorcist;
+		};
+		782555032E1CA10900F1D8DF /* XCLocalSwiftPackageReference "../../Core/PeekabooCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Core/PeekabooCore;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -372,6 +383,14 @@
 		7814F18F2E1C0950000995F8 /* AXorcist */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AXorcist;
+		};
+		782555012E1CA0ED00F1D8DF /* AXorcist */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AXorcist;
+		};
+		782555042E1CA10900F1D8DF /* PeekabooCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PeekabooCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

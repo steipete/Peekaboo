@@ -246,6 +246,7 @@ final class SystemPermissionManager {
     private func checkAccessibilityPermission() -> Bool {
         // First check the API
         let apiResult = AXIsProcessTrusted()
+        logger.debug("AXIsProcessTrusted returned: \(apiResult)")
 
         // Then do a direct test - try to get the focused element
         let systemElement = AXUIElementCreateSystemWide()
@@ -256,16 +257,39 @@ final class SystemPermissionManager {
             &focusedElement
         )
 
+        logger.debug("AXUIElementCopyAttributeValue result: \(result.rawValue)")
+
         // If we can get the focused element, we truly have permission
         if result == .success {
-            logger.debug("Accessibility permission verified through direct test")
+            logger.info("Accessibility permission verified through direct test - SUCCESS")
             return true
         } else if apiResult {
             // API says yes but direct test failed - permission might be pending
-            logger.debug("Accessibility API reports true but direct test failed")
+            // Try an alternative test - get running applications
+            let runningApps = NSWorkspace.shared.runningApplications.first { $0.isActive }
+            if let activeApp = runningApps {
+                let axApp = AXUIElementCreateApplication(activeApp.processIdentifier)
+                var windows: CFTypeRef?
+                let windowResult = AXUIElementCopyAttributeValue(
+                    axApp,
+                    kAXWindowsAttribute as CFString,
+                    &windows
+                )
+                
+                if windowResult == .success {
+                    logger.info("Accessibility permission verified through window test - SUCCESS")
+                    return true
+                } else {
+                    logger.warning("Accessibility API reports true but both tests failed. Focus test error: \(result.rawValue), Window test error: \(windowResult.rawValue)")
+                    return false
+                }
+            }
+            
+            logger.warning("Accessibility API reports true but direct test failed with error: \(result.rawValue)")
             return false
         }
 
+        logger.info("Accessibility permission check failed - both API and direct test returned false")
         return false
     }
 

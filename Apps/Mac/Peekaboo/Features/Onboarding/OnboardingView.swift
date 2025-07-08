@@ -119,10 +119,41 @@ struct OnboardingView: View {
                 return
             }
 
-            // TODO: Make a test API call to validate the key
-
-            // Save the key
-            self.settings.openAIAPIKey = self.apiKey
+            // Make a test API call to validate the key
+            Task {
+                do {
+                    // Test the API key with a simple models list request
+                    let config = URLSessionConfiguration.default
+                    config.httpAdditionalHeaders = ["Authorization": "Bearer \(self.apiKey)"]
+                    let session = URLSession(configuration: config)
+                    
+                    let url = URL(string: "https://api.openai.com/v1/models")!
+                    let (_, response) = try await session.data(from: url)
+                    
+                    if let httpResponse = response as? HTTPURLResponse {
+                        if httpResponse.statusCode == 401 {
+                            await MainActor.run {
+                                self.validationError = "Invalid API key"
+                            }
+                            return
+                        } else if httpResponse.statusCode != 200 {
+                            await MainActor.run {
+                                self.validationError = "Failed to validate API key"
+                            }
+                            return
+                        }
+                    }
+                    
+                    // Save the key if validation succeeded
+                    await MainActor.run {
+                        self.settings.openAIAPIKey = self.apiKey
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.validationError = "Network error: \(error.localizedDescription)"
+                    }
+                }
+            }
         }
     }
 }

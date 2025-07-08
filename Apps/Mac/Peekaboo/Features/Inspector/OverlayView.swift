@@ -51,7 +51,7 @@ struct ElementOverlay: View {
                         .font(.system(size: 8, weight: .bold))
                         .foregroundColor(.white))
                 .position(x: displayFrame.minX + 15, y: displayFrame.minY + 15)
-                .opacity(self.isHovered ? 1.0 : 0.9)
+                .opacity(self.isHovered ? 1.0 : 0.5)
 
             // Only show full frame outline when hovered
             if self.isHovered {

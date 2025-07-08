@@ -1,8 +1,49 @@
 import AppKit
 import AXorcist
+import Combine
 import os.log
 import SwiftUI
 
+/// Manages visual overlays for the Peekaboo Inspector feature.
+///
+/// `OverlayManager` coordinates the display of transparent overlay windows that highlight
+/// UI elements across all applications. It handles mouse tracking, element detection,
+/// and rendering of visual feedback for both hovering and selection states.
+///
+/// ## Overview
+///
+/// The overlay system works by:
+/// - Creating transparent windows that float above all applications
+/// - Detecting UI elements under the mouse cursor using accessibility APIs
+/// - Drawing visual highlights around detected elements
+/// - Managing selection state for automation targeting
+///
+/// ## Topics
+///
+/// ### State Management
+///
+/// - ``hoveredElement``
+/// - ``selectedElement``
+/// - ``isOverlayActive``
+/// - ``currentMouseLocation``
+///
+/// ### Application Filtering
+///
+/// - ``applications``
+/// - ``selectedAppMode``
+/// - ``selectedAppBundleID``
+/// - ``AppSelectionMode``
+///
+/// ### Detail Control
+///
+/// - ``detailLevel``
+/// - ``DetailLevel``
+///
+/// ### Overlay Control
+///
+/// - ``startOverlay()``
+/// - ``stopOverlay()``
+/// - ``refreshApplications()``
 @MainActor
 class OverlayManager: ObservableObject {
     private let logger = Logger(subsystem: "boo.pekaboo.inspector", category: "OverlayManager")

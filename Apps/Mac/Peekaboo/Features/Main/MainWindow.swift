@@ -11,6 +11,9 @@ struct MainWindow: View {
     @State private var isProcessing = false
     @State private var errorMessage: String?
     @State private var inputMode: InputMode = .text
+    @State private var isRecording = false
+    @State private var recordingStartTime: Date?
+    @State private var showSessionList = false
 
     enum InputMode {
         case text
@@ -33,10 +36,17 @@ struct MainWindow: View {
                 self.chatView
             }
         }
-        .frame(width: 400, height: 600)
+        .frame(minWidth: 600, idealWidth: 800, maxWidth: 1200,
+               minHeight: 400, idealHeight: 600, maxHeight: 800)
         .background(Color(NSColor.windowBackgroundColor))
         .task {
             await self.permissions.check()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("StartNewSession"))) { _ in
+            // Clear current input and focus on text field
+            self.inputText = ""
+            self.inputMode = .text
+            // The text field will automatically focus when available
         }
     }
 
@@ -50,8 +60,47 @@ struct MainWindow: View {
 
             Text("Peekaboo")
                 .font(.headline)
+            
+            if let session = sessionStore.currentSession {
+                Text("•")
+                    .foregroundColor(.secondary)
+                Text(session.title)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
 
             Spacer()
+            
+            // Recording indicator
+            if isRecording {
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 8, height: 8)
+                        .symbolEffect(.pulse, options: .repeating)
+                    
+                    if let startTime = recordingStartTime {
+                        Text(timeIntervalString(from: startTime))
+                            .font(.caption)
+                            .monospacedDigit()
+                    }
+                }
+            }
+            
+            // Session list button
+            Button {
+                showSessionList.toggle()
+            } label: {
+                Image(systemName: "list.bullet")
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Show sessions")
+            .popover(isPresented: $showSessionList) {
+                SessionListPopover()
+                    .environment(sessionStore)
+                    .frame(width: 300, height: 400)
+            }
 
             Button {
                 self.inputMode = self.inputMode == .text ? .voice : .text
@@ -125,6 +174,8 @@ struct MainWindow: View {
                 self.suggestionButton("Click on the search button")
                 self.suggestionButton("Type 'Hello world'")
                 self.suggestionButton("What's on my screen?")
+                self.suggestionButton("Open System Settings")
+                self.suggestionButton("Show me the dock")
             }
             .padding(.top)
         }
@@ -222,6 +273,11 @@ struct MainWindow: View {
         Task {
             self.isProcessing = true
             defer { isProcessing = false }
+            
+            // Start recording if not already
+            if !isRecording {
+                startRecording()
+            }
 
             let result = await agent.executeTask(trimmedInput)
 
@@ -232,6 +288,28 @@ struct MainWindow: View {
             // Clear input
             self.inputText = ""
         }
+    }
+    
+    private func startRecording() {
+        isRecording = true
+        recordingStartTime = Date()
+        
+        // Create new session if needed
+        if sessionStore.currentSession == nil {
+            _ = sessionStore.createSession(title: "Recording \(Date().formatted(date: .abbreviated, time: .shortened))")
+        }
+    }
+    
+    private func stopRecording() {
+        isRecording = false
+        recordingStartTime = nil
+    }
+    
+    private func timeIntervalString(from startTime: Date) -> String {
+        let interval = Date().timeIntervalSince(startTime)
+        let minutes = Int(interval) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%02d:%02d", minutes, seconds)
     }
 
     private func toggleVoiceRecording() {
@@ -303,6 +381,68 @@ struct MessageRow: View {
             "sparkles"
         case .system:
             "gear"
+        }
+    }
+}
+
+// MARK: - Session List Popover
+
+struct SessionListPopover: View {
+    @Environment(SessionStore.self) private var sessionStore
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Sessions")
+                    .font(.headline)
+                Spacer()
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding()
+            
+            Divider()
+            
+            if sessionStore.sessions.isEmpty {
+                VStack {
+                    Image(systemName: "tray")
+                        .font(.largeTitle)
+                        .foregroundColor(.secondary)
+                    Text("No sessions yet")
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxHeight: .infinity)
+            } else {
+                List(sessionStore.sessions) { session in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(session.title)
+                                .font(.body)
+                                .lineLimit(1)
+                            
+                            Text("\(session.messages.count) messages")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        sessionStore.selectSession(session)
+                        dismiss()
+                    }
+                }
+                .listStyle(.plain)
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ struct EndToEndTests {
     @Test("Full agent execution flow", .enabled(if: !Test.isCI))
     func fullAgentFlow() async throws {
         // This test requires a valid API key, so skip in CI
-        let settings = Settings()
+        let settings = PeekabooSettings()
         guard !settings.openAIAPIKey.isEmpty else {
             Issue.record("No API key configured - skipping test")
             return
@@ -48,7 +48,8 @@ struct EndToEndTests {
 
     @Test("Speech service initialization", .enabled(if: !Test.isCI))
     func speechServiceInit() async throws {
-        let speechRecognizer = SpeechRecognizer()
+        let settings = PeekabooSettings()
+        let speechRecognizer = SpeechRecognizer(settings: settings)
 
         // Request authorization
         let authorized = await speechRecognizer.requestAuthorization()
@@ -68,7 +69,7 @@ struct EndToEndTests {
 struct ErrorRecoveryTests {
     @Test("Agent handles network errors gracefully")
     func networkErrorHandling() async {
-        let settings = Settings()
+        let settings = PeekabooSettings()
         settings.openAIAPIKey = "invalid-key"
 
         let sessionStore = SessionStore()
@@ -119,7 +120,7 @@ struct ErrorRecoveryTests {
 struct ConcurrencyTests {
     @Test("Multiple simultaneous agent executions")
     func concurrentExecutions() async {
-        let settings = Settings()
+        let settings = PeekabooSettings()
         settings.openAIAPIKey = "test-key"
 
         let sessionStore = SessionStore()

@@ -24,7 +24,11 @@ struct InspectorView: View {
             Task {
                 await permissions.check()
             }
+            permissions.startMonitoring()
             self.openOverlayWindow()
+        }
+        .onDisappear {
+            permissions.stopMonitoring()
         }
     }
 
