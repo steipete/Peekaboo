@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { cleanToolHandler, cleanToolSchema } from '../../../src/tools/clean.js';
-import * as peekabooCliModule from '../../../src/utils/peekaboo-cli.js';
+import { cleanToolHandler, cleanToolSchema } from "../../../Server/src/tools/clean';
+import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli';
 import { pino } from 'pino';
 
-vi.mock('../../../src/utils/peekaboo-cli.js');
+vi.mock("../../../Server/src/utils/peekaboo-cli');
 
 const mockLogger = pino({ level: "silent" });
 

@@ -1,8 +1,8 @@
 import Testing
 import Foundation
+import ArgumentParser
 @testable import peekaboo
 
-@available(macOS 14.0, *)
 @Suite("ClickCommand Tests")
 struct ClickCommandTests {
     

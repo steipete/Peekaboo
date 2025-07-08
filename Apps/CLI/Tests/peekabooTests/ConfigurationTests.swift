@@ -8,7 +8,7 @@ struct ConfigurationTests {
 
     @Test("Strip single-line comments from JSONC", .tags(.fast))
     func stripSingleLineComments() throws {
-        let manager = ConfigurationManager()
+        let manager = ConfigurationManager.shared
 
         let jsonc = """
         {
@@ -19,7 +19,7 @@ struct ConfigurationTests {
         """
 
         let result = manager.stripJSONComments(from: jsonc)
-        let data = result.data(using: .utf8)!
+        let data = Data(result.utf8)
         let parsed = try JSONSerialization.jsonObject(with: data) as! [String: Any]
 
         #expect(parsed["key"] as? String == "value")
@@ -28,7 +28,7 @@ struct ConfigurationTests {
 
     @Test("Strip multi-line comments from JSONC", .tags(.fast))
     func stripMultiLineComments() throws {
-        let manager = ConfigurationManager()
+        let manager = ConfigurationManager.shared
 
         let jsonc = """
         {
@@ -50,7 +50,7 @@ struct ConfigurationTests {
 
     @Test("Preserve comments inside strings", .tags(.fast))
     func preserveCommentsInStrings() throws {
-        let manager = ConfigurationManager()
+        let manager = ConfigurationManager.shared
 
         let jsonc = """
         {
@@ -73,7 +73,7 @@ struct ConfigurationTests {
 
     @Test("Expand environment variables", .tags(.fast))
     func expandEnvironmentVariables() throws {
-        let manager = ConfigurationManager()
+        let manager = ConfigurationManager.shared
 
         // Set test environment variables
         setenv("TEST_VAR", "test_value", 1)
@@ -102,7 +102,7 @@ struct ConfigurationTests {
 
     @Test("Configuration value precedence", .tags(.fast))
     func configurationPrecedence() {
-        let manager = ConfigurationManager()
+        let manager = ConfigurationManager.shared
 
         // Test precedence: CLI > env > config > default
 
@@ -204,7 +204,7 @@ struct ConfigurationTests {
 
     @Test("Expand tilde in paths", .tags(.fast))
     func expandTildeInPaths() {
-        let manager = ConfigurationManager()
+        let manager = ConfigurationManager.shared
 
         let path = manager.getDefaultSavePath(cliValue: "~/Desktop/Screenshots")
         #expect(path.hasPrefix("/"))
@@ -216,7 +216,7 @@ struct ConfigurationTests {
 
     @Test("Get AI providers with configuration", .tags(.fast))
     func getAIProvidersWithConfig() {
-        let manager = ConfigurationManager()
+        let manager = ConfigurationManager.shared
 
         // Test default value
         let defaultProviders = manager.getAIProviders(cliValue: nil)
@@ -235,7 +235,7 @@ struct ConfigurationTests {
 
     @Test("Get OpenAI API key with configuration", .tags(.fast))
     func getOpenAIAPIKeyWithConfig() {
-        let manager = ConfigurationManager()
+        let manager = ConfigurationManager.shared
 
         // Save current API key if it exists
         let originalKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"]
@@ -260,7 +260,7 @@ struct ConfigurationTests {
 
     @Test("Get Ollama base URL with configuration", .tags(.fast))
     func getOllamaBaseURLWithConfig() {
-        let manager = ConfigurationManager()
+        let manager = ConfigurationManager.shared
 
         // Test default value
         let defaultURL = manager.getOllamaBaseURL()

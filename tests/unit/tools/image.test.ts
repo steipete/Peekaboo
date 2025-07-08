@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { imageToolHandler } from "../../../src/tools/image";
-import { buildSwiftCliArgs, resolveImagePath } from "../../../src/utils/image-cli-args";
-import { executeSwiftCli, readImageAsBase64 } from "../../../src/utils/peekaboo-cli";
+import { imageToolHandler } from "../../../Server/src/tools/image";
+import { buildSwiftCliArgs, resolveImagePath } from "../../../Server/src/utils/image-cli-args";
+import { executeSwiftCli, readImageAsBase64 } from "../../../Server/src/utils/peekaboo-cli";
 import { mockSwiftCli } from "../../mocks/peekaboo-cli.mock";
 import { pino } from "pino";
 import {
@@ -10,20 +10,20 @@ import {
   ToolResponse,
   AIProvider,
   ImageInput,
-} from "../../../src/types";
+} from "../../../Server/src/types";
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 
 // Mock the Swift CLI utility
-vi.mock("../../../src/utils/peekaboo-cli");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 // Mock fs/promises
 vi.mock("fs/promises");
 
 // Mock image-cli-args module
-vi.mock("../../../src/utils/image-cli-args", async () => {
-  const actual = await vi.importActual("../../../src/utils/image-cli-args");
+vi.mock("../../../Server/src/utils/image-cli-args", async () => {
+  const actual = await vi.importActual("../../../Server/src/utils/image-cli-args");
   return {
     ...actual,
     resolveImagePath: vi.fn(),
@@ -31,18 +31,18 @@ vi.mock("../../../src/utils/image-cli-args", async () => {
 });
 
 // Mock image-analysis module
-vi.mock("../../../src/utils/image-analysis", () => ({
+vi.mock("../../../Server/src/utils/image-analysis", () => ({
   performAutomaticAnalysis: vi.fn(),
 }));
 
 // Mock AI providers
-vi.mock("../../../src/utils/ai-providers", () => ({
+vi.mock("../../../Server/src/utils/ai-providers", () => ({
   parseAIProviders: vi.fn(),
   analyzeImageWithProvider: vi.fn(),
 }));
 
-import { performAutomaticAnalysis } from "../../../src/utils/image-analysis";
-import { parseAIProviders } from "../../../src/utils/ai-providers";
+import { performAutomaticAnalysis } from "../../../Server/src/utils/image-analysis";
+import { parseAIProviders } from "../../../Server/src/utils/ai-providers";
 
 const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<
   typeof executeSwiftCli
@@ -325,7 +325,7 @@ describe("Image Tool", () => {
 
     it("should handle case-insensitive format values", async () => {
       // Import schema to test preprocessing
-      const { imageToolSchema } = await import("../../../src/types/index.js");
+      const { imageToolSchema } = await import("../../../Server/src/types/index.js");
       
       // Mock resolveImagePath for minimal case
       mockResolveImagePath.mockResolvedValue({
@@ -355,7 +355,7 @@ describe("Image Tool", () => {
 
     it("should handle jpeg alias for jpg format", async () => {
       // Import schema to test preprocessing
-      const { imageToolSchema } = await import("../../../src/types/index.js");
+      const { imageToolSchema } = await import("../../../Server/src/types/index.js");
       
       // Mock resolveImagePath for minimal case
       mockResolveImagePath.mockResolvedValue({
@@ -1235,7 +1235,7 @@ describe("Image Tool", () => {
 
     it("should fall back to PNG when format is an invalid value", async () => {
       // Import schema to test preprocessing
-      const { imageToolSchema } = await import("../../../src/types/index.js");
+      const { imageToolSchema } = await import("../../../Server/src/types/index.js");
       
       // Mock resolveImagePath
       mockResolveImagePath.mockResolvedValue({

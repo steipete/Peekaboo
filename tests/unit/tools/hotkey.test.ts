@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { hotkeyToolHandler, hotkeyToolSchema } from "../../../src/tools/hotkey.js";
-import type { ToolContext, HotkeyInput } from "../../../src/types/index.js";
-import * as peekabooCliModule from "../../../src/utils/peekaboo-cli.js";
+import { hotkeyToolHandler, hotkeyToolSchema } from "../../../Server/src/tools/hotkey";
+import type { ToolContext, HotkeyInput } from "../../../Server/src/types/index";
+import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
-vi.mock("../../../src/utils/peekaboo-cli.js");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 describe("hotkey tool", () => {
   let mockContext: ToolContext;

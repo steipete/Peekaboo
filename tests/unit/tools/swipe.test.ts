@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { swipeToolHandler, swipeToolSchema } from "../../../src/tools/swipe.js";
-import type { ToolContext, SwipeInput } from "../../../src/types/index.js";
-import * as peekabooCliModule from "../../../src/utils/peekaboo-cli.js";
+import { swipeToolHandler, swipeToolSchema } from "../../../Server/src/tools/swipe";
+import type { ToolContext, SwipeInput } from "../../../Server/src/types/index";
+import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
-vi.mock("../../../src/utils/peekaboo-cli.js");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 describe("swipe tool", () => {
   let mockContext: ToolContext;

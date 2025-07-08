@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { imageToolHandler } from "../../../src/tools/image";
-import * as peekabooCliModule from "../../../src/utils/peekaboo-cli";
-import type { SwiftCliResponse } from "../../../src/types";
+import { imageToolHandler } from "../../../Server/src/tools/image";
+import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
+import type { SwiftCliResponse } from "../../../Server/src/types";
 import type { ToolContext } from "@modelcontextprotocol/sdk/types";
 import pino from "pino";
 
 // Mock the peekaboo-cli module
-vi.mock("../../../src/utils/peekaboo-cli");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 // Create a mock context
 const mockContext: ToolContext = {

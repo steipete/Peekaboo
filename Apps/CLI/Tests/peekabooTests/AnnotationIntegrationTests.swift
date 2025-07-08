@@ -9,7 +9,6 @@ struct AnnotationIntegrationTests {
     // Run with: RUN_LOCAL_TESTS=true swift test
 
     @Test("Annotated screenshot generation with window bounds")
-    @available(macOS 14.0, *)
     func annotatedScreenshotGeneration() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             throw TestSkipped("Local test - set RUN_LOCAL_TESTS=true to run")
@@ -50,7 +49,6 @@ struct AnnotationIntegrationTests {
     }
 
     @Test("Coordinate transformation in real window")
-    @available(macOS 14.0, *)
     func realWindowCoordinateTransformation() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             throw TestSkipped("Local test - set RUN_LOCAL_TESTS=true to run")
@@ -87,7 +85,6 @@ struct AnnotationIntegrationTests {
     }
 
     @Test("Annotation overlay pixel accuracy")
-    @available(macOS 14.0, *)
     func annotationOverlayAccuracy() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             throw TestSkipped("Local test - set RUN_LOCAL_TESTS=true to run")

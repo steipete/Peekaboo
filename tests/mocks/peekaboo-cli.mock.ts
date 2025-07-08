@@ -3,7 +3,7 @@ import {
   ApplicationListData,
   WindowListData,
   ImageCaptureData,
-} from "../../src/types/index";
+} from "../../Server/src/types/index";
 import { vi } from "vitest";
 
 // Mock Swift CLI responses for testing

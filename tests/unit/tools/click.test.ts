@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { clickToolHandler, clickToolSchema } from "../../../src/tools/click.js";
-import type { ToolContext, ClickInput } from "../../../src/types/index.js";
-import * as peekabooCliModule from "../../../src/utils/peekaboo-cli.js";
+import { clickToolHandler, clickToolSchema } from "../../../Server/src/tools/click";
+import type { ToolContext, ClickInput } from "../../../Server/src/types/index";
+import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
-vi.mock("../../../src/utils/peekaboo-cli.js");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 describe("click tool", () => {
   let mockContext: ToolContext;

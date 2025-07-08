@@ -7,7 +7,6 @@ import Testing
 @Suite("Label Extraction Tests", .serialized, .tags(.localOnly))
 struct LabelExtractionTests {
     @Test("AXLabel attribute extraction for Calculator buttons")
-    @available(macOS 14.0, *)
     func calculatorButtonLabelExtraction() async throws {
         // This test requires Calculator to be running
         guard let calculator = try? ApplicationFinder.findApplication(identifier: "Calculator") else {
@@ -84,7 +83,6 @@ struct LabelExtractionTests {
     }
 
     @Test("Label extraction fallback hierarchy")
-    @available(macOS 14.0, *)
     func labelExtractionFallback() async throws {
         // Test the fallback hierarchy for label extraction
         // Create mock elements with different attribute combinations
@@ -126,7 +124,6 @@ struct LabelExtractionTests {
     }
 
     @Test("SessionCache UIElement includes label and identifier fields")
-    @available(macOS 14.0, *)
     func sessionCacheUIElementFormat() async throws {
         // Test that SessionCache.SessionData.UIElement includes label and identifier fields
         let element = SessionCache.SessionData.UIElement(

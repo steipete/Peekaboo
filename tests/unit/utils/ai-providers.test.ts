@@ -5,8 +5,8 @@ import {
   analyzeImageWithProvider,
   getDefaultModelForProvider,
   determineProviderAndModel,
-} from "../../../src/utils/ai-providers";
-import { AIProvider } from "../../../src/types";
+} from "../../../Server/src/utils/ai-providers";
+import { AIProvider } from "../../../Server/src/types";
 
 const mockLogger = {
   info: vi.fn(),

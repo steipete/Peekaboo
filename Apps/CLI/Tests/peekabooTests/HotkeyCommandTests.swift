@@ -3,7 +3,6 @@ import Foundation
 @testable import peekaboo
 import PeekabooCore
 
-@available(macOS 14.0, *)
 @Suite struct HotkeyCommandTests {
     
     @Test func testHotkeyParsing() async throws {

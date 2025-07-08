@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { typeToolHandler, typeToolSchema } from "../../../src/tools/type.js";
-import type { ToolContext, TypeInput } from "../../../src/types/index.js";
-import * as peekabooCliModule from "../../../src/utils/peekaboo-cli.js";
+import { typeToolHandler, typeToolSchema } from "../../../Server/src/tools/type";
+import type { ToolContext, TypeInput } from "../../../Server/src/types/index";
+import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
-vi.mock("../../../src/utils/peekaboo-cli.js");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 describe("type tool", () => {
   let mockContext: ToolContext;

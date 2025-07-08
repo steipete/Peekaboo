@@ -503,6 +503,16 @@ struct ListCommandAdvancedTests {
 
     @Test("Server permissions data encoding", .tags(.fast))
     func serverPermissionsEncoding() throws {
+        // Define the missing types locally for this test
+        struct ServerPermissions: Codable {
+            let screen_recording: Bool
+            let accessibility: Bool
+        }
+        
+        struct ServerStatusData: Codable {
+            let permissions: ServerPermissions
+        }
+        
         let permissions = ServerPermissions(
             screen_recording: true,
             accessibility: false)

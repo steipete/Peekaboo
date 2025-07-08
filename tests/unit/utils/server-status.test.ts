@@ -1,4 +1,4 @@
-import { generateServerStatusString } from "../../../src/utils/server-status";
+import { generateServerStatusString } from "../../../Server/src/utils/server-status";
 
 describe("Server Status Utility - generateServerStatusString", () => {
   const testVersion = "1.2.3";

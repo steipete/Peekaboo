@@ -2,7 +2,6 @@ import Foundation
 import Testing
 @testable import peekaboo
 
-@available(macOS 14.0, *)
 @Suite("WindowCommand Tests", .serialized)
 struct WindowCommandTests {
     @Test
@@ -138,7 +137,6 @@ struct WindowCommandTests {
 
 // MARK: - Local Integration Tests
 
-@available(macOS 14.0, *)
 @Suite("Window Command Local Integration Tests", .serialized)
 struct WindowCommandLocalIntegrationTests {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))

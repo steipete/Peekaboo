@@ -2,6 +2,7 @@ import AppKit
 import CoreGraphics
 import ScreenCaptureKit
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite(

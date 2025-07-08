@@ -1,5 +1,6 @@
 import CoreGraphics
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("Models Tests", .tags(.models, .unit))
@@ -268,7 +269,7 @@ struct ModelsTests {
             .starts(with: "Failed to write capture file to path: /tmp/test.png.") == true)
         #expect(CaptureError.appNotFound("Safari")
             .errorDescription == "Application with identifier 'Safari' not found or is not running.")
-        #expect(CaptureError.invalidWindowIndex(5).errorDescription == "Invalid window index: 5.")
+        #expect(CaptureError.invalidWindowIndex(5, availableCount: 3).errorDescription == "Invalid window index: 5. Available windows: 0-2")
     }
 
     @Test("CaptureError exit codes", .tags(.fast))
@@ -283,7 +284,7 @@ struct ModelsTests {
             (.windowCaptureFailed(nil), 16),
             (.fileWriteError("test", nil), 17),
             (.appNotFound("test"), 18),
-            (.invalidWindowIndex(0), 19),
+            (.invalidWindowIndex(0, availableCount: 0), 19),
             (.invalidArgument("test"), 20),
             (.unknownError("test"), 1),
         ]
