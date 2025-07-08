@@ -30,6 +30,12 @@ public final class PeekabooServices: Sendable {
     /// Session management
     public let sessions: SessionManagerProtocol
     
+    /// File system operations
+    public let files: FileServiceProtocol
+    
+    /// Configuration management
+    public let configuration: ConfigurationManager
+    
     /// Initialize with default service implementations
     public init() {
         let apps = ApplicationService()
@@ -43,6 +49,8 @@ public final class PeekabooServices: Sendable {
         self.dock = DockService()
         self.dialogs = DialogService()
         self.sessions = sess
+        self.files = FileService()
+        self.configuration = ConfigurationManager.shared
     }
     
     /// Initialize with custom service implementations (for testing)
@@ -54,7 +62,9 @@ public final class PeekabooServices: Sendable {
         menu: MenuServiceProtocol,
         dock: DockServiceProtocol,
         dialogs: DialogServiceProtocol,
-        sessions: SessionManagerProtocol
+        sessions: SessionManagerProtocol,
+        files: FileServiceProtocol,
+        configuration: ConfigurationManager? = nil
     ) {
         self.screenCapture = screenCapture
         self.applications = applications
@@ -64,6 +74,8 @@ public final class PeekabooServices: Sendable {
         self.dock = dock
         self.dialogs = dialogs
         self.sessions = sessions
+        self.files = files
+        self.configuration = configuration ?? ConfigurationManager.shared
     }
 }
 
