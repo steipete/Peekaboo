@@ -54,8 +54,7 @@ struct MenuBarDetector {
         // Get all windows - don't filter by on-screen only as menu bar items might be reported differently
         let windowList = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
         
-        // Get menu bar height
-        let menuBarHeight: CGFloat = 38.0 // Actual menu bar area including some padding
+        // Menu bar items are detected by window layer and position
         
         // Debug: print total windows found
         if ProcessInfo.processInfo.environment["PEEKABOO_DEBUG"] != nil {

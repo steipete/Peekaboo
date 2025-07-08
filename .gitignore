@@ -176,6 +176,26 @@ Calculator_*.png
 TextEdit_*.png
 Safari_*.png
 Wispr_*.png
+Finder_*.png
 test-*.png
 screenshot-*.png
 Screenshot*.png
+capture_*.png
+peekaboo_*.png
+
+# Temporary test files
+test.peekaboo.json
+test_*.sh
+check_*.sh
+*.test.png
+*.test.json
+
+# Menubar elements JSON (test data)
+menubar_elements.json
+
+# Vite cache
+.vite/
+
+# Documentation audits and summaries
+docc-class-audit.md
+test-fixes-summary.md
