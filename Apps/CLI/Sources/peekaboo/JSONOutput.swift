@@ -49,6 +49,7 @@ struct ErrorInfo: Codable {
 enum ErrorCode: String, Codable {
     case PERMISSION_ERROR_SCREEN_RECORDING
     case PERMISSION_ERROR_ACCESSIBILITY
+    case PERMISSION_DENIED
     case APP_NOT_FOUND
     case AMBIGUOUS_APP_IDENTIFIER
     case WINDOW_NOT_FOUND
