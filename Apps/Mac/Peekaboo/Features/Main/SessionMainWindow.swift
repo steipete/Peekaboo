@@ -199,14 +199,16 @@ struct SessionSidebar: View {
         savePanel.begin { response in
             guard response == .OK, let url = savePanel.url else { return }
             
-            do {
-                let encoder = JSONEncoder()
-                encoder.dateEncodingStrategy = .iso8601
-                encoder.outputFormatting = .prettyPrinted
-                let data = try encoder.encode(session)
-                try data.write(to: url)
-            } catch {
-                print("Failed to export session: \(error)")
+            Task { @MainActor in
+                do {
+                    let encoder = JSONEncoder()
+                    encoder.dateEncodingStrategy = .iso8601
+                    encoder.outputFormatting = .prettyPrinted
+                    let data = try encoder.encode(session)
+                    try data.write(to: url)
+                } catch {
+                    print("Failed to export session: \(error)")
+                }
             }
         }
     }
@@ -350,7 +352,23 @@ struct SessionChatView: View {
                         Button("Retry") {
                             // Clear error state and retry connection
                             hasConnectionError = false
-                            // TODO: Implement retry logic
+                            
+                            // Retry the last failed task if available
+                            if !agent.currentTask.isEmpty {
+                                let lastTask = agent.currentTask
+                                Task {
+                                    isProcessing = true
+                                    defer { isProcessing = false }
+                                    
+                                    // Re-execute the last task
+                                    let result = await agent.executeTask(lastTask)
+                                    
+                                    // Check if retry was successful
+                                    if result.error == nil {
+                                        hasConnectionError = false
+                                    }
+                                }
+                            }
                         }
                         .buttonStyle(.link)
                         .foregroundColor(.red)
@@ -467,23 +485,21 @@ struct SessionChatView: View {
                 to: session
             )
             
-            // If agent is executing, we can't send a follow-up directly
-            // Instead, we'll need to wait for the current execution to finish
+            // If agent is executing, queue the message for later
             if agent.isExecuting {
-                // TODO: Queue follow-up messages or handle differently
-                print("Agent is busy, follow-up message queued: \(trimmedInput)")
+                agent.queueMessage(trimmedInput)
+                
+                // Show queued notification
+                sessionStore.addMessage(
+                    SessionMessage(role: .system, content: "📋 Message queued. It will be processed after the current task completes."),
+                    to: session
+                )
             } else {
                 // Start a new execution with the follow-up
                 Task {
                     await agent.executeTask(trimmedInput)
                 }
             }
-            
-            // Show acknowledgment
-            sessionStore.addMessage(
-                SessionMessage(role: .system, content: "📝 Follow-up added to current task."),
-                to: session
-            )
         } else {
             // Normal execution
             Task {
