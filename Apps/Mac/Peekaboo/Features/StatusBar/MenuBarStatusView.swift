@@ -229,8 +229,15 @@ struct MenuBarStatusView: View {
         
         // Send follow-up to agent if one is active
         if agent.isExecuting {
-            // TODO: Queue follow-up messages or handle differently
-            print("Agent is busy, follow-up message queued: \(text)")
+            agent.queueMessage(text)
+            
+            // Show queued notification in the current session
+            if let session = sessionStore.currentSession {
+                sessionStore.addMessage(
+                    SessionMessage(role: .system, content: "📋 Message queued. It will be processed after the current task completes."),
+                    to: session
+                )
+            }
         } else {
             // Start a new execution with the follow-up
             Task {
@@ -268,12 +275,11 @@ struct MenuBarStatusView: View {
                                 )
                                 .onTapGesture {
                                     sessionStore.selectSession(session)
-                                    if let appDelegate = NSApp.delegate as? AppDelegate {
-                                        appDelegate.showMainWindow()
-                                    } else {
-                                        NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
-                                        NSApp.activate(ignoringOtherApps: true)
-                                    }
+                                    // Show dock icon temporarily
+                                    DockIconManager.shared.temporarilyShowDock()
+                                    // Open main window
+                                    NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+                                    NSApp.activate(ignoringOtherApps: true)
                                 }
                             }
                         }
@@ -287,14 +293,12 @@ struct MenuBarStatusView: View {
             VStack(spacing: 8) {
                 Button(action: {
                     logger.info("Open Main Window button clicked")
-                    if let appDelegate = NSApp.delegate as? AppDelegate {
-                        logger.info("Found AppDelegate, calling showMainWindow")
-                        appDelegate.showMainWindow()
-                    } else {
-                        logger.error("No AppDelegate found, posting notification")
-                        NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
-                        NSApp.activate(ignoringOtherApps: true)
-                    }
+                    // Show dock icon temporarily
+                    DockIconManager.shared.temporarilyShowDock()
+                    // Post notification to open window
+                    NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+                    // Activate the app
+                    NSApp.activate(ignoringOtherApps: true)
                 }) {
                     Label("Open Main Window", systemImage: "rectangle.stack")
                         .frame(maxWidth: .infinity)
@@ -303,15 +307,11 @@ struct MenuBarStatusView: View {
                 
                 Button(action: {
                     logger.info("New Session button clicked")
+                    // Show dock icon temporarily
+                    DockIconManager.shared.temporarilyShowDock()
                     // First open main window
-                    if let appDelegate = NSApp.delegate as? AppDelegate {
-                        logger.info("Found AppDelegate for new session, calling showMainWindow")
-                        appDelegate.showMainWindow()
-                    } else {
-                        logger.error("No AppDelegate found for new session, posting notification")
-                        NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
-                        NSApp.activate(ignoringOtherApps: true)
-                    }
+                    NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+                    NSApp.activate(ignoringOtherApps: true)
                     
                     // Then start new session after a short delay
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {

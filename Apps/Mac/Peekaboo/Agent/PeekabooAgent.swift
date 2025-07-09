@@ -43,6 +43,10 @@ final class PeekabooAgent: AgentEventDelegate {
     private let sessionStore: SessionStore
     private let toolExecutor = PeekabooToolExecutor()
     private var currentExecutionTask: Task<AgentResult, Never>?
+    
+    // Message queue for follow-up messages
+    private var messageQueue: [String] = []
+    private var isProcessingQueue = false
 
     init(settings: PeekabooSettings, sessionStore: SessionStore) {
         self.settings = settings
@@ -63,6 +67,13 @@ final class PeekabooAgent: AgentEventDelegate {
             isExecuting = false
             currentTask = ""
             currentExecutionTask = nil
+            
+            // Process any queued messages after this task completes
+            if !messageQueue.isEmpty && !isProcessingQueue {
+                Task {
+                    await processMessageQueue()
+                }
+            }
         }
 
         // Create session
@@ -135,6 +146,38 @@ final class PeekabooAgent: AgentEventDelegate {
         currentTask = ""
         currentSession = nil
         currentExecutionTask = nil
+        
+        // Clear the queue as well
+        messageQueue.removeAll()
+        isProcessingQueue = false
+    }
+    
+    /// Queue a message to be executed after the current task completes
+    func queueMessage(_ message: String) {
+        messageQueue.append(message)
+        
+        // If we're not currently executing, process the queue immediately
+        if !isExecuting && !isProcessingQueue {
+            Task {
+                await processMessageQueue()
+            }
+        }
+    }
+    
+    /// Process queued messages one by one
+    private func processMessageQueue() async {
+        guard !isProcessingQueue, !messageQueue.isEmpty else { return }
+        
+        isProcessingQueue = true
+        defer { isProcessingQueue = false }
+        
+        while !messageQueue.isEmpty && !Task.isCancelled {
+            let message = messageQueue.removeFirst()
+            _ = await executeTask(message)
+            
+            // Small delay between messages to avoid overwhelming the system
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        }
     }
     
     // MARK: - AgentEventDelegate
