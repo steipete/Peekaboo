@@ -374,52 +374,63 @@ struct MenuBarSubcommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
     
-    @MainActor
     mutating func run() async throws {
-        let items = MenuBarDetector.getMenuBarItems()
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
         
-        if jsonOutput {
-            let jsonItems = items.map { item in
-                [
-                    "name": item.displayName,
-                    "app_name": item.appName,
-                    "bundle_id": item.bundleIdentifier ?? "",
-                    "position": [
-                        "x": Int(item.frame.minX),
-                        "y": Int(item.frame.minY),
-                        "width": Int(item.frame.width),
-                        "height": Int(item.frame.height)
-                    ],
-                    "process_id": item.processID
-                ] as [String: Any]
-            }
+        do {
+            // Use the enhanced menu service to get menu bar items
+            let menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
             
-            let output = JSONResponse(
-                success: true,
-                data: AnyCodable([
-                    "count": items.count,
-                    "items": jsonItems
-                ])
-            )
-            outputJSON(output)
-        } else {
-            if items.isEmpty {
-                print("No menu bar items found.")
-                print("Note: Ensure Screen Recording permission is granted.")
-            } else {
-                print("Menu Bar Items (\(items.count) total):")
-                print(String(repeating: "=", count: 50))
+            if jsonOutput {
+                let jsonItems = menuExtras.map { extra in
+                    [
+                        "name": extra.title,
+                        "app_name": extra.title,
+                        "position": [
+                            "x": Int(extra.position.x),
+                            "y": Int(extra.position.y)
+                        ],
+                        "visible": extra.isVisible
+                    ] as [String: Any]
+                }
                 
-                for (index, item) in items.enumerated() {
-                    print("\n\(index + 1). \(item.displayName)")
-                    print("   App: \(item.appName)")
-                    if let bundleId = item.bundleIdentifier {
-                        print("   Bundle: \(bundleId)")
+                let output = JSONResponse(
+                    success: true,
+                    data: AnyCodable([
+                        "count": menuExtras.count,
+                        "items": jsonItems
+                    ])
+                )
+                outputJSON(output)
+            } else {
+                if menuExtras.isEmpty {
+                    print("No menu bar items found.")
+                    print("Note: Ensure Screen Recording permission is granted.")
+                } else {
+                    print("Menu Bar Items (\(menuExtras.count) total):")
+                    print(String(repeating: "=", count: 50))
+                    
+                    for (index, extra) in menuExtras.enumerated() {
+                        print("\n\(index + 1). \(extra.title)")
+                        print("   Position: x=\(Int(extra.position.x)), y=\(Int(extra.position.y))")
+                        print("   Visible: \(extra.isVisible ? "Yes" : "No")")
                     }
-                    print("   Position: x=\(Int(item.frame.minX)), width=\(Int(item.frame.width))")
-                    print("   PID: \(item.processID)")
                 }
             }
+        } catch {
+            self.handleError(error)
+            throw ExitCode(1)
+        }
+    }
+    
+    private func handleError(_ error: Error) {
+        if self.jsonOutput {
+            outputError(
+                message: error.localizedDescription,
+                code: .UNKNOWN_ERROR,
+                details: "Failed to list menu bar items")
+        } else {
+            fputs("Error: \(error.localizedDescription)\n", stderr)
         }
     }
 }

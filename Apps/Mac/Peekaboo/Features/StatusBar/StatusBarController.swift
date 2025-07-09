@@ -236,9 +236,12 @@ final class StatusBarController: NSObject {
         window.title = session.title
         window.center()
         window.contentView = NSHostingView(
-            rootView: SessionMainWindow(session: session)
-                .environmentObject(sessionStore)
-                .environmentObject(agentController)
+            rootView: SessionMainWindow()
+                .environment(sessionStore)
+                .environment(agent)
+                .environment(speechRecognizer)
+                .environment(permissions)
+                .environment(settings)
         )
         
         window.makeKeyAndOrderFront(nil)
