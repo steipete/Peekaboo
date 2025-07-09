@@ -234,11 +234,16 @@ struct ShortcutsSettingsView: View {
                             // Capture the key combination
                             let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
                             if !modifiers.isEmpty && event.charactersIgnoringModifiers != nil {
-                                // Update the shortcut
-                                self.currentShortcut = KeyboardShortcut(
-                                    key: KeyEquivalent(Character(event.charactersIgnoringModifiers!)),
-                                    modifiers: EventModifiers(modifiers)
-                                )
+                                // Convert NSEvent.ModifierFlags to string representation
+                                var shortcutParts: [String] = []
+                                if modifiers.contains(.command) { shortcutParts.append("⌘") }
+                                if modifiers.contains(.control) { shortcutParts.append("⌃") }
+                                if modifiers.contains(.option) { shortcutParts.append("⌥") }
+                                if modifiers.contains(.shift) { shortcutParts.append("⇧") }
+                                shortcutParts.append(event.charactersIgnoringModifiers!.uppercased())
+                                
+                                // Update the shortcut in settings
+                                self.settings.globalShortcut = shortcutParts.joined()
                                 
                                 self.recordingShortcut = false
                                 return nil // Consume the event
