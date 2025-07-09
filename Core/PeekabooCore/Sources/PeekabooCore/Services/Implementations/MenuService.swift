@@ -200,32 +200,30 @@ public final class MenuService: MenuServiceProtocol {
     
     public func listMenuExtras() async throws -> [MenuExtraInfo] {
         return await MainActor.run {
-            // Get system-wide element
-            let systemWide = Element.systemWide()
+            var allExtras: [MenuExtraInfo] = []
             
-            // Find menu bar
-            guard let menuBar = systemWide.menuBar() else {
-                return []
+            // First, try the window-based approach for comprehensive detection
+            let windowExtras = self.getMenuBarItemsViaWindows()
+            allExtras.append(contentsOf: windowExtras)
+            
+            // Then supplement with AX-based detection for any missed items
+            let axExtras = self.getMenuBarItemsViaAccessibility()
+            
+            // Merge results, avoiding duplicates based on position
+            for axExtra in axExtras {
+                let isDuplicate = allExtras.contains { extra in
+                    abs(extra.position.x - axExtra.position.x) < 5 &&
+                    abs(extra.position.y - axExtra.position.y) < 5
+                }
+                if !isDuplicate {
+                    allExtras.append(axExtra)
+                }
             }
             
-            // Find menu extras group
-            let menuBarItems = menuBar.children() ?? []
-            guard let menuExtrasGroup = menuBarItems.last(where: { $0.role() == "AXGroup" }) else {
-                return []
-            }
+            // Sort by X position (left to right)
+            allExtras.sort { $0.position.x < $1.position.x }
             
-            // Extract menu extras
-            let extras = menuExtrasGroup.children() ?? []
-            return extras.compactMap { extra in
-                let title = extra.title() ?? extra.help() ?? extra.descriptionText() ?? "Unknown"
-                let position = extra.position() ?? .zero
-                
-                return MenuExtraInfo(
-                    title: title,
-                    position: position,
-                    isVisible: true
-                )
-            }
+            return allExtras
         }
     }
     
@@ -340,6 +338,129 @@ public final class MenuService: MenuServiceProtocol {
             return formatKeyboardShortcut(cmdChar: cmdChar, modifiers: modifiers)
         }
         return nil
+    }
+    
+    @MainActor
+    private func getMenuBarItemsViaWindows() -> [MenuExtraInfo] {
+        var items: [MenuExtraInfo] = []
+        
+        // Get all windows
+        let windowList = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+        
+        for windowInfo in windowList {
+            // Check window layer - menu bar items are at layer 25 (kCGStatusWindowLevel)
+            let windowLayer = windowInfo[kCGWindowLayer as String] as? Int ?? 0
+            guard windowLayer == 25 else { continue }
+            
+            // Get window bounds
+            guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
+                  let x = boundsDict["X"] as? CGFloat,
+                  let y = boundsDict["Y"] as? CGFloat,
+                  let width = boundsDict["Width"] as? CGFloat,
+                  let height = boundsDict["Height"] as? CGFloat else {
+                continue
+            }
+            
+            let frame = CGRect(x: x, y: y, width: width, height: height)
+            
+            // Skip off-screen items
+            if x < 0 { continue }
+            
+            // Get window details
+            guard let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID,
+                  let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else {
+                continue
+            }
+            
+            // Get app info
+            let ownerName = windowInfo[kCGWindowOwnerName as String] as? String ?? "Unknown"
+            let windowTitle = windowInfo[kCGWindowName as String] as? String ?? ""
+            
+            // Get bundle identifier if possible
+            var bundleID: String?
+            if let app = NSRunningApplication(processIdentifier: ownerPID) {
+                bundleID = app.bundleIdentifier
+            }
+            
+            // Skip certain system windows that aren't menu bar items
+            if bundleID == "com.apple.finder" && windowTitle.isEmpty {
+                continue
+            }
+            
+            // Determine display name
+            let displayName = self.getDisplayName(title: windowTitle, appName: ownerName, bundleID: bundleID)
+            
+            let item = MenuExtraInfo(
+                title: displayName,
+                position: CGPoint(x: frame.midX, y: frame.midY),
+                isVisible: true
+            )
+            
+            items.append(item)
+        }
+        
+        return items
+    }
+    
+    @MainActor
+    private func getMenuBarItemsViaAccessibility() -> [MenuExtraInfo] {
+        // Get system-wide element
+        let systemWide = Element.systemWide()
+        
+        // Find menu bar
+        guard let menuBar = systemWide.menuBar() else {
+            return []
+        }
+        
+        // Find menu extras group
+        let menuBarItems = menuBar.children() ?? []
+        guard let menuExtrasGroup = menuBarItems.last(where: { $0.role() == "AXGroup" }) else {
+            return []
+        }
+        
+        // Extract menu extras
+        let extras = menuExtrasGroup.children() ?? []
+        return extras.compactMap { extra in
+            let title = extra.title() ?? extra.help() ?? extra.descriptionText() ?? "Unknown"
+            let position = extra.position() ?? .zero
+            
+            return MenuExtraInfo(
+                title: title,
+                position: position,
+                isVisible: true
+            )
+        }
+    }
+    
+    private func getDisplayName(title: String, appName: String, bundleID: String?) -> String {
+        // Handle special system items
+        if bundleID == "com.apple.controlcenter" {
+            switch title {
+            case "WiFi": return "Wi-Fi"
+            case "BentoBox": return "Control Center"
+            case "FocusModes": return "Focus"
+            case "NowPlaying": return "Now Playing"
+            case "ScreenMirroring": return "Screen Mirroring"
+            case "UserSwitcher": return "Fast User Switching"
+            case "AccessibilityShortcuts": return "Accessibility Shortcuts"
+            case "KeyboardBrightness": return "Keyboard Brightness"
+            default: return title.isEmpty ? appName : title
+            }
+        } else if bundleID == "com.apple.systemuiserver" {
+            switch title {
+            case "TimeMachine.TMMenuExtraHost", "TimeMachineMenuExtra.TMMenuExtraHost": 
+                return "Time Machine"
+            default: 
+                return title.isEmpty ? appName : title
+            }
+        } else if bundleID == "com.apple.Spotlight" {
+            return "Spotlight"
+        } else if bundleID == "com.apple.Siri" {
+            return "Siri"
+        }
+        
+        // For regular apps, use app name
+        return appName
     }
     
     private func formatKeyboardShortcut(cmdChar: String, modifiers: Int) -> KeyboardShortcut {

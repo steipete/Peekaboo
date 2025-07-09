@@ -228,9 +228,13 @@ struct MenuBarStatusView: View {
         inputText = ""
         
         // Send follow-up to agent if one is active
-        if let activeAgent = agentController.activeAgent {
+        if agent.isExecuting {
+            // TODO: Queue follow-up messages or handle differently
+            print("Agent is busy, follow-up message queued: \(text)")
+        } else {
+            // Start a new execution with the follow-up
             Task {
-                await activeAgent.addFollowUpMessage(trimmedInput)
+                await agent.executeTask(text)
             }
         }
     }
@@ -252,16 +256,25 @@ struct MenuBarStatusView: View {
                     ScrollView {
                         VStack(spacing: 4) {
                             ForEach(sessionStore.sessions.prefix(5)) { session in
-                                SessionRowCompact(session: session)
-                                    .onTapGesture {
-                                        sessionStore.selectSession(session)
-                                        if let appDelegate = NSApp.delegate as? AppDelegate {
-                                            appDelegate.showMainWindow()
-                                        } else {
-                                            NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
-                                            NSApp.activate(ignoringOtherApps: true)
+                                SessionRowCompact(
+                                    session: session,
+                                    isActive: agent.currentSession?.id == session.id,
+                                    onDelete: {
+                                        withAnimation {
+                                            sessionStore.sessions.removeAll { $0.id == session.id }
+                                            sessionStore.saveSessions()
                                         }
                                     }
+                                )
+                                .onTapGesture {
+                                    sessionStore.selectSession(session)
+                                    if let appDelegate = NSApp.delegate as? AppDelegate {
+                                        appDelegate.showMainWindow()
+                                    } else {
+                                        NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+                                        NSApp.activate(ignoringOtherApps: true)
+                                    }
+                                }
                             }
                         }
                     }
@@ -539,6 +552,9 @@ struct MessageRowCompact: View {
 // Compact session row for menu bar
 struct SessionRowCompact: View {
     let session: Session
+    let isActive: Bool
+    let onDelete: () -> Void
+    @State private var isHovering = false
     
     var body: some View {
         HStack {
@@ -554,15 +570,28 @@ struct SessionRowCompact: View {
             
             Spacer()
             
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            if isHovering && !isActive {
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Delete session")
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(6)
         .padding(.horizontal)
+        .onHover { hovering in
+            isHovering = hovering
+        }
     }
 }
 

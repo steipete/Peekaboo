@@ -129,22 +129,42 @@ struct SessionSidebar: View {
             
             // Session list
             List(filteredSessions, selection: $selectedSessionId) { session in
-                SessionRow(session: session, isActive: agent.currentSession?.id == session.id)
-                    .tag(session.id)
-                    .contextMenu {
-                        Button("Delete") {
-                            deleteSession(session)
-                        }
-                        Button("Duplicate") {
-                            duplicateSession(session)
-                        }
-                        Divider()
-                        Button("Export...") {
-                            exportSession(session)
-                        }
+                SessionRow(
+                    session: session,
+                    isActive: agent.currentSession?.id == session.id,
+                    onDelete: { deleteSession(session) }
+                )
+                .tag(session.id)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        deleteSession(session)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
                     }
+                    .tint(.red)
+                }
+                .contextMenu {
+                    Button("Delete") {
+                        deleteSession(session)
+                    }
+                    Button("Duplicate") {
+                        duplicateSession(session)
+                    }
+                    Divider()
+                    Button("Export...") {
+                        exportSession(session)
+                    }
+                }
             }
             .listStyle(.sidebar)
+            .onDeleteCommand {
+                // Delete the currently selected session
+                if let selectedId = selectedSessionId,
+                   let session = sessionStore.sessions.first(where: { $0.id == selectedId }),
+                   session.id != agent.currentSession?.id {
+                    deleteSession(session)
+                }
+            }
         }
     }
     
@@ -197,6 +217,8 @@ struct SessionSidebar: View {
 struct SessionRow: View {
     let session: Session
     let isActive: Bool
+    let onDelete: () -> Void
+    @State private var isHovering = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -214,6 +236,17 @@ struct SessionRow: View {
                 }
                 
                 Spacer()
+                
+                // Delete button on hover
+                if isHovering && !isActive {
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Delete session")
+                }
             }
             
             HStack {
@@ -239,6 +272,9 @@ struct SessionRow: View {
             }
         }
         .padding(.vertical, 4)
+        .onHover { hovering in
+            isHovering = hovering
+        }
     }
 }
 
@@ -312,11 +348,9 @@ struct SessionChatView: View {
                         Spacer()
                         
                         Button("Retry") {
-                            // Clear error state and retry the last request
-                            errorMessage = nil
-                            if !userInput.isEmpty {
-                                sendMessage()
-                            }
+                            // Clear error state and retry connection
+                            hasConnectionError = false
+                            // TODO: Implement retry logic
                         }
                         .buttonStyle(.link)
                         .foregroundColor(.red)
@@ -433,10 +467,15 @@ struct SessionChatView: View {
                 to: session
             )
             
-            // Forward follow-up to the active agent execution
-            if let activeAgent = agentController.activeAgent {
+            // If agent is executing, we can't send a follow-up directly
+            // Instead, we'll need to wait for the current execution to finish
+            if agent.isExecuting {
+                // TODO: Queue follow-up messages or handle differently
+                print("Agent is busy, follow-up message queued: \(trimmedInput)")
+            } else {
+                // Start a new execution with the follow-up
                 Task {
-                    await activeAgent.addFollowUpMessage(trimmedInput)
+                    await agent.executeTask(trimmedInput)
                 }
             }
             

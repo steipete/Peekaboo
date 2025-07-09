@@ -478,18 +478,32 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
 
     @MainActor
     private func getMenuBarItemsSummary() -> MenuBarSummary {
-        let menuBarItems = MenuBarDetector.getMenuBarItems()
+        // Get menu bar items from service - handle async in sync context
+        var menuExtras: [MenuExtraInfo] = []
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        Task {
+            do {
+                menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
+            } catch {
+                // If there's an error, just return empty array
+                menuExtras = []
+            }
+            semaphore.signal()
+        }
+        
+        semaphore.wait()
         
         // Group items into menu categories
         // For now, we'll create a simplified view showing each menu bar item as a "menu"
-        let menus = menuBarItems.map { item in
+        let menus = menuExtras.map { extra in
             MenuBarSummary.MenuSummary(
-                title: item.displayName,
+                title: extra.title,
                 item_count: 1, // Each menu bar item is treated as a single menu
                 enabled: true,
                 items: [
                     MenuBarSummary.MenuItemSummary(
-                        title: item.displayName,
+                        title: extra.title,
                         enabled: true,
                         keyboard_shortcut: nil
                     )
@@ -534,14 +548,29 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         }
         
         // Show menu bar items
-        let menuBarItems = MenuBarDetector.getMenuBarItems()
-        if !menuBarItems.isEmpty {
-            print("📊 Menu Bar Items: \(menuBarItems.count)")
-            for item in menuBarItems.prefix(10) { // Show first 10
-                print("   • \(item.displayName)")
+        // Get menu bar items from service - handle async in sync context
+        var menuExtras: [MenuExtraInfo] = []
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        Task {
+            do {
+                menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
+            } catch {
+                // If there's an error, just return empty array
+                menuExtras = []
             }
-            if menuBarItems.count > 10 {
-                print("   ... and \(menuBarItems.count - 10) more")
+            semaphore.signal()
+        }
+        
+        semaphore.wait()
+        
+        if !menuExtras.isEmpty {
+            print("📊 Menu Bar Items: \(menuExtras.count)")
+            for item in menuExtras.prefix(10) { // Show first 10
+                print("   • \(item.title)")
+            }
+            if menuExtras.count > 10 {
+                print("   ... and \(menuExtras.count - 10) more")
             }
         }
 
