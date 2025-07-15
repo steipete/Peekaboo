@@ -151,6 +151,30 @@ Edit your Claude Desktop configuration:
 }
 ```
 
+### For Claude Code
+
+Run the following command:
+
+```bash
+claude mcp add-json peekaboo '{
+  "command": "npx",
+  "args": [
+      "-y",
+      "@steipete/peekaboo-mcp"
+    ],
+    "env": {
+      "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
+      "OPENAI_API_KEY": "your-openai-api-key-here"
+    }
+}'
+```
+
+Alternatively, if you've already installed the server via Claude desktop, you can run:
+
+```bash
+claude mcp add-from-claude-desktop
+```
+
 ### For Cursor IDE
 
 Add to your Cursor settings:
