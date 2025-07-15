@@ -215,7 +215,7 @@ function checkSwift() {
   let swiftBuildOutput = '';
   try {
     // Capture build output to check for warnings
-    swiftBuildOutput = execSync('cd peekaboo-cli && swift build --arch arm64 -c release 2>&1', {
+    swiftBuildOutput = execSync('cd Apps/CLI && swift build --arch arm64 -c release 2>&1', {
       cwd: projectRoot,
       encoding: 'utf8'
     });

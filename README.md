@@ -1,4 +1,4 @@
-# Peekaboo MCP: Lightning-fast macOS Screenshots 🚀
+# Peekaboo MCP: Lightning-fast macOS Screenshots & GUI Automation 🚀
 
 ![Peekaboo Banner](https://raw.githubusercontent.com/steipete/peekaboo/main/assets/banner.png)
 
@@ -8,7 +8,9 @@
 [![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange.svg)](https://swift.org/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 
-Peekaboo is a powerful macOS utility for capturing screenshots and analyzing them with AI vision models. It works both as a **standalone CLI tool** (recommended) and as an **MCP server** for AI assistants like Claude Desktop and Cursor.
+> 🎉 **NEW in v3**: Complete GUI automation framework with AI Agent! Click, type, scroll, and automate any macOS application using natural language. Plus comprehensive menu bar extraction without clicking! See the [GUI Automation section](#-gui-automation-with-peekaboo-v3) and [AI Agent section](#-ai-agent-automation) for details.
+
+Peekaboo is a powerful macOS utility for capturing screenshots, analyzing them with AI vision models, and now automating GUI interactions. It works both as a **standalone CLI tool** (recommended) and as an **MCP server** for AI assistants like Claude Desktop and Cursor.
 
 ## 🎯 Choose Your Path
 
@@ -32,9 +34,26 @@ Peekaboo bridges the gap between visual content on your screen and AI understand
 
 - **Lightning-fast screenshots** of screens, applications, or specific windows
 - **AI-powered image analysis** using GPT-4 Vision, Claude, or local models
+- **Complete GUI automation** (v3) - Click, type, scroll, and interact with any macOS app
+- **Natural language automation** (v3) - AI agent that understands tasks like "Open TextEdit and write a poem"
+- **Smart UI element detection** - Automatically identifies buttons, text fields, links, and more with precise coordinate mapping
+- **Menu bar extraction** (v3) - Discover all menus and keyboard shortcuts without clicking or opening menus
+- **Automatic session resolution** - Commands intelligently use the most recent session (no manual tracking!)
 - **Window and application management** with smart fuzzy matching
 - **Privacy-first operation** with local AI options via Ollama
 - **Non-intrusive capture** without changing window focus
+- **Automation scripting** - Chain commands together for complex workflows
+
+### 🏗️ Architecture
+
+Peekaboo uses a modern service-based architecture:
+
+- **PeekabooCore** - Shared services for screen capture, UI automation, window management, and more
+- **CLI** - Command-line interface that uses PeekabooCore services directly
+- **Mac App** - Native macOS app with 100x+ performance improvement over CLI spawning
+- **MCP Server** - Model Context Protocol server for AI assistants
+
+All components share the same core services, ensuring consistent behavior and optimal performance. See [Service API Reference](docs/service-api-reference.md) for detailed documentation.
 
 ## 🚀 Quick Start: CLI Tool
 
@@ -74,27 +93,102 @@ peekaboo list windows --app "Visual Studio Code"
 peekaboo analyze screenshot.png "What error is shown?"
 peekaboo analyze ui.png "Find all buttons" --provider ollama
 
+# GUI Automation (v3)
+peekaboo see --app Safari               # Identify UI elements
+peekaboo click "Submit"                 # Click button by text
+peekaboo type "Hello world"             # Type at current focus
+peekaboo scroll down --amount 5         # Scroll down 5 ticks
+peekaboo hotkey cmd,c                   # Press Cmd+C
+
+# AI Agent Automation (v3) 🤖
+peekaboo "Open TextEdit and write Hello World"
+peekaboo agent "Take a screenshot of Safari and email it"
+peekaboo agent --verbose "Find all Finder windows and close them"
+
+# Window Management (v3)
+peekaboo window close --app Safari      # Close Safari window
+peekaboo window minimize --app Finder   # Minimize Finder window
+peekaboo window move --app TextEdit --x 100 --y 100
+peekaboo window resize --app Terminal --width 800 --height 600
+peekaboo window focus --app "Visual Studio Code"
+
+# Menu Bar Interaction (v3)
+peekaboo menu list --app Calculator     # List all menus and items
+peekaboo menu list-all                  # List menus for frontmost app
+peekaboo menu click --app Safari --item "New Window"
+peekaboo menu click --app TextEdit --path "Format > Font > Bold"
+peekaboo menu click-extra --title "WiFi" # Click system menu extras
+
 # Configure settings
 peekaboo config init                    # Create config file
 peekaboo config edit                    # Edit in your editor
 peekaboo config show --effective        # Show current settings
 ```
 
-### Configuration
+### Debugging with Verbose Mode
 
-Create a persistent configuration file at `~/.config/peekaboo/config.json`:
+All Peekaboo commands support the `--verbose` or `-v` flag for detailed logging:
 
 ```bash
-peekaboo config init
+# See what's happening under the hood
+peekaboo image --app Safari --verbose
+peekaboo see --app Terminal -v
+peekaboo click --on B1 --verbose
+
+# Verbose output includes:
+# - Application search details
+# - Window discovery information
+# - UI element detection progress
+# - Timing information
+# - Session management operations
 ```
 
-Example configuration:
+Verbose logs are written to stderr with timestamps:
+```
+[2025-01-06T08:05:23Z] VERBOSE: Searching for application: Safari
+[2025-01-06T08:05:23Z] VERBOSE: Found exact bundle ID match: Safari
+[2025-01-06T08:05:23Z] VERBOSE: Capturing window for app: Safari
+[2025-01-06T08:05:23Z] VERBOSE: Found 3 windows for application
+```
+
+This is invaluable for:
+- Debugging automation scripts
+- Understanding why elements aren't found
+- Performance optimization
+- Learning Peekaboo's internals
+
+### Configuration
+
+Peekaboo uses a unified configuration directory at `~/.peekaboo/` for better discoverability:
+
+```bash
+# Create default configuration
+peekaboo config init
+
+# Files created:
+# ~/.peekaboo/config.json     - Main configuration (JSONC format)
+# ~/.peekaboo/credentials     - API keys (chmod 600)
+```
+
+#### Managing API Keys Securely
+
+```bash
+# Set API key securely (stored in ~/.peekaboo/credentials)
+peekaboo config set-credential OPENAI_API_KEY sk-...
+
+# View current configuration (keys shown as ***SET***)
+peekaboo config show --effective
+```
+
+#### Example Configuration
+
+`~/.peekaboo/config.json`:
 ```json
 {
   // AI Provider Settings
   "aiProviders": {
     "providers": "openai/gpt-4o,ollama/llava:latest",
-    "openaiApiKey": "${OPENAI_API_KEY}",  // Supports env var expansion
+    // NOTE: API keys should be in ~/.peekaboo/credentials
     "ollamaBaseUrl": "http://localhost:11434"
   },
   
@@ -104,8 +198,22 @@ Example configuration:
     "imageFormat": "png",
     "captureMode": "window",
     "captureFocus": "auto"
+  },
+  
+  // Logging
+  "logging": {
+    "level": "info",
+    "path": "~/.peekaboo/logs/peekaboo.log"
   }
 }
+```
+
+`~/.peekaboo/credentials` (auto-created with proper permissions):
+```
+# Peekaboo credentials file
+# This file contains sensitive API keys and should not be shared
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ### Common Workflows
@@ -125,6 +233,24 @@ done
 for img in ~/Screenshots/*.png; do
   peekaboo analyze "$img" "Summarize this screenshot"
 done
+
+# Automated login workflow (v3 with automatic session resolution)
+peekaboo see --app MyApp                # Creates new session
+peekaboo click --on T1                  # Automatically uses session from 'see'
+peekaboo type "user@example.com"        # Still using same session
+peekaboo click --on T2                  # No need to specify --session
+peekaboo type "password123"
+peekaboo click "Sign In"
+peekaboo sleep 2000                     # Wait 2 seconds
+
+# Multiple app automation with explicit sessions
+SESSION_A=$(peekaboo see --app Safari --json-output | jq -r '.data.session_id')
+SESSION_B=$(peekaboo see --app Notes --json-output | jq -r '.data.session_id')
+peekaboo click --on B1 --session $SESSION_A  # Click in Safari
+peekaboo type "Hello" --session $SESSION_B   # Type in Notes
+
+# Run automation script
+peekaboo run login.peekaboo.json
 ```
 
 ## 🤖 MCP Server Setup
@@ -196,9 +322,512 @@ Add to your Cursor settings:
 
 ### MCP Tools Available
 
+#### Core Tools (v2)
 1. **`image`** - Capture screenshots
 2. **`list`** - List applications, windows, or check status
 3. **`analyze`** - Analyze images with AI vision models
+
+#### GUI Automation Tools (v3) 🎉
+4. **`see`** - Capture screen and identify UI elements
+5. **`click`** - Click on UI elements or coordinates
+6. **`type`** - Type text into UI elements
+7. **`scroll`** - Scroll content in any direction
+8. **`hotkey`** - Press keyboard shortcuts
+9. **`swipe`** - Perform swipe/drag gestures
+10. **`run`** - Execute automation scripts
+11. **`sleep`** - Pause execution
+12. **`clean`** - Clean up session cache
+13. **`window`** - Manipulate application windows (close, minimize, maximize, move, resize, focus)
+
+## 🚀 GUI Automation with Peekaboo v3
+
+Peekaboo v3 introduces powerful GUI automation capabilities, transforming it from a screenshot tool into a complete UI automation framework for macOS. This enables AI assistants to interact with any application through natural language commands.
+
+### How It Works
+
+The v3 automation system uses a **see-then-interact** workflow:
+
+1. **See** - Capture the screen and identify UI elements
+2. **Interact** - Click, type, scroll, or perform other actions
+3. **Verify** - Capture again to confirm the action succeeded
+
+### 🎯 The `see` Tool - UI Element Discovery
+
+The `see` tool is the foundation of GUI automation. It captures a screenshot and identifies all interactive UI elements, assigning them unique Peekaboo IDs.
+
+```typescript
+// Example: See what's on screen
+await see({ app_target: "Safari" })
+
+// Returns:
+{
+  screenshot_path: "/tmp/peekaboo_123.png",
+  session_id: "session_456",
+  elements: {
+    buttons: [
+      { id: "B1", label: "Submit", bounds: { x: 100, y: 200, width: 80, height: 30 } },
+      { id: "B2", label: "Cancel", bounds: { x: 200, y: 200, width: 80, height: 30 } }
+    ],
+    text_fields: [
+      { id: "T1", label: "Email", value: "", bounds: { x: 100, y: 100, width: 200, height: 30 } },
+      { id: "T2", label: "Password", value: "", bounds: { x: 100, y: 150, width: 200, height: 30 } }
+    ],
+    links: [
+      { id: "L1", label: "Forgot password?", bounds: { x: 100, y: 250, width: 120, height: 20 } }
+    ],
+    // ... other elements
+  }
+}
+```
+
+#### Element ID Format
+- **B1, B2...** - Buttons
+- **T1, T2...** - Text fields/areas
+- **L1, L2...** - Links
+- **G1, G2...** - Groups/containers
+- **I1, I2...** - Images
+- **S1, S2...** - Sliders
+- **C1, C2...** - Checkboxes/toggles
+- **M1, M2...** - Menu items
+
+### 🖱️ The `click` Tool
+
+Click on UI elements using various targeting methods:
+
+```typescript
+// Click by element ID from see command
+await click({ on: "B1" })
+
+// Click by query (searches button labels)
+await click({ query: "Submit" })
+
+// Click by coordinates
+await click({ coords: "450,300" })
+
+// Double-click
+await click({ on: "I1", double: true })
+
+// Right-click
+await click({ query: "File", right: true })
+
+// With custom wait timeout
+await click({ query: "Save", wait_for: 10000 })
+```
+
+### ⌨️ The `type` Tool
+
+Type text with support for special keys:
+
+```typescript
+// Type into a specific field
+await type({ text: "user@example.com", on: "T1" })
+
+// Type at current focus
+await type({ text: "Hello world" })
+
+// Clear existing text first
+await type({ text: "New text", on: "T2", clear: true })
+
+// Use special keys
+await type({ text: "Select all{cmd+a}Copy{cmd+c}" })
+await type({ text: "Line 1{return}Line 2{tab}Indented" })
+
+// Adjust typing speed
+await type({ text: "Slow typing", delay: 100 })
+```
+
+#### Supported Special Keys
+- `{return}` or `{enter}` - Return/Enter key
+- `{tab}` - Tab key
+- `{escape}` or `{esc}` - Escape key
+- `{delete}` or `{backspace}` - Delete key
+- `{space}` - Space key
+- `{cmd+a}`, `{cmd+c}`, etc. - Command combinations
+- `{arrow_up}`, `{arrow_down}`, `{arrow_left}`, `{arrow_right}` - Arrow keys
+- `{f1}` through `{f12}` - Function keys
+
+### 📜 The `scroll` Tool
+
+Scroll content in any direction:
+
+```typescript
+// Scroll down 3 ticks (default)
+await scroll({ direction: "down" })
+
+// Scroll up 5 ticks
+await scroll({ direction: "up", amount: 5 })
+
+// Scroll on a specific element
+await scroll({ direction: "down", on: "G1", amount: 10 })
+
+// Smooth scrolling
+await scroll({ direction: "down", smooth: true })
+
+// Horizontal scrolling
+await scroll({ direction: "right", amount: 3 })
+```
+
+### ⌨️ The `hotkey` Tool
+
+Press keyboard shortcuts:
+
+```typescript
+// Common shortcuts
+await hotkey({ keys: "cmd,c" })        // Copy
+await hotkey({ keys: "cmd,v" })        // Paste
+await hotkey({ keys: "cmd,tab" })      // Switch apps
+await hotkey({ keys: "cmd,shift,t" })  // Reopen closed tab
+
+// Function keys
+await hotkey({ keys: "f11" })          // Full screen
+
+// Custom hold duration
+await hotkey({ keys: "cmd,space", hold_duration: 100 })
+```
+
+### 👆 The `swipe` Tool
+
+Perform swipe or drag gestures:
+
+```typescript
+// Basic swipe
+await swipe({ from: "100,200", to: "300,200" })
+
+// Slow drag
+await swipe({ from: "50,50", to: "200,200", duration: 2000 })
+
+// Precise movement with more steps
+await swipe({ from: "0,0", to: "100,100", steps: 50 })
+```
+
+### 📝 The `run` Tool - Automation Scripts
+
+Execute complex automation workflows from JSON script files:
+
+```typescript
+// Run a script
+await run({ script_path: "/path/to/login.peekaboo.json" })
+
+// Continue on error
+await run({ script_path: "test.peekaboo.json", stop_on_error: false })
+```
+
+#### Script Format (.peekaboo.json)
+
+```json
+{
+  "name": "Login to Website",
+  "description": "Automated login workflow",
+  "commands": [
+    {
+      "command": "see",
+      "args": { "app_target": "Safari" },
+      "comment": "Capture current state"
+    },
+    {
+      "command": "click",
+      "args": { "query": "Email" },
+      "comment": "Click email field"
+    },
+    {
+      "command": "type",
+      "args": { "text": "user@example.com" }
+    },
+    {
+      "command": "click",
+      "args": { "query": "Password" }
+    },
+    {
+      "command": "type",
+      "args": { "text": "secure_password" }
+    },
+    {
+      "command": "click",
+      "args": { "query": "Sign In" }
+    },
+    {
+      "command": "sleep",
+      "args": { "duration": 2000 },
+      "comment": "Wait for login"
+    }
+  ]
+}
+```
+
+## 🤖 AI Agent Automation
+
+Peekaboo v3 introduces an AI-powered agent that can understand and execute complex automation tasks using natural language. The agent uses OpenAI's Assistants API to break down your instructions into specific Peekaboo commands.
+
+### Setting Up the Agent
+
+```bash
+# Set your OpenAI API key
+export OPENAI_API_KEY="your-api-key-here"
+
+# Now you can use natural language automation!
+peekaboo "Open Safari and search for weather"
+```
+
+### How the Agent Works
+
+1. **Understands Your Intent** - The AI agent analyzes your natural language request
+2. **Plans the Steps** - Breaks down the task into specific actions
+3. **Executes Commands** - Uses Peekaboo's automation tools to perform each step
+4. **Verifies Results** - Takes screenshots to confirm actions succeeded
+5. **Handles Errors** - Can retry failed actions or adjust approach
+
+### Agent Examples
+
+```bash
+# Direct invocation (no subcommand needed)
+peekaboo "Open TextEdit and write a thank you letter"
+peekaboo "Take a screenshot of all open windows"
+peekaboo "Find the Terminal app and run ls -la"
+peekaboo "Close all Finder windows except Downloads"
+
+# Using the agent subcommand with options
+peekaboo agent "Click the login button and sign in" --verbose
+peekaboo agent "Fill out the contact form" --dry-run
+peekaboo agent "Install this app from the DMG file" --max-steps 30
+```
+
+### Agent Options
+
+- `--verbose` - See the agent's reasoning and planning process
+- `--dry-run` - Preview what the agent would do without executing
+- `--max-steps <n>` - Limit the number of actions (default: 20)
+- `--model <model>` - Choose OpenAI model (default: gpt-4-turbo)
+- `--json-output` - Get structured JSON output
+
+### Agent Capabilities
+
+The agent has access to all Peekaboo commands:
+- **Visual Understanding** - Can see and understand what's on screen
+- **UI Interaction** - Click buttons, fill forms, navigate menus
+- **Text Entry** - Type text, use keyboard shortcuts
+- **Window Management** - Open, close, minimize, arrange windows
+- **Application Control** - Launch apps, switch between them
+- **File Operations** - Save files, handle dialogs
+- **Complex Workflows** - Chain multiple actions together
+
+### Example Workflow
+
+```bash
+# Complex multi-step task
+peekaboo agent --verbose "Create a new document in Pages with the title 'Meeting Notes' and add today's date"
+
+# Agent will:
+# 1. Use 'see' to check current screen
+# 2. Use 'app launch Pages' if needed
+# 3. Use 'click' on New Document
+# 4. Use 'type' to enter the title
+# 5. Use 'hotkey' for formatting
+# 6. Use 'type' to add the date
+```
+
+### Tips for Best Results
+
+1. **Be Specific** - "Click the blue Submit button" works better than "submit"
+2. **One Task at a Time** - Break complex workflows into smaller tasks
+3. **Verify State** - The agent works best when it can see the current screen
+4. **Use Verbose Mode** - Add `--verbose` to understand what the agent is doing
+5. **Set Reasonable Limits** - Use `--max-steps` to prevent runaway automation
+
+### ⏸️ The `sleep` Tool
+
+Pause execution between actions:
+
+```typescript
+// Sleep for 1 second
+await sleep({ duration: 1000 })
+
+// Sleep for 500ms
+await sleep({ duration: 500 })
+```
+
+### 🪟 The `window` Tool
+
+Comprehensive window manipulation for any application:
+
+```typescript
+// Close window
+await window({ action: "close", app_target: "Safari" })
+await window({ action: "close", window_title: "Downloads" })
+
+// Minimize/Maximize
+await window({ action: "minimize", app_target: "Finder" })
+await window({ action: "maximize", app_target: "Terminal" })
+
+// Move window
+await window({ action: "move", app_target: "TextEdit", x: 100, y: 100 })
+
+// Resize window
+await window({ action: "resize", app_target: "Notes", width: 800, height: 600 })
+
+// Set exact bounds (move + resize)
+await window({ action: "set_bounds", app_target: "Safari", x: 50, y: 50, width: 1200, height: 800 })
+
+// Focus window
+await window({ action: "focus", app_target: "Visual Studio Code" })
+await window({ action: "focus", window_index: 0 })  // Focus first window
+
+// List all windows
+await window({ action: "list", app_target: "Finder" })
+```
+
+#### Window Actions
+- **close** - Close the window (animated if has close button)
+- **minimize** - Minimize to dock
+- **maximize** - Maximize/zoom window
+- **move** - Move to specific coordinates
+- **resize** - Change window dimensions
+- **set_bounds** - Set position and size in one operation
+- **focus** - Bring window to front and focus
+- **list** - Get information about all windows
+
+#### Targeting Options
+- **app_target** - Target by application name (fuzzy matching supported)
+- **window_title** - Target by window title (substring matching)
+- **window_index** - Target by index (0-based, front to back order)
+
+### 📋 The `menu` Tool
+
+Interact with application menu bars and system menu extras:
+
+```typescript
+// List all menus and items for an app
+await menu({ app_target: "Calculator", subcommand: "list" })
+
+// Click a simple menu item
+await menu({ app_target: "Safari", item: "New Window" })
+
+// Navigate nested menus with path
+await menu({ app_target: "TextEdit", path: "Format > Font > Bold" })
+
+// Click system menu extras (WiFi, Bluetooth, etc.)
+await menu({ subcommand: "click-extra", title: "WiFi" })
+```
+
+#### Menu Subcommands
+- **list** - List all menus and their items (including keyboard shortcuts)
+- **list-all** - List menus for the frontmost application
+- **click** - Click a menu item (default if not specified)
+- **click-extra** - Click system menu extras in the status bar
+
+#### Key Features
+- **Pure Accessibility** - Extracts menu structure without clicking or opening menus
+- **Full Hierarchy** - Discovers all submenus and nested items
+- **Keyboard Shortcuts** - Shows all available keyboard shortcuts
+- **Smart Discovery** - AI agents can use list to discover available options
+
+### 🧹 The `clean` Tool
+
+Clean up session cache and temporary files:
+
+```typescript
+// Clean all sessions
+await clean({})
+
+// Clean sessions older than 7 days
+await clean({ older_than_days: 7 })
+
+// Clean specific session
+await clean({ session_id: "session_123" })
+
+// Dry run to see what would be cleaned
+await clean({ dry_run: true })
+```
+
+### Session Management
+
+Peekaboo v3 uses sessions to maintain UI state across commands:
+
+- Sessions are created automatically by the `see` tool
+- Each session stores screenshot data and element mappings
+- Sessions persist in `~/.peekaboo/session/<PID>/`
+- Element IDs remain consistent within a session
+- Sessions are automatically cleaned up on process exit
+
+### Best Practices
+
+1. **Always start with `see`** - Capture the current UI state before interacting
+2. **Use element IDs when possible** - More reliable than coordinate clicking
+3. **Add delays for animations** - Use `sleep` after actions that trigger animations
+4. **Verify actions** - Call `see` again to confirm actions succeeded
+5. **Handle errors gracefully** - Check if elements exist before interacting
+6. **Clean up sessions** - Use the `clean` tool periodically
+
+### Example Workflows
+
+#### Login Automation
+```typescript
+// 1. See the login form
+const { elements } = await see({ app_target: "MyApp" })
+
+// 2. Fill in credentials
+await click({ on: "T1" })  // Click email field
+await type({ text: "user@example.com" })
+
+await click({ on: "T2" })  // Click password field  
+await type({ text: "password123" })
+
+// 3. Submit
+await click({ query: "Sign In" })
+
+// 4. Wait and verify
+await sleep({ duration: 2000 })
+await see({ app_target: "MyApp" })  // Verify logged in
+```
+
+#### Web Search
+```typescript
+// 1. Focus browser
+await see({ app_target: "Safari" })
+
+// 2. Open new tab
+await hotkey({ keys: "cmd,t" })
+
+// 3. Type search
+await type({ text: "Peekaboo MCP automation" })
+await type({ text: "{return}" })
+
+// 4. Wait for results
+await sleep({ duration: 3000 })
+
+// 5. Click first result
+await see({ app_target: "Safari" })
+await click({ on: "L1" })
+```
+
+#### Form Filling
+```typescript
+// 1. Capture form
+const { elements } = await see({ app_target: "Forms" })
+
+// 2. Fill each field
+for (const field of elements.text_fields) {
+  await click({ on: field.id })
+  await type({ text: "Test data", clear: true })
+}
+
+// 3. Check all checkboxes
+for (const checkbox of elements.checkboxes) {
+  if (!checkbox.checked) {
+    await click({ on: checkbox.id })
+  }
+}
+
+// 4. Submit
+await click({ query: "Submit" })
+```
+
+### Troubleshooting
+
+1. **Elements not found** - Ensure the UI is visible and not obscured
+2. **Clicks not working** - Try increasing `wait_for` timeout
+3. **Wrong element clicked** - Use specific element IDs instead of queries
+4. **Session errors** - Run `clean` tool to clear corrupted sessions
+5. **Permissions denied** - Grant Accessibility permission in System Settings
 
 ## 🔧 Configuration
 
@@ -207,16 +836,17 @@ Add to your Cursor settings:
 Settings follow this precedence (highest to lowest):
 1. Command-line arguments
 2. Environment variables
-3. Configuration file (`~/.config/peekaboo/config.json`)
-4. Built-in defaults
+3. Credentials file (`~/.peekaboo/credentials`)
+4. Configuration file (`~/.peekaboo/config.json`)
+5. Built-in defaults
 
 ### Available Options
 
 | Setting | Config File | Environment Variable | Description |
 |---------|-------------|---------------------|-------------|
 | AI Providers | `aiProviders.providers` | `PEEKABOO_AI_PROVIDERS` | Comma-separated list (e.g., "openai/gpt-4o,ollama/llava:latest") |
-| OpenAI API Key | `aiProviders.openaiApiKey` | `OPENAI_API_KEY` | Required for OpenAI provider |
-| Anthropic API Key | `aiProviders.anthropicApiKey` | `ANTHROPIC_API_KEY` | For Claude Vision (coming soon) |
+| OpenAI API Key | Use `credentials` file | `OPENAI_API_KEY` | Required for OpenAI provider |
+| Anthropic API Key | Use `credentials` file | `ANTHROPIC_API_KEY` | For Claude Vision (coming soon) |
 | Ollama URL | `aiProviders.ollamaBaseUrl` | `PEEKABOO_OLLAMA_BASE_URL` | Default: http://localhost:11434 |
 | Default Save Path | `defaults.savePath` | `PEEKABOO_DEFAULT_SAVE_PATH` | Where screenshots are saved (default: current directory) |
 | Log Level | `logging.level` | `PEEKABOO_LOG_LEVEL` | trace, debug, info, warn, error, fatal |
@@ -224,6 +854,23 @@ Settings follow this precedence (highest to lowest):
 | CLI Binary Path | - | `PEEKABOO_CLI_PATH` | Override bundled Swift CLI path (advanced usage) |
 
 ### Environment Variable Details
+
+#### API Key Storage Best Practices
+
+For security, Peekaboo supports three methods for API key storage (in order of recommendation):
+
+1. **Environment Variables** (Most secure for automation)
+   ```bash
+   export OPENAI_API_KEY="sk-..."
+   ```
+
+2. **Credentials File** (Best for interactive use)
+   ```bash
+   peekaboo config set-credential OPENAI_API_KEY sk-...
+   # Stored in ~/.peekaboo/credentials with chmod 600
+   ```
+
+3. **Config File** (Not recommended - use credentials file instead)
 
 #### AI Provider Configuration
 
@@ -402,6 +1049,11 @@ export PEEKABOO_LOG_LEVEL=debug
 peekaboo list server_status
 ```
 
+For step-by-step debugging, use the verbose flag:
+```bash
+peekaboo image --app Safari --verbose 2>&1 | less
+```
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please:
@@ -428,4 +1080,4 @@ Created by [Peter Steinberger](https://steipete.com) - [@steipete](https://githu
 
 ---
 
-**Note**: This is Peekaboo v2.0, which introduces standalone CLI functionality alongside the original MCP server. For users upgrading from v1.x, see the [CHANGELOG](./CHANGELOG.md) for migration details.
+**Note**: This is Peekaboo v3.0, which introduces GUI automation and AI agent capabilities. Configuration has moved from `~/.config/peekaboo/` to `~/.peekaboo/` for better discoverability. Migration happens automatically on first run. For full upgrade details, see the [CHANGELOG](./CHANGELOG.md).

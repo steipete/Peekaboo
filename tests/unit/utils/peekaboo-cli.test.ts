@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   executeSwiftCli,
   initializeSwiftCliPath,
-} from "../../../src/utils/peekaboo-cli";
+} from "../../../Server/src/utils/peekaboo-cli";
 import { spawn } from "child_process";
 import path from "path"; // Import path for joining
 

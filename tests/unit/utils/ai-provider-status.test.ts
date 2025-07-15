@@ -3,7 +3,7 @@ import {
   parseAIProviders, 
   getProviderStatus,
   ProviderStatus 
-} from "../../../src/utils/ai-providers.js";
+} from "../../../Server/src/utils/ai-providers";
 import { Logger } from "pino";
 
 // Mock fetch globally

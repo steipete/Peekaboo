@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for triggering the workflow run'
+        required: false
+        default: "Manual trigger"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: read
+  checks: write
+  pull-requests: write
+  statuses: write
+
+env:
+  SWIFT_VERSION: "6.0"
+  XCODE_VERSION: "16.4"
+
+jobs:
+  build-and-lint:
+    runs-on: ghcr.io/cirruslabs/macos-runner:sequoia
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Select Xcode
+      run: sudo xcodes select ${{ env.XCODE_VERSION }}
+    
+    - name: Install SwiftLint and SwiftFormat
+      run: |
+        brew install swiftlint swiftformat
+    
+    - name: Build
+      run: |
+        swift build
+    
+    - name: Run SwiftFormat (check only)
+      continue-on-error: true
+      run: |
+        echo "::group::SwiftFormat Check"
+        if ! swiftformat --lint .; then
+          echo "::warning::SwiftFormat found formatting issues"
+        fi
+        echo "::endgroup::"
+    
+    - name: Run SwiftLint
+      continue-on-error: true
+      run: |
+        echo "::group::SwiftLint Check"
+        if ! swiftlint lint; then
+          echo "::warning::SwiftLint found linting issues"
+        fi
+        echo "::endgroup::"
+    
+    - name: Run Tests (would require accessibility permissions)
+      run: |
+        echo "⚠️  Tests require accessibility permissions and cannot run on CI"
+        echo "📝 Run 'make test' locally after granting accessibility permissions"

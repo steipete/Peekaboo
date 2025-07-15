@@ -1,11 +1,11 @@
-import { analyzeToolHandler, analyzeToolSchema } from "../../src/tools";
+import { analyzeToolHandler, analyzeToolSchema } from "../../Server/src/tools";
 import { Logger } from "pino";
 import fs from "fs/promises";
-// import * as AIProviders from '../../src/utils/ai-providers'; // No longer using wildcard import for mocks
-import { Result } from "@modelcontextprotocol/sdk/types.js";
-import { AIProvider } from "../../src/types";
+// import * as AIProviders from "../../Server/src/utils/ai-providers'; // No longer using wildcard import for mocks
+import { Result } from "@modelcontextprotocol/sdk/types";
+import { AIProvider } from "../../Server/src/types";
 import { vi } from "vitest";
-import { readImageAsBase64 } from "../../src/utils/peekaboo-cli";
+import { readImageAsBase64 } from "../../Server/src/utils/peekaboo-cli";
 
 // Mock Logger
 const mockLogger: Logger = {
@@ -25,7 +25,7 @@ vi.mock("fs/promises", async () => ({
 }));
 
 // Mock the readImageAsBase64 function
-vi.mock("../../src/utils/peekaboo-cli", () => ({
+vi.mock("../../Server/src/utils/peekaboo-cli", () => ({
   readImageAsBase64: vi.fn(),
   executeSwiftCli: vi.fn(), // Also mock this if analyzeToolHandler somehow uses it
 }));
@@ -54,7 +54,7 @@ let currentDetermineProviderAndModelImpl: (
 });
 
 // Consolidated mock for ai-providers module
-vi.mock("../../src/utils/ai-providers", () => ({
+vi.mock("../../Server/src/utils/ai-providers", () => ({
   __esModule: true,
   // The mocked functions will call the current implementations stored in the variables above.
   parseAIProviders: (...args: any[]) => currentParseAIProvidersImpl(...args),

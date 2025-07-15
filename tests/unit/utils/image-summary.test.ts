@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildImageSummary } from "../../../src/utils/image-summary";
-import { ImageInput, ImageCaptureData } from "../../../src/types";
+import { buildImageSummary } from "../../../Server/src/utils/image-summary";
+import { ImageInput, ImageCaptureData } from "../../../Server/src/types";
 
 describe("buildImageSummary", () => {
   it("should return a message if no files were saved", () => {

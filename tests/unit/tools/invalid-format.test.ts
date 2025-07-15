@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { imageToolHandler } from "../../../src/tools/image";
-import { executeSwiftCli, readImageAsBase64 } from "../../../src/utils/peekaboo-cli";
-import { resolveImagePath } from "../../../src/utils/image-cli-args";
+import { imageToolHandler } from "../../../Server/src/tools/image";
+import { executeSwiftCli, readImageAsBase64 } from "../../../Server/src/utils/peekaboo-cli";
+import { resolveImagePath } from "../../../Server/src/utils/image-cli-args";
 import { mockSwiftCli } from "../../mocks/peekaboo-cli.mock";
 import { pino } from "pino";
 
 // Mock the Swift CLI utility
-vi.mock("../../../src/utils/peekaboo-cli");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 // Mock fs/promises
 vi.mock("fs/promises");
 
 // Mock image-cli-args module
-vi.mock("../../../src/utils/image-cli-args", async () => {
-  const actual = await vi.importActual("../../../src/utils/image-cli-args");
+vi.mock("../../../Server/src/utils/image-cli-args", async () => {
+  const actual = await vi.importActual("../../../Server/src/utils/image-cli-args");
   return {
     ...actual,
     resolveImagePath: vi.fn(),
@@ -44,7 +44,7 @@ describe("Invalid Format Handling", () => {
 
   it("should fallback invalid format 'bmp' to 'png' and show warning message", async () => {
     // Import schema to test preprocessing
-    const { imageToolSchema } = await import("../../../src/types/index.js");
+    const { imageToolSchema } = await import("../../../Server/src/types/index.js");
     
     // Mock Swift CLI response with PNG format (fallback)
     const mockResponse = mockSwiftCli.captureImage("screen", {
@@ -101,7 +101,7 @@ describe("Invalid Format Handling", () => {
   });
   
   it("should handle other invalid formats correctly", async () => {
-    const { imageToolSchema } = await import("../../../src/types/index.js");
+    const { imageToolSchema } = await import("../../../Server/src/types/index.js");
     
     const invalidFormats = ["gif", "webp", "tiff", "xyz", "bmp"];
     
@@ -118,7 +118,7 @@ describe("Invalid Format Handling", () => {
   });
   
   it("should preserve valid formats", async () => {
-    const { imageToolSchema } = await import("../../../src/types/index.js");
+    const { imageToolSchema } = await import("../../../Server/src/types/index.js");
     
     const validFormats = [
       { input: "png", expected: "png" },

@@ -1,22 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { analyzeToolHandler } from "../../../src/tools/analyze";
-import { readImageAsBase64 } from "../../../src/utils/peekaboo-cli";
+import { analyzeToolHandler } from "../../../Server/src/tools/analyze";
+import { readImageAsBase64 } from "../../../Server/src/utils/peekaboo-cli";
 import { 
   parseAIProviders, 
   analyzeImageWithProvider,
   determineProviderAndModel 
-} from "../../../src/utils/ai-providers";
+} from "../../../Server/src/utils/ai-providers";
 import { pino } from "pino";
 import * as fs from "fs/promises";
 import * as path from "path";
 
 // Mock peekaboo-cli
-vi.mock("../../../src/utils/peekaboo-cli", () => ({
+vi.mock("../../../Server/src/utils/peekaboo-cli", () => ({
   readImageAsBase64: vi.fn(),
 }));
 
 // Mock AI providers
-vi.mock("../../../src/utils/ai-providers", () => ({
+vi.mock("../../../Server/src/utils/ai-providers", () => ({
   parseAIProviders: vi.fn(),
   analyzeImageWithProvider: vi.fn(),
   determineProviderAndModel: vi.fn(),

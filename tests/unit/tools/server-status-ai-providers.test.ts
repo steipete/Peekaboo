@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { generateServerStatusString } from "../../../src/utils/server-status.js";
+import { generateServerStatusString } from "../../../Server/src/utils/server-status";
 
 describe("Server Status AI Providers", () => {
   let originalEnv: NodeJS.ProcessEnv;

@@ -6,15 +6,15 @@ const mockImageToolHandler = vi.fn();
 const mockListToolHandler = vi.fn();
 const mockAnalyzeToolHandler = vi.fn();
 
-vi.mock("../../src/tools/image", () => ({
+vi.mock("../../Server/src/tools/image", () => ({
   imageToolHandler: mockImageToolHandler,
 }));
 
-vi.mock("../../src/tools/list", () => ({
+vi.mock("../../Server/src/tools/list", () => ({
   listToolHandler: mockListToolHandler,
 }));
 
-vi.mock("../../src/tools/analyze", () => ({
+vi.mock("../../Server/src/tools/analyze", () => ({
   analyzeToolHandler: mockAnalyzeToolHandler,
 }));
 
