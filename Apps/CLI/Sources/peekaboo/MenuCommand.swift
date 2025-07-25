@@ -177,7 +177,7 @@ struct MenuCommand: AsyncParsableCommand {
 
                 // If an item was specified, we would need to click it after the menu appears
                 // This would require additional service functionality
-                if let itemToClick = item {
+                if item != nil {
                     // Wait for menu to appear
                     try await Task.sleep(nanoseconds: 200_000_000) // 200ms
 

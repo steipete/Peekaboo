@@ -1,5 +1,13 @@
 import ArgumentParser
 import Foundation
+import CoreGraphics
+
+// Simple stderr logging function
+func logError(_ message: String) {
+    if let data = "\(message)\n".data(using: .utf8) {
+        FileHandle.standardError.write(data)
+    }
+}
 
 /// Main command-line interface for Peekaboo.
 ///
@@ -118,10 +126,34 @@ struct Peekaboo: AsyncParsableCommand {
 @main
 struct Main {
     static func main() async {
+        // Early debug logging to diagnose timeout issues
+        logError("[PEEKABOO] Starting CLI initialization...")
+        
+        // WORKAROUND: Initialize CoreGraphics to prevent CGS_REQUIRE_INIT error
+        // Background: When running CLI tools that use CoreGraphics functions (like
+        // CGWindowListCopyWindowInfo for screenshots), macOS requires the graphics
+        // subsystem to be initialized. Without this, we get:
+        // "Assertion failed: (did_initialize), function CGS_REQUIRE_INIT, file CGInitialization.c"
+        // 
+        // Solution: Calling CGMainDisplayID() forces CoreGraphics initialization,
+        // establishing the necessary connection to the window server. This allows
+        // the CLI to perform screenshot and window operations without being a full
+        // GUI application.
+        // 
+        // Reference: This is a known issue with macOS CLI tools that need graphics
+        // context. The call is lightweight and has no side effects.
+        logError("[PEEKABOO] Initializing CoreGraphics...")
+        _ = CGMainDisplayID()
+        logError("[PEEKABOO] CoreGraphics initialized successfully")
+        
         // Load configuration at startup
+        logError("[PEEKABOO] Loading configuration...")
         _ = ConfigurationManager.shared.loadConfiguration()
+        logError("[PEEKABOO] Configuration loaded")
 
         // Run the command
+        logError("[PEEKABOO] Starting command parsing...")
         await Peekaboo.main()
+        logError("[PEEKABOO] Command completed")
     }
 }

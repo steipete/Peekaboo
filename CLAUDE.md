@@ -31,7 +31,7 @@ npm run build:all
 ./scripts/build-swift-universal.sh
 ```
 
-### Building
+**Note**: Swift builds can take 3-5 minutes on first build or clean builds due to dependency compilation. Subsequent incremental builds are much faster (10-30 seconds).
 
 #### Workspace Structure
 The project uses an Xcode workspace that includes multiple projects:

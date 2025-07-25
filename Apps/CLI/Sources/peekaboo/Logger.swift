@@ -1,7 +1,7 @@
 import Foundation
 
 /// Log level enumeration for structured logging
-public enum LogLevel: Int, Comparable {
+public enum LogLevel: Int, Comparable, Sendable {
     case trace = 0 // Most verbose
     case verbose = 1
     case debug = 2

@@ -5,6 +5,23 @@ import Foundation
 import PeekabooCore
 import UniformTypeIdentifiers
 
+// Helper function for async operations with timeout
+func withTimeoutOrNil<T: Sendable>(seconds: TimeInterval, operation: @escaping @Sendable () async -> T) async -> T? {
+    let task = Task {
+        await operation()
+    }
+    
+    let timeoutTask = Task {
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        task.cancel()
+    }
+    
+    let result = await task.value
+    timeoutTask.cancel()
+    
+    return task.isCancelled ? nil : result
+}
+
 // Structure for image analysis results
 struct ImageAnalysisData: Codable {
     let provider: String
@@ -71,10 +88,17 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
-            // Check permissions
-            guard await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission() else {
+            // Check permissions with timeout to prevent hanging
+            Logger.shared.debug("Checking screen recording permission...")
+            let hasPermission = await withTimeoutOrNil(seconds: 5) {
+                await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
+            }
+            
+            guard hasPermission ?? false else {
+                Logger.shared.error("Screen recording permission check failed or timed out")
                 throw CaptureError.screenRecordingPermissionDenied
             }
+            Logger.shared.debug("Screen recording permission granted")
 
             // Perform capture
             let savedFiles = try await performCapture()
@@ -139,17 +163,47 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
 
     private func captureApplicationWindow(_ appIdentifier: String) async throws -> [SavedFile] {
         Logger.shared.verbose("Capturing window for app: \(appIdentifier)")
+        let startTime = Date()
 
         // Handle focus if needed
         if self.captureFocus == .foreground {
+            Logger.shared.debug("Activating application...")
             try await PeekabooServices.shared.applications.activateApplication(identifier: appIdentifier)
             try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+            Logger.shared.debug("Application activated (took \(Date().timeIntervalSince(startTime))s)")
         }
 
-        let result = try await PeekabooServices.shared.screenCapture.captureWindow(
-            appIdentifier: appIdentifier,
-            windowIndex: self.windowIndex)
-
+        Logger.shared.debug("Starting window capture...")
+        let captureStart = Date()
+        
+        // Add timeout to window capture
+        let captureTask = Task {
+            try await PeekabooServices.shared.screenCapture.captureWindow(
+                appIdentifier: appIdentifier,
+                windowIndex: self.windowIndex)
+        }
+        
+        let timeoutTask = Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+            captureTask.cancel()
+        }
+        
+        do {
+            let result = try await captureTask.value
+            timeoutTask.cancel()
+            Logger.shared.debug("Window capture completed (took \(Date().timeIntervalSince(captureStart))s)")
+            return try await processCapture(result, appIdentifier: appIdentifier)
+        } catch {
+            timeoutTask.cancel()
+            if captureTask.isCancelled {
+                Logger.shared.error("Window capture timed out after 5 seconds")
+                throw CaptureError.captureTimeout
+            }
+            throw error
+        }
+    }
+    
+    private func processCapture(_ result: CaptureResult, appIdentifier: String) async throws -> [SavedFile] {
         let savedPath = try saveImage(result.imageData, name: appIdentifier)
 
         return [SavedFile(
