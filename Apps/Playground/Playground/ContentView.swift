@@ -1,4 +1,7 @@
 import SwiftUI
+import OSLog
+
+private let logger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Click")
 
 struct ContentView: View {
     @EnvironmentObject var actionLogger: ActionLogger

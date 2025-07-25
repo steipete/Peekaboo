@@ -61,34 +61,14 @@ struct ClickCommand: AsyncParsableCommand {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
         do {
-            // Determine session ID - use provided or get most recent
-            let sessionId: String? = if let providedSession = session {
-                providedSession
-            } else {
-                await PeekabooServices.shared.sessions.getMostRecentSession()
-            }
-            guard let activeSessionId = sessionId else {
-                throw PeekabooError.sessionNotFound
-            }
-
-            // Determine click target
+            // Determine click target first to check if we need a session
             let clickTarget: ClickTarget
             let waitResult: WaitForElementResult
+            let activeSessionId: String
 
-            if let elementId = on {
-                // Click by element ID with auto-wait
-                clickTarget = .elementId(elementId)
-                waitResult = try await PeekabooServices.shared.automation.waitForElement(
-                    target: clickTarget,
-                    timeout: TimeInterval(self.waitFor) / 1000.0,
-                    sessionId: activeSessionId)
-
-                if !waitResult.found {
-                    throw PeekabooError.elementNotFound
-                }
-
-            } else if let coordString = coords {
-                // Click by coordinates (no waiting needed)
+            // Check if we're clicking by coordinates (doesn't need session)
+            if let coordString = coords {
+                // Click by coordinates (no session needed)
                 let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
                 guard parts.count == 2,
                       let x = Double(parts[0]),
@@ -98,32 +78,67 @@ struct ClickCommand: AsyncParsableCommand {
                 }
                 clickTarget = .coordinates(CGPoint(x: x, y: y))
                 waitResult = WaitForElementResult(found: true, element: nil, waitTime: 0)
-
-            } else if let searchQuery = query {
-                // Find element by query with auto-wait
-                clickTarget = .query(searchQuery)
-                waitResult = try await PeekabooServices.shared.automation.waitForElement(
-                    target: clickTarget,
-                    timeout: TimeInterval(self.waitFor) / 1000.0,
-                    sessionId: activeSessionId)
-
-                if !waitResult.found {
-                    throw PeekabooError.interactionFailed(
-                        "No actionable element found matching '\(searchQuery)' after \(self.waitFor)ms")
-                }
-
+                activeSessionId = "" // Not needed for coordinate clicks
+                
             } else {
-                throw ArgumentParser.ValidationError("Specify an element query, --on, or --coords")
+                // For element-based clicks, we need a session
+                let sessionId: String? = if let providedSession = session {
+                    providedSession
+                } else {
+                    await PeekabooServices.shared.sessions.getMostRecentSession()
+                }
+                guard let foundSessionId = sessionId else {
+                    throw PeekabooError.sessionNotFound
+                }
+                activeSessionId = foundSessionId
+                
+                if let elementId = on {
+                    // Click by element ID with auto-wait
+                    clickTarget = .elementId(elementId)
+                    waitResult = try await PeekabooServices.shared.automation.waitForElement(
+                        target: clickTarget,
+                        timeout: TimeInterval(self.waitFor) / 1000.0,
+                        sessionId: activeSessionId)
+
+                    if !waitResult.found {
+                        throw PeekabooError.elementNotFound
+                    }
+
+                } else if let searchQuery = query {
+                    // Find element by query with auto-wait
+                    clickTarget = .query(searchQuery)
+                    waitResult = try await PeekabooServices.shared.automation.waitForElement(
+                        target: clickTarget,
+                        timeout: TimeInterval(self.waitFor) / 1000.0,
+                        sessionId: activeSessionId)
+
+                    if !waitResult.found {
+                        throw PeekabooError.interactionFailed(
+                            "No actionable element found matching '\(searchQuery)' after \(self.waitFor)ms")
+                    }
+
+                } else {
+                    throw ArgumentParser.ValidationError("Specify an element query, --on, or --coords")
+                }
             }
 
             // Determine click type
             let clickType: ClickType = self.right ? .right : (self.double ? .double : .single)
 
             // Perform the click
-            try await PeekabooServices.shared.automation.click(
-                target: clickTarget,
-                clickType: clickType,
-                sessionId: activeSessionId)
+            if case .coordinates = clickTarget {
+                // For coordinate clicks, pass nil session ID
+                try await PeekabooServices.shared.automation.click(
+                    target: clickTarget,
+                    clickType: clickType,
+                    sessionId: nil)
+            } else {
+                // For element-based clicks, pass the session ID
+                try await PeekabooServices.shared.automation.click(
+                    target: clickTarget,
+                    clickType: clickType,
+                    sessionId: activeSessionId)
+            }
 
             // Small delay to ensure click is processed
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds

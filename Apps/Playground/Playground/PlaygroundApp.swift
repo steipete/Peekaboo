@@ -1,11 +1,43 @@
 import SwiftUI
 import OSLog
+import AppKit
 
 private let logger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "App")
+private let clickLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Click")
 
 @main
 struct PlaygroundApp: App {
     @StateObject private var actionLogger = ActionLogger.shared
+    @State private var eventMonitor: Any?
+    
+    init() {
+        setupGlobalMouseClickMonitor()
+    }
+    
+    private func setupGlobalMouseClickMonitor() {
+        // Monitor mouse clicks globally within the app
+        NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { event in
+            if let window = event.window {
+                let locationInWindow = event.locationInWindow
+                let windowFrame = window.frame
+                
+                // Convert to screen coordinates (top-left origin like Peekaboo uses)
+                // macOS uses bottom-left origin, so we need to flip Y coordinate
+                let screenHeight = NSScreen.main?.frame.height ?? 0
+                let screenLocation = NSPoint(
+                    x: windowFrame.origin.x + locationInWindow.x,
+                    y: screenHeight - (windowFrame.origin.y + locationInWindow.y)
+                )
+                
+                let clickType = event.type == .leftMouseDown ? "Left" : "Right"
+                let logMessage = "\(clickType) click at window: (\(Int(locationInWindow.x)), \(Int(locationInWindow.y))), screen: (\(Int(screenLocation.x)), \(Int(screenLocation.y)))"
+                
+                clickLogger.info("\(logMessage)")
+                ActionLogger.shared.log(.click, logMessage)
+            }
+            return event
+        }
+    }
     
     var body: some Scene {
         WindowGroup {
