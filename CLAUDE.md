@@ -7,6 +7,8 @@ To test this project interactive we can use:
 
 ## Recent Updates
 
+- **Playground test app created** (2025-01-24): Added comprehensive SwiftUI test application at `Playground/` for testing all Peekaboo automation features. Includes its own logging utility `playground-log.sh` based on vtlog. See the "Playground Test App" section below.
+
 - **vtlog utility added** (2025-01-07): Adopted the vtlog logging utility from the VibeTunnel project. The script is located at `scripts/vtlog.sh` and provides easy access to PeekabooInspector's unified logging output. See the "Debugging with vtlog" section below for usage.
 
 - **Unified configuration directory** (2025-01-07): Migrated from `~/.config/peekaboo/` to `~/.peekaboo/` for better discoverability. API keys are now stored separately in `~/.peekaboo/credentials` with proper permissions (chmod 600). Automatic migration happens on first run.
@@ -673,6 +675,117 @@ xcodebuild -workspace Apps/Peekaboo.xcworkspace -scheme Peekaboo -configuration 
 # Run tests
 xcodebuild -workspace Apps/Peekaboo.xcworkspace -scheme Peekaboo -configuration Debug test
 ```
+
+## Playground Test App
+
+The **Playground** directory contains a comprehensive SwiftUI test application specifically designed for testing all Peekaboo automation features. This app provides a controlled environment with various UI elements and interactions that can be automated.
+
+### Features
+
+- **Click Testing**: Various button types, toggles, click areas, context menus
+- **Text Input**: Multiple field types, secure fields, multiline editors, special characters
+- **UI Controls**: Sliders, checkboxes, radio buttons, steppers, date/color pickers
+- **Scroll & Gestures**: Scroll views, swipe/pinch/rotation detection
+- **Window Management**: Window controls, positioning, resizing, multiple windows
+- **Drag & Drop**: Draggable items, drop zones, reorderable lists
+- **Keyboard**: Key detection, modifiers, hotkeys, sequence recording
+
+### Building and Running
+
+```bash
+# Build the Playground app
+cd Playground
+swift build
+
+# Run the app
+./.build/debug/Playground
+```
+
+### Logging with playground-log.sh
+
+The Playground app includes a dedicated logging utility inspired by vtlog. You can use it directly or via the wrapper script in the project root:
+
+```bash
+# From project root (recommended)
+./scripts/playground-log.sh
+
+# Or directly from Playground directory
+./Playground/scripts/playground-log.sh
+
+# Show recent logs (default: last 50 lines from past 5 minutes)
+./scripts/playground-log.sh
+
+# Stream logs continuously (like tail -f)
+./scripts/playground-log.sh -f
+
+# Show only errors
+./scripts/playground-log.sh -e
+
+# Show logs for specific category
+./scripts/playground-log.sh -c Click
+
+# Search for specific text
+./scripts/playground-log.sh -s "button clicked"
+
+# Export logs to file
+./scripts/playground-log.sh --all -o playground-test.log
+
+# Show available categories
+./scripts/playground-log.sh --categories
+```
+
+#### Available Categories (Playground)
+
+- **Click** - Button clicks, toggles, click areas
+- **Text** - Text input, field changes
+- **Menu** - Menu selections, context menus
+- **Window** - Window operations
+- **Scroll** - Scroll events
+- **Drag** - Drag and drop operations
+- **Keyboard** - Key presses, hotkeys
+- **Focus** - Focus changes
+- **Gesture** - Swipes, pinches, rotations
+- **Control** - Sliders, pickers, other controls
+- **App** - Application events
+
+#### playground-log.sh Features
+
+- **Color-coded output**: Different categories are highlighted in different colors
+- **Time-based filtering**: Show logs from specific time ranges (5m, 30m, 1h, etc.)
+- **Category filtering**: Focus on specific types of actions
+- **Search functionality**: Find specific log entries
+- **JSON output**: Machine-readable format for processing
+- **File export**: Save logs for analysis
+- **Continuous streaming**: Watch logs in real-time
+
+#### Usage Examples
+
+```bash
+# Debug click interactions in the last 30 minutes
+./scripts/playground-log.sh -c Click -d -l 30m
+
+# Watch keyboard events in real-time
+./scripts/playground-log.sh -c Keyboard -f
+
+# Search for specific automation tests
+./scripts/playground-log.sh -s "automation" -n 100
+
+# Export comprehensive test session logs
+./scripts/playground-log.sh --all -o "test-session-$(date +%Y%m%d-%H%M%S).log"
+
+# Show only error events
+./scripts/playground-log.sh -e -l 1h
+```
+
+### Testing Automation
+
+Each UI element in the Playground app has:
+- Unique accessibility identifiers (e.g., `single-click-button`, `basic-text-field`)
+- Proper labeling for element detection
+- Clear visual boundaries
+- State indicators and feedback
+
+This makes it ideal for testing Peekaboo's automation capabilities in a controlled environment.
 
 ## Troubleshooting
 

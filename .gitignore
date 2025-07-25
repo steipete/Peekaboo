@@ -37,6 +37,7 @@ lerna-debug.log*
 
 # TypeScript
 Server/dist/
+dist/
 build/
 *.js.map
 
