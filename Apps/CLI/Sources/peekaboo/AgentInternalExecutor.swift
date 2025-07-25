@@ -96,6 +96,9 @@ struct AgentInternalExecutor {
         case "analyze_screenshot":
             return try await self.executeAnalyzeScreenshot(args: args)
 
+        case "list":
+            return try await self.executeList(args: args)
+
         default:
             // Unknown command received
             throw AgentError.invalidArguments("Unknown command: \(command)")
@@ -106,219 +109,246 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeSee(args: [String: Any]) async throws -> String {
-        // Log removed
-        var seeCommand = SeeCommand()
-
-        // Set parameters
-        if let app = args["app"] as? String {
-            // Log removed")
-            seeCommand.app = app
-        }
-        if let windowTitle = args["window_title"] as? String {
-            // Log removed")
-            seeCommand.windowTitle = windowTitle
-        }
-
-        // Always use JSON output for agent
-        seeCommand.jsonOutput = true
-
-        // Capture output
-        let output = CaptureOutput()
-        output.start()
-
+        // Use PeekabooServices directly instead of command structs
+        let services = PeekabooServices.shared
+        
         do {
-            try await seeCommand.run()
+            // Determine capture target
+            let captureResult: CaptureResult
+            if let app = args["app"] as? String {
+                captureResult = try await services.screenCapture.captureWindow(
+                    appIdentifier: app,
+                    windowIndex: nil
+                )
+            } else {
+                captureResult = try await services.screenCapture.captureFrontmost()
+            }
+            
+            // Save the screenshot
+            let defaultPath = "/tmp/peekaboo_\(UUID().uuidString).png"
+            let screenshotPath: String
+            do {
+                try captureResult.imageData.write(to: URL(fileURLWithPath: defaultPath))
+                screenshotPath = defaultPath
+            } catch {
+                throw AgentError.commandFailed("Failed to save screenshot: \(error)")
+            }
+            
+            // Create session and detect elements
+            let sessionId = try await services.sessions.createSession()
+            let detectionResult = try await services.automation.detectElements(
+                in: captureResult.imageData,
+                sessionId: nil
+            )
+            
+            // Store detection result in session
+            let enhancedResult = ElementDetectionResult(
+                sessionId: sessionId,
+                screenshotPath: screenshotPath,
+                elements: detectionResult.elements,
+                metadata: detectionResult.metadata
+            )
+            try await services.sessions.storeDetectionResult(
+                sessionId: sessionId,
+                result: enhancedResult
+            )
+            
+            // Prepare response
+            let elements = detectionResult.elements.all.map { element -> [String: Any] in
+                let bounds: [String: Any] = [
+                    "x": element.bounds.origin.x,
+                    "y": element.bounds.origin.y,
+                    "width": element.bounds.width,
+                    "height": element.bounds.height
+                ]
+                return [
+                    "id": element.id,
+                    "type": element.type.rawValue,
+                    "label": element.label ?? element.value ?? "",
+                    "bounds": bounds,
+                    "isEnabled": element.isEnabled
+                ]
+            }
+            
+            let responseData: [String: Any] = [
+                "screenshot_raw": screenshotPath,
+                "session_id": sessionId,
+                "elements": elements
+            ]
+            
+            let response: [String: Any] = [
+                "success": true,
+                "data": responseData
+            ]
+            
+            if let data = try? JSONSerialization.data(withJSONObject: response),
+               let jsonString = String(data: data, encoding: .utf8) {
+                return jsonString
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
         } catch {
-            _ = output.stop()
             throw error
         }
 
-        let result = output.stop()
-
-        // If we have a result, enhance it with vision analysis if requested
-        if !result.isEmpty, let analyze = args["analyze"] as? Bool, analyze {
-            // Log removed
-            // Parse the JSON to get the screenshot path
-            if let data = result.data(using: .utf8),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let success = json["success"] as? Bool, success,
-               let resultData = json["data"] as? [String: Any],
-               let screenshotPath = resultData["screenshot_raw"] as? String
-            {
-                // Analyze the screenshot
-                if let analysis = try? await analyzeWithVision(
-                    imagePath: screenshotPath,
-                    question: "Describe what you see on the screen, including visible applications, windows, and UI elements")
-                {
-                    // Add analysis to the result
-                    var enhancedJson = json
-                    var enhancedData = resultData
-                    enhancedData["vision_analysis"] = analysis
-                    enhancedJson["data"] = enhancedData
-
-                    if let enhancedResult = try? JSONSerialization.data(withJSONObject: enhancedJson),
-                       let enhancedString = String(data: enhancedResult, encoding: .utf8)
-                    {
-                        return enhancedString
-                    }
-                }
-            }
-        }
-
-        return result.isEmpty ? self.createSuccessJSON("Screenshot captured") : result
     }
 
     @MainActor
     private func executeClick(args: [String: Any]) async throws -> String {
-        // Log removed
-        var clickCommand = ClickCommand()
-
-        // Set parameters
-        if let element = args["element"] as? String {
-            // Log removed")
-            clickCommand.on = element
-        } else if let x = args["x"] as? Double, let y = args["y"] as? Double {
-            // Log removed, \(y))")
-            clickCommand.coords = "\(Int(x)),\(Int(y))"
-        }
-
-        if let sessionId = args["session_id"] as? String {
-            // Log removed")
-            clickCommand.session = sessionId
-        }
-
-        if let doubleClick = args["double_click"] as? Bool, doubleClick {
-            // Log removed
-            clickCommand.double = true
-        }
-
-        clickCommand.jsonOutput = true
-
-        // Capture output
-        let output = CaptureOutput()
-        output.start()
-
+        let services = PeekabooServices.shared
+        
         do {
-            try await clickCommand.run()
+            // Determine click target
+            let clickTarget: ClickTarget
+            if let element = args["element"] as? String {
+                clickTarget = .elementId(element)
+            } else if let x = args["x"] as? Double, let y = args["y"] as? Double {
+                clickTarget = .coordinates(CGPoint(x: x, y: y))
+            } else {
+                throw AgentError.invalidArguments("Click requires either 'element' or 'x,y' coordinates")
+            }
+            
+            // Get click type
+            let clickType: ClickType = (args["double_click"] as? Bool ?? false) ? .double : .single
+            
+            // Get session ID
+            let sessionId = args["session_id"] as? String
+            
+            // Perform the click
+            try await services.automation.click(
+                target: clickTarget,
+                clickType: clickType,
+                sessionId: sessionId
+            )
+            
+            // Prepare response
+            let response: [String: Any] = [
+                "success": true,
+                "data": [
+                    "message": "Click executed successfully",
+                    "target": "\(clickTarget)",
+                    "clickType": clickType.rawValue
+                ]
+            ]
+            
+            if let data = try? JSONSerialization.data(withJSONObject: response),
+               let jsonString = String(data: data, encoding: .utf8) {
+                return jsonString
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
         } catch {
-            _ = output.stop()
             throw error
         }
-
-        let result = output.stop()
-        return result.isEmpty ? self.createSuccessJSON("Click executed") : result
     }
 
     @MainActor
     private func executeType(args: [String: Any]) async throws -> String {
-        // Log removed
-        var typeCommand = TypeCommand()
-
-        // Set parameters
-        guard let text = args["text"] as? String else {
-            // Log removed
-            throw AgentError.invalidArguments("Type command requires 'text' parameter")
-        }
-        // Log removed)...")
-        typeCommand.text = text
-
-        if let sessionId = args["session_id"] as? String {
-            typeCommand.session = sessionId
-        }
-
-        if let clearFirst = args["clear_first"] as? Bool, clearFirst {
-            typeCommand.clear = true
-        }
-
-        typeCommand.jsonOutput = true
-
-        // Capture output
-        let output = CaptureOutput()
-        output.start()
-
+        let services = PeekabooServices.shared
+        
         do {
-            try await typeCommand.run()
+            guard let text = args["text"] as? String else {
+                throw AgentError.invalidArguments("Type command requires 'text' parameter")
+            }
+            
+            let sessionId = args["session_id"] as? String
+            let clearFirst = args["clear_first"] as? Bool ?? false
+            
+            // Perform the typing
+            try await services.automation.type(
+                text: text,
+                target: nil,
+                clearExisting: clearFirst,
+                typingDelay: 10,
+                sessionId: sessionId
+            )
+            
+            // Prepare response
+            let response: [String: Any] = [
+                "success": true,
+                "data": [
+                    "message": "Text typed successfully",
+                    "text": text,
+                    "charactersTyped": text.count
+                ]
+            ]
+            
+            if let data = try? JSONSerialization.data(withJSONObject: response),
+               let jsonString = String(data: data, encoding: .utf8) {
+                return jsonString
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
         } catch {
-            _ = output.stop()
             throw error
         }
-
-        let result = output.stop()
-        return result.isEmpty ? self.createSuccessJSON("Text typed") : result
     }
 
     @MainActor
     private func executeApp(args: [String: Any]) async throws -> String {
-        // Log removed
-
-        guard let action = args["action"] as? String,
-              let name = args["name"] as? String
-        else {
-            // Log removed
-            throw AgentError.invalidArguments("App command requires 'action' and 'name' parameters")
-        }
-
-        // Log removed, target: \(name)")
-
-        // Create appropriate subcommand based on action
-        switch action {
-        case "launch":
-            var launchCommand = AppCommand.LaunchSubcommand()
-            launchCommand.app = name
-            launchCommand.jsonOutput = true
-
-            let output = CaptureOutput()
-            output.start()
-            try await launchCommand.run()
-            let result = output.stop()
-            return result.isEmpty ? self.createSuccessJSON("App launched") : result
-
-        case "quit":
-            var quitCommand = AppCommand.QuitSubcommand()
-            quitCommand.app = name
-            quitCommand.jsonOutput = true
-
-            let output = CaptureOutput()
-            output.start()
-            try await quitCommand.run()
-            let result = output.stop()
-            return result.isEmpty ? self.createSuccessJSON("App quit") : result
-
-        case "focus", "switch":
-            var switchCommand = AppCommand.SwitchSubcommand()
-            switchCommand.to = name
-            switchCommand.jsonOutput = true
-
-            let output = CaptureOutput()
-            output.start()
-            try await switchCommand.run()
-            let result = output.stop()
-            return result.isEmpty ? self.createSuccessJSON("App focused") : result
-
-        case "hide":
-            var hideCommand = AppCommand.HideSubcommand()
-            hideCommand.app = name
-            hideCommand.jsonOutput = true
-
-            let output = CaptureOutput()
-            output.start()
-            try await hideCommand.run()
-            let result = output.stop()
-            return result.isEmpty ? self.createSuccessJSON("App hidden") : result
-
-        case "unhide":
-            var unhideCommand = AppCommand.UnhideSubcommand()
-            unhideCommand.app = name
-            unhideCommand.jsonOutput = true
-
-            let output = CaptureOutput()
-            output.start()
-            try await unhideCommand.run()
-            let result = output.stop()
-            return result.isEmpty ? self.createSuccessJSON("App unhidden") : result
-
-        default:
-            throw AgentError.invalidArguments("Unknown app action: \(action)")
+        let services = PeekabooServices.shared
+        
+        do {
+            guard let action = args["action"] as? String,
+                  let name = args["name"] as? String
+            else {
+                throw AgentError.invalidArguments("App command requires 'action' and 'name' parameters")
+            }
+            
+            var message = ""
+            var additionalData: [String: Any] = [:]
+            
+            switch action {
+            case "launch":
+                let result = try await services.applications.launchApplication(identifier: name)
+                message = "App launched successfully"
+                additionalData = [
+                    "processIdentifier": result.processIdentifier,
+                    "isActive": result.isActive,
+                    "windowCount": result.windowCount
+                ]
+                
+            case "quit":
+                _ = try await services.applications.quitApplication(identifier: name, force: false)
+                message = "App quit successfully"
+                
+            case "focus", "switch":
+                try await services.applications.activateApplication(identifier: name)
+                message = "App focused successfully"
+                
+            case "hide":
+                try await services.applications.hideApplication(identifier: name)
+                message = "App hidden successfully"
+                
+            case "unhide":
+                try await services.applications.unhideApplication(identifier: name)
+                message = "App unhidden successfully"
+                
+            default:
+                throw AgentError.invalidArguments("Unknown app action: \(action)")
+            }
+            
+            // Prepare response
+            var responseData: [String: Any] = [
+                "message": message,
+                "app": name,
+                "action": action
+            ]
+            responseData.merge(additionalData) { (_, new) in new }
+            
+            let response: [String: Any] = [
+                "success": true,
+                "data": responseData
+            ]
+            
+            if let data = try? JSONSerialization.data(withJSONObject: response),
+               let jsonString = String(data: data, encoding: .utf8) {
+                return jsonString
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
+        } catch {
+            throw error
         }
     }
 
@@ -473,14 +503,9 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeWait(args: [String: Any]) async throws -> String {
-        // Log removed
-
         guard let duration = args["duration"] as? Double else {
-            // Log removed
             throw AgentError.invalidArguments("Wait command requires 'duration' parameter")
         }
-
-        // Log removed seconds")
 
         // Convert seconds to nanoseconds
         let nanoseconds = UInt64(duration * 1_000_000_000)
@@ -491,94 +516,202 @@ struct AgentInternalExecutor {
 
     @MainActor
     private func executeHotkey(args: [String: Any]) async throws -> String {
-        // Log removed
-        var hotkeyCommand = HotkeyCommand()
-
-        guard let keys = args["keys"] as? [String] else {
-            // Log removed
-            throw AgentError.invalidArguments("Hotkey command requires 'keys' array")
-        }
-
-        // Log removed)")
-
-        // Convert array to comma-separated string for the command
-        hotkeyCommand.keys = keys.joined(separator: ",")
-        hotkeyCommand.jsonOutput = true
-
-        // Capture output
-        let output = CaptureOutput()
-        output.start()
-
+        let services = PeekabooServices.shared
+        
         do {
-            try await hotkeyCommand.run()
+            let keys: [String]
+            if let keysArray = args["keys"] as? [String] {
+                keys = keysArray
+            } else if let keysString = args["keys"] as? String {
+                keys = keysString.split(separator: ",").map { String($0.trimmingCharacters(in: .whitespaces)) }
+            } else {
+                throw AgentError.invalidArguments("Hotkey command requires 'keys' (array or string)")
+            }
+            
+            // Execute hotkey
+            try await services.automation.hotkey(keys: keys.joined(separator: ","), holdDuration: 0)
+            
+            // Prepare response
+            let response: [String: Any] = [
+                "success": true,
+                "data": [
+                    "message": "Hotkey pressed successfully",
+                    "keys": keys
+                ]
+            ]
+            
+            if let data = try? JSONSerialization.data(withJSONObject: response),
+               let jsonString = String(data: data, encoding: .utf8) {
+                return jsonString
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
         } catch {
-            _ = output.stop()
             throw error
         }
-
-        let result = output.stop()
-        return result.isEmpty ? self.createSuccessJSON("Hotkey pressed") : result
     }
 
     @MainActor
     private func executeScroll(args: [String: Any]) async throws -> String {
-        // Log removed
-        var scrollCommand = ScrollCommand()
-
-        if let direction = args["direction"] as? String {
-            scrollCommand.direction = direction
-        }
-        if let amount = args["amount"] as? Int {
-            scrollCommand.amount = amount
-        }
-        if let element = args["element"] as? String {
-            scrollCommand.on = element
-        }
-
-        scrollCommand.jsonOutput = true
-
-        // Capture output
-        let output = CaptureOutput()
-        output.start()
-
+        let services = PeekabooServices.shared
+        
         do {
-            try await scrollCommand.run()
+            let direction = PeekabooCore.ScrollDirection(rawValue: args["direction"] as? String ?? "down") ?? .down
+            let amount = args["amount"] as? Int ?? 5
+            let element = args["element"] as? String
+            let sessionId = args["session_id"] as? String
+            
+            // Execute scroll
+            try await services.automation.scroll(
+                direction: direction,
+                amount: amount,
+                target: element,
+                smooth: true,
+                delay: 10,
+                sessionId: sessionId
+            )
+            
+            // Prepare response
+            let response: [String: Any] = [
+                "success": true,
+                "data": [
+                    "message": "Scrolled successfully",
+                    "direction": direction.rawValue,
+                    "amount": amount,
+                    "target": element ?? "activeWindow"
+                ]
+            ]
+            
+            if let data = try? JSONSerialization.data(withJSONObject: response),
+               let jsonString = String(data: data, encoding: .utf8) {
+                return jsonString
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
         } catch {
-            _ = output.stop()
             throw error
         }
-
-        let result = output.stop()
-        return result.isEmpty ? self.createSuccessJSON("Scrolled") : result
     }
 
     @MainActor
     private func executeAnalyzeScreenshot(args: [String: Any]) async throws -> String {
-        // Log removed
-
-        guard let screenshotPath = args["screenshot_path"] as? String else {
-            // Log removed
-            throw AgentError.invalidArguments("analyze_screenshot requires 'screenshot_path' parameter")
+        do {
+            guard let screenshotPath = args["screenshot_path"] as? String else {
+                throw AgentError.invalidArguments("analyze_screenshot requires 'screenshot_path' parameter")
+            }
+            
+            let question = args["question"] as? String ?? "What is shown in this screenshot?"
+            
+            // Use the vision API to analyze the screenshot
+            let analysis = try await analyzeWithVision(imagePath: screenshotPath, question: question)
+            
+            // Prepare response
+            let response: [String: Any] = [
+                "success": true,
+                "data": [
+                    "analysis": analysis,
+                    "screenshot_path": screenshotPath,
+                    "question": question
+                ]
+            ]
+            
+            if let data = try? JSONSerialization.data(withJSONObject: response),
+               let jsonString = String(data: data, encoding: .utf8) {
+                return jsonString
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
+        } catch {
+            throw error
         }
+    }
 
-        let question = args["question"] as? String ?? "What is shown in this screenshot?"
-        // Log removed")
-        // Log removed")
-
-        // Use the vision API to analyze the screenshot
-        let analysis = try await analyzeWithVision(imagePath: screenshotPath, question: question)
-
-        return self.createSuccessJSON(analysis)
+    @MainActor
+    private func executeList(args: [String: Any]) async throws -> String {
+        let services = PeekabooServices.shared
+        
+        do {
+            guard let target = args["target"] as? String else {
+                throw AgentError.invalidArguments("List command requires 'target' parameter")
+            }
+            
+            switch target {
+            case "apps":
+                let apps = try await services.applications.listApplications()
+                let appData = apps.map { app -> [String: Any] in
+                    return [
+                        "name": app.name,
+                        "bundleIdentifier": app.bundleIdentifier,
+                        "processIdentifier": app.processIdentifier,
+                        "isActive": app.isActive,
+                        "windowCount": app.windowCount
+                    ]
+                }
+                
+                let response: [String: Any] = [
+                    "success": true,
+                    "data": [
+                        "applications": appData,
+                        "count": apps.count
+                    ]
+                ]
+                
+                if let data = try? JSONSerialization.data(withJSONObject: response),
+                   let jsonString = String(data: data, encoding: .utf8) {
+                    return jsonString
+                }
+                
+            case "windows":
+                let appName = args["app"] as? String
+                guard let app = appName else {
+                    throw AgentError.invalidArguments("List windows requires 'app' parameter")
+                }
+                
+                let windows = try await services.applications.listWindows(for: app)
+                let windowData = windows.map { window -> [String: Any] in
+                    return [
+                        "title": window.title,
+                        "bounds": [
+                            "x": window.bounds.origin.x,
+                            "y": window.bounds.origin.y,
+                            "width": window.bounds.width,
+                            "height": window.bounds.height
+                        ],
+                        "isMinimized": window.isMinimized,
+                        "isMainWindow": window.isMainWindow,
+                        "windowID": window.windowID
+                    ]
+                }
+                
+                let response: [String: Any] = [
+                    "success": true,
+                    "data": [
+                        "windows": windowData,
+                        "count": windows.count,
+                        "app": app
+                    ]
+                ]
+                
+                if let data = try? JSONSerialization.data(withJSONObject: response),
+                   let jsonString = String(data: data, encoding: .utf8) {
+                    return jsonString
+                }
+                
+            default:
+                throw AgentError.invalidArguments("Unknown list target: \(target)")
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
+        } catch {
+            throw error
+        }
     }
 
     // MARK: - Vision Analysis
 
     private func analyzeWithVision(imagePath: String, question: String) async throws -> String {
-        // Log removed
-
         // Get API key
         guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
-            // Log removed
             throw AgentError.missingAPIKey
         }
 
@@ -621,13 +754,11 @@ struct AgentInternalExecutor {
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
         // Make the request
-        // Log removed
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200
         else {
-            // Log removed?.statusCode ?? -1)")
             throw AgentError.apiError("Vision API request failed")
         }
 
@@ -640,9 +771,6 @@ struct AgentInternalExecutor {
         else {
             throw AgentError.apiError("Failed to parse vision API response")
         }
-
-        // Log removed
-        // Log removed)...")
         return content
     }
 

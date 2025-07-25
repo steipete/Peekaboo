@@ -2,6 +2,7 @@ import ArgumentParser
 import Foundation
 
 /// AI Agent command that uses OpenAI Assistants API to automate complex tasks
+@available(macOS 14.0, *)
 struct AgentCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "agent",
@@ -116,6 +117,7 @@ struct AgentCommand: AsyncParsableCommand {
 
 // MARK: - OpenAI Agent Implementation
 
+@available(macOS 14.0, *)
 struct OpenAIAgent {
     let apiKey: String
     let model: String
@@ -124,7 +126,7 @@ struct OpenAIAgent {
     let showThoughts: Bool
 
     private let session = URLSession.shared
-    private let executor: PeekabooCommandExecutor
+    private let executor: AgentInternalExecutor
     private let retryConfig = RetryConfiguration.default
     
     init(apiKey: String, model: String, verbose: Bool, maxSteps: Int, showThoughts: Bool = false) {
@@ -133,7 +135,8 @@ struct OpenAIAgent {
         self.verbose = verbose
         self.maxSteps = maxSteps
         self.showThoughts = showThoughts
-        self.executor = PeekabooCommandExecutor(verbose: false)
+        // Use internal executor for better performance
+        self.executor = AgentInternalExecutor(verbose: verbose)
     }
 
     struct AgentResult: Codable {

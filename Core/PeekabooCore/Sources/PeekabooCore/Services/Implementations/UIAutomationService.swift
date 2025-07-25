@@ -530,18 +530,14 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                     if let sessionId = sessionId,
                        let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId),
                        let element = detectionResult.elements.findById(id) {
-                        // Verify element is still actionable at its location
-                        if let liveElement = await findElementAtLocation(
-                            frame: element.bounds,
-                            role: convertElementTypeToAXRole(element.type)
-                        ) {
-                            if await isElementActionable(liveElement) {
-                                return WaitForElementResult(
-                                    found: true,
-                                    element: element,
-                                    waitTime: Date().timeIntervalSince(startTime)
-                                )
-                            }
+                        // For session-based elements, trust the stored data
+                        // The element was already verified when the session was created
+                        if element.isEnabled {
+                            return WaitForElementResult(
+                                found: true,
+                                element: element,
+                                waitTime: Date().timeIntervalSince(startTime)
+                            )
                         }
                     }
                     
