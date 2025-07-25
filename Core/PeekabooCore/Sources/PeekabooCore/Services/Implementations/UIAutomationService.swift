@@ -184,11 +184,24 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             
             if let target = target {
                 // Scroll on specific element
-                let elementFrame = await MainActor.run { () -> CGRect? in
-                    if let element = findElementByIdOrQuery(target, sessionId: sessionId) {
-                        return element.frame()
+                var elementFrame: CGRect?
+                
+                // Check if target is an element ID from session
+                if let sessionId = sessionId,
+                   target.count >= 2 && target.first?.isLetter == true && target.dropFirst().allSatisfy({ $0.isNumber }) {
+                    // Get element from session
+                    if let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId),
+                       let element = detectionResult.elements.findById(target) {
+                        elementFrame = element.bounds
                     }
-                    return nil
+                } else {
+                    // Try to find element by query
+                    elementFrame = await MainActor.run { () -> CGRect? in
+                        if let element = findElementByQuery(target) {
+                            return element.frame()
+                        }
+                        return nil
+                    }
                 }
                 
                 if let frame = elementFrame {
@@ -196,7 +209,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                 } else {
                     throw OperationError.interactionFailed(
                         action: "scroll",
-                        reason: "Element has no frame"
+                        reason: "Element not found or has no frame"
                     )
                 }
             } else {
@@ -1013,21 +1026,6 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         }
     }
     
-    @MainActor
-    private func findElementByIdOrQuery(_ target: String, sessionId: String?) -> Element? {
-        // First try as element ID from session
-        if sessionId != nil {
-            // Check if target looks like an element ID (e.g., "B1", "T2", etc.)
-            if target.count >= 2 && target.first?.isLetter == true && target.dropFirst().allSatisfy({ $0.isNumber }) {
-                // This looks like an element ID, but we can't do async lookup here
-                // The calling code should handle this case
-                return nil
-            }
-        }
-        
-        // Otherwise try as query
-        return findElementByQuery(target)
-    }
 }
 
 // MARK: - UI Automation Errors

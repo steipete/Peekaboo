@@ -114,9 +114,8 @@ struct Peekaboo: AsyncParsableCommand {
             DialogCommand.self,
             // Agent commands
             AgentCommand.self,
-            SimpleAgentCommand.self,
         ],
-        // defaultSubcommand: AgentCommand.self // Temporarily disable default subcommand
+        defaultSubcommand: AgentCommand.self
     )
 }
 

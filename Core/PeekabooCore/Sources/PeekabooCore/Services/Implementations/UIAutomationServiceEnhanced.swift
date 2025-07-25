@@ -169,6 +169,8 @@ public extension UIAutomationService {
         let description = element.help() // Use help() for additional description
         let identifier = element.identifier()
         let isEnabled = element.isEnabled() ?? true
+        // Use computedName for better label extraction
+        let computedName = element.computedName()
         
         // Get element bounds
         guard let position = element.position(),
@@ -206,11 +208,30 @@ public extension UIAutomationService {
             attributes["keyboardShortcut"] = shortcut
         }
         
+        // Try to extract better label for buttons by looking at children
+        var enhancedLabel = label ?? title ?? value ?? computedName
+        if elementType == .button && enhancedLabel == nil {
+            // Look for static text children within the button
+            if let children = element.children() {
+                for child in children {
+                    if let childRole = child.role(), childRole == "AXStaticText" {
+                        if let childValue = child.value() as? String, !childValue.isEmpty {
+                            enhancedLabel = childValue
+                            break
+                        } else if let childTitle = child.title(), !childTitle.isEmpty {
+                            enhancedLabel = childTitle
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        
         // Create detected element
         let detectedElement = DetectedElement(
             id: elementId,
             type: elementType,
-            label: label ?? title ?? value,
+            label: enhancedLabel,
             value: value,
             bounds: frame,
             isEnabled: isEnabled && isActionableRole(role),

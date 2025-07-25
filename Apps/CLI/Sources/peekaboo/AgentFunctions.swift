@@ -235,8 +235,8 @@ extension OpenAIAgent {
                     ],
                     "format": [
                         "type": "string",
-                        "enum": ["file", "data"],
-                        "description": "Output format (file path or base64 data)",
+                        "enum": ["png", "jpg"],
+                        "description": "Image format (png or jpg)",
                     ],
                 ],
                 "required": [],

@@ -68,12 +68,12 @@ struct CleanCommandSimpleTests {
             sessionsRemoved: 2,
             bytesFreed: 3072,
             sessionDetails: sessionDetails,
-            executionTime: 1.5,
-            success: true)
+            dryRun: false,
+            executionTime: 1.5)
 
         #expect(result.sessionsRemoved == 2)
         #expect(result.bytesFreed == 3072)
         #expect(result.sessionDetails.count == 2)
-        #expect(result.success == true)
+        #expect(result.dryRun == false)
     }
 }
