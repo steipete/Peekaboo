@@ -115,27 +115,23 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             ])
 
             if self.jsonOutput {
-                await MainActor.run {
-                    self.outputJSONResults(
-                        sessionId: captureResult.sessionId,
-                        screenshotPath: captureResult.screenshotPath,
-                        annotatedPath: annotatedPath,
-                        metadata: captureResult.metadata,
-                        elements: captureResult.elements,
-                        analysisResult: analysisResult,
-                        executionTime: executionTime)
-                }
+                await outputJSONResults(
+                    sessionId: captureResult.sessionId,
+                    screenshotPath: captureResult.screenshotPath,
+                    annotatedPath: annotatedPath,
+                    metadata: captureResult.metadata,
+                    elements: captureResult.elements,
+                    analysisResult: analysisResult,
+                    executionTime: executionTime)
             } else {
-                await MainActor.run {
-                    self.outputTextResults(
-                        sessionId: captureResult.sessionId,
-                        screenshotPath: captureResult.screenshotPath,
-                        annotatedPath: annotatedPath,
-                        metadata: captureResult.metadata,
-                        elements: captureResult.elements,
-                        analysisResult: analysisResult,
-                        executionTime: executionTime)
-                }
+                await outputTextResults(
+                    sessionId: captureResult.sessionId,
+                    screenshotPath: captureResult.screenshotPath,
+                    annotatedPath: annotatedPath,
+                    metadata: captureResult.metadata,
+                    elements: captureResult.elements,
+                    analysisResult: analysisResult,
+                    executionTime: executionTime)
             }
 
         } catch {
@@ -437,7 +433,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         metadata: DetectionMetadata,
         elements: DetectedElements,
         analysisResult: String?,
-        executionTime: TimeInterval)
+        executionTime: TimeInterval) async
     {
         // Build UI element summaries
         let uiElements: [UIElementSummary] = elements.all.map { element in
@@ -470,29 +466,23 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             analysis_result: analysisResult,
             execution_time: executionTime,
             ui_elements: uiElements,
-            menu_bar: getMenuBarItemsSummary()
+            menu_bar: await getMenuBarItemsSummary()
         )
 
         outputSuccessCodable(data: output)
     }
 
     @MainActor
-    private func getMenuBarItemsSummary() -> MenuBarSummary {
-        // Get menu bar items from service - handle async in sync context
+    private func getMenuBarItemsSummary() async -> MenuBarSummary {
+        // Get menu bar items from service
         var menuExtras: [MenuExtraInfo] = []
-        let semaphore = DispatchSemaphore(value: 0)
         
-        Task {
-            do {
-                menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
-            } catch {
-                // If there's an error, just return empty array
-                menuExtras = []
-            }
-            semaphore.signal()
+        do {
+            menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
+        } catch {
+            // If there's an error, just return empty array
+            menuExtras = []
         }
-        
-        semaphore.wait()
         
         // Group items into menu categories
         // For now, we'll create a simplified view showing each menu bar item as a "menu"
@@ -522,7 +512,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         metadata: DetectionMetadata,
         elements: DetectedElements,
         analysisResult: String?,
-        executionTime: TimeInterval)
+        executionTime: TimeInterval) async
     {
         let sessionPaths = SessionPaths(
             raw: screenshotPath,
@@ -548,21 +538,14 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         }
         
         // Show menu bar items
-        // Get menu bar items from service - handle async in sync context
-        var menuExtras: [MenuExtraInfo] = []
-        let semaphore = DispatchSemaphore(value: 0)
-        
-        Task {
-            do {
-                menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
-            } catch {
-                // If there's an error, just return empty array
-                menuExtras = []
-            }
-            semaphore.signal()
+        // Get menu bar items from service
+        let menuExtras: [MenuExtraInfo]
+        do {
+            menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
+        } catch {
+            // If there's an error, just return empty array
+            menuExtras = []
         }
-        
-        semaphore.wait()
         
         if !menuExtras.isEmpty {
             print("📊 Menu Bar Items: \(menuExtras.count)")
