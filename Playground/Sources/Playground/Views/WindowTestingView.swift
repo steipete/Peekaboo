@@ -58,31 +58,46 @@ struct WindowTestingView: View {
                     VStack(spacing: 15) {
                         HStack(spacing: 20) {
                             Button("Minimize") {
-                                NSApp.mainWindow?.miniaturize(nil)
+                                guard let window = NSApp.mainWindow else {
+                                    actionLogger.log(.window, "Cannot minimize - no main window")
+                                    return
+                                }
+                                window.miniaturize(nil)
                                 actionLogger.log(.window, "Window minimized")
                             }
                             .buttonStyle(.borderedProminent)
                             .accessibilityIdentifier("minimize-button")
                             
                             Button("Maximize") {
-                                NSApp.mainWindow?.zoom(nil)
+                                guard let window = NSApp.mainWindow else {
+                                    actionLogger.log(.window, "Cannot maximize - no main window")
+                                    return
+                                }
+                                window.zoom(nil)
                                 actionLogger.log(.window, "Window maximized/restored")
                             }
                             .buttonStyle(.borderedProminent)
                             .accessibilityIdentifier("maximize-button")
                             
                             Button("Center") {
-                                NSApp.mainWindow?.center()
-                                if let frame = NSApp.mainWindow?.frame {
-                                    actionLogger.log(.window, "Window centered", 
-                                                   details: "Position: (\(Int(frame.origin.x)), \(Int(frame.origin.y)))")
+                                guard let window = NSApp.mainWindow else {
+                                    actionLogger.log(.window, "Cannot center - no main window")
+                                    return
                                 }
+                                window.center()
+                                let frame = window.frame
+                                actionLogger.log(.window, "Window centered", 
+                                               details: "Position: (\(Int(frame.origin.x)), \(Int(frame.origin.y)))")
                             }
                             .buttonStyle(.borderedProminent)
                             .accessibilityIdentifier("center-button")
                             
                             Button("Bring to Front") {
-                                NSApp.mainWindow?.makeKeyAndOrderFront(nil)
+                                guard let window = NSApp.mainWindow else {
+                                    actionLogger.log(.window, "Cannot bring to front - no main window")
+                                    return
+                                }
+                                window.makeKeyAndOrderFront(nil)
                                 actionLogger.log(.window, "Window brought to front")
                             }
                             .buttonStyle(.borderedProminent)
@@ -101,27 +116,33 @@ struct WindowTestingView: View {
                             .accessibilityIdentifier("move-top-left")
                             
                             Button("Top Right") {
-                                if let screen = NSScreen.main {
-                                    let x = screen.frame.width - (NSApp.mainWindow?.frame.width ?? 800)
-                                    moveWindow(to: CGPoint(x: x, y: 0))
+                                guard let screen = NSScreen.main, let window = NSApp.mainWindow else {
+                                    actionLogger.log(.window, "Cannot move to top right - missing screen or window")
+                                    return
                                 }
+                                let x = screen.frame.width - window.frame.width
+                                moveWindow(to: CGPoint(x: x, y: 0))
                             }
                             .accessibilityIdentifier("move-top-right")
                             
                             Button("Bottom Left") {
-                                if let screen = NSScreen.main {
-                                    let y = screen.frame.height - (NSApp.mainWindow?.frame.height ?? 600)
-                                    moveWindow(to: CGPoint(x: 0, y: y))
+                                guard let screen = NSScreen.main, let window = NSApp.mainWindow else {
+                                    actionLogger.log(.window, "Cannot move to bottom left - missing screen or window")
+                                    return
                                 }
+                                let y = screen.frame.height - window.frame.height
+                                moveWindow(to: CGPoint(x: 0, y: y))
                             }
                             .accessibilityIdentifier("move-bottom-left")
                             
                             Button("Bottom Right") {
-                                if let screen = NSScreen.main, let window = NSApp.mainWindow {
-                                    let x = screen.frame.width - window.frame.width
-                                    let y = screen.frame.height - window.frame.height
-                                    moveWindow(to: CGPoint(x: x, y: y))
+                                guard let screen = NSScreen.main, let window = NSApp.mainWindow else {
+                                    actionLogger.log(.window, "Cannot move to bottom right - missing screen or window")
+                                    return
                                 }
+                                let x = screen.frame.width - window.frame.width
+                                let y = screen.frame.height - window.frame.height
+                                moveWindow(to: CGPoint(x: x, y: y))
                             }
                             .accessibilityIdentifier("move-bottom-right")
                         }
@@ -209,19 +230,31 @@ struct WindowTestingView: View {
                     
                     HStack(spacing: 20) {
                         Button("Simulate Focus Lost") {
-                            NSApp.mainWindow?.resignKey()
+                            guard let window = NSApp.mainWindow else {
+                                actionLogger.log(.window, "Cannot lose focus - no main window")
+                                return
+                            }
+                            window.resignKey()
                             actionLogger.log(.window, "Window focus lost (simulated)")
                         }
                         .accessibilityIdentifier("simulate-focus-lost")
                         
                         Button("Simulate Focus Gained") {
-                            NSApp.mainWindow?.makeKey()
+                            guard let window = NSApp.mainWindow else {
+                                actionLogger.log(.window, "Cannot gain focus - no main window")
+                                return
+                            }
+                            window.makeKey()
                             actionLogger.log(.window, "Window focus gained (simulated)")
                         }
                         .accessibilityIdentifier("simulate-focus-gained")
                         
                         Button("Toggle Full Screen") {
-                            NSApp.mainWindow?.toggleFullScreen(nil)
+                            guard let window = NSApp.mainWindow else {
+                                actionLogger.log(.window, "Cannot toggle fullscreen - no main window")
+                                return
+                            }
+                            window.toggleFullScreen(nil)
                             actionLogger.log(.window, "Full screen toggled")
                         }
                         .accessibilityIdentifier("toggle-fullscreen")
@@ -235,19 +268,25 @@ struct WindowTestingView: View {
     }
     
     private func moveWindow(to point: CGPoint) {
-        NSApp.mainWindow?.setFrameOrigin(point)
+        guard let window = NSApp.mainWindow else {
+            actionLogger.log(.window, "Cannot move window - no main window")
+            return
+        }
+        window.setFrameOrigin(point)
         actionLogger.log(.window, "Window moved", 
                        details: "Position: (\(Int(point.x)), \(Int(point.y)))")
     }
     
     private func resizeWindow(to size: CGSize) {
-        if let window = NSApp.mainWindow {
-            var frame = window.frame
-            frame.size = size
-            window.setFrame(frame, display: true)
-            actionLogger.log(.window, "Window resized", 
-                           details: "Size: \(Int(size.width))x\(Int(size.height))")
+        guard let window = NSApp.mainWindow else {
+            actionLogger.log(.window, "Cannot resize window - no main window")
+            return
         }
+        var frame = window.frame
+        frame.size = size
+        window.setFrame(frame, display: true)
+        actionLogger.log(.window, "Window resized", 
+                       details: "Size: \(Int(size.width))x\(Int(size.height))")
     }
     
     private func openNewWindow() {
