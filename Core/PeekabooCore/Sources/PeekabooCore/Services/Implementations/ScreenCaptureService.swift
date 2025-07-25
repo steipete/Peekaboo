@@ -1,7 +1,12 @@
 import Foundation
 import CoreGraphics
-import ScreenCaptureKit
+@preconcurrency import ScreenCaptureKit
 import AppKit
+
+// Feature flag to toggle between modern ScreenCaptureKit and legacy CGWindowList APIs
+// Set to true to use modern API, false to use legacy API
+// This is a workaround for SCShareableContent.current hanging on macOS beta versions
+private let USE_MODERN_SCREENCAPTURE_API = ProcessInfo.processInfo.environment["PEEKABOO_USE_MODERN_CAPTURE"] != "false"
 
 /// Default implementation of screen capture operations
 public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
@@ -126,66 +131,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         ], correlationId: correlationId)
         
         // Get windows for the application
-        let content = try await SCShareableContent.current
-        let appWindows = content.windows.filter { window in
-            window.owningApplication?.processID == app.processIdentifier
-        }
-        
-        logger.debug("Found windows for application", metadata: ["count": appWindows.count], correlationId: correlationId)
-        guard !appWindows.isEmpty else {
-            logger.error("No windows found for application", metadata: ["appName": app.name], correlationId: correlationId)
-            throw NotFoundError.window(app: app.name)
-        }
-        
-        // Select window
-        let targetWindow: SCWindow
-        if let index = windowIndex {
-            guard index >= 0 && index < appWindows.count else {
-                throw ValidationError.invalidInput(
-                    field: "windowIndex",
-                    reason: "Index \(index) is out of range. Available windows: 0-\(appWindows.count-1)"
-                )
-            }
-            targetWindow = appWindows[index]
+        if USE_MODERN_SCREENCAPTURE_API {
+            logger.debug("Using modern ScreenCaptureKit API", correlationId: correlationId)
+            return try await captureWindowModernImpl(app: app, windowIndex: windowIndex, correlationId: correlationId)
         } else {
-            // Use frontmost window
-            targetWindow = appWindows.first!
+            logger.debug("Using legacy CGWindowList API", correlationId: correlationId)
+            return try await captureWindowLegacy(app: app, windowIndex: windowIndex, correlationId: correlationId)
         }
-        
-        // Create screenshot with retry logic
-        let image = try await RetryHandler.withRetry(
-            policy: .standard,
-            operation: {
-                try await self.createScreenshot(of: targetWindow)
-            }
-        )
-        
-        let imageData: Data
-        do {
-            imageData = try image.pngData()
-        } catch {
-            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
-        }
-        
-        // Create metadata
-        let metadata = CaptureMetadata(
-            size: CGSize(width: image.width, height: image.height),
-            mode: .window,
-            applicationInfo: app,
-            windowInfo: ServiceWindowInfo(
-                windowID: Int(targetWindow.windowID),
-                title: targetWindow.title ?? "",
-                bounds: targetWindow.frame,
-                windowLevel: Int(targetWindow.windowLayer),
-                alpha: 1.0,  // Default alpha
-                index: windowIndex ?? 0
-            )
-        )
-        
-        return CaptureResult(
-            imageData: imageData,
-            metadata: metadata
-        )
     }
     
     public func captureFrontmost() async throws -> CaptureResult {
@@ -298,12 +250,40 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     }
     
     public func hasScreenRecordingPermission() async -> Bool {
-        // Check if we have permission by trying to get content
+        // Check if we have permission by trying to get content with timeout
         do {
-            _ = try await SCShareableContent.current
+            // Use excludingDesktopWindows which is more reliable
+            _ = try await withTimeout(seconds: 3.0) {
+                try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            }
             return true
         } catch {
+            logger.warning("Permission check failed or timed out: \(error)")
             return false
+        }
+    }
+    
+    // Helper function for timeout handling
+    private func withTimeout<T: Sendable>(seconds: TimeInterval, operation: @escaping @Sendable () async throws -> T) async throws -> T {
+        let task = Task {
+            try await operation()
+        }
+        
+        let timeoutTask = Task {
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            task.cancel()
+        }
+        
+        do {
+            let result = try await task.value
+            timeoutTask.cancel()
+            return result
+        } catch {
+            timeoutTask.cancel()
+            if task.isCancelled {
+                throw OperationError.timeout(operation: "SCShareableContent", duration: seconds)
+            }
+            throw error
         }
     }
     
@@ -417,6 +397,191 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         
         logger.warning("Application not found", metadata: ["identifier": identifier])
         throw NotFoundError.application(identifier)
+    }
+    
+    // MARK: - Modern API Implementation
+    
+    private func captureWindowModernImpl(app: ServiceApplicationInfo, windowIndex: Int?, correlationId: String) async throws -> CaptureResult {
+        // Get windows using ScreenCaptureKit
+        let content = try await withTimeout(seconds: 5.0) {
+            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        }
+        
+        let appWindows = content.windows.filter { window in
+            window.owningApplication?.processID == app.processIdentifier
+        }
+        
+        logger.debug("Found windows for application", metadata: ["count": appWindows.count], correlationId: correlationId)
+        guard !appWindows.isEmpty else {
+            logger.error("No windows found for application", metadata: ["appName": app.name], correlationId: correlationId)
+            throw NotFoundError.window(app: app.name)
+        }
+        
+        // Select window
+        let targetWindow: SCWindow
+        if let index = windowIndex {
+            guard index >= 0 && index < appWindows.count else {
+                throw ValidationError.invalidInput(
+                    field: "windowIndex",
+                    reason: "Index \(index) is out of range. Available windows: 0-\(appWindows.count-1)"
+                )
+            }
+            targetWindow = appWindows[index]
+        } else {
+            // Use frontmost window
+            targetWindow = appWindows.first!
+        }
+        
+        logger.debug("Capturing window", metadata: [
+            "title": targetWindow.title ?? "untitled",
+            "windowID": targetWindow.windowID
+        ], correlationId: correlationId)
+        
+        // Create screenshot with retry logic
+        let image = try await RetryHandler.withRetry(
+            policy: .standard,
+            operation: {
+                try await self.createScreenshot(of: targetWindow)
+            }
+        )
+        
+        let imageData: Data
+        do {
+            imageData = try image.pngData()
+        } catch {
+            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
+        }
+        
+        logger.debug("Screenshot created", metadata: [
+            "imageSize": "\(image.width)x\(image.height)",
+            "dataSize": imageData.count
+        ], correlationId: correlationId)
+        
+        // Create metadata
+        let metadata = CaptureMetadata(
+            size: CGSize(width: image.width, height: image.height),
+            mode: .window,
+            applicationInfo: ServiceApplicationInfo(
+                processIdentifier: app.processIdentifier,
+                bundleIdentifier: app.bundleIdentifier,
+                name: app.name,
+                bundlePath: app.bundlePath
+            ),
+            windowInfo: ServiceWindowInfo(
+                windowID: Int(targetWindow.windowID),
+                title: targetWindow.title ?? "",
+                bounds: targetWindow.frame,
+                isMinimized: false,
+                isMainWindow: targetWindow.isOnScreen,
+                windowLevel: 0,
+                alpha: 1.0,
+                index: windowIndex ?? 0
+            )
+        )
+        
+        return CaptureResult(
+            imageData: imageData,
+            metadata: metadata
+        )
+    }
+    
+    // MARK: - Legacy API Implementation
+    
+    private func captureWindowLegacy(app: ServiceApplicationInfo, windowIndex: Int?, correlationId: String) async throws -> CaptureResult {
+        // Get windows using CGWindowList
+        let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+        
+        let appWindows = windowList.filter { windowInfo in
+            guard let pid = windowInfo[kCGWindowOwnerPID as String] as? Int32 else { return false }
+            return pid == app.processIdentifier
+        }
+        
+        logger.debug("Found windows for application (legacy)", metadata: ["count": appWindows.count], correlationId: correlationId)
+        guard !appWindows.isEmpty else {
+            logger.error("No windows found for application (legacy)", metadata: ["appName": app.name], correlationId: correlationId)
+            throw NotFoundError.window(app: app.name)
+        }
+        
+        // Select window
+        let targetWindow: [String: Any]
+        if let index = windowIndex {
+            guard index >= 0 && index < appWindows.count else {
+                throw ValidationError.invalidInput(
+                    field: "windowIndex",
+                    reason: "Index \(index) is out of range. Available windows: 0-\(appWindows.count-1)"
+                )
+            }
+            targetWindow = appWindows[index]
+        } else {
+            // Use frontmost window (first in list)
+            targetWindow = appWindows.first!
+        }
+        
+        guard let windowID = targetWindow[kCGWindowNumber as String] as? CGWindowID else {
+            throw OperationError.captureFailed(reason: "Failed to get window ID")
+        }
+        
+        let windowTitle = targetWindow[kCGWindowName as String] as? String ?? "untitled"
+        logger.debug("Capturing window (legacy)", metadata: [
+            "title": windowTitle,
+            "windowID": windowID
+        ], correlationId: correlationId)
+        
+        // Capture the window
+        guard let image = CGWindowListCreateImage(CGRect.null, .optionIncludingWindow, windowID, [.boundsIgnoreFraming, .nominalResolution]) else {
+            throw OperationError.captureFailed(reason: "Failed to create window image")
+        }
+        
+        let imageData: Data
+        do {
+            imageData = try image.pngData()
+        } catch {
+            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
+        }
+        
+        logger.debug("Screenshot created (legacy)", metadata: [
+            "imageSize": "\(image.width)x\(image.height)",
+            "dataSize": imageData.count
+        ], correlationId: correlationId)
+        
+        // Get window bounds
+        let bounds: CGRect
+        if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
+           let x = boundsDict["X"] as? CGFloat,
+           let y = boundsDict["Y"] as? CGFloat,
+           let width = boundsDict["Width"] as? CGFloat,
+           let height = boundsDict["Height"] as? CGFloat {
+            bounds = CGRect(x: x, y: y, width: width, height: height)
+        } else {
+            bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
+        }
+        
+        // Create metadata
+        let metadata = CaptureMetadata(
+            size: CGSize(width: image.width, height: image.height),
+            mode: .window,
+            applicationInfo: ServiceApplicationInfo(
+                processIdentifier: app.processIdentifier,
+                bundleIdentifier: app.bundleIdentifier,
+                name: app.name,
+                bundlePath: app.bundlePath
+            ),
+            windowInfo: ServiceWindowInfo(
+                windowID: Int(windowID),
+                title: windowTitle,
+                bounds: bounds,
+                isMinimized: false,
+                isMainWindow: true,
+                windowLevel: 0,
+                alpha: 1.0,
+                index: windowIndex ?? 0
+            )
+        )
+        
+        return CaptureResult(
+            imageData: imageData,
+            metadata: metadata
+        )
     }
 }
 

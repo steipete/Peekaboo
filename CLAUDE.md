@@ -327,6 +327,7 @@ try await services.windows.resizeWindow(
    - `PEEKABOO_CLI_PATH`: Override bundled Swift CLI path
    - `OPENAI_API_KEY`: Required for OpenAI provider
    - `PEEKABOO_OLLAMA_BASE_URL`: Optional Ollama server URL (default: http://localhost:11434)
+   - `PEEKABOO_USE_MODERN_CAPTURE`: Set to `false` to use legacy CGWindowList API instead of ScreenCaptureKit (workaround for SCShareableContent.current hanging on macOS beta)
 
 6. **Configuration Files** (UPDATED):
    - Config directory: `~/.peekaboo/`
@@ -858,6 +859,17 @@ echo $OPENAI_API_KEY
 
 # Test with explicit provider
 PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./peekaboo analyze image.png "test"
+```
+
+**Window Capture Hangs or Times Out**
+```bash
+# This can happen on macOS beta versions where SCShareableContent.current hangs
+# Use the legacy API as a workaround:
+PEEKABOO_USE_MODERN_CAPTURE=false ./peekaboo image --app "Safari" --path screenshot.png
+
+# The legacy API is often faster but may have different window ordering
+# You can set this permanently in your shell profile:
+export PEEKABOO_USE_MODERN_CAPTURE=false
 ```
 
 #### Development Tips

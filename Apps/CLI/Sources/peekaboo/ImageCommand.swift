@@ -197,7 +197,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
             timeoutTask.cancel()
             if captureTask.isCancelled {
                 Logger.shared.error("Window capture timed out after 5 seconds")
-                throw CaptureError.captureTimeout
+                throw OperationError.timeout(operation: "Window capture", duration: 5.0)
             }
             throw error
         }
