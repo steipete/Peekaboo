@@ -221,15 +221,15 @@ struct AgentCommand: AsyncParsableCommand {
                 print(" PEEKABOO AGENT")
                 print("═══════════════════════════════════════════════════════════════\n")
                 print("Task: \"\(task)\"")
-                if let modelName = model {
-                    print("Model: \(modelName)")
-                }
+                let modelName = model ?? "o3"  // Default model
+                print("Model: \(modelName)")
                 if let sessionId = sessionId {
                     print("Session: \(sessionId.prefix(8))... (resumed)")
                 }
                 print("\nInitializing agent...\n")
             case .compact:
-                print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)v\(Version.fullVersion)\(TerminalColor.reset)")
+                let modelName = model ?? "o3"  // Default model
+                print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)v\(Version.fullVersion) (\(modelName))\(TerminalColor.reset)")
                 print("\(TerminalColor.gray)📋 Task: \(task)\(TerminalColor.reset)")
                 if let sessionId = sessionId {
                     print("\(TerminalColor.gray)🔄 Session: \(sessionId.prefix(8))...\(TerminalColor.reset)")
@@ -249,7 +249,7 @@ struct AgentCommand: AsyncParsableCommand {
             let result = try await peekabooAgent.executeTask(
                 task,
                 sessionId: sessionId,
-                modelName: model ?? "gpt-4o",
+                modelName: model ?? "o3",
                 eventDelegate: eventDelegate
             )
             

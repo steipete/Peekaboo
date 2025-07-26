@@ -14,7 +14,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     
     public init(
         services: PeekabooServices = .shared,
-        defaultModelName: String = "o3-mini"
+        defaultModelName: String = "o3"
     ) {
         self.services = services
         self.modelProvider = .shared
@@ -129,7 +129,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     /// Create a Peekaboo automation agent with all available tools
     public func createAutomationAgent(
         name: String = "Peekaboo Assistant",
-        modelName: String = "o3-mini"
+        modelName: String = "o3"
     ) -> PeekabooAgent<PeekabooServices> {
         let agent = PeekabooAgent<PeekabooServices>(
             name: name,
@@ -151,7 +151,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     public func executeTask(
         _ task: String,
         sessionId: String? = nil,
-        modelName: String = "o3-mini",
+        modelName: String = "o3",
         eventDelegate: AgentEventDelegate? = nil
     ) async throws -> AgentExecutionResult {
         let agent = createAutomationAgent(modelName: modelName)
@@ -228,7 +228,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     public func executeTaskStreaming(
         _ task: String,
         sessionId: String? = nil,
-        modelName: String = "o3-mini",
+        modelName: String = "o3",
         streamHandler: @Sendable @escaping (String) async -> Void
     ) async throws -> AgentExecutionResult {
         let agent = createAutomationAgent(modelName: modelName)
