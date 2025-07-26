@@ -94,11 +94,19 @@ function stop_watcher() {
     
     print_status "Sending Poltergeist to rest..."
     
-    # Remove trigger
-    watchman trigger-del "$PROJECT_ROOT" "$TRIGGER_NAME" 2>/dev/null
+    # Remove trigger first
+    if watchman trigger-del "$PROJECT_ROOT" "$TRIGGER_NAME" 2>/dev/null; then
+        print_info "Trigger removed successfully"
+    else
+        print_warning "No trigger found to remove"
+    fi
     
-    # Optional: remove the watch entirely
-    # watchman watch-del "$PROJECT_ROOT" 2>/dev/null
+    # Remove the watch entirely to ensure clean state
+    if watchman watch-del "$PROJECT_ROOT" 2>/dev/null; then
+        print_info "Watch removed successfully"
+    else
+        print_warning "No watch found to remove"
+    fi
     
     # Remove lock file
     rm -f "$LOCK_FILE"

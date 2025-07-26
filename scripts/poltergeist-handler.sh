@@ -26,6 +26,15 @@ if [ -f "$BUILD_LOCK" ]; then
     fi
 fi
 
+# Also check if SwiftPM is running to avoid conflicts
+if pgrep -f "swift build" > /dev/null 2>&1; then
+    log "⏳ SwiftPM is already running, waiting..."
+    while pgrep -f "swift build" > /dev/null 2>&1; do
+        sleep 2
+    done
+    log "✅ SwiftPM finished, proceeding with build..."
+fi
+
 # Create lock file
 echo $$ > "$BUILD_LOCK"
 
