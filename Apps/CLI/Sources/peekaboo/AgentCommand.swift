@@ -87,6 +87,11 @@ struct AgentCommand: AsyncParsableCommand {
           peekaboo agent "Take a screenshot of Safari and save it to Desktop"
           peekaboo agent "Click on the login button and fill the form"
           peekaboo "Find the Terminal app and run 'ls -la'" # Direct invocation
+          
+          # Resume sessions:
+          peekaboo agent --resume "continue with the task"  # Resume most recent
+          peekaboo agent --resume-session abc123 "do this next"  # Resume specific
+          peekaboo agent --list-sessions  # Show available sessions
 
         The agent will:
         1. Analyze your request
@@ -117,8 +122,11 @@ struct AgentCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Output in JSON format")
     var jsonOutput = false
     
-    @Option(name: .long, help: "Resume agent session: --resume (show sessions) or --resume <session-id> (resume specific)")
-    var resume: String?
+    @Flag(name: .long, help: "Resume the most recent session (use with task argument)")
+    var resume = false
+    
+    @Option(name: .long, help: "Resume a specific session by ID")
+    var resumeSession: String?
     
     @Flag(name: .long, help: "List available sessions")
     var listSessions = false
@@ -166,13 +174,13 @@ struct AgentCommand: AsyncParsableCommand {
         }
         
         // Handle list sessions
-        if listSessions || (resume == "") {
+        if listSessions {
             try await showSessions(agentService)
             return
         }
         
-        // Handle session resume
-        if let sessionId = resume {
+        // Handle resume with specific session ID
+        if let sessionId = resumeSession {
             guard let continuationTask = task else {
                 if jsonOutput {
                     let error = ["success": false, "error": "Task argument required when resuming session"] as [String: Any]
@@ -180,12 +188,47 @@ struct AgentCommand: AsyncParsableCommand {
                     print(String(data: jsonData, encoding: .utf8) ?? "{}")
                 } else {
                     print("\(TerminalColor.red)Error: Task argument required when resuming session\(TerminalColor.reset)")
-                    print("Usage: peekaboo agent --resume <session-id> \"<continuation-task>\"")
+                    print("Usage: peekaboo agent --resume-session <session-id> \"<continuation-task>\"")
                 }
                 return
             }
             try await resumeSession(agentService, sessionId: sessionId, task: continuationTask)
             return
+        }
+        
+        // Handle resume most recent session
+        if resume {
+            guard let continuationTask = task else {
+                if jsonOutput {
+                    let error = ["success": false, "error": "Task argument required when resuming"] as [String: Any]
+                    let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
+                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
+                } else {
+                    print("\(TerminalColor.red)Error: Task argument required when resuming\(TerminalColor.reset)")
+                    print("Usage: peekaboo agent --resume \"<continuation-task>\"")
+                }
+                return
+            }
+            
+            // Get the most recent session
+            guard let peekabooAgent = agentService as? PeekabooAgentService else {
+                throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
+            }
+            let sessions = try await peekabooAgent.listSessions()
+            
+            if let mostRecent = sessions.first {
+                try await resumeSession(agentService, sessionId: mostRecent.id, task: continuationTask)
+                return
+            } else {
+                if jsonOutput {
+                    let error = ["success": false, "error": "No sessions found to resume"] as [String: Any]
+                    let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
+                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
+                } else {
+                    print("\(TerminalColor.red)Error: No sessions found to resume\(TerminalColor.reset)")
+                }
+                return
+            }
         }
         
         // Regular execution requires task
@@ -386,7 +429,7 @@ struct AgentCommand: AsyncParsableCommand {
     
     private func resumeSession(_ agentService: AgentServiceProtocol, sessionId: String, task: String) async throws {
         if !jsonOutput {
-            print("\(TerminalColor.cyan)\(TerminalColor.bold)🔄 Resuming session \(sessionId.prefix(8))\(TerminalColor.reset)\n")
+            print("\(TerminalColor.cyan)\(TerminalColor.bold)🔄 Resuming session \(sessionId.prefix(8))...\(TerminalColor.reset)\n")
         }
         
         // Execute task with existing session

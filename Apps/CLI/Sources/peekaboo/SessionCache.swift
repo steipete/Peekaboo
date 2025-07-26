@@ -200,16 +200,8 @@ actor SessionCache {
         let jsonData = try encoder.encode(data)
 
         // Write atomically to prevent corruption
-        let tempFile = self.sessionFile.appendingPathExtension("tmp")
-        try jsonData.write(to: tempFile)
-
-        // Atomic move
-        _ = try FileManager.default.replaceItem(
-            at: self.sessionFile,
-            withItemAt: tempFile,
-            backupItemName: nil,
-            options: [],
-            resultingItemURL: nil)
+        // This automatically handles writing to a temporary file and renaming
+        try jsonData.write(to: self.sessionFile, options: .atomic)
     }
 
     /// Update screenshot and UI map
