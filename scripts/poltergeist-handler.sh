@@ -27,12 +27,10 @@ if [ -f "$BUILD_LOCK" ]; then
 fi
 
 # Also check if SwiftPM is running to avoid conflicts
-if pgrep -f "swift build" > /dev/null 2>&1; then
-    log "⏳ SwiftPM is already running, waiting..."
-    while pgrep -f "swift build" > /dev/null 2>&1; do
-        sleep 2
-    done
-    log "✅ SwiftPM finished, proceeding with build..."
+SWIFT_PROCESSES=$(pgrep -f "swift build|swift-build|npm run build:swift" | wc -l)
+if [ "$SWIFT_PROCESSES" -gt 0 ]; then
+    log "⏳ $SWIFT_PROCESSES Swift build process(es) already running, skipping to avoid cascade..."
+    exit 0
 fi
 
 # Create lock file
