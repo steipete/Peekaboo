@@ -304,14 +304,17 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             var reasoningSummary = ""
             
             for try await event in eventStream {
+                aiDebugPrint("DEBUG: Received stream event: \(event)")
                 switch event {
                 case .responseStarted(let started):
                     responseId = started.id
+                    aiDebugPrint("DEBUG: Response started with ID: \(responseId)")
                     
                 case .textDelta(let delta):
                     responseContent += delta.delta
                     allContent += delta.delta
                     await streamHandler(delta.delta)
+                    aiDebugPrint("DEBUG: Text delta received: '\(delta.delta)'")
                     
                 case .toolCallDelta(let delta):
                     updatePartialToolCall(&pendingToolCalls, with: delta)
@@ -331,20 +334,25 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                     } else {
                         aiDebugPrint("DEBUG: Tool call completed but no pending call found: \(completed.id)")
                     }
-                    
+                case .functionCallArgumentsDelta(let delta):
+                    updatePartialToolCall(&pendingToolCalls, with: delta)
+                    aiDebugPrint("DEBUG: Function call arguments delta: id=\(delta.id), args=\(delta.arguments)")
+
                 case .reasoningSummaryDelta(let delta):
                     reasoningSummary += delta.delta
+                    // Send reasoning deltas to stream handler with prefix for identification
+                    // Only send the prefix once at the beginning
+                    if reasoningSummary.count == delta.delta.count {
+                        await streamHandler("💭 Thinking: \(delta.delta)")
+                    } else {
+                        await streamHandler(delta.delta)
+                    }
                     aiDebugPrint("DEBUG: Reasoning summary delta: \(delta.delta)")
                     
                 case .reasoningSummaryCompleted(let completed):
                     reasoningSummary = completed.summary
                     aiDebugPrint("DEBUG: Reasoning summary completed: \(completed.summary)")
-                    // Send reasoning summary to user with special formatting
-                    if !reasoningSummary.isEmpty {
-                        let formattedReasoning = "\n💭 Thinking: \(reasoningSummary)\n"
-                        await streamHandler(formattedReasoning)
-                        allContent += formattedReasoning
-                    }
+                    // Don't send completed summary - we already streamed the deltas
                     
                 case .responseCompleted(let completed):
                     usage = completed.usage
@@ -582,6 +590,17 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             partialCalls[delta.id] = PartialToolCall(from: delta)
         }
     }
+
+    private func updatePartialToolCall(
+        _ partialCalls: inout [String: PartialToolCall],
+        with delta: StreamFunctionCallArgumentsDelta
+    ) {
+        if let existing = partialCalls[delta.id] {
+            existing.update(with: delta)
+        } else {
+            partialCalls[delta.id] = PartialToolCall(from: delta)
+        }
+    }
 }
 
 // MARK: - Partial Tool Call Helper
@@ -596,6 +615,11 @@ private class PartialToolCall {
         self.name = delta.function.name
         self.arguments = delta.function.arguments ?? ""
     }
+
+    init(from delta: StreamFunctionCallArgumentsDelta) {
+        self.id = delta.id
+        self.arguments = delta.arguments
+    }
     
     func update(with delta: StreamToolCallDelta) {
         if let funcName = delta.function.name {
@@ -604,5 +628,9 @@ private class PartialToolCall {
         if let args = delta.function.arguments {
             self.arguments += args
         }
+    }
+
+    func update(with delta: StreamFunctionCallArgumentsDelta) {
+        self.arguments += delta.arguments
     }
 }

@@ -168,7 +168,17 @@ public final class OpenAIModel: ModelInterface {
                                     if chunkType == "response.output_text.delta" {
                                         if let delta = jsonObj["delta"] as? String, 
                                            let outputIndex = jsonObj["output_index"] as? Int {
+                                            aiDebugPrint("DEBUG: Yielding text delta: '\(delta)'")
                                             let event = StreamEvent.textDelta(StreamTextDelta(delta: delta, index: outputIndex))
+                                            continuation.yield(event)
+                                        } else {
+                                            aiDebugPrint("DEBUG: response.output_text.delta missing delta or outputIndex")
+                                        }
+                                    } else if chunkType == "response.reasoning_summary.delta" {
+                                        // Handle reasoning deltas
+                                        if let delta = jsonObj["delta"] as? String {
+                                            aiDebugPrint("DEBUG: Yielding reasoning delta: '\(delta)'")
+                                            let event = StreamEvent.reasoningSummaryDelta(StreamReasoningSummaryDelta(delta: delta))
                                             continuation.yield(event)
                                         }
                                     } else if chunkType == "response.created" || chunkType == "response.in_progress" {

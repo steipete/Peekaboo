@@ -64,31 +64,22 @@ final class GhostAnimator {
     private let message: String
     
     init() {
-        // Create ghost animation frames - emoji only, dots will be appended separately
+        // Create animation frames - dots without spaces for cleaner look
         self.frames = [
-            "👻 ",
-            "👻 .",
-            "👻 . .",
-            "👻 . . .",
-            "👻 . . .",
-            "💭 . . .",
-            "💭 . .",
-            "💭 .",
-            "💭 ",
-            "🌀 ",
-            "🌀 .",
-            "🌀 . .",
-            "🌀 . . .",
-            "✨ . . .",
-            "✨ . .",
-            "✨ .",
-            "✨ ",
-            "👻 ",
-            "👻 ~",
-            "👻 ~~",
-            "👻 ~~~",
-            "👻 ~~",
-            "👻 ~"
+            "",
+            ".",
+            "..",
+            "...",
+            "...",
+            "..",
+            ".",
+            "",
+            "~",
+            "~~",
+            "~~~",
+            "~~",
+            "~",
+            ""
         ]
         self.message = "Thinking"
     }
@@ -102,12 +93,13 @@ final class GhostAnimator {
             
             while !Task.isCancelled {
                 let frame = self.frames[frameIndex % self.frames.count]
-                // Keep "Thinking" in a fixed position, only animate what comes after
-                let output = "\(TerminalColor.moveToStart)\(TerminalColor.clearLine)\(TerminalColor.cyan)\(self.message)... \(frame)\(TerminalColor.reset)"
+                // Emoji before "Thinking", then animate dots without spaces
+                let emoji = frameIndex < 7 ? "👻" : (frameIndex < 14 ? "💭" : (frameIndex < 21 ? "🌀" : "✨"))
+                let output = "\(TerminalColor.moveToStart)\(TerminalColor.clearLine)\(TerminalColor.cyan)\(emoji) \(self.message)\(frame)\(TerminalColor.reset)"
                 print(output, terminator: "")
                 fflush(stdout)
                 
-                frameIndex += 1
+                frameIndex = (frameIndex + 1) % 28  // Cycle through emojis
                 
                 do {
                     try await Task.sleep(nanoseconds: 150_000_000) // 150ms per frame
@@ -121,8 +113,8 @@ final class GhostAnimator {
     func stop() {
         animationTask?.cancel()
         animationTask = nil
-        // Clear the line
-        print("\(TerminalColor.moveToStart)\(TerminalColor.clearLine)", terminator: "")
+        // Move to next line, keeping the thinking text visible
+        print()  // New line
         fflush(stdout)
     }
 }

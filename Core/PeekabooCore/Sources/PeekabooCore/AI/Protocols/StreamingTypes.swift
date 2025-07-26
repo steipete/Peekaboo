@@ -15,6 +15,7 @@ public enum StreamEventType: String, Codable, Sendable {
     case responseCompleted = "response_completed"
     case toolCallDelta = "tool_call_delta"
     case toolCallCompleted = "tool_call_completed"
+    case functionCallArgumentsDelta = "function_call_arguments_delta"
     case error = "error"
     case unknown = "unknown"
     case reasoningSummaryDelta = "reasoning_summary_delta"
@@ -28,6 +29,7 @@ public enum StreamEvent: Codable, Sendable {
     case responseCompleted(StreamResponseCompleted)
     case toolCallDelta(StreamToolCallDelta)
     case toolCallCompleted(StreamToolCallCompleted)
+    case functionCallArgumentsDelta(StreamFunctionCallArgumentsDelta)
     case error(StreamError)
     case unknown(StreamUnknown)
     case reasoningSummaryDelta(StreamReasoningSummaryDelta)
@@ -58,6 +60,9 @@ public enum StreamEvent: Codable, Sendable {
         case .toolCallCompleted:
             let data = try container.decode(StreamToolCallCompleted.self, forKey: .data)
             self = .toolCallCompleted(data)
+        case .functionCallArgumentsDelta:
+            let data = try container.decode(StreamFunctionCallArgumentsDelta.self, forKey: .data)
+            self = .functionCallArgumentsDelta(data)
         case .error:
             let data = try container.decode(StreamError.self, forKey: .data)
             self = .error(data)
@@ -91,6 +96,9 @@ public enum StreamEvent: Codable, Sendable {
             try container.encode(data, forKey: .data)
         case .toolCallCompleted(let data):
             try container.encode(StreamEventType.toolCallCompleted, forKey: .type)
+            try container.encode(data, forKey: .data)
+        case .functionCallArgumentsDelta(let data):
+            try container.encode(StreamEventType.functionCallArgumentsDelta, forKey: .type)
             try container.encode(data, forKey: .data)
         case .error(let data):
             try container.encode(StreamEventType.error, forKey: .type)
@@ -173,6 +181,18 @@ public struct StreamToolCallCompleted: StreamingEvent, Codable, Sendable {
     public init(id: String, function: FunctionCall) {
         self.id = id
         self.function = function
+    }
+}
+
+/// Function call arguments delta event for incremental function call argument information
+public struct StreamFunctionCallArgumentsDelta: StreamingEvent, Codable, Sendable {
+    public var type = StreamEventType.functionCallArgumentsDelta
+    public let id: String
+    public let arguments: String
+    
+    public init(id: String, arguments: String) {
+        self.id = id
+        self.arguments = arguments
     }
 }
 
