@@ -2,6 +2,99 @@ import ArgumentParser
 import Foundation
 import PeekabooCore
 
+/// Output modes for agent execution
+enum OutputMode {
+    case quiet      // Only final result
+    case compact    // Clean, colorized output with tool calls (default)
+    case verbose    // Full JSON debug information
+}
+
+/// ANSI color codes for terminal output
+enum TerminalColor {
+    static let reset = "\u{001B}[0m"
+    static let bold = "\u{001B}[1m"
+    static let dim = "\u{001B}[2m"
+    
+    // Colors
+    static let blue = "\u{001B}[34m"
+    static let green = "\u{001B}[32m"
+    static let yellow = "\u{001B}[33m"
+    static let red = "\u{001B}[31m"
+    static let cyan = "\u{001B}[36m"
+    static let magenta = "\u{001B}[35m"
+    static let gray = "\u{001B}[90m"
+    
+    // Background colors
+    static let bgBlue = "\u{001B}[44m"
+    static let bgGreen = "\u{001B}[42m"
+    static let bgYellow = "\u{001B}[43m"
+    static let bgRed = "\u{001B}[41m"
+}
+
+/// Get icon for command in compact mode
+func iconForCommand(_ command: String) -> String {
+    switch command {
+    case "see": return "👁"
+    case "click": return "👆"
+    case "type": return "⌨️"
+    case "app": return "📱"
+    case "window": return "🪟"
+    case "hotkey": return "⌨️"
+    case "wait": return "⏱"
+    case "shell": return "🐚"
+    case "drag": return "↗️"
+    case "swipe": return "👋"
+    default: return "⚙️"
+    }
+}
+
+/// Get compact argument summary for display
+func compactArgsSummary(_ command: String, _ args: [String: Any]) -> String {
+    switch command {
+    case "see":
+        if let app = args["app"] as? String {
+            return "app: \(app)"
+        }
+        return ""
+    case "click":
+        if let element = args["element"] as? String {
+            return "'\(element)'"
+        } else if let x = args["x"], let y = args["y"] {
+            return "(\(x), \(y))"
+        }
+        return ""
+    case "type":
+        if let text = args["text"] as? String {
+            let preview = text.count > 20 ? String(text.prefix(20)) + "..." : text
+            return "'\(preview)'"
+        }
+        return ""
+    case "app":
+        if let action = args["action"] as? String, let name = args["name"] as? String {
+            return "\(action) \(name)"
+        }
+        return ""
+    case "hotkey":
+        if let keys = args["keys"] as? [String] {
+            return keys.joined(separator: "+")
+        }
+        return ""
+    case "shell":
+        if let command = args["command"] as? String {
+            let preview = command.count > 30 ? String(command.prefix(30)) + "..." : command
+            return "'\(preview)'"
+        }
+        return ""
+    case "wait":
+        if let duration = args["duration"] as? Double {
+            return "\(duration)s"
+        }
+        return ""
+    default:
+        return ""
+    }
+}
+
 /// AI Agent command that uses OpenAI Assistants API to automate complex tasks
 @available(macOS 14.0, *)
 struct AgentCommand: AsyncParsableCommand {
@@ -29,11 +122,11 @@ struct AgentCommand: AsyncParsableCommand {
     @Argument(help: "Natural language description of the task to perform")
     var task: String
 
-    @Flag(name: .shortAndLong, help: "Enable verbose output showing agent reasoning")
+    @Flag(name: .shortAndLong, help: "Enable verbose output with full JSON debug information")
     var verbose = false
     
-    @Flag(name: .long, help: "Show detailed agent thoughts and reasoning")
-    var showThoughts = false
+    @Flag(name: [.short, .long], help: "Quiet mode - only show final result")
+    var quiet = false
 
     @Flag(name: .long, help: "Dry run - show planned steps without executing")
     var dryRun = false
@@ -46,6 +139,11 @@ struct AgentCommand: AsyncParsableCommand {
 
     @Flag(name: .long, help: "Output in JSON format")
     var jsonOutput = false
+    
+    /// Computed property for output mode based on flags
+    private var outputMode: OutputMode {
+        return quiet ? .quiet : (verbose ? .verbose : .compact)
+    }
 
     mutating func run() async throws {
         // Load configuration defaults
@@ -55,7 +153,6 @@ struct AgentCommand: AsyncParsableCommand {
         // Use command line args first, then config, then hardcoded defaults
         let effectiveModel = model ?? agentConfig?.defaultModel ?? "gpt-4-turbo"
         let effectiveMaxSteps = maxSteps ?? agentConfig?.maxSteps ?? 20
-        let effectiveShowThoughts = showThoughts || (agentConfig?.showThoughts ?? false)
         // Get OpenAI API key
         guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
             if self.jsonOutput {
@@ -69,20 +166,30 @@ struct AgentCommand: AsyncParsableCommand {
         let agent = OpenAIAgent(
             apiKey: apiKey,
             model: effectiveModel,
-            verbose: verbose || effectiveShowThoughts,
+            verbose: self.outputMode == .verbose,
             maxSteps: effectiveMaxSteps,
-            showThoughts: effectiveShowThoughts)
+            showThoughts: self.outputMode != .quiet,
+            outputMode: self.outputMode)
 
         do {
-            if (self.verbose || effectiveShowThoughts), !self.jsonOutput {
-                print("\n═══════════════════════════════════════════════════════════════")
-                print(" PEEKABOO AGENT")
-                print("═══════════════════════════════════════════════════════════════\n")
-                print("Task: \"\(self.task)\"")
-                print("Model: \(effectiveModel)")
-                print("Max steps: \(effectiveMaxSteps)")
-                print("API Key: \(String(apiKey.prefix(10)))***")
-                print("\nInitializing agent...\n")
+            if self.outputMode != .quiet && !self.jsonOutput {
+                switch self.outputMode {
+                case .verbose:
+                    print("\n═══════════════════════════════════════════════════════════════")
+                    print(" PEEKABOO AGENT")
+                    print("═══════════════════════════════════════════════════════════════\n")
+                    print("Task: \"\(self.task)\"")
+                    print("Model: \(effectiveModel)")
+                    print("Max steps: \(effectiveMaxSteps)")
+                    print("API Key: \(String(apiKey.prefix(10)))***")
+                    print("\nInitializing agent...\n")
+                case .compact:
+                    print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset)")
+                    print("\(TerminalColor.gray)Task: \(self.task)\(TerminalColor.reset)")
+                    print("\(TerminalColor.gray)Initializing...\(TerminalColor.reset)\n")
+                case .quiet:
+                    break
+                }
             }
 
             let result = try await agent.executeTask(self.task, dryRun: self.dryRun)
@@ -93,13 +200,20 @@ struct AgentCommand: AsyncParsableCommand {
                     data: result,
                     error: nil)
                 outputAgentJSON(response)
-            } else if !(self.verbose || effectiveShowThoughts) {
-                // Simple human-readable output when not in verbose/showThoughts mode
+            } else if self.outputMode == .quiet {
+                // Quiet mode - only show final result
                 if let summary = result.summary {
-                    // For information queries, the summary is the answer
-                    print("\n\(summary)")
+                    print(summary)
                 } else {
-                    print("\n✅ Task completed successfully!")
+                    print("✅ Task completed successfully!")
+                }
+            } else {
+                // Compact mode - clean output with result
+                if let summary = result.summary {
+                    print("\n\(TerminalColor.green)\(TerminalColor.bold)✅ Task completed\(TerminalColor.reset)")
+                    print("\(summary)")
+                } else {
+                    print("\n\(TerminalColor.green)\(TerminalColor.bold)✅ Task completed successfully!\(TerminalColor.reset)")
                 }
             }
         } catch let error as AgentError {
@@ -127,17 +241,19 @@ struct OpenAIAgent {
     let verbose: Bool
     let maxSteps: Int
     let showThoughts: Bool
+    let outputMode: OutputMode
 
     private let session = URLSession.shared
     private let executor: AgentExecutor
     private let retryConfig = RetryConfiguration.default
     
-    init(apiKey: String, model: String, verbose: Bool, maxSteps: Int, showThoughts: Bool = false) {
+    init(apiKey: String, model: String, verbose: Bool, maxSteps: Int, showThoughts: Bool = false, outputMode: OutputMode = .compact) {
         self.apiKey = apiKey
         self.model = model
         self.verbose = verbose
         self.maxSteps = maxSteps
         self.showThoughts = showThoughts
+        self.outputMode = outputMode
         // Use direct PeekabooCore services for better performance
         self.executor = AgentExecutor(verbose: verbose)
     }
@@ -238,10 +354,11 @@ struct OpenAIAgent {
             ]
             
             while runStatus.status == .inProgress || runStatus.status == .queued {
-                if self.showThoughts, pollCount % 3 == 0 { // Show thinking every 3 seconds
+                if self.outputMode == .compact, pollCount % 3 == 0 { // Show thinking every 3 seconds
                     let messageIndex = (pollCount / 3) % thinkingMessages.count
-                    print("\n\(thinkingMessages[messageIndex])")
-                } else if self.verbose, pollCount % 5 == 0 { // Log every 5 seconds
+                    print("\r\(TerminalColor.dim)\(thinkingMessages[messageIndex])\(TerminalColor.reset)", terminator: "")
+                    fflush(stdout)
+                } else if self.outputMode == .verbose, pollCount % 5 == 0 { // Log every 5 seconds
                     print("Run \(run.id) status: \(runStatus.status) [\(pollCount)s]")
                 }
                 try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
@@ -264,60 +381,44 @@ struct OpenAIAgent {
 
                 for (_, toolCall) in toolCalls.enumerated() {
                     stepCount += 1
+                    let commandName = toolCall.function.name.replacingOccurrences(of: "peekaboo_", with: "")
                     
-                    if self.verbose || self.showThoughts, !dryRun {
-                        print("\n═══════════════════════════════════════════════════════")
-                        print(" STEP \(stepCount): \(toolCall.function.name.replacingOccurrences(of: "peekaboo_", with: "").uppercased())")
-                        print("═══════════════════════════════════════════════════════")
+                    // Clear any thinking message on the same line
+                    if self.outputMode == .compact {
+                        print("\r\(String(repeating: " ", count: 80))\r", terminator: "")
+                    }
+                    
+                    if self.outputMode != .quiet, !dryRun {
+                        switch self.outputMode {
+                        case .verbose:
+                            print("\n═══════════════════════════════════════════════════════")
+                            print(" STEP \(stepCount): \(commandName.uppercased())")
+                            print("═══════════════════════════════════════════════════════")
+                        case .compact:
+                            let icon = iconForCommand(commandName)
+                            print("\(TerminalColor.blue)\(icon) \(commandName)\(TerminalColor.reset)", terminator: "")
+                            fflush(stdout)
+                        case .quiet:
+                            break
+                        }
                         
-                        if self.showThoughts {
-                            // Parse the command to show what the agent is thinking
-                            let commandName = toolCall.function.name.replacingOccurrences(of: "peekaboo_", with: "")
+                        if self.outputMode == .verbose {
+                            print("\nCommand: \(toolCall.function.name)")
+                            print("Arguments: \(toolCall.function.arguments)")
+                        } else if self.outputMode == .compact {
+                            // Show compact argument summary
                             if let data = toolCall.function.arguments.data(using: .utf8),
                                let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                                
-                                print("\nThoughts:")
-                                switch commandName {
-                                case "see":
-                                    print("• Let me take a screenshot to see what's on screen")
-                                    if let app = args["app"] as? String {
-                                        print("• I'll focus on the \(app) application")
-                                    }
-                                case "click":
-                                    if let element = args["element"] as? String {
-                                        print("• I need to click on '\(element)'")
-                                    } else if let x = args["x"], let y = args["y"] {
-                                        print("• I'll click at coordinates (\(x), \(y))")
-                                    }
-                                case "type":
-                                    if let text = args["text"] as? String {
-                                        print("• Time to type: '\(text)'")
-                                        print("• I'll make sure to type it carefully")
-                                    }
-                                case "app":
-                                    if let action = args["action"] as? String, let name = args["name"] as? String {
-                                        print("• I need to \(action) the \(name) application")
-                                    }
-                                case "window":
-                                    if let action = args["action"] as? String {
-                                        print("• Let me \(action) this window")
-                                    }
-                                case "hotkey":
-                                    if let keys = args["keys"] as? [String] {
-                                        print("• Pressing shortcut: \(keys.joined(separator: "+"))")
-                                    }
-                                case "wait":
-                                    if let duration = args["duration"] as? Double {
-                                        print("• I'll wait \(duration) seconds for things to settle")
-                                    }
-                                default:
-                                    print("• Executing \(commandName) command")
+                                let summary = compactArgsSummary(commandName, args)
+                                if !summary.isEmpty {
+                                    print(" \(TerminalColor.gray)\(summary)\(TerminalColor.reset)", terminator: "")
                                 }
                             }
                         }
                         
-                        print("\nCommand: \(toolCall.function.name)")
-                        print("Arguments: \(toolCall.function.arguments)")
+                        if self.outputMode != .quiet {
+                            fflush(stdout)
+                        }
                     }
 
                     let step = AgentResult.Step(
@@ -345,59 +446,41 @@ struct OpenAIAgent {
                             }
                         }
 
-                        if self.showThoughts {
-                            print("\nExecuting command...")
-                        }
-                        
                         let output = try await executor.executeFunction(
                             name: toolCall.function.name,
                             arguments: modifiedArgs)
                         
-                        if self.verbose || self.showThoughts {
+                        if self.outputMode != .quiet {
                             // Parse output to show results nicely
                             if let data = output.data(using: .utf8),
                                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                                let success = json["success"] as? Bool {
                                 
-                                if success {
-                                    print("\n✅ SUCCESS!")
-                                    
-                                    if self.showThoughts {
-                                        let commandName = toolCall.function.name.replacingOccurrences(of: "peekaboo_", with: "")
-                                        switch commandName {
-                                        case "see":
-                                            if let resultData = json["data"] as? [String: Any],
-                                               let elements = resultData["elements"] as? [[String: Any]] {
-                                                print("   💭 \"I can see \(elements.count) UI elements on the screen!\"")
-                                                if elements.count > 3 {
-                                                    print("   💭 \"Let me show you the first few...\"")
-                                                    for (idx, element) in elements.prefix(3).enumerated() {
-                                                        if let desc = element["description"] as? String {
-                                                            print("   📍 Element \(idx + 1): \(desc)")
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        case "click":
-                                            print("   💭 \"Click successful! The UI should be responding now...\"")
-                                        case "type":
-                                            print("   💭 \"Text typed successfully!\"")
-                                        case "app":
-                                            print("   💭 \"Application command executed!\"")
-                                        case "wait":
-                                            print("   💭 \"Waited patiently... Ready for the next step!\"")
-                                        default:
-                                            print("   💭 \"Command completed successfully!\"")
+                                switch self.outputMode {
+                                case .verbose:
+                                    if success {
+                                        print("\n✅ SUCCESS!")
+                                    } else {
+                                        print("\n❌ Command failed")
+                                        if let error = json["error"] as? [String: Any],
+                                           let message = error["message"] as? String {
+                                            print("   Error: \(message)")
                                         }
                                     }
-                                } else {
-                                    print("\n❌ Command failed")
-                                    if let error = json["error"] as? [String: Any],
-                                       let message = error["message"] as? String {
-                                        print("   Error: \(message)")
+                                case .compact:
+                                    if success {
+                                        print(" \(TerminalColor.green)✓\(TerminalColor.reset)")
+                                    } else {
+                                        print(" \(TerminalColor.red)✗\(TerminalColor.reset)")
+                                        if let error = json["error"] as? [String: Any],
+                                           let message = error["message"] as? String {
+                                            print(" \(TerminalColor.red)\(message)\(TerminalColor.reset)")
+                                        }
                                     }
+                                case .quiet:
+                                    break
                                 }
-                            } else if self.verbose {
+                            } else if self.outputMode == .verbose {
                                 print("\n📝 Raw output: \(output.prefix(200))...")
                             }
                         }
@@ -410,7 +493,7 @@ struct OpenAIAgent {
 
                 if !dryRun {
                     // Submit tool outputs
-                    if self.verbose {
+                    if self.outputMode == .verbose {
                         print("\nSubmitting \(toolOutputs.count) tool outputs to run \(run.id)")
                         for output in toolOutputs {
                             print("  Tool \(output.toolCallId): \(output.output.prefix(100))...")
@@ -424,7 +507,7 @@ struct OpenAIAgent {
                     // Wait for the run to complete after submitting tool outputs
                     runStatus = try await self.getRun(threadId: threadId, runId: run.id)
                     while runStatus.status == .inProgress || runStatus.status == .queued {
-                        if self.verbose {
+                        if self.outputMode == .verbose {
                             print("Waiting for run to complete... (status: \(runStatus.status))")
                         }
                         try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
@@ -432,7 +515,7 @@ struct OpenAIAgent {
                     }
 
                     // Continue with the same run - it might need more actions
-                    if self.verbose {
+                    if self.outputMode == .verbose {
                         print("Continuing with run \(run.id) after tool outputs...")
                     }
                     // Loop will continue to poll the same run
@@ -440,24 +523,18 @@ struct OpenAIAgent {
 
             case .completed:
                 // Get the final message
-                if self.verbose || self.showThoughts {
+                if self.outputMode == .verbose {
                     print("\n═══════════════════════════════════════════════════════")
                     print(" TASK COMPLETED")
                     print("═══════════════════════════════════════════════════════")
                 }
                 let messages = try await getMessages(threadId: threadId)
                 let summary = messages.first?.content.first?.text?.value
-                if (self.verbose || self.showThoughts), let summary {
+                if self.outputMode == .verbose, let summary {
                     print("\n═══════════════════════════════════════════════════════")
                     print(" RESULT")
                     print("═══════════════════════════════════════════════════════")
                     print("\n\(summary)")
-                    
-                    if self.showThoughts {
-                        print("\nThoughts:")
-                        print("• I completed \(stepCount) steps to finish your task")
-                        print("• Task execution successful")
-                    }
                 }
 
                 // Clean up session
@@ -473,7 +550,7 @@ struct OpenAIAgent {
 
             case .cancelling:
                 // Wait for cancellation to complete
-                if self.verbose {
+                if self.outputMode == .verbose {
                     print("Waiting for run cancellation...")
                 }
                 try await Task.sleep(nanoseconds: 1_000_000_000)
@@ -639,6 +716,9 @@ struct OpenAIAgent {
             - shell(command="curl -s https://api.example.com") - Fetch API data directly
             - shell(command="echo 'Hello World'") - Run any shell command
             - Always check the success field in response
+            - IMPORTANT: Quote URLs with special characters to prevent shell expansion errors:
+              ✓ shell(command="open 'https://www.google.com/search?q=weather+forecast'")
+              ✗ shell(command="open https://www.google.com/search?q=weather+forecast") - fails with "no matches found"
             
             CRITICAL INSTRUCTIONS:
             - When asked to "list applications" or "show running apps", ALWAYS use: list(target="apps")
