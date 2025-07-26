@@ -295,23 +295,21 @@ public final class OpenAIModel: ModelInterface {
             }
         }
         
-        // Convert tools
+        // Convert tools to flatter Responses API format
         let tools = request.tools?.map { tool in
-            OpenAITool(
+            OpenAIResponsesTool(
                 type: "function",
-                function: OpenAITool.Function(
-                    name: tool.function.name,
-                    description: tool.function.description,
-                    parameters: convertToolParameters(tool.function.parameters)
-                )
+                name: tool.function.name,
+                description: tool.function.description,
+                parameters: convertToolParameters(tool.function.parameters)
             )
         }
         
         return OpenAIResponsesRequest(
             model: request.settings.modelName,
             input: messages,  // Note: 'input' not 'messages' for Responses API
-            tools: nil,  // TODO: Fix tool format for Responses API
-            toolChoice: nil,
+            tools: tools,
+            toolChoice: convertToolChoice(request.settings.toolChoice),
             temperature: (request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4")) ? nil : request.settings.temperature,
             topP: request.settings.topP,
             stream: stream,

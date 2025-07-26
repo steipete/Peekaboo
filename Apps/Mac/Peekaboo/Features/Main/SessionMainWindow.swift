@@ -10,7 +10,6 @@ struct SessionMainWindow: View {
     
     @State private var selectedSessionId: String?
     @State private var searchText = ""
-    @State private var showNewSessionPrompt = false
     
     var body: some View {
         NavigationSplitView {
@@ -18,7 +17,7 @@ struct SessionMainWindow: View {
             SessionSidebar(
                 selectedSessionId: $selectedSessionId,
                 searchText: $searchText,
-                showNewSessionPrompt: $showNewSessionPrompt
+                onCreateNewSession: createNewSession
             )
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
         } detail: {
@@ -31,7 +30,7 @@ struct SessionMainWindow: View {
                 SessionChatView(session: currentSession)
                     .toolbar(removing: .sidebarToggle)
             } else {
-                EmptySessionView(showNewSessionPrompt: $showNewSessionPrompt)
+                EmptySessionView(onCreateNewSession: createNewSession)
                     .toolbar(removing: .sidebarToggle)
             }
         }
@@ -55,14 +54,17 @@ struct SessionMainWindow: View {
                 selectedSessionId = newId
             }
         }
-        .sheet(isPresented: $showNewSessionPrompt) {
-            NewSessionPrompt(isPresented: $showNewSessionPrompt)
-        }
+        // Removed sheet - creating sessions directly
     }
     
     private func toggleSidebar() {
         NSApp.keyWindow?.firstResponder?
             .tryToPerform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
+    }
+    
+    private func createNewSession() {
+        let newSession = sessionStore.createSession(title: "New Session")
+        selectedSessionId = newSession.id
     }
 }
 
@@ -74,7 +76,7 @@ struct SessionSidebar: View {
     
     @Binding var selectedSessionId: String?
     @Binding var searchText: String
-    @Binding var showNewSessionPrompt: Bool
+    var onCreateNewSession: () -> Void
     
     private var filteredSessions: [Session] {
         if searchText.isEmpty {
@@ -99,7 +101,7 @@ struct SessionSidebar: View {
                 
                 Spacer()
                 
-                Button(action: { showNewSessionPrompt = true }) {
+                Button(action: onCreateNewSession) {
                     Image(systemName: "plus")
                 }
                 .buttonStyle(.plain)
@@ -619,7 +621,7 @@ struct SessionChatHeader: View {
 // MARK: - Empty Session View
 
 struct EmptySessionView: View {
-    @Binding var showNewSessionPrompt: Bool
+    var onCreateNewSession: () -> Void
     
     var body: some View {
         VStack(spacing: 20) {
@@ -637,84 +639,13 @@ struct EmptySessionView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             
-            Button(action: { showNewSessionPrompt = true }) {
+            Button(action: onCreateNewSession) {
                 Label("New Session", systemImage: "plus.circle")
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-// MARK: - New Session Prompt
-
-struct NewSessionPrompt: View {
-    @Binding var isPresented: Bool
-    @State private var sessionTitle = ""
-    @State private var initialPrompt = ""
-    
-    @Environment(SessionStore.self) private var sessionStore
-    @Environment(PeekabooAgent.self) private var agent
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("New Session")
-                .font(.headline)
-            
-            Form {
-                TextField("Session Title (optional)", text: $sessionTitle)
-                    .textFieldStyle(.roundedBorder)
-                
-                VStack(alignment: .leading) {
-                    Text("Initial Task (optional)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    TextEditor(text: $initialPrompt)
-                        .font(.body)
-                        .frame(minHeight: 60)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color(NSColor.separatorColor), lineWidth: 1)
-                        )
-                }
-            }
-            
-            HStack {
-                Button("Cancel") {
-                    isPresented = false
-                }
-                .keyboardShortcut(.cancelAction)
-                
-                Spacer()
-                
-                Button("Create") {
-                    createSession()
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(sessionTitle.isEmpty && initialPrompt.isEmpty)
-            }
-        }
-        .padding()
-        .frame(width: 400, height: 250)
-    }
-    
-    private func createSession() {
-        let title = sessionTitle.isEmpty ? "New Session" : sessionTitle
-        _ = sessionStore.createSession(title: title)
-        
-        isPresented = false
-        
-        // If there's an initial prompt, execute it
-        if !initialPrompt.isEmpty {
-            Task {
-                do {
-                    try await agent.executeTask(initialPrompt)
-                } catch {
-                    print("Failed to execute initial prompt: \(error)")
-                }
-            }
-        }
     }
 }
 

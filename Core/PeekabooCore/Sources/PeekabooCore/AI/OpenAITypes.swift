@@ -292,7 +292,7 @@ public struct OpenAIReasoning: Codable, Sendable {
 public struct OpenAIResponsesRequest: Codable, Sendable {
     public let model: String
     public let input: [OpenAIMessage]  // Note: 'input' instead of 'messages'
-    public let tools: [OpenAITool]?
+    public let tools: [OpenAIResponsesTool]?
     public let toolChoice: String?
     public let temperature: Double?
     public let topP: Double?
@@ -317,7 +317,7 @@ public struct OpenAIResponsesRequest: Codable, Sendable {
     public init(
         model: String,
         input: [OpenAIMessage],
-        tools: [OpenAITool]? = nil,
+        tools: [OpenAIResponsesTool]? = nil,
         toolChoice: String? = nil,
         temperature: Double? = nil,
         topP: Double? = nil,
@@ -689,6 +689,23 @@ public struct OpenAIResponseFormat: Codable, Sendable {
 }
 
 // MARK: - AnyCodable Type
+
+/// Tool format for Responses API (flatter structure)
+public struct OpenAIResponsesTool: Codable, Sendable {
+    public let type: String
+    public let name: String
+    public let description: String
+    public let parameters: OpenAITool.Parameters
+    public let strict: Bool?
+    
+    public init(type: String = "function", name: String, description: String, parameters: OpenAITool.Parameters, strict: Bool? = nil) {
+        self.type = type
+        self.name = name
+        self.description = description
+        self.parameters = parameters
+        self.strict = strict
+    }
+}
 
 /// A type-erased Codable value
 public struct AnyCodable: Codable, @unchecked Sendable {
