@@ -169,7 +169,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand {
         if self.captureFocus == .foreground {
             Logger.shared.debug("Activating application...")
             try await PeekabooServices.shared.applications.activateApplication(identifier: appIdentifier)
-            try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+            try await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
             Logger.shared.debug("Application activated (took \(Date().timeIntervalSince(startTime))s)")
         }
 

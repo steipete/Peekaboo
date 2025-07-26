@@ -41,7 +41,7 @@ struct TypeCommand: AsyncParsableCommand {
     var session: String?
 
     @Option(help: "Delay between keystrokes in milliseconds")
-    var delay: Int = 5
+    var delay: Int = 2
 
     @Flag(name: .long, help: "Press return/enter after typing")
     var pressReturn = false

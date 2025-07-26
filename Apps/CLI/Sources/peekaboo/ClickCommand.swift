@@ -140,8 +140,8 @@ struct ClickCommand: AsyncParsableCommand {
                     sessionId: activeSessionId)
             }
 
-            // Small delay to ensure click is processed
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            // Brief delay to ensure click is processed
+            try await Task.sleep(nanoseconds: 20_000_000) // 0.02 seconds
 
             // Prepare result
             let clickLocation: CGPoint

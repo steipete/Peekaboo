@@ -43,7 +43,7 @@ struct ScrollCommand: AsyncParsableCommand {
     var session: String?
 
     @Option(help: "Delay between scroll ticks in milliseconds")
-    var delay: Int = 20
+    var delay: Int = 10
 
     @Flag(help: "Use smooth scrolling with smaller increments")
     var smooth = false
