@@ -38,11 +38,11 @@ struct SleepCommandTests {
     }
 
     @Test("Duration validation", arguments: [
-        (0, false), // 0ms is invalid (must be positive)
+        (0, false), // 0ms parses but is invalid at runtime (must be positive)
         (1, true), // 1ms is valid
         (1000, true), // 1 second
         (60000, true), // 1 minute
-        (-100, false) // Negative duration should fail
+        (-100, false) // Negative duration fails at parse time
     ])
     func validateDuration(duration: Int, isValid: Bool) throws {
         // ArgumentParser validates that Int arguments can be parsed
@@ -56,6 +56,7 @@ struct SleepCommandTests {
             // Zero and positive numbers parse successfully
             let command = try SleepCommand.parse([String(duration)])
             #expect(command.duration == duration)
+            // Note: The actual validation (duration > 0) happens at runtime in run()
         }
     }
 

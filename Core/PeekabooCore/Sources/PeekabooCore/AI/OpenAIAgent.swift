@@ -62,14 +62,38 @@ public actor OpenAIAgent {
         let assistantId = assistant.id
         let threadId = thread.id
 
-        defer {
-            // Clean up assistant and thread
+        // Execute the task and ensure cleanup happens
+        do {
+            let result = try await executeTaskWithCleanup(
+                task: task,
+                assistantId: assistantId,
+                threadId: threadId,
+                dryRun: dryRun
+            )
+            
+            // Cleanup after successful completion
             Task {
                 try? await deleteAssistant(assistantId)
                 try? await deleteThread(threadId)
             }
+            
+            return result
+        } catch {
+            // Cleanup after error
+            Task {
+                try? await deleteAssistant(assistantId)
+                try? await deleteThread(threadId)
+            }
+            throw error
         }
-
+    }
+    
+    private func executeTaskWithCleanup(
+        task: String,
+        assistantId: String,
+        threadId: String,
+        dryRun: Bool
+    ) async throws -> AgentResult {
         // Add initial message
         try await self.addMessage(threadId: threadId, content: task)
 
@@ -78,7 +102,7 @@ public actor OpenAIAgent {
         var stepCount = 0
 
         // Create initial run
-        let run = try await createRun(threadId: threadId, assistantId: assistant.id)
+        let run = try await createRun(threadId: threadId, assistantId: assistantId)
 
         // Process the run until it's completed or we hit max steps
         while stepCount < self.maxSteps {
@@ -86,7 +110,7 @@ public actor OpenAIAgent {
 
             // Wait while in progress
             var pollCount = 0
-            while runStatus.status == .inProgress || runStatus.status == .queued {
+            while runStatus.status == Run.Status.inProgress || runStatus.status == Run.Status.queued {
                 try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
                 runStatus = try await self.getRun(threadId: threadId, runId: run.id)
                 pollCount += 1
@@ -97,7 +121,7 @@ public actor OpenAIAgent {
             }
 
             switch runStatus.status {
-            case .requiresAction:
+            case Run.Status.requiresAction:
                 // Handle function calls
                 guard let toolCalls = runStatus.requiredAction?.submitToolOutputs.toolCalls else {
                     break
@@ -147,7 +171,7 @@ public actor OpenAIAgent {
                 // Submit tool outputs
                 try await self.submitToolOutputs(threadId: threadId, runId: run.id, toolOutputs: toolOutputs)
 
-            case .completed:
+            case Run.Status.completed:
                 // Get final message
                 let messages = try await getMessages(threadId: threadId)
                 let assistantMessages = messages.filter { $0.role == "assistant" }
@@ -175,7 +199,7 @@ public actor OpenAIAgent {
                     summary: summary,
                     success: true)
 
-            case .failed, .cancelled, .expired:
+            case Run.Status.failed, Run.Status.cancelled, Run.Status.expired:
                 throw AgentError.commandFailed("Run ended with status: \(runStatus.status)")
 
             default:

@@ -601,12 +601,12 @@ actor SessionCache {
             return "cmd+{"
         } else if allText.contains("align right") || allText.contains("right align") {
             return "cmd+}"
-        } else if allText.contains("center"), allText.contains("align") || allText.contains("text") {
+        } else if allText.contains("center") && (allText.contains("align") || allText.contains("text")) {
             return "cmd+|"
         }
 
         // Font panel
-        if allText.contains("font"), allText.contains("panel") || allText.contains("window") {
+        if allText.contains("font") && (allText.contains("panel") || allText.contains("window")) {
             return "cmd+t"
         }
 

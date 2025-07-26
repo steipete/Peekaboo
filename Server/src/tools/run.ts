@@ -10,29 +10,35 @@ export const runToolSchema = z.object({
   script_path: z.string().describe(
     "Path to .peekaboo.json script file containing automation commands.",
   ),
-  session: z.string().optional().describe(
-    "Optional. Session ID to use for the script execution. Creates new session if not specified.",
+  output: z.string().optional().describe(
+    "Optional. Save results to file instead of stdout.",
   ),
-  stop_on_error: z.boolean().optional().default(true).describe(
-    "Optional. Stop execution if any command fails. Default: true.",
+  no_fail_fast: z.boolean().optional().default(false).describe(
+    "Optional. Continue execution even if a step fails. Default: false.",
   ),
-  timeout: z.number().optional().default(300000).describe(
-    "Optional. Maximum execution time in milliseconds. Default: 300000 (5 minutes).",
+  verbose: z.boolean().optional().default(false).describe(
+    "Optional. Show detailed step execution. Default: false.",
   ),
 }).describe(
   "Runs a batch script of Peekaboo commands from a .peekaboo.json file. " +
   "Scripts can automate complex UI workflows by chaining see, click, type, and other commands. " +
-  "Each command in the script runs sequentially with shared session state.",
+  "Each command in the script runs sequentially.",
 );
 
 interface RunResult {
   success: boolean;
-  script_path: string;
-  commands_executed: number;
-  total_commands: number;
-  session_id: string;
-  execution_time: number;
-  errors?: string[];
+  scriptPath: string;
+  description?: string;
+  totalSteps: number;
+  completedSteps: number;
+  failedSteps: number;
+  executionTime: number;
+  steps: Array<{
+    stepNumber: number;
+    command: string;
+    success: boolean;
+    error?: string;
+  }>;
 }
 
 interface PeekabooScript {
@@ -84,22 +90,23 @@ export async function runToolHandler(
     // Build command arguments
     const args = ["run", input.script_path];
 
-    // Session
-    if (input.session) {
-      args.push("--session", input.session);
+    // Output file
+    if (input.output) {
+      args.push("--output", input.output);
     }
 
-    // Stop on error (default is true, so only add flag when false)
-    const stopOnError = input.stop_on_error ?? true;
-    if (!stopOnError) {
-      args.push("--continue-on-error");
+    // No fail fast flag
+    if (input.no_fail_fast) {
+      args.push("--no-fail-fast");
     }
 
-    // Timeout
-    const timeout = input.timeout ?? 300000;
-    args.push("--timeout", timeout.toString());
+    // Verbose flag
+    if (input.verbose) {
+      args.push("--verbose");
+    }
 
-    
+    // Always request JSON output for parsing
+    args.push("--json-output");
 
     // Execute the command
     const result = await executeSwiftCli(args, logger);
@@ -128,15 +135,21 @@ export async function runToolHandler(
       lines.push("❌ Script execution failed");
     }
 
-    lines.push(`📄 Script: ${runData.script_path}`);
-    lines.push(`🔢 Commands executed: ${runData.commands_executed}/${runData.total_commands}`);
-    lines.push(`🔖 Session ID: ${runData.session_id}`);
-    lines.push(`⏱️  Total time: ${runData.execution_time.toFixed(2)}s`);
+    lines.push(`📄 Script: ${runData.scriptPath}`);
+    if (runData.description) {
+      lines.push(`📝 Description: ${runData.description}`);
+    }
+    lines.push(`🔢 Total steps: ${runData.totalSteps}`);
+    lines.push(`✅ Completed: ${runData.completedSteps}`);
+    lines.push(`❌ Failed: ${runData.failedSteps}`);
+    lines.push(`⏱️  Total time: ${runData.executionTime.toFixed(2)}s`);
 
-    if (runData.errors && runData.errors.length > 0) {
-      lines.push("\n❌ Errors:");
-      runData.errors.forEach((error, index) => {
-        lines.push(`  ${index + 1}. ${error}`);
+    // Show failed steps
+    const failedSteps = runData.steps.filter(step => !step.success);
+    if (failedSteps.length > 0) {
+      lines.push("\n❌ Failed steps:");
+      failedSteps.forEach(step => {
+        lines.push(`  - Step ${step.stepNumber} (${step.command}): ${step.error || "Unknown error"}`);
       });
     }
 
@@ -146,8 +159,9 @@ export async function runToolHandler(
         text: lines.join("\n"),
       }],
       _meta: {
-        session_id: runData.session_id,
-        commands_executed: runData.commands_executed,
+        script_path: runData.scriptPath,
+        completed_steps: runData.completedSteps,
+        total_steps: runData.totalSteps,
         success: runData.success,
       },
     };

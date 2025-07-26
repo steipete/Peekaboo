@@ -104,8 +104,9 @@ struct AgentCommandBasicTests {
     }
 
     @Test("Command executor validates arguments")
+    @available(macOS 14.0, *)
     func commandExecutorValidation() async throws {
-        let executor = PeekabooCommandExecutor(verbose: false)
+        let executor = AgentInternalExecutor(verbose: false)
 
         // Test invalid JSON
         let result = try await executor.executeFunction(

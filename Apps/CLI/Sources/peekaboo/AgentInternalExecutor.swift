@@ -99,6 +99,9 @@ struct AgentInternalExecutor {
         case "list":
             return try await self.executeList(args: args)
 
+        case "shell":
+            return try await self.executeShell(args: args)
+
         default:
             // Unknown command received
             throw AgentError.invalidArguments("Unknown command: \(command)")
@@ -138,7 +141,7 @@ struct AgentInternalExecutor {
             let sessionId = try await services.sessions.createSession()
             let detectionResult = try await services.automation.detectElements(
                 in: captureResult.imageData,
-                sessionId: nil
+                sessionId: sessionId
             )
             
             // Store detection result in session
@@ -800,6 +803,88 @@ struct AgentInternalExecutor {
         }
 
         return #"{"success": false, "error": {"message": "\#(error.localizedDescription)", "code": "\#(error.errorCode)"}}"#
+    }
+    
+    @MainActor
+    private func executeShell(args: [String: Any]) async throws -> String {
+        guard let command = args["command"] as? String else {
+            throw AgentError.invalidArguments("Shell command requires 'command' parameter")
+        }
+        
+        let timeout = args["timeout"] as? Int ?? 30
+        
+        if self.verbose {
+            print("🐚 Executing shell command: \(command)")
+        }
+        
+        // Create process
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = ["-c", command]
+        
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+        
+        // Run process
+        do {
+            try process.run()
+        } catch {
+            throw AgentError.commandFailed("Failed to execute shell command: \(error.localizedDescription)")
+        }
+        
+        // Wait for completion with timeout
+        let startTime = Date()
+        while process.isRunning && Date().timeIntervalSince(startTime) < Double(timeout) {
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+        }
+        
+        if process.isRunning {
+            process.terminate()
+            throw AgentError.commandFailed("Shell command timed out after \(timeout) seconds")
+        }
+        
+        // Read output
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        
+        let output = String(data: outputData, encoding: .utf8) ?? ""
+        let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+        
+        // Prepare response based on exit code
+        let response: [String: Any]
+        if process.terminationStatus == 0 {
+            response = [
+                "success": true,
+                "data": [
+                    "output": output,
+                    "error_output": errorOutput,
+                    "exit_code": 0,
+                    "command": command
+                ]
+            ]
+        } else {
+            response = [
+                "success": false,
+                "error": [
+                    "code": "SHELL_COMMAND_FAILED",
+                    "message": "Command exited with code \(process.terminationStatus)",
+                    "details": [
+                        "output": output,
+                        "error_output": errorOutput,
+                        "exit_code": process.terminationStatus
+                    ]
+                ]
+            ]
+        }
+        
+        if let data = try? JSONSerialization.data(withJSONObject: response),
+           let jsonString = String(data: data, encoding: .utf8) {
+            return jsonString
+        }
+        
+        throw AgentError.commandFailed("Failed to serialize response")
     }
 }
 

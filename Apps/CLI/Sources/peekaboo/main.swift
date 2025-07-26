@@ -133,7 +133,33 @@ struct Main {
         // Load configuration at startup
         _ = ConfigurationManager.shared.loadConfiguration()
 
-        // Run the command
+        // Check if we should run the agent command directly
+        let args = Array(CommandLine.arguments.dropFirst())
+        if !args.isEmpty {
+            // Check if the first argument is NOT a known subcommand
+            let knownSubcommands = [
+                "image", "list", "analyze", "config", "permissions",
+                "see", "click", "type", "scroll", "hotkey", "swipe",
+                "drag", "move", "run", "sleep", "clean", "window",
+                "menu", "app", "dock", "dialog", "agent",
+                "--help", "-h", "--version"
+            ]
+            
+            let firstArg = args[0]
+            if !knownSubcommands.contains(firstArg) && !firstArg.starts(with: "-") {
+                // This looks like a direct agent invocation
+                // Manually create and run the agent command
+                do {
+                    var agentCommand = try AgentCommand.parse(args)
+                    try await agentCommand.run()
+                    return
+                } catch {
+                    AgentCommand.exit(withError: error)
+                }
+            }
+        }
+
+        // Run the command normally
         await Peekaboo.main()
     }
 }

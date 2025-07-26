@@ -6,37 +6,40 @@ import { z } from "zod";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
 
 export const typeToolSchema = z.object({
-  text: z.string().describe(
-    "The text to type. Supports special keys like {return}, {tab}, {escape}, {delete}.",
-  ),
-  on: z.string().optional().describe(
-    "Optional. Element ID to type into (e.g., T1, T2) from see command output. " +
-    "If not specified, types at current keyboard focus.",
+  text: z.string().optional().describe(
+    "The text to type. If not specified, can use special key flags instead.",
   ),
   session: z.string().optional().describe(
     "Optional. Session ID from see command. Uses latest session if not specified.",
   ),
+  delay: z.number().optional().default(5).describe(
+    "Optional. Delay between keystrokes in milliseconds. Default: 5.",
+  ),
+  press_return: z.boolean().optional().default(false).describe(
+    "Optional. Press return/enter after typing.",
+  ),
+  tab: z.number().optional().describe(
+    "Optional. Press tab N times.",
+  ),
+  escape: z.boolean().optional().default(false).describe(
+    "Optional. Press escape key.",
+  ),
+  delete: z.boolean().optional().default(false).describe(
+    "Optional. Press delete/backspace key.",
+  ),
   clear: z.boolean().optional().default(false).describe(
-    "Optional. Clear existing text before typing (select all + delete).",
-  ),
-  delay: z.number().optional().default(50).describe(
-    "Optional. Delay between keystrokes in milliseconds. Default: 50.",
-  ),
-  wait_for: z.number().optional().default(5000).describe(
-    "Optional. Maximum milliseconds to wait for element to become actionable (if 'on' is specified). Default: 5000.",
+    "Optional. Clear the field before typing (Cmd+A, Delete).",
   ),
 }).describe(
-  "Types text into UI elements or at current focus. " +
-  "Supports special keys and configurable typing speed. " +
-  "Can target specific elements from see command or type at current focus. " +
-  "Includes smart waiting for elements to become actionable.",
+  "Types text or sends special keys. " +
+  "Can type text, press special keys, or combine both actions. " +
+  "Types at current keyboard focus.",
 );
 
 interface TypeResult {
   success: boolean;
-  typed_text: string;
-  target_element?: string;
-  characters_typed: number;
+  text_typed?: string;
+  keys_pressed: number;
   execution_time: number;
 }
 
@@ -52,11 +55,11 @@ export async function typeToolHandler(
     logger.debug({ input }, "Processing peekaboo.type tool call");
 
     // Build command arguments
-    const args = ["type", input.text];
-
-    // Target element
-    if (input.on) {
-      args.push("--on", input.on);
+    const args = ["type"];
+    
+    // Add text if provided
+    if (input.text) {
+      args.push(input.text);
     }
 
     // Session
@@ -64,22 +67,37 @@ export async function typeToolHandler(
       args.push("--session", input.session);
     }
 
-    // Clear existing text
+    // Delay
+    const delay = input.delay ?? 5;
+    args.push("--delay", delay.toString());
+
+    // Press return flag
+    if (input.press_return) {
+      args.push("--press-return");
+    }
+
+    // Tab count
+    if (input.tab) {
+      args.push("--tab", input.tab.toString());
+    }
+
+    // Escape flag
+    if (input.escape) {
+      args.push("--escape");
+    }
+
+    // Delete flag
+    if (input.delete) {
+      args.push("--delete");
+    }
+
+    // Clear flag
     if (input.clear) {
       args.push("--clear");
     }
 
-    // Typing delay
-    const delay = input.delay ?? 50;
-    args.push("--delay", delay.toString());
-
-    // Wait timeout (only used if 'on' is specified)
-    if (input.on) {
-      const waitFor = input.wait_for ?? 5000;
-      args.push("--wait-for", waitFor.toString());
-    }
-
-    
+    // Always request JSON output for parsing
+    args.push("--json-output");
 
     // Execute the command
     const result = await executeSwiftCli(args, logger);
@@ -101,20 +119,17 @@ export async function typeToolHandler(
 
     // Build response text
     const lines: string[] = [];
-    lines.push("✅ Text typed successfully");
+    lines.push("✅ Typing completed successfully");
 
-    if (typeData.target_element) {
-      lines.push(`🎯 Target: ${typeData.target_element}`);
+    if (typeData.text_typed) {
+      // Show a preview of what was typed (truncate if too long)
+      const preview = typeData.text_typed.length > 50
+        ? typeData.text_typed.substring(0, 47) + "..."
+        : typeData.text_typed;
+      lines.push(`📝 Text: "${preview}"`);
     }
 
-    lines.push(`⌨️  Characters: ${typeData.characters_typed}`);
-
-    // Show a preview of what was typed (truncate if too long)
-    const preview = typeData.typed_text.length > 50
-      ? typeData.typed_text.substring(0, 47) + "..."
-      : typeData.typed_text;
-    lines.push(`📝 Text: "${preview}"`);
-
+    lines.push(`⌨️  Key presses: ${typeData.keys_pressed}`);
     lines.push(`⏱️  Completed in ${typeData.execution_time.toFixed(2)}s`);
 
     return {

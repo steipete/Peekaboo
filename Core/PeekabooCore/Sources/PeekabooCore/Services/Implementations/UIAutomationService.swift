@@ -124,7 +124,6 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                         await MainActor.run {
                             if let event = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: true) {
                                 event.flags = .maskCommand
-                                event.keyboardSetUnicodeString(stringLength: 1, unicodeString: [0x61]) // 'a' in unicode
                                 event.post(tap: .cghidEventTap)
                             }
                         }
@@ -150,7 +149,6 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                     await MainActor.run {
                         if let event = CGEvent(keyboardEventSource: nil, virtualKey: 0x00, keyDown: true) {
                             event.flags = .maskCommand
-                            event.keyboardSetUnicodeString(stringLength: 1, unicodeString: [0x61]) // 'a' in unicode
                             event.post(tap: .cghidEventTap)
                         }
                     }
