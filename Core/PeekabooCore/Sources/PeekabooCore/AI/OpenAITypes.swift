@@ -370,6 +370,14 @@ public struct OpenAIChatCompletionResponse: Codable, Sendable {
     public let model: String
     public let choices: [OpenAIChoice]
     public let usage: OpenAIUsage?
+    public let serviceTier: String?
+    public let systemFingerprint: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id, object, created, model, choices, usage
+        case serviceTier = "service_tier"
+        case systemFingerprint = "system_fingerprint"
+    }
 }
 
 /// Choice in a chat completion response
@@ -377,9 +385,10 @@ public struct OpenAIChoice: Codable, Sendable {
     public let index: Int
     public let message: OpenAIResponseMessage
     public let finishReason: String?
+    public let logprobs: String?  // Can be more complex, but we'll use String? for now
     
     enum CodingKeys: String, CodingKey {
-        case index, message
+        case index, message, logprobs
         case finishReason = "finish_reason"
     }
 }
@@ -389,10 +398,14 @@ public struct OpenAIResponseMessage: Codable, Sendable {
     public let role: String
     public let content: String?
     public let toolCalls: [OpenAIToolCall]?
+    public let refusal: String?
+    public let annotations: [String]?
     
     enum CodingKeys: String, CodingKey {
         case role, content
         case toolCalls = "tool_calls"
+        case refusal
+        case annotations
     }
 }
 
@@ -401,11 +414,32 @@ public struct OpenAIUsage: Codable, Sendable {
     public let promptTokens: Int
     public let completionTokens: Int
     public let totalTokens: Int
+    public let promptTokensDetails: OpenAITokenDetails?
+    public let completionTokensDetails: OpenAITokenDetails?
     
     enum CodingKeys: String, CodingKey {
         case promptTokens = "prompt_tokens"
         case completionTokens = "completion_tokens"
         case totalTokens = "total_tokens"
+        case promptTokensDetails = "prompt_tokens_details"
+        case completionTokensDetails = "completion_tokens_details"
+    }
+}
+
+/// Token usage details for OpenAI
+public struct OpenAITokenDetails: Codable, Sendable {
+    public let cachedTokens: Int?
+    public let audioTokens: Int?
+    public let reasoningTokens: Int?
+    public let acceptedPredictionTokens: Int?
+    public let rejectedPredictionTokens: Int?
+    
+    enum CodingKeys: String, CodingKey {
+        case cachedTokens = "cached_tokens"
+        case audioTokens = "audio_tokens"
+        case reasoningTokens = "reasoning_tokens"
+        case acceptedPredictionTokens = "accepted_prediction_tokens"
+        case rejectedPredictionTokens = "rejected_prediction_tokens"
     }
 }
 

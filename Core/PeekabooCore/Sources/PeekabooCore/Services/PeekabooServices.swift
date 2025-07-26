@@ -5,7 +5,7 @@ import os.log
 /// Provides a unified interface for screen capture, automation, and management operations
 public final class PeekabooServices: Sendable {
     /// Shared instance for convenience
-    public static let shared = PeekabooServices()
+    public static let shared = PeekabooServices.createShared()
     
     /// Logger for service initialization and operations
     private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "Services")
@@ -108,18 +108,8 @@ public final class PeekabooServices: Sendable {
         )
         logger.debug("✅ ProcessService initialized")
         
-        
-        // Agent service is optional - only create if API key is available
-        if ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil {
-            let config = ConfigurationManager.shared.getConfiguration()
-            self.agent = PeekabooAgentService(
-                defaultModelName: config?.agent?.defaultModel ?? "gpt-4o"
-            )
-            logger.debug("✅ PeekabooAgentService initialized")
-        } else {
-            self.agent = nil
-            logger.debug("⚠️ PeekabooAgentService skipped - no OPENAI_API_KEY")
-        }
+        // Agent service will be initialized by createShared method
+        self.agent = nil
         
         logger.info("✨ PeekabooServices initialization complete")
     }
@@ -156,6 +146,112 @@ public final class PeekabooServices: Sendable {
         self.configuration = configuration ?? ConfigurationManager.shared
         
         logger.info("✨ PeekabooServices initialization complete (custom)")
+    }
+    
+    /// Internal initializer that takes all services including agent
+    private init(
+        logging: LoggingServiceProtocol,
+        screenCapture: ScreenCaptureServiceProtocol,
+        applications: ApplicationServiceProtocol,
+        automation: UIAutomationServiceProtocol,
+        windows: WindowManagementServiceProtocol,
+        menu: MenuServiceProtocol,
+        dock: DockServiceProtocol,
+        dialogs: DialogServiceProtocol,
+        sessions: SessionManagerProtocol,
+        files: FileServiceProtocol,
+        process: ProcessServiceProtocol,
+        configuration: ConfigurationManager,
+        agent: AgentServiceProtocol?
+    ) {
+        self.logging = logging
+        self.screenCapture = screenCapture
+        self.applications = applications
+        self.automation = automation
+        self.windows = windows
+        self.menu = menu
+        self.dock = dock
+        self.dialogs = dialogs
+        self.sessions = sessions
+        self.files = files
+        self.process = process
+        self.configuration = configuration
+        self.agent = agent
+    }
+    
+    /// Create the shared instance with proper initialization order
+    private static func createShared() -> PeekabooServices {
+        let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "Services")
+        logger.info("🚀 Creating shared PeekabooServices instance")
+        
+        let logging = LoggingService()
+        let apps = ApplicationService()
+        let sess = SessionManager()
+        let screenCap = ScreenCaptureService(loggingService: logging)
+        let auto = UIAutomationService(sessionManager: sess)
+        let windows = WindowManagementService(applicationService: apps)
+        let menuSvc = MenuService(applicationService: apps)
+        let dockSvc = DockService()
+        let dialogs = DialogService()
+        let files = FileService()
+        let config = ConfigurationManager.shared
+        let process = ProcessService(
+            applicationService: apps,
+            screenCaptureService: screenCap,
+            sessionManager: sess,
+            uiAutomationService: auto,
+            windowManagementService: windows,
+            menuService: menuSvc,
+            dockService: dockSvc
+        )
+        
+        // Create services instance first
+        let services = PeekabooServices(
+            logging: logging,
+            screenCapture: screenCap,
+            applications: apps,
+            automation: auto,
+            windows: windows,
+            menu: menuSvc,
+            dock: dockSvc,
+            dialogs: dialogs,
+            sessions: sess,
+            files: files,
+            process: process,
+            configuration: config,
+            agent: nil
+        )
+        
+        // Now create agent service if API key is available
+        let agent: AgentServiceProtocol?
+        if ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil {
+            let agentConfig = config.getConfiguration()
+            agent = PeekabooAgentService(
+                services: services,
+                defaultModelName: agentConfig?.agent?.defaultModel ?? "gpt-4o"
+            )
+            logger.debug("✅ PeekabooAgentService initialized")
+        } else {
+            agent = nil
+            logger.debug("⚠️ PeekabooAgentService skipped - no OPENAI_API_KEY")
+        }
+        
+        // Return services with agent
+        return PeekabooServices(
+            logging: logging,
+            screenCapture: screenCap,
+            applications: apps,
+            automation: auto,
+            windows: windows,
+            menu: menuSvc,
+            dock: dockSvc,
+            dialogs: dialogs,
+            sessions: sess,
+            files: files,
+            process: process,
+            configuration: config,
+            agent: agent
+        )
     }
 }
 
