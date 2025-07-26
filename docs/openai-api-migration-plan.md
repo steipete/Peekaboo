@@ -197,27 +197,57 @@ public actor ChatCompletionsAgent {
 3. Gradual rollout with monitoring
 4. Remove Assistants code after validation
 
+## Lessons from Swift Agents SDK Port
+
+The Swift port of the Agents SDK provides a proven implementation pattern:
+
+### What We Can Adopt:
+1. **Agent/Tool/Guardrail abstractions** - Clean separation of concerns
+2. **Generic Context pattern** - Type-safe context passing
+3. **Streaming with callbacks** - Better UX for long operations
+4. **Protocol-based Model interface** - Support multiple providers
+5. **Structured tool parameters** - Type-safe tool definitions
+
+### What to Improve for Peekaboo:
+1. **Session persistence** - Add built-in session save/resume
+2. **Better error recovery** - Enhanced retry logic
+3. **Integration with PeekabooCore** - Use existing services
+4. **macOS-specific features** - Leverage platform capabilities
+
+## Implementation Comparison
+
+| Aspect | Current Peekaboo | Swift Agents SDK | Recommended Approach |
+|--------|------------------|------------------|---------------------|
+| API Used | Assistants API v2 | Chat Completions | Chat Completions |
+| Tool Definition | OpenAI Tool format | Structured Tool<Context> | Adopt SDK pattern |
+| Streaming | No (polling) | Yes (SSE parsing) | Implement streaming |
+| State Management | Remote (threads) | Local messages | Local with persistence |
+| Error Handling | Basic | Structured errors | Enhanced error types |
+| Context Passing | Via toolExecutor | Generic Context | Adopt generic pattern |
+| Model Abstraction | None | Protocol-based | Add ModelInterface |
+| Session Resume | Thread ID reuse | Not implemented | Custom implementation |
+
 ## Migration Timeline
 
-### Week 1-2: Implementation
-- [ ] Create new types and ChatCompletionsAgent
-- [ ] Update session storage for messages
-- [ ] Implement streaming support
+### Week 1-2: Core Implementation
+- [ ] Port Agent/Tool/Model abstractions from Swift SDK
+- [ ] Implement Chat Completions API with streaming
+- [ ] Add session persistence for resume functionality
 
-### Week 3: Testing
-- [ ] Unit tests for new implementation
-- [ ] Integration tests with real OpenAI API
-- [ ] Performance benchmarking
+### Week 3: Integration
+- [ ] Integrate with existing PeekabooCore services
+- [ ] Update CLI to use new agent system
+- [ ] Maintain backward compatibility
 
-### Week 4: Rollout
-- [ ] Feature flag deployment
-- [ ] Monitor error rates and performance
-- [ ] Gradual increase in usage
+### Week 4: Testing & Rollout
+- [ ] Unit tests based on Swift SDK test patterns
+- [ ] Performance benchmarking vs Assistants API
+- [ ] Feature flag gradual rollout
 
-### Week 5: Cleanup
+### Week 5: Optimization & Cleanup
 - [ ] Remove Assistants API code
-- [ ] Update documentation
-- [ ] Final performance validation
+- [ ] Optimize streaming performance
+- [ ] Documentation and examples
 
 ## Risk Mitigation
 
@@ -295,19 +325,43 @@ The OpenAI Agents SDK revealed an important insight: **it's not a new API, but r
 3. **Phase 3**: Implement streaming and event handling
 4. **Phase 4**: Enhanced error handling and state management
 
-### Key Patterns to Implement:
+### Key Patterns to Implement (Learned from Swift SDK):
 ```swift
-// Swift version inspired by Agents SDK patterns
-public class SwiftAgent {
+// Based on the actual Swift Agents SDK port
+public final class PeekabooAgent<Context> {
     let name: String
     let instructions: String
-    let tools: [Tool]
+    let tools: [Tool<Context>]
+    let modelSettings: ModelSettings
     
-    func run(_ input: String, stream: Bool = false) async throws -> AgentResult {
-        // Direct Chat Completions API call
-        // With streaming support
-        // And proper state management
+    // Tool definition with proper parameter typing
+    public struct Tool<Context> {
+        let name: String
+        let description: String
+        let parameters: [Parameter]
+        let execute: (ToolParameters, Context) async throws -> Any
     }
+    
+    // Streaming support built-in
+    func runStreamed(
+        input: String,
+        context: Context,
+        streamHandler: @escaping (String) async -> Void
+    ) async throws -> AgentResult {
+        // Direct Chat Completions API implementation
+        // With SSE streaming parsing
+        // Tool call handling in response
+    }
+}
+
+// Model abstraction for different providers
+protocol ModelInterface: Sendable {
+    func getResponse(messages: [Message], settings: ModelSettings) async throws -> ModelResponse
+    func getStreamedResponse(
+        messages: [Message],
+        settings: ModelSettings,
+        callback: @escaping (ModelStreamEvent) async -> Void
+    ) async throws -> ModelResponse
 }
 ```
 
