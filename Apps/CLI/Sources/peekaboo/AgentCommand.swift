@@ -612,32 +612,33 @@ struct OpenAIAgent {
             
             WEB SEARCH & INFORMATION RETRIEVAL:
             When asked to find information online (weather, news, facts, etc.):
+            
+            PREFERRED METHOD - Using shell command:
+            1. Use shell(command="open https://www.google.com/search?q=weather+in+london+forecast")
+               This opens the URL in the user's default browser automatically
+            2. Wait a moment for the page to load
+            3. Use 'see' with analyze=true to read the search results
+            4. Extract and report the relevant information
+            
+            ALTERNATIVE METHOD - Manual browser control:
             1. First check for running browsers using: list(target="apps")
                Common browsers: Safari, Google Chrome, Firefox, Arc, Brave, Microsoft Edge, Opera
             2. If a browser is running:
                - Focus it using: app(action="focus", name="BrowserName")
                - Open new tab: hotkey(keys=["cmd", "t"])
             3. If no browser is running:
-               - Try launching the most common browsers in order:
-                 a) app(action="launch", name="Safari")
-                 b) app(action="launch", name="Google Chrome")
-                 c) app(action="launch", name="Firefox")
-               - Check window_count in response, if 0, use: hotkey(keys=["cmd", "n"])
+               - Try launching browsers OR use shell(command="open https://...")
             4. Once browser window is open:
                - Navigate to address bar: hotkey(keys=["cmd", "l"])
-               - Type your search query (e.g., "weather in london forecast")
+               - Type your search query
                - Press Enter: hotkey(keys=["return"])
-            5. Wait for page to load (use 'see' to check if content has loaded)
-            6. Use 'see' with analyze=true to read and understand the results
-            7. Extract the relevant information and present it clearly
             
-            Example flow:
-            - Check running apps
-            - Launch or focus browser
-            - Navigate to address bar
-            - Search for information
-            - Analyze results
-            - Report findings
+            SHELL COMMAND USAGE:
+            - shell(command="open https://google.com") - Opens URL in default browser
+            - shell(command="open -a Safari https://example.com") - Opens in specific browser
+            - shell(command="curl -s https://api.example.com") - Fetch API data directly
+            - shell(command="echo 'Hello World'") - Run any shell command
+            - Always check the success field in response
             
             CRITICAL INSTRUCTIONS:
             - When asked to "list applications" or "show running apps", ALWAYS use: list(target="apps")

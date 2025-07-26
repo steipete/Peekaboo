@@ -34,6 +34,15 @@ struct PeekabooCommandExecutor {
             print("🔧 Executing: \(commandName) with args: \(arguments)")
         }
 
+        // Handle shell command separately
+        if commandName == "shell" {
+            guard let command = args["command"] as? String else {
+                return self.createErrorJSON(.invalidArguments("Shell command requires 'command' parameter"))
+            }
+            let timeout = args["timeout"] as? Int ?? 30
+            return try await executeShellCommand(command, timeout: timeout)
+        }
+
         // Build and execute command
         do {
             let cliArgs = try buildCommandArguments(command: commandName, args: args)
@@ -367,15 +376,6 @@ struct PeekabooCommandExecutor {
                 cliArgs.append(sessionId)
             }
 
-        case "shell":
-            // Shell command is special - we execute it directly, not via CLI
-            guard let command = args["command"] as? String else {
-                throw AgentError.invalidArguments("Shell command requires 'command' parameter")
-            }
-            let timeout = args["timeout"] as? Int ?? 30
-            
-            // Execute shell command directly and return result
-            return try await executeShellCommand(command, timeout: timeout)
 
         default:
             // For unknown commands, pass through all arguments
