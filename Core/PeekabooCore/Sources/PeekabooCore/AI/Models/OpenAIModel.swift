@@ -217,6 +217,40 @@ public final class OpenAIModel: ModelInterface {
                                     } else if chunkType == "response.completed" {
                                         if let responseData = jsonObj["response"] as? [String: Any],
                                            let id = responseData["id"] as? String {
+                                            
+                                            // Check for tool calls in the output array
+                                            if let outputArray = responseData["output"] as? [[String: Any]] {
+                                                for (index, outputItem) in outputArray.enumerated() {
+                                                    if let itemType = outputItem["type"] as? String,
+                                                       itemType == "function_call",
+                                                       let itemId = outputItem["id"] as? String,
+                                                       let name = outputItem["name"] as? String,
+                                                       let arguments = outputItem["arguments"] as? String,
+                                                       let status = outputItem["status"] as? String,
+                                                       status == "completed" {
+                                                        
+                                                        aiDebugPrint("DEBUG: Found tool call in response.completed: \(name)")
+                                                        
+                                                        let toolCallId = outputItem["call_id"] as? String ?? itemId
+                                                        
+                                                        // First emit a delta event to populate the pending tool calls
+                                                        let deltaEvent = StreamEvent.toolCallDelta(StreamToolCallDelta(
+                                                            id: toolCallId,
+                                                            index: index,
+                                                            function: FunctionCallDelta(name: name, arguments: arguments)
+                                                        ))
+                                                        continuation.yield(deltaEvent)
+                                                        
+                                                        // Then emit the completed event
+                                                        let completedEvent = StreamEvent.toolCallCompleted(StreamToolCallCompleted(
+                                                            id: toolCallId,
+                                                            function: FunctionCall(name: name, arguments: arguments)
+                                                        ))
+                                                        continuation.yield(completedEvent)
+                                                    }
+                                                }
+                                            }
+                                            
                                             let event = StreamEvent.responseCompleted(StreamResponseCompleted(
                                                 id: id,
                                                 usage: nil,
@@ -374,10 +408,11 @@ public final class OpenAIModel: ModelInterface {
                 guard let tool = message as? ToolMessageItem else {
                     throw ModelError.invalidConfiguration("Invalid tool message")
                 }
+                // Responses API doesn't support 'tool' role, use 'user' instead
+                // Tool results are sent as user messages in the Responses API
                 return OpenAIMessage(
-                    role: "tool",
-                    content: .string(tool.content),
-                    toolCallId: tool.toolCallId
+                    role: "user", 
+                    content: .string(tool.content)
                 )
                 
             case .reasoning:
@@ -484,7 +519,6 @@ public final class OpenAIModel: ModelInterface {
     
     private func convertAssistantMessage(_ message: AssistantMessageItem) throws -> OpenAIMessage {
         var textContent = ""
-        var toolCalls: [OpenAIToolCall] = []
         
         for content in message.content {
             switch content {
@@ -495,26 +529,15 @@ public final class OpenAIModel: ModelInterface {
                 return OpenAIMessage(role: "assistant", content: .string(refusal))
                 
             case .toolCall(let toolCall):
-                toolCalls.append(OpenAIToolCall(
-                    id: toolCall.id,
-                    type: "function",
-                    function: OpenAIFunctionCall(
-                        name: toolCall.function.name,
-                        arguments: toolCall.function.arguments
-                    )
-                ))
+                // For Responses API, we don't include tool_calls in assistant messages
+                // Tool calls are handled differently in the Responses API
+                // They appear in the output array of the response, not in messages
+                continue
             }
         }
         
-        if !toolCalls.isEmpty {
-            return OpenAIMessage(
-                role: "assistant",
-                content: textContent.isEmpty ? nil : .string(textContent),
-                toolCalls: toolCalls
-            )
-        } else {
-            return OpenAIMessage(role: "assistant", content: .string(textContent))
-        }
+        // For Responses API, we only return text content for assistant messages
+        return OpenAIMessage(role: "assistant", content: .string(textContent))
     }
     
     private func convertToolParameters(_ params: ToolParameters) -> OpenAITool.Parameters {
