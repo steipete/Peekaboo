@@ -86,11 +86,21 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 agent: agent,
                 input: task,
                 context: services,
-                sessionId: sessionId
-            ) { chunk in
-                // Convert streaming chunks to events
-                await eventHandler.send(.assistantMessage(content: chunk))
-            }
+                sessionId: sessionId,
+                streamHandler: { chunk in
+                    // Convert streaming chunks to events
+                    await eventHandler.send(.assistantMessage(content: chunk))
+                },
+                eventHandler: { toolEvent in
+                    // Convert tool events to agent events
+                    switch toolEvent {
+                    case .started(let name, let arguments):
+                        await eventHandler.send(.toolCallStarted(name: name, arguments: arguments))
+                    case .completed(let name, let result):
+                        await eventHandler.send(.toolCallCompleted(name: name, result: result))
+                    }
+                }
+            )
             
             // Send completion event
             await eventHandler.send(.completed(summary: result.content))
@@ -182,18 +192,21 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 agent: agent,
                 input: task,
                 context: services,
-                sessionId: sessionId
-            ) { chunk in
-                // Convert streaming chunks to events
-                await eventHandler.send(.assistantMessage(content: chunk))
-            }
-            
-            // Emit tool call events from the result
-            for toolCall in result.toolCalls {
-                await eventHandler.send(
-                    .toolCallStarted(name: toolCall.function.name, arguments: toolCall.function.arguments)
-                )
-            }
+                sessionId: sessionId,
+                streamHandler: { chunk in
+                    // Convert streaming chunks to events
+                    await eventHandler.send(.assistantMessage(content: chunk))
+                },
+                eventHandler: { toolEvent in
+                    // Convert tool events to agent events
+                    switch toolEvent {
+                    case .started(let name, let arguments):
+                        await eventHandler.send(.toolCallStarted(name: name, arguments: arguments))
+                    case .completed(let name, let result):
+                        await eventHandler.send(.toolCallCompleted(name: name, result: result))
+                    }
+                }
+            )
             
             // Send completion event
             await eventHandler.send(.completed(summary: result.content))
@@ -659,17 +672,24 @@ extension PeekabooAgentService {
                 agent: agent,
                 input: task,
                 context: services,
-                sessionId: effectiveSessionId
-            ) { chunk in
-                // Only emit assistant message events for actual text content
-                // Tool call events are handled separately
-                if !chunk.isEmpty {
-                    eventContinuation.yield(.assistantMessage(content: chunk))
+                sessionId: effectiveSessionId,
+                streamHandler: { chunk in
+                    // Only emit assistant message events for actual text content
+                    // Tool call events are handled separately
+                    if !chunk.isEmpty {
+                        eventContinuation.yield(.assistantMessage(content: chunk))
+                    }
+                },
+                eventHandler: { toolEvent in
+                    // Convert tool events to agent events
+                    switch toolEvent {
+                    case .started(let name, let arguments):
+                        eventContinuation.yield(.toolCallStarted(name: name, arguments: arguments))
+                    case .completed(let name, let result):
+                        eventContinuation.yield(.toolCallCompleted(name: name, result: result))
+                    }
                 }
-            }
-            
-            // Note: Tool call events are emitted directly from the agent runner
-            // through the event stream infrastructure
+            )
             
             // Send completion event
             eventContinuation.yield(.completed(summary: result.content))

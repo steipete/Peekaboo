@@ -59,6 +59,7 @@ public struct AgentRunner {
     ///   - model: The model to use (if nil, uses ModelProvider)
     ///   - sessionId: Optional session ID to resume a previous conversation
     ///   - streamHandler: Handler called for each text chunk
+    ///   - eventHandler: Optional handler for tool execution events
     /// - Returns: The final result of the agent execution
     public static func runStreaming<Context>(
         agent: PeekabooAgent<Context>,
@@ -66,7 +67,8 @@ public struct AgentRunner {
         context: Context,
         model: (any ModelInterface)? = nil,
         sessionId: String? = nil,
-        streamHandler: @Sendable @escaping (String) async -> Void
+        streamHandler: @Sendable @escaping (String) async -> Void,
+        eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil
     ) async throws -> AgentExecutionResult where Context: Sendable {
         let runner = AgentRunnerImpl(
             agent: agent,
@@ -77,9 +79,18 @@ public struct AgentRunner {
         return try await runner.runStreaming(
             input: input,
             sessionId: sessionId,
-            streamHandler: streamHandler
+            streamHandler: streamHandler,
+            eventHandler: eventHandler
         )
     }
+}
+
+// MARK: - Tool Execution Event
+
+/// Event emitted during tool execution
+public enum ToolExecutionEvent: Sendable {
+    case started(name: String, arguments: String)
+    case completed(name: String, result: String)
 }
 
 // MARK: - Agent Result
@@ -212,7 +223,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
     func runStreaming(
         input: String,
         sessionId: String? = nil,
-        streamHandler: @Sendable @escaping (String) async -> Void
+        streamHandler: @Sendable @escaping (String) async -> Void,
+        eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil
     ) async throws -> AgentExecutionResult {
         let startTime = Date()
         
@@ -225,7 +237,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         // Process messages recursively until no more tool calls
         let (finalMessages, allToolCalls, responseContent, usage) = try await processMessagesRecursively(
             messages: initialMessages,
-            streamHandler: streamHandler
+            streamHandler: streamHandler,
+            eventHandler: eventHandler
         )
         
         // Save session
@@ -254,7 +267,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
     // Recursive helper to process messages until no more tool calls
     private func processMessagesRecursively(
         messages: [any MessageItem],
-        streamHandler: @Sendable @escaping (String) async -> Void
+        streamHandler: @Sendable @escaping (String) async -> Void,
+        eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil
     ) async throws -> (messages: [any MessageItem], toolCalls: [ToolCallItem], content: String, usage: Usage?) {
         var currentMessages = messages
         var allToolCalls: [ToolCallItem] = []
@@ -346,7 +360,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             }
             
             // Execute tools
-            let toolResults = try await executeTools(toolCalls)
+            let toolResults = try await executeTools(toolCalls, eventHandler: eventHandler)
             
             // Add assistant message with tool calls
             var assistantContent: [AssistantContent] = []
@@ -481,12 +495,17 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         return (updatedMessages, toolCalls)
     }
     
-    private func executeTools(_ toolCalls: [ToolCallItem]) async throws -> [String] {
+    private func executeTools(_ toolCalls: [ToolCallItem], eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil) async throws -> [String] {
         var results: [String] = []
         
         for toolCall in toolCalls {
             aiDebugPrint("DEBUG: Executing tool: \(toolCall.function.name)")
             aiDebugPrint("DEBUG: Tool arguments: \(toolCall.function.arguments)")
+            
+            // Emit tool start event
+            if let handler = eventHandler {
+                await handler(.started(name: toolCall.function.name, arguments: toolCall.function.arguments))
+            }
             
             guard let tool = agent.tool(named: toolCall.function.name) else {
                 throw ToolError.toolNotFound(toolCall.function.name)
@@ -498,6 +517,11 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 let resultString = try output.toJSONString()
                 
                 results.append(resultString)
+                
+                // Emit tool completion event
+                if let handler = eventHandler {
+                    await handler(.completed(name: toolCall.function.name, result: resultString))
+                }
             } catch {
                 aiDebugPrint("DEBUG: Tool execution error: \(error)")
                 throw error
