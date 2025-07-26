@@ -524,7 +524,20 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 }
             } catch {
                 aiDebugPrint("DEBUG: Tool execution error: \(error)")
-                throw error
+                
+                // Create error result instead of throwing
+                let errorResult: [String: Any] = [
+                    "success": false,
+                    "error": error.localizedDescription
+                ]
+                
+                let resultString = try JSONSerialization.data(withJSONObject: errorResult, options: [])
+                results.append(String(data: resultString, encoding: .utf8) ?? "{\"success\": false}")
+                
+                // Emit tool completion event with error
+                if let handler = eventHandler {
+                    await handler(.completed(name: toolCall.function.name, result: String(data: resultString, encoding: .utf8) ?? ""))
+                }
             }
         }
         
