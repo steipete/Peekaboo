@@ -1,5 +1,25 @@
 import Foundation
 
+// Simple debug logging check
+fileprivate var isDebugLoggingEnabled: Bool {
+    // Check if verbose mode is enabled via log level
+    if let logLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
+        return logLevel == "debug" || logLevel == "trace"
+    }
+    // Check if agent is in verbose mode
+    if ProcessInfo.processInfo.arguments.contains("-v") || 
+       ProcessInfo.processInfo.arguments.contains("--verbose") {
+        return true
+    }
+    return false
+}
+
+fileprivate func aiDebugPrint(_ message: String) {
+    if isDebugLoggingEnabled {
+        print(message)
+    }
+}
+
 /// OpenAI model implementation conforming to ModelInterface
 public final class OpenAIModel: ModelInterface {
     private let apiKey: String
@@ -34,10 +54,10 @@ public final class OpenAIModel: ModelInterface {
         }
         
         if httpResponse.statusCode != 200 {
-            print("DEBUG: HTTP Status Code: \(httpResponse.statusCode)")
-            print("DEBUG: Response Headers: \(httpResponse.allHeaderFields)")
+            aiDebugPrint("DEBUG: HTTP Status Code: \(httpResponse.statusCode)")
+            aiDebugPrint("DEBUG: Response Headers: \(httpResponse.allHeaderFields)")
             if let responseString = String(data: data, encoding: .utf8) {
-                print("DEBUG: Error Response: \(responseString)")
+                aiDebugPrint("DEBUG: Error Response: \(responseString)")
             }
             if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: data) {
                 throw handleOpenAIError(errorResponse, statusCode: httpResponse.statusCode)
@@ -47,16 +67,16 @@ public final class OpenAIModel: ModelInterface {
         
         // Debug: Print response for troubleshooting
         if let responseString = String(data: data, encoding: .utf8) {
-            print("DEBUG: OpenAI Response: \(responseString)")
+            aiDebugPrint("DEBUG: OpenAI Response: \(responseString)")
         }
         
         do {
             let openAIResponse = try JSONDecoder().decode(OpenAIChatCompletionResponse.self, from: data)
             return try convertFromOpenAIResponse(openAIResponse)
         } catch {
-            print("DEBUG: Failed to decode OpenAI response: \(error)")
+            aiDebugPrint("DEBUG: Failed to decode OpenAI response: \(error)")
             if let responseString = String(data: data, encoding: .utf8) {
-                print("DEBUG: Raw response was: \(responseString)")
+                aiDebugPrint("DEBUG: Raw response was: \(responseString)")
             }
             throw ModelError.requestFailed(error)
         }
@@ -76,7 +96,7 @@ public final class OpenAIModel: ModelInterface {
                         return
                     }
                     
-                    print("DEBUG: HTTP Response Status: \(httpResponse.statusCode)")
+                    aiDebugPrint("DEBUG: HTTP Response Status: \(httpResponse.statusCode)")
                     
                     if httpResponse.statusCode != 200 {
                         // Try to read error from first chunk
@@ -85,7 +105,7 @@ public final class OpenAIModel: ModelInterface {
                             errorData.append(byte)
                         }
                         
-                        print("DEBUG: Error response: \(String(data: errorData, encoding: .utf8) ?? "Unable to decode")")
+                        aiDebugPrint("DEBUG: Error response: \(String(data: errorData, encoding: .utf8) ?? "Unable to decode")")
                         
                         if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: errorData) {
                             continuation.finish(throwing: self.handleOpenAIError(errorResponse, statusCode: httpResponse.statusCode))
@@ -129,21 +149,21 @@ public final class OpenAIModel: ModelInterface {
                                         }
                                     }
                                 } catch {
-                                    print("DEBUG: Failed to decode chunk: \(error)")
-                                    print("DEBUG: Chunk data: \(data)")
+                                    aiDebugPrint("DEBUG: Failed to decode chunk: \(error)")
+                                    aiDebugPrint("DEBUG: Chunk data: \(data)")
                                     // Try to see what's in the error
                                     if let decodingError = error as? DecodingError {
-                                        print("DEBUG: DecodingError details: \(decodingError)")
+                                        aiDebugPrint("DEBUG: DecodingError details: \(decodingError)")
                                     }
                                 }
                             }
                         }
                     }
                     
-                    print("DEBUG: Stream processing completed")
+                    aiDebugPrint("DEBUG: Stream processing completed")
                     continuation.finish()
                 } catch {
-                    print("DEBUG: Stream error: \(error)")
+                    aiDebugPrint("DEBUG: Stream error: \(error)")
                     continuation.finish(throwing: error)
                 }
             }
@@ -169,7 +189,7 @@ public final class OpenAIModel: ModelInterface {
         do {
             request.httpBody = try encoder.encode(body)
         } catch {
-            print("DEBUG: JSON Encoding failed: \(error)")
+            aiDebugPrint("DEBUG: JSON Encoding failed: \(error)")
             throw error
         }
         
@@ -178,8 +198,8 @@ public final class OpenAIModel: ModelInterface {
         // Debug: Print request body
         if let bodyData = request.httpBody,
            let bodyString = String(data: bodyData, encoding: .utf8) {
-            print("DEBUG: OpenAI Request Body:")
-            print(bodyString)
+            aiDebugPrint("DEBUG: OpenAI Request Body:")
+            aiDebugPrint(bodyString)
         }
         
         return request

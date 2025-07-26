@@ -1,5 +1,25 @@
 import Foundation
 
+// Simple debug logging check
+fileprivate var isDebugLoggingEnabled: Bool {
+    // Check if verbose mode is enabled via log level
+    if let logLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
+        return logLevel == "debug" || logLevel == "trace"
+    }
+    // Check if agent is in verbose mode
+    if ProcessInfo.processInfo.arguments.contains("-v") || 
+       ProcessInfo.processInfo.arguments.contains("--verbose") {
+        return true
+    }
+    return false
+}
+
+fileprivate func aiDebugPrint(_ message: String) {
+    if isDebugLoggingEnabled {
+        print(message)
+    }
+}
+
 // MARK: - Agent Runner
 
 /// Executes agents with support for streaming, tool calling, and session persistence
@@ -231,12 +251,12 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 
             case .toolCallDelta(let delta):
                 updatePartialToolCall(&pendingToolCalls, with: delta)
-                print("DEBUG: Tool call delta: id=\(delta.id), name=\(delta.function.name ?? "nil"), args=\(delta.function.arguments ?? "nil")")
+                aiDebugPrint("DEBUG: Tool call delta: id=\(delta.id), name=\(delta.function.name ?? "nil"), args=\(delta.function.arguments ?? "nil")")
                 
             case .toolCallCompleted(let completed):
                 // Don't use the completed event's function - use our accumulated one
                 if let pendingCall = pendingToolCalls[completed.id] {
-                    print("DEBUG: Tool call completed: \(completed.id), function: \(pendingCall.name ?? "?"), args: \(pendingCall.arguments)")
+                    aiDebugPrint("DEBUG: Tool call completed: \(completed.id), function: \(pendingCall.name ?? "?"), args: \(pendingCall.arguments)")
                     if let name = pendingCall.name {
                         toolCalls.append(ToolCallItem(
                             id: completed.id,
@@ -245,7 +265,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                         ))
                     }
                 } else {
-                    print("DEBUG: Tool call completed but no pending call found: \(completed.id)")
+                    aiDebugPrint("DEBUG: Tool call completed but no pending call found: \(completed.id)")
                 }
                 
             case .responseCompleted(let completed):
@@ -366,7 +386,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             messages = session.messages.map { $0.message }
             actualSessionId = sessionId
             isResumed = true
-            print("DEBUG: Resuming session \(sessionId) with \(messages.count) messages")
+            aiDebugPrint("DEBUG: Resuming session \(sessionId) with \(messages.count) messages")
         } else {
             // Create new session
             messages.append(SystemMessageItem(
@@ -375,7 +395,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             ))
             actualSessionId = UUID().uuidString
             isResumed = false
-            print("DEBUG: Creating new session \(actualSessionId)")
+            aiDebugPrint("DEBUG: Creating new session \(actualSessionId)")
         }
         
         // Add user message
@@ -384,9 +404,9 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             content: .text(input)
         ))
         
-        print("DEBUG: Session prepared with \(messages.count) total messages")
+        aiDebugPrint("DEBUG: Session prepared with \(messages.count) total messages")
         for (index, msg) in messages.enumerated() {
-            print("DEBUG: Message[\(index)]: \(msg.type)")
+            aiDebugPrint("DEBUG: Message[\(index)]: \(msg.type)")
         }
         
         return (messages, actualSessionId, isResumed)
@@ -450,8 +470,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         var results: [String] = []
         
         for toolCall in toolCalls {
-            print("DEBUG: Executing tool: \(toolCall.function.name)")
-            print("DEBUG: Tool arguments: \(toolCall.function.arguments)")
+            aiDebugPrint("DEBUG: Executing tool: \(toolCall.function.name)")
+            aiDebugPrint("DEBUG: Tool arguments: \(toolCall.function.arguments)")
             
             guard let tool = agent.tool(named: toolCall.function.name) else {
                 throw ToolError.toolNotFound(toolCall.function.name)
@@ -464,7 +484,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 
                 results.append(resultString)
             } catch {
-                print("DEBUG: Tool execution error: \(error)")
+                aiDebugPrint("DEBUG: Tool execution error: \(error)")
                 throw error
             }
         }
