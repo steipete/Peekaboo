@@ -108,8 +108,7 @@ struct Peekaboo: AsyncParsableCommand {
             DialogCommand.self,
             // Agent commands
             AgentCommand.self,
-        ],
-        defaultSubcommand: AgentCommand.self
+        ]
     )
 }
 
@@ -151,6 +150,10 @@ struct Main {
                     AgentCommand.exit(withError: error)
                 }
             }
+        } else {
+            // No arguments provided - show help instead of running default command
+            await Peekaboo.main(["--help"])
+            return
         }
 
         // Run the command normally

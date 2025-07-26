@@ -169,9 +169,24 @@ struct AnyEncodable: Encodable {
     }
     
     func encode(to encoder: Encoder) throws {
-        if let data = try? JSONSerialization.data(withJSONObject: value),
-           let json = try? JSONSerialization.jsonObject(with: data) {
-            try (json as? Encodable)?.encode(to: encoder)
+        var container = encoder.singleValueContainer()
+        
+        switch value {
+        case let bool as Bool:
+            try container.encode(bool)
+        case let int as Int:
+            try container.encode(int)
+        case let double as Double:
+            try container.encode(double)
+        case let string as String:
+            try container.encode(string)
+        case let array as [Any]:
+            try container.encode(array.map { AnyEncodable($0) })
+        case let dict as [String: Any]:
+            try container.encode(dict.mapValues { AnyEncodable($0) })
+        default:
+            let context = EncodingError.Context(codingPath: container.codingPath, debugDescription: "Cannot encode value of type \(type(of: value))")
+            throw EncodingError.invalidValue(value, context)
         }
     }
 }

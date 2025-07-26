@@ -299,10 +299,50 @@ public final class OpenAIModel: ModelInterface {
         var properties: [String: Any] = [:]
         
         for (key, schema) in params.properties {
-            properties[key] = [
-                "type": schema.type.rawValue,
-                "description": schema.description ?? ""
+            var prop: [String: Any] = [
+                "type": schema.type.rawValue
             ]
+            
+            if let description = schema.description {
+                prop["description"] = description
+            }
+            
+            if let enumValues = schema.enumValues {
+                prop["enum"] = enumValues
+            }
+            
+            if let minimum = schema.minimum {
+                prop["minimum"] = minimum
+            }
+            
+            if let maximum = schema.maximum {
+                prop["maximum"] = maximum
+            }
+            
+            if let pattern = schema.pattern {
+                prop["pattern"] = pattern
+            }
+            
+            // Handle nested items for arrays
+            if schema.type == .array, let items = schema.items {
+                prop["items"] = [
+                    "type": items.value.type.rawValue
+                ]
+            }
+            
+            // Handle nested properties for objects
+            if schema.type == .object, let nestedProps = schema.properties {
+                var nestedProperties: [String: Any] = [:]
+                for (nestedKey, nestedSchema) in nestedProps {
+                    nestedProperties[nestedKey] = [
+                        "type": nestedSchema.type.rawValue,
+                        "description": nestedSchema.description ?? ""
+                    ]
+                }
+                prop["properties"] = nestedProperties
+            }
+            
+            properties[key] = prop
         }
         
         return OpenAITool.Parameters(
@@ -474,19 +514,21 @@ public final class OpenAIModel: ModelInterface {
         return events.isEmpty ? nil : events
     }
     
-    private func handleOpenAIError(_ error: OpenAIErrorResponse, statusCode: Int) -> Error {
+    private func handleOpenAIError(_ errorResponse: OpenAIErrorResponse, statusCode: Int) -> Error {
+        let errorDetail = errorResponse.error.error
+        
         switch statusCode {
         case 401:
             return ModelError.authenticationFailed
         case 429:
             return ModelError.rateLimitExceeded
-        case 400 where error.error.error.code == "context_length_exceeded":
+        case 400 where errorDetail.code == "context_length_exceeded":
             return ModelError.contextLengthExceeded
         default:
             return ModelError.requestFailed(NSError(
                 domain: "OpenAI",
                 code: statusCode,
-                userInfo: [NSLocalizedDescriptionKey: error.error.error.message]
+                userInfo: [NSLocalizedDescriptionKey: errorDetail.message]
             ))
         }
     }
