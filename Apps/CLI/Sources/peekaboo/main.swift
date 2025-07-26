@@ -118,6 +118,11 @@ struct Peekaboo: AsyncParsableCommand {
 @main
 struct Main {
     static func main() async {
+        #if DEBUG
+        // Check for build staleness in debug mode
+        checkBuildStaleness()
+        #endif
+        
         // Initialize CoreGraphics silently to prevent CGS_REQUIRE_INIT error
         _ = CGMainDisplayID()
         

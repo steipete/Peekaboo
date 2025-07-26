@@ -1145,6 +1145,10 @@ The release script creates:
 - `@steipete-peekaboo-mcp-{version}.tgz` - npm package
 - `checksums.txt` - SHA256 checksums for verification
 
+### Debug Build Staleness Detection
+
+For development, enable automatic staleness detection to ensure you're always using the latest built CLI version: `git config peekaboo.check-build-staleness true`. This is recommended when working with AI assistants that frequently modify source code, as it prevents using outdated binaries.
+
 ## 🧪 Testing
 
 ```bash
