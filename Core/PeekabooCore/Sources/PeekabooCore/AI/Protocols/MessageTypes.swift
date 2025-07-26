@@ -23,7 +23,7 @@ public enum MessageItemType: String, Codable, Sendable {
 
 /// System message containing instructions for the AI
 public struct SystemMessageItem: MessageItem {
-    public let type = MessageItemType.system
+    public var type = MessageItemType.system
     public let id: String?
     public let content: String
     
@@ -35,7 +35,7 @@ public struct SystemMessageItem: MessageItem {
 
 /// User message containing user input
 public struct UserMessageItem: MessageItem {
-    public let type = MessageItemType.user
+    public var type = MessageItemType.user
     public let id: String?
     public let content: MessageContent
     
@@ -47,7 +47,7 @@ public struct UserMessageItem: MessageItem {
 
 /// Assistant message containing AI response
 public struct AssistantMessageItem: MessageItem {
-    public let type = MessageItemType.assistant
+    public var type = MessageItemType.assistant
     public let id: String?
     public let content: [AssistantContent]
     public let status: MessageStatus
@@ -61,7 +61,7 @@ public struct AssistantMessageItem: MessageItem {
 
 /// Tool result message
 public struct ToolMessageItem: MessageItem {
-    public let type = MessageItemType.tool
+    public var type = MessageItemType.tool
     public let id: String?
     public let toolCallId: String
     public let content: String
@@ -75,7 +75,7 @@ public struct ToolMessageItem: MessageItem {
 
 /// Reasoning message for chain-of-thought
 public struct ReasoningMessageItem: MessageItem {
-    public let type = MessageItemType.reasoning
+    public var type = MessageItemType.reasoning
     public let id: String?
     public let content: String
     
@@ -87,7 +87,7 @@ public struct ReasoningMessageItem: MessageItem {
 
 /// Unknown message type for forward compatibility
 public struct UnknownMessageItem: MessageItem {
-    public let type = MessageItemType.unknown
+    public var type = MessageItemType.unknown
     public let id: String?
     public let rawData: [String: AnyCodable]
     

@@ -96,7 +96,7 @@ public enum StreamEvent: Codable, Sendable {
 
 /// Text delta event containing incremental text output
 public struct StreamTextDelta: StreamingEvent, Codable, Sendable {
-    public let type = StreamEventType.textDelta
+    public var type = StreamEventType.textDelta
     public let delta: String
     public let index: Int?
     
@@ -108,7 +108,7 @@ public struct StreamTextDelta: StreamingEvent, Codable, Sendable {
 
 /// Response started event
 public struct StreamResponseStarted: StreamingEvent, Codable, Sendable {
-    public let type = StreamEventType.responseStarted
+    public var type = StreamEventType.responseStarted
     public let id: String
     public let model: String?
     public let systemFingerprint: String?
@@ -122,7 +122,7 @@ public struct StreamResponseStarted: StreamingEvent, Codable, Sendable {
 
 /// Response completed event with final metadata
 public struct StreamResponseCompleted: StreamingEvent, Codable, Sendable {
-    public let type = StreamEventType.responseCompleted
+    public var type = StreamEventType.responseCompleted
     public let id: String
     public let usage: Usage?
     public let finishReason: FinishReason?
@@ -136,7 +136,7 @@ public struct StreamResponseCompleted: StreamingEvent, Codable, Sendable {
 
 /// Tool call delta event for incremental tool call information
 public struct StreamToolCallDelta: StreamingEvent, Codable, Sendable {
-    public let type = StreamEventType.toolCallDelta
+    public var type = StreamEventType.toolCallDelta
     public let id: String
     public let index: Int
     public let function: FunctionCallDelta
@@ -150,7 +150,7 @@ public struct StreamToolCallDelta: StreamingEvent, Codable, Sendable {
 
 /// Tool call completed event
 public struct StreamToolCallCompleted: StreamingEvent, Codable, Sendable {
-    public let type = StreamEventType.toolCallCompleted
+    public var type = StreamEventType.toolCallCompleted
     public let id: String
     public let function: FunctionCall
     
@@ -162,7 +162,7 @@ public struct StreamToolCallCompleted: StreamingEvent, Codable, Sendable {
 
 /// Error event for stream errors
 public struct StreamError: StreamingEvent, Codable, Sendable {
-    public let type = StreamEventType.error
+    public var type = StreamEventType.error
     public let error: ErrorDetail
     
     public init(error: ErrorDetail) {
@@ -172,7 +172,7 @@ public struct StreamError: StreamingEvent, Codable, Sendable {
 
 /// Unknown event for forward compatibility
 public struct StreamUnknown: StreamingEvent, Codable, Sendable {
-    public let type = StreamEventType.unknown
+    public var type = StreamEventType.unknown
     public let rawData: [String: AnyCodable]
     
     public init(rawData: [String: AnyCodable]) {

@@ -21,7 +21,7 @@ public struct AgentRunner {
         context: Context,
         model: (any ModelInterface)? = nil,
         sessionId: String? = nil
-    ) async throws -> AgentExecutionResult {
+    ) async throws -> AgentExecutionResult where Context: Sendable {
         let runner = AgentRunnerImpl(
             agent: agent,
             context: context,
@@ -46,8 +46,8 @@ public struct AgentRunner {
         context: Context,
         model: (any ModelInterface)? = nil,
         sessionId: String? = nil,
-        streamHandler: @escaping (String) async -> Void
-    ) async throws -> AgentExecutionResult {
+        streamHandler: @Sendable @escaping (String) async -> Void
+    ) async throws -> AgentExecutionResult where Context: Sendable {
         let runner = AgentRunnerImpl(
             agent: agent,
             context: context,
@@ -110,7 +110,7 @@ public struct AgentMetadata: Sendable {
 
 // MARK: - Implementation
 
-private actor AgentRunnerImpl<Context> {
+private actor AgentRunnerImpl<Context> where Context: Sendable {
     private let agent: PeekabooAgent<Context>
     private let context: Context
     private let model: any ModelInterface
@@ -192,7 +192,7 @@ private actor AgentRunnerImpl<Context> {
     func runStreaming(
         input: String,
         sessionId: String? = nil,
-        streamHandler: @escaping (String) async -> Void
+        streamHandler: @Sendable @escaping (String) async -> Void
     ) async throws -> AgentExecutionResult {
         let startTime = Date()
         

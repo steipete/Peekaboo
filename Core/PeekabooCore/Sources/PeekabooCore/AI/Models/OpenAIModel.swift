@@ -72,7 +72,6 @@ public final class OpenAIModel: ModelInterface {
                     }
                     
                     // Process SSE stream
-                    var buffer = ""
                     var currentToolCalls: [String: PartialToolCall] = [:]
                     
                     for try await line in bytes.lines {

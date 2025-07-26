@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Agent Definition
 
 /// An AI agent capable of interacting with tools and producing outputs based on instructions
-public final class PeekabooAgent<Context> {
+public final class PeekabooAgent<Context>: @unchecked Sendable {
     /// Unique name of the agent
     public let name: String
     

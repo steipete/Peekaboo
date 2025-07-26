@@ -24,25 +24,27 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     
     // MARK: - AgentServiceProtocol Conformance
     
-    /// Execute a task using the AI agent (backward compatibility)
+    /// Execute a task using the AI agent
     public func executeTask(
         _ task: String,
         dryRun: Bool = false,
-        eventDelegate: AgentEventDelegate? = nil
-    ) async throws -> AgentResult {
+        eventDelegate: (@preconcurrency AgentEventDelegate)? = nil
+    ) async throws -> AgentExecutionResult {
         // For dry run, just return a simulated result
         if dryRun {
-            return AgentResult(
-                steps: [
-                    AgentStep(
-                        action: "analyze",
-                        description: "Would analyze the task: \(task)",
-                        toolCalls: [],
-                        reasoning: "Dry run mode - no actions performed",
-                        observation: nil
-                    )
-                ],
-                summary: "Dry run completed. Task would be: \(task)"
+            return AgentExecutionResult(
+                content: "Dry run completed. Task would be: \(task)",
+                messages: [],
+                sessionId: UUID().uuidString,
+                usage: nil,
+                toolCalls: [],
+                metadata: AgentMetadata(
+                    startTime: Date(),
+                    endTime: Date(),
+                    toolCallCount: 0,
+                    modelName: defaultModelName,
+                    isResumed: false
+                )
             )
         }
         
@@ -53,117 +55,61 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         let sessionId = UUID().uuidString
         
         // Execute with streaming if we have an event delegate
-        if let eventDelegate = eventDelegate {
-            // Send initial event
-            await eventDelegate.agentDidStart()
-            
-            var steps: [AgentStep] = []
-            
-            let result = try await AgentRunner.runStreaming(
-                agent: agent,
-                input: task,
-                context: services,
-                sessionId: sessionId
-            ) { chunk in
-                // Convert streaming chunks to events
-                await eventDelegate.agentDidReceiveChunk(chunk)
-            }
-            
-            // Convert tool calls to steps for backward compatibility
-            if let messages = try? await sessionManager.loadSession(id: sessionId)?.messages {
-                for message in messages {
-                    if let assistantMessage = message.message as? AssistantMessageItem {
-                        for content in assistantMessage.content {
-                            if case .toolCall(let toolCall) = content {
-                                let step = AgentStep(
-                                    action: toolCall.function.name,
-                                    description: "Executed \(toolCall.function.name)",
-                                    toolCalls: [toolCall.id],
-                                    reasoning: nil,
-                                    observation: nil
-                                )
-                                steps.append(step)
+        if eventDelegate != nil {
+            // Create a continuation-based approach to handle the delegate properly
+            return try await withCheckedThrowingContinuation { continuation in
+                Task { @MainActor in
+                    do {
+                        // Now we're on MainActor, so we can safely access the delegate
+                        let delegate = eventDelegate!
+                        
+                        // Create event stream infrastructure
+                        let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
+                        
+                        // Create the event handler that sends to the stream
+                        let eventHandler = EventHandler { event in
+                            eventContinuation.yield(event)
+                        }
+                        
+                        // Process events on MainActor
+                        let eventTask = Task {
+                            for await event in eventStream {
+                                delegate.agentDidEmitEvent(event)
                             }
                         }
+                        
+                        defer {
+                            eventContinuation.finish()
+                            eventTask.cancel()
+                        }
+                        
+                        // Run the agent with streaming
+                        let result = try await AgentRunner.runStreaming(
+                            agent: agent,
+                            input: task,
+                            context: services,
+                            sessionId: sessionId
+                        ) { chunk in
+                            // Convert streaming chunks to events
+                            await eventHandler.send(.assistantMessage(content: chunk))
+                        }
+                        
+                        // Send completion event
+                        await eventHandler.send(.completed(summary: result.content))
+                        
+                        continuation.resume(returning: result)
+                    } catch {
+                        continuation.resume(throwing: error)
                     }
                 }
             }
-            
-            // Send completion event
-            // Convert AgentExecutionResult to AgentResult for the delegate
-            let summary = result.messages.compactMap { msg in
-                if let assistantMsg = msg as? AssistantMessageItem {
-                    return assistantMsg.content.compactMap { content -> String? in
-                        if case .outputText(let text) = content {
-                            return text
-                        }
-                        return nil
-                    }.joined(separator: " ")
-                }
-                return nil
-            }.joined(separator: "\n")
-            
-            let agentResult = AgentResult(
-                steps: steps,
-                summary: summary
-            )
-            await eventDelegate.agentDidComplete(agentResult)
-            
-            return AgentResult(
-                steps: steps.isEmpty ? [
-                    AgentStep(
-                        action: "complete",
-                        description: task,
-                        toolCalls: [],
-                        reasoning: nil,
-                        observation: result.messages.last.map { "\($0)" }
-                    )
-                ] : steps,
-                summary: result.messages.last.map { "\($0)" } ?? "Task completed"
-            )
         } else {
             // Execute without streaming
-            let result = try await AgentRunner.run(
+            return try await AgentRunner.run(
                 agent: agent,
                 input: task,
                 context: services,
                 sessionId: sessionId
-            )
-            
-            // Convert to legacy AgentResult format
-            var steps: [AgentStep] = []
-            
-            // Extract steps from the session messages
-            if let messages = try? await sessionManager.loadSession(id: sessionId)?.messages {
-                for message in messages {
-                    if let assistantMessage = message.message as? AssistantMessageItem {
-                        for content in assistantMessage.content {
-                            if case .toolCall(let toolCall) = content {
-                                let step = AgentStep(
-                                    action: toolCall.function.name,
-                                    description: "Executed \(toolCall.function.name)",
-                                    toolCalls: [toolCall.id],
-                                    reasoning: nil,
-                                    observation: nil
-                                )
-                                steps.append(step)
-                            }
-                        }
-                    }
-                }
-            }
-            
-            return AgentResult(
-                steps: steps.isEmpty ? [
-                    AgentStep(
-                        action: "complete",
-                        description: task,
-                        toolCalls: [],
-                        reasoning: nil,
-                        observation: result.messages.last.map { "\($0)" }
-                    )
-                ] : steps,
-                summary: result.messages.last.map { "\($0)" } ?? "Task completed"
             )
         }
     }
@@ -195,146 +141,101 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     
     // MARK: - Execution Methods
     
-    /// Execute a task with the automation agent (new method with session support)
+    /// Execute a task with the automation agent (with session support)
     public func executeTask(
         _ task: String,
         sessionId: String? = nil,
         modelName: String = "gpt-4-turbo-preview",
-        eventDelegate: AgentEventDelegate? = nil
-    ) async throws -> AgentResult {
+        eventDelegate: (@preconcurrency AgentEventDelegate)? = nil
+    ) async throws -> AgentExecutionResult {
         let agent = createAutomationAgent(modelName: modelName)
         
         // If we have an event delegate, use streaming
-        if let eventDelegate = eventDelegate {
-            // Emit start event
-            await eventDelegate.agentDidEmitEvent(.started(task: task))
-            
-            // Create a custom stream handler that converts to events
-            let streamHandler: (String) async -> Void = { chunk in
-                await eventDelegate.agentDidEmitEvent(.assistantMessage(content: chunk))
-            }
-            
-            do {
-                let result = try await AgentRunner.runStreaming(
-                    agent: agent,
-                    input: task,
-                    context: services,
-                    sessionId: sessionId,
-                    streamHandler: streamHandler
-                )
-                
-                // Emit tool call events from the result
-                for toolCall in result.toolCalls {
-                    await eventDelegate.agentDidEmitEvent(
-                        .toolCallStarted(name: toolCall.function.name, arguments: toolCall.function.arguments)
-                    )
-                    // In a real implementation, we'd emit completion events too
+        if eventDelegate != nil {
+            // Create a continuation-based approach to handle the delegate properly
+            return try await withCheckedThrowingContinuation { continuation in
+                Task { @MainActor in
+                    do {
+                        // Now we're on MainActor, so we can safely access the delegate
+                        let delegate = eventDelegate!
+                        
+                        // Send start event
+                        delegate.agentDidEmitEvent(.started(task: task))
+                        
+                        // Create event stream infrastructure
+                        let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
+                        
+                        // Create the event handler that sends to the stream
+                        let eventHandler = EventHandler { event in
+                            eventContinuation.yield(event)
+                        }
+                        
+                        // Process events on MainActor
+                        let eventTask = Task {
+                            for await event in eventStream {
+                                delegate.agentDidEmitEvent(event)
+                            }
+                        }
+                        
+                        defer {
+                            eventContinuation.finish()
+                            eventTask.cancel()
+                        }
+                        
+                        // Run the agent with streaming
+                        let result = try await AgentRunner.runStreaming(
+                            agent: agent,
+                            input: task,
+                            context: services,
+                            sessionId: sessionId
+                        ) { chunk in
+                            // Convert streaming chunks to events
+                            await eventHandler.send(.assistantMessage(content: chunk))
+                        }
+                        
+                        // Emit tool call events from the result
+                        for toolCall in result.toolCalls {
+                            await eventHandler.send(
+                                .toolCallStarted(name: toolCall.function.name, arguments: toolCall.function.arguments)
+                            )
+                        }
+                        
+                        // Send completion event
+                        await eventHandler.send(.completed(summary: result.content))
+                        
+                        continuation.resume(returning: result)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
                 }
-                
-                // Convert to legacy format
-                return convertToLegacyResult(result)
-            } catch {
-                await eventDelegate.agentDidEmitEvent(.error(message: error.localizedDescription))
-                throw error
             }
         } else {
             // Non-streaming execution
-            let result = try await AgentRunner.run(
+            return try await AgentRunner.run(
                 agent: agent,
                 input: task,
                 context: services,
                 sessionId: sessionId
             )
-            
-            return convertToLegacyResult(result)
         }
     }
     
-    /// Convert new AgentExecutionResult to legacy format
-    private func convertToLegacyResult(_ result: AgentExecutionResult) -> AgentResult {
-        // Extract steps from the conversation
-        var steps: [AgentStep] = []
-        
-        for (index, toolCall) in result.toolCalls.enumerated() {
-            steps.append(AgentStep(
-                action: toolCall.function.name,
-                description: "Tool call #\(index + 1)",
-                toolCalls: [toolCall.id],
-                reasoning: nil,
-                observation: nil
-            ))
-        }
-        
-        // If no tool calls, add a single completion step
-        if steps.isEmpty {
-            steps.append(AgentStep(
-                action: "complete",
-                description: "Task completed",
-                toolCalls: [],
-                reasoning: nil,
-                observation: result.content
-            ))
-        }
-        
-        return AgentResult(
-            steps: steps,
-            summary: result.content
-        )
-    }
     
     /// Execute a task with streaming output
     public func executeTaskStreaming(
         _ task: String,
         sessionId: String? = nil,
         modelName: String = "gpt-4-turbo-preview",
-        streamHandler: @escaping (String) async -> Void
-    ) async throws -> AgentResult {
+        streamHandler: @Sendable @escaping (String) async -> Void
+    ) async throws -> AgentExecutionResult {
         let agent = createAutomationAgent(modelName: modelName)
         
-        let executionResult = try await AgentRunner.runStreaming(
+        return try await AgentRunner.runStreaming(
             agent: agent,
             input: task,
             context: services,
             sessionId: sessionId,
             streamHandler: streamHandler
-        )
-        
-        // Convert AgentExecutionResult to AgentResult
-        var steps: [AgentStep] = []
-        
-        // Extract steps from messages
-        for message in executionResult.messages {
-            if let assistantMessage = message as? AssistantMessageItem {
-                for content in assistantMessage.content {
-                    if case .toolCall(let toolCall) = content {
-                        let step = AgentStep(
-                            action: toolCall.function.name,
-                            description: "Executed \(toolCall.function.name)",
-                            toolCalls: [toolCall.id],
-                            reasoning: nil,
-                            observation: nil
-                        )
-                        steps.append(step)
-                    }
-                }
-            }
-        }
-        
-        let messages = executionResult.messages.compactMap { msg in
-            if let assistantMsg = msg as? AssistantMessageItem {
-                return assistantMsg.content.compactMap { content -> String? in
-                    if case .outputText(let text) = content {
-                        return text
-                    }
-                    return nil
-                }.joined(separator: " ")
-            }
-            return nil
-        }.joined(separator: "\n")
-        
-        return AgentResult(
-            steps: steps,
-            summary: messages
         )
     }
     
@@ -395,7 +296,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             ),
             execute: { input, services in
                 let mode: String = input.value(for: "mode") ?? "screen"
-                let path: String? = input.value(for: "path")
+                let _: String? = input.value(for: "path")
                 let displayIndex: Int? = input.value(for: "displayIndex")
                 
                 let result: CaptureResult
@@ -417,8 +318,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 return .dictionary([
                     "success": true,
                     "path": result.savedPath ?? "captured in memory",
-                    "width": result.metadata.width,
-                    "height": result.metadata.height
+                    "width": result.metadata.size.width,
+                    "height": result.metadata.size.height
                 ])
             }
         )
@@ -446,45 +347,36 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 let clickType: String = input.value(for: "clickType") ?? "single"
                 let sessionId: String? = input.value(for: "sessionId")
                 
+                let clickTypeEnum: ClickType = clickType == "double" ? .double :
+                                               clickType == "right" ? .right : .single
+                
                 if target == "coordinates" {
                     guard let x: Double = input.value(for: "x"),
                           let y: Double = input.value(for: "y") else {
                         throw PeekabooError.invalidInput("Coordinates required when target is 'coordinates'")
                     }
                     
-                    let clickTypeEnum: ClickType = clickType == "double" ? .double :
-                                                   clickType == "right" ? .right : .single
-                    
                     try await services.automation.click(
-                        at: CGPoint(x: x, y: y),
-                        clickType: clickTypeEnum
+                        target: .coordinates(CGPoint(x: x, y: y)),
+                        clickType: clickTypeEnum,
+                        sessionId: sessionId
                     )
                 } else {
                     // Click by text
                     try await services.automation.click(
-                        target: .text(target),
+                        target: .query(target),
                         clickType: clickTypeEnum,
                         sessionId: sessionId
                     )
                 }
                 
-                // Get focus information after clicking
-                let focusAfterClick = await services.automation.getFocusedElement()
                 
-                var response: [String: Any] = [
+                let response: [String: Any] = [
                     "success": true,
                     "action": "clicked",
                     "target": target
                 ]
                 
-                if let focusInfo = focusAfterClick {
-                    response["focusAfterClick"] = focusInfo.toDictionary()
-                } else {
-                    response["focusAfterClick"] = [
-                        "found": false,
-                        "message": "No focused element after clicking"
-                    ]
-                }
                 
                 return .dictionary(response)
             }
@@ -508,30 +400,22 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             ),
             execute: { input, services in
                 let text: String = input.value(for: "text") ?? ""
-                let delay: Double? = input.value(for: "delay")
+                let delay: Int = input.value(for: "delay") ?? 20
                 
                 try await services.automation.type(
                     text: text,
-                    delay: delay.map { $0 / 1000 } // Convert ms to seconds
+                    target: nil,
+                    clearExisting: false,
+                    typingDelay: delay,
+                    sessionId: nil
                 )
                 
-                // Get focus information after typing
-                let focusAfterTyping = await services.automation.getFocusedElement()
                 
-                var response: [String: Any] = [
+                let response: [String: Any] = [
                     "success": true,
                     "action": "typed",
                     "text": text
                 ]
-                
-                if let focusInfo = focusAfterTyping {
-                    response["focusAfterTyping"] = focusInfo.toDictionary()
-                } else {
-                    response["focusAfterTyping"] = [
-                        "found": false,
-                        "message": "No focused element after typing"
-                    ]
-                }
                 
                 return .dictionary(response)
             }
@@ -551,13 +435,13 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             execute: { input, services in
                 let appName: String? = input.value(for: "appName")
                 
-                let windows: [WindowInfo]
+                let windows: [ServiceWindowInfo]
                 if let appName = appName {
                     windows = try await services.applications.listWindows(for: appName)
                 } else {
                     // List all windows
-                    let apps = try await services.applications.listRunningApplications()
-                    var allWindows: [WindowInfo] = []
+                    let apps = try await services.applications.listApplications()
+                    var allWindows: [ServiceWindowInfo] = []
                     for app in apps {
                         if let appWindows = try? await services.applications.listWindows(for: app.name) {
                             allWindows.append(contentsOf: appWindows)
@@ -569,7 +453,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 let windowData = windows.map { window in
                     [
                         "title": window.title,
-                        "appName": window.appName,
+                        "windowID": window.windowID,
                         "bounds": [
                             "x": window.bounds.origin.x,
                             "y": window.bounds.origin.y,
@@ -577,7 +461,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                             "height": window.bounds.height
                         ],
                         "isMinimized": window.isMinimized,
-                        "isFullscreen": window.isFullscreen
+                        "isMainWindow": window.isMainWindow
                     ]
                 }
                 
@@ -610,16 +494,16 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 let elementType: String = input.value(for: "elementType") ?? "any"
                 let sessionId: String = input.value(for: "sessionId") ?? UUID().uuidString
                 
-                let target: ElementTarget
+                let query: String
                 if let text = text {
-                    target = .text(text)
+                    query = text
                 } else {
-                    target = .type(elementType)
+                    query = "type:\(elementType)"
                 }
                 
                 let elements = try await services.sessions.findElements(
-                    matching: target,
-                    sessionId: sessionId
+                    sessionId: sessionId,
+                    matching: query
                 )
                 
                 let elementData = elements.map { element in
@@ -632,7 +516,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                             "width": element.frame.width,
                             "height": element.frame.height
                         ],
-                        "isEnabled": element.isEnabled
+                        "isActionable": element.isActionable
                     ]
                 }
                 
@@ -741,10 +625,10 @@ extension PeekabooAgentService {
                 
                 return .dictionary([
                     "success": true,
-                    "path": result.metadata.savePath ?? "captured in memory",
-                    "width": result.metadata.width,
-                    "height": result.metadata.height,
-                    "appName": result.metadata.appName ?? appName
+                    "path": result.savedPath ?? "captured in memory",
+                    "width": result.metadata.size.width,
+                    "height": result.metadata.size.height,
+                    "appName": result.metadata.applicationInfo?.name ?? appName
                 ])
             }
         )
@@ -790,6 +674,8 @@ extension PeekabooAgentService {
                     direction: scrollDirection,
                     amount: amount,
                     target: target,
+                    smooth: true,
+                    delay: 50,
                     sessionId: sessionId
                 )
                 
@@ -829,23 +715,11 @@ extension PeekabooAgentService {
                     holdDuration: holdDuration
                 )
                 
-                // Get focus information after hotkey
-                let focusAfterHotkey = await services.automation.getFocusedElement()
-                
-                var response: [String: Any] = [
+                let response: [String: Any] = [
                     "success": true,
                     "action": "hotkey",
                     "keys": keys
                 ]
-                
-                if let focusInfo = focusAfterHotkey {
-                    response["focusAfterHotkey"] = focusInfo.toDictionary()
-                } else {
-                    response["focusAfterHotkey"] = [
-                        "found": false,
-                        "message": "No focused element after hotkey"
-                    ]
-                }
                 
                 return .dictionary(response)
             }
@@ -867,10 +741,14 @@ extension PeekabooAgentService {
                 let appName: String = input.value(for: "appName") ?? ""
                 let windowTitle: String? = input.value(for: "windowTitle")
                 
-                try await services.windows.focusWindow(
-                    appIdentifier: appName,
-                    windowTitle: windowTitle
-                )
+                let target: WindowTarget
+                if let windowTitle = windowTitle {
+                    target = .title(windowTitle)
+                } else {
+                    target = .application(appName)
+                }
+                
+                try await services.windows.focusWindow(target: target)
                 
                 return .dictionary([
                     "success": true,
@@ -900,10 +778,16 @@ extension PeekabooAgentService {
                 let height: Double = input.value(for: "height") ?? 600
                 let windowTitle: String? = input.value(for: "windowTitle")
                 
+                let target: WindowTarget
+                if let windowTitle = windowTitle {
+                    target = .title(windowTitle)
+                } else {
+                    target = .application(appName)
+                }
+                
                 try await services.windows.resizeWindow(
-                    appIdentifier: appName,
-                    size: CGSize(width: width, height: height),
-                    windowTitle: windowTitle
+                    target: target,
+                    to: CGSize(width: width, height: height)
                 )
                 
                 return .dictionary([
@@ -922,7 +806,7 @@ extension PeekabooAgentService {
             description: "List all running applications",
             parameters: .object(properties: [:], required: []),
             execute: { _, services in
-                let apps = try await services.applications.listRunningApplications()
+                let apps = try await services.applications.listApplications()
                 
                 let appData = apps.map { app in
                     [
@@ -955,7 +839,7 @@ extension PeekabooAgentService {
             execute: { input, services in
                 let appName: String = input.value(for: "appName") ?? ""
                 
-                try await services.applications.launchApplication(identifier: appName)
+                _ = try await services.applications.launchApplication(identifier: appName)
                 
                 return .dictionary([
                     "success": true,
@@ -1066,4 +950,19 @@ private func formatElementList(_ elements: DetectedElements, filterType: String)
         "count": filteredElements.count,
         "type": filterType
     ])
+}
+
+// MARK: - Event Handler
+
+/// A sendable wrapper for handling events from async contexts
+private struct EventHandler: Sendable {
+    private let sendEvent: @Sendable (AgentEvent) async -> Void
+    
+    init(sendEvent: @escaping @Sendable (AgentEvent) async -> Void) {
+        self.sendEvent = sendEvent
+    }
+    
+    func send(_ event: AgentEvent) async {
+        await sendEvent(event)
+    }
 }

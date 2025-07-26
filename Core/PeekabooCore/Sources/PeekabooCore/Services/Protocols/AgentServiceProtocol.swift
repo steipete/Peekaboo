@@ -8,12 +8,12 @@ public protocol AgentServiceProtocol: Sendable {
     ///   - task: The task description
     ///   - dryRun: If true, simulates execution without performing actions
     ///   - eventDelegate: Optional delegate for real-time event updates
-    /// - Returns: The agent result containing steps and summary
+    /// - Returns: The agent execution result
     func executeTask(
         _ task: String,
         dryRun: Bool,
-        eventDelegate: AgentEventDelegate?
-    ) async throws -> AgentResult
+        eventDelegate: (@preconcurrency AgentEventDelegate)?
+    ) async throws -> AgentExecutionResult
     
     /// Clean up any cached sessions or resources
     func cleanup() async

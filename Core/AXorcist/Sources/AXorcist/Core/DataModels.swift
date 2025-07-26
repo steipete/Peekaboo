@@ -64,7 +64,8 @@ public struct AXValueWrapper: Codable, Sendable, Equatable {
         
         // Check for circular references in collections
         var currentVisited = visited
-        if let object = anItem as? AnyObject {
+        if type(of: anItem) is AnyClass {
+            let object = anItem as AnyObject
             let id = ObjectIdentifier(object)
             if currentVisited.contains(id) {
                 return "<circular_reference>"

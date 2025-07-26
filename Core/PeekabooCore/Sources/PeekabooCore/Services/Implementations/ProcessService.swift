@@ -595,14 +595,14 @@ public actor ProcessService: ProcessServiceProtocol {
             )
             
         case "add":
-            guard let path = step.params?["path"]?.value as? String else {
+            guard let _ = step.params?["path"]?.value as? String else {
                 throw PeekabooError.invalidInput("Missing required parameter 'path' for dock add command")
             }
             // Dock service doesn't support adding items directly
             throw PeekabooError.operationError(message: "Adding items to Dock is not supported")
             
         case "remove":
-            guard let itemName = step.params?["item"]?.value as? String else {
+            guard let _ = step.params?["item"]?.value as? String else {
                 throw PeekabooError.invalidInput("Missing required parameter 'item' for dock command")
             }
             // Dock service doesn't support removing items directly
