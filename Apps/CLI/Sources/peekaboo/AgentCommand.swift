@@ -53,36 +53,66 @@ func compactArgsSummary(_ command: String, _ args: [String: Any]) -> String {
     switch command {
     case "see":
         if let app = args["app"] as? String {
-            return "app: \(app)"
+            return "screenshot of \(app)"
+        } else if let mode = args["mode"] as? String {
+            switch mode {
+            case "frontmost":
+                return "screenshot of active window"
+            case "screen":
+                return "screenshot of screen"
+            default:
+                return "screenshot (\(mode))"
+            }
         }
-        return ""
+        return "screenshot"
     case "click":
         if let element = args["element"] as? String {
-            return "'\(element)'"
+            return "on '\(element)'"
         } else if let x = args["x"], let y = args["y"] {
-            return "(\(x), \(y))"
+            return "at (\(x), \(y))"
         }
-        return ""
+        return "element"
     case "type":
         if let text = args["text"] as? String {
             let preview = text.count > 20 ? String(text.prefix(20)) + "..." : text
             return "'\(preview)'"
         }
-        return ""
+        return "text"
     case "app":
         if let action = args["action"] as? String, let name = args["name"] as? String {
             return "\(action) \(name)"
         }
-        return ""
+        return "application"
+    case "window":
+        if let action = args["action"] as? String {
+            if let app = args["app"] as? String {
+                return "\(action) \(app) window"
+            }
+            return "\(action) window"
+        }
+        return "window operation"
     case "hotkey":
         if let keys = args["keys"] as? [String] {
             return keys.joined(separator: "+")
         }
-        return ""
+        return "keyboard shortcut"
     case "shell":
         if let command = args["command"] as? String {
-            // For shell commands, show more meaningful info
-            if command.hasPrefix("open ") {
+            // AppleScript command detection
+            if command.hasPrefix("osascript ") {
+                if command.contains("-e") && command.contains("tell application") {
+                    // Extract app name from AppleScript
+                    if let appName = extractAppNameFromAppleScript(command) {
+                        return "AppleScript: control \(appName)"
+                    }
+                    return "AppleScript: control application"
+                } else if command.contains(".scpt") {
+                    return "AppleScript: run script file"
+                }
+                return "AppleScript command"
+            }
+            // Regular shell commands
+            else if command.hasPrefix("open ") {
                 if command.contains("google.com/search") || command.contains("search") {
                     return "search in browser"
                 } else if command.contains("http") {
@@ -100,12 +130,80 @@ func compactArgsSummary(_ command: String, _ args: [String: Any]) -> String {
         return ""
     case "wait":
         if let duration = args["duration"] as? Double {
-            return "\(duration)s"
+            return "for \(duration)s"
+        }
+        return "briefly"
+    case "drag":
+        if let fromX = args["from_x"], let fromY = args["from_y"],
+           let toX = args["to_x"], let toY = args["to_y"] {
+            return "from (\(fromX),\(fromY)) to (\(toX),\(toY))"
+        } else if let element = args["element"] as? String {
+            return "'\(element)'"
+        }
+        return "element"
+    case "swipe":
+        if let direction = args["direction"] as? String {
+            return "\(direction)"
+        }
+        return "gesture"
+    case "scroll":
+        if let direction = args["direction"] as? String {
+            if let amount = args["amount"] {
+                return "\(direction) \(amount) units"
+            }
+            return direction
+        }
+        return "page"
+    case "list":
+        if let target = args["target"] as? String {
+            switch target {
+            case "apps":
+                return "running applications"
+            case "windows":
+                if let app = args["app"] as? String {
+                    return "\(app) windows"
+                }
+                return "all windows"
+            default:
+                return target
+            }
+        }
+        return "items"
+    default:
+        // For unknown commands, try to extract the most important parameter
+        if let text = args["text"] as? String {
+            let preview = text.count > 15 ? String(text.prefix(15)) + "..." : text
+            return "'\(preview)'"
+        } else if let target = args["target"] as? String {
+            return "'\(target)'"
+        } else if let name = args["name"] as? String {
+            return name
         }
         return ""
-    default:
-        return ""
     }
+}
+
+/// Extract application name from AppleScript command
+func extractAppNameFromAppleScript(_ command: String) -> String? {
+    // Look for patterns like: tell application "AppName"
+    let patterns = [
+        "tell application \"([^\"]+)\"",  // tell application "Safari"
+        "tell application '([^']+)'",    // tell application 'Safari'
+        "tell app \"([^\"]+)\"",         // tell app "Safari"  
+        "tell app '([^']+)'"             // tell app 'Safari'
+    ]
+    
+    for pattern in patterns {
+        if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+            let range = NSRange(command.startIndex..<command.endIndex, in: command)
+            if let match = regex.firstMatch(in: command, options: [], range: range) {
+                if let appRange = Range(match.range(at: 1), in: command) {
+                    return String(command[appRange])
+                }
+            }
+        }
+    }
+    return nil
 }
 
 /// AI Agent command that uses OpenAI Assistants API to automate complex tasks
@@ -720,6 +818,20 @@ struct OpenAIAgent {
             - IMPORTANT: Quote URLs with special characters to prevent shell expansion errors:
               ✓ shell(command="open 'https://www.google.com/search?q=weather+forecast'")
               ✗ shell(command="open https://www.google.com/search?q=weather+forecast") - fails with "no matches found"
+            
+            APPLESCRIPT AUTOMATION via shell:
+            - shell(command="osascript -e 'tell application \"Safari\" to activate'") - Activate Safari
+            - shell(command="osascript -e 'tell application \"TextEdit\" to make new document'") - Create new document
+            - shell(command="osascript -e 'tell application \"Finder\" to get selection as alias list'") - Get selected files
+            - shell(command="osascript -e 'tell application \"Safari\" to get URL of current tab of front window'") - Get current URL
+            - shell(command="osascript -e 'tell application \"Safari\" to get URL of every tab of front window'") - Get all tab URLs
+            - shell(command="osascript -e 'tell application \"Safari\" to get name of every tab of front window'") - Get all tab titles
+            - shell(command="osascript -e 'tell application \"System Events\" to keystroke \"v\" using command down'") - Send keyboard shortcut
+            - shell(command="osascript -e 'set volume output volume 50'") - Control system volume
+            - shell(command="osascript -e 'display dialog \"Hello World\"'") - Show dialog box
+            - shell(command="osascript ~/my-script.scpt") - Run AppleScript file
+            - Use AppleScript when native Peekaboo commands don't provide enough control
+            - AppleScript can access app-specific features not available through UI automation
             
             CRITICAL INSTRUCTIONS:
             - When asked to "list applications" or "show running apps", ALWAYS use: list(target="apps")
