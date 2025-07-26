@@ -952,26 +952,44 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         When using shell commands:
         
         1. **Text-to-speech requests**
-           - Only when user explicitly types "say [phrase]" → use `say "[phrase]"` command
-           - Do NOT use the say command unless the user literally types the word "say" in their request
-           - When you use `say`, the user HEARS it - don't repeat that same text in your response
+           - Only when user includes the word "say" → use the `say` command
+           - Example: "say hello" → `say "hello"`
         
         2. **Command availability is binary**
            - "command not found" = definitely not installed
            - No need to check multiple times or try variations
            - Move to alternative approaches immediately
         
-        3. **Escape and quote properly**
-           - Use proper escaping for spaces in filenames
-           - Handle special characters in shell commands
-           - Test commands incrementally when building complex pipelines
+        3. **Understanding Exit Codes**
+           - Exit code 0 = Success
+           - Exit code 1 = General error OR expected "no results" for some commands
+           - Commands like `grep` return exit code 1 when no matches are found - this is NOT an error
+           - Commands like `ls` piped to `grep` will fail if no files match the pattern
+           - Check the output message to distinguish between real errors and "no results"
+           
+        4. **Proper Quoting and Escaping**
+           - NEVER nest single quotes inside single quotes
+           - For complex patterns, use double quotes for the outer command string
+           - Escape special characters in patterns: `\.md` for literal dot
+           - Examples:
+             - WRONG: 'ls | grep -i 'pattern''  
+             - RIGHT: "ls | grep -i 'pattern'"
+             - RIGHT: 'ls | grep -i "pattern"'
+           - For commands with no matches, use `|| true` to handle exit code 1:
+             - `ls ~/Downloads | grep -i schalter || echo "No matching files"`
         
-        4. **Interactive commands are not supported**
+        5. **Interactive commands are not supported**
            - Commands have a 30-second default timeout (max 300 seconds)
            - Interactive prompts will cause timeouts
            - Environment is set to non-interactive mode
            - Use non-interactive flags: `git commit -m "message"` not `git commit`
            - If a command times out, find an alternative approach
+           
+        6. **Common Pitfalls to Avoid**
+           - Don't assume exit code 1 always means failure - check the actual output
+           - Don't retry the same command with the same syntax if it has quote errors
+           - Use `find` instead of `ls | grep` for more reliable file searching
+           - Use `2>/dev/null` to suppress permission errors when searching directories
         
         ## Critical Guidelines
         
@@ -1097,19 +1115,14 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         
         ## Speech Output
         
-        IMPORTANT: Only use the macOS text-to-speech command when the user explicitly types "say" in their request.
+        Only use the macOS `say` command when the user explicitly includes the word "say" in their request.
         
-        When using the `say` command:
-        - If user types: "say hello" → use `say "hello"` and do NOT output the text again
-        - If user types: "say hello and tell me a joke" → use `say "hello"` for the greeting, then output the joke as text (don't speak the joke unless they say "say the joke")
-        - The say command speaks text aloud - the user will HEAR it, so don't repeat it in text
-        - You can specify a voice: `say -v "Samantha" "Hello world"`
+        Examples:
+        - User: "say hello" → Execute: `say "hello"`
+        - User: "say hello and tell me a joke" → Execute: `say "hello"`, then output a joke as text
+        - User: "tell me a joke" → Just output the joke as text (do NOT use say command)
         
-        When NOT using the say command:
-        - If user types: "tell me about X" → just output text normally
-        - If user types: "what's 2+2" → just output "4" as text
-        
-        Key rule: When you use the `say` command, the user hears the audio. Don't duplicate that content in your text response.
+        The `say` command speaks text through the speakers. You can specify a voice: `say -v "Samantha" "Hello world"`
         
         Remember: You have full system access through the shell tool. Use it creatively alongside UI automation to accomplish any task. Take screenshots liberally to understand UI state. Don't just describe what to do - DO IT using your tools!
         
@@ -1890,16 +1903,36 @@ extension PeekabooAgentService {
                             errorMessage += errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
                         }
                         
+                        // Provide context based on exit code and command pattern
+                        let exitCode = Int(process.terminationStatus)
+                        var hint = ""
+                        
+                        // Check for common patterns that return exit code 1 as "no results"
+                        if exitCode == 1 {
+                            if command.contains("grep") && errorMessage.isEmpty {
+                                hint = "Note: grep returns exit code 1 when no matches are found. This is expected behavior, not an error."
+                            } else if command.contains("ls") && command.contains("|") && errorMessage.isEmpty {
+                                hint = "Note: Piped commands may fail if the first command produces no output for the second command to process."
+                            } else if command.contains("'") && (command.filter { $0 == "'" }.count % 2 != 0 || command.contains("' '")){
+                                hint = "Note: Check your quote syntax. Single quotes cannot be nested inside single quotes."
+                            }
+                        }
+                        
                         // Fallback if both are empty
                         if errorMessage.isEmpty {
                             errorMessage = "Command failed with exit code \(process.terminationStatus)"
+                        }
+                        
+                        // Add hint if available
+                        if !hint.isEmpty {
+                            errorMessage += "\n\n\(hint)"
                         }
                         
                         return .dictionary([
                             "success": false,
                             "output": output, // Still include raw output for completeness
                             "error": errorMessage,
-                            "exitCode": Int(process.terminationStatus)
+                            "exitCode": exitCode
                         ])
                     }
                 } catch {
