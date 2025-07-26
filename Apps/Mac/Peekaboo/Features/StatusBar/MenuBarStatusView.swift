@@ -24,7 +24,7 @@ struct MenuBarStatusView: View {
             
             // Main content area
             Group {
-                if agent.isExecuting {
+                if agent.isProcessing {
                     activeSessionView
                 } else {
                     idleView
@@ -46,16 +46,16 @@ struct MenuBarStatusView: View {
     
     private var headerView: some View {
         HStack {
-            Image(systemName: agent.isExecuting ? "brain" : "moon.stars")
+            Image(systemName: agent.isProcessing ? "brain" : "moon.stars")
                 .font(.title2)
-                .foregroundColor(agent.isExecuting ? .accentColor : .secondary)
-                .symbolEffect(.pulse, options: .repeating, isActive: agent.isExecuting)
+                .foregroundColor(agent.isProcessing ? .accentColor : .secondary)
+                .symbolEffect(.pulse, options: .repeating, isActive: agent.isProcessing)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(agent.isExecuting ? "Agent Active" : "Agent Idle")
+                Text(agent.isProcessing ? "Agent Active" : "Agent Idle")
                     .font(.headline)
                 
-                if agent.isExecuting, !agent.currentTask.isEmpty {
+                if agent.isProcessing, !agent.currentTask.isEmpty {
                     Text(agent.currentTask)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -66,7 +66,7 @@ struct MenuBarStatusView: View {
             Spacer()
             
             // Voice mode toggle button
-            if !agent.isExecuting {
+            if !agent.isProcessing {
                 Button(action: { isVoiceMode.toggle() }) {
                     Image(systemName: isVoiceMode ? "keyboard" : "mic")
                         .font(.title3)
@@ -77,7 +77,7 @@ struct MenuBarStatusView: View {
                 .help(isVoiceMode ? "Switch to text input" : "Switch to voice input")
             }
             
-            if agent.isExecuting {
+            if agent.isProcessing {
                 Button(action: { agent.cancelCurrentTask() }) {
                     Image(systemName: "stop.circle.fill")
                         .font(.title2)
@@ -94,7 +94,7 @@ struct MenuBarStatusView: View {
             if let session = sessionStore.currentSession {
                 VStack(spacing: 0) {
                     // Active task indicator
-                    if agent.isExecuting && !agent.currentTask.isEmpty {
+                    if agent.isProcessing && !agent.currentTask.isEmpty {
                         HStack(spacing: 8) {
                             ProgressView()
                                 .scaleEffect(0.7)
@@ -137,7 +137,7 @@ struct MenuBarStatusView: View {
                                                         Animation.easeInOut(duration: 0.8)
                                                             .repeatForever()
                                                             .delay(Double(index) * 0.2),
-                                                        value: agent.isExecuting
+                                                        value: agent.isProcessing
                                                     )
                                             }
                                         }
@@ -177,7 +177,7 @@ struct MenuBarStatusView: View {
                     }
                     
                     // Input area for chatting during execution
-                    if agent.isExecuting {
+                    if agent.isProcessing {
                         Divider()
                         
                         HStack(spacing: 8) {
@@ -228,7 +228,7 @@ struct MenuBarStatusView: View {
         inputText = ""
         
         // Send follow-up to agent if one is active
-        if agent.isExecuting {
+        if agent.isProcessing {
             agent.queueMessage(text)
             
             // Show queued notification in the current session

@@ -147,6 +147,8 @@ This issue typically occurs when:
 
 ## Recent Updates
 
+- **VibeTunnel integration** (2025-01-26): Added VibeTunnel terminal title management to agent command for better visibility across multiple Claude sessions. Terminal titles update automatically during task execution and tool calls.
+
 - **OpenAI API parameter fix** (2025-01-26): Fixed OpenAI API compatibility by changing 'messages' parameter to 'input' in request encoding for all models. Added delightful ghost animation for agent thinking state.
 
 - **Agent communication fix for o3 models** (2025-01-26): Strengthened system prompt to ensure o3 models communicate their thought process. Changed default reasoning effort from "high" to "medium" for better balance between reasoning and communication.
@@ -211,6 +213,16 @@ The `peekaboo agent` command provides natural language automation capabilities t
 ./peekaboo agent --resume abc123                   # Resume specific session ID
 ./peekaboo agent --list-sessions                   # Show available sessions
 ```
+
+#### VibeTunnel Integration
+
+The agent command automatically updates the terminal title using VibeTunnel (if installed) to provide visibility into current operations:
+
+- **During execution**: Shows current tool being executed (e.g., "click: Submit button - Take screenshot of...")
+- **On completion**: Shows "Completed: [task]"
+- **On error**: Shows "Error: [task]"
+
+This helps track multiple Claude Code sessions at a glance, especially useful when managing parallel automation tasks.
 
 
 ## OpenAI API Integration

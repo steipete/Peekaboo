@@ -731,38 +731,78 @@ class MockMenuService: MenuServiceProtocol {
 }
 
 @available(macOS 14.0, *)
-class MockDialogService: DialogsServiceProtocol {
+class MockDialogService: DialogServiceProtocol {
     weak var parent: MockPeekabooServices?
     
     init(parent: MockPeekabooServices) {
         self.parent = parent
     }
     
-    func detectActiveDialogs() async throws -> [ActiveDialog] {
-        return parent?.mockActiveDialogs ?? []
-    }
-    
-    func clickButton(buttonText: String, windowTitle: String?) async throws -> DialogResult {
+    func findActiveDialog(windowTitle: String?) async throws -> DialogInfo {
         if let error = parent?.mockError { throw error }
         
-        if parent?.mockActiveDialogs.isEmpty == true {
-            throw PeekabooError.commandFailed("No dialog present")
-        }
+        // Return a mock dialog info
+        return DialogInfo(
+            title: "Mock Dialog",
+            role: "AXDialog",
+            subrole: nil,
+            isFileDialog: false,
+            bounds: CGRect(x: 100, y: 100, width: 400, height: 300)
+        )
+    }
+    
+    func clickButton(buttonText: String, windowTitle: String?) async throws -> DialogActionResult {
+        if let error = parent?.mockError { throw error }
         
-        let hasButton = parent?.mockActiveDialogs.contains { dialog in
-            dialog.buttons.contains(buttonText)
-        } ?? false
-        
-        if !hasButton {
+        // Simplified mock implementation
+        if buttonText == "NonExistentButton" {
             throw PeekabooError.commandFailed("Button not found")
         }
         
-        return DialogResult(success: true, action: .clicked, details: "Clicked \(buttonText)")
+        return DialogActionResult(
+            success: true,
+            action: .clickButton,
+            details: ["button": buttonText]
+        )
     }
     
-    func enterText(text: String, fieldIdentifier: String?, clearExisting: Bool, windowTitle: String?) async throws -> DialogResult {
+    func enterText(text: String, fieldIdentifier: String?, clearExisting: Bool, windowTitle: String?) async throws -> DialogActionResult {
         if let error = parent?.mockError { throw error }
-        return DialogResult(success: true, action: .typed, details: "Entered text")
+        return DialogActionResult(
+            success: true,
+            action: .enterText,
+            details: ["text": text]
+        )
+    }
+    
+    func handleFileDialog(path: String?, filename: String?, actionButton: String) async throws -> DialogActionResult {
+        if let error = parent?.mockError { throw error }
+        return DialogActionResult(
+            success: true,
+            action: .handleFileDialog,
+            details: [:]
+        )
+    }
+    
+    func dismissDialog(force: Bool, windowTitle: String?) async throws -> DialogActionResult {
+        if let error = parent?.mockError { throw error }
+        return DialogActionResult(
+            success: true,
+            action: .dismiss,
+            details: [:]
+        )
+    }
+    
+    func listDialogElements(windowTitle: String?) async throws -> DialogElements {
+        if let error = parent?.mockError { throw error }
+        return DialogElements(
+            dialogInfo: DialogInfo(
+                title: "Mock Dialog",
+                role: "AXDialog",
+                bounds: CGRect(x: 100, y: 100, width: 400, height: 300)
+            ),
+            buttons: [DialogButton(title: "OK"), DialogButton(title: "Cancel")]
+        )
     }
 }
 

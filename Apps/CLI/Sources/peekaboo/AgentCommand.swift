@@ -564,10 +564,12 @@ final class CompactEventDelegate: AgentEventDelegate {
     private let ghostAnimator = GhostAnimator()
     private var hasReceivedContent = false
     private var isThinking = true
+    private let task: String
     
-    init(outputMode: OutputMode, jsonOutput: Bool) {
+    init(outputMode: OutputMode, jsonOutput: Bool, task: String) {
         self.outputMode = outputMode
         self.jsonOutput = jsonOutput
+        self.task = task
     }
     
     func agentDidEmitEvent(_ event: AgentEvent) {
@@ -584,6 +586,11 @@ final class CompactEventDelegate: AgentEventDelegate {
             
         case .toolCallStarted(let name, let arguments):
             currentTool = name
+            
+            // Update terminal title for current tool
+            let toolSummary = getToolSummaryForTitle(name, arguments)
+            updateTerminalTitle("\(name): \(toolSummary) - \(task.prefix(30))")
+            
             if outputMode != .quiet {
                 // Stop the ghost animation when a tool starts
                 ghostAnimator.stop()
@@ -837,6 +844,69 @@ final class CompactEventDelegate: AgentEventDelegate {
             
         default:
             return ""
+        }
+    }
+    
+    private func getToolSummaryForTitle(_ toolName: String, _ arguments: String) -> String {
+        // Parse arguments and create a concise summary for terminal title
+        guard let data = arguments.data(using: .utf8),
+              let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return ""
+        }
+        
+        switch toolName {
+        case "see", "screenshot":
+            if let app = args["app"] as? String {
+                return app
+            } else if let mode = args["mode"] as? String {
+                return mode
+            }
+            return "screen"
+            
+        case "click":
+            if let target = args["target"] as? String {
+                return String(target.prefix(20))
+            } else if let element = args["element"] as? String {
+                return element
+            }
+            return "element"
+            
+        case "type":
+            if let text = args["text"] as? String {
+                return "'\(String(text.prefix(15)))...'"
+            }
+            return "text"
+            
+        case "launch_app":
+            if let app = args["appName"] as? String {
+                return app
+            }
+            return "app"
+            
+        case "shell":
+            if let cmd = args["command"] as? String {
+                return String(cmd.prefix(20))
+            }
+            return "command"
+            
+        default:
+            return compactToolSummary(toolName, args)
+        }
+    }
+    
+    private func updateTerminalTitle(_ title: String) {
+        // Use VibeTunnel to update terminal title if available
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["vt", "title", title]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            // Silently ignore if vt is not available
         }
     }
 }

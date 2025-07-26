@@ -1,10 +1,10 @@
 import Foundation
 
-public struct OllamaProvider: AIProvider {
+public class OllamaProvider: AIProvider {
     public let name: String = "ollama"
     public let model: String
     
-    private let baseURL: URL
+    internal var baseURL: URL
     
     public init(model: String, baseURL: URL? = nil) {
         self.model = model
