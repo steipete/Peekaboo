@@ -622,6 +622,18 @@ The Peekaboo Mac app is a modern SwiftUI application that showcases the full cap
 - **Status Bar Control**: Quick access from the menu bar
 - **Session Management**: Track and replay automation sessions
 
+### Agent System Prompt
+
+The OpenAI agent system prompt is defined in `Apps/Mac/Peekaboo/Services/PeekabooToolExecutor.swift` in the `systemPrompt()` method (around line 1145). This prompt:
+
+- Defines the agent's identity and capabilities
+- Lists all available tools and their descriptions
+- Provides usage guidelines and best practices
+- Explains limitations (e.g., browser tabs as UI elements, not separate windows)
+- Sets the professional tone (no unnecessary follow-up questions)
+
+When modifying agent behavior, update this system prompt to guide the AI's responses and tool usage patterns.
+
 ### Architecture Overview
 
 ```swift

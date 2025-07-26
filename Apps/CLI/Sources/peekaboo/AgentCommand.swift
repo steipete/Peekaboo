@@ -382,8 +382,6 @@ struct OpenAIAgent {
     }
 
     func executeTask(_ task: String, dryRun: Bool) async throws -> AgentResult {
-        // Create session for this task
-        let sessionId = await SessionManager.shared.createSession()
 
         // Create assistant
         if self.outputMode == .verbose {
@@ -527,27 +525,9 @@ struct OpenAIAgent {
                         screenshot: nil)
 
                     if !dryRun {
-                        // Add session ID to arguments only for commands that need it
-                        var modifiedArgs = toolCall.function.arguments
-                        let commandsNeedingSession = ["click", "type", "drag", "swipe"]
-                        let commandName = toolCall.function.name.replacingOccurrences(of: "peekaboo_", with: "")
-
-                        if commandsNeedingSession.contains(commandName) {
-                            if let data = modifiedArgs.data(using: .utf8),
-                               var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-                            {
-                                json["session_id"] = sessionId
-                                if let newData = try? JSONSerialization.data(withJSONObject: json),
-                                   let newString = String(data: newData, encoding: .utf8)
-                                {
-                                    modifiedArgs = newString
-                                }
-                            }
-                        }
-
                         let output = try await executor.executeFunction(
                             name: toolCall.function.name,
-                            arguments: modifiedArgs)
+                            arguments: toolCall.function.arguments)
                         
                         if self.outputMode != .quiet {
                             // Parse output to show results nicely
@@ -636,8 +616,6 @@ struct OpenAIAgent {
                     print("\n\(summary)")
                 }
 
-                // Clean up session
-                await SessionManager.shared.removeSession(sessionId)
 
                 return AgentResult(
                     steps: steps,
@@ -661,8 +639,6 @@ struct OpenAIAgent {
             }
         }
 
-        // Clean up session
-        await SessionManager.shared.removeSession(sessionId)
 
         return AgentResult(
             steps: steps,

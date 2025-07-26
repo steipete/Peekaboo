@@ -7,7 +7,6 @@ import PeekabooCore
 @available(macOS 14.0, *)
 struct AgentExecutor {
     let verbose: Bool
-    let sessionManager = SessionManager.shared
 
     /// Execute a Peekaboo function and return JSON response
     func executeFunction(name: String, arguments: String) async throws -> String {
@@ -214,8 +213,16 @@ struct AgentExecutor {
             // Get click type
             let clickType: ClickType = (args["double_click"] as? Bool ?? false) ? .double : .single
             
-            // Get session ID
-            let sessionId = args["session_id"] as? String
+            // Get session ID - fall back to most recent if not provided
+            let providedSessionId = args["session_id"] as? String
+            let sessionId: String
+            if let provided = providedSessionId {
+                sessionId = provided
+            } else if let mostRecent = await services.sessions.getMostRecentSession() {
+                sessionId = mostRecent
+            } else {
+                throw AgentError.invalidArguments("No session available. Run 'see' command first to create a session.")
+            }
             
             // Perform the click
             try await services.automation.click(

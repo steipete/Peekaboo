@@ -185,7 +185,8 @@ final class PeekabooToolExecutor: ToolExecutor {
     }
     
     private func executeClick(args: [String: Any]) async throws -> String {
-        let sessionId = args["session_id"] as? String
+        let providedSessionId = args["session_id"] as? String
+        let sessionId = providedSessionId ?? await services.sessions.getMostRecentSession()
         let delay = args["delay"] as? Double
         
         await MainActor.run {
@@ -202,7 +203,7 @@ final class PeekabooToolExecutor: ToolExecutor {
         
         let clickType = ClickType.single // Default to single click
         
-        if let elementId = args["element_id"] as? String {
+        if let elementId = args["element_id"] as? String ?? args["element"] as? String {
             await MainActor.run {
                 logger.debug("Clicking on element: \(elementId)")
             }
@@ -1177,6 +1178,11 @@ final class PeekabooToolExecutor: ToolExecutor {
         - 'permissions': Check system permissions
         - 'move': Move mouse cursor to position
         
+        IMPORTANT NOTES:
+        - The 'list' command can show 'apps' (running applications) or 'windows' (for a specific app)
+        - Browser tabs are not separate windows in macOS accessibility APIs - they are UI elements within the browser window
+        - When asked about tabs, explain that you can see browser windows but tabs require UI inspection with 'see' command
+        
         When given a task:
         1. Use 'see' to understand the current UI state
         2. Use 'list' to discover running applications
@@ -1185,7 +1191,7 @@ final class PeekabooToolExecutor: ToolExecutor {
         5. Execute each action using the appropriate command
         6. Verify results when needed
         
-        Be precise with UI interactions and verify the current state before acting.
+        Be precise with UI interactions and verify the current state before acting. Provide direct, actionable responses without asking follow-up questions.
         """
     }
     
@@ -1206,8 +1212,9 @@ final class PeekabooToolExecutor: ToolExecutor {
         case "click":
             FunctionParameters(
                 properties: [
-                    "element_id": Property(type: "string", description: "Element ID from 'see' command"),
-                    "position": Property(type: "string", description: "x,y coordinates as alternative to element_id"),
+                    "element": Property(type: "string", description: "Element ID from 'see' command (e.g., 'B1', 'T2')"),
+                    "element_id": Property(type: "string", description: "Alternative name for element ID"),
+                    "position": Property(type: "string", description: "x,y coordinates as alternative to element"),
                     "delay": Property(type: "number", description: "Delay before click in seconds"),
                     "session_id": Property(type: "string", description: "Session ID for element lookup"),
                 ],

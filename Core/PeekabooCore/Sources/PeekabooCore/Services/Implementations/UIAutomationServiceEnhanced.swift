@@ -210,6 +210,8 @@ public extension UIAutomationService {
         
         // Try to extract better label for buttons by looking at children
         var enhancedLabel = label ?? title ?? value ?? computedName
+        var isTabElement = false
+        
         if elementType == .button && enhancedLabel == nil {
             // Look for static text children within the button
             if let children = element.children() {
@@ -224,6 +226,24 @@ public extension UIAutomationService {
                         }
                     }
                 }
+            }
+        }
+        
+        // Enhanced tab detection for browser applications
+        isTabElement = await detectBrowserTab(
+            element: element,
+            role: role,
+            title: title,
+            label: enhancedLabel,
+            attributes: &attributes
+        )
+        
+        // Update label and attributes for tab elements
+        if isTabElement {
+            attributes["elementCategory"] = "tab"
+            // Prefer title over other labels for tabs
+            if let tabTitle = title, !tabTitle.isEmpty {
+                enhancedLabel = tabTitle
             }
         }
         
@@ -287,6 +307,8 @@ public extension UIAutomationService {
         switch role {
         case "AXButton":
             return .button
+        case "AXRadioButton":
+            return .button  // Treat radio buttons as buttons for UI automation
         case "AXTextField", "AXTextArea":
             return .textField
         case "AXLink":
@@ -417,6 +439,184 @@ public extension UIAutomationService {
         }
         
         return warnings
+    }
+    
+    // MARK: - Browser Tab Detection
+    
+    /// Detect if element is a browser tab
+    @MainActor
+    private func detectBrowserTab(
+        element: Element,
+        role: String,
+        title: String?,
+        label: String?,
+        attributes: inout [String: String]
+    ) async -> Bool {
+        // Check if this is a button or radio button that could be a tab
+        guard role == "AXButton" || role == "AXRadioButton" else { return false }
+        
+        // Check if parent hierarchy suggests this is a tab
+        let isInTabGroup = await isElementInTabGroup(element)
+        
+        // Check for tab-like characteristics
+        let hasTabKeywords = hasTabIndicators(title: title, label: label)
+        
+        // Check for browser-specific patterns
+        let isBrowserTab = await isBrowserTabElement(element, title: title, label: label)
+        
+        let isTab = isInTabGroup || hasTabKeywords || isBrowserTab
+        
+        if isTab {
+            // Add additional tab-specific attributes
+            if let tabTitle = title, !tabTitle.isEmpty {
+                attributes["tabTitle"] = tabTitle
+            }
+            
+            // Check if this tab is selected/active
+            if let isSelected = element.value() as? Bool {
+                attributes["isSelected"] = String(isSelected)
+            }
+            
+            // Try to detect if it's closeable (has close button)
+            if await hasCloseButton(element) {
+                attributes["hasCloseButton"] = "true"
+            }
+            
+            // Add accessibility identifiers if available
+            if let identifier = element.identifier() {
+                attributes["accessibilityIdentifier"] = identifier
+            }
+        }
+        
+        return isTab
+    }
+    
+    /// Check if element is within a tab group structure
+    @MainActor
+    private func isElementInTabGroup(_ element: Element) async -> Bool {
+        var current: Element? = element.parent()
+        var depth = 0
+        
+        while let parent = current, depth < 10 { // Limit depth to avoid infinite loops
+            if let role = parent.role() {
+                // Look for tab-related parent roles
+                if role == "AXTabGroup" || role == "AXTabList" {
+                    return true
+                }
+                
+                // Browser-specific patterns
+                if let description = parent.descriptionText(),
+                   description.lowercased().contains("tab") {
+                    return true
+                }
+            }
+            
+            current = parent.parent()
+            depth += 1
+        }
+        
+        return false
+    }
+    
+    /// Check for tab indicator keywords in title or label
+    private func hasTabIndicators(title: String?, label: String?) -> Bool {
+        let allText = [title, label]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+        
+        // Common tab indicators (be careful not to match regular buttons)
+        let tabKeywords = [
+            "tab ", " tab", "new tab", "close tab",
+            "reload tab", "refresh tab", "pin tab"
+        ]
+        
+        return tabKeywords.contains { keyword in
+            allText.contains(keyword)
+        }
+    }
+    
+    /// Check for browser-specific tab patterns
+    @MainActor
+    private func isBrowserTabElement(_ element: Element, title: String?, label: String?) async -> Bool {
+        // Get app name to check if we're in a browser
+        guard let app = await getApplicationForElement(element) else { return false }
+        
+        let browserApps = ["Google Chrome", "Safari", "Firefox", "Microsoft Edge", "Opera", "Arc"]
+        guard browserApps.contains(where: { app.lowercased().contains($0.lowercased()) }) else {
+            return false
+        }
+        
+        // In browsers, tabs often have:
+        // 1. A title that's not a typical button label
+        // 2. Specific positioning in the UI (top area)
+        // 3. Small height but wider width
+        
+        if let position = element.position(),
+           let size = element.size() {
+            
+            // Tabs are typically in the upper part of the window
+            let isInUpperArea = position.y < 150
+            
+            // Tabs have a specific size ratio (wider than tall)
+            let aspectRatio = size.width / size.height
+            let hasTabAspectRatio = aspectRatio > 2.0 && aspectRatio < 10.0
+            
+            // Tabs have reasonable minimum dimensions
+            let hasReasonableSize = size.width > 50 && size.height > 20 && size.height < 60
+            
+            if isInUpperArea && hasTabAspectRatio && hasReasonableSize {
+                // Additional checks for title patterns
+                if let title = title, !title.isEmpty {
+                    // Tabs often have domain names or page titles
+                    let hasURL = title.contains(".") || title.contains("/")
+                    let isNotTypicalButton = !["OK", "Cancel", "Save", "Open", "Close", "Yes", "No"].contains(title)
+                    
+                    return hasURL || (isNotTypicalButton && title.count > 3)
+                }
+            }
+        }
+        
+        return false
+    }
+    
+    /// Check if element has a close button (indicating it's a closeable tab)
+    @MainActor
+    private func hasCloseButton(_ element: Element) async -> Bool {
+        guard let children = element.children() else { return false }
+        
+        for child in children {
+            if let role = child.role(), role == "AXButton" {
+                if let title = child.title()?.lowercased() {
+                    if title.contains("close") || title == "×" || title == "✕" {
+                        return true
+                    }
+                }
+                
+                // Check for small square buttons (typical close button)
+                if let size = child.size(),
+                   size.width < 30 && size.height < 30 && abs(size.width - size.height) < 10 {
+                    return true
+                }
+            }
+        }
+        
+        return false
+    }
+    
+    /// Get application name for an element
+    @MainActor
+    private func getApplicationForElement(_ element: Element) async -> String? {
+        // Walk up to find the application element
+        var current: Element? = element
+        
+        while let el = current {
+            if let role = el.role(), role == "AXApplication" {
+                return el.title()
+            }
+            current = el.parent()
+        }
+        
+        return nil
     }
 }
 
