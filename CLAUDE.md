@@ -220,11 +220,11 @@ The `peekaboo agent` command provides natural language automation capabilities t
 - **gpt-4.1**, **gpt-4.1-mini** - Latest models with 1M token context
 - **gpt-4o**, **gpt-4o-mini** - Multimodal models (128K context)
 
-### API Changes
-- OpenAI now expects 'input' instead of 'messages' parameter in API requests
-- Agent uses Chat Completions API (replaced Assistants API)
+### API Requirements
+- o3/o4 models require `max_completion_tokens` instead of `max_tokens`
+- Other models (gpt-4o, etc.) continue to use `max_tokens`
+- Agent uses Chat Completions API at `/v1/chat/completions`
 - Supports streaming responses and tool calls
-- Default reasoning effort: "medium" (configurable via AgentConfiguration)
 
 ### Configuration
 ```bash
