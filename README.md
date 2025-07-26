@@ -641,6 +641,8 @@ peekaboo "Take a screenshot to confirm the change"
 - `--max-steps <n>` - Limit the number of actions (default: 20)
 - `--model <model>` - Choose OpenAI model (default: gpt-4-turbo)
 - `--json-output` - Get structured JSON output
+- `--resume` - Resume the latest unfinished agent session
+- `--resume <session-id>` - Resume a specific session by ID
 
 ### Agent Capabilities
 
@@ -709,6 +711,56 @@ peekaboo agent --verbose "Find and click the login button"
 3. **Verify State** - The agent works best when it can see the current screen
 4. **Use Verbose Mode** - Add `--verbose` to understand what the agent is doing
 5. **Set Reasonable Limits** - Use `--max-steps` to prevent runaway automation
+
+### Resuming Agent Sessions
+
+The agent supports resuming interrupted or incomplete sessions, maintaining full conversation context:
+
+```bash
+# Start a complex task
+peekaboo agent "Help me write a document about automation"
+# Agent creates document, starts writing...
+# <Interrupted by Ctrl+C or error>
+
+# Resume the latest session with context
+peekaboo agent --resume "Continue where we left off"
+
+# Or resume a specific session
+peekaboo agent --resume session_abc123 "Add a conclusion section"
+
+# List available sessions
+peekaboo agent list-sessions
+
+# See session details
+peekaboo agent show-session --latest
+peekaboo agent show-session session_abc123
+```
+
+#### How Resume Works
+
+1. **Session Persistence** - Each agent run creates a session with a unique ID
+2. **Thread Continuity** - Uses OpenAI's thread persistence to maintain conversation history
+3. **Context Preservation** - The AI remembers all previous interactions in the session
+4. **Smart Recovery** - Can continue from any point, understanding what was already done
+
+#### Resume Examples
+
+```bash
+# Scenario 1: Continue an interrupted task
+peekaboo agent "Create a presentation about AI"
+# <Interrupted after creating first slide>
+peekaboo agent --resume "Add more slides about machine learning"
+
+# Scenario 2: Iterative refinement
+peekaboo agent "Fill out this form with test data"
+# <Agent completes task>
+peekaboo agent --resume "Actually, change the email to test@example.com"
+
+# Scenario 3: Debugging automation
+peekaboo agent --verbose "Login to the portal"
+# <Login fails>
+peekaboo agent --resume --verbose "Try clicking the other login button"
+```
 
 ### ⏸️ The `sleep` Tool
 
