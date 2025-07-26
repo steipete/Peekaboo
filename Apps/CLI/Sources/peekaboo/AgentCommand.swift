@@ -121,19 +121,19 @@ final class GhostAnimator {
 func iconForTool(_ toolName: String) -> String {
     switch toolName {
     case "see", "screenshot", "window_capture": return "👁"
-    case "click": return "🖱"
-    case "type": return "⌨️"
-    case "list_apps", "launch_app": return "📱"
+    case "click", "dialog_click": return "🖱"
+    case "type", "dialog_input": return "⌨️"
+    case "list_apps", "launch_app", "dock_launch": return "📱"
     case "list_windows", "focus_window", "resize_window": return "🪟"
     case "hotkey": return "⌨️"
     case "wait": return "⏱"
     case "scroll": return "📜"
-    case "find_element", "list_elements": return "🔍"
+    case "find_element", "list_elements", "focused": return "🔍"
     case "shell": return "💻"
-    case "menu": return "📋"
+    case "menu", "menu_click", "list_menus": return "📋"
     case "dialog": return "💬"
     case "analyze_screenshot": return "🤖"
-    case "list": return "📋"
+    case "list", "list_dock": return "📋"
     default: return "⚙️"
     }
 }
@@ -591,8 +591,17 @@ final class CompactEventDelegate: AgentEventDelegate {
             if outputMode != .quiet {
                 // Stop the ghost animation when a tool starts
                 ghostAnimator.stop()
-                print() // Move to a new line after the animation
                 isThinking = false
+                
+                // Only print newline if we haven't received content yet
+                if !hasReceivedContent {
+                    // No assistant message was shown, just the ghost animation
+                    // No need for extra newline
+                } else {
+                    // Assistant message was shown, add newline before tool output
+                    print()
+                }
+                
                 hasReceivedContent = false  // Reset for next thinking phase
                 
                 let icon = iconForTool(name)
@@ -643,8 +652,6 @@ final class CompactEventDelegate: AgentEventDelegate {
                 // Only stop animation if it's not reasoning content
                 if !isReasoningContent && !hasReceivedContent && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     ghostAnimator.stop()
-                    // Print a newline to move to the next line after the animation
-                    print() // This ensures we start on a fresh line
                     hasReceivedContent = true
                 }
                 
@@ -715,12 +722,9 @@ final class CompactEventDelegate: AgentEventDelegate {
                 if let output = json["output"] as? String, !output.isEmpty {
                     print("   \(TerminalColor.gray)Output: \(output.trimmingCharacters(in: .whitespacesAndNewlines))\(TerminalColor.reset)")
                 }
-                // Show error message
-                print("   \(TerminalColor.red)Error: \(error.trimmingCharacters(in: .whitespacesAndNewlines))\(TerminalColor.reset)")
-                // Show exit code
-                if let exitCode = json["exitCode"] as? Int {
-                    print("   \(TerminalColor.red)Exit code: \(exitCode)\(TerminalColor.reset)")
-                }
+                // Show error message with exit code on same line
+                let exitCode = json["exitCode"] as? Int ?? 0
+                print("   \(TerminalColor.red)Error (Exit code: \(exitCode)): \(error.trimmingCharacters(in: .whitespacesAndNewlines))\(TerminalColor.reset)")
             default:
                 // For other tools, just show the error
                 print("   \(TerminalColor.red)\(error)\(TerminalColor.reset)")
@@ -747,14 +751,16 @@ final class CompactEventDelegate: AgentEventDelegate {
         case "screenshot":
             if let mode = args["mode"] as? String {
                 return mode == "window" ? "active window" : mode
+            } else if let app = args["app"] as? String {
+                return app
             }
-            return ""
+            return "full screen"
             
         case "window_capture":
             if let app = args["appName"] as? String {
                 return app
             }
-            return ""
+            return "active window"
             
         case "click":
             if let target = args["target"] as? String {
@@ -782,23 +788,35 @@ final class CompactEventDelegate: AgentEventDelegate {
             return ""
             
         case "scroll":
-            if let direction = args["direction"] as? String,
-               let amount = args["amount"] as? Int {
-                return "\(direction) \(amount)px"
+            if let direction = args["direction"] as? String {
+                if let amount = args["amount"] as? Int {
+                    return "\(direction) \(amount)px"
+                }
+                return direction
             }
-            return ""
+            return "down"
             
-        case "focus_window", "resize_window":
+        case "focus_window":
             if let app = args["appName"] as? String {
                 return app
             }
-            return ""
+            return "active window"
+            
+        case "resize_window":
+            var parts: [String] = []
+            if let app = args["appName"] as? String {
+                parts.append(app)
+            }
+            if let width = args["width"], let height = args["height"] {
+                parts.append("to \(width)x\(height)")
+            }
+            return parts.isEmpty ? "active window" : parts.joined(separator: " ")
             
         case "launch_app":
             if let app = args["appName"] as? String {
                 return app
             }
-            return ""
+            return "application"
             
         case "hotkey":
             if let keys = args["keys"] as? String {
@@ -815,14 +833,14 @@ final class CompactEventDelegate: AgentEventDelegate {
                     .replacingOccurrences(of: "+", with: "")
                 return formatted
             }
-            return ""
+            return "keyboard shortcut"
             
         case "shell":
             if let command = args["command"] as? String {
                 // Show full command in compact mode
                 return "'\(command)'"
             }
-            return ""
+            return "command"
             
         case "list":
             if let target = args["target"] as? String {
@@ -850,7 +868,66 @@ final class CompactEventDelegate: AgentEventDelegate {
                 }
                 return action
             }
-            return ""
+            return "menu action"
+            
+        case "menu_click":
+            if let menuPath = args["menuPath"] as? String {
+                return "'\(menuPath)'"
+            }
+            return "menu item"
+            
+        case "list_windows":
+            if let app = args["appName"] as? String {
+                return "for \(app)"
+            }
+            return "all windows"
+            
+        case "find_element":
+            if let text = args["text"] as? String {
+                return "'\(text)'"
+            } else if let elementId = args["elementId"] as? String {
+                return "element \(elementId)"
+            }
+            return "UI element"
+            
+        case "list_apps":
+            return "running applications"
+            
+        case "list_elements":
+            if let type = args["type"] as? String {
+                return "\(type) elements"
+            }
+            return "UI elements"
+            
+        case "focused":
+            return "current element"
+            
+        case "list_menus":
+            if let app = args["app"] as? String {
+                return "for \(app)"
+            }
+            return "menu structure"
+            
+        case "dock_launch":
+            if let app = args["appName"] as? String {
+                return app
+            }
+            return "dock item"
+            
+        case "list_dock":
+            return "dock items"
+            
+        case "dialog_click":
+            if let button = args["button"] as? String {
+                return "'\(button)'"
+            }
+            return "dialog button"
+            
+        case "dialog_input":
+            if let text = args["text"] as? String {
+                return "'\(text)'"
+            }
+            return "text input"
             
         default:
             return ""
