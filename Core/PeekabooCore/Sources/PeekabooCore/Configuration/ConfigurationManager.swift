@@ -98,7 +98,7 @@ public final class ConfigurationManager: @unchecked Sendable {
                     let encoder = JSONEncoder()
                     encoder.outputFormatting = [.prettyPrinted]
                     let data = try encoder.encode(updatedConfig)
-                    try data.write(to: URL(fileURLWithPath: Self.configPath))
+                    try data.write(to: URL(fileURLWithPath: Self.configPath), options: .atomic)
                 }
             }
             

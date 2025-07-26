@@ -269,8 +269,13 @@ public final class SessionManager: SessionManagerProtocol {
     // MARK: - Private Helpers
     
     private func getSessionStorageURL() -> URL {
-        FileManager.default.homeDirectoryForCurrentUser
+        let url = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".peekaboo/session")
+        
+        // Ensure the directory exists
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        
+        return url
     }
     
     private func getSessionPath(for sessionId: String) -> URL {
@@ -445,20 +450,14 @@ private actor SessionStorageActor {
     }
     
     func saveSession(sessionId: String, data: SessionData, at sessionPath: URL) throws {
+        // Ensure the session directory exists
+        try FileManager.default.createDirectory(at: sessionPath, withIntermediateDirectories: true)
+        
         let sessionFile = sessionPath.appendingPathComponent("map.json")
         let jsonData = try encoder.encode(data)
         
-        // Write atomically
-        let tempFile = sessionFile.appendingPathExtension("tmp")
-        try jsonData.write(to: tempFile)
-        
-        _ = try FileManager.default.replaceItem(
-            at: sessionFile,
-            withItemAt: tempFile,
-            backupItemName: nil,
-            options: [],
-            resultingItemURL: nil
-        )
+        // Use built-in atomic write option
+        try jsonData.write(to: sessionFile, options: .atomic)
     }
     
     func loadSession(sessionId: String, from sessionPath: URL) -> SessionData? {
