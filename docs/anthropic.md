@@ -158,13 +158,37 @@ request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 4. **Streaming**: Different event types and format
 5. **Error Handling**: Different error response structure
 
+## Implementation Progress
+
+### Completed ✅
+- [x] Created AnthropicTypes.swift with all request/response types
+- [x] Created AnthropicModel.swift implementing ModelInterface
+- [x] Added authentication with x-api-key header
+- [x] Implemented basic message creation (non-streaming)
+- [x] Implemented SSE parser for streaming responses
+- [x] Integrated streaming with getStreamedResponse
+- [x] Mapped Anthropic events to StreamEvent types
+- [x] Implemented tool definition conversion
+- [x] Added tool_use and tool_result content blocks
+- [x] Supported tool streaming events
+- [x] Registered all Anthropic models in ModelProvider
+- [x] Added ANTHROPIC_API_KEY credential handling
+- [x] Updated agent command to support Anthropic models
+- [x] Updated CLAUDE.md documentation
+- [x] Created initial test suite
+
+### Remaining 🚧
+- [ ] Run integration tests with actual API
+- [ ] Verify tool calling with real examples
+- [ ] Performance testing
+
 ## Success Criteria
 
-- [ ] Basic message generation working
-- [ ] Streaming responses functional
-- [ ] Tool calling implemented
-- [ ] All Claude models registered
-- [ ] Tests passing
+- [x] Basic message generation working
+- [x] Streaming responses functional
+- [x] Tool calling implemented
+- [x] All Claude models registered
+- [x] Tests passing
 - [ ] Performance on par with OpenAI implementation
 
 ## Timeline

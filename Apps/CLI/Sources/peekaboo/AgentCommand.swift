@@ -181,7 +181,7 @@ struct AgentCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Maximum number of steps the agent can take")
     var maxSteps: Int?
 
-    @Option(name: .long, help: "OpenAI model to use")
+    @Option(name: .long, help: "AI model to use (e.g., o3, claude-3-opus-latest)")
     var model: String?
 
     @Flag(name: .long, help: "Output in JSON format")
@@ -366,6 +366,11 @@ struct AgentCommand: AsyncParsableCommand {
             // Handle result display
             displayResult(result)
             
+            // Show API key info in verbose mode
+            if outputMode == .verbose, let apiKey = result.metadata.maskedApiKey {
+                print("\(TerminalColor.gray)API Key: \(apiKey)\(TerminalColor.reset)")
+            }
+            
             // Update terminal title to show completion
             updateTerminalTitle("Completed: \(task.prefix(50))")
         } catch let error as DecodingError {
@@ -374,7 +379,8 @@ struct AgentCommand: AsyncParsableCommand {
         } catch {
             // Extract the actual error message from NSError if available
             var errorMessage = error.localizedDescription
-            if let nsError = error as? NSError,
+            let nsError = error as NSError
+            if
                let detailedMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
                 errorMessage = detailedMessage
             }

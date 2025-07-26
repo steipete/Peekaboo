@@ -45,17 +45,24 @@ public actor ModelProvider {
             return cached
         }
         
-        // Try to create model
-        guard let factory = modelFactories[modelName] else {
-            throw ModelError.modelNotFound(modelName)
+        // Try exact match first
+        if let factory = modelFactories[modelName] {
+            let model = try factory()
+            modelCache[modelName] = model
+            return model
         }
         
-        let model = try factory()
+        // Try lenient matching for shortened names
+        if let resolvedName = resolveLenientModelName(modelName),
+           let factory = modelFactories[resolvedName] {
+            let model = try factory()
+            // Cache with both original and resolved names
+            modelCache[modelName] = model
+            modelCache[resolvedName] = model
+            return model
+        }
         
-        // Cache the model
-        modelCache[modelName] = model
-        
-        return model
+        throw ModelError.modelNotFound(modelName)
     }
     
     /// List all registered models
@@ -80,9 +87,60 @@ public actor ModelProvider {
         // Register OpenAI models
         registerOpenAIModels()
         
+        // Register Anthropic models
+        registerAnthropicModels()
+        
         // Future: Register other providers
-        // registerAnthropicModels()
         // registerOllamaModels()
+    }
+    
+    /// Resolve lenient model names to their full versions
+    private func resolveLenientModelName(_ modelName: String) -> String? {
+        let lowercased = modelName.lowercased()
+        
+        // Claude model shortcuts
+        if lowercased == "claude-4-opus" || lowercased == "claude-opus-4" || lowercased == "claude-opus" {
+            return "claude-opus-4-20250514"
+        }
+        if lowercased == "claude-4-sonnet" || lowercased == "claude-sonnet-4" || lowercased == "claude-sonnet" {
+            return "claude-sonnet-4-20250514"
+        }
+        if lowercased == "claude-3.7-sonnet" || lowercased == "claude-3-7-sonnet" || lowercased == "claude-sonnet-3.7" {
+            return "claude-3-7-sonnet" // Specific model ID TBD
+        }
+        if lowercased == "claude-3.5-sonnet" || lowercased == "claude-3-5-sonnet" || lowercased == "claude-sonnet-3.5" {
+            return "claude-3-5-sonnet"
+        }
+        if lowercased == "claude-3.5-haiku" || lowercased == "claude-3-5-haiku" || lowercased == "claude-haiku-3.5" {
+            return "claude-3-5-haiku"
+        }
+        if lowercased == "claude-3.5-opus" || lowercased == "claude-3-5-opus" || lowercased == "claude-opus-3.5" {
+            return "claude-3-5-opus"
+        }
+        if lowercased == "claude" {
+            return "claude-opus-4-20250514" // Default to Claude Opus 4
+        }
+        
+        // OpenAI model shortcuts
+        if lowercased == "gpt4" || lowercased == "gpt-4" {
+            return "gpt-4.1"
+        }
+        if lowercased == "gpt4-mini" || lowercased == "gpt-4-mini" {
+            return "gpt-4.1-mini"
+        }
+        if lowercased == "gpt" {
+            return "gpt-4.1" // Default to latest GPT
+        }
+        
+        // Check if it's a partial match for any registered model
+        let registeredModels = Array(modelFactories.keys)
+        for model in registeredModels {
+            if model.lowercased().contains(lowercased) || lowercased.contains(model.lowercased()) {
+                return model
+            }
+        }
+        
+        return nil
     }
     
     private func registerOpenAIModels() {
@@ -131,6 +189,58 @@ public actor ModelProvider {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.hasPrefix("OPENAI_API_KEY=") {
                     return String(trimmed.dropFirst("OPENAI_API_KEY=".count))
+                }
+            }
+        }
+        
+        return nil
+    }
+    
+    private func registerAnthropicModels() {
+        // Map of model names to their actual IDs
+        let modelMappings: [String: String] = [
+            // Claude 4 series (Latest - May 2025)
+            "claude-opus-4-20250514": "claude-opus-4-20250514",
+            "claude-opus-4-20250514-thinking": "claude-opus-4-20250514-thinking",
+            "claude-sonnet-4-20250514": "claude-sonnet-4-20250514",
+            "claude-sonnet-4-20250514-thinking": "claude-sonnet-4-20250514-thinking",
+            
+            // Claude 3.7 series (February 2025)
+            "claude-3-7-sonnet": "claude-3-7-sonnet", // Actual model ID TBD
+            
+            // Claude 3.5 series (Still available)
+            "claude-3-5-haiku": "claude-3-5-haiku",
+            "claude-3-5-sonnet": "claude-3-5-sonnet",
+            "claude-3-5-opus": "claude-3-5-opus"
+        ]
+        
+        for (alias, actualModelId) in modelMappings {
+            register(modelName: alias) {
+                guard let apiKey = self.getAnthropicAPIKey() else {
+                    throw ModelError.authenticationFailed
+                }
+                
+                return AnthropicModel(apiKey: apiKey, modelName: actualModelId)
+            }
+        }
+    }
+    
+    private func getAnthropicAPIKey() -> String? {
+        // Check environment variable
+        if let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] {
+            return apiKey
+        }
+        
+        // Check credentials file
+        let credentialsPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".peekaboo")
+            .appendingPathComponent("credentials")
+        
+        if let credentials = try? String(contentsOf: credentialsPath) {
+            for line in credentials.components(separatedBy: .newlines) {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("ANTHROPIC_API_KEY=") {
+                    return String(trimmed.dropFirst("ANTHROPIC_API_KEY=".count))
                 }
             }
         }
@@ -218,15 +328,44 @@ extension ModelProvider {
         }
     }
     
+    /// Configure Anthropic models with specific settings
+    public func configureAnthropic(_ config: ModelProviderConfig.Anthropic) {
+        // Map of model names to their actual IDs
+        let modelMappings: [String: String] = [
+            // Claude 4 series (Latest - May 2025)
+            "claude-opus-4-20250514": "claude-opus-4-20250514",
+            "claude-opus-4-20250514-thinking": "claude-opus-4-20250514-thinking",
+            "claude-sonnet-4-20250514": "claude-sonnet-4-20250514",
+            "claude-sonnet-4-20250514-thinking": "claude-sonnet-4-20250514-thinking",
+            
+            // Claude 3.7 series (February 2025)
+            "claude-3-7-sonnet": "claude-3-7-sonnet", // Actual model ID TBD
+            
+            // Claude 3.5 series (Still available)
+            "claude-3-5-haiku": "claude-3-5-haiku",
+            "claude-3-5-sonnet": "claude-3-5-sonnet",
+            "claude-3-5-opus": "claude-3-5-opus"
+        ]
+        
+        for (alias, actualModelId) in modelMappings {
+            register(modelName: alias) {
+                AnthropicModel(
+                    apiKey: config.apiKey,
+                    baseURL: config.baseURL ?? URL(string: "https://api.anthropic.com/v1")!,
+                    modelName: actualModelId
+                )
+            }
+        }
+    }
+    
     /// Quick setup with API key from environment
     public func setupFromEnvironment() async throws {
         if let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
             configureOpenAI(ModelProviderConfig.OpenAI(apiKey: apiKey))
         }
         
-        // Future: Add other providers
-        // if let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] {
-        //     configureAnthropic(ModelProviderConfig.Anthropic(apiKey: apiKey))
-        // }
+        if let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] {
+            configureAnthropic(ModelProviderConfig.Anthropic(apiKey: apiKey))
+        }
     }
 }
