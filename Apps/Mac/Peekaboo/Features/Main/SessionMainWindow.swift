@@ -354,7 +354,7 @@ struct SessionChatView: View {
                             hasConnectionError = false
                             
                             // Retry the last failed task if available
-                            if true /* TODO: Check current task */ {
+                            if !agent.currentTask.isEmpty {
                                 let lastTask = agent.currentTask
                                 Task {
                                     isProcessing = true
@@ -570,7 +570,7 @@ struct SessionChatHeader: View {
                         }
                     }
                     
-                    if isActive && agent.isProcessing && true /* TODO: Check current task */ {
+                    if isActive && agent.isProcessing && !agent.currentTask.isEmpty {
                         Text(agent.currentTask)
                             .font(.caption)
                             .foregroundColor(.secondary)
