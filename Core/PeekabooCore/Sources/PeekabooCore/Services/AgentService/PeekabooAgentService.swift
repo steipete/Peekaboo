@@ -591,6 +591,74 @@ extension PeekabooAgentService {
     public func cleanupSessions(olderThan date: Date) async throws {
         try await sessionManager.cleanupSessions(olderThan: date)
     }
+    
+    /// Execute a task with enhanced options
+    public func executeTask(
+        _ task: String,
+        sessionId: String? = nil,
+        modelName: String? = nil,
+        eventDelegate: AgentEventDelegate? = nil
+    ) async throws -> AgentExecutionResult {
+        let effectiveModelName = modelName ?? defaultModelName
+        let agent = createAutomationAgent(modelName: effectiveModelName)
+        let effectiveSessionId = sessionId ?? UUID().uuidString
+        
+        // Execute with streaming if we have an event delegate
+        if let eventDelegate = eventDelegate {
+            // SAFETY: We ensure that the delegate is only accessed on MainActor
+            // This is a legacy API pattern that predates Swift's strict concurrency
+            let unsafeDelegate = UnsafeTransfer(eventDelegate)
+            
+            // Create event stream infrastructure
+            let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
+            
+            // Start processing events on MainActor
+            let eventTask = Task { @MainActor in
+                let delegate = unsafeDelegate.wrappedValue
+                for await event in eventStream {
+                    delegate.agentDidEmitEvent(event)
+                }
+            }
+            
+            defer {
+                eventContinuation.finish()
+                eventTask.cancel()
+            }
+            
+            // Send start event
+            eventContinuation.yield(.started(task: task))
+            
+            // Run the agent with streaming
+            let result = try await AgentRunner.runStreaming(
+                agent: agent,
+                input: task,
+                context: services,
+                sessionId: effectiveSessionId
+            ) { chunk in
+                // Only emit assistant message events for actual text content
+                // Tool call events are handled separately
+                if !chunk.isEmpty {
+                    eventContinuation.yield(.assistantMessage(content: chunk))
+                }
+            }
+            
+            // Note: Tool call events are emitted directly from the agent runner
+            // through the event stream infrastructure
+            
+            // Send completion event
+            eventContinuation.yield(.completed(summary: result.content))
+            
+            return result
+        } else {
+            // Execute without streaming
+            return try await AgentRunner.run(
+                agent: agent,
+                input: task,
+                context: services,
+                sessionId: effectiveSessionId
+            )
+        }
+    }
 }
 
 

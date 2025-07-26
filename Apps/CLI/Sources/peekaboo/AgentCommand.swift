@@ -453,6 +453,10 @@ final class CompactEventDelegate: AgentEventDelegate {
         case .assistantMessage(let content):
             if outputMode == .verbose {
                 print("\n💭 Assistant: \(content)")
+            } else if outputMode == .compact {
+                // In compact mode, show streaming text directly
+                print(content, terminator: "")
+                fflush(stdout)
             }
             
         case .error(let message):

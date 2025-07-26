@@ -99,11 +99,7 @@ public final class OpenAIModel: ModelInterface {
                     var currentToolCalls: [String: PartialToolCall] = [:]
                     var toolCallIndexMap: [Int: String] = [:]  // Track tool call IDs by index
                     
-                    var lineCount = 0
                     for try await line in bytes.lines {
-                        lineCount += 1
-                        print("DEBUG: Stream line \(lineCount): \(line)")
-                        
                         // Handle SSE format
                         if line.hasPrefix("data: ") {
                             let data = String(line.dropFirst(6))
