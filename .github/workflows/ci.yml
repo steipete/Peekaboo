@@ -14,15 +14,17 @@ jobs:
       matrix:
         node-version: [20.x, 22.x]
     
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
-    
     steps:
     - uses: actions/checkout@v4
     
     - name: Set up Xcode
       run: |
-        sudo xcode-select -s $DEVELOPER_DIR
+        # List available Xcode versions
+        ls -la /Applications | grep Xcode || true
+        # Use the latest available Xcode
+        LATEST_XCODE=$(ls /Applications | grep Xcode | sort -V | tail -1)
+        echo "Found Xcode: $LATEST_XCODE"
+        sudo xcode-select -s /Applications/$LATEST_XCODE/Contents/Developer
         xcodebuild -version
         swift --version
     
@@ -80,15 +82,17 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 30
     
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
-    
     steps:
     - uses: actions/checkout@v4
     
     - name: Set up Xcode
       run: |
-        sudo xcode-select -s $DEVELOPER_DIR
+        # List available Xcode versions
+        ls -la /Applications | grep Xcode || true
+        # Use the latest available Xcode
+        LATEST_XCODE=$(ls /Applications | grep Xcode | sort -V | tail -1)
+        echo "Found Xcode: $LATEST_XCODE"
+        sudo xcode-select -s /Applications/$LATEST_XCODE/Contents/Developer
         xcodebuild -version
         swift --version
     
