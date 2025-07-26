@@ -315,7 +315,7 @@ public final class OpenAIModel: ModelInterface {
         // Create reasoning parameter for o3 models when using Responses API
         let reasoning = isO3Model ? OpenAIReasoning(
             effort: reasoningEffort ?? AgentConfiguration.o3ReasoningEffort,
-            summary: "concise"  // Request concise reasoning summaries
+            summary: "detailed"  // Request extensive reasoning summaries
         ) : nil
         
         return OpenAIChatCompletionRequest(

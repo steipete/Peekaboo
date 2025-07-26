@@ -324,7 +324,7 @@ extension StreamEvent {
     /// Check if this is a final event
     public var isFinal: Bool {
         switch self {
-        case .responseCompleted, .error:
+        case .responseCompleted, .error, .reasoningSummaryCompleted:
             return true
         default:
             return false
@@ -336,6 +336,10 @@ extension StreamEvent {
         switch self {
         case .textDelta(let delta):
             return delta.delta
+        case .reasoningSummaryDelta(let delta):
+            return delta.delta
+        case .reasoningSummaryCompleted(let completed):
+            return completed.summary
         case .error(let error):
             return error.error.message
         default:

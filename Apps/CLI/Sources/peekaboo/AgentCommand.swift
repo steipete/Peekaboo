@@ -48,7 +48,81 @@ enum TerminalColor {
     static let bgBlue = "\u{001B}[44m"
     static let bgGreen = "\u{001B}[42m"
     static let bgYellow = "\u{001B}[43m"
+    
+    // Cursor control
+    static let clearLine = "\u{001B}[2K"
+    static let moveToStart = "\r"
     static let bgRed = "\u{001B}[41m"
+}
+
+/// Ghost animator for showing thinking/syncing state
+@available(macOS 14.0, *)
+final class GhostAnimator {
+    private var animationTask: Task<Void, Never>?
+    private let frames: [String]
+    private let message: String
+    
+    init() {
+        // Create ghost animation frames with various ghost states
+        self.frames = [
+            "👻",
+            "👻 .",
+            "👻 . .",
+            "👻 . . .",
+            "👻 . . .",
+            "💭 . . .",
+            "💭 . .",
+            "💭 .",
+            "💭",
+            "🌀",
+            "🌀 .",
+            "🌀 . .",
+            "🌀 . . .",
+            "✨ . . .",
+            "✨ . .",
+            "✨ .",
+            "✨",
+            "👻",
+            "👻 ~",
+            "👻 ~~",
+            "👻 ~~~",
+            "👻 ~~",
+            "👻 ~"
+        ]
+        self.message = "Thinking"
+    }
+    
+    func start() {
+        stop() // Ensure no previous animation is running
+        
+        animationTask = Task { [weak self] in
+            guard let self = self else { return }
+            var frameIndex = 0
+            
+            while !Task.isCancelled {
+                let frame = self.frames[frameIndex % self.frames.count]
+                let output = "\(TerminalColor.moveToStart)\(TerminalColor.clearLine)\(TerminalColor.cyan)\(frame) \(self.message)...\(TerminalColor.reset)"
+                print(output, terminator: "")
+                fflush(stdout)
+                
+                frameIndex += 1
+                
+                do {
+                    try await Task.sleep(nanoseconds: 150_000_000) // 150ms per frame
+                } catch {
+                    break
+                }
+            }
+        }
+    }
+    
+    func stop() {
+        animationTask?.cancel()
+        animationTask = nil
+        // Clear the line
+        print("\(TerminalColor.moveToStart)\(TerminalColor.clearLine)", terminator: "")
+        fflush(stdout)
+    }
 }
 
 /// Get icon for tool name in compact mode
@@ -461,6 +535,9 @@ final class CompactEventDelegate: AgentEventDelegate {
     let outputMode: OutputMode
     let jsonOutput: Bool
     private var currentTool: String?
+    private let ghostAnimator = GhostAnimator()
+    private var hasReceivedContent = false
+    private var isThinking = true
     
     init(outputMode: OutputMode, jsonOutput: Bool) {
         self.outputMode = outputMode
@@ -474,13 +551,18 @@ final class CompactEventDelegate: AgentEventDelegate {
         case .started(let task):
             if outputMode == .verbose {
                 print("🚀 Starting: \(task)")
+            } else if outputMode == .compact {
+                // Start the ghost animation when agent starts thinking
+                ghostAnimator.start()
             }
             
         case .toolCallStarted(let name, let arguments):
             currentTool = name
             if outputMode != .quiet {
-                // Clear any thinking message
-                print("\r\(String(repeating: " ", count: 80))\r", terminator: "")
+                // Stop the ghost animation when a tool starts
+                ghostAnimator.stop()
+                isThinking = false
+                hasReceivedContent = false  // Reset for next thinking phase
                 
                 let icon = iconForTool(name)
                 print("\(TerminalColor.blue)\(icon) \(name)\(TerminalColor.reset)", terminator: "")
@@ -518,20 +600,28 @@ final class CompactEventDelegate: AgentEventDelegate {
                 }
             }
             currentTool = nil
+            isThinking = true  // Agent is thinking again after tool completion
             
         case .assistantMessage(let content):
             if outputMode == .verbose {
                 print("\n💭 Assistant: \(content)")
             } else if outputMode == .compact {
+                // Stop ghost animation when we receive content
+                if !hasReceivedContent && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    ghostAnimator.stop()
+                    hasReceivedContent = true
+                }
                 // In compact mode, show streaming text directly
                 print(content, terminator: "")
                 fflush(stdout)
             }
             
         case .error(let message):
+            ghostAnimator.stop() // Stop animation on error
             print("\n\(TerminalColor.red)❌ Error: \(message)\(TerminalColor.reset)")
             
         case .completed(_):
+            ghostAnimator.stop() // Ensure animation is stopped
             // Final summary is handled by the main execution flow
             break
         }

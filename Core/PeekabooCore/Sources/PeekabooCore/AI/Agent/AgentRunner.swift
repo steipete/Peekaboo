@@ -300,6 +300,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             var toolCalls: [ToolCallItem] = []
             var pendingToolCalls: [String: PartialToolCall] = [:]
             var usage: Usage?
+            var reasoningSummary = ""
             
             for try await event in eventStream {
                 switch event {
@@ -328,6 +329,20 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                         }
                     } else {
                         aiDebugPrint("DEBUG: Tool call completed but no pending call found: \(completed.id)")
+                    }
+                    
+                case .reasoningSummaryDelta(let delta):
+                    reasoningSummary += delta.delta
+                    aiDebugPrint("DEBUG: Reasoning summary delta: \(delta.delta)")
+                    
+                case .reasoningSummaryCompleted(let completed):
+                    reasoningSummary = completed.summary
+                    aiDebugPrint("DEBUG: Reasoning summary completed: \(completed.summary)")
+                    // Send reasoning summary to user with special formatting
+                    if !reasoningSummary.isEmpty {
+                        let formattedReasoning = "\n💭 Thinking: \(reasoningSummary)\n"
+                        await streamHandler(formattedReasoning)
+                        allContent += formattedReasoning
                     }
                     
                 case .responseCompleted(let completed):

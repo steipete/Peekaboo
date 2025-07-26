@@ -320,7 +320,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 ],
                 required: []
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let mode: String = input.value(for: "mode") ?? "frontmost"
                 let appName: String? = input.value(for: "app")
                 let analyzePrompt: String? = input.value(for: "analyze")
@@ -466,7 +467,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 ],
                 required: ["mode"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let mode: String = input.value(for: "mode") ?? "screen"
                 let _: String? = input.value(for: "path")
                 let displayIndex: Int? = input.value(for: "displayIndex")
@@ -514,7 +516,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 ],
                 required: ["target"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let target: String = input.value(for: "target") ?? ""
                 let clickType: String = input.value(for: "clickType") ?? "single"
                 let sessionId: String? = input.value(for: "sessionId")
@@ -602,7 +605,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 ],
                 required: ["text"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let text: String = input.value(for: "text") ?? ""
                 let delay: Int = input.value(for: "delay") ?? 20
                 
@@ -696,7 +700,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 ],
                 required: []
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let appName: String? = input.value(for: "appName")
                 
                 let windows: [ServiceWindowInfo]
@@ -753,7 +758,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 ],
                 required: []
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let text: String? = input.value(for: "text")
                 let elementType: String = input.value(for: "elementType") ?? "any"
                 let sessionId: String = input.value(for: "sessionId") ?? UUID().uuidString
@@ -1203,7 +1209,8 @@ extension PeekabooAgentService {
                 ],
                 required: ["appName"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let appName: String = input.value(for: "appName") ?? ""
                 let windowIndex: Int? = input.value(for: "windowIndex")
                 
@@ -1295,7 +1302,8 @@ extension PeekabooAgentService {
                 ],
                 required: ["direction", "amount"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let direction: String = input.value(for: "direction") ?? "down"
                 let amount: Int = input.value(for: "amount") ?? 100
                 let target: String? = input.value(for: "target")
@@ -1347,7 +1355,8 @@ extension PeekabooAgentService {
                 ],
                 required: ["keys"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let keys: String = input.value(for: "keys") ?? ""
                 let holdDuration: Int = input.value(for: "holdDuration") ?? 100
                 
@@ -1434,7 +1443,8 @@ extension PeekabooAgentService {
                 ],
                 required: ["appName"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let appName: String = input.value(for: "appName") ?? ""
                 let windowTitle: String? = input.value(for: "windowTitle")
                 
@@ -1518,7 +1528,8 @@ extension PeekabooAgentService {
                 ],
                 required: ["appName", "width", "height"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let appName: String = input.value(for: "appName") ?? ""
                 let width: Double = input.value(for: "width") ?? 800
                 let height: Double = input.value(for: "height") ?? 600
@@ -1629,7 +1640,8 @@ extension PeekabooAgentService {
                 ],
                 required: ["appName"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let appName: String = input.value(for: "appName") ?? ""
                 
                 do {
@@ -1698,7 +1710,8 @@ extension PeekabooAgentService {
                 ],
                 required: []
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let sessionId: String = input.value(for: "sessionId") ?? UUID().uuidString
                 let elementType: String = input.value(for: "elementType") ?? "all"
                 
@@ -1760,7 +1773,8 @@ extension PeekabooAgentService {
                 ],
                 required: ["command"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let command: String = input.value(for: "command") ?? ""
                 let workingDir: String? = input.value(for: "workingDirectory")
                 
@@ -1851,7 +1865,8 @@ extension PeekabooAgentService {
                 ],
                 required: ["menuPath"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let appName: String? = input.value(for: "appName")
                 let menuPath: String = input.value(for: "menuPath") ?? ""
                 
@@ -1943,7 +1958,8 @@ extension PeekabooAgentService {
                 ],
                 required: []
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let appName: String? = input.value(for: "appName")
                 
                 do {
@@ -1991,7 +2007,8 @@ extension PeekabooAgentService {
                 ],
                 required: ["appName"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let appName: String = input.value(for: "appName") ?? ""
                 
                 do {
@@ -2023,7 +2040,8 @@ extension PeekabooAgentService {
                 ],
                 required: []
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let includeAll: Bool = input.value(for: "includeAll") ?? false
                 
                 do {
@@ -2070,7 +2088,8 @@ extension PeekabooAgentService {
                 ],
                 required: ["buttonText"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let buttonText: String = input.value(for: "buttonText") ?? ""
                 let windowTitle: String? = input.value(for: "windowTitle")
                 
@@ -2163,7 +2182,8 @@ extension PeekabooAgentService {
                 ],
                 required: ["text"]
             ),
-            execute: { input, services in
+            execute: { [weak self] input, services in
+                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
                 let text: String = input.value(for: "text") ?? ""
                 let fieldIdentifier: String? = input.value(for: "fieldIdentifier")
                 let clearExisting: Bool = input.value(for: "clearExisting") ?? true
