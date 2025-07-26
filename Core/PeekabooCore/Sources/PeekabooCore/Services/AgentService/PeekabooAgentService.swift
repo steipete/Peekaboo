@@ -138,12 +138,12 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             tools: createPeekabooTools(),
             modelSettings: ModelSettings(
                 modelName: modelName,
-                temperature: modelName.hasPrefix("o3") ? nil : nil,  // o3 doesn't support temperature
-                maxTokens: modelName.hasPrefix("o3") ? 65536 : 4096,  // o3 needs more tokens for reasoning
+                temperature: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? nil : nil,  // o3 doesn't support temperature
+                maxTokens: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? AgentConfiguration.o3MaxTokens : AgentConfiguration.defaultMaxTokens,
                 toolChoice: .auto,  // Let model decide when to use tools
-                additionalParameters: modelName.hasPrefix("o3") ? [
-                    "reasoning_effort": AnyCodable("high"),  // Maximum reasoning depth
-                    "max_completion_tokens": AnyCodable(65536)  // Ensure enough tokens for reasoning
+                additionalParameters: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? [
+                    "reasoning_effort": AnyCodable(AgentConfiguration.o3ReasoningEffort),
+                    "max_completion_tokens": AnyCodable(AgentConfiguration.o3MaxCompletionTokens)
                 ] : nil
             ),
             description: "An AI assistant for macOS automation using Peekaboo"

@@ -276,7 +276,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         var totalUsage: Usage?
         
         // Maximum iterations to prevent infinite loops
-        let maxIterations = 10
+        let maxIterations = AgentConfiguration.maxIterations
         var iteration = 0
         
         while iteration < maxIterations {
