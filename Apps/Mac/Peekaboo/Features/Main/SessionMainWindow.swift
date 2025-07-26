@@ -406,7 +406,9 @@ struct SessionChatView: View {
             
             if agent.isProcessing && isCurrentSession {
                 // Show stop button during execution
-                Button(action: { /* TODO: Implement cancel */ }) {
+                Button(action: { 
+                    agent.cancelCurrentTask()
+                }) {
                     Image(systemName: "stop.circle.fill")
                         .font(.title2)
                         .foregroundColor(.red)
@@ -487,13 +489,8 @@ struct SessionChatView: View {
             
             // If agent is executing, queue the message for later
             if agent.isProcessing {
-                // TODO: Implement queueMessage
-                
-                // Show queued notification
-                sessionStore.addMessage(
-                    SessionMessage(role: .system, content: "📋 Message queued. It will be processed after the current task completes."),
-                    to: session
-                )
+                // Queue the message
+                agent.queueMessage(trimmedInput)
             } else {
                 // Start a new execution with the follow-up
                 Task {
@@ -591,7 +588,9 @@ struct SessionChatHeader: View {
                 .buttonStyle(.plain)
                 
                 if isActive && agent.isProcessing {
-                    Button(action: { /* TODO: Implement cancel */ }) {
+                    Button(action: { 
+                        agent.cancelCurrentTask()
+                    }) {
                         Label("Cancel", systemImage: "stop.circle")
                             .foregroundColor(.red)
                     }

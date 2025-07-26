@@ -55,8 +55,8 @@ struct MenuBarStatusView: View {
                 Text(agent.isProcessing ? "Agent Active" : "Agent Idle")
                     .font(.headline)
                 
-                if agent.isProcessing, !agent.currentTask.isEmpty {
-                    Text(agent.currentTask)
+                if agent.isProcessing {
+                    Text("Processing...")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -78,7 +78,9 @@ struct MenuBarStatusView: View {
             }
             
             if agent.isProcessing {
-                Button(action: { agent.cancelCurrentTask() }) {
+                Button(action: { 
+                    agent.cancelCurrentTask()
+                }) {
                     Image(systemName: "stop.circle.fill")
                         .font(.title2)
                         .foregroundColor(.red)
@@ -94,20 +96,22 @@ struct MenuBarStatusView: View {
             if let session = sessionStore.currentSession {
                 VStack(spacing: 0) {
                     // Active task indicator
-                    if agent.isProcessing && !agent.currentTask.isEmpty {
+                    if agent.isProcessing {
                         HStack(spacing: 8) {
                             ProgressView()
                                 .scaleEffect(0.7)
                                 .progressViewStyle(CircularProgressViewStyle())
                             
-                            Text(agent.currentTask)
+                            Text("Processing...")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
                             
                             Spacer()
                             
-                            Button(action: { agent.cancelCurrentTask() }) {
+                            Button(action: { 
+                                agent.cancelCurrentTask()
+                            }) {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.red)
                             }
@@ -229,19 +233,16 @@ struct MenuBarStatusView: View {
         
         // Send follow-up to agent if one is active
         if agent.isProcessing {
+            // Queue the message for later processing
             agent.queueMessage(text)
-            
-            // Show queued notification in the current session
-            if let session = sessionStore.currentSession {
-                sessionStore.addMessage(
-                    SessionMessage(role: .system, content: "📋 Message queued. It will be processed after the current task completes."),
-                    to: session
-                )
-            }
         } else {
             // Start a new execution with the follow-up
             Task {
-                await agent.executeTask(text)
+                do {
+                    try await agent.executeTask(text)
+                } catch {
+                    print("Failed to execute task: \(error)")
+                }
             }
         }
     }
@@ -255,77 +256,87 @@ struct MenuBarStatusView: View {
             
             // Recent sessions (show when not in voice mode)
             if !isVoiceMode && !sessionStore.sessions.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Recent Sessions")
-                        .font(.headline)
-                        .padding(.horizontal)
-                    
-                    ScrollView {
-                        VStack(spacing: 4) {
-                            ForEach(sessionStore.sessions.prefix(5)) { session in
-                                SessionRowCompact(
-                                    session: session,
-                                    isActive: agent.currentSession?.id == session.id,
-                                    onDelete: {
-                                        withAnimation {
-                                            sessionStore.sessions.removeAll { $0.id == session.id }
-                                            sessionStore.saveSessions()
-                                        }
-                                    }
-                                )
-                                .onTapGesture {
-                                    sessionStore.selectSession(session)
-                                    // Show dock icon temporarily
-                                    DockIconManager.shared.temporarilyShowDock()
-                                    // Open main window
-                                    NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
-                                    NSApp.activate(ignoringOtherApps: true)
-                                }
-                            }
-                        }
-                    }
-                    .frame(maxHeight: 200)
-                }
-                .padding(.top)
+                recentSessionsView
+                    .padding(.top)
             }
             
             // Quick actions
-            VStack(spacing: 8) {
-                Button(action: {
-                    logger.info("Open Main Window button clicked")
-                    // Show dock icon temporarily
-                    DockIconManager.shared.temporarilyShowDock()
-                    // Post notification to open window
-                    NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
-                    // Activate the app
-                    NSApp.activate(ignoringOtherApps: true)
-                }) {
-                    Label("Open Main Window", systemImage: "rectangle.stack")
-                        .frame(maxWidth: .infinity)
-                }
-                .controlSize(.large)
-                
-                Button(action: {
-                    logger.info("New Session button clicked")
-                    // Show dock icon temporarily
-                    DockIconManager.shared.temporarilyShowDock()
-                    // First open main window
-                    NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
-                    NSApp.activate(ignoringOtherApps: true)
-                    
-                    // Then start new session after a short delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        logger.info("Posting StartNewSession notification")
-                        NotificationCenter.default.post(name: Notification.Name("StartNewSession"), object: nil)
+            quickActionsView
+                .padding()
+        }
+    }
+    
+    @ViewBuilder
+    private var recentSessionsView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Recent Sessions")
+                .font(.headline)
+                .padding(.horizontal)
+            
+            ScrollView {
+                VStack(spacing: 4) {
+                    ForEach(sessionStore.sessions.prefix(5)) { session in
+                        SessionRowCompact(
+                            session: session,
+                            isActive: false, // Simplified check
+                            onDelete: {
+                                withAnimation {
+                                    sessionStore.sessions.removeAll { $0.id == session.id }
+                                    sessionStore.saveSessions()
+                                }
+                            }
+                        )
+                        .onTapGesture {
+                            sessionStore.selectSession(session)
+                            // Show dock icon temporarily
+                            DockIconManager.shared.temporarilyShowDock()
+                            // Open main window
+                            NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+                            NSApp.activate(ignoringOtherApps: true)
+                        }
                     }
-                }) {
-                    Label("New Session", systemImage: "plus.circle")
-                        .frame(maxWidth: .infinity)
                 }
-                .controlSize(.large)
-                .buttonStyle(.borderedProminent)
             }
-            .padding()
+            .frame(maxHeight: 200)
+        }
+    }
+    
+    @ViewBuilder
+    private var quickActionsView: some View {
+        VStack(spacing: 8) {
+            Button(action: {
+                logger.info("Open Main Window button clicked")
+                // Show dock icon temporarily
+                DockIconManager.shared.temporarilyShowDock()
+                // Post notification to open window
+                NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+                // Activate the app
+                NSApp.activate(ignoringOtherApps: true)
+            }) {
+                Label("Open Main Window", systemImage: "rectangle.stack")
+                    .frame(maxWidth: .infinity)
+            }
+            .controlSize(.large)
+            
+            Button(action: {
+                logger.info("New Session button clicked")
+                // Show dock icon temporarily
+                DockIconManager.shared.temporarilyShowDock()
+                // First open main window
+                NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+                NSApp.activate(ignoringOtherApps: true)
+                
+                // Then start new session after a short delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    logger.info("Posting StartNewSession notification")
+                    NotificationCenter.default.post(name: Notification.Name("StartNewSession"), object: nil)
+                }
+            }) {
+                Label("New Session", systemImage: "plus.circle")
+                    .frame(maxWidth: .infinity)
+            }
+            .controlSize(.large)
+            .buttonStyle(.borderedProminent)
         }
     }
     
@@ -403,9 +414,9 @@ struct MenuBarStatusView: View {
             isVoiceMode = false
             
             // Execute the task
-            let result = await agent.executeTask(text)
-            
-            if let error = result.error {
+            do {
+                try await agent.executeTask(text)
+            } catch {
                 // Handle error - could show in UI
                 print("Task execution error: \(error)")
             }

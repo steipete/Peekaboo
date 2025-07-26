@@ -961,6 +961,13 @@ public final class PeekabooAgentService: AgentServiceProtocol {
            - Handle special characters in shell commands
            - Test commands incrementally when building complex pipelines
         
+        4. **Interactive commands are not supported**
+           - Commands have a 30-second default timeout (max 300 seconds)
+           - Interactive prompts will cause timeouts
+           - Environment is set to non-interactive mode
+           - Use non-interactive flags: `git commit -m "message"` not `git commit`
+           - If a command times out, find an alternative approach
+        
         ## Critical Guidelines
         
         1. **Be Resilient**: If a tool fails, try alternative approaches. Don't give up at the first error.
@@ -1763,6 +1770,9 @@ extension PeekabooAgentService {
                     ),
                     "workingDirectory": .string(
                         description: "Optional working directory for the command (defaults to home directory)"
+                    ),
+                    "timeout": .number(
+                        description: "Timeout in seconds (default: 30, max: 300). Commands that exceed this time will be terminated."
                     )
                 ],
                 required: ["command"]
@@ -1770,6 +1780,8 @@ extension PeekabooAgentService {
             execute: { input, services in
                 let command: String = input.value(for: "command") ?? ""
                 let workingDir: String? = input.value(for: "workingDirectory")
+                let timeoutValue: Double = input.value(for: "timeout") ?? 30.0
+                let timeout = min(max(timeoutValue, 1.0), 300.0) // Clamp between 1 and 300 seconds
                 
                 // Create a Process to run the shell command
                 let process = Process()
@@ -1780,6 +1792,21 @@ extension PeekabooAgentService {
                     process.currentDirectoryURL = URL(fileURLWithPath: dir)
                 }
                 
+                // Set up non-interactive environment
+                var environment = ProcessInfo.processInfo.environment
+                environment["DEBIAN_FRONTEND"] = "noninteractive"
+                environment["CI"] = "true"
+                environment["GIT_TERMINAL_PROMPT"] = "0"
+                environment["NONINTERACTIVE"] = "1"
+                environment["GIT_ASKPASS"] = "echo"
+                environment["SSH_ASKPASS"] = "echo"
+                process.environment = environment
+                
+                // Redirect stdin from /dev/null to prevent input prompts
+                if let nullDevice = FileHandle(forReadingAtPath: "/dev/null") {
+                    process.standardInput = nullDevice
+                }
+                
                 let pipe = Pipe()
                 let errorPipe = Pipe()
                 process.standardOutput = pipe
@@ -1787,6 +1814,29 @@ extension PeekabooAgentService {
                 
                 do {
                     try process.run()
+                    
+                    // Wait with timeout
+                    let deadlineDate = Date().addingTimeInterval(timeout)
+                    var timedOut = false
+                    
+                    while process.isRunning && Date() < deadlineDate {
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                    }
+                    
+                    if process.isRunning {
+                        // Process timed out
+                        timedOut = true
+                        process.terminate()
+                        
+                        // Give it a moment to terminate gracefully
+                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                        
+                        // Force kill if still running
+                        if process.isRunning {
+                            process.interrupt()
+                        }
+                    }
+                    
                     process.waitUntilExit()
                     
                     let data = pipe.fileHandleForReading.readDataToEndOfFile()
@@ -1795,7 +1845,15 @@ extension PeekabooAgentService {
                     let output = String(data: data, encoding: .utf8) ?? ""
                     let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
                     
-                    if process.terminationStatus == 0 {
+                    if timedOut {
+                        return .dictionary([
+                            "success": false,
+                            "output": output,
+                            "error": "Command timed out after \(Int(timeout)) seconds. The command may require interactive input which is not supported. Consider using non-interactive flags or alternative approaches.",
+                            "exitCode": Int(process.terminationStatus),
+                            "timedOut": true
+                        ])
+                    } else if process.terminationStatus == 0 {
                         return .dictionary([
                             "success": true,
                             "output": output,

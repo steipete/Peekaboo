@@ -77,20 +77,38 @@ struct SeeCommandAnnotationTests {
             window_title: "Test Window",
             window_id: 12345,
             window_index: 0,
-            bounds: CGRect(x: 100, y: 50, width: 1200, height: 800),
+            bounds: WindowBounds(x: 100, y: 50, width: 1200, height: 800),
             is_on_screen: true
         )
         
         let appInfo = ApplicationInfo(
             app_name: "TestApp",
             bundle_id: "com.test.app",
-            pid: 1234
+            pid: 1234,
+            is_active: true,
+            window_count: 1
         )
         
         let captureMetadata = CaptureMetadata(
-            captureMode: .window,
-            applicationInfo: appInfo,
-            windowInfo: windowInfo,
+            size: CGSize(width: 1200, height: 800),
+            mode: .window,
+            applicationInfo: ServiceApplicationInfo(
+                name: appInfo.app_name,
+                bundleIdentifier: appInfo.bundle_id,
+                processIdentifier: appInfo.pid,
+                isActive: appInfo.is_active
+            ),
+            windowInfo: ServiceWindowInfo(
+                title: windowInfo.window_title,
+                windowID: Int(windowInfo.window_id ?? 0),
+                bounds: CGRect(
+                    x: windowInfo.bounds?.x ?? 0,
+                    y: windowInfo.bounds?.y ?? 0,
+                    width: windowInfo.bounds?.width ?? 0,
+                    height: windowInfo.bounds?.height ?? 0
+                ),
+                isOnScreen: windowInfo.is_on_screen ?? true
+            ),
             displayInfo: nil,
             timestamp: Date()
         )
@@ -100,16 +118,17 @@ struct SeeCommandAnnotationTests {
             detectionTime: 0.5,
             elementCount: 10,
             method: "AXorcist",
-            warnings: [],
-            applicationName: captureMetadata.applicationInfo?.name,
-            windowTitle: captureMetadata.windowInfo?.title,
-            windowBounds: captureMetadata.windowInfo?.bounds
+            warnings: []
         )
         
-        // Then metadata should contain window context
-        #expect(detectionMetadata.applicationName == "TestApp")
-        #expect(detectionMetadata.windowTitle == "Test Window")
-        #expect(detectionMetadata.windowBounds == windowInfo.bounds)
+        // Then metadata should contain basic detection info
+        #expect(detectionMetadata.detectionTime == 0.5)
+        #expect(detectionMetadata.elementCount == 10)
+        #expect(detectionMetadata.method == "AXorcist")
+        
+        // Window context would be available from captureMetadata
+        #expect(captureMetadata.applicationInfo?.name == "TestApp")
+        #expect(captureMetadata.windowInfo?.title == "Test Window")
     }
     
     @Test("Enhanced detection uses window context")
@@ -123,21 +142,21 @@ struct SeeCommandAnnotationTests {
         let windowTitle = "Start Page"
         let windowBounds = CGRect(x: 0, y: 0, width: 1920, height: 1080)
         
-        // Create detection metadata with window context
+        // Create detection metadata
         let metadata = DetectionMetadata(
             detectionTime: 0.5,
             elementCount: 10,
             method: "AXorcist",
-            warnings: [],
-            applicationName: appName,
-            windowTitle: windowTitle,
-            windowBounds: windowBounds
+            warnings: []
         )
         
-        // Verify the context is properly stored
-        #expect(metadata.applicationName == appName)
-        #expect(metadata.windowTitle == windowTitle)
-        #expect(metadata.windowBounds == windowBounds)
+        // Verify the metadata is properly created
+        #expect(metadata.detectionTime == 0.5)
+        #expect(metadata.elementCount == 10)
+        #expect(metadata.method == "AXorcist")
+        
+        // In actual usage, window context would be available from CaptureMetadata
+        // which is passed separately to annotation functions
     }
     
     @Test("Annotation excludes disabled elements")

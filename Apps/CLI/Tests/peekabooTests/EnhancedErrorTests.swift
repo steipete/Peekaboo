@@ -3,7 +3,6 @@ import Foundation
 @testable import peekaboo
 import PeekabooCore
 
-@available(macOS 14.0, *)
 @Suite("Enhanced Error Messages")
 struct EnhancedErrorTests {
     
@@ -67,9 +66,33 @@ struct EnhancedErrorTests {
     func testLaunchAppFuzzyMatch() async throws {
         let services = MockPeekabooServices()
         services.mockApplications = [
-            ServiceApplicationInfo(name: "Safari", bundleIdentifier: "com.apple.Safari", processIdentifier: 123, isActive: true),
-            ServiceApplicationInfo(name: "System Information", bundleIdentifier: "com.apple.SystemInformation", processIdentifier: 456, isActive: false),
-            ServiceApplicationInfo(name: "Simulator", bundleIdentifier: "com.apple.Simulator", processIdentifier: 789, isActive: false)
+            ServiceApplicationInfo(
+                processIdentifier: 123,
+                bundleIdentifier: "com.apple.Safari",
+                name: "Safari",
+                bundlePath: "/Applications/Safari.app",
+                isActive: true,
+                isHidden: false,
+                windowCount: 1
+            ),
+            ServiceApplicationInfo(
+                processIdentifier: 456,
+                bundleIdentifier: "com.apple.SystemInformation",
+                name: "System Information",
+                bundlePath: "/Applications/Utilities/System Information.app",
+                isActive: false,
+                isHidden: false,
+                windowCount: 0
+            ),
+            ServiceApplicationInfo(
+                processIdentifier: 789,
+                bundleIdentifier: "com.apple.Simulator",
+                name: "Simulator",
+                bundlePath: "/Applications/Xcode.app/Contents/Developer/Applications/Simulator.app",
+                isActive: false,
+                isHidden: false,
+                windowCount: 0
+            )
         ]
         
         let agent = PeekabooAgentService(services: services)
@@ -473,8 +496,8 @@ struct EnhancedErrorTests {
 
 // MARK: - Mock Services
 
-@available(macOS 14.0, *)
-class MockPeekabooServices: PeekabooServices {
+// @available not needed for test helpers
+class MockPeekabooServices: @unchecked Sendable {
     var mockApplications: [ServiceApplicationInfo] = []
     var mockWindows: [ServiceWindowInfo] = []
     var mockDetectionResult: DetectionResult?
@@ -511,8 +534,8 @@ struct MockPermissions: PermissionsServiceProtocol {
     func requestAccessibilityPermission() async -> Bool { accessibility }
 }
 
-@available(macOS 14.0, *)
-class MockApplicationService: ApplicationsServiceProtocol {
+// @available not needed for test helpers
+class MockApplicationService: ApplicationServiceProtocol, @unchecked Sendable {
     weak var parent: MockPeekabooServices?
     
     init(parent: MockPeekabooServices) {
@@ -553,8 +576,8 @@ class MockApplicationService: ApplicationsServiceProtocol {
     }
 }
 
-@available(macOS 14.0, *)
-class MockWindowService: WindowsServiceProtocol {
+// @available not needed for test helpers
+class MockWindowService: WindowManagementServiceProtocol, @unchecked Sendable {
     weak var parent: MockPeekabooServices?
     
     init(parent: MockPeekabooServices) {
@@ -600,8 +623,8 @@ class MockWindowService: WindowsServiceProtocol {
     }
 }
 
-@available(macOS 14.0, *)
-class MockAutomationService: AutomationServiceProtocol {
+// @available not needed for test helpers
+class MockAutomationService: UIAutomationServiceProtocol, @unchecked Sendable {
     weak var parent: MockPeekabooServices?
     
     init(parent: MockPeekabooServices) {
@@ -671,8 +694,8 @@ class MockAutomationService: AutomationServiceProtocol {
     }
 }
 
-@available(macOS 14.0, *)
-class MockSessionService: SessionsServiceProtocol {
+// @available not needed for test helpers
+class MockSessionService: SessionsServiceProtocol, @unchecked Sendable {
     weak var parent: MockPeekabooServices?
     private var sessions: [String: DetectionResult] = [:]
     
@@ -698,8 +721,8 @@ class MockSessionService: SessionsServiceProtocol {
     }
 }
 
-@available(macOS 14.0, *)
-class MockMenuService: MenuServiceProtocol {
+// @available not needed for test helpers
+class MockMenuService: MenuServiceProtocol, @unchecked Sendable {
     weak var parent: MockPeekabooServices?
     
     init(parent: MockPeekabooServices) {
@@ -730,8 +753,8 @@ class MockMenuService: MenuServiceProtocol {
     }
 }
 
-@available(macOS 14.0, *)
-class MockDialogService: DialogServiceProtocol {
+// @available not needed for test helpers
+class MockDialogService: DialogServiceProtocol, @unchecked Sendable {
     weak var parent: MockPeekabooServices?
     
     init(parent: MockPeekabooServices) {
@@ -806,8 +829,8 @@ class MockDialogService: DialogServiceProtocol {
     }
 }
 
-@available(macOS 14.0, *)
-class MockScreenCaptureService: ScreenCaptureServiceProtocol {
+// @available not needed for test helpers
+class MockScreenCaptureService: ScreenCaptureServiceProtocol, @unchecked Sendable {
     weak var parent: MockPeekabooServices?
     
     init(parent: MockPeekabooServices) {
@@ -877,7 +900,11 @@ class MockScreenCaptureService: ScreenCaptureServiceProtocol {
         )
     }
     
-    func captureArea(rect: CGRect) async throws -> CaptureResult {
+    func hasScreenRecordingPermission() async -> Bool {
+        return true
+    }
+    
+    func captureArea(_ rect: CGRect) async throws -> CaptureResult {
         if let error = parent?.mockError { throw error }
         
         return CaptureResult(
@@ -894,12 +921,7 @@ class MockScreenCaptureService: ScreenCaptureServiceProtocol {
     }
 }
 
-// Helper structures for testing
-struct ActiveDialog {
-    let title: String
-    let buttons: [String]
-    let windowID: Int
-}
+// ActiveDialog is already defined in TestSupport/ActiveDialog.swift
 
 enum DialogAction: String {
     case clicked
@@ -918,8 +940,8 @@ struct ShellOutput {
     let exitCode: Int32
 }
 
-@available(macOS 14.0, *)
-class MockProcessService: ProcessServiceProtocol {
+// @available not needed for test helpers
+class MockProcessService: TestProcessServiceProtocol, @unchecked Sendable {
     weak var parent: MockPeekabooServices?
     
     init(parent: MockPeekabooServices) {
@@ -959,8 +981,4 @@ class MockProcessService: ProcessServiceProtocol {
     }
 }
 
-struct ProcessResult {
-    let output: String
-    let errorOutput: String
-    let exitCode: Int32
-}
+// ProcessResult is now defined in TestSupport/ProcessServiceProtocol.swift

@@ -3,11 +3,11 @@ import XCTest
 
 final class AIProviderFactoryTests: XCTestCase {
     func testCreateProvider() {
-        let openaiConfig = AIProviderConfig(from: "openai/gpt-4o")
+        let openaiConfig = AIProviderConfig(from: "openai/gpt-4.1")
         let openaiProvider = AIProviderFactory.createProvider(from: openaiConfig)
         XCTAssertNotNil(openaiProvider)
         XCTAssertEqual(openaiProvider?.name, "openai")
-        XCTAssertEqual(openaiProvider?.model, "gpt-4o")
+        XCTAssertEqual(openaiProvider?.model, "gpt-4.1")
 
         let ollamaConfig = AIProviderConfig(from: "ollama/llava:latest")
         let ollamaProvider = AIProviderFactory.createProvider(from: ollamaConfig)
@@ -21,12 +21,12 @@ final class AIProviderFactoryTests: XCTestCase {
     }
 
     func testCreateProviders() {
-        let providers1 = AIProviderFactory.createProviders(from: "openai/gpt-4o,ollama/llava:latest")
+        let providers1 = AIProviderFactory.createProviders(from: "openai/gpt-4.1,ollama/llava:latest")
         XCTAssertEqual(providers1.count, 2)
         XCTAssertEqual(providers1[0].name, "openai")
         XCTAssertEqual(providers1[1].name, "ollama")
 
-        let providers2 = AIProviderFactory.createProviders(from: "invalid,openai/gpt-4o,unknown/model")
+        let providers2 = AIProviderFactory.createProviders(from: "invalid,openai/gpt-4.1,unknown/model")
         XCTAssertEqual(providers2.count, 1)
         XCTAssertEqual(providers2[0].name, "openai")
 
@@ -38,10 +38,10 @@ final class AIProviderFactoryTests: XCTestCase {
     }
 
     func testGetDefaultModel() {
-        XCTAssertEqual(AIProviderFactory.getDefaultModel(for: "openai"), "gpt-4o")
+        XCTAssertEqual(AIProviderFactory.getDefaultModel(for: "openai"), "gpt-4.1")
         XCTAssertEqual(AIProviderFactory.getDefaultModel(for: "ollama"), "llava:latest")
         XCTAssertEqual(AIProviderFactory.getDefaultModel(for: "unknown"), "unknown")
-        XCTAssertEqual(AIProviderFactory.getDefaultModel(for: "OPENAI"), "gpt-4o") // Case insensitive
+        XCTAssertEqual(AIProviderFactory.getDefaultModel(for: "OPENAI"), "gpt-4.1") // Case insensitive
     }
 
     func testFindAvailableProvider() async {
@@ -85,7 +85,7 @@ final class AIProviderFactoryTests: XCTestCase {
 
     func testDetermineProviderSpecific() async throws {
         let providers: [AIProvider] = [
-            MockSuccessProvider(name: "openai", model: "gpt-4o"),
+            MockSuccessProvider(name: "openai", model: "gpt-4.1"),
             MockSuccessProvider(name: "ollama", model: "llava:latest"),
         ]
 
@@ -100,7 +100,7 @@ final class AIProviderFactoryTests: XCTestCase {
 
     func testDetermineProviderNotConfigured() async {
         let providers: [AIProvider] = [
-            MockSuccessProvider(name: "openai", model: "gpt-4o"),
+            MockSuccessProvider(name: "openai", model: "gpt-4.1"),
         ]
 
         do {

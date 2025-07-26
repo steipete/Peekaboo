@@ -111,28 +111,28 @@ final class SessionStore {
 
 // MARK: - Models
 
-struct Session: Identifiable, Codable {
-    let id: String
-    var title: String
-    var messages: [SessionMessage] = []
-    let startTime: Date
-    var summary: String = ""
+public struct Session: Identifiable, Codable {
+    public let id: String
+    public var title: String
+    public var messages: [SessionMessage] = []
+    public let startTime: Date
+    public var summary: String = ""
 
-    init(title: String) {
+    public init(title: String) {
         self.id = "session_\(UUID().uuidString)"
         self.title = title
         self.startTime = Date()
     }
 }
 
-struct SessionMessage: Identifiable, Codable {
-    let id: UUID
-    let role: MessageRole
-    let content: String
-    let timestamp: Date
-    var toolCalls: [ToolCall]
+public struct SessionMessage: Identifiable, Codable {
+    public let id: UUID
+    public let role: MessageRole
+    public let content: String
+    public let timestamp: Date
+    public var toolCalls: [ToolCall]
 
-    init(role: MessageRole, content: String, toolCalls: [ToolCall] = []) {
+    public init(role: MessageRole, content: String, toolCalls: [ToolCall] = []) {
         self.id = UUID()
         self.role = role
         self.content = content
@@ -141,19 +141,19 @@ struct SessionMessage: Identifiable, Codable {
     }
 }
 
-enum MessageRole: String, Codable {
+public enum MessageRole: String, Codable {
     case system
     case user
     case assistant
 }
 
-struct ToolCall: Identifiable, Codable {
-    let id: String
-    let name: String
-    let arguments: String
-    var result: String
+public struct ToolCall: Identifiable, Codable {
+    public let id: String
+    public let name: String
+    public let arguments: String
+    public var result: String
     
-    init(name: String, arguments: String, result: String = "") {
+    public init(name: String, arguments: String, result: String = "") {
         self.id = UUID().uuidString
         self.name = name
         self.arguments = arguments

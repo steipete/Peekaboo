@@ -43,7 +43,8 @@ public final class OpenAIModel: ModelInterface {
     
     public func getResponse(request: ModelRequest) async throws -> ModelResponse {
         let openAIRequest = try convertToOpenAIRequest(request, stream: false)
-        let urlRequest = try createURLRequest(endpoint: "chat/completions", body: openAIRequest)
+        let endpoint = getEndpointForModel(request.settings.modelName)
+        let urlRequest = try createURLRequest(endpoint: endpoint, body: openAIRequest)
         
         let (data, response) = try await session.data(for: urlRequest)
         
@@ -92,7 +93,8 @@ public final class OpenAIModel: ModelInterface {
     
     public func getStreamedResponse(request: ModelRequest) async throws -> AsyncThrowingStream<StreamEvent, Error> {
         let openAIRequest = try convertToOpenAIRequest(request, stream: true)
-        let urlRequest = try createURLRequest(endpoint: "chat/completions", body: openAIRequest)
+        let endpoint = getEndpointForModel(request.settings.modelName)
+        let urlRequest = try createURLRequest(endpoint: endpoint, body: openAIRequest)
         
         return AsyncThrowingStream { continuation in
             Task {
@@ -159,6 +161,21 @@ public final class OpenAIModel: ModelInterface {
                                 do {
                                     let chunk = try JSONDecoder().decode(OpenAIChatCompletionChunk.self, from: chunkData)
                                     
+                                    // Debug log for o3 models to see what fields are present
+                                    if request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4") {
+                                        // Log raw JSON to see what fields o3 is actually sending
+                                        if let jsonObj = try? JSONSerialization.jsonObject(with: chunkData, options: []) as? [String: Any] {
+                                            aiDebugPrint("DEBUG: o3 chunk JSON: \(jsonObj)")
+                                            
+                                            // Check for choices and delta structure
+                                            if let choices = jsonObj["choices"] as? [[String: Any]],
+                                               let firstChoice = choices.first,
+                                               let delta = firstChoice["delta"] as? [String: Any] {
+                                                aiDebugPrint("DEBUG: o3 delta fields: \(delta.keys.sorted())")
+                                            }
+                                        }
+                                    }
+                                    
                                     // Process chunk into stream events
                                     if let events = self.processChunk(chunk, toolCalls: &currentToolCalls, indexMap: &toolCallIndexMap) {
                                         for event in events {
@@ -188,6 +205,15 @@ public final class OpenAIModel: ModelInterface {
     }
     
     // MARK: - Private Methods
+    
+    private func getEndpointForModel(_ modelName: String) -> String {
+        // o3 and o4 models use the Responses API for reasoning capabilities
+        if modelName.hasPrefix("o3") || modelName.hasPrefix("o4") {
+            return "responses/create"
+        }
+        // All other models use the standard Chat Completions API
+        return "chat/completions"
+    }
     
     private func createURLRequest(endpoint: String, body: Encodable) throws -> URLRequest {
         let url = baseURL.appendingPathComponent(endpoint)
@@ -561,6 +587,11 @@ public final class OpenAIModel: ModelInterface {
         // Handle text delta
         if let content = choice.delta.content, !content.isEmpty {
             events.append(.textDelta(StreamTextDelta(delta: content, index: choice.index)))
+        }
+        
+        // Handle reasoning content delta (for o3 models)
+        if let reasoningContent = choice.delta.reasoningContent, !reasoningContent.isEmpty {
+            events.append(.reasoningSummaryDelta(StreamReasoningSummaryDelta(delta: reasoningContent)))
         }
         
         // Handle tool call deltas

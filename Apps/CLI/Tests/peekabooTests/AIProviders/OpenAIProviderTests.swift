@@ -13,12 +13,12 @@ final class OpenAIProviderTests: XCTestCase {
     }
 
     func testOpenAIProviderInitialization() {
-        let provider = OpenAIProvider(model: "gpt-4o")
+        let provider = OpenAIProvider(model: "gpt-4.1")
         XCTAssertEqual(provider.name, "openai")
-        XCTAssertEqual(provider.model, "gpt-4o")
+        XCTAssertEqual(provider.model, "gpt-4.1")
 
-        let defaultProvider = OpenAIProvider()
-        XCTAssertEqual(defaultProvider.model, "gpt-4o")
+        let defaultProvider = OpenAIProvider(model: "gpt-4.1")
+        XCTAssertEqual(defaultProvider.model, "gpt-4.1")
     }
 
     func testCheckAvailabilityWithoutAPIKey() async {

@@ -3,7 +3,6 @@ import Foundation
 @testable import peekaboo
 import PeekabooCore
 
-@available(macOS 14.0, *)
 @Suite("Enhanced Error Integration Tests", .serialized)
 struct EnhancedErrorIntegrationTests {
     
@@ -22,6 +21,7 @@ struct EnhancedErrorIntegrationTests {
         let delegate = TestEventDelegate()
         let result = try await agent.executeTask(
             "Run shell command 'nonexistentcommand123 --help'",
+            dryRun: false,
             eventDelegate: delegate
         )
         
@@ -49,6 +49,7 @@ struct EnhancedErrorIntegrationTests {
         let delegate = TestEventDelegate()
         let result = try await agent.executeTask(
             "Launch app 'Safary'", // Typo
+            dryRun: false,
             eventDelegate: delegate
         )
         
@@ -75,6 +76,7 @@ struct EnhancedErrorIntegrationTests {
         let delegate = TestEventDelegate()
         _ = try await agent.executeTask(
             "Click on 'NonExistentButton123'",
+            dryRun: false,
             eventDelegate: delegate
         )
         
@@ -101,6 +103,7 @@ struct EnhancedErrorIntegrationTests {
         let delegate = TestEventDelegate()
         _ = try await agent.executeTask(
             "Type 'Hello World' without clicking anywhere first",
+            dryRun: false,
             eventDelegate: delegate
         )
         
@@ -129,6 +132,7 @@ struct EnhancedErrorIntegrationTests {
         let delegate = TestEventDelegate()
         _ = try await agent.executeTask(
             "Press hotkey 'cmd+shift+a'", // Wrong format
+            dryRun: false,
             eventDelegate: delegate
         )
         
@@ -149,7 +153,7 @@ struct EnhancedErrorIntegrationTests {
 
 // MARK: - Test Event Delegate
 
-@available(macOS 14.0, *)
+// @available not needed for test helpers
 @MainActor
 final class TestEventDelegate: AgentEventDelegate {
     private var events: [AgentEvent] = []

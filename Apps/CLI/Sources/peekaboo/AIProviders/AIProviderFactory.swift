@@ -27,7 +27,7 @@ public struct AIProviderFactory {
     public static func getDefaultModel(for provider: String) -> String {
         switch provider.lowercased() {
         case "openai":
-            return "gpt-4o"
+            return "gpt-4.1"
         case "ollama":
             return "llava:latest"
         default:

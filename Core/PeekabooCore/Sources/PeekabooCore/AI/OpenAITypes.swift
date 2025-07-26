@@ -600,10 +600,12 @@ public struct OpenAIDelta: Codable, Sendable {
     public let content: String?
     public let toolCalls: [OpenAIToolCallDelta]?
     public let refusal: String?
+    public let reasoningContent: String?
     
     enum CodingKeys: String, CodingKey {
         case role, content, refusal
         case toolCalls = "tool_calls"
+        case reasoningContent = "reasoning_content"
     }
 }
 
