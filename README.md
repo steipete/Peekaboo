@@ -1162,6 +1162,8 @@ brew install watchman
 
 ### Usage
 
+Run these commands from the project root:
+
 ```bash
 # Start the watcher
 npm run poltergeist:start

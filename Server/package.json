@@ -36,13 +36,7 @@
     "format:swift": "cd ../Apps/CLI && swiftformat .",
     "prepare-release": "node ../Scripts/prepare-release.js",
     "inspector": "npx @modelcontextprotocol/inspector node dist/index.js",
-    "postinstall": "chmod +x dist/index.js 2>/dev/null || true",
-    "poltergeist:start": "../scripts/poltergeist.sh start",
-    "poltergeist:haunt": "../scripts/poltergeist.sh haunt",
-    "poltergeist:stop": "../scripts/poltergeist.sh stop",
-    "poltergeist:rest": "../scripts/poltergeist.sh rest",
-    "poltergeist:status": "../scripts/poltergeist.sh status",
-    "poltergeist:logs": "../scripts/poltergeist.sh logs"
+    "postinstall": "chmod +x dist/index.js 2>/dev/null || true"
   },
   "keywords": [
     "mcp",
