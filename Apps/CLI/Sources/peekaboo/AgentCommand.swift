@@ -590,6 +590,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             if outputMode != .quiet {
                 // Stop the ghost animation when a tool starts
                 ghostAnimator.stop()
+                print() // Move to a new line after the animation
                 isThinking = false
                 hasReceivedContent = false  // Reset for next thinking phase
                 
@@ -641,6 +642,8 @@ final class CompactEventDelegate: AgentEventDelegate {
                 // Only stop animation if it's not reasoning content
                 if !isReasoningContent && !hasReceivedContent && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     ghostAnimator.stop()
+                    // Print a newline to move to the next line after the animation
+                    print() // This ensures we start on a fresh line
                     hasReceivedContent = true
                 }
                 
