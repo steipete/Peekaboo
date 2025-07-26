@@ -186,12 +186,15 @@ if [ $BUILD_EXIT_CODE -eq 0 ]; then
     END_TIME=$(date +%s)
     BUILD_TIME=$((END_TIME - START_TIME))
     
+    # Get current Git hash
+    GIT_HASH=$(cd "$PROJECT_ROOT" && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    
     if [ $SPM_ERROR_RETRY_COUNT -gt 0 ]; then
-        log "✅ Swift CLI build completed successfully after $SPM_ERROR_RETRY_COUNT retries (${BUILD_TIME}s)"
-        NOTIFICATION_MESSAGE="Peekaboo build completed after $SPM_ERROR_RETRY_COUNT retries (${BUILD_TIME}s)"
+        log "✅ Swift CLI build completed successfully after $SPM_ERROR_RETRY_COUNT retries (${BUILD_TIME}s) - git: $GIT_HASH"
+        NOTIFICATION_MESSAGE="Build completed after $SPM_ERROR_RETRY_COUNT retries (${BUILD_TIME}s) - $GIT_HASH"
     else
-        log "✅ Swift CLI build completed successfully (${BUILD_TIME}s)"
-        NOTIFICATION_MESSAGE="Peekaboo build completed (${BUILD_TIME}s)"
+        log "✅ Swift CLI build completed successfully (${BUILD_TIME}s) - git: $GIT_HASH"
+        NOTIFICATION_MESSAGE="Build completed (${BUILD_TIME}s) - $GIT_HASH"
     fi
     
     # Copy to root for easy access
@@ -206,12 +209,15 @@ if [ $BUILD_EXIT_CODE -eq 0 ]; then
         osascript -e "display notification \"$NOTIFICATION_MESSAGE\" with title \"👻 Poltergeist\" subtitle \"Build Succeeded\" sound name \"Glass\""
     fi
 else
+    # Get current Git hash for failure notifications too
+    GIT_HASH=$(cd "$PROJECT_ROOT" && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    
     if [ $BUILD_EXIT_CODE -eq 2 ]; then
-        log "❌ Swift CLI build failed due to persistent SPM errors after $MAX_SPM_RETRIES retries"
-        NOTIFICATION_MESSAGE="Build failed: Persistent SPM errors after $MAX_SPM_RETRIES retries"
+        log "❌ Swift CLI build failed due to persistent SPM errors after $MAX_SPM_RETRIES retries - git: $GIT_HASH"
+        NOTIFICATION_MESSAGE="Build failed: SPM errors after $MAX_SPM_RETRIES retries - $GIT_HASH"
     else
-        log "❌ Swift CLI build failed (exit code: $BUILD_EXIT_CODE)"
-        NOTIFICATION_MESSAGE="Build failed with exit code $BUILD_EXIT_CODE"
+        log "❌ Swift CLI build failed (exit code: $BUILD_EXIT_CODE) - git: $GIT_HASH"
+        NOTIFICATION_MESSAGE="Build failed (exit $BUILD_EXIT_CODE) - $GIT_HASH"
     fi
     log "💡 Run 'poltergeist logs' to see the full error"
     
