@@ -1,4 +1,5 @@
 import Foundation
+import AXorcist
 
 // Simple debug logging check
 fileprivate var isDebugLoggingEnabled: Bool {
@@ -248,7 +249,83 @@ public final class OpenAIModel: ModelInterface {
         return request
     }
     
-    private func convertToOpenAIRequest(_ request: ModelRequest, stream: Bool) throws -> OpenAIChatCompletionRequest {
+    private func convertToOpenAIRequest(_ request: ModelRequest, stream: Bool) throws -> Encodable {
+        // Use Responses API for o3/o4 models
+        if request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4") {
+            return try convertToOpenAIResponsesRequest(request, stream: stream)
+        } else {
+            return try convertToOpenAIChatCompletionRequest(request, stream: stream)
+        }
+    }
+    
+    private func convertToOpenAIResponsesRequest(_ request: ModelRequest, stream: Bool) throws -> OpenAIResponsesRequest {
+        // Convert messages to OpenAI format
+        let messages = try request.messages.map { message -> OpenAIMessage in
+            switch message.type {
+            case .system:
+                guard let system = message as? SystemMessageItem else {
+                    throw ModelError.invalidConfiguration("Invalid system message")
+                }
+                return OpenAIMessage(role: "system", content: .string(system.content))
+                
+            case .user:
+                guard let user = message as? UserMessageItem else {
+                    throw ModelError.invalidConfiguration("Invalid user message")
+                }
+                return try convertUserMessage(user)
+                
+            case .assistant:
+                guard let assistant = message as? AssistantMessageItem else {
+                    throw ModelError.invalidConfiguration("Invalid assistant message")
+                }
+                return try convertAssistantMessage(assistant)
+                
+            case .tool:
+                guard let tool = message as? ToolMessageItem else {
+                    throw ModelError.invalidConfiguration("Invalid tool message")
+                }
+                return OpenAIMessage(
+                    role: "tool",
+                    content: .string(tool.content),
+                    toolCallId: tool.toolCallId
+                )
+                
+            case .reasoning:
+                // Skip reasoning messages for now - they may not be supported by the API
+                throw ModelError.invalidConfiguration("Reasoning messages not supported in OpenAI API")
+                
+            case .unknown:
+                throw ModelError.invalidConfiguration("Unknown message type")
+            }
+        }
+        
+        // Convert tools
+        let tools = request.tools?.map { tool in
+            OpenAITool(
+                type: "function",
+                function: OpenAITool.Function(
+                    name: tool.function.name,
+                    description: tool.function.description,
+                    parameters: convertToolParameters(tool.function.parameters)
+                )
+            )
+        }
+        
+        return OpenAIResponsesRequest(
+            model: request.settings.modelName,
+            input: messages,  // Note: 'input' not 'messages' for Responses API
+            tools: tools,
+            toolChoice: convertToolChoice(request.settings.toolChoice),
+            temperature: nil,  // o3 models don't support temperature
+            topP: request.settings.topP,
+            stream: stream,
+            maxCompletionTokens: request.settings.maxTokens ?? 65536,
+            reasoningEffort: request.settings.additionalParameters?["reasoning_effort"]?.value as? String ?? "medium",
+            reasoning: nil  // TODO: Add reasoning configuration if needed
+        )
+    }
+    
+    private func convertToOpenAIChatCompletionRequest(_ request: ModelRequest, stream: Bool) throws -> OpenAIChatCompletionRequest {
         // Convert messages to OpenAI format
         let messages = try request.messages.map { message -> OpenAIMessage in
             switch message.type {

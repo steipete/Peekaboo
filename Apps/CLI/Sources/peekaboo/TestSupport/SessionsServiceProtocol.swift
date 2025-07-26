@@ -1,4 +1,5 @@
 import Foundation
+import PeekabooCore
 
 // Test-specific protocol for session management
 public protocol SessionsServiceProtocol: Sendable {

@@ -150,7 +150,7 @@ struct EnhancedErrorTests {
         services.mockDetectionResult = DetectionResult(
             elements: mockElements,
             screenshot: Data(),
-            metadata: DetectionMetadata(
+            metadata: TestDetectionMetadata(
                 detectionTime: Date(),
                 screenSize: CGSize(width: 1920, height: 1080),
                 scaleFactor: 2.0
@@ -457,7 +457,7 @@ struct EnhancedErrorTests {
         services.mockDetectionResult = DetectionResult(
             elements: mockElements,
             screenshot: Data(),
-            metadata: DetectionMetadata(
+            metadata: TestDetectionMetadata(
                 detectionTime: Date(),
                 screenSize: CGSize(width: 1920, height: 1080),
                 scaleFactor: 2.0
@@ -681,7 +681,7 @@ class MockAutomationService: UIAutomationServiceProtocol, @unchecked Sendable {
         return parent?.mockDetectionResult ?? DetectionResult(
             elements: DetectedElements(all: [], buttons: [], textFields: [], links: [], other: []),
             screenshot: imageData,
-            metadata: DetectionMetadata(
+            metadata: TestDetectionMetadata(
                 detectionTime: Date(),
                 screenSize: CGSize(width: 1920, height: 1080),
                 scaleFactor: 2.0

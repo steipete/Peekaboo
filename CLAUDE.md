@@ -43,6 +43,10 @@ npm run poltergeist:haunt
 
 ## Poltergeist - Automatic CLI Rebuilding
 
+**IMPORTANT: Poltergeist is ONLY for CLI builds, NOT for the Mac app!**
+- For Mac app builds, always use Xcode or `xcodebuild`
+- Poltergeist only watches and rebuilds the CLI binary at `./peekaboo`
+
 **What is Poltergeist?** 
 Poltergeist is a file watcher that automatically rebuilds the Swift CLI whenever source files change. It's like a helpful ghost that ensures the CLI binary is always up-to-date without manual intervention.
 
@@ -163,11 +167,30 @@ This issue typically occurs when:
 ## Common Commands
 
 ### Building
+
+#### Building the Mac App
+
+**IMPORTANT: Poltergeist does NOT build the Mac app! Use Xcode or xcodebuild for Mac app builds.**
+
+```bash
+# Open in Xcode (recommended for development)
+open Apps/Peekaboo.xcworkspace
+
+# Build from command line
+xcodebuild -workspace Apps/Peekaboo.xcworkspace -scheme Peekaboo -configuration Debug build
+
+# Build and run
+xcodebuild -workspace Apps/Peekaboo.xcworkspace -scheme Peekaboo -configuration Debug build && \
+  open ~/Library/Developer/Xcode/DerivedData/Peekaboo-*/Build/Products/Debug/Peekaboo.app
+```
+
+#### Building the CLI (handled by Poltergeist)
+
 ```bash
 # Build TypeScript server
 npm run build
 
-# Build Swift CLI only
+# Build Swift CLI only (usually not needed - Poltergeist does this)
 npm run build:swift
 
 # Build everything (Swift CLI + TypeScript)
