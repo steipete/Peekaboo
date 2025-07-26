@@ -134,6 +134,8 @@ func iconForTool(_ toolName: String) -> String {
     case "dialog": return "💬"
     case "analyze_screenshot": return "🤖"
     case "list", "list_dock": return "📋"
+    case "task_completed": return "✅"
+    case "need_more_information": return "❓"
     default: return "⚙️"
     }
 }
@@ -624,15 +626,46 @@ final class CompactEventDelegate: AgentEventDelegate {
         case .toolCallCompleted(let name, let result):
             if outputMode != .quiet {
                 if let data = result.data(using: .utf8),
-                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let success = json["success"] as? Bool {
-                    if success {
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    
+                    // Special handling for task_completed tool
+                    if name == "task_completed" {
                         print(" \(TerminalColor.green)✓\(TerminalColor.reset)")
-                    } else {
-                        print(" \(TerminalColor.red)✗\(TerminalColor.reset)")
+                        print("\n\(TerminalColor.bold)\(TerminalColor.green)✅ Task Completed\(TerminalColor.reset)")
                         
-                        // Display enhanced error information
-                        displayEnhancedError(tool: name, json: json)
+                        if let summary = json["summary"] as? String {
+                            print("\(TerminalColor.gray)Summary: \(summary)\(TerminalColor.reset)")
+                        }
+                        
+                        if let nextSteps = json["next_steps"] as? String {
+                            print("\(TerminalColor.cyan)Next Steps: \(nextSteps)\(TerminalColor.reset)")
+                        }
+                    }
+                    // Special handling for need_more_information tool
+                    else if name == "need_more_information" {
+                        print(" \(TerminalColor.yellow)?\(TerminalColor.reset)")
+                        print("\n\(TerminalColor.bold)\(TerminalColor.yellow)❓ Need More Information\(TerminalColor.reset)")
+                        
+                        if let question = json["question"] as? String {
+                            print("\(TerminalColor.yellow)Question: \(question)\(TerminalColor.reset)")
+                        }
+                        
+                        if let context = json["context"] as? String {
+                            print("\(TerminalColor.gray)Context: \(context)\(TerminalColor.reset)")
+                        }
+                    }
+                    // Regular tool handling
+                    else if let success = json["success"] as? Bool {
+                        if success {
+                            print(" \(TerminalColor.green)✓\(TerminalColor.reset)")
+                        } else {
+                            print(" \(TerminalColor.red)✗\(TerminalColor.reset)")
+                            
+                            // Display enhanced error information
+                            displayEnhancedError(tool: name, json: json)
+                        }
+                    } else {
+                        print(" \(TerminalColor.green)✓\(TerminalColor.reset)")
                     }
                 } else {
                     print(" \(TerminalColor.green)✓\(TerminalColor.reset)")
@@ -846,11 +879,20 @@ final class CompactEventDelegate: AgentEventDelegate {
             return "keyboard shortcut"
             
         case "shell":
+            var parts: [String] = []
             if let command = args["command"] as? String {
                 // Show full command in compact mode
-                return "'\(command)'"
+                parts.append("'\(command)'")
+            } else {
+                parts.append("command")
             }
-            return "command"
+            
+            // Only show timeout if different from default (30s)
+            if let timeout = args["timeout"] as? Double, timeout != 30.0 {
+                parts.append("(timeout: \(Int(timeout))s)")
+            }
+            
+            return parts.joined(separator: " ")
             
         case "list":
             if let target = args["target"] as? String {

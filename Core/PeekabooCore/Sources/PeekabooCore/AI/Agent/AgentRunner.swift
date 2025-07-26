@@ -151,12 +151,21 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
     private let context: Context
     private var model: (any ModelInterface)?
     private let sessionManager: AgentSessionManager
+    private let lifecycleManager: LifecycleManager
     
     init(agent: PeekabooAgent<Context>, context: Context, model: (any ModelInterface)? = nil) {
         self.agent = agent
         self.context = context
         self.model = model
         self.sessionManager = AgentSessionManager()
+        self.lifecycleManager = LifecycleManager()
+        
+        // Add default console handler if debug logging is enabled
+        if isDebugLoggingEnabled {
+            Task {
+                await lifecycleManager.addHandler(ConsoleLifecycleHandler(verbose: true))
+            }
+        }
     }
     
     /// Get or create the model instance
@@ -260,6 +269,9 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
     ) async throws -> AgentExecutionResult {
         let startTime = Date()
         
+        // Emit agent started event
+        await lifecycleManager.emit(.agentStarted(agent: agent.name, context: input))
+        
         // Load or create session
         let (initialMessages, actualSessionId, isResumed) = try await prepareSession(
             input: input,
@@ -282,7 +294,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         )
         
         let currentModel = try await getModel()
-        return AgentExecutionResult(
+        let result = AgentExecutionResult(
             content: responseContent,
             messages: finalMessages,
             sessionId: actualSessionId,
@@ -297,6 +309,11 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 maskedApiKey: currentModel.maskedApiKey
             )
         )
+        
+        // Emit agent ended event
+        await lifecycleManager.emit(.agentEnded(agent: agent.name, output: responseContent))
+        
+        return result
     }
     
     // Recursive helper to process messages until no more tool calls
@@ -315,9 +332,16 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         let maxIterations = AgentConfiguration.maxIterations
         var iteration = 0
         
+        // Track repeated tool calls to prevent infinite loops
+        var previousToolCallSignatures: [String] = []
+        var repetitionCount = 0
+        
         while iteration < maxIterations {
             iteration += 1
             aiDebugPrint("DEBUG: Processing iteration \(iteration)")
+            
+            // Emit iteration started event
+            await lifecycleManager.emit(.iterationStarted(number: iteration))
             
             // Create request
             let request = ModelRequest(
@@ -403,23 +427,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 }
             }
             
-            // If no tool calls, we're done
-            if toolCalls.isEmpty {
-                // Add final assistant message if there's content
-                if !responseContent.isEmpty {
-                    currentMessages.append(AssistantMessageItem(
-                        id: responseId.isEmpty ? UUID().uuidString : responseId,
-                        content: [.outputText(responseContent)],
-                        status: .completed
-                    ))
-                }
-                break
-            }
-            
-            // Execute tools
-            let toolResults = try await executeTools(toolCalls, eventHandler: eventHandler)
-            
-            // Add assistant message with tool calls
+            // Add assistant message if there's content or tool calls
             var assistantContent: [AssistantContent] = []
             if !responseContent.isEmpty {
                 assistantContent.append(.outputText(responseContent))
@@ -428,11 +436,96 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 assistantContent.append(.toolCall(toolCall))
             }
             
-            currentMessages.append(AssistantMessageItem(
-                id: responseId,
-                content: assistantContent,
-                status: .completed
-            ))
+            // Only add message if we have some content
+            if !assistantContent.isEmpty {
+                currentMessages.append(AssistantMessageItem(
+                    id: responseId.isEmpty ? UUID().uuidString : responseId,
+                    content: assistantContent,
+                    status: .completed
+                ))
+            }
+            
+            // Check if we should continue
+            if toolCalls.isEmpty {
+                // No tool calls, we're done
+                break
+            }
+            
+            // NEW: Detect repeated tool patterns
+            let currentToolSignatures = toolCalls.map { "\($0.function.name):\($0.function.arguments)" }
+            if currentToolSignatures == previousToolCallSignatures {
+                repetitionCount += 1
+                aiDebugPrint("DEBUG: Detected repeated tool calls (count: \(repetitionCount))")
+                
+                if repetitionCount >= 2 {
+                    aiDebugPrint("WARNING: Breaking loop - same tools called 3+ times")
+                    // Execute final tools and break
+                    let toolResults = try await executeTools(toolCalls, eventHandler: eventHandler)
+                    for (toolCall, result) in zip(toolCalls, toolResults) {
+                        currentMessages.append(ToolMessageItem(
+                            id: UUID().uuidString,
+                            toolCallId: toolCall.id,
+                            content: result
+                        ))
+                    }
+                    allToolCalls.append(contentsOf: toolCalls)
+                    break
+                }
+            } else {
+                // Reset counter if different tools
+                previousToolCallSignatures = currentToolSignatures
+                repetitionCount = 0
+            }
+            
+            // Check if task_completed tool was called
+            let hasCompletionTool = toolCalls.contains { toolCall in
+                toolCall.function.name == "task_completed"
+            }
+            
+            if hasCompletionTool {
+                // Execute the completion tool to get the summary
+                let toolResults = try await executeTools(toolCalls, eventHandler: eventHandler)
+                
+                // Add tool results
+                for (toolCall, result) in zip(toolCalls, toolResults) {
+                    currentMessages.append(ToolMessageItem(
+                        id: UUID().uuidString,
+                        toolCallId: toolCall.id,
+                        content: result
+                    ))
+                }
+                
+                allToolCalls.append(contentsOf: toolCalls)
+                aiDebugPrint("DEBUG: Task completed via task_completed tool")
+                break
+            }
+            
+            // Legacy: Check if task is complete despite having tool calls
+            if !responseContent.isEmpty && isTaskComplete(
+                content: responseContent,
+                toolCalls: toolCalls,
+                iteration: iteration,
+                allContent: allContent
+            ) {
+                // Execute remaining tools but then finish
+                let toolResults = try await executeTools(toolCalls, eventHandler: eventHandler)
+                
+                // Add tool results
+                for (toolCall, result) in zip(toolCalls, toolResults) {
+                    currentMessages.append(ToolMessageItem(
+                        id: UUID().uuidString,
+                        toolCallId: toolCall.id,
+                        content: result
+                    ))
+                }
+                
+                allToolCalls.append(contentsOf: toolCalls)
+                aiDebugPrint("DEBUG: Task complete with mixed content and tools (legacy detection)")
+                break
+            }
+            
+            // Execute tools
+            let toolResults = try await executeTools(toolCalls, eventHandler: eventHandler)
             
             // Add tool results
             for (toolCall, result) in zip(toolCalls, toolResults) {
@@ -451,6 +544,53 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         
         if iteration >= maxIterations {
             aiDebugPrint("WARNING: Reached maximum iterations (\(maxIterations)) in recursive processing")
+            
+            // If we have no meaningful content after many iterations, force a text-only response
+            if allContent.isEmpty || allContent.count < 50 {
+                aiDebugPrint("DEBUG: Forcing text-only response after \(iteration) iterations with no meaningful content")
+                
+                // Create a text-only request
+                let textOnlyRequest = ModelRequest(
+                    messages: currentMessages,
+                    tools: nil, // No tools to force text response
+                    settings: ModelSettings(
+                        modelName: agent.modelSettings.modelName,
+                        temperature: agent.modelSettings.temperature,
+                        maxTokens: agent.modelSettings.maxTokens,
+                        toolChoice: ToolChoice.none
+                    ),
+                    systemInstructions: nil
+                )
+                
+                // Get text-only response
+                let currentModel = try await getModel()
+                let eventStream = try await currentModel.getStreamedResponse(request: textOnlyRequest)
+                
+                var finalContent = ""
+                for try await event in eventStream {
+                    switch event {
+                    case .textDelta(let delta):
+                        finalContent += delta.delta
+                        allContent += delta.delta
+                        await streamHandler(delta.delta)
+                    case .responseCompleted(let completed):
+                        if let usage = completed.usage {
+                            totalUsage = usage
+                        }
+                    default:
+                        break
+                    }
+                }
+                
+                // Add final message
+                if !finalContent.isEmpty {
+                    currentMessages.append(AssistantMessageItem(
+                        id: UUID().uuidString,
+                        content: [.outputText(finalContent)],
+                        status: .completed
+                    ))
+                }
+            }
         }
         
         return (currentMessages, allToolCalls, allContent, totalUsage)
@@ -560,10 +700,11 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             aiDebugPrint("DEBUG: Executing tool: \(toolCall.function.name)")
             aiDebugPrint("DEBUG: Tool arguments: \(toolCall.function.arguments)")
             
-            // Emit tool start event
+            // Emit tool start events
             if let handler = eventHandler {
                 await handler(.started(name: toolCall.function.name, arguments: toolCall.function.arguments))
             }
+            await lifecycleManager.emit(.toolStarted(name: toolCall.function.name, arguments: toolCall.function.arguments))
             
             guard let tool = agent.tool(named: toolCall.function.name) else {
                 throw ToolError.toolNotFound(toolCall.function.name)
@@ -576,10 +717,11 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 
                 results.append(resultString)
                 
-                // Emit tool completion event
+                // Emit tool completion events
                 if let handler = eventHandler {
                     await handler(.completed(name: toolCall.function.name, result: resultString))
                 }
+                await lifecycleManager.emit(.toolEnded(name: toolCall.function.name, result: resultString, success: true))
             } catch {
                 aiDebugPrint("DEBUG: Tool execution error: \(error)")
                 
@@ -592,10 +734,11 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 let resultString = try JSONSerialization.data(withJSONObject: errorResult, options: [])
                 results.append(String(data: resultString, encoding: .utf8) ?? "{\"success\": false}")
                 
-                // Emit tool completion event with error
+                // Emit tool completion events with error
                 if let handler = eventHandler {
                     await handler(.completed(name: toolCall.function.name, result: String(data: resultString, encoding: .utf8) ?? ""))
                 }
+                await lifecycleManager.emit(.toolEnded(name: toolCall.function.name, result: error.localizedDescription, success: false))
             }
         }
         
@@ -634,6 +777,54 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         } else {
             partialCalls[delta.id] = PartialToolCall(from: delta)
         }
+    }
+    
+    // Helper to determine if task is complete despite having tool calls
+    private func isTaskComplete(
+        content: String,
+        toolCalls: [ToolCallItem],
+        iteration: Int,
+        allContent: String
+    ) -> Bool {
+        // Check for explicit completion phrases
+        let completionPhrases = [
+            "i've completed", "task is done", "finished",
+            "all done", "everything is complete", "task completed",
+            "i have completed", "successfully completed",
+            "here's the joke", "here is the joke", "let me tell you",
+            "why don't", "why did", "what do you call", "knock knock"
+        ]
+        
+        let lowercaseContent = content.lowercased()
+        let hasCompletionPhrase = completionPhrases.contains { phrase in
+            lowercaseContent.contains(phrase)
+        }
+        
+        if hasCompletionPhrase {
+            aiDebugPrint("DEBUG: Task likely complete - found completion phrase")
+            return true
+        }
+        
+        // Check if tools are "finishing" tools (like say or echo)
+        let isFinishingTool = toolCalls.allSatisfy { toolCall in
+            toolCall.function.name == "say" ||
+            toolCall.function.name == "shell" && toolCall.function.arguments.contains("say")
+        }
+        
+        // If we have both content and finishing tools, likely done
+        if !content.isEmpty && isFinishingTool {
+            aiDebugPrint("DEBUG: Task likely complete - content + finishing tools")
+            return true
+        }
+        
+        // Only consider task complete after many iterations if there are NO tool calls
+        // This prevents premature completion when the agent is still working
+        if iteration > 5 && toolCalls.isEmpty && content.count > 200 {
+            aiDebugPrint("DEBUG: Task likely complete - many iterations with substantial content and no more tools")
+            return true
+        }
+        
+        return false
     }
 }
 

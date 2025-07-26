@@ -300,6 +300,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         // Shell command tool for system operations
         tools.append(createShellTool())
         
+        // Completion signaling tools
+        tools.append(CompletionTools.createDoneTool())
+        tools.append(CompletionTools.createNeedInfoTool())
+        
         return tools
     }
     
@@ -970,7 +974,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         4. **Proper Quoting and Escaping**
            - NEVER nest single quotes inside single quotes
            - For complex patterns, use double quotes for the outer command string
-           - Escape special characters in patterns: `\.md` for literal dot
+           - Escape special characters in patterns: `\\.md` for literal dot
            - Examples:
              - WRONG: 'ls | grep -i 'pattern''  
              - RIGHT: "ls | grep -i 'pattern'"
@@ -1104,9 +1108,24 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         - Verify success with screenshots
         - ALWAYS complete with ALL requested outputs
         
+        ## Task Completion Signal
+        
+        **CRITICAL**: You MUST use the `task_completed` tool when you have finished all requested tasks. This is NOT optional.
+        
+        When to use `task_completed`:
+        - After completing all steps of the user's request
+        - After saying any requested phrases (like "YOWZA YOWZA BO-BOWZA")
+        - After verifying all actions were successful
+        - Include a summary of what was accomplished
+        
+        When to use `need_more_information`:
+        - If instructions are unclear or ambiguous
+        - If required information is missing
+        - If you encounter a blocking issue that needs user input
+        
         ## Task Completion Checklist
         
-        Before finishing, verify:
+        Before calling `task_completed`, verify:
         ✓ Did I complete the main task?
         ✓ Did I include all requested elements? (poems, specific phrases, etc.)
         ✓ Did I verify my actions worked? (screenshots, file existence checks)
@@ -1834,113 +1853,139 @@ extension PeekabooAgentService {
                     process.standardInput = nullDevice
                 }
                 
-                let pipe = Pipe()
-                let errorPipe = Pipe()
-                process.standardOutput = pipe
-                process.standardError = errorPipe
-                
-                do {
-                    try process.run()
-                    
-                    // Wait with timeout
-                    let deadlineDate = Date().addingTimeInterval(timeout)
-                    var timedOut = false
-                    
-                    while process.isRunning && Date() < deadlineDate {
-                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                    }
-                    
-                    if process.isRunning {
-                        // Process timed out
-                        timedOut = true
-                        process.terminate()
+                // Use async continuation to handle process execution without deadlock
+                return try await withCheckedThrowingContinuation { continuation in
+                    Task {
+                        let pipe = Pipe()
+                        let errorPipe = Pipe()
+                        process.standardOutput = pipe
+                        process.standardError = errorPipe
                         
-                        // Give it a moment to terminate gracefully
-                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-                        
-                        // Force kill if still running
-                        if process.isRunning {
-                            process.interrupt()
-                        }
-                    }
-                    
-                    process.waitUntilExit()
-                    
-                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-                    
-                    let output = String(data: data, encoding: .utf8) ?? ""
-                    let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
-                    
-                    if timedOut {
-                        return .dictionary([
-                            "success": false,
-                            "output": output,
-                            "error": "Command timed out after \(Int(timeout)) seconds. The command may require interactive input which is not supported. Consider using non-interactive flags or alternative approaches.",
-                            "exitCode": Int(process.terminationStatus),
-                            "timedOut": true
-                        ])
-                    } else if process.terminationStatus == 0 {
-                        return .dictionary([
-                            "success": true,
-                            "output": output,
-                            "exitCode": Int(process.terminationStatus)
-                        ])
-                    } else {
-                        // For failed commands, combine output and error for better context
-                        var errorMessage = ""
-                        
-                        // Include stdout if it has content (e.g., "pandoc not found" from which)
-                        if !output.isEmpty {
-                            errorMessage = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                        }
-                        
-                        // Add stderr if present
-                        if !errorOutput.isEmpty {
-                            if !errorMessage.isEmpty {
-                                errorMessage += "\n"
+                        do {
+                            try process.run()
+                            
+                            // Create concurrent tasks for reading output
+                            let outputTask = Task<Data, Never> {
+                                return await withCheckedContinuation { dataContinuation in
+                                    DispatchQueue.global().async {
+                                        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                                        dataContinuation.resume(returning: data)
+                                    }
+                                }
                             }
-                            errorMessage += errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
-                        }
-                        
-                        // Provide context based on exit code and command pattern
-                        let exitCode = Int(process.terminationStatus)
-                        var hint = ""
-                        
-                        // Check for common patterns that return exit code 1 as "no results"
-                        if exitCode == 1 {
-                            if command.contains("grep") && errorMessage.isEmpty {
-                                hint = "Note: grep returns exit code 1 when no matches are found. This is expected behavior, not an error."
-                            } else if command.contains("ls") && command.contains("|") && errorMessage.isEmpty {
-                                hint = "Note: Piped commands may fail if the first command produces no output for the second command to process."
-                            } else if command.contains("'") && (command.filter { $0 == "'" }.count % 2 != 0 || command.contains("' '")){
-                                hint = "Note: Check your quote syntax. Single quotes cannot be nested inside single quotes."
+                            
+                            let errorTask = Task<Data, Never> {
+                                return await withCheckedContinuation { dataContinuation in
+                                    DispatchQueue.global().async {
+                                        let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                                        dataContinuation.resume(returning: data)
+                                    }
+                                }
                             }
+                            
+                            // Handle timeout
+                            let timeoutTask = Task {
+                                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                                if process.isRunning {
+                                    process.terminate()
+                                    // Give it a moment to terminate
+                                    try? await Task.sleep(nanoseconds: 500_000_000)
+                                    if process.isRunning {
+                                        process.interrupt()
+                                    }
+                                }
+                            }
+                            
+                            // Wait for process completion
+                            await withCheckedContinuation { waitContinuation in
+                                DispatchQueue.global().async {
+                                    process.waitUntilExit()
+                                    waitContinuation.resume()
+                                }
+                            }
+                            
+                            // Cancel timeout if process finished
+                            timeoutTask.cancel()
+                            
+                            // Get output data
+                            let outputData = await outputTask.value
+                            let errorData = await errorTask.value
+                            
+                            let output = String(data: outputData, encoding: .utf8) ?? ""
+                            let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+                            let exitCode = Int(process.terminationStatus)
+                            let timedOut = !timeoutTask.isCancelled && process.terminationStatus == SIGTERM
+                            
+                            if timedOut {
+                                continuation.resume(returning: .dictionary([
+                                    "success": false,
+                                    "output": output,
+                                    "error": "Command timed out after \(Int(timeout)) seconds. The command may require interactive input which is not supported. Consider using non-interactive flags or alternative approaches.",
+                                    "exitCode": exitCode,
+                                    "timedOut": true
+                                ]))
+                            } else if exitCode == 0 {
+                                continuation.resume(returning: .dictionary([
+                                    "success": true,
+                                    "output": output,
+                                    "exitCode": exitCode
+                                ]))
+                            } else {
+                                // For failed commands, combine output and error for better context
+                                var errorMessage = ""
+                                
+                                // Include stdout if it has content (e.g., "pandoc not found" from which)
+                                if !output.isEmpty {
+                                    errorMessage = output.trimmingCharacters(in: .whitespacesAndNewlines)
+                                }
+                                
+                                // Add stderr if present
+                                if !errorOutput.isEmpty {
+                                    if !errorMessage.isEmpty {
+                                        errorMessage += "\n"
+                                    }
+                                    errorMessage += errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+                                }
+                                
+                                // Provide context based on exit code and command pattern
+                                var hint = ""
+                                
+                                // Check for common patterns that return exit code 1 as "no results"
+                                if exitCode == 1 {
+                                    if command.contains("grep") && errorMessage.isEmpty {
+                                        hint = "Note: grep returns exit code 1 when no matches are found. This is expected behavior, not an error."
+                                    } else if command.contains("ls") && command.contains("|") && errorMessage.isEmpty {
+                                        hint = "Note: Piped commands may fail if the first command produces no output for the second command to process."
+                                    } else if command.contains("'") && (command.filter { $0 == "'" }.count % 2 != 0 || command.contains("' '")){
+                                        hint = "Note: Check your quote syntax. Single quotes cannot be nested inside single quotes."
+                                    }
+                                }
+                                
+                                // Fallback if both are empty
+                                if errorMessage.isEmpty {
+                                    errorMessage = "Command failed with exit code \(exitCode)"
+                                }
+                                
+                                // Add hint if available
+                                if !hint.isEmpty {
+                                    errorMessage += "\n\n\(hint)"
+                                }
+                                
+                                continuation.resume(returning: .dictionary([
+                                    "success": false,
+                                    "output": output, // Still include raw output for completeness
+                                    "error": errorMessage,
+                                    "exitCode": exitCode
+                                ]))
+                            }
+                        } catch {
+                            continuation.resume(returning: .dictionary([
+                                "success": false,
+                                "error": error.localizedDescription,
+                                "exitCode": -1
+                            ]))
                         }
-                        
-                        // Fallback if both are empty
-                        if errorMessage.isEmpty {
-                            errorMessage = "Command failed with exit code \(process.terminationStatus)"
-                        }
-                        
-                        // Add hint if available
-                        if !hint.isEmpty {
-                            errorMessage += "\n\n\(hint)"
-                        }
-                        
-                        return .dictionary([
-                            "success": false,
-                            "output": output, // Still include raw output for completeness
-                            "error": errorMessage,
-                            "exitCode": exitCode
-                        ])
                     }
-                } catch {
-                    return .dictionary([
-                        "success": false,
-                        "error": error.localizedDescription,
-                        "exitCode": -1
-                    ])
                 }
             }
         )
