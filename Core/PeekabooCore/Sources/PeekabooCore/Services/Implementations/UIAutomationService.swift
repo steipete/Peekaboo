@@ -756,6 +756,62 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         }
     }
     
+    /// Get information about the currently focused UI element
+    @MainActor
+    public func getFocusedElement() -> FocusInfo? {
+        // Get the currently focused element across all applications
+        let systemWideElement = AXUIElementCreateSystemWide()
+        let focusedElement = Element(systemWideElement).focusedUIElement()
+        
+        guard let focused = focusedElement else {
+            logger.debug("No focused UI element found")
+            return nil
+        }
+        
+        // Find the application that owns this element
+        guard let appElement = focused.application() else {
+            logger.debug("Could not find application for focused element")
+            return nil
+        }
+        
+        // Get application information
+        let pid = appElement.pid() ?? 0
+        let app = NSWorkspace.shared.runningApplications.first { $0.processIdentifier == pid }
+        let appName = app?.localizedName ?? "Unknown"
+        let bundleId = app?.bundleIdentifier
+        
+        // Extract element information
+        let role = focused.role() ?? "AXUnknown"
+        let title = focused.title()
+        let value = focused.value() as? String
+        let bounds = focused.frame() ?? .zero
+        let isEnabled = focused.isEnabled() ?? false
+        let isVisible = !(focused.isHidden() ?? false)
+        let subrole = focused.subrole()
+        let description = focused.descriptionText()
+        
+        let elementInfo = ElementInfo(
+            role: role,
+            title: title,
+            value: value,
+            bounds: bounds,
+            isEnabled: isEnabled,
+            isVisible: isVisible,
+            subrole: subrole,
+            description: description
+        )
+        
+        let focusInfo = FocusInfo(
+            app: appName,
+            bundleId: bundleId,
+            processId: Int(pid),
+            element: elementInfo
+        )
+        
+        logger.debug("Found focused element: \(focusInfo.humanDescription)")
+        return focusInfo
+    }
+    
     @MainActor
     private func mapSpecialKeyToVirtualCode(_ key: SpecialKey) -> CGKeyCode {
         switch key {
