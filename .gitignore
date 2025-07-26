@@ -36,6 +36,7 @@ lerna-debug.log*
 .env.production.local
 
 # TypeScript
+Server/dist/
 dist/
 build/
 *.js.map
@@ -71,16 +72,14 @@ lib-cov/
 *.sublime-project
 
 # Swift / Xcode
-peekaboo-cli/.build/
-peekaboo-cli/DerivedData/
-peekaboo-cli/.swiftpm/
-peekaboo-cli/*.bc
-# LLVM bitcode files (Swift compiler artifacts)
-*.bc
-# Compiled CLI binary in root
-/peekaboo
+## Build
 .build/
 DerivedData/
+build/
+*.xcodeproj/project.xcworkspace/xcshareddata/
+*.xcworkspace/xcshareddata/
+
+## Various Xcode settings
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -94,17 +93,64 @@ xcuserdata/
 *.moved-aside
 *.xcuserstate
 *.xcscmblueprint
-*.hmap
-*.ipa
-*.dSYM.zip
-*.dSYM
+*.xcworkspace/xcuserdata/
+
+## Xcode Patch
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+/*.gcno
+
+## Swift Package Manager
 Packages/
 Package.pins
 Package.resolved
 .swiftpm/
-*.playground
-timeline.xctimeline
+
+## Playgrounds
 playground.xcworkspace
+timeline.xctimeline
+
+## Build products
+*.app
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## CocoaPods (if used)
+Pods/
+
+## Carthage (if used)
+Carthage/Build/
+
+## FastLane (if used)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+## Code Injection
+iOSInjectionProject/
+
+## LLVM bitcode files (Swift compiler artifacts)
+*.bc
+
+## Compiled CLI binary
+/peekaboo
+Apps/CLI/.build/
+Apps/CLI/DerivedData/
+Apps/CLI/.swiftpm/
+Apps/CLI/*.bc
+
+## Swift build artifacts
+*.hmap
+*.ipa
+
+## Mac app specific
+Apps/Mac/.build/
+Apps/Mac/DerivedData/
+Apps/Mac/.swiftpm/
 
 # Temporary files
 *.tmp
@@ -118,8 +164,39 @@ Thumbs.db
 *.tgz
 
 # Auto-generated version file
-peekaboo-cli/Sources/peekaboo/Version.swift
-/peekaboo-cli/peekaboo
+Apps/CLI/Sources/peekaboo/Version.swift
+Apps/CLI/peekaboo
 
 # Release artifacts
 /release/
+
+# Test images and screenshots
+*_screenshot.png
+*_Screenshot_*.png
+Calculator_*.png
+TextEdit_*.png
+Safari_*.png
+Wispr_*.png
+Finder_*.png
+test-*.png
+screenshot-*.png
+Screenshot*.png
+capture_*.png
+peekaboo_*.png
+
+# Temporary test files
+test.peekaboo.json
+test_*.sh
+check_*.sh
+*.test.png
+*.test.json
+
+# Menubar elements JSON (test data)
+menubar_elements.json
+
+# Vite cache
+.vite/
+
+# Documentation audits and summaries
+docc-class-audit.md
+test-fixes-summary.md

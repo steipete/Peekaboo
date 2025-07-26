@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { imageToolHandler } from "../../../src/tools/image";
-import { executeSwiftCli } from "../../../src/utils/peekaboo-cli";
-import { resolveImagePath } from "../../../src/utils/image-cli-args";
+import { imageToolHandler } from "../../../Server/src/tools/image";
+import { executeSwiftCli } from "../../../Server/src/utils/peekaboo-cli";
+import { resolveImagePath } from "../../../Server/src/utils/image-cli-args";
 import { mockSwiftCli } from "../../mocks/peekaboo-cli.mock";
 import { pino } from "pino";
 
 // Mock the Swift CLI utility
-vi.mock("../../../src/utils/peekaboo-cli");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 // Mock image-cli-args module
-vi.mock("../../../src/utils/image-cli-args", async () => {
-  const actual = await vi.importActual("../../../src/utils/image-cli-args");
+vi.mock("../../../Server/src/utils/image-cli-args", async () => {
+  const actual = await vi.importActual("../../../Server/src/utils/image-cli-args");
   return {
     ...actual,
     resolveImagePath: vi.fn(),

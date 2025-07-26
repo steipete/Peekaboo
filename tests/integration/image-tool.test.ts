@@ -1,20 +1,20 @@
-import { imageToolHandler } from "../../src/tools/image";
+import { imageToolHandler } from "../../Server/src/tools/image";
 import { pino } from "pino";
-import { ImageInput } from "../../src/types";
+import { ImageInput } from "../../Server/src/types";
 import { vi, describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as pathModule from "path";
-import { initializeSwiftCliPath, executeSwiftCli, readImageAsBase64 } from "../../src/utils/peekaboo-cli";
+import { initializeSwiftCliPath, executeSwiftCli, readImageAsBase64 } from "../../Server/src/utils/peekaboo-cli";
 import { mockSwiftCli } from "../mocks/peekaboo-cli.mock";
 
 // Mocks
-vi.mock("../../src/utils/peekaboo-cli");
+vi.mock("../../Server/src/utils/peekaboo-cli");
 vi.mock("fs/promises");
 
 // Mock image-cli-args module
-vi.mock("../../src/utils/image-cli-args", async () => {
-  const actual = await vi.importActual("../../src/utils/image-cli-args");
+vi.mock("../../Server/src/utils/image-cli-args", async () => {
+  const actual = await vi.importActual("../../Server/src/utils/image-cli-args");
   return {
     ...actual,
     resolveImagePath: vi.fn(),
@@ -27,10 +27,10 @@ const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<
 const mockReadImageAsBase64 = readImageAsBase64 as vi.MockedFunction<
   typeof readImageAsBase64
 >;
-import { resolveImagePath } from "../../src/utils/image-cli-args";
+import { resolveImagePath } from "../../Server/src/utils/image-cli-args";
 const mockResolveImagePath = resolveImagePath as vi.MockedFunction<typeof resolveImagePath>;
 
-import { performAutomaticAnalysis } from "../../src/utils/image-analysis";
+import { performAutomaticAnalysis } from "../../Server/src/utils/image-analysis";
 const mockPerformAutomaticAnalysis = performAutomaticAnalysis as vi.MockedFunction<typeof performAutomaticAnalysis>;
 
 const mockContext = {
@@ -43,18 +43,18 @@ const MOCK_TEMP_DIR = "/private/var/folders/xyz/T/peekaboo-temp-12345";
 const MOCK_SAVED_FILE_PATH = `${MOCK_TEMP_DIR}/screen_1.png`;
 
 // Mock AI providers to avoid real API calls in integration tests
-vi.mock("../../src/utils/ai-providers", () => ({
+vi.mock("../../Server/src/utils/ai-providers", () => ({
   parseAIProviders: vi.fn().mockReturnValue([{ provider: "mock", model: "test" }]),
   analyzeImageWithProvider: vi.fn().mockResolvedValue("Mock analysis: This is a test image"),
 }));
 
 // Mock image-analysis module
-vi.mock("../../src/utils/image-analysis", () => ({
+vi.mock("../../Server/src/utils/image-analysis", () => ({
   performAutomaticAnalysis: vi.fn(),
 }));
 
 // Import SwiftCliResponse type
-import { SwiftCliResponse } from "../../src/types";
+import { SwiftCliResponse } from "../../Server/src/types";
 
 // Conditionally skip Swift-dependent tests on non-macOS platforms
 const describeSwiftTests = globalThis.shouldSkipSwiftTests ? describe.skip : describe;

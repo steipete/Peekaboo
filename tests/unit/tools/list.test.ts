@@ -5,19 +5,19 @@ import {
   buildSwiftCliArgs,
   ListToolInput,
   listToolSchema,
-} from "../../../src/tools/list";
-import { executeSwiftCli } from "../../../src/utils/peekaboo-cli";
-import { generateServerStatusString } from "../../../src/utils/server-status";
+} from "../../../Server/src/tools/list";
+import { executeSwiftCli } from "../../../Server/src/utils/peekaboo-cli";
+import { generateServerStatusString } from "../../../Server/src/utils/server-status";
 import fs from "fs/promises";
 import {
   ToolContext,
   ApplicationListData,
   WindowListData,
-} from "../../../src/types/index.js";
+} from "../../../Server/src/types/index";
 
 // Mocks
-vi.mock("../../../src/utils/peekaboo-cli");
-vi.mock("../../../src/utils/server-status");
+vi.mock("../../../Server/src/utils/peekaboo-cli");
+vi.mock("../../../Server/src/utils/server-status");
 vi.mock("fs/promises");
 vi.mock("fs", () => ({
   existsSync: vi.fn(() => false),

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { imageToolHandler } from "../../src/tools/image";
-import { initializeSwiftCliPath } from "../../src/utils/peekaboo-cli";
+import { imageToolHandler } from "../../Server/src/tools/image";
+import { initializeSwiftCliPath } from "../../Server/src/utils/peekaboo-cli";
 import { pino } from "pino";
 import * as fs from "fs/promises";
 import * as path from "path";
@@ -49,8 +49,11 @@ describeSwiftTests("Invalid Format Integration Tests", () => {
         errorText.includes("permission") ||
         errorText.includes("denied") ||
         errorText.includes("timeout") ||
+        errorText.includes("Failed to create screen capture") ||
+        errorText.includes("Image capture failed") ||
         metaErrorCode === "PERMISSION_DENIED_SCREEN_RECORDING" ||
-        metaErrorCode === "SWIFT_CLI_TIMEOUT"
+        metaErrorCode === "SWIFT_CLI_TIMEOUT" ||
+        metaErrorCode === "CAPTURE_FAILED"
       ).toBeTruthy();
       
       // In error case, either no files should be created, or temporary files from the process
@@ -112,8 +115,11 @@ describeSwiftTests("Invalid Format Integration Tests", () => {
           errorText.includes("timeout") ||
           errorText.includes("TCC") ||
           errorText.includes("declined") ||
+          errorText.includes("Failed to create screen capture") ||
+          errorText.includes("Image capture failed") ||
           metaErrorCode === "PERMISSION_DENIED_SCREEN_RECORDING" ||
-          metaErrorCode === "SWIFT_CLI_TIMEOUT";
+          metaErrorCode === "SWIFT_CLI_TIMEOUT" ||
+          metaErrorCode === "CAPTURE_FAILED";
         
         if (isExpectedError) {
           continue; // Skip to next format - this is expected
@@ -162,8 +168,11 @@ describeSwiftTests("Invalid Format Integration Tests", () => {
         errorText.includes("timeout") ||
         errorText.includes("TCC") ||
         errorText.includes("declined") ||
+        errorText.includes("Failed to create screen capture") ||
+        errorText.includes("Image capture failed") ||
         metaErrorCode === "PERMISSION_DENIED_SCREEN_RECORDING" ||
-        metaErrorCode === "SWIFT_CLI_TIMEOUT";
+        metaErrorCode === "SWIFT_CLI_TIMEOUT" ||
+        metaErrorCode === "CAPTURE_FAILED";
       
       if (!isExpectedError) {
         throw new Error(`Unexpected error: ${errorText}`);

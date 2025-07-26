@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zodToJsonSchema } from "../../../src/utils/zod-to-json-schema";
+import { zodToJsonSchema } from "../../../Server/src/utils/zod-to-json-schema";
 
 describe("zodToJsonSchema", () => {
   describe("primitive types", () => {

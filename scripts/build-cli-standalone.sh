@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}Building Peekaboo Swift CLI...${NC}"
 
 # Change to the CLI directory
-cd "$(dirname "$0")/../peekaboo-cli"
+cd "$(dirname "$0")/../Apps/CLI"
 
 # Build for release with optimizations
 echo -e "${BLUE}Building release version...${NC}"

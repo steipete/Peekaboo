@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { imageToolSchema } from "../../../src/types/index";
+import { imageToolSchema } from "../../../Server/src/types/index";
 
 describe("Edge Case Fixes", () => {
   describe("JSON null string handling", () => {
