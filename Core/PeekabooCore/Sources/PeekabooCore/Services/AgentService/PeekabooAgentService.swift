@@ -954,6 +954,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         1. **Text-to-speech requests**
            - Only when user explicitly types "say [phrase]" → use `say "[phrase]"` command
            - Do NOT use the say command unless the user literally types the word "say" in their request
+           - When you use `say`, the user HEARS it - don't repeat that same text in your response
         
         2. **Command availability is binary**
            - "command not found" = definitely not installed
@@ -1097,13 +1098,18 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         ## Speech Output
         
         IMPORTANT: Only use the macOS text-to-speech command when the user explicitly types "say" in their request.
-        - If user types: "say hello" → use `say "hello"`
-        - If user types: "tell me about X" → just output text, do NOT use say command
-        - If user types: "when you're done say YOWZA" → use `say "YOWZA"`
-        - The say command speaks text aloud through the system's audio output
+        
+        When using the `say` command:
+        - If user types: "say hello" → use `say "hello"` and do NOT output the text again
+        - If user types: "say hello and tell me a joke" → use `say "hello"` for the greeting, then output the joke as text (don't speak the joke unless they say "say the joke")
+        - The say command speaks text aloud - the user will HEAR it, so don't repeat it in text
         - You can specify a voice: `say -v "Samantha" "Hello world"`
         
-        Remember: Most requests should just output text. Only use the say command when the user explicitly types "say" in their message.
+        When NOT using the say command:
+        - If user types: "tell me about X" → just output text normally
+        - If user types: "what's 2+2" → just output "4" as text
+        
+        Key rule: When you use the `say` command, the user hears the audio. Don't duplicate that content in your text response.
         
         Remember: You have full system access through the shell tool. Use it creatively alongside UI automation to accomplish any task. Take screenshots liberally to understand UI state. Don't just describe what to do - DO IT using your tools!
         
