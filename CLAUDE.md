@@ -65,9 +65,10 @@ Poltergeist is a file watcher that automatically rebuilds the Swift CLI whenever
 
 **The Wrapper Script** (`peekaboo-wait.sh`):
 - Checks if binary is fresh (newer than Swift sources)
-- If stale, waits for Poltergeist to finish rebuilding (max 30s)
+- If stale, waits for Poltergeist to finish rebuilding (max 3 minutes)
 - Runs the CLI with your command once ready
 - Completely transparent - no manual build management needed
+- Shows progress updates every 10 seconds during long builds
 
 ### Why This Matters
 

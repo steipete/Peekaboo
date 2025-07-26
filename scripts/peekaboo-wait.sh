@@ -7,7 +7,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BINARY_PATH="$PROJECT_ROOT/peekaboo"
 BUILD_LOCK="/tmp/peekaboo-swift-build.lock"
 POLTERGEIST_LOG="$PROJECT_ROOT/.poltergeist.log"
-MAX_WAIT=30  # Maximum seconds to wait for build
+MAX_WAIT=180  # Maximum seconds to wait for build (3 minutes)
 DEBUG="${PEEKABOO_WAIT_DEBUG:-false}"
 
 # Debug logging
@@ -116,14 +116,16 @@ while is_build_running && [ $wait_count -lt $MAX_WAIT ]; do
     sleep 1
     ((wait_count++))
     
-    # Show progress every 5 seconds
-    if [ $((wait_count % 5)) -eq 0 ]; then
-        echo "   Still waiting... (${wait_count}s)" >&2
+    # Show progress with more helpful messages
+    if [ $((wait_count % 10)) -eq 0 ] && [ $wait_count -gt 0 ]; then
+        remaining=$((MAX_WAIT - wait_count))
+        echo "   Still building... (${wait_count}s elapsed, max ${remaining}s remaining)" >&2
     fi
 done
 
 if [ $wait_count -ge $MAX_WAIT ]; then
-    echo "⚠️  Build is taking too long (>${MAX_WAIT}s). Running anyway..." >&2
+    echo "⚠️  Build timeout reached (${MAX_WAIT}s). Running with potentially stale binary..." >&2
+    echo "   Consider checking 'npm run poltergeist:logs' for build issues." >&2
 fi
 
 # If Poltergeist is actively working, give it a moment more
