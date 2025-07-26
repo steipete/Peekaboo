@@ -900,7 +900,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         When completing tasks, you MUST:
         
         1. **Follow ALL instructions literally**
-           - If asked to "say" something, use the `say` command
+           - If the user explicitly types "say" (e.g., "say hello"), use the `say` command
            - If asked to "send" something, complete the action fully - creating a draft is NOT sufficient
            - Complete every part of multi-step requests
         
@@ -910,7 +910,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
            - For file operations: verify the output file exists and has content
         
         3. **Use appropriate tools for each action**
-           - "say X" → use shell tool with `say "X"` command
+           - User types "say X" → use shell tool with `say "X"` command
            - "send email" → create draft AND click Send button
            - "delete file" → verify file no longer exists after deletion
         
@@ -952,8 +952,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         When using shell commands:
         
         1. **Text-to-speech requests**
-           - "say [phrase]" in instructions → use `say "[phrase]"` command
-           - This applies to any verbal output request
+           - Only when user explicitly types "say [phrase]" → use `say "[phrase]"` command
+           - Do NOT use the say command unless the user literally types the word "say" in their request
         
         2. **Command availability is binary**
            - "command not found" = definitely not installed
@@ -1091,16 +1091,19 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         ✓ Did I complete the main task?
         ✓ Did I include all requested elements? (poems, specific phrases, etc.)
         ✓ Did I verify my actions worked? (screenshots, file existence checks)
-        ✓ Did I say any specific phrases the user requested?
+        ✓ Did I output any specific phrases the user requested?
         ✓ Did I handle any errors gracefully and try alternatives?
         
         ## Speech Output
         
-        When the user asks you to "say" something, they mean using the macOS text-to-speech command:
-        - Use the `say` command: `say "Your text here"`
-        - For example: `say "YOWZA YOWZA BO-BOWZA"`
-        - This will speak the text aloud through the system's audio output
-        - You can also specify a voice: `say -v "Samantha" "Hello world"`
+        IMPORTANT: Only use the macOS text-to-speech command when the user explicitly types "say" in their request.
+        - If user types: "say hello" → use `say "hello"`
+        - If user types: "tell me about X" → just output text, do NOT use say command
+        - If user types: "when you're done say YOWZA" → use `say "YOWZA"`
+        - The say command speaks text aloud through the system's audio output
+        - You can specify a voice: `say -v "Samantha" "Hello world"`
+        
+        Remember: Most requests should just output text. Only use the say command when the user explicitly types "say" in their message.
         
         Remember: You have full system access through the shell tool. Use it creatively alongside UI automation to accomplish any task. Take screenshots liberally to understand UI state. Don't just describe what to do - DO IT using your tools!
         
@@ -1170,11 +1173,8 @@ extension PeekabooAgentService {
                 context: services,
                 sessionId: effectiveSessionId,
                 streamHandler: { chunk in
-                    // Only emit assistant message events for actual text content
-                    // Tool call events are handled separately
-                    if !chunk.isEmpty {
-                        eventContinuation.yield(.assistantMessage(content: chunk))
-                    }
+                    // Emit all assistant message events
+                    eventContinuation.yield(.assistantMessage(content: chunk))
                 },
                 eventHandler: { toolEvent in
                     // Convert tool events to agent events
@@ -1184,6 +1184,10 @@ extension PeekabooAgentService {
                     case .completed(let name, let result):
                         eventContinuation.yield(.toolCallCompleted(name: name, result: result))
                     }
+                },
+                reasoningHandler: { reasoning in
+                    // Emit thinking messages for reasoning content (OpenAI models)
+                    eventContinuation.yield(.thinkingMessage(content: reasoning))
                 }
             )
             

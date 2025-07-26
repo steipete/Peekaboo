@@ -360,7 +360,7 @@ public final class AnthropicModel: ModelInterface {
             }
         }
         
-        // Convert tools
+        // Convert tools (without cache control to avoid exceeding the 4 block limit)
         let tools = request.tools?.map { toolDef -> AnthropicTool in
             AnthropicTool(
                 name: toolDef.function.name,
@@ -372,10 +372,25 @@ public final class AnthropicModel: ModelInterface {
         // Convert tool choice
         let toolChoice = convertToolChoice(request.settings.toolChoice)
         
+        // Create system content with cache control
+        let systemContent: AnthropicSystemContent?
+        if let systemPrompt = systemPrompt {
+            // Use array format with cache control for system prompt
+            systemContent = .array([
+                AnthropicSystemBlock(
+                    type: "text",
+                    text: systemPrompt,
+                    cacheControl: AnthropicCacheControl(type: "ephemeral")
+                )
+            ])
+        } else {
+            systemContent = nil
+        }
+        
         return AnthropicRequest(
             model: modelName ?? request.settings.modelName,
             messages: anthropicMessages,
-            system: systemPrompt,
+            system: systemContent,
             maxTokens: request.settings.maxTokens ?? 4096,
             temperature: request.settings.temperature,
             topP: request.settings.topP,

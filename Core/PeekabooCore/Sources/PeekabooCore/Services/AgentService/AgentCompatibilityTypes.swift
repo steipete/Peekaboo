@@ -6,6 +6,7 @@ import Foundation
 public enum AgentEvent: Sendable {
     case started(task: String)
     case assistantMessage(content: String)
+    case thinkingMessage(content: String)  // New case for thinking/reasoning content
     case toolCallStarted(name: String, arguments: String)
     case toolCallCompleted(name: String, result: String)
     case error(message: String)

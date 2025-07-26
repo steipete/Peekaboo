@@ -646,22 +646,33 @@ final class CompactEventDelegate: AgentEventDelegate {
             if outputMode == .verbose {
                 print("\n💭 Assistant: \(content)")
             } else if outputMode == .compact {
-                // Check if this is reasoning content
-                let isReasoningContent = content.contains("💭 Thinking:") || content.contains("💭 Reasoning:")
-                
-                // Only stop animation if it's not reasoning content
-                if !isReasoningContent && !hasReceivedContent && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    ghostAnimator.stop()
-                    hasReceivedContent = true
-                }
-                
-                // For reasoning content, stop animation and print on new line
-                if isReasoningContent && isThinking {
+                // Stop animation on first content if still running
+                if isThinking && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     ghostAnimator.stop()
                     isThinking = false
+                    hasReceivedContent = true
+                    // Print newline after animation to start content on new line
+                    print()
                 }
                 
-                // In compact mode, show streaming text directly
+                // In compact mode, show all streaming text directly
+                print(content, terminator: "")
+                fflush(stdout)
+            }
+            
+        case .thinkingMessage(let content):
+            if outputMode == .verbose {
+                print("\n🤔 Thinking: \(content)")
+            } else if outputMode == .compact {
+                // Stop animation when thinking content arrives
+                if isThinking {
+                    ghostAnimator.stop()
+                    isThinking = false
+                    // Print thinking prefix once
+                    print("\n\(TerminalColor.cyan)💭 Thinking:\(TerminalColor.reset) ", terminator: "")
+                }
+                
+                // Show thinking content
                 print(content, terminator: "")
                 fflush(stdout)
             }

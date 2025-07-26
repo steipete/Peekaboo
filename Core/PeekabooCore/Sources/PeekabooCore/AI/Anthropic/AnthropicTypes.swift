@@ -3,6 +3,68 @@ import AXorcist
 
 // MARK: - Anthropic API Request Types
 
+/// Cache control configuration
+public struct AnthropicCacheControl: Codable, Sendable {
+    public let type: String // "ephemeral"
+    
+    public init(type: String = "ephemeral") {
+        self.type = type
+    }
+}
+
+/// System content that can be cached
+public enum AnthropicSystemContent: Codable, Sendable {
+    case string(String)
+    case array([AnthropicSystemBlock])
+    
+    // Custom encoding/decoding
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        
+        if let stringValue = try? container.decode(String.self) {
+            self = .string(stringValue)
+        } else if let arrayValue = try? container.decode([AnthropicSystemBlock].self) {
+            self = .array(arrayValue)
+        } else {
+            throw DecodingError.typeMismatch(
+                AnthropicSystemContent.self,
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "Expected String or Array of system blocks"
+                )
+            )
+        }
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let value):
+            try container.encode(value)
+        case .array(let blocks):
+            try container.encode(blocks)
+        }
+    }
+}
+
+/// System block that can contain cache control
+public struct AnthropicSystemBlock: Codable, Sendable {
+    public let type: String // "text"
+    public let text: String
+    public let cacheControl: AnthropicCacheControl?
+    
+    enum CodingKeys: String, CodingKey {
+        case type, text
+        case cacheControl = "cache_control"
+    }
+    
+    public init(type: String = "text", text: String, cacheControl: AnthropicCacheControl? = nil) {
+        self.type = type
+        self.text = text
+        self.cacheControl = cacheControl
+    }
+}
+
 /// Main request structure for Anthropic's Messages API
 public struct AnthropicRequest: Codable, Sendable {
     /// ID of the model to use (e.g., "claude-3-opus-20240229")
@@ -12,7 +74,7 @@ public struct AnthropicRequest: Codable, Sendable {
     public let messages: [AnthropicMessage]
     
     /// System prompt (separate from messages)
-    public let system: String?
+    public let system: AnthropicSystemContent?
     
     /// Maximum number of tokens to generate
     public let maxTokens: Int
@@ -130,11 +192,15 @@ public struct AnthropicContentBlock: Codable, Sendable {
     public let content: AnthropicContent?
     public let isError: Bool?
     
+    // Cache control
+    public let cacheControl: AnthropicCacheControl?
+    
     enum CodingKeys: String, CodingKey {
         case type, text, source, id, name, input
         case toolUseId = "tool_use_id"
         case content
         case isError = "is_error"
+        case cacheControl = "cache_control"
     }
 }
 
@@ -158,10 +224,19 @@ public struct AnthropicTool: Codable, Sendable {
     public let name: String
     public let description: String
     public let inputSchema: AnthropicJSONSchema
+    public let cacheControl: AnthropicCacheControl?
     
     enum CodingKeys: String, CodingKey {
         case name, description
         case inputSchema = "input_schema"
+        case cacheControl = "cache_control"
+    }
+    
+    public init(name: String, description: String, inputSchema: AnthropicJSONSchema, cacheControl: AnthropicCacheControl? = nil) {
+        self.name = name
+        self.description = description
+        self.inputSchema = inputSchema
+        self.cacheControl = cacheControl
     }
 }
 
@@ -353,7 +428,7 @@ public struct AnthropicError: Codable, Sendable {
 
 extension AnthropicContentBlock {
     /// Create a text content block
-    public static func text(_ text: String) -> AnthropicContentBlock {
+    public static func text(_ text: String, cacheControl: AnthropicCacheControl? = nil) -> AnthropicContentBlock {
         AnthropicContentBlock(
             type: "text",
             text: text,
@@ -363,12 +438,13 @@ extension AnthropicContentBlock {
             input: nil,
             toolUseId: nil,
             content: nil,
-            isError: nil
+            isError: nil,
+            cacheControl: cacheControl
         )
     }
     
     /// Create an image content block
-    public static func image(base64: String, mediaType: String) -> AnthropicContentBlock {
+    public static func image(base64: String, mediaType: String, cacheControl: AnthropicCacheControl? = nil) -> AnthropicContentBlock {
         AnthropicContentBlock(
             type: "image",
             text: nil,
@@ -382,7 +458,8 @@ extension AnthropicContentBlock {
             input: nil,
             toolUseId: nil,
             content: nil,
-            isError: nil
+            isError: nil,
+            cacheControl: cacheControl
         )
     }
     
@@ -397,7 +474,8 @@ extension AnthropicContentBlock {
             input: input.mapValues { AnyCodable($0) },
             toolUseId: nil,
             content: nil,
-            isError: nil
+            isError: nil,
+            cacheControl: nil
         )
     }
     
@@ -412,7 +490,8 @@ extension AnthropicContentBlock {
             input: nil,
             toolUseId: toolUseId,
             content: .string(content),
-            isError: isError
+            isError: isError,
+            cacheControl: nil
         )
     }
 }

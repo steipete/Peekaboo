@@ -68,7 +68,8 @@ public struct AgentRunner {
         model: (any ModelInterface)? = nil,
         sessionId: String? = nil,
         streamHandler: @Sendable @escaping (String) async -> Void,
-        eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil
+        eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil,
+        reasoningHandler: (@Sendable @escaping (String) async -> Void)? = nil
     ) async throws -> AgentExecutionResult where Context: Sendable {
         let runner = AgentRunnerImpl(
             agent: agent,
@@ -80,7 +81,8 @@ public struct AgentRunner {
             input: input,
             sessionId: sessionId,
             streamHandler: streamHandler,
-            eventHandler: eventHandler
+            eventHandler: eventHandler,
+            reasoningHandler: reasoningHandler
         )
     }
 }
@@ -253,7 +255,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         input: String,
         sessionId: String? = nil,
         streamHandler: @Sendable @escaping (String) async -> Void,
-        eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil
+        eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil,
+        reasoningHandler: (@Sendable @escaping (String) async -> Void)? = nil
     ) async throws -> AgentExecutionResult {
         let startTime = Date()
         
@@ -267,7 +270,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         let (finalMessages, allToolCalls, responseContent, usage) = try await processMessagesRecursively(
             messages: initialMessages,
             streamHandler: streamHandler,
-            eventHandler: eventHandler
+            eventHandler: eventHandler,
+            reasoningHandler: reasoningHandler
         )
         
         // Save session
@@ -299,7 +303,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
     private func processMessagesRecursively(
         messages: [any MessageItem],
         streamHandler: @Sendable @escaping (String) async -> Void,
-        eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil
+        eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil,
+        reasoningHandler: (@Sendable @escaping (String) async -> Void)? = nil
     ) async throws -> (messages: [any MessageItem], toolCalls: [ToolCallItem], content: String, usage: Usage?) {
         var currentMessages = messages
         var allToolCalls: [ToolCallItem] = []
@@ -371,14 +376,11 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
 
                 case .reasoningSummaryDelta(let delta):
                     reasoningSummary += delta.delta
-                    // Send reasoning deltas to stream handler with prefix for identification
-                    // Only send the prefix once at the beginning
-                    if reasoningSummary.count == delta.delta.count {
-                        await streamHandler("💭 Thinking: \(delta.delta)")
-                    } else {
-                        await streamHandler(delta.delta)
+                    // Send reasoning deltas to the reasoning handler if available
+                    if let reasoningHandler = reasoningHandler {
+                        await reasoningHandler(delta.delta)
                     }
-                    aiDebugPrint("DEBUG: Reasoning summary delta: \(delta.delta)")
+                    aiDebugPrint("DEBUG: Reasoning summary delta: '\(delta.delta)'")
                     
                 case .reasoningSummaryCompleted(let completed):
                     reasoningSummary = completed.summary
