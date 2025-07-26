@@ -151,6 +151,8 @@ This issue typically occurs when:
 
 ## Recent Updates
 
+- **Complete Responses API migration** (2025-01-26): Migrated exclusively to OpenAI Responses API, removing all Chat Completions API code. Updated tool format to use flatter structure. Added proper model-specific parameter handling (reasoning for o3/o4, temperature restrictions).
+
 - **VibeTunnel integration** (2025-01-26): Added VibeTunnel terminal title management to agent command for better visibility across multiple Claude sessions. Terminal titles update automatically during task execution and tool calls.
 
 - **OpenAI API parameter fix** (2025-01-26): Fixed OpenAI API compatibility by changing 'messages' parameter to 'input' in request encoding for all models. Added delightful ghost animation for agent thinking state.
@@ -159,7 +161,7 @@ This issue typically occurs when:
 
 - **Poltergeist file watcher** (2025-01-26): Added ghost-themed file watcher that automatically rebuilds Swift CLI on source changes. Uses Facebook's Watchman for efficient native file watching. See "Poltergeist" section above.
 
-- **Chat Completions API migration** (2025-01-26): Completely replaced OpenAI Assistants API with Chat Completions API using a modern protocol-based architecture. Features native streaming support, type-safe message handling, and improved performance.
+- **Responses API migration** (2025-01-26): Completely migrated from Chat Completions API to Responses API for all models. The Responses API provides better streaming support, reasoning visibility for o3/o4 models, and unified handling across all supported models.
 
 - **Direct API migration** (2025-01-25): Removed CLI subprocess execution in favor of direct PeekabooCore API calls, resulting in ~10x performance improvement. All Peekaboo apps now use the unified service layer.
 
@@ -250,16 +252,21 @@ This helps track multiple Claude Code sessions at a glance, especially useful wh
 
 ## OpenAI API Integration
 
-### Current Models (2025)
-- **o3** - Advanced reasoning model (default for agent)
+### Supported Models (2025)
+- **o3**, **o3-mini**, **o3-pro** - Advanced reasoning models with detailed thought process
+- **o4-mini** - Next generation reasoning model
 - **gpt-4.1**, **gpt-4.1-mini** - Latest models with 1M token context
 - **gpt-4o**, **gpt-4o-mini** - Multimodal models (128K context)
 
+**Note**: GPT-3.5 and GPT-4 models are NOT supported. Only modern models with Responses API support are available.
+
 ### API Requirements
-- o3/o4 models require `max_completion_tokens` instead of `max_tokens`
-- Other models (gpt-4o, etc.) continue to use `max_tokens`
-- Agent uses Chat Completions API at `/v1/chat/completions`
-- Supports streaming responses and tool calls
+- All models use the Responses API at `/v1/responses`
+- Uses `max_output_tokens` parameter for all models
+- o3/o4 models support reasoning parameters (effort: high/medium/low)
+- o3/o4 models do NOT support temperature parameter
+- Supports streaming responses with event-based format
+- Tool format uses flatter structure (name at top level, not nested)
 
 ### Configuration
 ```bash

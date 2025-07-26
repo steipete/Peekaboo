@@ -339,61 +339,6 @@ public struct OpenAIResponsesRequest: Codable, Sendable {
     }
 }
 
-/// OpenAI Chat Completion Request
-public struct OpenAIChatCompletionRequest: Codable, Sendable {
-    public let model: String
-    public let messages: [OpenAIMessage]
-    public let tools: [OpenAITool]?
-    public let toolChoice: String?
-    public let temperature: Double?
-    public let topP: Double?
-    public let stream: Bool?
-    public let maxTokens: Int?
-    public let reasoningEffort: String?
-    public let maxCompletionTokens: Int?
-    public let reasoning: OpenAIReasoning?
-    
-    enum CodingKeys: String, CodingKey {
-        case model
-        case messages
-        case tools
-        case toolChoice = "tool_choice"
-        case temperature
-        case topP = "top_p"
-        case stream
-        case maxTokens = "max_tokens"
-        case reasoningEffort = "reasoning_effort"
-        case maxCompletionTokens = "max_completion_tokens"
-        case reasoning
-    }
-    
-    public init(
-        model: String,
-        messages: [OpenAIMessage],
-        tools: [OpenAITool]? = nil,
-        toolChoice: String? = nil,
-        temperature: Double? = nil,
-        topP: Double? = nil,
-        stream: Bool? = nil,
-        maxTokens: Int? = nil,
-        reasoningEffort: String? = nil,
-        maxCompletionTokens: Int? = nil,
-        reasoning: OpenAIReasoning? = nil
-    ) {
-        self.model = model
-        self.messages = messages
-        self.tools = tools
-        self.toolChoice = toolChoice
-        self.temperature = temperature
-        self.topP = topP
-        self.stream = stream
-        self.maxTokens = maxTokens
-        self.reasoningEffort = reasoningEffort
-        self.maxCompletionTokens = maxCompletionTokens
-        self.reasoning = reasoning
-    }
-}
-
 /// OpenAI Message for Chat Completion
 public struct OpenAIMessage: Codable, Sendable {
     public let role: String
@@ -483,53 +428,6 @@ public struct OpenAIToolCall: Codable, Sendable {
     }
 }
 
-/// Chat Completion Response
-public struct OpenAIChatCompletionResponse: Codable, Sendable {
-    public let id: String
-    public let object: String
-    public let created: Int
-    public let model: String
-    public let choices: [OpenAIChoice]
-    public let usage: OpenAIUsage?
-    public let serviceTier: String?
-    public let systemFingerprint: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case id, object, created, model, choices, usage
-        case serviceTier = "service_tier"
-        case systemFingerprint = "system_fingerprint"
-    }
-}
-
-/// Choice in a chat completion response
-public struct OpenAIChoice: Codable, Sendable {
-    public let index: Int
-    public let message: OpenAIResponseMessage
-    public let finishReason: String?
-    public let logprobs: String?  // Can be more complex, but we'll use String? for now
-    
-    enum CodingKeys: String, CodingKey {
-        case index, message, logprobs
-        case finishReason = "finish_reason"
-    }
-}
-
-/// Response message
-public struct OpenAIResponseMessage: Codable, Sendable {
-    public let role: String
-    public let content: String?
-    public let toolCalls: [OpenAIToolCall]?
-    public let refusal: String?
-    public let annotations: [String]?
-    
-    enum CodingKeys: String, CodingKey {
-        case role, content
-        case toolCalls = "tool_calls"
-        case refusal
-        case annotations
-    }
-}
-
 /// Usage statistics
 public struct OpenAIUsage: Codable, Sendable {
     public let promptTokens: Int
@@ -561,51 +459,6 @@ public struct OpenAITokenDetails: Codable, Sendable {
         case reasoningTokens = "reasoning_tokens"
         case acceptedPredictionTokens = "accepted_prediction_tokens"
         case rejectedPredictionTokens = "rejected_prediction_tokens"
-    }
-}
-
-/// Streaming response chunk
-public struct OpenAIChatCompletionChunk: Codable, Sendable {
-    public let id: String
-    public let object: String
-    public let created: Int
-    public let model: String
-    public let choices: [OpenAIStreamChoice]
-    public let serviceTier: String?
-    public let systemFingerprint: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case id, object, created, model, choices
-        case serviceTier = "service_tier"
-        case systemFingerprint = "system_fingerprint"
-    }
-}
-
-/// Streaming choice
-public struct OpenAIStreamChoice: Codable, Sendable {
-    public let index: Int
-    public let delta: OpenAIDelta
-    public let finishReason: String?
-    // logprobs is intentionally not decoded as we don't use it
-    
-    enum CodingKeys: String, CodingKey {
-        case index, delta
-        case finishReason = "finish_reason"
-    }
-}
-
-/// Delta in streaming response
-public struct OpenAIDelta: Codable, Sendable {
-    public let role: String?
-    public let content: String?
-    public let toolCalls: [OpenAIToolCallDelta]?
-    public let refusal: String?
-    public let reasoningContent: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case role, content, refusal
-        case toolCalls = "tool_calls"
-        case reasoningContent = "reasoning_content"
     }
 }
 
@@ -876,29 +729,3 @@ public struct OpenAIResponsesEventPart: Codable, Sendable {
     public let text: String?
 }
 
-/// Streaming choice for Responses API
-public struct OpenAIResponsesStreamChoice: Codable, Sendable {
-    public let index: Int
-    public let delta: OpenAIResponsesDelta
-    public let finishReason: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case index, delta
-        case finishReason = "finish_reason"
-    }
-}
-
-/// Delta in Responses API streaming response
-public struct OpenAIResponsesDelta: Codable, Sendable {
-    public let role: String?
-    public let content: String?
-    public let toolCalls: [OpenAIToolCallDelta]?
-    public let refusal: String?
-    public let reasoningContent: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case role, content, refusal
-        case toolCalls = "tool_calls"
-        case reasoningContent = "reasoning_content"
-    }
-}

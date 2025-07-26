@@ -319,68 +319,6 @@ public final class OpenAIModel: ModelInterface {
                 OpenAIReasoning(effort: request.settings.additionalParameters?["reasoning_effort"]?.value as? String ?? "high", summary: "detailed") : nil
         )
     }
-    
-    private func convertToOpenAIChatCompletionRequest(_ request: ModelRequest, stream: Bool) throws -> OpenAIChatCompletionRequest {
-        // Convert messages to OpenAI format
-        let messages = try request.messages.map { message -> OpenAIMessage in
-            switch message.type {
-            case .system:
-                guard let system = message as? SystemMessageItem else {
-                    throw ModelError.invalidConfiguration("Invalid system message")
-                }
-                return OpenAIMessage(role: "system", content: .string(system.content))
-                
-            case .user:
-                guard let user = message as? UserMessageItem else {
-                    throw ModelError.invalidConfiguration("Invalid user message")
-                }
-                return try convertUserMessage(user)
-                
-            case .assistant:
-                guard let assistant = message as? AssistantMessageItem else {
-                    throw ModelError.invalidConfiguration("Invalid assistant message")
-                }
-                return try convertAssistantMessage(assistant)
-                
-            case .tool:
-                guard let tool = message as? ToolMessageItem else {
-                    throw ModelError.invalidConfiguration("Invalid tool message")
-                }
-                return OpenAIMessage(
-                    role: "tool",
-                    content: .string(tool.content),
-                    toolCallId: tool.toolCallId
-                )
-                
-            default:
-                throw ModelError.invalidConfiguration("Unsupported message type: \(message.type)")
-            }
-        }
-        
-        // Convert tools to OpenAI format
-        let tools = request.tools?.map { toolDef -> OpenAITool in
-            OpenAITool(
-                type: "function",
-                function: OpenAITool.Function(
-                    name: toolDef.function.name,
-                    description: toolDef.function.description,
-                    parameters: convertToolParameters(toolDef.function.parameters)
-                )
-            )
-        }
-        
-        // Use max_completion_tokens for models that require it (o3, o4, etc.)
-        let useMaxCompletionTokens = request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4")
-        
-        return OpenAIChatCompletionRequest(
-            model: request.settings.modelName,
-            messages: messages,
-            tools: tools,
-            toolChoice: convertToolChoice(request.settings.toolChoice),
-            temperature: request.settings.temperature,
-            topP: request.settings.topP,
-            stream: stream,
-            maxTokens: useMaxCompletionTokens ? nil : request.settings.maxTokens,
             reasoningEffort: nil,  // Not supported in current API
             maxCompletionTokens: useMaxCompletionTokens ? request.settings.maxTokens : nil,
             reasoning: nil  // Not supported in current API
@@ -585,52 +523,6 @@ public final class OpenAIModel: ModelInterface {
                 )
             )
         }
-    }
-    
-    private func convertFromOpenAIResponse(_ response: OpenAIChatCompletionResponse) throws -> ModelResponse {
-        guard let choice = response.choices.first else {
-            throw ModelError.responseParsingFailed("No choices in response")
-        }
-        
-        var content: [AssistantContent] = []
-        
-        // Add text content if present
-        if let textContent = choice.message.content {
-            content.append(.outputText(textContent))
-        }
-        
-        // Add tool calls if present
-        if let toolCalls = choice.message.toolCalls {
-            for toolCall in toolCalls {
-                content.append(.toolCall(ToolCallItem(
-                    id: toolCall.id,
-                    type: .function,
-                    function: FunctionCall(
-                        name: toolCall.function.name,
-                        arguments: toolCall.function.arguments
-                    )
-                )))
-            }
-        }
-        
-        let usage = response.usage.map { usage in
-            Usage(
-                promptTokens: usage.promptTokens,
-                completionTokens: usage.completionTokens,
-                totalTokens: usage.totalTokens,
-                promptTokensDetails: nil,
-                completionTokensDetails: nil
-            )
-        }
-        
-        return ModelResponse(
-            id: response.id,
-            model: response.model,
-            content: content,
-            usage: usage,
-            flagged: false,
-            finishReason: convertFinishReason(choice.finishReason)
-        )
     }
     
     private func convertFromOpenAIResponsesResponse(_ response: OpenAIResponsesResponse) throws -> ModelResponse {
