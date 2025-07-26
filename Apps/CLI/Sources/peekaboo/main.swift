@@ -112,71 +112,6 @@ struct Peekaboo: AsyncParsableCommand {
     )
 }
 
-/// Check if the CLI binary is stale compared to the current git commit.
-/// Only runs in debug builds when git config 'peekaboo.check-build-staleness' is true.
-func checkBuildStaleness() {
-    // Check if staleness checking is enabled via git config
-    let configCheck = Process()
-    configCheck.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-    configCheck.arguments = ["config", "peekaboo.check-build-staleness"]
-    
-    let configPipe = Pipe()
-    configCheck.standardOutput = configPipe
-    configCheck.standardError = Pipe() // Silence stderr
-    
-    do {
-        try configCheck.run()
-        configCheck.waitUntilExit()
-        
-        // Only proceed if the config value is "true"
-        let configData = configPipe.fileHandleForReading.readDataToEndOfFile()
-        let configValue = String(data: configData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        
-        guard configValue == "true" else {
-            return // Staleness checking is disabled
-        }
-    } catch {
-        return // Git config command failed, skip check
-    }
-    
-    // Get current git commit hash
-    let gitProcess = Process()
-    gitProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-    gitProcess.arguments = ["rev-parse", "--short", "HEAD"]
-    
-    let gitPipe = Pipe()
-    gitProcess.standardOutput = gitPipe
-    gitProcess.standardError = Pipe() // Silence stderr
-    
-    do {
-        try gitProcess.run()
-        gitProcess.waitUntilExit()
-        
-        guard gitProcess.terminationStatus == 0 else {
-            return // Git command failed, skip check
-        }
-        
-        let gitData = gitPipe.fileHandleForReading.readDataToEndOfFile()
-        let currentCommit = String(data: gitData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        
-        // Get embedded commit from build (strip -dirty suffix if present)
-        let embeddedCommit = Version.gitCommit.replacingOccurrences(of: "-dirty", with: "")
-        
-        // Compare commits
-        if !currentCommit.isEmpty && currentCommit != embeddedCommit {
-            logError("❌ CLI binary is outdated!")
-            logError("   Built with commit: \(embeddedCommit)")
-            logError("   Current commit:    \(currentCommit)")
-            logError("   Please rebuild me, I am outdated.")
-            logError("")
-            logError("   Run: npm run build:swift")
-            logError("   Or:  ./scripts/build-swift-debug.sh")
-            exit(1)
-        }
-    } catch {
-        return // Git command failed, skip check
-    }
-}
 
 /// Application entry point.
 ///
@@ -231,3 +166,5 @@ struct Main {
         await Peekaboo.main()
     }
 }
+// Test comment for staleness detection
+// Another test comment added after build
