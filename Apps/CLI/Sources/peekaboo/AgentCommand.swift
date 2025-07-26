@@ -465,38 +465,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
         
         // Continue with the new task in the context of the existing session
-        // Build context from previous steps
-        var contextPrompt = "CONTEXT: You are resuming a previous task.\n\n"
-        contextPrompt += "ORIGINAL TASK: \(session.task)\n\n"
-        
-        if !session.steps.isEmpty {
-            contextPrompt += "PREVIOUS STEPS COMPLETED:\n"
-            for (index, step) in session.steps.enumerated() {
-                contextPrompt += "\(index + 1). \(step.description)\n"
-                if let output = step.output, !output.isEmpty {
-                    // Extract key information from JSON output if available
-                    if let data = output.data(using: .utf8),
-                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let success = json["success"] as? Bool {
-                        contextPrompt += "   Result: \(success ? "✓ Success" : "✗ Failed")\n"
-                        if let error = json["error"] as? [String: Any],
-                           let message = error["message"] as? String {
-                            contextPrompt += "   Error: \(message)\n"
-                        }
-                    }
-                }
-            }
-            contextPrompt += "\n"
-        }
-        
-        if let lastQuestion = session.lastQuestion {
-            contextPrompt += "LAST QUESTION ASKED: \(lastQuestion)\n\n"
-        }
-        
-        contextPrompt += "USER'S CONTINUATION REQUEST: \(continuationTask)\n\n"
-        contextPrompt += "Please continue from where you left off, taking into account all the previous steps and their results."
-        
-        let resumePrompt = contextPrompt
+        let resumePrompt = continuationTask
         
         // Load configuration for the resume
         let config = PeekabooCore.ConfigurationManager.shared.getConfiguration()
@@ -522,7 +491,7 @@ struct AgentCommand: AsyncParsableCommand {
             outputMode: self.outputMode)
         
         do {
-            let result = try await agent.executeTask(resumePrompt, dryRun: self.dryRun, sessionId: sessionId)
+            let result = try await agent.executeTask(resumePrompt, dryRun: self.dryRun, sessionId: sessionId, existingThreadId: session.threadId)
             
             if self.jsonOutput {
                 let response = AgentJSONResponse<OpenAIAgent.AgentResult>(
@@ -653,7 +622,7 @@ struct OpenAIAgent {
         }
     }
 
-    func executeTask(_ task: String, dryRun: Bool, sessionId: String? = nil) async throws -> AgentResult {
+    func executeTask(_ task: String, dryRun: Bool, sessionId: String? = nil, existingThreadId: String? = nil) async throws -> AgentResult {
 
         // Get or create shared assistant (reused across commands)
         if self.outputMode == .verbose {
@@ -665,17 +634,23 @@ struct OpenAIAgent {
             print("Assistant ready - ID: \(assistant.id)")
         }
 
-        // Create thread (one per conversation)
-        if self.outputMode == .verbose {
-            print("\nCreating conversation thread...")
+        // Use existing thread ID if provided (for resume), otherwise create new thread
+        let threadId: String
+        if let existingThreadId = existingThreadId {
+            threadId = existingThreadId
+            if self.outputMode == .verbose {
+                print("\nReusing existing thread: \(threadId)")
+            }
+        } else {
+            if self.outputMode == .verbose {
+                print("\nCreating conversation thread...")
+            }
+            let thread = try await createThread()
+            threadId = thread.id
+            if self.outputMode == .verbose {
+                print("Thread created: \(threadId)")
+            }
         }
-        let thread = try await createThread()
-        if self.outputMode == .verbose {
-            print("Thread created: \(thread.id)")
-        }
-
-        // Store thread ID for cleanup (assistant is shared and persistent)
-        let threadId = thread.id
         
         // Create or get session for tracking
         let currentSessionId: String
@@ -686,9 +661,11 @@ struct OpenAIAgent {
         }
 
         defer {
-            // Only clean up thread - keep assistant for reuse
-            Task {
-                try? await deleteThread(threadId)
+            // Only clean up thread if we created it (not reusing existing one) - keep assistant for reuse
+            if existingThreadId == nil {
+                Task {
+                    try? await deleteThread(threadId)
+                }
             }
         }
 
