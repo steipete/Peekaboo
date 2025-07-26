@@ -560,7 +560,7 @@ await run({ script_path: "test.peekaboo.json", stop_on_error: false })
 
 ## 🤖 AI Agent Automation
 
-Peekaboo v3 introduces an AI-powered agent that can understand and execute complex automation tasks using natural language. The agent uses OpenAI's Assistants API to break down your instructions into specific Peekaboo commands.
+Peekaboo v3 introduces an AI-powered agent that can understand and execute complex automation tasks using natural language. The agent uses OpenAI's Chat Completions API with streaming support to break down your instructions into specific Peekaboo commands.
 
 ### Setting Up the Agent
 

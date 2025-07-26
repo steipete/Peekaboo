@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **No Backwards Compatibility**: We never care about backwards compatibility. We prioritize clean, modern code and user experience over maintaining legacy support. Breaking changes are acceptable and expected as the project evolves.
 
+**Minimum macOS Version**: This project targets macOS 14.0 (Sonoma) and later. Do not add availability checks for macOS versions below 14.0.
+
 **Direct API Over Subprocess**: Always prefer using PeekabooCore services directly instead of spawning CLI subprocesses. The migration to direct API calls improves performance by ~10x and provides better type safety.
 
 To test this project interactive we can use:
@@ -25,6 +27,8 @@ cp -f Apps/CLI/.build/debug/peekaboo ./peekaboo
 ```
 
 ## Recent Updates
+
+- **Chat Completions API migration** (2025-01-26): Completely replaced OpenAI Assistants API with Chat Completions API using a modern protocol-based architecture. Features native streaming support, type-safe message handling, and improved performance.
 
 - **Agent resume feature** (2025-01-26): Added comprehensive session resume functionality for the agent command. The agent can now resume previous conversations and maintain context across sessions. See "Agent Command" section for details.
 

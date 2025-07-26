@@ -91,20 +91,21 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             
             // Send completion event
             // Convert AgentExecutionResult to AgentResult for the delegate
+            let summary = result.messages.compactMap { msg in
+                if let assistantMsg = msg as? AssistantMessageItem {
+                    return assistantMsg.content.compactMap { content -> String? in
+                        if case .outputText(let text) = content {
+                            return text
+                        }
+                        return nil
+                    }.joined(separator: " ")
+                }
+                return nil
+            }.joined(separator: "\n")
+            
             let agentResult = AgentResult(
                 steps: steps,
-                messages: result.session.messages.compactMap { msg in
-                    if let assistantMsg = msg.message as? AssistantMessageItem {
-                        return assistantMsg.content.compactMap { content -> String? in
-                            if case .text(let text) = content {
-                                return text.text
-                            }
-                            return nil
-                        }.joined(separator: " ")
-                    }
-                    return nil
-                }.joined(separator: "\n"),
-                sessionId: result.session.id
+                summary: summary
             )
             await eventDelegate.agentDidComplete(agentResult)
             
@@ -322,8 +323,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         let messages = executionResult.messages.compactMap { msg in
             if let assistantMsg = msg as? AssistantMessageItem {
                 return assistantMsg.content.compactMap { content -> String? in
-                    if case .text(let text) = content {
-                        return text.text
+                    if case .outputText(let text) = content {
+                        return text
                     }
                     return nil
                 }.joined(separator: " ")
@@ -333,8 +334,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         
         return AgentResult(
             steps: steps,
-            messages: messages,
-            sessionId: executionResult.sessionId
+            summary: messages
         )
     }
     
@@ -367,7 +367,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         tools.append(createListElementsTool())
         
         // Focus detection tool
-        tools.append(createFocusedTool())
+        // tools.append(createFocusedTool()) // Removed: getFocusedElement not available
         
         return tools
     }
@@ -412,14 +412,11 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                     throw PeekabooError.invalidInput("Invalid capture mode: \(mode)")
                 }
                 
-                // Save if path provided
-                if let path = path {
-                    try await services.files.saveImage(result.image, to: path)
-                }
+                // The image is already saved by the capture service if a path was provided
                 
                 return .dictionary([
                     "success": true,
-                    "path": result.metadata.savePath ?? path ?? "captured in memory",
+                    "path": result.savedPath ?? "captured in memory",
                     "width": result.metadata.width,
                     "height": result.metadata.height
                 ])
@@ -466,6 +463,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                     // Click by text
                     try await services.automation.click(
                         target: .text(target),
+                        clickType: clickTypeEnum,
                         sessionId: sessionId
                     )
                 }
@@ -610,7 +608,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             execute: { input, services in
                 let text: String? = input.value(for: "text")
                 let elementType: String = input.value(for: "elementType") ?? "any"
-                let sessionId: String? = input.value(for: "sessionId") ?? UUID().uuidString
+                let sessionId: String = input.value(for: "sessionId") ?? UUID().uuidString
                 
                 let target: ElementTarget
                 if let text = text {
@@ -626,7 +624,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 
                 let elementData = elements.map { element in
                     [
-                        "text": element.label ?? element.title ?? "",
+                        "text": element.label ?? "",
                         "type": element.role,
                         "bounds": [
                             "x": element.frame.origin.x,
@@ -733,8 +731,8 @@ extension PeekabooAgentService {
                 required: ["appName"]
             ),
             execute: { input, services in
-                let appName: String? = input.value(for: "appName") ?? ""
-                let windowIndex = input.value(for: "windowIndex") as? Int
+                let appName: String = input.value(for: "appName") ?? ""
+                let windowIndex: Int? = input.value(for: "windowIndex")
                 
                 let result = try await services.screenCapture.captureWindow(
                     appIdentifier: appName,
@@ -773,9 +771,9 @@ extension PeekabooAgentService {
                 required: ["direction", "amount"]
             ),
             execute: { input, services in
-                let direction = input.value(for: "direction") as? String ?? "down"
-                let amount = input.value(for: "amount") as? Int ?? 100
-                let target = input.value(for: "target") as? String
+                let direction: String = input.value(for: "direction") ?? "down"
+                let amount: Int = input.value(for: "amount") ?? 100
+                let target: String? = input.value(for: "target")
                 let sessionId: String? = input.value(for: "sessionId")
                 
                 let scrollDirection: ScrollDirection = {
@@ -823,8 +821,8 @@ extension PeekabooAgentService {
                 required: ["keys"]
             ),
             execute: { input, services in
-                let keys = input.value(for: "keys") as? String ?? ""
-                let holdDuration = input.value(for: "holdDuration") as? Int ?? 100
+                let keys: String = input.value(for: "keys") ?? ""
+                let holdDuration: Int = input.value(for: "holdDuration") ?? 100
                 
                 try await services.automation.hotkey(
                     keys: keys,
@@ -866,8 +864,8 @@ extension PeekabooAgentService {
                 required: ["appName"]
             ),
             execute: { input, services in
-                let appName: String? = input.value(for: "appName") ?? ""
-                let windowTitle = input.value(for: "windowTitle") as? String
+                let appName: String = input.value(for: "appName") ?? ""
+                let windowTitle: String? = input.value(for: "windowTitle")
                 
                 try await services.windows.focusWindow(
                     appIdentifier: appName,
@@ -897,10 +895,10 @@ extension PeekabooAgentService {
                 required: ["appName", "width", "height"]
             ),
             execute: { input, services in
-                let appName: String? = input.value(for: "appName") ?? ""
-                let width = input.value(for: "width") as? Double ?? 800
-                let height = input.value(for: "height") as? Double ?? 600
-                let windowTitle = input.value(for: "windowTitle") as? String
+                let appName: String = input.value(for: "appName") ?? ""
+                let width: Double = input.value(for: "width") ?? 800
+                let height: Double = input.value(for: "height") ?? 600
+                let windowTitle: String? = input.value(for: "windowTitle")
                 
                 try await services.windows.resizeWindow(
                     appIdentifier: appName,
@@ -955,9 +953,9 @@ extension PeekabooAgentService {
                 required: ["appName"]
             ),
             execute: { input, services in
-                let appName: String? = input.value(for: "appName") ?? ""
+                let appName: String = input.value(for: "appName") ?? ""
                 
-                try await services.applications.launchApplication(appName)
+                try await services.applications.launchApplication(identifier: appName)
                 
                 return .dictionary([
                     "success": true,
@@ -983,11 +981,11 @@ extension PeekabooAgentService {
                 required: ["sessionId"]
             ),
             execute: { input, services in
-                let sessionId: String? = input.value(for: "sessionId") ?? UUID().uuidString
-                let elementType = input.value(for: "elementType") as? String ?? "all"
+                let sessionId: String = input.value(for: "sessionId") ?? UUID().uuidString
+                let elementType: String = input.value(for: "elementType") ?? "all"
                 
                 // Get the latest detection result from the session
-                guard let detectionResult = try await services.sessions.getLatestDetectionResult(sessionId: sessionId) else {
+                guard let detectionResult = try await services.sessions.getDetectionResult(sessionId: sessionId) else {
                     // Need to capture and detect first
                     let captureResult = try await services.screenCapture.captureFrontmost()
                     let detection = try await services.automation.detectElements(
@@ -1004,6 +1002,8 @@ extension PeekabooAgentService {
         )
     }
     
+    // REMOVED: getFocusedElement is not available in UIAutomationServiceProtocol
+    /*
     private func createFocusedTool() -> Tool<PeekabooServices> {
         Tool(
             name: "focused",
@@ -1026,6 +1026,7 @@ extension PeekabooAgentService {
             }
         )
     }
+    */
 }
 
 // MARK: - Helper Functions
@@ -1039,7 +1040,7 @@ private func formatElementList(_ elements: DetectedElements, filterType: String)
     case "textFields":
         filteredElements = elements.textFields
     case "labels":
-        filteredElements = elements.staticTexts
+        filteredElements = elements.other // Use other for labels/static texts
     case "links":
         filteredElements = elements.links
     default:
@@ -1048,15 +1049,14 @@ private func formatElementList(_ elements: DetectedElements, filterType: String)
     
     let elementData = filteredElements.map { element in
         [
-            "text": element.label ?? element.title ?? "",
-            "type": element.role,
+            "text": element.label ?? "",
+            "type": element.type.rawValue,
             "bounds": [
-                "x": element.frame.origin.x,
-                "y": element.frame.origin.y,
-                "width": element.frame.width,
-                "height": element.frame.height
-            ],
-            "confidence": element.confidence ?? 1.0
+                "x": element.bounds.origin.x,
+                "y": element.bounds.origin.y,
+                "width": element.bounds.width,
+                "height": element.bounds.height
+            ]
         ]
     }
     

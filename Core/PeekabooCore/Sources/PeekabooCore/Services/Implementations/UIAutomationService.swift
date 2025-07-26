@@ -768,17 +768,37 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             return nil
         }
         
-        // Find the application that owns this element
-        guard let appElement = focused.application() else {
-            logger.debug("Could not find application for focused element")
-            return nil
+        // Find the application that owns this element by checking all applications
+        var owningApp: NSRunningApplication?
+        var pid: pid_t = 0
+        
+        // Try to get PID from the element directly
+        if let elementPid = focused.pid() {
+            pid = elementPid
+            owningApp = NSWorkspace.shared.runningApplications.first { $0.processIdentifier == pid }
+        } else {
+            // Fall back to checking all applications
+            for app in NSWorkspace.shared.runningApplications {
+                let axApp = AXUIElementCreateApplication(app.processIdentifier)
+                let appElement = Element(axApp)
+                
+                // Check if this app's focused element matches our element
+                if let focusedInApp = appElement.focusedUIElement() {
+                    // Compare by position and role since we can't access the raw element
+                    if let pos1 = focusedInApp.position(), let pos2 = focused.position(),
+                       let size1 = focusedInApp.size(), let size2 = focused.size(),
+                       pos1 == pos2 && size1 == size2 &&
+                       focusedInApp.role() == focused.role() {
+                        owningApp = app
+                        pid = app.processIdentifier
+                        break
+                    }
+                }
+            }
         }
         
-        // Get application information
-        let pid = appElement.pid() ?? 0
-        let app = NSWorkspace.shared.runningApplications.first { $0.processIdentifier == pid }
-        let appName = app?.localizedName ?? "Unknown"
-        let bundleId = app?.bundleIdentifier
+        let appName = owningApp?.localizedName ?? "Unknown"
+        let bundleId = owningApp?.bundleIdentifier
         
         // Extract element information
         let role = focused.role() ?? "AXUnknown"

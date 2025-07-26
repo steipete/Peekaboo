@@ -23,7 +23,8 @@ struct FileHandlingTests {
                 .replacingOccurrences(of: "capture_", with: "")
                 .replacingOccurrences(of: ".\(format.rawValue)", with: "")
             #expect(!timestampPart.isEmpty)
-            #expect(timestampPart.allSatisfy { $0.isNumber || $0 == "_" })
+            let allValidChars = timestampPart.allSatisfy { $0.isNumber || $0 == "_" }
+            #expect(allValidChars)
         }
 
         @Test("Sanitizes app names", arguments: zip(

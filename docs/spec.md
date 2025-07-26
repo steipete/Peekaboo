@@ -18,7 +18,7 @@ Transform the Peekaboo app into a sophisticated menu bar application that serves
 - **Session Persistence**: Continuous conversation context across interactions
 
 ### 3. Agent Integration
-- **OpenAI Assistant API**: Primary AI backend with function calling
+- **OpenAI Chat Completions API**: Primary AI backend with function calling and streaming
 - **Tool Execution**: Full suite of automation tools (click, type, screenshot, etc.)
 - **Real-time Feedback**: Show what the agent is thinking and doing
 - **Visual Verification**: Display screenshots with element annotations
@@ -195,7 +195,7 @@ class SpeechService: NSObject, ObservableObject {
 
 ### Phase 2: Core Features (Week 2)
 1. **Agent Integration**
-   - Wire up OpenAI Assistant
+   - Wire up OpenAI Chat Completions API
    - Implement execution callbacks
    - Basic session management
 

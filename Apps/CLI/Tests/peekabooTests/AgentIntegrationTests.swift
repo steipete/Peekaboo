@@ -158,7 +158,10 @@ struct AgentIntegrationTests {
         let output = try JSONDecoder().decode(AgentTestOutput.self, from: outputData)
 
         #expect(output.success == true)
-        #expect(output.data?.steps.contains { $0.command == "peekaboo_image" || $0.command == "peekaboo_see" } == true)
+        let hasImageOrSeeCommand = output.data?.steps.contains { step in
+            step.command == "peekaboo_image" || step.command == "peekaboo_see"
+        } ?? false
+        #expect(hasImageOrSeeCommand == true)
 
         try? FileManager.default.removeItem(at: outputFile)
     }

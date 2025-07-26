@@ -18,11 +18,16 @@ struct ConfigCommandTests {
         // Check subcommands
         let subcommands = command.configuration.subcommands
         #expect(subcommands.count == 5)
-        #expect(subcommands.contains { $0 == ConfigCommand.InitCommand.self })
-        #expect(subcommands.contains { $0 == ConfigCommand.ShowCommand.self })
-        #expect(subcommands.contains { $0 == ConfigCommand.EditCommand.self })
-        #expect(subcommands.contains { $0 == ConfigCommand.ValidateCommand.self })
-        #expect(subcommands.contains { $0 == ConfigCommand.SetCredentialCommand.self })
+        let hasInit = subcommands.contains { $0 == ConfigCommand.InitCommand.self }
+        #expect(hasInit)
+        let hasShow = subcommands.contains { $0 == ConfigCommand.ShowCommand.self }
+        #expect(hasShow)
+        let hasEdit = subcommands.contains { $0 == ConfigCommand.EditCommand.self }
+        #expect(hasEdit)
+        let hasValidate = subcommands.contains { $0 == ConfigCommand.ValidateCommand.self }
+        #expect(hasValidate)
+        let hasSetCredential = subcommands.contains { $0 == ConfigCommand.SetCredentialCommand.self }
+        #expect(hasSetCredential)
     }
     
     @Test("InitCommand has correct configuration")

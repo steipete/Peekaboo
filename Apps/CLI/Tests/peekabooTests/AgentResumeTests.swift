@@ -3,12 +3,11 @@ import Testing
 @testable import peekaboo
 
 @Suite("Agent Resume Functionality Tests")
-@available(macOS 14.0, *)
 struct AgentResumeTests {
     
     // MARK: - AgentSessionManager Tests
     
-    @Test("AgentSessionManager creates session correctly")
+    @available(macOS 14.0, *) @Test("AgentSessionManager creates session correctly")
     func sessionManagerCreatesSession() async {
         let manager = AgentSessionManager.shared
         let task = "Test task"
@@ -29,7 +28,7 @@ struct AgentResumeTests {
         await manager.deleteSession(id: sessionId)
     }
     
-    @Test("AgentSessionManager adds steps correctly")
+    @available(macOS 14.0, *) @Test("AgentSessionManager adds steps correctly")
     func sessionManagerAddsSteps() async {
         let manager = AgentSessionManager.shared
         let sessionId = await manager.createSession(task: "Test task", threadId: "thread-123")
@@ -51,7 +50,7 @@ struct AgentResumeTests {
         await manager.deleteSession(id: sessionId)
     }
     
-    @Test("AgentSessionManager handles last question")
+    @available(macOS 14.0, *) @Test("AgentSessionManager handles last question")
     func sessionManagerHandlesLastQuestion() async {
         let manager = AgentSessionManager.shared
         let sessionId = await manager.createSession(task: "Test task", threadId: "thread-123")
@@ -75,7 +74,7 @@ struct AgentResumeTests {
         await manager.deleteSession(id: sessionId)
     }
     
-    @Test("AgentSessionManager retrieves recent sessions")
+    @available(macOS 14.0, *) @Test("AgentSessionManager retrieves recent sessions")
     func sessionManagerRetrievesRecentSessions() async {
         let manager = AgentSessionManager.shared
         
@@ -104,7 +103,7 @@ struct AgentResumeTests {
         await manager.deleteSession(id: sessionId3)
     }
     
-    @Test("AgentSessionManager handles nonexistent sessions")
+    @available(macOS 14.0, *) @Test("AgentSessionManager handles nonexistent sessions")
     func sessionManagerHandlesNonexistentSessions() async {
         let manager = AgentSessionManager.shared
         let nonexistentId = "nonexistent-session-id"
@@ -121,7 +120,7 @@ struct AgentResumeTests {
     
     // MARK: - Session Persistence Tests
     
-    @Test("AgentSessionManager persists sessions to disk")
+    @available(macOS 14.0, *) @Test("AgentSessionManager persists sessions to disk")
     func sessionManagerPersistsSessions() async {
         let manager = AgentSessionManager.shared
         let sessionId = await manager.createSession(task: "Persistent task", threadId: "persistent-thread")
@@ -153,7 +152,7 @@ struct AgentResumeTests {
     
     // MARK: - AgentCommand Resume Logic Tests
     
-    @Test("AgentCommand shows recent sessions with empty resume")
+    @available(macOS 14.0, *) @Test("AgentCommand shows recent sessions with empty resume")
     func agentCommandShowsRecentSessions() async throws {
         // Create a test session first
         let manager = AgentSessionManager.shared
@@ -176,7 +175,7 @@ struct AgentResumeTests {
         await manager.deleteSession(id: sessionId)
     }
     
-    @Test("AgentCommand validates session resumption")
+    @available(macOS 14.0, *) @Test("AgentCommand validates session resumption")
     func agentCommandValidatesSessionResumption() async {
         let manager = AgentSessionManager.shared
         
@@ -196,7 +195,7 @@ struct AgentResumeTests {
     
     // MARK: - Session Data Serialization Tests
     
-    @Test("AgentSession encodes and decodes correctly")
+    @available(macOS 14.0, *) @Test("AgentSession encodes and decodes correctly")
     func agentSessionSerialization() throws {
         let step = AgentSessionManager.AgentSession.AgentStep(
             description: "Test step",
@@ -234,7 +233,7 @@ struct AgentResumeTests {
     
     // MARK: - Edge Cases and Error Handling
     
-    @Test("AgentSessionManager handles concurrent access")
+    @available(macOS 14.0, *) @Test("AgentSessionManager handles concurrent access")
     func sessionManagerHandlesConcurrentAccess() async {
         let manager = AgentSessionManager.shared
         let sessionId = await manager.createSession(task: "Concurrent test", threadId: "concurrent-thread")
@@ -260,7 +259,7 @@ struct AgentResumeTests {
         await manager.deleteSession(id: sessionId)
     }
     
-    @Test("AgentSessionManager cleans up old sessions")
+    @available(macOS 14.0, *) @Test("AgentSessionManager cleans up old sessions")
     func sessionManagerCleansUpOldSessions() async {
         let manager = AgentSessionManager.shared
         
@@ -282,7 +281,7 @@ struct AgentResumeTests {
         await manager.deleteSession(id: sessionId)
     }
     
-    @Test("Session directory creation works correctly")
+    @available(macOS 14.0, *) @Test("Session directory creation works correctly")
     func sessionDirectoryCreation() {
         // This test verifies that the session directory is created correctly
         // The actual creation happens in the AgentSessionManager init
@@ -310,7 +309,7 @@ struct AgentResumeTests {
     
     // MARK: - Integration Tests
     
-    @Test("Complete session lifecycle")
+    @available(macOS 14.0, *) @Test("Complete session lifecycle")
     func completeSessionLifecycle() async {
         let manager = AgentSessionManager.shared
         

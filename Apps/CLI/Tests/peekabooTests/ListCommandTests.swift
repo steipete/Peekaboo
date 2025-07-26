@@ -13,9 +13,12 @@ struct ListCommandTests {
     func listCommandSubcommands() throws {
         // Test that ListCommand has the expected subcommands
         #expect(ListCommand.configuration.subcommands.count == 3)
-        #expect(ListCommand.configuration.subcommands.contains { $0 == AppsSubcommand.self })
-        #expect(ListCommand.configuration.subcommands.contains { $0 == WindowsSubcommand.self })
-        #expect(ListCommand.configuration.subcommands.contains { $0 == PermissionsSubcommand.self })
+        let containsApps = ListCommand.configuration.subcommands.contains { $0 == AppsSubcommand.self }
+        #expect(containsApps)
+        let containsWindows = ListCommand.configuration.subcommands.contains { $0 == WindowsSubcommand.self }
+        #expect(containsWindows)
+        let containsPermissions = ListCommand.configuration.subcommands.contains { $0 == PermissionsSubcommand.self }
+        #expect(containsPermissions)
     }
 
     @Test("AppsSubcommand parsing with defaults", .tags(.fast))

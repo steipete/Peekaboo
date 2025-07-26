@@ -1,0 +1,524 @@
+import Foundation
+
+/// OpenAI model implementation conforming to ModelInterface
+public final class OpenAIModel: ModelInterface {
+    private let apiKey: String
+    private let baseURL: URL
+    private let session: URLSession
+    private let organizationId: String?
+    
+    public init(
+        apiKey: String,
+        baseURL: URL = URL(string: "https://api.openai.com/v1")!,
+        organizationId: String? = nil,
+        session: URLSession? = nil
+    ) {
+        self.apiKey = apiKey
+        self.baseURL = baseURL
+        self.organizationId = organizationId
+        self.session = session ?? URLSession.shared
+    }
+    
+    // MARK: - ModelInterface Implementation
+    
+    public func getResponse(request: ModelRequest) async throws -> ModelResponse {
+        let openAIRequest = try convertToOpenAIRequest(request, stream: false)
+        let urlRequest = try createURLRequest(endpoint: "chat/completions", body: openAIRequest)
+        
+        let (data, response) = try await session.data(for: urlRequest)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ModelError.requestFailed(URLError(.badServerResponse))
+        }
+        
+        if httpResponse.statusCode != 200 {
+            if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: data) {
+                throw handleOpenAIError(errorResponse, statusCode: httpResponse.statusCode)
+            }
+            throw ModelError.requestFailed(URLError(.badServerResponse))
+        }
+        
+        let openAIResponse = try JSONDecoder().decode(OpenAIChatCompletionResponse.self, from: data)
+        return try convertFromOpenAIResponse(openAIResponse)
+    }
+    
+    public func getStreamedResponse(request: ModelRequest) async throws -> AsyncThrowingStream<StreamEvent, Error> {
+        let openAIRequest = try convertToOpenAIRequest(request, stream: true)
+        let urlRequest = try createURLRequest(endpoint: "chat/completions", body: openAIRequest)
+        
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let (bytes, response) = try await session.bytes(for: urlRequest)
+                    
+                    guard let httpResponse = response as? HTTPURLResponse else {
+                        continuation.finish(throwing: ModelError.requestFailed(URLError(.badServerResponse)))
+                        return
+                    }
+                    
+                    if httpResponse.statusCode != 200 {
+                        // Try to read error from first chunk
+                        var errorData = Data()
+                        for try await byte in bytes.prefix(1024) {
+                            errorData.append(byte)
+                        }
+                        
+                        if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: errorData) {
+                            continuation.finish(throwing: self.handleOpenAIError(errorResponse, statusCode: httpResponse.statusCode))
+                        } else {
+                            continuation.finish(throwing: ModelError.requestFailed(URLError(.badServerResponse)))
+                        }
+                        return
+                    }
+                    
+                    // Process SSE stream
+                    var buffer = ""
+                    var currentToolCalls: [String: PartialToolCall] = [:]
+                    
+                    for try await line in bytes.lines {
+                        // Handle SSE format
+                        if line.hasPrefix("data: ") {
+                            let data = String(line.dropFirst(6))
+                            
+                            if data == "[DONE]" {
+                                // Send any pending tool calls
+                                for (id, toolCall) in currentToolCalls {
+                                    if let completed = toolCall.toCompleted() {
+                                        continuation.yield(.toolCallCompleted(
+                                            StreamToolCallCompleted(id: id, function: completed)
+                                        ))
+                                    }
+                                }
+                                continuation.finish()
+                                return
+                            }
+                            
+                            // Parse chunk
+                            if let chunkData = data.data(using: .utf8),
+                               let chunk = try? JSONDecoder().decode(OpenAIChatCompletionChunk.self, from: chunkData) {
+                                
+                                // Process chunk into stream events
+                                if let events = self.processChunk(chunk, toolCalls: &currentToolCalls) {
+                                    for event in events {
+                                        continuation.yield(event)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func createURLRequest(endpoint: String, body: Encodable) throws -> URLRequest {
+        let url = baseURL.appendingPathComponent(endpoint)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        if let orgId = organizationId {
+            request.setValue(orgId, forHTTPHeaderField: "OpenAI-Organization")
+        }
+        
+        request.httpBody = try JSONEncoder().encode(body)
+        request.timeoutInterval = 60
+        
+        return request
+    }
+    
+    private func convertToOpenAIRequest(_ request: ModelRequest, stream: Bool) throws -> OpenAIChatCompletionRequest {
+        // Convert messages to OpenAI format
+        let messages = try request.messages.map { message -> OpenAIMessage in
+            switch message.type {
+            case .system:
+                guard let system = message as? SystemMessageItem else {
+                    throw ModelError.invalidConfiguration("Invalid system message")
+                }
+                return OpenAIMessage(role: "system", content: .string(system.content))
+                
+            case .user:
+                guard let user = message as? UserMessageItem else {
+                    throw ModelError.invalidConfiguration("Invalid user message")
+                }
+                return try convertUserMessage(user)
+                
+            case .assistant:
+                guard let assistant = message as? AssistantMessageItem else {
+                    throw ModelError.invalidConfiguration("Invalid assistant message")
+                }
+                return try convertAssistantMessage(assistant)
+                
+            case .tool:
+                guard let tool = message as? ToolMessageItem else {
+                    throw ModelError.invalidConfiguration("Invalid tool message")
+                }
+                return OpenAIMessage(
+                    role: "tool",
+                    content: .string(tool.content),
+                    toolCallId: tool.toolCallId
+                )
+                
+            default:
+                throw ModelError.invalidConfiguration("Unsupported message type: \(message.type)")
+            }
+        }
+        
+        // Convert tools to OpenAI format
+        let tools = request.tools?.map { toolDef -> OpenAITool in
+            OpenAITool(
+                type: "function",
+                function: OpenAITool.Function(
+                    name: toolDef.function.name,
+                    description: toolDef.function.description,
+                    parameters: convertToolParameters(toolDef.function.parameters)
+                )
+            )
+        }
+        
+        return OpenAIChatCompletionRequest(
+            model: request.settings.modelName,
+            messages: messages,
+            tools: tools,
+            toolChoice: convertToolChoice(request.settings.toolChoice),
+            temperature: request.settings.temperature,
+            topP: request.settings.topP,
+            stream: stream,
+            maxTokens: request.settings.maxTokens
+        )
+    }
+    
+    private func convertUserMessage(_ message: UserMessageItem) throws -> OpenAIMessage {
+        switch message.content {
+        case .text(let text):
+            return OpenAIMessage(role: "user", content: .string(text))
+            
+        case .image(let imageContent):
+            var content: [OpenAIMessageContentPart] = []
+            
+            if let url = imageContent.url {
+                content.append(OpenAIMessageContentPart(
+                    type: "image_url",
+                    text: nil,
+                    imageUrl: OpenAIImageUrl(
+                        url: url,
+                        detail: imageContent.detail?.rawValue
+                    )
+                ))
+            } else if let base64 = imageContent.base64 {
+                content.append(OpenAIMessageContentPart(
+                    type: "image_url",
+                    text: nil,
+                    imageUrl: OpenAIImageUrl(
+                        url: "data:image/jpeg;base64,\(base64)",
+                        detail: imageContent.detail?.rawValue
+                    )
+                ))
+            }
+            
+            return OpenAIMessage(role: "user", content: .array(content))
+            
+        case .multimodal(let parts):
+            let content = parts.compactMap { part -> OpenAIMessageContentPart? in
+                if let text = part.text {
+                    return OpenAIMessageContentPart(
+                        type: "text",
+                        text: text,
+                        imageUrl: nil
+                    )
+                } else if let image = part.imageUrl {
+                    if let url = image.url {
+                        return OpenAIMessageContentPart(
+                            type: "image_url",
+                            text: nil,
+                            imageUrl: OpenAIImageUrl(url: url, detail: image.detail?.rawValue)
+                        )
+                    } else if let base64 = image.base64 {
+                        return OpenAIMessageContentPart(
+                            type: "image_url",
+                            text: nil,
+                            imageUrl: OpenAIImageUrl(
+                                url: "data:image/jpeg;base64,\(base64)",
+                                detail: image.detail?.rawValue
+                            )
+                        )
+                    }
+                }
+                return nil
+            }
+            return OpenAIMessage(role: "user", content: .array(content))
+            
+        case .file:
+            throw ModelError.invalidConfiguration("File content not supported in OpenAI chat completions")
+        }
+    }
+    
+    private func convertAssistantMessage(_ message: AssistantMessageItem) throws -> OpenAIMessage {
+        var textContent = ""
+        var toolCalls: [OpenAIToolCall] = []
+        
+        for content in message.content {
+            switch content {
+            case .outputText(let text):
+                textContent += text
+                
+            case .refusal(let refusal):
+                return OpenAIMessage(role: "assistant", content: .string(refusal))
+                
+            case .toolCall(let toolCall):
+                toolCalls.append(OpenAIToolCall(
+                    id: toolCall.id,
+                    type: "function",
+                    function: OpenAIFunctionCall(
+                        name: toolCall.function.name,
+                        arguments: toolCall.function.arguments
+                    )
+                ))
+            }
+        }
+        
+        if !toolCalls.isEmpty {
+            return OpenAIMessage(
+                role: "assistant",
+                content: textContent.isEmpty ? nil : .string(textContent),
+                toolCalls: toolCalls
+            )
+        } else {
+            return OpenAIMessage(role: "assistant", content: .string(textContent))
+        }
+    }
+    
+    private func convertToolParameters(_ params: ToolParameters) -> OpenAITool.Parameters {
+        // Convert ToolParameters to a dictionary for serialization
+        var properties: [String: Any] = [:]
+        
+        for (key, schema) in params.properties {
+            properties[key] = [
+                "type": schema.type.rawValue,
+                "description": schema.description ?? ""
+            ]
+        }
+        
+        return OpenAITool.Parameters(
+            type: params.type,
+            properties: properties,
+            required: params.required
+        )
+    }
+    
+    private func convertToolChoice(_ toolChoice: ToolChoice?) -> String? {
+        guard let toolChoice = toolChoice else { return nil }
+        
+        switch toolChoice {
+        case .auto:
+            return "auto"
+        case .none:
+            return "none"
+        case .required:
+            return "required"
+        case .specific(let toolName):
+            // For specific tool, we need to encode it as JSON
+            let obj = OpenAIToolChoiceObject(type: "function", function: ["name": toolName])
+            if let data = try? JSONEncoder().encode(obj),
+               let json = String(data: data, encoding: .utf8) {
+                return json
+            }
+            return nil
+        }
+    }
+    
+    private func convertResponseFormat(_ format: ResponseFormat?) -> OpenAIResponseFormat? {
+        guard let format = format else { return nil }
+        
+        switch format.type {
+        case .text:
+            return OpenAIResponseFormat(type: "text")
+        case .jsonObject:
+            return OpenAIResponseFormat(type: "json_object")
+        case .jsonSchema:
+            guard let schema = format.jsonSchema else { return nil }
+            return OpenAIResponseFormat(
+                type: "json_schema",
+                jsonSchema: OpenAIJSONSchema(
+                    name: schema.name,
+                    strict: schema.strict,
+                    schema: schema.schema
+                )
+            )
+        }
+    }
+    
+    private func convertFromOpenAIResponse(_ response: OpenAIChatCompletionResponse) throws -> ModelResponse {
+        guard let choice = response.choices.first else {
+            throw ModelError.responseParsingFailed("No choices in response")
+        }
+        
+        var content: [AssistantContent] = []
+        
+        // Add text content if present
+        if let textContent = choice.message.content {
+            content.append(.outputText(textContent))
+        }
+        
+        // Add tool calls if present
+        if let toolCalls = choice.message.toolCalls {
+            for toolCall in toolCalls {
+                content.append(.toolCall(ToolCallItem(
+                    id: toolCall.id,
+                    type: .function,
+                    function: FunctionCall(
+                        name: toolCall.function.name,
+                        arguments: toolCall.function.arguments
+                    )
+                )))
+            }
+        }
+        
+        let usage = response.usage.map { usage in
+            Usage(
+                promptTokens: usage.promptTokens,
+                completionTokens: usage.completionTokens,
+                totalTokens: usage.totalTokens,
+                promptTokensDetails: nil,
+                completionTokensDetails: nil
+            )
+        }
+        
+        return ModelResponse(
+            id: response.id,
+            model: response.model,
+            content: content,
+            usage: usage,
+            flagged: false,
+            finishReason: convertFinishReason(choice.finishReason)
+        )
+    }
+    
+    private func convertFinishReason(_ reason: String?) -> FinishReason? {
+        guard let reason = reason else { return nil }
+        return FinishReason(rawValue: reason)
+    }
+    
+    private func processChunk(
+        _ chunk: OpenAIChatCompletionChunk,
+        toolCalls: inout [String: PartialToolCall]
+    ) -> [StreamEvent]? {
+        guard let choice = chunk.choices.first else { return nil }
+        
+        var events: [StreamEvent] = []
+        
+        // Handle response started
+        if chunk.choices.first?.index == 0 && events.isEmpty {
+            events.append(.responseStarted(StreamResponseStarted(
+                id: chunk.id,
+                model: chunk.model,
+                systemFingerprint: nil
+            )))
+        }
+        
+        // Handle text delta
+        if let content = choice.delta.content, !content.isEmpty {
+            events.append(.textDelta(StreamTextDelta(delta: content, index: choice.index)))
+        }
+        
+        // Handle tool call deltas
+        if let toolCallDeltas = choice.delta.toolCalls {
+            for toolCallDelta in toolCallDeltas {
+                if let id = toolCallDelta.id, let existingCall = toolCalls[id] {
+                    // Update existing call
+                    existingCall.update(with: toolCallDelta)
+                } else {
+                    // New tool call
+                    if let id = toolCallDelta.id {
+                        toolCalls[id] = PartialToolCall(from: toolCallDelta)
+                    }
+                }
+                
+                if let id = toolCallDelta.id {
+                    events.append(.toolCallDelta(StreamToolCallDelta(
+                        id: id,
+                        index: toolCallDelta.index,
+                        function: FunctionCallDelta(
+                            name: toolCallDelta.function?.name,
+                            arguments: toolCallDelta.function?.arguments
+                        )
+                    )))
+                }
+            }
+        }
+        
+        // Handle finish reason
+        if let finishReason = choice.finishReason {
+            // Complete any pending tool calls
+            for (id, toolCall) in toolCalls {
+                if let completed = toolCall.toCompleted() {
+                    events.append(.toolCallCompleted(
+                        StreamToolCallCompleted(id: id, function: completed)
+                    ))
+                }
+            }
+            
+            events.append(.responseCompleted(StreamResponseCompleted(
+                id: chunk.id,
+                usage: nil, // Usage comes separately in OpenAI streaming
+                finishReason: convertFinishReason(finishReason)
+            )))
+        }
+        
+        return events.isEmpty ? nil : events
+    }
+    
+    private func handleOpenAIError(_ error: OpenAIErrorResponse, statusCode: Int) -> Error {
+        switch statusCode {
+        case 401:
+            return ModelError.authenticationFailed
+        case 429:
+            return ModelError.rateLimitExceeded
+        case 400 where error.error.error.code == "context_length_exceeded":
+            return ModelError.contextLengthExceeded
+        default:
+            return ModelError.requestFailed(NSError(
+                domain: "OpenAI",
+                code: statusCode,
+                userInfo: [NSLocalizedDescriptionKey: error.error.error.message]
+            ))
+        }
+    }
+}
+
+// MARK: - Helper Types
+
+private class PartialToolCall {
+    var id: String
+    var index: Int
+    var name: String?
+    var arguments: String = ""
+    
+    init(from delta: OpenAIToolCallDelta) {
+        self.id = delta.id ?? ""
+        self.index = delta.index
+        self.name = delta.function?.name
+        self.arguments = delta.function?.arguments ?? ""
+    }
+    
+    func update(with delta: OpenAIToolCallDelta) {
+        if let funcName = delta.function?.name {
+            self.name = funcName
+        }
+        if let args = delta.function?.arguments {
+            self.arguments += args
+        }
+    }
+    
+    func toCompleted() -> FunctionCall? {
+        guard let name = name else { return nil }
+        return FunctionCall(name: name, arguments: arguments)
+    }
+}

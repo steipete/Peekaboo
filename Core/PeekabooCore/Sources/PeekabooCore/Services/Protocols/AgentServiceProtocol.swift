@@ -15,10 +15,6 @@ public protocol AgentServiceProtocol: Sendable {
         eventDelegate: AgentEventDelegate?
     ) async throws -> AgentResult
     
-    /// Get or create a shared assistant for the current configuration
-    /// - Returns: Assistant ID that can be reused
-    func getOrCreateAssistant() async throws -> String
-    
-    /// Clean up any cached assistants
+    /// Clean up any cached sessions or resources
     func cleanup() async
 }

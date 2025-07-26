@@ -101,7 +101,7 @@ struct ErrorHandlingTests {
                 (.appNotFound("Safari"), "Application with identifier 'Safari' not found"),
                 (.windowNotFound, "The specified window could not be found"),
                 (.noWindowsFound("Finder"), "The 'Finder' process is running, but no capturable windows were found"),
-                (.invalidWindowIndex(5), "Invalid window index: 5"),
+                (.invalidWindowIndex(5, availableCount: 3), "Invalid window index: 5. Available windows: 3"),
                 (.fileWriteError("/tmp/test.png", nil), "Failed to write capture file to path: /tmp/test.png"),
             ]
 
@@ -121,7 +121,7 @@ struct ErrorHandlingTests {
                 .captureCreationFailed(nil),
                 .windowNotFound,
                 .appNotFound("test"),
-                .invalidWindowIndex(0),
+                .invalidWindowIndex(0, availableCount: 0),
                 .fileWriteError("test", nil),
             ]
 

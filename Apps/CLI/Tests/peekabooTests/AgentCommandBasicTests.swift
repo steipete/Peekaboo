@@ -10,7 +10,7 @@ struct AgentCommandBasicTests {
         let config = AgentCommand.configuration
         #expect(config.commandName == "agent")
         #expect(config.abstract == "Execute complex automation tasks using AI agent")
-        #expect(config.discussion.contains("OpenAI Assistants API"))
+        #expect(config.discussion.contains("OpenAI Chat Completions API"))
     }
 
     @Test("Agent error types work correctly")

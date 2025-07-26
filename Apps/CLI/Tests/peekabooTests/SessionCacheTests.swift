@@ -31,7 +31,8 @@ struct SessionCacheTests {
         let defaultCache = try SessionCache(sessionId: nil, createIfNeeded: true)
         let sessionId = await defaultCache.sessionId
         // Session ID should be timestamp-random format (e.g., 1751889198010-5978)
-        #expect(sessionId.matches(of: /^\d{13}-\d{4}$/).count == 1)
+        let matches = sessionId.matches(of: /^\d{13}-\d{4}$/)
+        #expect(matches.count == 1)
 
         // With no existing sessions and createIfNeeded = false, it should throw
         #expect(throws: Error.self) {

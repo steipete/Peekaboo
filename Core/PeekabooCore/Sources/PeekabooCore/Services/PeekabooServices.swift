@@ -46,8 +46,6 @@ public final class PeekabooServices: Sendable {
     /// Process/script execution service
     public let process: ProcessServiceProtocol
     
-    /// AI provider service for image analysis
-    public let aiProvider: AIProviderServiceProtocol
     
     /// Agent service for AI-powered automation
     public let agent: AgentServiceProtocol?
@@ -110,28 +108,18 @@ public final class PeekabooServices: Sendable {
         )
         logger.debug("✅ ProcessService initialized")
         
-        self.aiProvider = AIProviderService()
-        logger.debug("✅ AIProviderService initialized")
         
         // Agent service is optional - only create if API key is available
-        // TODO: Fix actor isolation issue
-        self.agent = nil
-        /*
-        if let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
-            let toolExecutor = PeekabooToolExecutor(verbose: false)
-            self.agent = OpenAIAgentService(
-                apiKey: apiKey,
-                model: "gpt-4.1",
-                verbose: false,
-                maxSteps: 20,
-                toolExecutor: toolExecutor
+        if ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil {
+            let config = ConfigurationManager.shared.getConfiguration()
+            self.agent = PeekabooAgentService(
+                defaultModelName: config?.agent?.defaultModel ?? "gpt-4o"
             )
-            logger.debug("✅ OpenAIAgentService initialized")
+            logger.debug("✅ PeekabooAgentService initialized")
         } else {
             self.agent = nil
-            logger.debug("⚠️ OpenAIAgentService skipped - no OPENAI_API_KEY")
+            logger.debug("⚠️ PeekabooAgentService skipped - no OPENAI_API_KEY")
         }
-        */
         
         logger.info("✨ PeekabooServices initialization complete")
     }
@@ -149,7 +137,6 @@ public final class PeekabooServices: Sendable {
         sessions: SessionManagerProtocol,
         files: FileServiceProtocol,
         process: ProcessServiceProtocol,
-        aiProvider: AIProviderServiceProtocol? = nil,
         agent: AgentServiceProtocol? = nil,
         configuration: ConfigurationManager? = nil
     ) {
@@ -165,7 +152,6 @@ public final class PeekabooServices: Sendable {
         self.sessions = sessions
         self.files = files
         self.process = process
-        self.aiProvider = aiProvider ?? AIProviderService()
         self.agent = agent
         self.configuration = configuration ?? ConfigurationManager.shared
         
@@ -175,59 +161,7 @@ public final class PeekabooServices: Sendable {
 
 /// High-level convenience methods
 extension PeekabooServices {
-    /// Capture and analyze in one operation
-    /// - Parameters:
-    ///   - target: What to capture
-    ///   - question: Question to ask about the image
-    ///   - provider: AI provider to use (nil = auto-select)
-    /// - Returns: Analysis result with image and answer
-    public func captureAndAnalyze(
-        target: CaptureTarget,
-        question: String,
-        provider: String? = nil
-    ) async throws -> CaptureAnalysisResult {
-        logger.info("📸 Starting capture and analyze operation")
-        logger.debug("Target: \(String(describing: target)), Question: \(question)")
-        
-        // Capture the image
-        let captureResult: CaptureResult
-        switch target {
-        case .screen(let index):
-            logger.debug("Capturing screen at index: \(index ?? 0)")
-            captureResult = try await screenCapture.captureScreen(displayIndex: index)
-        case .window(let app, let index):
-            logger.debug("Capturing window for app: \(app), index: \(index ?? 0)")
-            captureResult = try await screenCapture.captureWindow(appIdentifier: app, windowIndex: index)
-        case .frontmost:
-            logger.debug("Capturing frontmost window")
-            captureResult = try await screenCapture.captureFrontmost()
-        case .area(let rect):
-            logger.debug("Capturing area: x=\(rect.origin.x), y=\(rect.origin.y), width=\(rect.size.width), height=\(rect.size.height)")
-            captureResult = try await screenCapture.captureArea(rect)
-        }
-        
-        logger.info("✅ Capture complete: \(captureResult.savedPath ?? "<unsaved>")")
-        
-        // Analyze the image if a path is available
-        guard let imagePath = captureResult.savedPath else {
-            throw PeekabooError.captureFailed("No saved path available for analysis")
-        }
-        
-        // Perform AI analysis
-        let analysisResult = try await aiProvider.analyzeImage(
-            at: imagePath,
-            prompt: question
-        )
-        
-        logger.info("✅ Analysis complete using \(analysisResult.provider)/\(analysisResult.model)")
-        
-        return CaptureAnalysisResult(
-            captureResult: captureResult,
-            question: question,
-            answer: analysisResult.analysis,
-            provider: "\(analysisResult.provider)/\(analysisResult.model)"
-        )
-    }
+    // REMOVED: captureAndAnalyze method - AI analysis should be done through the agent service
     
     /// Perform UI automation with automatic session management
     /// - Parameters:
@@ -345,13 +279,7 @@ public enum CaptureTarget: Sendable {
     case area(CGRect)
 }
 
-/// Result of capture and analysis
-public struct CaptureAnalysisResult: Sendable {
-    public let captureResult: CaptureResult
-    public let question: String
-    public let answer: String
-    public let provider: String
-}
+// REMOVED: CaptureAnalysisResult - AI analysis should be done through the agent service
 
 /// Automation action
 public enum AutomationAction: Sendable {

@@ -121,7 +121,7 @@ struct DragCommandIntegrationTests {
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
         if !data.success {
             // Expected if no session exists
-            #expect(data.error?.code == .SESSION_NOT_FOUND)
+            #expect(data.error?.code == "SESSION_NOT_FOUND")
         }
     }
 

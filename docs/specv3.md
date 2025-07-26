@@ -262,7 +262,7 @@ This is particularly useful for:
 
 **`peekaboo agent <task> [options]`**
 
-*   **Description:** Execute complex automation tasks using AI-powered agent. The agent uses OpenAI Assistants API to break down natural language instructions into specific Peekaboo commands.
+*   **Description:** Execute complex automation tasks using AI-powered agent. The agent uses OpenAI Chat Completions API with streaming support to break down natural language instructions into specific Peekaboo commands.
 *   **Arguments:**
     *   `<task>`: **Required.** Natural language description of the task to perform.
 *   **Flags:**

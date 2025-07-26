@@ -91,7 +91,8 @@ struct ConfigurationTests {
 
         #expect(result.contains("\"test_value\""))
         #expect(result.contains("prefix_another_value_suffix"))
-        #expect(result.contains("${UNDEFINED_VAR}")) // Undefined vars should remain as-is
+        let containsUndefinedVar = result.contains("${UNDEFINED_VAR}")
+        #expect(containsUndefinedVar) // Undefined vars should remain as-is
 
         // Clean up
         unsetenv("TEST_VAR")
