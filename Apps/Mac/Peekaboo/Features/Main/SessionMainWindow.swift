@@ -361,11 +361,11 @@ struct SessionChatView: View {
                                     defer { isProcessing = false }
                                     
                                     // Re-execute the last task
-                                    let result = await agent.executeTask(lastTask)
-                                    
-                                    // Check if retry was successful
-                                    if result.error == nil {
+                                    do {
+                                        try await agent.executeTask(lastTask)
                                         hasConnectionError = false
+                                    } catch {
+                                        // Error persists
                                     }
                                 }
                             }

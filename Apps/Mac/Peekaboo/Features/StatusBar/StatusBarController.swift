@@ -288,10 +288,10 @@ final class StatusBarController: NSObject {
 
     private func observeAgentState() {
         _ = withObservationTracking {
-            self.agent.isExecuting
+            self.agent.isProcessing
         } onChange: {
             Task { @MainActor in
-                if self.agent.isExecuting {
+                if self.agent.isProcessing {
                     self.startAnimating()
                     // If popover is shown, refresh its content
                     if self.popover.isShown {

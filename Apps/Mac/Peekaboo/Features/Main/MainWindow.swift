@@ -279,10 +279,11 @@ struct MainWindow: View {
                 startRecording()
             }
 
-            let result = await agent.executeTask(trimmedInput)
-
-            if let error = result.error {
-                self.errorMessage = error
+            do {
+                try await agent.executeTask(trimmedInput)
+                self.errorMessage = nil
+            } catch {
+                self.errorMessage = error.localizedDescription
             }
 
             // Clear input

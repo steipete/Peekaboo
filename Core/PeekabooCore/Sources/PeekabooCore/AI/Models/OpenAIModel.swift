@@ -43,12 +43,7 @@ public final class OpenAIModel: ModelInterface {
     
     public func getResponse(request: ModelRequest) async throws -> ModelResponse {
         let openAIRequest = try convertToOpenAIRequest(request, stream: false)
-        
-        // Use Responses API endpoint for o3 models
-        let isO3Model = request.settings.modelName.hasPrefix("o3")
-        let endpoint = isO3Model ? "responses" : "chat/completions"
-        
-        let urlRequest = try createURLRequest(endpoint: endpoint, body: openAIRequest)
+        let urlRequest = try createURLRequest(endpoint: "chat/completions", body: openAIRequest)
         
         let (data, response) = try await session.data(for: urlRequest)
         
@@ -97,12 +92,7 @@ public final class OpenAIModel: ModelInterface {
     
     public func getStreamedResponse(request: ModelRequest) async throws -> AsyncThrowingStream<StreamEvent, Error> {
         let openAIRequest = try convertToOpenAIRequest(request, stream: true)
-        
-        // Use Responses API endpoint for o3 models
-        let isO3Model = request.settings.modelName.hasPrefix("o3")
-        let endpoint = isO3Model ? "responses" : "chat/completions"
-        
-        let urlRequest = try createURLRequest(endpoint: endpoint, body: openAIRequest)
+        let urlRequest = try createURLRequest(endpoint: "chat/completions", body: openAIRequest)
         
         return AsyncThrowingStream { continuation in
             Task {
@@ -145,7 +135,6 @@ public final class OpenAIModel: ModelInterface {
                     // Process SSE stream
                     var currentToolCalls: [String: PartialToolCall] = [:]
                     var toolCallIndexMap: [Int: String] = [:]  // Track tool call IDs by index
-                    let isO3Model = request.settings.modelName.hasPrefix("o3")
                     
                     for try await line in bytes.lines {
                         // Handle SSE format
@@ -168,29 +157,6 @@ public final class OpenAIModel: ModelInterface {
                             // Parse chunk
                             if let chunkData = data.data(using: .utf8) {
                                 do {
-                                    // For o3 models using Responses API, handle different event formats
-                                    if isO3Model, let eventData = try? JSONSerialization.jsonObject(with: chunkData) as? [String: Any] {
-                                        // Check for reasoning summary events
-                                        if let type = eventData["type"] as? String {
-                                            if type == "response.reasoning_summary.delta" || type == "response.reasoning_summary_text.delta" {
-                                                if let delta = eventData["delta"] as? String {
-                                                    continuation.yield(.reasoningSummaryDelta(
-                                                        StreamReasoningSummaryDelta(delta: delta)
-                                                    ))
-                                                }
-                                                continue
-                                            } else if type == "response.reasoning_summary.done" {
-                                                if let summary = eventData["summary"] as? String {
-                                                    continuation.yield(.reasoningSummaryCompleted(
-                                                        StreamReasoningSummaryCompleted(summary: summary)
-                                                    ))
-                                                }
-                                                continue
-                                            }
-                                        }
-                                    }
-                                    
-                                    // Try standard chunk processing
                                     let chunk = try JSONDecoder().decode(OpenAIChatCompletionChunk.self, from: chunkData)
                                     
                                     // Process chunk into stream events
@@ -305,18 +271,8 @@ public final class OpenAIModel: ModelInterface {
             )
         }
         
-        // Extract o3-specific parameters from additionalParameters
-        let reasoningEffort = request.settings.additionalParameters?["reasoning_effort"]?.value as? String
-        let maxCompletionTokens = request.settings.additionalParameters?["max_completion_tokens"]?.value as? Int
-        
-        // For o3 models, use max_completion_tokens instead of max_tokens
-        let isO3Model = request.settings.modelName.hasPrefix("o3")
-        
-        // Create reasoning parameter for o3 models when using Responses API
-        let reasoning = isO3Model ? OpenAIReasoning(
-            effort: reasoningEffort ?? AgentConfiguration.o3ReasoningEffort,
-            summary: "detailed"  // Request extensive reasoning summaries
-        ) : nil
+        // Use max_completion_tokens for models that require it (o3, o4, etc.)
+        let useMaxCompletionTokens = request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4")
         
         return OpenAIChatCompletionRequest(
             model: request.settings.modelName,
@@ -326,10 +282,10 @@ public final class OpenAIModel: ModelInterface {
             temperature: request.settings.temperature,
             topP: request.settings.topP,
             stream: stream,
-            maxTokens: isO3Model ? nil : request.settings.maxTokens,  // Don't send max_tokens for o3
-            reasoningEffort: reasoningEffort,
-            maxCompletionTokens: isO3Model ? (maxCompletionTokens ?? request.settings.maxTokens) : nil,
-            reasoning: reasoning
+            maxTokens: useMaxCompletionTokens ? nil : request.settings.maxTokens,
+            reasoningEffort: nil,  // Not supported in current API
+            maxCompletionTokens: useMaxCompletionTokens ? request.settings.maxTokens : nil,
+            reasoning: nil  // Not supported in current API
         )
     }
     

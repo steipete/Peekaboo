@@ -258,3 +258,32 @@ struct ClickResult: Codable {
         self.executionTime = executionTime
     }
 }
+
+// MARK: - Static Helper Methods for Testing
+
+extension ClickCommand {
+    /// Parse coordinates string (e.g., "100,200") into CGPoint
+    static func parseCoordinates(_ coords: String) -> CGPoint? {
+        let parts = coords.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        guard parts.count == 2,
+              let x = Double(parts[0]),
+              let y = Double(parts[1]) else {
+            return nil
+        }
+        return CGPoint(x: x, y: y)
+    }
+    
+    /// Create element locator from query string
+    static func createLocatorFromQuery(_ query: String) -> (type: String, value: String) {
+        // Simple heuristic for determining locator type
+        if query.hasPrefix("#") {
+            return ("id", String(query.dropFirst()))
+        } else if query.hasPrefix(".") {
+            return ("class", String(query.dropFirst()))
+        } else if query.hasPrefix("//") || query.hasPrefix("/") {
+            return ("xpath", query)
+        } else {
+            return ("text", query)
+        }
+    }
+}

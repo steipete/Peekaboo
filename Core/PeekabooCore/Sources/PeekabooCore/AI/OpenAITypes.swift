@@ -355,7 +355,7 @@ public struct OpenAIChatCompletionRequest: Codable, Sendable {
     
     enum CodingKeys: String, CodingKey {
         case model
-        case messages = "input"  // API now expects 'input' instead of 'messages'
+        case messages
         case tools
         case toolChoice = "tool_choice"
         case temperature
