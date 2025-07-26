@@ -1,6 +1,26 @@
 import Foundation
 import AXorcist
 
+// Simple debug logging check
+fileprivate var isDebugLoggingEnabled: Bool {
+    // Check if verbose mode is enabled via log level
+    if let logLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
+        return logLevel == "debug" || logLevel == "trace"
+    }
+    // Check if agent is in verbose mode
+    if ProcessInfo.processInfo.arguments.contains("-v") || 
+       ProcessInfo.processInfo.arguments.contains("--verbose") {
+        return true
+    }
+    return false
+}
+
+fileprivate func aiDebugPrint(_ message: String) {
+    if isDebugLoggingEnabled {
+        print(message)
+    }
+}
+
 // MARK: - OpenAI API Types
 
 public struct Assistant: Codable, Sendable {
@@ -120,12 +140,12 @@ public struct OpenAITool: Codable, Sendable {
                 if let json = String(data: data, encoding: .utf8) {
                     self.propertiesJSON = json
                 } else {
-                    print("DEBUG: Failed to create JSON string from data")
+                    aiDebugPrint("DEBUG: Failed to create JSON string from data")
                     self.propertiesJSON = "{}"
                 }
             } catch {
-                print("DEBUG: JSONSerialization failed in Parameters.init: \(error)")
-                print("DEBUG: Properties: \(properties)")
+                aiDebugPrint("DEBUG: JSONSerialization failed in Parameters.init: \(error)")
+                aiDebugPrint("DEBUG: Properties: \(properties)")
                 self.propertiesJSON = "{}"
             }
             self.required = required

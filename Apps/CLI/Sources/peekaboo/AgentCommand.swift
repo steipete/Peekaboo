@@ -2,6 +2,26 @@ import ArgumentParser
 import Foundation
 import PeekabooCore
 
+// Simple debug logging check
+fileprivate var isDebugLoggingEnabled: Bool {
+    // Check if verbose mode is enabled via log level
+    if let logLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
+        return logLevel == "debug" || logLevel == "trace"
+    }
+    // Check if agent is in verbose mode
+    if ProcessInfo.processInfo.arguments.contains("-v") || 
+       ProcessInfo.processInfo.arguments.contains("--verbose") {
+        return true
+    }
+    return false
+}
+
+fileprivate func aiDebugPrint(_ message: String) {
+    if isDebugLoggingEnabled {
+        print(message)
+    }
+}
+
 /// Output modes for agent execution
 enum OutputMode {
     case quiet      // Only final result
@@ -115,16 +135,16 @@ struct AgentCommand: AsyncParsableCommand {
         do {
             try await runInternal()
         } catch let error as DecodingError {
-            print("DEBUG: Caught DecodingError in run(): \(error)")
+            aiDebugPrint("DEBUG: Caught DecodingError in run(): \(error)")
             throw error
         } catch let error as NSError {
-            print("DEBUG: Caught NSError in run(): \(error)")
-            print("DEBUG: Domain: \(error.domain)")
-            print("DEBUG: Code: \(error.code)")
-            print("DEBUG: UserInfo: \(error.userInfo)")
+            aiDebugPrint("DEBUG: Caught NSError in run(): \(error)")
+            aiDebugPrint("DEBUG: Domain: \(error.domain)")
+            aiDebugPrint("DEBUG: Code: \(error.code)")
+            aiDebugPrint("DEBUG: UserInfo: \(error.userInfo)")
             throw error
         } catch {
-            print("DEBUG: Caught unknown error in run(): \(error)")
+            aiDebugPrint("DEBUG: Caught unknown error in run(): \(error)")
             throw error
         }
     }
@@ -236,7 +256,7 @@ struct AgentCommand: AsyncParsableCommand {
             // Handle result display
             displayResult(result)
         } catch let error as DecodingError {
-            print("DEBUG: DecodingError caught: \(error)")
+            aiDebugPrint("DEBUG: DecodingError caught: \(error)")
             throw error
         } catch {
             if jsonOutput {
