@@ -75,11 +75,7 @@ public final class DialogService: DialogServiceProtocol {
             guard let targetButton = buttons.first(where: { btn in
                 btn.title() == buttonText || btn.title()?.contains(buttonText) == true
             }) else {
-                throw NotFoundError(
-                    code: .elementNotFound,
-                    userMessage: "Button '\(buttonText)' not found in dialog.",
-                    context: ["button": buttonText, "dialog": dialog.title() ?? "Dialog"]
-                )
+                throw PeekabooError.elementNotFound("\(buttonText)")
             }
             
             // Click the button
@@ -117,11 +113,7 @@ public final class DialogService: DialogServiceProtocol {
             
             guard !textFields.isEmpty else {
                 logger.error("No text fields found in dialog")
-                throw NotFoundError(
-                    code: .elementNotFound,
-                    userMessage: "No text fields found in dialog.",
-                    context: ["dialog": dialog.title() ?? "Dialog"]
-                )
+                throw PeekabooError.operationError(message: "No text fields found in dialog.")
             }
             
             // Select target field
@@ -131,11 +123,7 @@ public final class DialogService: DialogServiceProtocol {
                 // Try to parse as index
                 if let index = Int(identifier) {
                     guard index < textFields.count else {
-                        throw ValidationError(
-                            code: .invalidInput,
-                            userMessage: "Invalid field index: \(index). Dialog has \(textFields.count) fields.",
-                            context: ["field": "index", "value": String(index), "count": String(textFields.count)]
-                        )
+                        throw PeekabooError.invalidInput("Invalid field index: \(index). Dialog has \(textFields.count) fields.")
                     }
                     targetField = textFields[index]
                 } else {
@@ -145,11 +133,7 @@ public final class DialogService: DialogServiceProtocol {
                         field.attribute(Attribute<String>("AXPlaceholderValue")) == identifier ||
                         field.descriptionText()?.contains(identifier) == true
                     }) else {
-                        throw NotFoundError(
-                            code: .elementNotFound,
-                            userMessage: "Text field '\(identifier)' not found in dialog.",
-                            context: ["field": identifier, "dialog": dialog.title() ?? "Dialog"]
-                        )
+                        throw PeekabooError.elementNotFound("\(identifier)")
                     }
                     targetField = field
                 }
@@ -250,11 +234,7 @@ public final class DialogService: DialogServiceProtocol {
                 let textFields = collectTextFields(from: dialog)
                 guard let field = textFields.first else {
                     logger.error("No text fields found in file dialog")
-                    throw NotFoundError(
-                    code: .elementNotFound,
-                    userMessage: "No text fields found in dialog.",
-                    context: ["dialog": dialog.title() ?? "Dialog"]
-                )
+                    throw PeekabooError.operationError(message: "No text fields found in dialog.")
                 }
                 
                 // Focus and clear the field
@@ -346,11 +326,7 @@ public final class DialogService: DialogServiceProtocol {
                 }
                 
                 logger.error("No dismiss button found in dialog")
-                throw NotFoundError(
-                    code: .elementNotFound,
-                    userMessage: "No dismiss button found in dialog.",
-                    context: ["dialog": dialog.title() ?? "Dialog", "searched_buttons": dismissButtons.joined(separator: ", ")]
-                )
+                throw PeekabooError.operationError(message: "No dismiss button found in dialog.")
             }
         }
     }
@@ -442,11 +418,7 @@ public final class DialogService: DialogServiceProtocol {
         let systemWide = Element.systemWide()
         guard let focusedApp = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) else {
             logger.error("No focused application found")
-            throw NotFoundError(
-                code: .elementNotFound,
-                userMessage: "No active dialog window found.",
-                context: ["reason": "no_focused_application"]
-            )
+            throw PeekabooError.operationError(message: "No active dialog window found.")
         }
         
         // Look for windows that are likely dialogs
@@ -503,11 +475,7 @@ public final class DialogService: DialogServiceProtocol {
         // File dialogs often have specific subroles
         let systemWide = Element.systemWide()
         guard let focusedApp = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) else {
-            throw NotFoundError(
-                code: .elementNotFound,
-                userMessage: "No active dialog window found.",
-                context: ["reason": "no_focused_application"]
-            )
+            throw PeekabooError.operationError(message: "No active dialog window found.")
         }
         
         let windows = focusedApp.windows() ?? []
@@ -523,11 +491,7 @@ public final class DialogService: DialogServiceProtocol {
             }
         }
         
-        throw NotFoundError(
-            code: .elementNotFound,
-            userMessage: "No file dialog (Save/Open) found.",
-            context: ["dialog_type": "file_dialog"]
-        )
+        throw PeekabooError.operationError(message: "No file dialog (Save/Open) found.")
     }
     
     @MainActor

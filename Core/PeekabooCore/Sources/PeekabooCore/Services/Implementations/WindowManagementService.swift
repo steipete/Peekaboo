@@ -149,13 +149,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
                 }
             }
             
-            var context = ErrorContext()
-            context.add("windowId", id)
-            throw NotFoundError(
-                code: .windowNotFound,
-                userMessage: "Window with ID \(id) not found",
-                context: context.build()
-            )
+            throw PeekabooError.windowNotFound
         }
     }
     
@@ -262,13 +256,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             }
         }
         
-        var context = ErrorContext()
-        context.add("titleSubstring", titleSubstring)
-        throw NotFoundError(
-            code: .windowNotFound,
-            userMessage: "No window found with title containing '\(titleSubstring)'",
-            context: context.build()
-        )
+        throw PeekabooError.windowNotFound
     }
     
     @MainActor
@@ -287,12 +275,6 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             }
         }
         
-        var context = ErrorContext()
-        context.add("windowId", id)
-        throw NotFoundError(
-            code: .windowNotFound,
-            userMessage: "Window with ID \(id) not found",
-            context: context.build()
-        )
+        throw PeekabooError.windowNotFound
     }
 }

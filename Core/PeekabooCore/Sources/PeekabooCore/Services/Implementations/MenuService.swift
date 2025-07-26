@@ -148,11 +148,7 @@ public final class MenuService: MenuServiceProtocol {
             
             // Find menu bar
             guard let menuBar = systemWide.menuBar() else {
-                throw NotFoundError(
-                    code: .menuNotFound,
-                    userMessage: "System menu bar not found",
-                    context: ["type": "system_menu_bar"]
-                )
+                throw PeekabooError.operationError(message: "System menu bar not found")
             }
             
             // Find menu extras (they're typically in a specific group)

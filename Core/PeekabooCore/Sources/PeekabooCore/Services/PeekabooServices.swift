@@ -49,6 +49,9 @@ public final class PeekabooServices: Sendable {
     /// AI provider service for image analysis
     public let aiProvider: AIProviderServiceProtocol
     
+    /// Agent service for AI-powered automation
+    public let agent: AgentServiceProtocol?
+    
     /// Initialize with default service implementations
     public init() {
         logger.info("🚀 Initializing PeekabooServices with default implementations")
@@ -110,6 +113,26 @@ public final class PeekabooServices: Sendable {
         self.aiProvider = AIProviderService()
         logger.debug("✅ AIProviderService initialized")
         
+        // Agent service is optional - only create if API key is available
+        // TODO: Fix actor isolation issue
+        self.agent = nil
+        /*
+        if let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
+            let toolExecutor = PeekabooToolExecutor(verbose: false)
+            self.agent = OpenAIAgentService(
+                apiKey: apiKey,
+                model: "gpt-4.1",
+                verbose: false,
+                maxSteps: 20,
+                toolExecutor: toolExecutor
+            )
+            logger.debug("✅ OpenAIAgentService initialized")
+        } else {
+            self.agent = nil
+            logger.debug("⚠️ OpenAIAgentService skipped - no OPENAI_API_KEY")
+        }
+        */
+        
         logger.info("✨ PeekabooServices initialization complete")
     }
     
@@ -127,6 +150,7 @@ public final class PeekabooServices: Sendable {
         files: FileServiceProtocol,
         process: ProcessServiceProtocol,
         aiProvider: AIProviderServiceProtocol? = nil,
+        agent: AgentServiceProtocol? = nil,
         configuration: ConfigurationManager? = nil
     ) {
         logger.info("🚀 Initializing PeekabooServices with custom implementations")
@@ -142,6 +166,7 @@ public final class PeekabooServices: Sendable {
         self.files = files
         self.process = process
         self.aiProvider = aiProvider ?? AIProviderService()
+        self.agent = agent
         self.configuration = configuration ?? ConfigurationManager.shared
         
         logger.info("✨ PeekabooServices initialization complete (custom)")
@@ -185,11 +210,7 @@ extension PeekabooServices {
         
         // Analyze the image if a path is available
         guard let imagePath = captureResult.savedPath else {
-            throw OperationError(
-                code: .captureFailed,
-                userMessage: "No saved path available for analysis",
-                context: ["reason": "Capture did not produce a saved file"]
-            )
+            throw PeekabooError.captureFailed("No saved path available for analysis")
         }
         
         // Perform AI analysis

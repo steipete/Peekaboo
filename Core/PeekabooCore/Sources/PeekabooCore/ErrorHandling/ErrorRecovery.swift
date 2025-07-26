@@ -74,11 +74,7 @@ public struct RetryHandler {
             }
         }
         
-        throw lastError ?? OperationError(
-            code: .unknownError,
-            userMessage: "Operation failed after \(policy.maxAttempts) attempts",
-            context: ["max_attempts": String(policy.maxAttempts)]
-        )
+        throw lastError ?? PeekabooError.operationError(message: "Operation failed after \(policy.maxAttempts) attempts")
     }
     
     /// Execute an operation with custom retry logic
@@ -106,11 +102,7 @@ public struct RetryHandler {
             }
         }
         
-        throw lastError ?? OperationError(
-            code: .unknownError,
-            userMessage: "Operation failed after \(maxAttempts) attempts",
-            context: ["max_attempts": String(maxAttempts)]
-        )
+        throw lastError ?? PeekabooError.operationError(message: "Operation failed after \(maxAttempts) attempts")
     }
 }
 

@@ -77,71 +77,125 @@ public struct MessageList: Codable, Sendable {
 
 public struct Tool: Codable, Sendable {
     public let type: String
-    public let function: ToolFunction
+    public let function: Function
 
-    public init(function: ToolFunction) {
-        self.type = "function"
+    public init(type: String = "function", function: Function) {
+        self.type = type
         self.function = function
     }
-}
-
-public struct ToolFunction: Codable, Sendable {
-    public let name: String
-    public let description: String
-    public let parameters: FunctionParameters
-
-    public init(name: String, description: String, parameters: FunctionParameters) {
-        self.name = name
-        self.description = description
-        self.parameters = parameters
-    }
-}
-
-public struct FunctionParameters: Codable, Sendable {
-    public let type: String
-    public let properties: [String: Property]
-    public let required: [String]
-
-    public var dictionary: [String: Any] {
-        var dict: [String: Any] = ["type": type]
-
-        var props: [String: Any] = [:]
-        for (key, prop) in self.properties {
-            props[key] = prop.dictionary
+    
+    // Nested types to match OpenAI API structure
+    public struct Function: Codable, Sendable {
+        public let name: String
+        public let description: String
+        public let parameters: Parameters
+        
+        public init(name: String, description: String, parameters: Parameters) {
+            self.name = name
+            self.description = description
+            self.parameters = parameters
         }
-        dict["properties"] = props
-        dict["required"] = self.required
-
-        return dict
     }
-
-    public init(properties: [String: Property], required: [String]) {
-        self.type = "object"
-        self.properties = properties
-        self.required = required
+    
+    public struct Parameters: Codable, Sendable {
+        public let type: String
+        // Using a JSON-serializable dictionary instead of [String: Any]
+        public let propertiesJSON: String
+        public let required: [String]
+        
+        public var properties: [String: Any] {
+            guard let data = propertiesJSON.data(using: .utf8),
+                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return [:]
+            }
+            return dict
+        }
+        
+        public init(type: String = "object", properties: [String: Any] = [:], required: [String] = []) {
+            self.type = type
+            // Convert properties to JSON string for Sendable conformance
+            if let data = try? JSONSerialization.data(withJSONObject: properties),
+               let json = String(data: data, encoding: .utf8) {
+                self.propertiesJSON = json
+            } else {
+                self.propertiesJSON = "{}"
+            }
+            self.required = required
+        }
+        
+        // Custom encoding/decoding for the properties dictionary
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(type, forKey: .type)
+            try container.encode(required, forKey: .required)
+            
+            // Encode properties as a JSON object
+            if let data = propertiesJSON.data(using: .utf8),
+               let jsonObject = try? JSONSerialization.jsonObject(with: data) {
+                try container.encode(AnyEncodable(jsonObject), forKey: .properties)
+            }
+        }
+        
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.type = try container.decode(String.self, forKey: .type)
+            self.required = try container.decode([String].self, forKey: .required)
+            
+            // Decode properties as Any
+            if let anyProperties = try? container.decode(AnyDecodable.self, forKey: .properties),
+               let dict = anyProperties.value as? [String: Any],
+               let data = try? JSONSerialization.data(withJSONObject: dict),
+               let json = String(data: data, encoding: .utf8) {
+                self.propertiesJSON = json
+            } else {
+                self.propertiesJSON = "{}"
+            }
+        }
+        
+        private enum CodingKeys: String, CodingKey {
+            case type, properties, required
+        }
     }
 }
 
-public struct Property: Codable, Sendable {
-    public let type: String
-    public let description: String
-    public let `enum`: [String]?
+// MARK: - Helper types for encoding/decoding Any
 
-    public var dictionary: [String: Any] {
-        var dict: [String: Any] = [
-            "type": type,
-            "description": description,
-        ]
-        if let enumValues = self.enum {
-            dict["enum"] = enumValues
-        }
-        return dict
+struct AnyEncodable: Encodable {
+    let value: Any
+    
+    init(_ value: Any) {
+        self.value = value
     }
+    
+    func encode(to encoder: Encoder) throws {
+        if let data = try? JSONSerialization.data(withJSONObject: value),
+           let json = try? JSONSerialization.jsonObject(with: data) {
+            try (json as? Encodable)?.encode(to: encoder)
+        }
+    }
+}
 
-    public init(type: String, description: String, enum: [String]? = nil) {
-        self.type = type
-        self.description = description
-        self.enum = `enum`
+struct AnyDecodable: Decodable {
+    let value: Any
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        
+        if let intValue = try? container.decode(Int.self) {
+            value = intValue
+        } else if let doubleValue = try? container.decode(Double.self) {
+            value = doubleValue
+        } else if let boolValue = try? container.decode(Bool.self) {
+            value = boolValue
+        } else if let stringValue = try? container.decode(String.self) {
+            value = stringValue
+        } else if let arrayValue = try? container.decode([AnyDecodable].self) {
+            value = arrayValue.map { $0.value }
+        } else if let dictValue = try? container.decode([String: AnyDecodable].self) {
+            value = dictValue.mapValues { $0.value }
+        } else {
+            value = NSNull()
+        }
     }
 }
 

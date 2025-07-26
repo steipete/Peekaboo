@@ -77,141 +77,8 @@ public struct ErrorContext {
 
 // MARK: - Common Error Types
 
-/// Permission-related errors
-public struct PermissionError: StandardizedError {
-    public let code: StandardErrorCode
-    public let userMessage: String
-    public let context: [String: String]
-    
-    public static func screenRecording() -> PermissionError {
-        PermissionError(
-            code: .screenRecordingPermissionDenied,
-            userMessage: "Screen Recording permission is required. Please grant permission in System Settings > Privacy & Security > Screen Recording.",
-            context: ["permission": "screen_recording"]
-        )
-    }
-    
-    public static func accessibility() -> PermissionError {
-        PermissionError(
-            code: .accessibilityPermissionDenied,
-            userMessage: "Accessibility permission is required for this operation. Please grant permission in System Settings > Privacy & Security > Accessibility.",
-            context: ["permission": "accessibility"]
-        )
-    }
-}
-
-/// Resource not found errors
-public struct NotFoundError: StandardizedError {
-    public let code: StandardErrorCode
-    public let userMessage: String
-    public let context: [String: String]
-    
-    public static func application(_ identifier: String) -> NotFoundError {
-        NotFoundError(
-            code: .applicationNotFound,
-            userMessage: "Application '\(identifier)' not found or not running.",
-            context: ["identifier": identifier]
-        )
-    }
-    
-    public static func window(app: String, index: Int? = nil) -> NotFoundError {
-        let message = if let index = index {
-            "Window at index \(index) not found for application '\(app)'."
-        } else {
-            "No windows found for application '\(app)'."
-        }
-        
-        var context = ErrorContext()
-        context.add("app", app)
-        if let index = index {
-            context.add("window_index", index)
-        }
-        
-        return NotFoundError(
-            code: .windowNotFound,
-            userMessage: message,
-            context: context.build()
-        )
-    }
-    
-    public static func element(_ description: String) -> NotFoundError {
-        NotFoundError(
-            code: .elementNotFound,
-            userMessage: "UI element '\(description)' not found.",
-            context: ["element": description]
-        )
-    }
-    
-    public static func session(_ id: String) -> NotFoundError {
-        NotFoundError(
-            code: .sessionNotFound,
-            userMessage: "Session '\(id)' not found or expired.",
-            context: ["session_id": id]
-        )
-    }
-}
-
-/// Operation failure errors
-public struct OperationError: StandardizedError {
-    public let code: StandardErrorCode
-    public let userMessage: String
-    public let context: [String: String]
-    
-    public static func captureFailed(reason: String) -> OperationError {
-        OperationError(
-            code: .captureFailed,
-            userMessage: "Failed to capture screen: \(reason)",
-            context: ["reason": reason]
-        )
-    }
-    
-    public static func interactionFailed(action: String, reason: String) -> OperationError {
-        OperationError(
-            code: .interactionFailed,
-            userMessage: "Failed to perform \(action): \(reason)",
-            context: ["action": action, "reason": reason]
-        )
-    }
-    
-    public static func timeout(operation: String, duration: TimeInterval) -> OperationError {
-        OperationError(
-            code: .timeout,
-            userMessage: "Operation '\(operation)' timed out after \(Int(duration)) seconds.",
-            context: ["operation": operation, "timeout_seconds": String(duration)]
-        )
-    }
-}
-
-/// Input validation errors
-public struct ValidationError: StandardizedError {
-    public let code: StandardErrorCode
-    public let userMessage: String
-    public let context: [String: String]
-    
-    public static func invalidInput(field: String, reason: String) -> ValidationError {
-        ValidationError(
-            code: .invalidInput,
-            userMessage: "Invalid \(field): \(reason)",
-            context: ["field": field, "reason": reason]
-        )
-    }
-    
-    public static func invalidCoordinates(x: Double, y: Double) -> ValidationError {
-        ValidationError(
-            code: .invalidCoordinates,
-            userMessage: "Invalid coordinates (\(x), \(y)). Coordinates must be within screen bounds.",
-            context: ["x": String(x), "y": String(y)]
-        )
-    }
-    
-    public static func ambiguousAppIdentifier(_ identifier: String, matches: [String]) -> ValidationError {
-        ValidationError(
-            code: .ambiguousAppIdentifier,
-            userMessage: "Multiple applications match '\(identifier)': \(matches.joined(separator: ", "))",
-            context: ["identifier": identifier, "matches": matches.joined(separator: ",")]
-        )
-    }
-}
+/// Operation failure errors - using PeekabooError for simpler API
+public typealias OperationError = PeekabooError
 
 // MARK: - Error Conversion
 
@@ -225,14 +92,12 @@ public struct ErrorStandardizer {
         
         // Convert known error types
         switch error {
+        case let peekabooError as PeekabooError:
+            return peekabooError
         case let nsError as NSError:
             return standardizeNSError(nsError)
         default:
-            return OperationError(
-                code: .unknownError,
-                userMessage: error.localizedDescription,
-                context: ["type": String(describing: type(of: error))]
-            )
+            return PeekabooError.operationError(message: error.localizedDescription)
         }
     }
     
@@ -241,24 +106,14 @@ public struct ErrorStandardizer {
         switch error.domain {
         case NSCocoaErrorDomain:
             if error.code == NSFileNoSuchFileError {
-                return NotFoundError(
-                    code: .fileNotFound,
-                    userMessage: "File not found: \(error.localizedDescription)",
-                    context: ["path": error.userInfo[NSFilePathErrorKey] as? String ?? "unknown"]
-                )
+                let path = error.userInfo[NSFilePathErrorKey] as? String ?? "unknown"
+                return PeekabooError.fileIOError("File not found: \(path)")
             }
         default:
             break
         }
         
-        return OperationError(
-            code: .unknownError,
-            userMessage: error.localizedDescription,
-            context: [
-                "domain": error.domain,
-                "code": String(error.code)
-            ]
-        )
+        return PeekabooError.operationError(message: error.localizedDescription)
     }
 }
 
