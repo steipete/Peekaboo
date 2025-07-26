@@ -38,9 +38,23 @@ npm run poltergeist:haunt
 
 Once Poltergeist is running, you can assume the CLI is always fresh and up-to-date. No manual rebuilding is needed!
 
-If you encounter a "build staleness" error when running the CLI:
-1. Wait 1 second for the rebuild to complete
-2. Try running the command again
+**IMPORTANT**: Always use the smart wrapper script instead of calling the CLI directly:
+```bash
+# WRONG: ./peekaboo command
+# RIGHT: ./scripts/peekaboo-wait.sh command
+```
+
+The wrapper automatically:
+- Checks if the binary is fresh (newer than Swift sources)
+- Waits for any ongoing Poltergeist rebuilds (up to 30 seconds)
+- Runs the CLI once ready
+
+This eliminates "build staleness" errors and ensures you're always using the latest code.
+
+For debugging the wrapper, set `PEEKABOO_WAIT_DEBUG=true`:
+```bash
+PEEKABOO_WAIT_DEBUG=true ./scripts/peekaboo-wait.sh list apps
+```
 
 Poltergeist watches all Swift source files and automatically rebuilds when changes are detected.
 
@@ -208,29 +222,35 @@ peekaboo-mcp
 ```
 
 ### Using the Swift CLI directly
+
+**ALWAYS use the smart wrapper to avoid build staleness issues:**
+
 ```bash
-# Capture screenshots
-./Apps/CLI/.build/debug/peekaboo image --app "Safari" --path screenshot.png
-./Apps/CLI/.build/debug/peekaboo image --mode frontmost --path screenshot.png
+# Create a convenient alias (add to your shell profile)
+alias pb='./scripts/peekaboo-wait.sh'
+
+# Then use it like:
+pb image --app "Safari" --path screenshot.png
+pb image --mode frontmost --path screenshot.png
 
 # List applications or windows
-./Apps/CLI/.build/debug/peekaboo list apps --json-output
-./Apps/CLI/.build/debug/peekaboo list windows --app "Finder" --json-output
+pb list apps --json-output
+pb list windows --app "Finder" --json-output
 
-# Analyze images with AI (NEW)
-PEEKABOO_AI_PROVIDERS="openai/gpt-4.1" ./Apps/CLI/.build/debug/peekaboo analyze image.png "What is shown in this image?"
-PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./Apps/CLI/.build/debug/peekaboo analyze image.png "Describe this screenshot" --json-output
+# Analyze images with AI
+PEEKABOO_AI_PROVIDERS="openai/gpt-4.1" pb analyze image.png "What is shown in this image?"
+PEEKABOO_AI_PROVIDERS="ollama/llava:latest" pb analyze image.png "Describe this screenshot" --json-output
 
 # Use multiple AI providers (auto-selects first available)
-PEEKABOO_AI_PROVIDERS="openai/gpt-4.1,ollama/llava:latest" ./Apps/CLI/.build/debug/peekaboo analyze image.png "What application is this?"
+PEEKABOO_AI_PROVIDERS="openai/gpt-4.1,ollama/llava:latest" pb analyze image.png "What application is this?"
 
-# Configuration management (UPDATED)
-./Apps/CLI/.build/debug/peekaboo config init                    # Create default config file
-./Apps/CLI/.build/debug/peekaboo config show                    # Display current config
-./Apps/CLI/.build/debug/peekaboo config show --effective        # Show merged configuration
-./Apps/CLI/.build/debug/peekaboo config edit                    # Edit config in default editor
-./Apps/CLI/.build/debug/peekaboo config validate                # Validate config syntax
-./Apps/CLI/.build/debug/peekaboo config set-credential KEY VALUE # Set API key securely
+# Configuration management
+pb config init                    # Create default config file
+pb config show                    # Display current config
+pb config show --effective        # Show merged configuration
+pb config edit                    # Edit config in default editor
+pb config validate                # Validate config syntax
+pb config set-credential KEY VALUE # Set API key securely
 ```
 
 ### Agent Command (NEW)
