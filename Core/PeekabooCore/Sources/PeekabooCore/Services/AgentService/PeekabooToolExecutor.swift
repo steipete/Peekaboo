@@ -1286,6 +1286,8 @@ public final class PeekabooToolExecutor: ToolExecutor {
         - shell(command="open -a Safari https://example.com") - Opens in specific browser
         - shell(command="curl -s https://api.example.com") - Fetch API data directly
         - shell(command="echo 'Hello World'") - Run any shell command
+        - shell(command="say 'Hello, I am your AI assistant'") - Speak text using macOS text-to-speech
+        - shell(command="say -v Samantha 'Welcome to Peekaboo'") - Use specific voice (Samantha, Alex, etc.)
         - Always check the success field in response
         - IMPORTANT: Quote URLs with special characters to prevent shell expansion errors:
           ✓ shell(command="open 'https://www.google.com/search?q=weather+forecast'")
