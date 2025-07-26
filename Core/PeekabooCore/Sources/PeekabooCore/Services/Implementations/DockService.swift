@@ -105,7 +105,7 @@ public final class DockService: DockServiceProtocol {
         
         // Click the item to launch
         do {
-            try await MainActor.run {
+            _ = try await MainActor.run {
                 try dockElement.performAction(.press)
             }
         } catch {

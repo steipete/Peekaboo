@@ -26,7 +26,27 @@ When the user types "build/compile peekaboo cli" or similar:
 cp -f Apps/CLI/.build/debug/peekaboo ./peekaboo
 ```
 
+## Poltergeist - Automatic CLI Rebuilding
+
+**IMPORTANT**: Once per session, check if Poltergeist is running. If not, start it:
+
+```bash
+npm run poltergeist:status
+# If not running:
+npm run poltergeist:haunt
+```
+
+Once Poltergeist is running, you can assume the CLI is always fresh and up-to-date. No manual rebuilding is needed!
+
+If you encounter a "build staleness" error when running the CLI:
+1. Wait 1 second for the rebuild to complete
+2. Try running the command again
+
+Poltergeist watches all Swift source files and automatically rebuilds when changes are detected.
+
 ## Recent Updates
+
+- **Poltergeist file watcher** (2025-01-26): Added ghost-themed file watcher that automatically rebuilds Swift CLI on source changes. Uses Facebook's Watchman for efficient native file watching. See "Poltergeist" section above.
 
 - **Chat Completions API migration** (2025-01-26): Completely replaced OpenAI Assistants API with Chat Completions API using a modern protocol-based architecture. Features native streaming support, type-safe message handling, and improved performance.
 
