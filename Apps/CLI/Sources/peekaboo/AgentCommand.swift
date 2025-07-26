@@ -54,7 +54,7 @@ enum TerminalColor {
 /// Get icon for tool name in compact mode
 func iconForTool(_ toolName: String) -> String {
     switch toolName {
-    case "screenshot", "window_capture": return "👁"
+    case "see", "screenshot", "window_capture": return "👁"
     case "click": return "👆"
     case "type": return "⌨️"
     case "list_apps", "launch_app": return "📱"
@@ -490,6 +490,20 @@ final class CompactEventDelegate: AgentEventDelegate {
     
     private func compactToolSummary(_ toolName: String, _ args: [String: Any]) -> String {
         switch toolName {
+        case "see":
+            var parts: [String] = []
+            if let mode = args["mode"] as? String {
+                parts.append(mode == "window" ? "active window" : mode)
+            } else if let app = args["app"] as? String {
+                parts.append(app)
+            } else {
+                parts.append("screen")
+            }
+            if args["analyze"] != nil {
+                parts.append("and analyze")
+            }
+            return parts.joined(separator: " ")
+            
         case "screenshot":
             if let mode = args["mode"] as? String {
                 return mode == "window" ? "active window" : mode

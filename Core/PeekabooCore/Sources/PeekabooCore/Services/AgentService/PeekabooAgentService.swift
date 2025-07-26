@@ -248,6 +248,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         var tools: [Tool<PeekabooServices>] = []
         
         // Screen capture tools
+        tools.append(createSeeTool())  // Primary tool for capturing and analyzing UI
         tools.append(createScreenshotTool())
         tools.append(createWindowCaptureTool())
         
@@ -280,6 +281,102 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     }
     
     // MARK: - Individual Tool Definitions
+    
+    private func createSeeTool() -> Tool<PeekabooServices> {
+        Tool(
+            name: "see",
+            description: "Capture and analyze the current screen state with UI element detection. This is the primary tool for understanding what's on screen.",
+            parameters: .object(
+                properties: [
+                    "mode": .enumeration(
+                        ["screen", "window", "frontmost"],
+                        description: "What to capture (default: frontmost)"
+                    ),
+                    "app": .string(
+                        description: "Optional application name to capture"
+                    ),
+                    "analyze": .string(
+                        description: "Optional AI analysis prompt for the captured content"
+                    )
+                ],
+                required: []
+            ),
+            execute: { input, services in
+                let mode: String = input.value(for: "mode") ?? "frontmost"
+                let appName: String? = input.value(for: "app")
+                let analyzePrompt: String? = input.value(for: "analyze")
+                
+                // Capture the screen based on mode
+                let captureResult: CaptureResult
+                
+                if let appName = appName {
+                    captureResult = try await services.screenCapture.captureWindow(
+                        appIdentifier: appName,
+                        windowIndex: 0
+                    )
+                } else {
+                    switch mode {
+                    case "screen":
+                        captureResult = try await services.screenCapture.captureScreen(displayIndex: 0)
+                    case "window", "frontmost":
+                        captureResult = try await services.screenCapture.captureFrontmost()
+                    default:
+                        captureResult = try await services.screenCapture.captureFrontmost()
+                    }
+                }
+                
+                // Generate a session ID for element detection
+                let sessionId = UUID().uuidString
+                
+                // Detect UI elements in the captured image
+                let detectionResult = try await services.automation.detectElements(
+                    in: captureResult.imageData,
+                    sessionId: sessionId
+                )
+                
+                // Store the detection result for future use
+                try await services.sessions.storeDetectionResult(
+                    sessionId: sessionId,
+                    result: detectionResult
+                )
+                
+                // Build response
+                var response: [String: Any] = [
+                    "success": true,
+                    "sessionId": sessionId,
+                    "path": captureResult.savedPath ?? "captured in memory",
+                    "size": [
+                        "width": captureResult.metadata.size.width,
+                        "height": captureResult.metadata.size.height
+                    ],
+                    "elements": [
+                        "total": detectionResult.elements.all.count,
+                        "buttons": detectionResult.elements.buttons.count,
+                        "textFields": detectionResult.elements.textFields.count,
+                        "other": detectionResult.elements.other.count,
+                        "links": detectionResult.elements.links.count
+                    ]
+                ]
+                
+                // Add application info if available
+                if let appInfo = captureResult.metadata.applicationInfo {
+                    response["application"] = [
+                        "name": appInfo.name,
+                        "bundleId": appInfo.bundleIdentifier ?? ""
+                    ]
+                }
+                
+                // If analysis was requested, perform it
+                if let prompt = analyzePrompt {
+                    // This would integrate with the AI analysis service
+                    // For now, we'll just note that analysis was requested
+                    response["analysisRequested"] = prompt
+                }
+                
+                return .dictionary(response)
+            }
+        )
+    }
     
     private func createScreenshotTool() -> Tool<PeekabooServices> {
         Tool(
@@ -547,10 +644,11 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         ## Critical Guidelines
         
         1. **Be Resilient**: If a tool fails, try alternative approaches. Don't give up at the first error.
-        2. **Handle Timing**: After launching apps, wait a moment or use list_windows to verify they're ready before interacting.
-        3. **Complete Tasks**: Even if some steps fail, continue with alternatives and always provide a final summary.
-        4. **Error Recovery**: When operations fail, analyze why and adapt your approach.
-        5. **Final Response**: ALWAYS end with what you accomplished, what failed, and any requested output (like "YOWZA YOWZA BO-BOWZA").
+        2. **Verify UI State**: ALWAYS take a screenshot after launching apps to see their current state (dialogs, intro screens, etc.)
+        3. **Complete ALL Tasks**: Read the user's request carefully and ensure you complete EVERY part, including any specific phrases they want you to say.
+        4. **Error Recovery**: When operations fail, analyze why and adapt your approach. If AppleScript fails, check your quoting!
+        5. **Dialog Handling**: Apps often show intro/welcome dialogs. Take a screenshot to see them, then click "Continue", "Get Started", or dismiss them.
+        6. **Final Response**: ALWAYS end with what you accomplished, what failed, and ANY requested output (like specific phrases the user wants).
         
         ## Your Capabilities
         
@@ -560,6 +658,23 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         - **Window Management**: Launch apps, focus windows, resize, and control window states
         - **Screen Capture**: Take screenshots of screens, windows, or specific applications
         - **Element Detection**: Find and interact with specific UI elements by text or type
+        
+        ## CRITICAL: Screenshot After App Launch
+        
+        **ALWAYS** use the `see` tool after launching any application to:
+        - See if the app launched successfully
+        - Check for intro dialogs, welcome screens, or permission prompts
+        - Verify the app is ready for interaction
+        - Understand the current UI state before proceeding
+        - Get a session ID for subsequent interactions
+        
+        Example workflow:
+        1. `launch_app "Numbers"`
+        2. `see` to capture current state and detect UI elements
+        3. If dialog present, click appropriate button (Continue, Skip, etc.)
+        4. Proceed with main task
+        
+        The `see` tool is your primary way to understand what's on screen. It combines screenshot capture with UI element detection, giving you a complete picture of the current state.
         
         ## Creative Problem Solving
         
@@ -573,55 +688,80 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         - Convert files using command-line tools: `pandoc input.ods -o output.md`
         
         ### Application Automation via AppleScript
+        
+        **IMPORTANT AppleScript Quoting Rules:**
+        - Use single quotes for the outer shell command
+        - Use double quotes inside AppleScript strings
+        - Escape inner quotes properly: `osascript -e 'tell application "Mail" to make new outgoing message with properties {subject:"Test", content:"Hello", visible:true}'`
+        - For complex scripts with quotes, use heredoc:
+          ```
+          osascript <<EOF
+          tell application "Mail"
+              make new outgoing message with properties {subject:"My Subject", content:"My content with 'quotes'", visible:true}
+          end tell
+          EOF
+          ```
+        
+        Common AppleScript commands:
         - Navigate Finder: `osascript -e 'tell application "Finder" to open folder "Downloads" of home'`
         - Control any app: `osascript -e 'tell application "AppName" to activate'`
-        - Wait for app to launch: `sleep 2` or check with `list_windows` until windows appear
+        - Wait for app: After launching, ALWAYS screenshot to verify state
         - Interact with menus: `osascript -e 'tell application "System Events" to click menu item "Save As..." of menu "File" of menu bar 1 of process "AppName"'`
-        - Get window properties: `osascript -e 'tell application "AppName" to get bounds of window 1'`
+        - Dismiss dialogs: `osascript -e 'tell application "System Events" to click button "Continue" of window 1 of process "AppName"'`
         
         ### Email Automation
-        - Open Mail with recipient: `open "mailto:email@example.com?subject=Subject&body=Body"`
-        - Use AppleScript for complex email tasks: `osascript -e 'tell application "Mail" to make new outgoing message with properties {subject:"Test", content:"Hello", visible:true}'`
         
-        ### Web Automation
-        - Open URLs: `open "https://example.com"`
-        - Download files: `curl -O https://example.com/file.pdf`
-        - Use online converters by opening them in browser and automating the UI
+        For sending emails:
+        1. **Simple approach**: `open "mailto:email@example.com?subject=Subject&body=Body"`
+        2. **Full control with Mail app**:
+           ```
+           osascript -e 'tell application "Mail"
+               set newMessage to make new outgoing message with properties {subject:"Your Subject", content:"Your message content", visible:true}
+               tell newMessage
+                   make new to recipient with properties {address:"recipient@example.com"}
+               end tell
+           end tell'
+           ```
+        3. **After creating email**: Take a screenshot to verify, then:
+           - Use UI automation to add attachments if needed
+           - Click the Send button or use: `osascript -e 'tell application "Mail" to send the front outgoing message'`
         
-        ### Process Management
-        - Check running processes: `ps aux | grep AppName`
-        - Kill processes: `killall AppName`
-        - Launch applications: Use launch_app tool or `open -a "Application Name"`
+        ### Handling Common Scenarios
         
-        ## Best Practices
+        **App Welcome Screens:**
+        1. Launch app
+        2. Take screenshot
+        3. Look for buttons like: "Continue", "Get Started", "Skip", "Next", "Close"
+        4. Click appropriate button
+        5. Take another screenshot to verify you're past the intro
         
-        1. **Chain Commands**: Use shell operators (&&, ||, ;) to chain multiple commands
-        2. **Check Before Acting**: Verify files exist, apps are running, etc. before interacting
-        3. **Use Both UI and Shell**: Combine UI automation with shell commands for maximum effectiveness
-        4. **Error Handling**: Check command exit codes and handle failures gracefully
-        5. **Path Expansion**: Use ~ for home directory, handle spaces in paths with quotes
+        **File Conversion Tasks:**
+        1. Find the file
+        2. Try command-line tools first (pandoc, textutil, etc.)
+        3. If unavailable, use GUI apps:
+           - Launch appropriate app
+           - Screenshot to see state
+           - Handle any dialogs
+           - Open file via File menu or drag-drop
+           - Export/Save As to desired format
         
-        ## Example Approaches
+        **Complex Multi-Step Tasks:**
+        - Break down the request into ALL components
+        - Track what needs to be done (file conversion, email composition, specific output phrases)
+        - Complete each step methodically
+        - Verify success with screenshots
+        - ALWAYS complete with ALL requested outputs
         
-        For "Convert ODS to Markdown and email it":
-        1. Use shell to find the file: `ls ~/Downloads/*.ods`
-        2. Check for conversion tools: `which pandoc || which libreoffice`
-        3. If no tools found, try alternatives:
-           - Use online converter by opening browser
-           - Open file in Numbers/Excel if available
-           - Use AppleScript to automate LibreOffice after launch
-        4. After launching apps, use `sleep 3` or check with `list_windows`
-        5. If UI automation fails, try shell-based alternatives
-        6. Compose email using Mail app or `open "mailto:..."` with the file
-        7. ALWAYS complete with requested output even if some steps failed
+        ## Task Completion Checklist
         
-        For "Organize files on desktop":
-        1. List files: `ls ~/Desktop`
-        2. Create folders: `mkdir -p ~/Desktop/Documents ~/Desktop/Images`
-        3. Move files by type: `mv ~/Desktop/*.pdf ~/Desktop/Documents/`
-        4. Or use Finder with AppleScript for visual feedback
+        Before finishing, verify:
+        ✓ Did I complete the main task?
+        ✓ Did I include all requested elements? (poems, specific phrases, etc.)
+        ✓ Did I verify my actions worked? (screenshots, file existence checks)
+        ✓ Did I say any specific phrases the user requested?
+        ✓ Did I handle any errors gracefully and try alternatives?
         
-        Remember: You have full system access through the shell tool. Use it creatively alongside UI automation to accomplish any task. Don't just describe what to do - DO IT using your tools!
+        Remember: You have full system access through the shell tool. Use it creatively alongside UI automation to accomplish any task. Take screenshots liberally to understand UI state. Don't just describe what to do - DO IT using your tools!
         
         You are running on macOS with full automation permissions granted to Peekaboo.
         """
