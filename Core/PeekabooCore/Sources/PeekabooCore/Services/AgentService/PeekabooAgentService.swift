@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import AXorcist
 
 // MARK: - Peekaboo Agent Service
 
@@ -142,7 +143,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 toolChoice: .auto,  // Let model decide when to use tools
                 additionalParameters: modelName.hasPrefix("o3") ? [
                     "reasoning_effort": AnyCodable("high"),  // Maximum reasoning depth
-                    "reasoning_summary": AnyCodable("detailed"),  // Get detailed reasoning summaries
                     "max_completion_tokens": AnyCodable(65536)  // Ensure enough tokens for reasoning
                 ] : nil
             ),

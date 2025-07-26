@@ -15,48 +15,83 @@ To test this project interactive we can use:
 
 ## Quick Build Commands
 
-When the user types "build/compile peekaboo cli" or similar:
-1. Build the CLI in debug mode using the debug build script
-2. Replace the `peekaboo` binary in the project root with the newly built version
-3. This ensures the binary is always up-to-date and easily accessible
+**DEPRECATED - Use Poltergeist Instead!**
 
-```bash
-# This is what should happen:
-./scripts/build-swift-debug.sh
-cp -f Apps/CLI/.build/debug/peekaboo ./peekaboo
-```
+When the user asks to "build/compile peekaboo cli":
+1. Check if Poltergeist is running: `npm run poltergeist:status`
+2. If not running, start it: `npm run poltergeist:haunt`
+3. Poltergeist will handle all rebuilding automatically
+
+**DO NOT manually run build scripts** - Poltergeist watches for changes and rebuilds as needed.
 
 ## Poltergeist - Automatic CLI Rebuilding
 
-**IMPORTANT**: Once per session, check if Poltergeist is running. If not, start it:
+**What is Poltergeist?** 
+Poltergeist is a file watcher that automatically rebuilds the Swift CLI whenever source files change. It's like a helpful ghost that ensures the CLI binary is always up-to-date without manual intervention.
 
-```bash
-npm run poltergeist:status
-# If not running:
-npm run poltergeist:haunt
-```
+### CRITICAL INSTRUCTIONS FOR AI AGENTS
 
-Once Poltergeist is running, you can assume the CLI is always fresh and up-to-date. No manual rebuilding is needed!
+1. **Check Poltergeist Once Per Session**:
+   ```bash
+   npm run poltergeist:status
+   # If not running:
+   npm run poltergeist:haunt
+   ```
 
-**IMPORTANT**: Always use the smart wrapper script instead of calling the CLI directly:
-```bash
-# WRONG: ./peekaboo command
-# RIGHT: ./scripts/peekaboo-wait.sh command
-```
+2. **NEVER manually rebuild the CLI**:
+   ```bash
+   # WRONG - DO NOT DO THIS:
+   npm run build:swift
+   ./scripts/build-swift-debug.sh
+   ./scripts/build-swift-universal.sh
+   
+   # Poltergeist handles ALL rebuilding automatically!
+   ```
 
-The wrapper automatically:
-- Checks if the binary is fresh (newer than Swift sources)
-- Waits for any ongoing Poltergeist rebuilds (up to 30 seconds)
-- Runs the CLI once ready
+3. **ALWAYS use the wrapper script**:
+   ```bash
+   # WRONG: ./peekaboo command
+   # WRONG: ./Apps/CLI/.build/debug/peekaboo command
+   # RIGHT: ./scripts/peekaboo-wait.sh command
+   ```
 
-This eliminates "build staleness" errors and ensures you're always using the latest code.
+### How It Works
 
-For debugging the wrapper, set `PEEKABOO_WAIT_DEBUG=true`:
+**Poltergeist** continuously watches:
+- `Core/PeekabooCore/**/*.swift`
+- `Core/AXorcist/**/*.swift`
+- `Apps/CLI/**/*.swift`
+- All `Package.swift` files
+
+**The Wrapper Script** (`peekaboo-wait.sh`):
+- Checks if binary is fresh (newer than Swift sources)
+- If stale, waits for Poltergeist to finish rebuilding (max 30s)
+- Runs the CLI with your command once ready
+- Completely transparent - no manual build management needed
+
+### Why This Matters
+
+- **Efficiency**: No redundant builds or wasted time
+- **Reliability**: Always uses the latest code changes
+- **Simplicity**: No need to think about build state
+- **Speed**: Poltergeist builds in the background while you work
+
+### Debugging
+
+For wrapper debugging:
 ```bash
 PEEKABOO_WAIT_DEBUG=true ./scripts/peekaboo-wait.sh list apps
 ```
 
-Poltergeist watches all Swift source files and automatically rebuilds when changes are detected.
+### Summary
+
+With Poltergeist running and using the wrapper script, you NEVER need to:
+- Check if the CLI needs rebuilding
+- Run any build commands manually
+- Worry about "build staleness" errors
+- Wait for builds to complete
+
+Just use `./scripts/peekaboo-wait.sh` for all CLI commands and let Poltergeist handle the rest!
 
 ## Recent Updates
 
