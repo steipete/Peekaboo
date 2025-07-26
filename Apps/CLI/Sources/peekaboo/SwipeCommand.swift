@@ -170,11 +170,11 @@ struct SwipeCommand: AsyncParsableCommand {
                 sessionId: activeSessionId)
 
             if !waitResult.found {
-                throw PeekabooError.elementNotFound
+                throw CLIError.elementNotFound
             }
 
             guard let foundElement = waitResult.element else {
-                throw PeekabooError.interactionFailed("Element '\(element)' found but has no bounds")
+                throw CLIError.interactionFailed("Element '\(element)' found but has no bounds")
             }
 
             // Return center of element
@@ -193,7 +193,7 @@ struct SwipeCommand: AsyncParsableCommand {
             let errorCode: ErrorCode
             let message: String
 
-            if let peekabooError = error as? PeekabooError {
+            if let peekabooError = error as? CLIError {
                 switch peekabooError {
                 case .sessionNotFound:
                     errorCode = .SESSION_NOT_FOUND

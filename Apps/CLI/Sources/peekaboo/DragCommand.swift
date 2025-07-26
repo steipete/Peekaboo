@@ -169,11 +169,11 @@ struct DragCommand: AsyncParsableCommand {
                 sessionId: activeSessionId)
 
             if !waitResult.found {
-                throw PeekabooError.elementNotFound
+                throw CLIError.elementNotFound
             }
 
             guard let foundElement = waitResult.element else {
-                throw PeekabooError.interactionFailed("Element '\(element)' found but has no bounds")
+                throw CLIError.interactionFailed("Element '\(element)' found but has no bounds")
             }
 
             // Return center of element
@@ -208,7 +208,7 @@ struct DragCommand: AsyncParsableCommand {
                     }
                 }
             }
-            throw PeekabooError.applicationNotFound("Trash")
+            throw CLIError.applicationNotFound("Trash")
         }
 
         // Try to find application window using ApplicationService
@@ -223,7 +223,7 @@ struct DragCommand: AsyncParsableCommand {
                     y: firstWindow.bounds.origin.y + firstWindow.bounds.height / 2)
             }
 
-            throw PeekabooError.windowNotFound("No window found for application '\(appName)'")
+            throw CLIError.windowNotFound("No window found for application '\(appName)'")
         } catch {
             // If not found as running app, try dock
             if let dock = findDockApplication() {
@@ -245,7 +245,7 @@ struct DragCommand: AsyncParsableCommand {
                 }
             }
 
-            throw PeekabooError.applicationNotFound(appName)
+            throw CLIError.applicationNotFound(appName)
         }
     }
 
@@ -266,7 +266,7 @@ struct DragCommand: AsyncParsableCommand {
             let errorCode: ErrorCode
             let message: String
 
-            if let peekabooError = error as? PeekabooError {
+            if let peekabooError = error as? CLIError {
                 switch peekabooError {
                 case .sessionNotFound:
                     errorCode = .SESSION_NOT_FOUND

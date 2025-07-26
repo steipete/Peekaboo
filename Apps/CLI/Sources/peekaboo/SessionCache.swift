@@ -111,7 +111,7 @@ actor SessionCache {
             Logger.shared.debug("Creating new session: \(self.sessionId)")
         } else {
             // No valid session found and not allowed to create
-            throw PeekabooError.noValidSessionFound
+            throw CLIError.noValidSessionFound
         }
 
         // Create cache directory in ~/.peekaboo/session/<sessionId>/
@@ -639,7 +639,7 @@ actor SessionCache {
     }
 }
 
-enum PeekabooError: LocalizedError {
+enum CLIError: LocalizedError {
     case windowNotFound(String)
     case elementNotFound
     case interactionFailed(String)

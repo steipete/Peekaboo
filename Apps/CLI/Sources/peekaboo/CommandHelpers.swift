@@ -77,7 +77,7 @@ func handleValidationError(_ error: Error, jsonOutput: Bool) {
     }
 }
 
-func handlePeekabooError(_ error: PeekabooError, jsonOutput: Bool) {
+func handleCLIError(_ error: CLIError, jsonOutput: Bool) {
     if jsonOutput {
         let errorCode: ErrorCode = switch error {
         case .windowNotFound:

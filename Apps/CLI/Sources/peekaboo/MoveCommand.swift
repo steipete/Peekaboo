@@ -95,14 +95,14 @@ struct MoveCommand: AsyncParsableCommand {
                     await PeekabooServices.shared.sessions.getMostRecentSession()
                 }
                 guard let activeSessionId = sessionId else {
-                    throw PeekabooError.sessionNotFound
+                    throw CLIError.sessionNotFound
                 }
 
                 guard let detectionResult = try? await PeekabooServices.shared.sessions
                     .getDetectionResult(sessionId: activeSessionId),
                     let element = detectionResult.elements.findById(elementId)
                 else {
-                    throw PeekabooError.elementNotFound
+                    throw CLIError.elementNotFound
                 }
 
                 targetLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
@@ -116,7 +116,7 @@ struct MoveCommand: AsyncParsableCommand {
                     await PeekabooServices.shared.sessions.getMostRecentSession()
                 }
                 guard let activeSessionId = sessionId else {
-                    throw PeekabooError.sessionNotFound
+                    throw CLIError.sessionNotFound
                 }
 
                 // Wait for element to be available
@@ -126,7 +126,7 @@ struct MoveCommand: AsyncParsableCommand {
                     sessionId: activeSessionId)
 
                 guard waitResult.found, let element = waitResult.element else {
-                    throw PeekabooError.interactionFailed(
+                    throw CLIError.interactionFailed(
                         "No element found matching '\(query)'")
                 }
 
@@ -194,7 +194,7 @@ struct MoveCommand: AsyncParsableCommand {
     private func handleError(_ error: Error) {
         if self.jsonOutput {
             let errorCode: ErrorCode = if error is PeekabooError {
-                switch error as? PeekabooError {
+                switch error as? CLIError {
                 case .sessionNotFound:
                     .SESSION_NOT_FOUND
                 case .elementNotFound:

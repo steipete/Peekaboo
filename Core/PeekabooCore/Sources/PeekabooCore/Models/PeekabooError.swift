@@ -152,7 +152,7 @@ public enum PeekabooError: LocalizedError, StandardizedError {
         case .aiProviderError:
             return .aiAnalysisFailed
         case .serviceUnavailable:
-            return .internalError
+            return .unknownError
         case .operationError:
             return .unknownError
         }

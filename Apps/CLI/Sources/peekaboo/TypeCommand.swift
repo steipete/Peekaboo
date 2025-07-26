@@ -136,7 +136,7 @@ struct TypeCommand: AsyncParsableCommand {
     private func handleError(_ error: Error) {
         if self.jsonOutput {
             let errorCode: ErrorCode = if error is PeekabooError {
-                switch error as? PeekabooError {
+                switch error as? CLIError {
                 case .sessionNotFound:
                     .SESSION_NOT_FOUND
                 case .elementNotFound:

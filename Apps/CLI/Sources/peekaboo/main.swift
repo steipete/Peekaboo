@@ -32,20 +32,13 @@ struct Peekaboo: AsyncParsableCommand {
           peekaboo list windows --app Safari             # List Safari windows
           peekaboo list permissions                      # Check permissions
 
-          peekaboo analyze screenshot.png "What error is shown?"
-          peekaboo analyze ui.png "Find the login button" --provider ollama
-          peekaboo analyze diagram.png "Explain this" --model gpt-4o
-
           peekaboo agent "Open TextEdit and write Hello"  # AI agent automation
           peekaboo "Click the login button and sign in"   # Direct agent invocation
 
         COMMON WORKFLOWS:
-          # Capture and analyze in one command (NEW!)
-          peekaboo image --app Safari --analyze "What's on this page?"
-          peekaboo image --mode frontmost --analyze "What UI issues do you see?"
-
-          # Or use separate commands for more control
-          peekaboo image --app Safari --path /tmp/page.png && peekaboo analyze /tmp/page.png "What's on this page?"
+          # Capture and automate with AI agent
+          peekaboo image --app Safari --path /tmp/page.png
+          peekaboo agent "Describe what's on the page in /tmp/page.png"
 
           # Document all windows
           for app in Safari Chrome "Visual Studio Code"; do
@@ -93,7 +86,6 @@ struct Peekaboo: AsyncParsableCommand {
             // Core commands
             ImageCommand.self,
             ListCommand.self,
-            AnalyzeCommand.self,
             ConfigCommand.self,
             PermissionsCommand.self,
             // Interaction commands
@@ -138,7 +130,7 @@ struct Main {
         if !args.isEmpty {
             // Check if the first argument is NOT a known subcommand
             let knownSubcommands = [
-                "image", "list", "analyze", "config", "permissions",
+                "image", "list", "config", "permissions",
                 "see", "click", "type", "scroll", "hotkey", "swipe",
                 "drag", "move", "run", "sleep", "clean", "window",
                 "menu", "app", "dock", "dialog", "agent",

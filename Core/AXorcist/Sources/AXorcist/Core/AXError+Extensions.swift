@@ -8,6 +8,8 @@
 import ApplicationServices
 import Foundation
 
+extension AXError: @retroactive Error {}
+
 // Create a custom error type that wraps AXError
 public struct AccessibilitySystemError: Error, LocalizedError {
     public let axError: AXError
@@ -84,5 +86,10 @@ extension AXError {
         default:
             .unknownAXError(self)
         }
+    }
+    
+    /// Provides a localized description for AXError
+    public var localizedDescription: String {
+        AccessibilitySystemError(self).errorDescription ?? "Unknown AXError: \(self.rawValue)"
     }
 }

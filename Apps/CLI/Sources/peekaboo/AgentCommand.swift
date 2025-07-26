@@ -171,7 +171,9 @@ struct AgentCommand: AsyncParsableCommand {
     
     private func executeTask(_ agentService: AgentServiceProtocol, task: String, sessionId: String? = nil) async throws {
         // Create event delegate for real-time updates
-        let eventDelegate = CompactEventDelegate(outputMode: outputMode, jsonOutput: jsonOutput)
+        let eventDelegate = await MainActor.run {
+            CompactEventDelegate(outputMode: outputMode, jsonOutput: jsonOutput)
+        }
         
         // Show header
         if outputMode != .quiet && !jsonOutput {
@@ -203,7 +205,7 @@ struct AgentCommand: AsyncParsableCommand {
         do {
             // Cast to PeekabooAgentService for enhanced functionality
             guard let peekabooAgent = agentService as? PeekabooAgentService else {
-                throw PeekabooError.serviceUnavailable("Agent service not properly initialized")
+                throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
             }
             
             let result = try await peekabooAgent.executeTask(
@@ -282,7 +284,7 @@ struct AgentCommand: AsyncParsableCommand {
     private func showSessions(_ agentService: AgentServiceProtocol) async throws {
         // Cast to PeekabooAgentService - this should always succeed
         guard let peekabooAgent = agentService as? PeekabooAgentService else {
-            throw PeekabooError.serviceUnavailable("Agent service not properly initialized")
+            throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
         }
         let sessions = try await peekabooAgent.listSessions()
         
@@ -408,7 +410,7 @@ final class CompactEventDelegate: AgentEventDelegate {
                 fflush(stdout)
             }
             
-        case .toolCallCompleted(let name, let result):
+        case .toolCallCompleted(_, let result):
             if outputMode != .quiet {
                 if let data = result.data(using: .utf8),
                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -435,7 +437,7 @@ final class CompactEventDelegate: AgentEventDelegate {
         case .error(let message):
             print("\n\(TerminalColor.red)❌ Error: \(message)\(TerminalColor.reset)")
             
-        case .completed(let summary):
+        case .completed(_):
             // Final summary is handled by the main execution flow
             break
         }
