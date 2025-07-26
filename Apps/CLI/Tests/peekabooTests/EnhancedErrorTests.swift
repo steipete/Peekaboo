@@ -508,8 +508,7 @@ class MockPeekabooServices: @unchecked Sendable {
     var mockError: Error?
     var mockShellOutput: ShellOutput?
     
-    override init() {
-        super.init()
+    init() {
         
         // Override services with mocks
         self.applications = MockApplicationService(parent: self)
@@ -573,6 +572,10 @@ class MockApplicationService: ApplicationServiceProtocol, @unchecked Sendable {
         }
         
         throw PeekabooError.appNotFound(identifier)
+    }
+    
+    func showAllApplications() async throws {
+        // Mock implementation - do nothing
     }
 }
 
