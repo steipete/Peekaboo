@@ -16,8 +16,10 @@ func logError(_ message: String) {
 struct Peekaboo: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "peekaboo",
-        abstract: "Lightning-fast macOS screenshots and AI vision analysis (v\(Version.current))",
+        abstract: "Lightning-fast macOS screenshots and AI vision analysis",
         discussion: """
+        VERSION: \(Version.fullVersion)
+        
         EXAMPLES:
           peekaboo image --app Safari                    # Capture Safari window
           peekaboo image --mode screen                   # Capture entire screen
@@ -86,7 +88,7 @@ struct Peekaboo: AsyncParsableCommand {
           GitHub: https://github.com/steipete/peekaboo
 
         """,
-        version: Version.current,
+        version: Version.fullVersion,
         subcommands: [
             // Core commands
             ImageCommand.self,

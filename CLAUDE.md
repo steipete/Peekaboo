@@ -293,6 +293,13 @@ try await services.windows.resizeWindow(
    - Auto-selection tries providers in order until one is available
    - Swift CLI implements providers using native URLSession for HTTP requests
    - Supports OpenAI (requires `OPENAI_API_KEY`) and Ollama (local server)
+   
+   **Current OpenAI Models (2025)**:
+   - `gpt-4o` - GPT-4 Omni, multimodal flagship model (128K context)
+   - `gpt-4o-mini` - Smaller, faster, cheaper variant of GPT-4o
+   - `gpt-4-turbo` - Previous generation, being superseded by GPT-4o
+   - `gpt-3.5-turbo` - Fast, cost-effective model for simpler tasks
+   - `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano` - Latest models with 1M token context (as of 2025)
 
 3. **Error Handling**: Standardized error codes from Swift CLI:
    - `PERMISSION_DENIED_SCREEN_RECORDING`
