@@ -121,6 +121,12 @@ cd "$PROJECT_ROOT"
 START_TIME=$(date +%s)
 BUILD_START=$START_TIME
 
+# Send build start notification
+if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
+    GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    osascript -e "display notification \"Building CLI - $GIT_HASH\" with title \"👻 Poltergeist\" subtitle \"Build Started\""
+fi
+
 # Function to run build with retry logic
 run_build() {
     local build_output_file="/tmp/peekaboo-build-output.$$"
@@ -138,7 +144,7 @@ run_build() {
             log "🛑 Canceling current build due to newer changes (after ${ELAPSED}s)..."
             kill_process_tree "$BUILD_PID"
             rm -f "$build_output_file"
-            exit 1
+            exit 0  # Exit with 0 for cancelled builds to avoid failure notification
         fi
         sleep 0.5
     done
