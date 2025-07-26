@@ -133,7 +133,7 @@ struct Main {
                 "see", "click", "type", "scroll", "hotkey", "swipe",
                 "drag", "move", "run", "sleep", "clean", "window",
                 "menu", "app", "dock", "dialog", "agent",
-                "--help", "-h", "--version"
+                "help", "--help", "-h", "--version"
             ]
             
             let firstArg = args[0]

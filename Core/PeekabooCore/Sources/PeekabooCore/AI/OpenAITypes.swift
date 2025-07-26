@@ -171,13 +171,14 @@ struct AnyEncodable: Encodable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         
+        // Check numeric types before Bool to prevent 0/1 being encoded as false/true
         switch value {
-        case let bool as Bool:
-            try container.encode(bool)
         case let int as Int:
             try container.encode(int)
         case let double as Double:
             try container.encode(double)
+        case let bool as Bool:
+            try container.encode(bool)
         case let string as String:
             try container.encode(string)
         case let array as [Any]:

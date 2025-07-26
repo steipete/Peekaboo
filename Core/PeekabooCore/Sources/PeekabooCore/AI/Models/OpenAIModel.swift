@@ -24,11 +24,6 @@ public final class OpenAIModel: ModelInterface {
     public func getResponse(request: ModelRequest) async throws -> ModelResponse {
         let openAIRequest = try convertToOpenAIRequest(request, stream: false)
         
-        // Debug: Print request for troubleshooting
-        if let requestData = try? JSONEncoder().encode(openAIRequest),
-           let requestString = String(data: requestData, encoding: .utf8) {
-            print("DEBUG: OpenAI Request: \(requestString)")
-        }
         
         let urlRequest = try createURLRequest(endpoint: "chat/completions", body: openAIRequest)
         
@@ -147,8 +142,17 @@ public final class OpenAIModel: ModelInterface {
             request.setValue(orgId, forHTTPHeaderField: "OpenAI-Organization")
         }
         
-        request.httpBody = try JSONEncoder().encode(body)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        request.httpBody = try encoder.encode(body)
         request.timeoutInterval = 60
+        
+        // Debug: Print request body
+        if let bodyData = request.httpBody,
+           let bodyString = String(data: bodyData, encoding: .utf8) {
+            print("DEBUG: OpenAI Request Body:")
+            print(bodyString)
+        }
         
         return request
     }
