@@ -524,6 +524,7 @@ struct OpenAIAgent {
             Self.makePeekabooTool("drag", "Perform drag and drop operations between UI elements or coordinates"),
             Self.makePeekabooTool("dock", "Interact with the macOS Dock (launch apps, right-click items)"),
             Self.makePeekabooTool("swipe", "Perform swipe gestures for navigation and scrolling"),
+            Self.makePeekabooTool("shell", "Execute shell commands (use for opening URLs with 'open', running CLI tools, etc)"),
         ]
 
         let assistantRequest = CreateAssistantRequest(
@@ -609,17 +610,47 @@ struct OpenAIAgent {
             - Reduce steps by combining related actions when possible
             - Each command costs time - optimize for minimal command count
             
+            WEB SEARCH & INFORMATION RETRIEVAL:
+            When asked to find information online (weather, news, facts, etc.):
+            1. First check for running browsers using: list(target="apps")
+               Common browsers: Safari, Google Chrome, Firefox, Arc, Brave, Microsoft Edge, Opera
+            2. If a browser is running:
+               - Focus it using: app(action="focus", name="BrowserName")
+               - Open new tab: hotkey(keys=["cmd", "t"])
+            3. If no browser is running:
+               - Try launching the most common browsers in order:
+                 a) app(action="launch", name="Safari")
+                 b) app(action="launch", name="Google Chrome")
+                 c) app(action="launch", name="Firefox")
+               - Check window_count in response, if 0, use: hotkey(keys=["cmd", "n"])
+            4. Once browser window is open:
+               - Navigate to address bar: hotkey(keys=["cmd", "l"])
+               - Type your search query (e.g., "weather in london forecast")
+               - Press Enter: hotkey(keys=["return"])
+            5. Wait for page to load (use 'see' to check if content has loaded)
+            6. Use 'see' with analyze=true to read and understand the results
+            7. Extract the relevant information and present it clearly
+            
+            Example flow:
+            - Check running apps
+            - Launch or focus browser
+            - Navigate to address bar
+            - Search for information
+            - Analyze results
+            - Report findings
+            
             CRITICAL INSTRUCTIONS:
             - When asked to "list applications" or "show running apps", ALWAYS use: list(target="apps")
             - Do NOT launch Activity Monitor to list apps - use the list command!
             - Do NOT take screenshots to find running apps - use the list command!
             - MINIMIZE command usage - be efficient and avoid redundant operations
             - STOP repeating failed command patterns - try something different
+            - For web information: ALWAYS try to search using Safari - don't say you can't access the web!
 
             Always maintain session_id across related commands for element tracking.
             Be precise with UI interactions and verify the current state before acting.
             
-            REMEMBER: Your final message is what the user sees as the result. Make it informative and specific to what you accomplished or discovered.
+            REMEMBER: Your final message is what the user sees as the result. Make it informative and specific to what you accomplished or discovered. For web searches, include the actual information you found.
             """,
             tools: tools)
 

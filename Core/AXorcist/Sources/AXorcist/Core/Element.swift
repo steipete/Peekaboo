@@ -1,7 +1,7 @@
 // Element.swift - Wrapper for AXUIElement for a more Swift-idiomatic interface
 
 import AppKit // Added to provide NSRunningApplication and NSWorkspace
-import ApplicationServices // For AXUIElement and other C APIs
+@preconcurrency import ApplicationServices // For AXUIElement and other C APIs
 import Foundation
 
 /// A Swift-idiomatic wrapper around macOS AXUIElement for accessibility automation.
@@ -40,7 +40,7 @@ import Foundation
 /// // Perform actions
 /// try element.performAction(.press)
 /// ```
-public struct Element: Equatable, Hashable {
+public struct Element: Equatable, Hashable, Sendable {
     // MARK: Lifecycle
 
     /// Creates an Element wrapper around an AXUIElement.

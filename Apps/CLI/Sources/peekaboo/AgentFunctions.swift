@@ -476,6 +476,22 @@ extension OpenAIAgent {
                 "required": [],
             ]
 
+        case "shell":
+            [
+                "type": "object",
+                "properties": [
+                    "command": [
+                        "type": "string",
+                        "description": "Shell command to execute (e.g., 'open https://google.com', 'ls -la', 'echo Hello')",
+                    ],
+                    "timeout": [
+                        "type": "integer",
+                        "description": "Command timeout in seconds (default: 30)",
+                    ],
+                ],
+                "required": ["command"],
+            ]
+
         default:
             [
                 "type": "object",

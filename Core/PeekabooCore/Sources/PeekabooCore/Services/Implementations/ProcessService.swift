@@ -660,10 +660,6 @@ public actor ProcessService: ProcessServiceProtocol {
                 userMessage: "Adding items to Dock is not supported",
                 context: ["action": "dock_add", "reason": "unsupported_operation"]
             )
-            return StepExecutionResult(
-                output: ["added": path],
-                sessionId: nil
-            )
             
         case "remove":
             guard let itemName = step.params?["item"]?.value as? String else {
@@ -678,10 +674,6 @@ public actor ProcessService: ProcessServiceProtocol {
                 code: .interactionFailed,
                 userMessage: "Removing items from Dock is not supported",
                 context: ["action": "dock_remove", "reason": "unsupported_operation"]
-            )
-            return StepExecutionResult(
-                output: ["removed": itemName],
-                sessionId: nil
             )
             
         default:

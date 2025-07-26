@@ -367,7 +367,7 @@ public final class MenuService: MenuServiceProtocol {
             if x < 0 { continue }
             
             // Get window details
-            guard let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID,
+            guard let _ = windowInfo[kCGWindowNumber as String] as? CGWindowID,
                   let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else {
                 continue
             }

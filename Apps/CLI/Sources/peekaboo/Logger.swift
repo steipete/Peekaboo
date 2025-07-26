@@ -86,7 +86,12 @@ final class Logger: @unchecked Sendable {
 
     /// Log a message at a specific level
     private func log(_ level: LogLevel, _ message: String, category: String? = nil, metadata: [String: Any]? = nil) {
-        self.queue.async(flags: .barrier) {
+        // Convert metadata to a string representation outside the async closure
+        let metadataString: String? = metadata.flatMap { dict in
+            dict.isEmpty ? nil : dict.map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
+        }
+        
+        self.queue.async(flags: .barrier) { [metadataString] in
             guard level >= self.minimumLogLevel || (level == .verbose && self.verboseMode) else { return }
 
             let timestamp = self.iso8601Formatter.string(from: Date())
@@ -98,10 +103,7 @@ final class Logger: @unchecked Sendable {
             }
 
             // Add metadata if provided
-            if let metadata, !metadata.isEmpty {
-                let metadataString = metadata
-                    .map { "\($0.key)=\($0.value)" }
-                    .joined(separator: ", ")
+            if let metadataString {
                 formattedMessage += " {\(metadataString)}"
             }
 

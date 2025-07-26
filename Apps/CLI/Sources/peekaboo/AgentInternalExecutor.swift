@@ -641,7 +641,7 @@ struct AgentInternalExecutor {
                 let appData = apps.map { app -> [String: Any] in
                     return [
                         "name": app.name,
-                        "bundleIdentifier": app.bundleIdentifier,
+                        "bundleIdentifier": app.bundleIdentifier as Any,
                         "processIdentifier": app.processIdentifier,
                         "isActive": app.isActive,
                         "windowCount": app.windowCount

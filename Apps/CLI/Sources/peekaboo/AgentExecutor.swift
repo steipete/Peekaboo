@@ -367,6 +367,16 @@ struct PeekabooCommandExecutor {
                 cliArgs.append(sessionId)
             }
 
+        case "shell":
+            // Shell command is special - we execute it directly, not via CLI
+            guard let command = args["command"] as? String else {
+                throw AgentError.invalidArguments("Shell command requires 'command' parameter")
+            }
+            let timeout = args["timeout"] as? Int ?? 30
+            
+            // Execute shell command directly and return result
+            return try await executeShellCommand(command, timeout: timeout)
+
         default:
             // For unknown commands, pass through all arguments
             for (key, value) in args {
@@ -535,5 +545,92 @@ struct PeekabooCommandExecutor {
             }
         }
         """
+    }
+    
+    private func executeShellCommand(_ command: String, timeout: Int) async throws -> String {
+        if self.verbose {
+            print("🐚 Executing shell command: \(command)")
+        }
+        
+        // Create process
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", command]
+        
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+        
+        // Set timeout
+        process.terminationHandler = nil
+        
+        // Run process
+        do {
+            try process.run()
+        } catch {
+            return self.createErrorJSON(.commandFailed("Failed to execute shell command: \(error.localizedDescription)"))
+        }
+        
+        // Wait for completion with timeout
+        let startTime = Date()
+        while process.isRunning && Date().timeIntervalSince(startTime) < Double(timeout) {
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+        }
+        
+        if process.isRunning {
+            process.terminate()
+            return self.createErrorJSON(.commandFailed("Shell command timed out after \(timeout) seconds"))
+        }
+        
+        // Read output
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        
+        let output = String(data: outputData, encoding: .utf8) ?? ""
+        let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+        
+        if process.terminationStatus == 0 {
+            // Success
+            return """
+            {
+                "success": true,
+                "output": \(JSONSerialization.string(from: output)),
+                "error_output": \(JSONSerialization.string(from: errorOutput)),
+                "exit_code": 0
+            }
+            """
+        } else {
+            // Command failed but we still return structured output
+            return """
+            {
+                "success": false,
+                "output": \(JSONSerialization.string(from: output)),
+                "error_output": \(JSONSerialization.string(from: errorOutput)),
+                "exit_code": \(process.terminationStatus),
+                "error": {
+                    "message": "Command exited with code \(process.terminationStatus)",
+                    "code": "SHELL_COMMAND_FAILED"
+                }
+            }
+            """
+        }
+    }
+}
+
+// Helper extension for JSON string escaping
+extension JSONSerialization {
+    static func string(from string: String) -> String {
+        if let data = try? JSONSerialization.data(withJSONObject: string),
+           let jsonString = String(data: data, encoding: .utf8) {
+            return jsonString
+        }
+        // Fallback: basic escaping
+        return "\"" + string
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+            .replacingOccurrences(of: "\t", with: "\\t") + "\""
     }
 }

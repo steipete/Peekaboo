@@ -311,7 +311,6 @@ try await services.windows.resizeWindow(
    - `gpt-4o` - GPT-4 Omni, multimodal flagship model (128K context)
    - `gpt-4o-mini` - Smaller, faster, cheaper variant of GPT-4o
    - `gpt-4-turbo` - Previous generation, being superseded by GPT-4o
-   - `gpt-3.5-turbo` - Fast, cost-effective model for simpler tasks
    - `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano` - Latest models with 1M token context (as of 2025)
 
 3. **Error Handling**: Standardized error codes from Swift CLI:
