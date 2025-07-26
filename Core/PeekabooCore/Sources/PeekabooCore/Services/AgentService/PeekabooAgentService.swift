@@ -143,7 +143,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 toolChoice: .auto,  // Let model decide when to use tools
                 additionalParameters: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? [
                     "reasoning_effort": AnyCodable("high"),
-                    "max_completion_tokens": AnyCodable(AgentConfiguration.o3MaxCompletionTokens)
+                    "max_completion_tokens": AnyCodable(AgentConfiguration.o3MaxCompletionTokens),
+                    "reasoning": AnyCodable([
+                        "summary": "detailed"  // Request detailed reasoning summaries
+                    ])
                 ] : nil
             ),
             description: "An AI assistant for macOS automation using Peekaboo"

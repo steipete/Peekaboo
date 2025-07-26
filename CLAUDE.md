@@ -152,6 +152,8 @@ This issue typically occurs when:
 
 ## Recent Updates
 
+- **O3 reasoning summaries** (2025-01-26): Fixed o3 model reasoning output by implementing support for reasoning summaries. Added handling for `response.reasoning_summary_text.delta` events and proper passing of `reasoning: { summary: "detailed" }` parameter to the API. Now displays "💭 Thinking: " prefix followed by actual reasoning summaries when available.
+
 - **Complete Responses API migration** (2025-01-26): Migrated exclusively to OpenAI Responses API, removing all Chat Completions API code. Updated tool format to use flatter structure. Added proper model-specific parameter handling (reasoning for o3/o4, temperature restrictions).
 
 - **VibeTunnel integration** (2025-01-26): Added VibeTunnel terminal title management to agent command for better visibility across multiple Claude sessions. Terminal titles update automatically during task execution and tool calls.
@@ -269,6 +271,14 @@ This helps track multiple Claude Code sessions at a glance, especially useful wh
 - Supports streaming responses with event-based format
 - Tool format uses flatter structure (name at top level, not nested)
 
+### Reasoning Summaries (o3/o4 models)
+O3 and o4 models use advanced reasoning but don't expose raw chain-of-thought. Instead:
+- You must opt in to reasoning summaries via the `reasoning` parameter
+- Set `reasoning: { summary: "detailed" }` to request detailed summaries
+- Summaries arrive via `response.reasoning_summary_text.delta` events during streaming
+- Even with `summary: "detailed"`, summaries may be omitted for short reasoning
+- The `reasoning_effort` parameter (high/medium/low) is separate from summaries
+
 ### Configuration
 ```bash
 # Set API key
@@ -280,6 +290,7 @@ This helps track multiple Claude Code sessions at a glance, especially useful wh
 
 ### References
 - [OpenAI API Spec](https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml)
+- [OpenAI OpenAPI Spec](https://raw.githubusercontent.com/openai/openai-openapi/refs/heads/manual_spec/openapi.yaml)
 - [Responses API Documentation](https://cookbook.openai.com/examples/responses_api/reasoning_items)
 
 ## Important Implementation Details
