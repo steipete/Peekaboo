@@ -288,6 +288,57 @@ public struct OpenAIReasoning: Codable, Sendable {
 
 // MARK: - Chat Completion Types
 
+/// OpenAI Responses Request (for o3 models)
+public struct OpenAIResponsesRequest: Codable, Sendable {
+    public let model: String
+    public let input: [OpenAIMessage]  // Note: 'input' instead of 'messages'
+    public let tools: [OpenAITool]?
+    public let toolChoice: String?
+    public let temperature: Double?
+    public let topP: Double?
+    public let stream: Bool?
+    public let maxCompletionTokens: Int?
+    public let reasoningEffort: String?
+    public let reasoning: OpenAIReasoning?
+    
+    enum CodingKeys: String, CodingKey {
+        case model
+        case input
+        case tools
+        case toolChoice = "tool_choice"
+        case temperature
+        case topP = "top_p"
+        case stream
+        case maxCompletionTokens = "max_completion_tokens"
+        case reasoningEffort = "reasoning_effort"
+        case reasoning
+    }
+    
+    public init(
+        model: String,
+        input: [OpenAIMessage],
+        tools: [OpenAITool]? = nil,
+        toolChoice: String? = nil,
+        temperature: Double? = nil,
+        topP: Double? = nil,
+        stream: Bool? = nil,
+        maxCompletionTokens: Int? = nil,
+        reasoningEffort: String? = nil,
+        reasoning: OpenAIReasoning? = nil
+    ) {
+        self.model = model
+        self.input = input
+        self.tools = tools
+        self.toolChoice = toolChoice
+        self.temperature = temperature
+        self.topP = topP
+        self.stream = stream
+        self.maxCompletionTokens = maxCompletionTokens
+        self.reasoningEffort = reasoningEffort
+        self.reasoning = reasoning
+    }
+}
+
 /// OpenAI Chat Completion Request
 public struct OpenAIChatCompletionRequest: Codable, Sendable {
     public let model: String
@@ -303,7 +354,9 @@ public struct OpenAIChatCompletionRequest: Codable, Sendable {
     public let reasoning: OpenAIReasoning?
     
     enum CodingKeys: String, CodingKey {
-        case model, messages, tools
+        case model
+        case messages = "input"  // API now expects 'input' instead of 'messages'
+        case tools
         case toolChoice = "tool_choice"
         case temperature
         case topP = "top_p"
