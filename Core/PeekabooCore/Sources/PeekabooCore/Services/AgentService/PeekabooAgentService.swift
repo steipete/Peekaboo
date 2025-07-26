@@ -137,9 +137,14 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             tools: createPeekabooTools(),
             modelSettings: ModelSettings(
                 modelName: modelName,
-                temperature: modelName == "o3" ? 0.7 : nil,  // Slightly higher temperature for o3 to encourage more output
-                maxTokens: 4096,  // Ensure we have room for explanations
-                toolChoice: .auto  // Let model decide when to use tools
+                temperature: modelName.hasPrefix("o3") ? nil : nil,  // o3 doesn't support temperature
+                maxTokens: modelName.hasPrefix("o3") ? 65536 : 4096,  // o3 needs more tokens for reasoning
+                toolChoice: .auto,  // Let model decide when to use tools
+                additionalParameters: modelName.hasPrefix("o3") ? [
+                    "reasoning_effort": AnyCodable("high"),  // Maximum reasoning depth
+                    "reasoning_summary": AnyCodable("detailed"),  // Get detailed reasoning summaries
+                    "max_completion_tokens": AnyCodable(65536)  // Ensure enough tokens for reasoning
+                ] : nil
             ),
             description: "An AI assistant for macOS automation using Peekaboo"
         )

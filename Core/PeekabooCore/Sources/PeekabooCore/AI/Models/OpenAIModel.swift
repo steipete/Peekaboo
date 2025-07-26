@@ -254,6 +254,11 @@ public final class OpenAIModel: ModelInterface {
             )
         }
         
+        // Extract o3-specific parameters from additionalParameters
+        let reasoningEffort = request.settings.additionalParameters?["reasoning_effort"]?.value as? String
+        let reasoningSummary = request.settings.additionalParameters?["reasoning_summary"]?.value as? String
+        let maxCompletionTokens = request.settings.additionalParameters?["max_completion_tokens"]?.value as? Int
+        
         return OpenAIChatCompletionRequest(
             model: request.settings.modelName,
             messages: messages,
@@ -262,7 +267,10 @@ public final class OpenAIModel: ModelInterface {
             temperature: request.settings.temperature,
             topP: request.settings.topP,
             stream: stream,
-            maxTokens: request.settings.maxTokens
+            maxTokens: request.settings.maxTokens,
+            reasoningEffort: reasoningEffort,
+            reasoningSummary: reasoningSummary,
+            maxCompletionTokens: maxCompletionTokens
         )
     }
     

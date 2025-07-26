@@ -285,6 +285,9 @@ public struct OpenAIChatCompletionRequest: Codable, Sendable {
     public let topP: Double?
     public let stream: Bool?
     public let maxTokens: Int?
+    public let reasoningEffort: String?
+    public let reasoningSummary: String?
+    public let maxCompletionTokens: Int?
     
     enum CodingKeys: String, CodingKey {
         case model, messages, tools
@@ -293,6 +296,9 @@ public struct OpenAIChatCompletionRequest: Codable, Sendable {
         case topP = "top_p"
         case stream
         case maxTokens = "max_tokens"
+        case reasoningEffort = "reasoning_effort"
+        case reasoningSummary = "reasoning_summary"
+        case maxCompletionTokens = "max_completion_tokens"
     }
     
     public init(
@@ -303,7 +309,10 @@ public struct OpenAIChatCompletionRequest: Codable, Sendable {
         temperature: Double? = nil,
         topP: Double? = nil,
         stream: Bool? = nil,
-        maxTokens: Int? = nil
+        maxTokens: Int? = nil,
+        reasoningEffort: String? = nil,
+        reasoningSummary: String? = nil,
+        maxCompletionTokens: Int? = nil
     ) {
         self.model = model
         self.messages = messages
@@ -313,6 +322,9 @@ public struct OpenAIChatCompletionRequest: Codable, Sendable {
         self.topP = topP
         self.stream = stream
         self.maxTokens = maxTokens
+        self.reasoningEffort = reasoningEffort
+        self.reasoningSummary = reasoningSummary
+        self.maxCompletionTokens = maxCompletionTokens
     }
 }
 
