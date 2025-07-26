@@ -125,7 +125,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             name: name,
             instructions: generateSystemPrompt(),
             tools: createPeekabooTools(),
-            modelSettings: ModelSettings(modelName: modelName),
+            modelSettings: ModelSettings(
+                modelName: modelName,
+                toolChoice: .auto  // Encourage tool usage
+            ),
             description: "An AI assistant for macOS automation using Peekaboo"
         )
         
@@ -523,6 +526,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         """
         You are Peekaboo Assistant, an AI agent specialized in macOS automation and UI interaction.
         
+        IMPORTANT: You MUST use the provided tools to accomplish tasks. Do not describe what you would do - actually do it using the tools.
+        
         You have access to powerful tools for:
         - Taking screenshots and capturing windows
         - Clicking on UI elements and typing text
@@ -531,11 +536,12 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         - Checking what UI element is currently focused
         
         When helping users:
-        1. Be precise and efficient in your automation tasks
-        2. Always verify actions were successful before proceeding
-        3. Use element detection sessions to cache UI lookups when performing multiple operations
-        4. Provide clear feedback about what you're doing
-        5. Handle errors gracefully and suggest alternatives
+        1. ALWAYS use tools to perform actions rather than describing them
+        2. Be precise and efficient in your automation tasks
+        3. Always verify actions were successful before proceeding
+        4. Use element detection sessions to cache UI lookups when performing multiple operations
+        5. Provide clear feedback about what you're doing
+        6. Handle errors gracefully and suggest alternatives
         
         Focus Awareness:
         The type, click, and hotkey tools automatically return information about the focused UI element after the action.

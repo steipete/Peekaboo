@@ -34,6 +34,11 @@ public final class OpenAIModel: ModelInterface {
         }
         
         if httpResponse.statusCode != 200 {
+            print("DEBUG: HTTP Status Code: \(httpResponse.statusCode)")
+            print("DEBUG: Response Headers: \(httpResponse.allHeaderFields)")
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("DEBUG: Error Response: \(responseString)")
+            }
             if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: data) {
                 throw handleOpenAIError(errorResponse, statusCode: httpResponse.statusCode)
             }
@@ -71,12 +76,16 @@ public final class OpenAIModel: ModelInterface {
                         return
                     }
                     
+                    print("DEBUG: HTTP Response Status: \(httpResponse.statusCode)")
+                    
                     if httpResponse.statusCode != 200 {
                         // Try to read error from first chunk
                         var errorData = Data()
                         for try await byte in bytes.prefix(1024) {
                             errorData.append(byte)
                         }
+                        
+                        print("DEBUG: Error response: \(String(data: errorData, encoding: .utf8) ?? "Unable to decode")")
                         
                         if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: errorData) {
                             continuation.finish(throwing: self.handleOpenAIError(errorResponse, statusCode: httpResponse.statusCode))
@@ -88,8 +97,13 @@ public final class OpenAIModel: ModelInterface {
                     
                     // Process SSE stream
                     var currentToolCalls: [String: PartialToolCall] = [:]
+                    var toolCallIndexMap: [Int: String] = [:]  // Track tool call IDs by index
                     
+                    var lineCount = 0
                     for try await line in bytes.lines {
+                        lineCount += 1
+                        print("DEBUG: Stream line \(lineCount): \(line)")
+                        
                         // Handle SSE format
                         if line.hasPrefix("data: ") {
                             let data = String(line.dropFirst(6))
@@ -108,21 +122,32 @@ public final class OpenAIModel: ModelInterface {
                             }
                             
                             // Parse chunk
-                            if let chunkData = data.data(using: .utf8),
-                               let chunk = try? JSONDecoder().decode(OpenAIChatCompletionChunk.self, from: chunkData) {
-                                
-                                // Process chunk into stream events
-                                if let events = self.processChunk(chunk, toolCalls: &currentToolCalls) {
-                                    for event in events {
-                                        continuation.yield(event)
+                            if let chunkData = data.data(using: .utf8) {
+                                do {
+                                    let chunk = try JSONDecoder().decode(OpenAIChatCompletionChunk.self, from: chunkData)
+                                    
+                                    // Process chunk into stream events
+                                    if let events = self.processChunk(chunk, toolCalls: &currentToolCalls, indexMap: &toolCallIndexMap) {
+                                        for event in events {
+                                            continuation.yield(event)
+                                        }
+                                    }
+                                } catch {
+                                    print("DEBUG: Failed to decode chunk: \(error)")
+                                    print("DEBUG: Chunk data: \(data)")
+                                    // Try to see what's in the error
+                                    if let decodingError = error as? DecodingError {
+                                        print("DEBUG: DecodingError details: \(decodingError)")
                                     }
                                 }
                             }
                         }
                     }
                     
+                    print("DEBUG: Stream processing completed")
                     continuation.finish()
                 } catch {
+                    print("DEBUG: Stream error: \(error)")
                     continuation.finish(throwing: error)
                 }
             }
@@ -144,7 +169,14 @@ public final class OpenAIModel: ModelInterface {
         
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
-        request.httpBody = try encoder.encode(body)
+        
+        do {
+            request.httpBody = try encoder.encode(body)
+        } catch {
+            print("DEBUG: JSON Encoding failed: \(error)")
+            throw error
+        }
+        
         request.timeoutInterval = 60
         
         // Debug: Print request body
@@ -471,7 +503,8 @@ public final class OpenAIModel: ModelInterface {
     
     private func processChunk(
         _ chunk: OpenAIChatCompletionChunk,
-        toolCalls: inout [String: PartialToolCall]
+        toolCalls: inout [String: PartialToolCall],
+        indexMap: inout [Int: String]
     ) -> [StreamEvent]? {
         guard let choice = chunk.choices.first else { return nil }
         
@@ -494,17 +527,27 @@ public final class OpenAIModel: ModelInterface {
         // Handle tool call deltas
         if let toolCallDeltas = choice.delta.toolCalls {
             for toolCallDelta in toolCallDeltas {
-                if let id = toolCallDelta.id, let existingCall = toolCalls[id] {
-                    // Update existing call
-                    existingCall.update(with: toolCallDelta)
+                // Determine the ID to use - either from the delta or by index lookup
+                let effectiveId: String?
+                if let id = toolCallDelta.id {
+                    effectiveId = id
+                    // Store the index mapping for future updates
+                    indexMap[toolCallDelta.index] = id
                 } else {
-                    // New tool call
-                    if let id = toolCallDelta.id {
-                        toolCalls[id] = PartialToolCall(from: toolCallDelta)
-                    }
+                    // Look up by index
+                    effectiveId = indexMap[toolCallDelta.index]
                 }
                 
-                if let id = toolCallDelta.id {
+                if let id = effectiveId {
+                    if let existingCall = toolCalls[id] {
+                        // Update existing call
+                        existingCall.update(with: toolCallDelta)
+                    } else {
+                        // New tool call
+                        toolCalls[id] = PartialToolCall(from: toolCallDelta)
+                    }
+                    
+                    // Always emit the delta event
                     events.append(.toolCallDelta(StreamToolCallDelta(
                         id: id,
                         index: toolCallDelta.index,
@@ -528,6 +571,9 @@ public final class OpenAIModel: ModelInterface {
                 }
             }
             
+            // Clear tool calls so they don't get emitted again
+            toolCalls.removeAll()
+            
             events.append(.responseCompleted(StreamResponseCompleted(
                 id: chunk.id,
                 usage: nil, // Usage comes separately in OpenAI streaming
@@ -539,6 +585,8 @@ public final class OpenAIModel: ModelInterface {
     }
     
     private func handleOpenAIError(_ errorResponse: OpenAIErrorResponse, statusCode: Int) -> Error {
+        // OpenAIErrorResponse.error is of type OpenAIError
+        // OpenAIError.error is of type ErrorDetail  
         let errorDetail = errorResponse.error.error
         
         switch statusCode {

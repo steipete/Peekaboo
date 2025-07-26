@@ -211,6 +211,12 @@ public enum ToolInput {
     
     /// Parse from a JSON string
     public init(jsonString: String) throws {
+        // Handle empty string as empty dictionary
+        if jsonString.isEmpty {
+            self = .dictionary([:])
+            return
+        }
+        
         guard let data = jsonString.data(using: .utf8) else {
             throw ToolError.invalidInput("Invalid JSON string")
         }

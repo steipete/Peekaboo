@@ -181,7 +181,13 @@ public extension UIAutomationService {
             return
         }
         
-        let frame = CGRect(x: position.x, y: position.y, width: size.width, height: size.height)
+        var frame = CGRect(x: position.x, y: position.y, width: size.width, height: size.height)
+        
+        // Transform screen coordinates to window-relative coordinates if windowBounds is provided
+        if let windowBounds = windowBounds {
+            frame.origin.x -= windowBounds.origin.x
+            frame.origin.y -= windowBounds.origin.y
+        }
         
         // Determine element type
         let elementType = elementTypeFromRole(role)

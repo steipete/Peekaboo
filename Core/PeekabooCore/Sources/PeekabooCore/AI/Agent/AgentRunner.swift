@@ -231,13 +231,22 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 
             case .toolCallDelta(let delta):
                 updatePartialToolCall(&pendingToolCalls, with: delta)
+                print("DEBUG: Tool call delta: id=\(delta.id), name=\(delta.function.name ?? "nil"), args=\(delta.function.arguments ?? "nil")")
                 
             case .toolCallCompleted(let completed):
-                toolCalls.append(ToolCallItem(
-                    id: completed.id,
-                    type: .function,
-                    function: completed.function
-                ))
+                // Don't use the completed event's function - use our accumulated one
+                if let pendingCall = pendingToolCalls[completed.id] {
+                    print("DEBUG: Tool call completed: \(completed.id), function: \(pendingCall.name ?? "?"), args: \(pendingCall.arguments)")
+                    if let name = pendingCall.name {
+                        toolCalls.append(ToolCallItem(
+                            id: completed.id,
+                            type: .function,
+                            function: FunctionCall(name: name, arguments: pendingCall.arguments)
+                        ))
+                    }
+                } else {
+                    print("DEBUG: Tool call completed but no pending call found: \(completed.id)")
+                }
                 
             case .responseCompleted(let completed):
                 usage = completed.usage
@@ -260,9 +269,17 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             let toolResults = try await executeTools(toolCalls)
             
             // Add assistant message with tool calls
+            var assistantContent: [AssistantContent] = []
+            if !responseContent.isEmpty {
+                assistantContent.append(.outputText(responseContent))
+            }
+            for toolCall in toolCalls {
+                assistantContent.append(.toolCall(toolCall))
+            }
+            
             finalMessages.append(AssistantMessageItem(
                 id: responseId,
-                content: responseContent.isEmpty ? [] : [.outputText(responseContent)],
+                content: assistantContent,
                 status: .completed
             ))
             
@@ -301,19 +318,11 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             }
         }
         
-        // Add final assistant message
-        if !responseContent.isEmpty || !toolCalls.isEmpty {
-            var content: [AssistantContent] = []
-            if !responseContent.isEmpty {
-                content.append(.outputText(responseContent))
-            }
-            for toolCall in toolCalls {
-                content.append(.toolCall(toolCall))
-            }
-            
+        // Add final assistant message only if we didn't already add one for tool calls
+        if toolCalls.isEmpty && !responseContent.isEmpty {
             finalMessages.append(AssistantMessageItem(
                 id: responseId.isEmpty ? UUID().uuidString : responseId,
-                content: content,
+                content: [.outputText(responseContent)],
                 status: .completed
             ))
         }
@@ -357,6 +366,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             messages = session.messages.map { $0.message }
             actualSessionId = sessionId
             isResumed = true
+            print("DEBUG: Resuming session \(sessionId) with \(messages.count) messages")
         } else {
             // Create new session
             messages.append(SystemMessageItem(
@@ -365,6 +375,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             ))
             actualSessionId = UUID().uuidString
             isResumed = false
+            print("DEBUG: Creating new session \(actualSessionId)")
         }
         
         // Add user message
@@ -372,6 +383,11 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             id: UUID().uuidString,
             content: .text(input)
         ))
+        
+        print("DEBUG: Session prepared with \(messages.count) total messages")
+        for (index, msg) in messages.enumerated() {
+            print("DEBUG: Message[\(index)]: \(msg.type)")
+        }
         
         return (messages, actualSessionId, isResumed)
     }
@@ -434,15 +450,23 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         var results: [String] = []
         
         for toolCall in toolCalls {
+            print("DEBUG: Executing tool: \(toolCall.function.name)")
+            print("DEBUG: Tool arguments: \(toolCall.function.arguments)")
+            
             guard let tool = agent.tool(named: toolCall.function.name) else {
                 throw ToolError.toolNotFound(toolCall.function.name)
             }
             
-            let input = try ToolInput(jsonString: toolCall.function.arguments)
-            let output = try await tool.execute(input, context)
-            let resultString = try output.toJSONString()
-            
-            results.append(resultString)
+            do {
+                let input = try ToolInput(jsonString: toolCall.function.arguments)
+                let output = try await tool.execute(input, context)
+                let resultString = try output.toJSONString()
+                
+                results.append(resultString)
+            } catch {
+                print("DEBUG: Tool execution error: \(error)")
+                throw error
+            }
         }
         
         return results

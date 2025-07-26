@@ -112,6 +112,24 @@ struct AgentCommand: AsyncParsableCommand {
     }
 
     mutating func run() async throws {
+        do {
+            try await runInternal()
+        } catch let error as DecodingError {
+            print("DEBUG: Caught DecodingError in run(): \(error)")
+            throw error
+        } catch let error as NSError {
+            print("DEBUG: Caught NSError in run(): \(error)")
+            print("DEBUG: Domain: \(error.domain)")
+            print("DEBUG: Code: \(error.code)")
+            print("DEBUG: UserInfo: \(error.userInfo)")
+            throw error
+        } catch {
+            print("DEBUG: Caught unknown error in run(): \(error)")
+            throw error
+        }
+    }
+    
+    private mutating func runInternal() async throws {
         // Initialize services
         let services = PeekabooServices.shared
         
@@ -217,6 +235,9 @@ struct AgentCommand: AsyncParsableCommand {
             
             // Handle result display
             displayResult(result)
+        } catch let error as DecodingError {
+            print("DEBUG: DecodingError caught: \(error)")
+            throw error
         } catch {
             if jsonOutput {
                 let response = [

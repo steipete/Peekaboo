@@ -219,10 +219,24 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
         // Save screenshot
         let outputPath = try saveScreenshot(captureResult.imageData)
 
-        // Detect UI elements
-        let detectionResult = try await PeekabooServices.shared.automation.detectElements(
-            in: captureResult.imageData,
-            sessionId: nil)
+        // Detect UI elements with proper window context
+        let uiAutomationService = PeekabooServices.shared.automation as? UIAutomationService
+        let detectionResult: ElementDetectionResult
+        if let service = uiAutomationService {
+            // Use enhanced detection with window context
+            detectionResult = try await service.detectElementsEnhanced(
+                in: captureResult.imageData,
+                sessionId: nil,
+                applicationName: captureResult.metadata.applicationInfo?.name,
+                windowTitle: captureResult.metadata.windowInfo?.title,
+                windowBounds: captureResult.metadata.windowInfo?.bounds
+            )
+        } else {
+            // Fallback to regular detection
+            detectionResult = try await PeekabooServices.shared.automation.detectElements(
+                in: captureResult.imageData,
+                sessionId: nil)
+        }
 
         // Store enhanced detection result with window metadata
         let enhancedResult = ElementDetectionResult(
@@ -338,23 +352,17 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             .menu: NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0), // #007AFF
         ]
 
-        // Get window bounds for coordinate transformation
-        let windowBounds = detectionResult.metadata.windowBounds ?? .zero
-
         // Draw UI elements
         for element in detectionResult.elements.all where element.isEnabled {
             // Get color for element type
             let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
 
-            // Transform coordinates from screen space to window-relative space
-            var elementFrame = element.bounds
-            if windowBounds != .zero {
-                // Convert from screen coordinates to window-relative coordinates
-                elementFrame.origin.x -= windowBounds.origin.x
-                elementFrame.origin.y -= windowBounds.origin.y
-            }
+            // Use the bounds directly - they're already window-relative from detectElementsEnhanced
+            let elementFrame = element.bounds
 
             // Draw bounding box
+            // Note: The element bounds are already in window-relative coordinates with top-left origin
+            // We need to flip Y for NSGraphicsContext which uses bottom-left origin
             let rect = NSRect(
                 x: elementFrame.origin.x,
                 y: imageSize.height - elementFrame.origin.y - elementFrame.height, // Flip Y coordinate

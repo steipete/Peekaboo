@@ -115,10 +115,17 @@ public struct OpenAITool: Codable, Sendable {
         public init(type: String = "object", properties: [String: Any] = [:], required: [String] = []) {
             self.type = type
             // Convert properties to JSON string for Sendable conformance
-            if let data = try? JSONSerialization.data(withJSONObject: properties),
-               let json = String(data: data, encoding: .utf8) {
-                self.propertiesJSON = json
-            } else {
+            do {
+                let data = try JSONSerialization.data(withJSONObject: properties, options: [])
+                if let json = String(data: data, encoding: .utf8) {
+                    self.propertiesJSON = json
+                } else {
+                    print("DEBUG: Failed to create JSON string from data")
+                    self.propertiesJSON = "{}"
+                }
+            } catch {
+                print("DEBUG: JSONSerialization failed in Parameters.init: \(error)")
+                print("DEBUG: Properties: \(properties)")
                 self.propertiesJSON = "{}"
             }
             self.required = required
@@ -466,6 +473,14 @@ public struct OpenAIChatCompletionChunk: Codable, Sendable {
     public let created: Int
     public let model: String
     public let choices: [OpenAIStreamChoice]
+    public let serviceTier: String?
+    public let systemFingerprint: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id, object, created, model, choices
+        case serviceTier = "service_tier"
+        case systemFingerprint = "system_fingerprint"
+    }
 }
 
 /// Streaming choice
@@ -473,6 +488,7 @@ public struct OpenAIStreamChoice: Codable, Sendable {
     public let index: Int
     public let delta: OpenAIDelta
     public let finishReason: String?
+    // logprobs is intentionally not decoded as we don't use it
     
     enum CodingKeys: String, CodingKey {
         case index, delta
@@ -485,9 +501,10 @@ public struct OpenAIDelta: Codable, Sendable {
     public let role: String?
     public let content: String?
     public let toolCalls: [OpenAIToolCallDelta]?
+    public let refusal: String?
     
     enum CodingKeys: String, CodingKey {
-        case role, content
+        case role, content, refusal
         case toolCalls = "tool_calls"
     }
 }
