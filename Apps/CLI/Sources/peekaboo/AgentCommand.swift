@@ -81,8 +81,21 @@ func compactArgsSummary(_ command: String, _ args: [String: Any]) -> String {
         return ""
     case "shell":
         if let command = args["command"] as? String {
-            let preview = command.count > 30 ? String(command.prefix(30)) + "..." : command
-            return "'\(preview)'"
+            // For shell commands, show more meaningful info
+            if command.hasPrefix("open ") {
+                if command.contains("google.com/search") || command.contains("search") {
+                    return "search in browser"
+                } else if command.contains("http") {
+                    return "open URL in browser"
+                } else {
+                    return "open application/file"
+                }
+            } else if command.hasPrefix("curl ") {
+                return "fetch web data"
+            } else {
+                let preview = command.count > 25 ? String(command.prefix(25)) + "..." : command
+                return "'\(preview)'"
+            }
         }
         return ""
     case "wait":
@@ -184,9 +197,8 @@ struct AgentCommand: AsyncParsableCommand {
                     print("API Key: \(String(apiKey.prefix(10)))***")
                     print("\nInitializing agent...\n")
                 case .compact:
-                    print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset)")
-                    print("\(TerminalColor.gray)Task: \(self.task)\(TerminalColor.reset)")
-                    print("\(TerminalColor.gray)Initializing...\(TerminalColor.reset)\n")
+                    print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)(\(Version.fullVersion))\(TerminalColor.reset)")
+                    print("\(TerminalColor.gray)Task: \(self.task)\(TerminalColor.reset)\n")
                 case .quiet:
                     break
                 }
@@ -276,31 +288,20 @@ struct OpenAIAgent {
         let sessionId = await SessionManager.shared.createSession()
 
         // Create assistant
-        if self.verbose || self.showThoughts {
+        if self.outputMode == .verbose {
             print("Setting up AI assistant...")
-            if self.showThoughts {
-                print("\nThoughts:")
-                print("• I need to understand how to control the Mac")
-                print("• Loading my knowledge about UI automation")
-            }
         }
         let assistant = try await createAssistant()
-        if self.verbose || self.showThoughts {
+        if self.outputMode == .verbose {
             print("Assistant ready - ID: \(assistant.id)")
-            if self.showThoughts {
-                print("• Perfect! I can see screens, click things, and type text")
-            }
         }
 
         // Create thread
-        if self.verbose || self.showThoughts {
+        if self.outputMode == .verbose {
             print("\nCreating conversation thread...")
-            if self.showThoughts {
-                print("• Starting a new conversation about: \(task)")
-            }
         }
         let thread = try await createThread()
-        if self.verbose || self.showThoughts {
+        if self.outputMode == .verbose {
             print("Thread created: \(thread.id)")
         }
 
