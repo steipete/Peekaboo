@@ -222,6 +222,16 @@ public final class PeekabooServices: Sendable {
             agent: nil
         )
         
+        // Initialize ModelProvider with available API keys
+        Task {
+            do {
+                try await ModelProvider.shared.setupFromEnvironment()
+                logger.debug("✅ ModelProvider initialized from environment")
+            } catch {
+                logger.error("⚠️ Failed to setup ModelProvider: \(error)")
+            }
+        }
+        
         // Now create agent service if API key is available
         // Check both environment variable and credentials file
         let agent: AgentServiceProtocol?
@@ -229,7 +239,7 @@ public final class PeekabooServices: Sendable {
             let agentConfig = config.getConfiguration()
             agent = PeekabooAgentService(
                 services: services,
-                defaultModelName: agentConfig?.agent?.defaultModel ?? "gpt-4o"
+                defaultModelName: agentConfig?.agent?.defaultModel ?? "o3"
             )
             logger.debug("✅ PeekabooAgentService initialized with API key from configuration")
         } else {

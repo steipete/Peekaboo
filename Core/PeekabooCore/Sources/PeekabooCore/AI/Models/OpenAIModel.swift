@@ -81,8 +81,9 @@ public final class OpenAIModel: ModelInterface {
         }
         
         do {
-            let openAIResponse = try JSONDecoder().decode(OpenAIChatCompletionResponse.self, from: data)
-            return try convertFromOpenAIResponse(openAIResponse)
+            // Always expect Responses API format
+            let responsesResponse = try JSONDecoder().decode(OpenAIResponsesResponse.self, from: data)
+            return try convertFromOpenAIResponsesResponse(responsesResponse)
         } catch {
             aiDebugPrint("DEBUG: Failed to decode OpenAI response: \(error)")
             if let responseString = String(data: data, encoding: .utf8) {
@@ -159,36 +160,38 @@ public final class OpenAIModel: ModelInterface {
                             
                             // Parse chunk
                             if let chunkData = data.data(using: .utf8) {
-                                do {
-                                    let chunk = try JSONDecoder().decode(OpenAIChatCompletionChunk.self, from: chunkData)
+                                // Use simple JSON parsing for now to avoid decoding issues
+                                if let jsonObj = try? JSONSerialization.jsonObject(with: chunkData, options: []) as? [String: Any] {
+                                    let chunkType = jsonObj["type"] as? String ?? "unknown"
                                     
-                                    // Debug log for o3 models to see what fields are present
-                                    if request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4") {
-                                        // Log raw JSON to see what fields o3 is actually sending
-                                        if let jsonObj = try? JSONSerialization.jsonObject(with: chunkData, options: []) as? [String: Any] {
-                                            aiDebugPrint("DEBUG: o3 chunk JSON: \(jsonObj)")
-                                            
-                                            // Check for choices and delta structure
-                                            if let choices = jsonObj["choices"] as? [[String: Any]],
-                                               let firstChoice = choices.first,
-                                               let delta = firstChoice["delta"] as? [String: Any] {
-                                                aiDebugPrint("DEBUG: o3 delta fields: \(delta.keys.sorted())")
-                                            }
-                                        }
-                                    }
-                                    
-                                    // Process chunk into stream events
-                                    if let events = self.processChunk(chunk, toolCalls: &currentToolCalls, indexMap: &toolCallIndexMap) {
-                                        for event in events {
+                                    // Handle text delta events directly
+                                    if chunkType == "response.output_text.delta" {
+                                        if let delta = jsonObj["delta"] as? String, 
+                                           let outputIndex = jsonObj["output_index"] as? Int {
+                                            let event = StreamEvent.textDelta(StreamTextDelta(delta: delta, index: outputIndex))
                                             continuation.yield(event)
                                         }
-                                    }
-                                } catch {
-                                    aiDebugPrint("DEBUG: Failed to decode chunk: \(error)")
-                                    aiDebugPrint("DEBUG: Chunk data: \(data)")
-                                    // Try to see what's in the error
-                                    if let decodingError = error as? DecodingError {
-                                        aiDebugPrint("DEBUG: DecodingError details: \(decodingError)")
+                                    } else if chunkType == "response.created" || chunkType == "response.in_progress" {
+                                        if let responseData = jsonObj["response"] as? [String: Any],
+                                           let id = responseData["id"] as? String,
+                                           let model = responseData["model"] as? String {
+                                            let event = StreamEvent.responseStarted(StreamResponseStarted(
+                                                id: id,
+                                                model: model,
+                                                systemFingerprint: nil
+                                            ))
+                                            continuation.yield(event)
+                                        }
+                                    } else if chunkType == "response.completed" {
+                                        if let responseData = jsonObj["response"] as? [String: Any],
+                                           let id = responseData["id"] as? String {
+                                            let event = StreamEvent.responseCompleted(StreamResponseCompleted(
+                                                id: id,
+                                                usage: nil,
+                                                finishReason: nil
+                                            ))
+                                            continuation.yield(event)
+                                        }
                                     }
                                 }
                             }
@@ -208,12 +211,9 @@ public final class OpenAIModel: ModelInterface {
     // MARK: - Private Methods
     
     private func getEndpointForModel(_ modelName: String) -> String {
-        // o3 and o4 models use the Responses API for reasoning capabilities
-        if modelName.hasPrefix("o3") || modelName.hasPrefix("o4") {
-            return "responses/create"
-        }
-        // All other models use the standard Chat Completions API
-        return "chat/completions"
+        // Always use Responses API for all models
+        // It supports reasoning visibility and all modern features
+        return "responses"
     }
     
     private func createURLRequest(endpoint: String, body: Encodable) throws -> URLRequest {
@@ -249,13 +249,9 @@ public final class OpenAIModel: ModelInterface {
         return request
     }
     
-    private func convertToOpenAIRequest(_ request: ModelRequest, stream: Bool) throws -> Encodable {
-        // Use Responses API for o3/o4 models
-        if request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4") {
-            return try convertToOpenAIResponsesRequest(request, stream: stream)
-        } else {
-            return try convertToOpenAIChatCompletionRequest(request, stream: stream)
-        }
+    private func convertToOpenAIRequest(_ request: ModelRequest, stream: Bool) throws -> any Encodable {
+        // Always use Responses API
+        return try convertToOpenAIResponsesRequest(request, stream: stream)
     }
     
     private func convertToOpenAIResponsesRequest(_ request: ModelRequest, stream: Bool) throws -> OpenAIResponsesRequest {
@@ -314,14 +310,15 @@ public final class OpenAIModel: ModelInterface {
         return OpenAIResponsesRequest(
             model: request.settings.modelName,
             input: messages,  // Note: 'input' not 'messages' for Responses API
-            tools: tools,
-            toolChoice: convertToolChoice(request.settings.toolChoice),
-            temperature: nil,  // o3 models don't support temperature
+            tools: nil,  // TODO: Fix tool format for Responses API
+            toolChoice: nil,
+            temperature: (request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4")) ? nil : request.settings.temperature,
             topP: request.settings.topP,
             stream: stream,
-            maxCompletionTokens: request.settings.maxTokens ?? 65536,
-            reasoningEffort: request.settings.additionalParameters?["reasoning_effort"]?.value as? String ?? "medium",
-            reasoning: nil  // TODO: Add reasoning configuration if needed
+            maxOutputTokens: request.settings.maxTokens ?? 65536,
+            reasoningEffort: nil,  // Removed - now part of reasoning object
+            reasoning: (request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4")) ? 
+                OpenAIReasoning(effort: request.settings.additionalParameters?["reasoning_effort"]?.value as? String ?? "high", summary: "detailed") : nil
         )
     }
     
@@ -638,95 +635,156 @@ public final class OpenAIModel: ModelInterface {
         )
     }
     
+    private func convertFromOpenAIResponsesResponse(_ response: OpenAIResponsesResponse) throws -> ModelResponse {
+        guard let choice = response.choices.first else {
+            throw ModelError.responseParsingFailed("No choices in response")
+        }
+        
+        var content: [AssistantContent] = []
+        
+        // Add text content if present
+        if let textContent = choice.message.content {
+            content.append(.outputText(textContent))
+        }
+        
+        // Add reasoning content if present
+        if let reasoningContent = choice.message.reasoningContent {
+            // For now, append reasoning as regular text with a prefix
+            content.append(.outputText("\n💭 Reasoning: \(reasoningContent)\n"))
+        }
+        
+        // Add tool calls if present
+        if let toolCalls = choice.message.toolCalls {
+            for toolCall in toolCalls {
+                content.append(.toolCall(ToolCallItem(
+                    id: toolCall.id,
+                    type: .function,
+                    function: FunctionCall(
+                        name: toolCall.function.name,
+                        arguments: toolCall.function.arguments
+                    )
+                )))
+            }
+        }
+        
+        let usage = response.usage.map { usage in
+            Usage(
+                promptTokens: usage.promptTokens,
+                completionTokens: usage.completionTokens,
+                totalTokens: usage.totalTokens,
+                promptTokensDetails: usage.promptTokensDetails.map { details in
+                    TokenDetails(
+                        cachedTokens: details.cachedTokens,
+                        audioTokens: details.audioTokens,
+                        reasoningTokens: details.reasoningTokens
+                    )
+                },
+                completionTokensDetails: usage.completionTokensDetails.map { details in
+                    TokenDetails(
+                        cachedTokens: details.cachedTokens,
+                        audioTokens: details.audioTokens,
+                        reasoningTokens: details.reasoningTokens
+                    )
+                }
+            )
+        }
+        
+        return ModelResponse(
+            id: response.id,
+            model: response.model,
+            content: content,
+            usage: usage,
+            flagged: false,
+            finishReason: convertFinishReason(choice.finishReason)
+        )
+    }
+    
     private func convertFinishReason(_ reason: String?) -> FinishReason? {
         guard let reason = reason else { return nil }
         return FinishReason(rawValue: reason)
     }
     
-    private func processChunk(
-        _ chunk: OpenAIChatCompletionChunk,
+    // Removed - we only use Responses API now
+    
+    private func processResponsesChunk(
+        _ chunk: OpenAIResponsesChunk,
         toolCalls: inout [String: PartialToolCall],
         indexMap: inout [Int: String]
     ) -> [StreamEvent]? {
-        guard let choice = chunk.choices.first else { return nil }
-        
         var events: [StreamEvent] = []
         
-        // Handle response started
-        if chunk.choices.first?.index == 0 && events.isEmpty {
-            events.append(.responseStarted(StreamResponseStarted(
-                id: chunk.id,
-                model: chunk.model,
-                systemFingerprint: nil
-            )))
-        }
-        
-        // Handle text delta
-        if let content = choice.delta.content, !content.isEmpty {
-            events.append(.textDelta(StreamTextDelta(delta: content, index: choice.index)))
-        }
-        
-        // Handle reasoning content delta (for o3 models)
-        if let reasoningContent = choice.delta.reasoningContent, !reasoningContent.isEmpty {
-            events.append(.reasoningSummaryDelta(StreamReasoningSummaryDelta(delta: reasoningContent)))
-        }
-        
-        // Handle tool call deltas
-        if let toolCallDeltas = choice.delta.toolCalls {
-            for toolCallDelta in toolCallDeltas {
-                // Determine the ID to use - either from the delta or by index lookup
-                let effectiveId: String?
-                if let id = toolCallDelta.id {
-                    effectiveId = id
-                    // Store the index mapping for future updates
-                    indexMap[toolCallDelta.index] = id
-                } else {
-                    // Look up by index
-                    effectiveId = indexMap[toolCallDelta.index]
+        switch chunk.type {
+        case "response.created", "response.in_progress":
+            // Handle response started
+            if let response = chunk.response {
+                events.append(.responseStarted(StreamResponseStarted(
+                    id: response.id,
+                    model: response.model ?? "unknown",
+                    systemFingerprint: nil
+                )))
+            }
+            
+        case "response.output_text.delta":
+            // Handle text delta
+            if let delta = chunk.delta, !delta.isEmpty, let outputIndex = chunk.outputIndex {
+                events.append(.textDelta(StreamTextDelta(delta: delta, index: outputIndex)))
+            }
+            
+        case "response.reasoning_summary.delta":
+            // Handle reasoning content delta
+            if let delta = chunk.delta, !delta.isEmpty {
+                events.append(.reasoningSummaryDelta(StreamReasoningSummaryDelta(delta: delta)))
+                aiDebugPrint("DEBUG: Responses API streaming reasoning: \(delta)")
+            }
+            
+        case "response.function_call_arguments.delta":
+            // Handle function call arguments delta
+            if let itemId = chunk.itemId, let delta = chunk.delta, let outputIndex = chunk.outputIndex {
+                // For function calls, we need to parse the JSON arguments incrementally
+                var toolCallId = itemId
+                
+                // Store or update the tool call
+                if toolCalls[toolCallId] == nil {
+                    // Create a new partial tool call
+                    let partialCall = PartialToolCall()
+                    partialCall.id = toolCallId
+                    partialCall.type = "function"
+                    partialCall.index = outputIndex
+                    toolCalls[toolCallId] = partialCall
                 }
                 
-                if let id = effectiveId {
-                    if let existingCall = toolCalls[id] {
-                        // Update existing call
-                        existingCall.update(with: toolCallDelta)
-                    } else {
-                        // New tool call
-                        toolCalls[id] = PartialToolCall(from: toolCallDelta)
-                    }
+                // Append arguments delta
+                if let existingCall = toolCalls[toolCallId] {
+                    existingCall.appendArguments(delta)
                     
-                    // Always emit the delta event
+                    // Emit delta event
                     events.append(.toolCallDelta(StreamToolCallDelta(
-                        id: id,
-                        index: toolCallDelta.index,
+                        id: toolCallId,
+                        index: outputIndex,
                         function: FunctionCallDelta(
-                            name: toolCallDelta.function?.name,
-                            arguments: toolCallDelta.function?.arguments
+                            name: existingCall.name,
+                            arguments: delta
                         )
                     )))
                 }
             }
-        }
-        
-        // Handle finish reason
-        if let finishReason = choice.finishReason {
-            // Complete any pending tool calls
-            for (id, toolCall) in toolCalls {
-                if let completed = toolCall.toCompleted() {
-                    events.append(.toolCallCompleted(
-                        StreamToolCallCompleted(id: id, function: completed)
-                    ))
-                }
+            
+        case "response.completed":
+            // Handle response completion
+            if let response = chunk.response {
+                // Emit completion event
+                events.append(.responseCompleted(StreamResponseCompleted(
+                    id: response.id,
+                    usage: nil,
+                    finishReason: nil
+                )))
             }
             
-            // Clear tool calls so they don't get emitted again
-            toolCalls.removeAll()
-            
-            events.append(.responseCompleted(StreamResponseCompleted(
-                id: chunk.id,
-                usage: nil, // Usage comes separately in OpenAI streaming
-                finishReason: convertFinishReason(finishReason)
-            )))
+        default:
+            // Ignore other event types for now
+            break
         }
+        
         
         return events.isEmpty ? nil : events
     }
@@ -756,10 +814,15 @@ public final class OpenAIModel: ModelInterface {
 // MARK: - Helper Types
 
 private class PartialToolCall {
-    var id: String
-    var index: Int
+    var id: String = ""
+    var type: String = "function"
+    var index: Int = 0
     var name: String?
     var arguments: String = ""
+    
+    init() {
+        // Default initializer for Responses API
+    }
     
     init(from delta: OpenAIToolCallDelta) {
         self.id = delta.id ?? ""
@@ -775,6 +838,10 @@ private class PartialToolCall {
         if let args = delta.function?.arguments {
             self.arguments += args
         }
+    }
+    
+    func appendArguments(_ args: String) {
+        self.arguments += args
     }
     
     func toCompleted() -> FunctionCall? {

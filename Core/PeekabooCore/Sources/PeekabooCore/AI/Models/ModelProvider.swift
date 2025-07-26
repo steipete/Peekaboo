@@ -87,14 +87,21 @@ public actor ModelProvider {
     
     private func registerOpenAIModels() {
         let models = [
-            "gpt-4-turbo-preview",
-            "gpt-4-turbo",
-            "gpt-4",
-            "gpt-4-32k",
-            "gpt-3.5-turbo",
-            "gpt-3.5-turbo-16k",
+            // GPT-4o series
             "gpt-4o",
-            "gpt-4o-mini"
+            "gpt-4o-mini",
+            
+            // GPT-4.1 series
+            "gpt-4.1",
+            "gpt-4.1-mini",
+            
+            // o3 series (Responses API only)
+            "o3",
+            "o3-mini",
+            "o3-pro",
+            
+            // o4 series (Responses API only)
+            "o4-mini"
         ]
         
         for modelName in models {
@@ -183,14 +190,21 @@ extension ModelProvider {
     /// Configure OpenAI models with specific settings
     public func configureOpenAI(_ config: ModelProviderConfig.OpenAI) {
         let models = [
-            "gpt-4-turbo-preview",
-            "gpt-4-turbo",
-            "gpt-4",
-            "gpt-4-32k",
-            "gpt-3.5-turbo",
-            "gpt-3.5-turbo-16k",
+            // GPT-4o series
             "gpt-4o",
-            "gpt-4o-mini"
+            "gpt-4o-mini",
+            
+            // GPT-4.1 series
+            "gpt-4.1",
+            "gpt-4.1-mini",
+            
+            // o3 series (Responses API only)
+            "o3",
+            "o3-mini",
+            "o3-pro",
+            
+            // o4 series (Responses API only)
+            "o4-mini"
         ]
         
         for modelName in models {

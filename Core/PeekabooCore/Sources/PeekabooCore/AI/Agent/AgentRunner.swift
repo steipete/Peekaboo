@@ -155,8 +155,9 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         if let model = model {
             self.model = model
         } else {
-            // In a real implementation, this would use ModelProvider
-            // For now, we'll create a default OpenAI model
+            // Get model from provider based on agent settings
+            // Note: This is synchronous init, so we can't use async methods
+            // We'll use the fallback approach for now
             let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? ""
             self.model = OpenAIModel(apiKey: apiKey)
         }
@@ -196,7 +197,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         try await sessionManager.saveSession(
             id: actualSessionId,
             messages: finalMessages,
-            metadata: ["agent": agent.name, "lastActivity": Date()]
+            metadata: ["agent": agent.name, "lastActivity": ISO8601DateFormatter().string(from: Date())]
         )
         
         // Extract content
@@ -245,7 +246,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         try await sessionManager.saveSession(
             id: actualSessionId,
             messages: finalMessages,
-            metadata: ["agent": agent.name, "lastActivity": Date()]
+            metadata: ["agent": agent.name, "lastActivity": ISO8601DateFormatter().string(from: Date())]
         )
         
         return AgentExecutionResult(

@@ -498,6 +498,18 @@ struct EnhancedErrorTests {
 
 // @available not needed for test helpers
 class MockPeekabooServices: @unchecked Sendable {
+    // Service properties
+    var applications: ApplicationServiceProtocol!
+    var windows: WindowManagementServiceProtocol!
+    var automation: UIAutomationServiceProtocol!
+    var sessions: SessionsServiceProtocol!
+    var menu: MenuServiceProtocol!
+    var dialogs: DialogServiceProtocol!
+    var permissions: PermissionsServiceProtocol!
+    var screenCapture: ScreenCaptureServiceProtocol!
+    var process: TestProcessServiceProtocol!
+    
+    // Mock data
     var mockApplications: [ServiceApplicationInfo] = []
     var mockWindows: [ServiceWindowInfo] = []
     var mockDetectionResult: DetectionResult?

@@ -297,7 +297,7 @@ public struct OpenAIResponsesRequest: Codable, Sendable {
     public let temperature: Double?
     public let topP: Double?
     public let stream: Bool?
-    public let maxCompletionTokens: Int?
+    public let maxOutputTokens: Int?
     public let reasoningEffort: String?
     public let reasoning: OpenAIReasoning?
     
@@ -309,7 +309,7 @@ public struct OpenAIResponsesRequest: Codable, Sendable {
         case temperature
         case topP = "top_p"
         case stream
-        case maxCompletionTokens = "max_completion_tokens"
+        case maxOutputTokens = "max_output_tokens"
         case reasoningEffort = "reasoning_effort"
         case reasoning
     }
@@ -322,7 +322,7 @@ public struct OpenAIResponsesRequest: Codable, Sendable {
         temperature: Double? = nil,
         topP: Double? = nil,
         stream: Bool? = nil,
-        maxCompletionTokens: Int? = nil,
+        maxOutputTokens: Int? = nil,
         reasoningEffort: String? = nil,
         reasoning: OpenAIReasoning? = nil
     ) {
@@ -333,7 +333,7 @@ public struct OpenAIResponsesRequest: Codable, Sendable {
         self.temperature = temperature
         self.topP = topP
         self.stream = stream
-        self.maxCompletionTokens = maxCompletionTokens
+        self.maxOutputTokens = maxOutputTokens
         self.reasoningEffort = reasoningEffort
         self.reasoning = reasoning
     }
@@ -751,5 +751,137 @@ public struct OpenAIJSONSchema: Codable, Sendable {
         self.name = name
         self.strict = strict
         self.schema = AnyCodable(schema)
+    }
+}
+
+// MARK: - Responses API Types
+
+/// OpenAI Responses API Response
+public struct OpenAIResponsesResponse: Codable, Sendable {
+    public let id: String
+    public let object: String
+    public let created: Int
+    public let model: String
+    public let choices: [OpenAIResponsesChoice]
+    public let usage: OpenAIUsage?
+    public let serviceTier: String?
+    public let systemFingerprint: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id, object, created, model, choices, usage
+        case serviceTier = "service_tier"
+        case systemFingerprint = "system_fingerprint"
+    }
+}
+
+/// Choice in a Responses API response
+public struct OpenAIResponsesChoice: Codable, Sendable {
+    public let index: Int
+    public let message: OpenAIResponsesMessage
+    public let finishReason: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case index, message
+        case finishReason = "finish_reason"
+    }
+}
+
+/// Response message for Responses API
+public struct OpenAIResponsesMessage: Codable, Sendable {
+    public let role: String
+    public let content: String?
+    public let toolCalls: [OpenAIToolCall]?
+    public let refusal: String?
+    public let reasoningContent: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case role, content, refusal
+        case toolCalls = "tool_calls"
+        case reasoningContent = "reasoning_content"
+    }
+}
+
+/// Streaming chunk for Responses API
+/// Responses API streaming event
+public struct OpenAIResponsesChunk: Codable, Sendable {
+    public let type: String
+    public let sequenceNumber: Int?
+    public let response: OpenAIResponsesEventResponse?
+    public let itemId: String?
+    public let outputIndex: Int?
+    public let contentIndex: Int?
+    public let delta: String?
+    public let item: OpenAIResponsesEventItem?
+    public let part: OpenAIResponsesEventPart?
+    public let text: String?  // For response.output_text.done event
+    
+    enum CodingKeys: String, CodingKey {
+        case type
+        case sequenceNumber = "sequence_number"
+        case response
+        case itemId = "item_id"
+        case outputIndex = "output_index"
+        case contentIndex = "content_index"
+        case delta
+        case item
+        case part
+        case text
+    }
+}
+
+/// Response object in streaming events
+public struct OpenAIResponsesEventResponse: Codable, Sendable {
+    public let id: String
+    public let status: String
+    public let model: String?
+    public let output: [OpenAIResponsesEventItem]?
+}
+
+/// Item in responses streaming
+public struct OpenAIResponsesEventItem: Codable, Sendable {
+    public let id: String
+    public let type: String
+    public let status: String?
+    public let content: [OpenAIResponsesEventContent]?
+    public let role: String?
+    public let summary: [String]?
+}
+
+/// Content part in responses streaming
+public struct OpenAIResponsesEventContent: Codable, Sendable {
+    public let type: String
+    public let text: String?
+}
+
+/// Part in content added events
+public struct OpenAIResponsesEventPart: Codable, Sendable {
+    public let type: String
+    public let text: String?
+}
+
+/// Streaming choice for Responses API
+public struct OpenAIResponsesStreamChoice: Codable, Sendable {
+    public let index: Int
+    public let delta: OpenAIResponsesDelta
+    public let finishReason: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case index, delta
+        case finishReason = "finish_reason"
+    }
+}
+
+/// Delta in Responses API streaming response
+public struct OpenAIResponsesDelta: Codable, Sendable {
+    public let role: String?
+    public let content: String?
+    public let toolCalls: [OpenAIToolCallDelta]?
+    public let refusal: String?
+    public let reasoningContent: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case role, content, refusal
+        case toolCalls = "tool_calls"
+        case reasoningContent = "reasoning_content"
     }
 }

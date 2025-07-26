@@ -26,10 +26,13 @@ struct SessionMainWindow: View {
             if let sessionId = selectedSessionId,
                let session = sessionStore.sessions.first(where: { $0.id == sessionId }) {
                 SessionChatView(session: session)
+                    .toolbar(removing: .sidebarToggle)
             } else if let currentSession = sessionStore.currentSession {
                 SessionChatView(session: currentSession)
+                    .toolbar(removing: .sidebarToggle)
             } else {
                 EmptySessionView(showNewSessionPrompt: $showNewSessionPrompt)
+                    .toolbar(removing: .sidebarToggle)
             }
         }
         .navigationTitle("Peekaboo Sessions")
