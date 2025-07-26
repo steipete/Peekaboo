@@ -6,6 +6,9 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_FILE="$PROJECT_ROOT/.poltergeist.log"
 BUILD_LOCK="/tmp/peekaboo-swift-build.lock"
 CANCEL_FLAG="/tmp/peekaboo-build-cancel"
+MIN_BUILD_TIME=5  # Minimum seconds before allowing cancellation
+SPM_ERROR_RETRY_COUNT=0
+MAX_SPM_RETRIES=2
 
 # Ensure log file exists
 touch "$LOG_FILE"
@@ -115,18 +118,25 @@ cd "$PROJECT_ROOT"
 
 # Capture start time
 START_TIME=$(date +%s)
+BUILD_START=$START_TIME
 
-# Run the build with periodic cancel checks
-(
-    # Start the build in background
-    npm run build:swift >> "$LOG_FILE" 2>&1 &
-    BUILD_PID=$!
+# Function to run build with retry logic
+run_build() {
+    local build_output_file="/tmp/peekaboo-build-output.$$"
+    
+    # Use incremental build for Poltergeist (no --clean flag)
+    ./scripts/build-swift-debug.sh > "$build_output_file" 2>&1 &
+    local BUILD_PID=$!
     
     # Monitor the build and check for cancellation
     while ps -p "$BUILD_PID" > /dev/null 2>&1; do
-        if should_cancel; then
-            log "🛑 Canceling current build due to newer changes..."
+        local ELAPSED=$(($(date +%s) - BUILD_START))
+        
+        # Only allow cancellation after minimum build time
+        if should_cancel && [ $ELAPSED -ge $MIN_BUILD_TIME ]; then
+            log "🛑 Canceling current build due to newer changes (after ${ELAPSED}s)..."
             kill_process_tree "$BUILD_PID"
+            rm -f "$build_output_file"
             exit 1
         fi
         sleep 0.5
@@ -134,9 +144,36 @@ START_TIME=$(date +%s)
     
     # Wait for build to complete and get exit code
     wait "$BUILD_PID"
-)
+    local exit_code=$?
+    
+    # Append output to log
+    cat "$build_output_file" >> "$LOG_FILE"
+    
+    # Check for SPM errors
+    if [ $exit_code -ne 0 ] && grep -q "Failed to parse target info" "$build_output_file"; then
+        rm -f "$build_output_file"
+        return 2  # Special code for SPM error
+    fi
+    
+    rm -f "$build_output_file"
+    return $exit_code
+}
 
-BUILD_EXIT_CODE=$?
+# Run the build with retry logic for SPM errors
+while true; do
+    run_build
+    BUILD_EXIT_CODE=$?
+    
+    if [ $BUILD_EXIT_CODE -eq 2 ] && [ $SPM_ERROR_RETRY_COUNT -lt $MAX_SPM_RETRIES ]; then
+        SPM_ERROR_RETRY_COUNT=$((SPM_ERROR_RETRY_COUNT + 1))
+        log "⚠️ SPM initialization error detected (attempt $SPM_ERROR_RETRY_COUNT/$MAX_SPM_RETRIES), retrying in 3s..."
+        sleep 3
+        BUILD_START=$(date +%s)  # Reset build start time
+        continue
+    fi
+    
+    break
+done
 
 # Check if we were canceled
 if should_cancel; then
@@ -148,7 +185,11 @@ if [ $BUILD_EXIT_CODE -eq 0 ]; then
     END_TIME=$(date +%s)
     BUILD_TIME=$((END_TIME - START_TIME))
     
-    log "✅ Swift CLI build completed successfully (${BUILD_TIME}s)"
+    if [ $SPM_ERROR_RETRY_COUNT -gt 0 ]; then
+        log "✅ Swift CLI build completed successfully after $SPM_ERROR_RETRY_COUNT retries (${BUILD_TIME}s)"
+    else
+        log "✅ Swift CLI build completed successfully (${BUILD_TIME}s)"
+    fi
     
     # Copy to root for easy access
     if cp -f Apps/CLI/.build/debug/peekaboo ./peekaboo 2>>"$LOG_FILE"; then
@@ -157,6 +198,10 @@ if [ $BUILD_EXIT_CODE -eq 0 ]; then
         log "❌ Failed to copy binary to project root"
     fi
 else
-    log "❌ Swift CLI build failed (exit code: $BUILD_EXIT_CODE)"
+    if [ $BUILD_EXIT_CODE -eq 2 ]; then
+        log "❌ Swift CLI build failed due to persistent SPM errors after $MAX_SPM_RETRIES retries"
+    else
+        log "❌ Swift CLI build failed (exit code: $BUILD_EXIT_CODE)"
+    fi
     log "💡 Run 'poltergeist logs' to see the full error"
 fi

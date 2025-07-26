@@ -60,16 +60,20 @@ function start_watcher() {
     watchman -j <<-EOF
     ["trigger", "$PROJECT_ROOT", {
         "name": "$TRIGGER_NAME",
-        "expression": ["anyof",
-            ["match", "Core/PeekabooCore/**/*.swift", "wholename"],
-            ["match", "Core/AXorcist/**/*.swift", "wholename"],
-            ["match", "Apps/CLI/**/*.swift", "wholename"],
-            ["match", "**/Package.swift", "wholename"],
-            ["match", "**/Package.resolved", "wholename"]
+        "expression": ["allof",
+            ["anyof",
+                ["match", "Core/PeekabooCore/**/*.swift", "wholename"],
+                ["match", "Core/AXorcist/**/*.swift", "wholename"],
+                ["match", "Apps/CLI/**/*.swift", "wholename"],
+                ["match", "**/Package.swift", "wholename"],
+                ["match", "**/Package.resolved", "wholename"]
+            ],
+            ["not", ["match", "**/Version.swift", "wholename"]]
         ],
         "command": ["$PROJECT_ROOT/scripts/poltergeist-handler.sh"],
         "append_files": false,
-        "stdin": ["name", "exists", "new", "size", "mode"]
+        "stdin": ["name", "exists", "new", "size", "mode"],
+        "settling_delay": 1000
     }]
 EOF
     

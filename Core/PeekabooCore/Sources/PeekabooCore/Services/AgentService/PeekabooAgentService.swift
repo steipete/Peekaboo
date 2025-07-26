@@ -791,6 +791,14 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         ✓ Did I say any specific phrases the user requested?
         ✓ Did I handle any errors gracefully and try alternatives?
         
+        ## Speech Output
+        
+        When the user asks you to "say" something, they mean using the macOS text-to-speech command:
+        - Use the `say` command: `say "Your text here"`
+        - For example: `say "YOWZA YOWZA BO-BOWZA"`
+        - This will speak the text aloud through the system's audio output
+        - You can also specify a voice: `say -v "Samantha" "Hello world"`
+        
         Remember: You have full system access through the shell tool. Use it creatively alongside UI automation to accomplish any task. Take screenshots liberally to understand UI state. Don't just describe what to do - DO IT using your tools!
         
         You are running on macOS with full automation permissions granted to Peekaboo.

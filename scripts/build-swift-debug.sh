@@ -4,6 +4,19 @@ set -e
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SWIFT_PROJECT_PATH="$PROJECT_ROOT/Apps/CLI"
 
+# Parse arguments
+CLEAN_BUILD=false
+if [[ "$1" == "--clean" ]]; then
+    CLEAN_BUILD=true
+fi
+
+# Only clean if requested
+if [[ "$CLEAN_BUILD" == "true" ]]; then
+    echo "🧹 Cleaning previous build artifacts..."
+    rm -rf "$SWIFT_PROJECT_PATH/.build"
+    (cd "$SWIFT_PROJECT_PATH" && swift package reset 2>/dev/null || true)
+fi
+
 echo "📦 Reading version from package.json..."
 VERSION=$(node -p "require('$PROJECT_ROOT/Server/package.json').version" 2>/dev/null || echo "3.0.0-dev")
 
@@ -32,7 +45,12 @@ enum Version {
 }
 EOF
 
-echo "🏗️ Building for debug..."
+if [[ "$CLEAN_BUILD" == "true" ]]; then
+    echo "🏗️ Building for debug (clean build)..."
+else
+    echo "🏗️ Building for debug (incremental)..."
+fi
+
 (cd "$SWIFT_PROJECT_PATH" && swift build)
 
 echo "✅ Debug build complete"
