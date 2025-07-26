@@ -223,17 +223,18 @@ public final class PeekabooServices: Sendable {
         )
         
         // Now create agent service if API key is available
+        // Check both environment variable and credentials file
         let agent: AgentServiceProtocol?
-        if ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil {
+        if let apiKey = config.getOpenAIAPIKey(), !apiKey.isEmpty {
             let agentConfig = config.getConfiguration()
             agent = PeekabooAgentService(
                 services: services,
                 defaultModelName: agentConfig?.agent?.defaultModel ?? "gpt-4o"
             )
-            logger.debug("✅ PeekabooAgentService initialized")
+            logger.debug("✅ PeekabooAgentService initialized with API key from configuration")
         } else {
             agent = nil
-            logger.debug("⚠️ PeekabooAgentService skipped - no OPENAI_API_KEY")
+            logger.debug("⚠️ PeekabooAgentService skipped - no OPENAI_API_KEY found in environment or credentials")
         }
         
         // Return services with agent

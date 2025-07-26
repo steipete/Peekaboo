@@ -272,7 +272,7 @@ public enum ToolInput {
 }
 
 /// Output from a tool
-public enum ToolOutput {
+public enum ToolOutput: @unchecked Sendable {
     case string(String)
     case dictionary([String: Any])
     case array([Any])
