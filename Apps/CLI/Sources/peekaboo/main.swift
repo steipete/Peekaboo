@@ -112,7 +112,6 @@ struct Peekaboo: AsyncParsableCommand {
     )
 }
 
-
 /// Application entry point.
 ///
 /// Initializes configuration and launches the command-line parser.
