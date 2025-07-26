@@ -129,7 +129,7 @@ struct OpenAIAgent {
     let showThoughts: Bool
 
     private let session = URLSession.shared
-    private let executor: AgentInternalExecutor
+    private let executor: AgentExecutor
     private let retryConfig = RetryConfiguration.default
     
     init(apiKey: String, model: String, verbose: Bool, maxSteps: Int, showThoughts: Bool = false) {
@@ -138,8 +138,8 @@ struct OpenAIAgent {
         self.verbose = verbose
         self.maxSteps = maxSteps
         self.showThoughts = showThoughts
-        // Use internal executor for better performance
-        self.executor = AgentInternalExecutor(verbose: verbose)
+        // Use direct PeekabooCore services for better performance
+        self.executor = AgentExecutor(verbose: verbose)
     }
 
     struct AgentResult: Codable {

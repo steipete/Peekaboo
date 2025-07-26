@@ -31,7 +31,7 @@ struct AgentShellCommandTests {
     @Test("Agent executor handles shell commands")
     @available(macOS 14.0, *)
     func executorHandlesShellCommand() async throws {
-        let executor = AgentInternalExecutor(verbose: false)
+        let executor = AgentExecutor(verbose: false)
         
         // Test echo command
         let result = try await executor.executeFunction(
@@ -56,7 +56,7 @@ struct AgentShellCommandTests {
     @Test("Shell command handles errors correctly")
     @available(macOS 14.0, *)
     func shellCommandErrorHandling() async throws {
-        let executor = AgentInternalExecutor(verbose: false)
+        let executor = AgentExecutor(verbose: false)
         
         // Test command that should fail
         let result = try await executor.executeFunction(
@@ -81,7 +81,7 @@ struct AgentShellCommandTests {
     @Test("Shell command respects timeout")
     @available(macOS 14.0, *)
     func shellCommandTimeout() async throws {
-        let executor = AgentInternalExecutor(verbose: false)
+        let executor = AgentExecutor(verbose: false)
         
         // Test command that would hang without timeout
         let result = try await executor.executeFunction(
@@ -106,7 +106,7 @@ struct AgentShellCommandTests {
     @Test("Shell command uses zsh")
     @available(macOS 14.0, *)
     func shellCommandUsesZsh() async throws {
-        let executor = AgentInternalExecutor(verbose: false)
+        let executor = AgentExecutor(verbose: false)
         
         // Test zsh-specific syntax
         let result = try await executor.executeFunction(
@@ -132,7 +132,7 @@ struct AgentShellCommandTests {
     @Test("Shell command handles complex commands")
     @available(macOS 14.0, *)
     func shellCommandComplexCommands() async throws {
-        let executor = AgentInternalExecutor(verbose: false)
+        let executor = AgentExecutor(verbose: false)
         
         // Test piping and multiple commands
         let result = try await executor.executeFunction(
@@ -158,7 +158,7 @@ struct AgentShellCommandTests {
     @Test("Shell command validates required parameters")
     @available(macOS 14.0, *)
     func shellCommandParameterValidation() async throws {
-        let executor = AgentInternalExecutor(verbose: false)
+        let executor = AgentExecutor(verbose: false)
         
         // Test missing command parameter
         let result = try await executor.executeFunction(

@@ -106,7 +106,7 @@ struct AgentCommandBasicTests {
     @Test("Command executor validates arguments")
     @available(macOS 14.0, *)
     func commandExecutorValidation() async throws {
-        let executor = AgentInternalExecutor(verbose: false)
+        let executor = AgentExecutor(verbose: false)
 
         // Test invalid JSON
         let result = try await executor.executeFunction(

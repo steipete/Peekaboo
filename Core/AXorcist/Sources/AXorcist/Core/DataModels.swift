@@ -51,21 +51,38 @@ public struct AXValueWrapper: Codable, Sendable, Equatable {
 
     // Static helper to sanitize individual items, called recursively by init for collections
     @MainActor
-    private static func recursivelySanitize(_ item: Any?) -> Any { // Returns Any (basic types or () for nil)
+    private static func recursivelySanitize(_ item: Any?) -> Any {
+        return recursivelySanitizeWithDepth(item, depth: 0, visited: Set<ObjectIdentifier>())
+    }
+    
+    @MainActor
+    private static func recursivelySanitizeWithDepth(_ item: Any?, depth: Int, visited: Set<ObjectIdentifier>) -> Any {
+        // Prevent infinite recursion with depth limit
+        guard depth < 50 else { return "<max_depth_reached>" }
+        
         guard let anItem = item else { return () } // Convert nil to AnyCodable's nil marker
+        
+        // Check for circular references in collections
+        var currentVisited = visited
+        if let object = anItem as? AnyObject {
+            let id = ObjectIdentifier(object)
+            if currentVisited.contains(id) {
+                return "<circular_reference>"
+            }
+            currentVisited.insert(id)
+        }
+        
         let cfItem = anItem as CFTypeRef
         if CFGetTypeID(cfItem) == CFNullGetTypeID() { return () } // NSNull to AnyCodable's nil
         if CFGetTypeID(cfItem) == AXUIElementGetTypeID() { return "<AXUIElement_RS>" }
         if let element = anItem as? Element { return "<Element_RS: \(element.briefDescription(option: .raw))>" }
 
-        // If it's a collection, recurse. This handles nested collections.
-        // Note: This recursive call inside a static func might lead to issues if not careful with types.
-        // However, we are returning basic types or placeholders from the checks above.
+        // If it's a collection, recurse with cycle detection
         if let array = anItem as? [Any?] {
-            return array.map { recursivelySanitize($0) }
+            return array.map { recursivelySanitizeWithDepth($0, depth: depth + 1, visited: currentVisited) }
         }
         if let dict = anItem as? [String: Any?] {
-            return dict.mapValues { recursivelySanitize($0) }
+            return dict.mapValues { recursivelySanitizeWithDepth($0, depth: depth + 1, visited: currentVisited) }
         }
 
         // For basic, already encodable types, return as is.

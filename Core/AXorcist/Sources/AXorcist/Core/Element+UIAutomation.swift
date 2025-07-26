@@ -67,13 +67,8 @@ public extension Element {
         
         mouseUp.post(tap: .cghidEventTap)
         
-        // For double clicks, repeat
-        if clickCount == 2 {
-            Thread.sleep(forTimeInterval: 0.1)
-            mouseDown.post(tap: .cghidEventTap)
-            Thread.sleep(forTimeInterval: 0.01)
-            mouseUp.post(tap: .cghidEventTap)
-        }
+        // Note: clickCount=2 events are automatically handled by the system
+        // No need to post additional events for double clicks
     }
     
     /// Wait for this element to become actionable

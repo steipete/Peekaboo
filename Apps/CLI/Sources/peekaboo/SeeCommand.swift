@@ -59,6 +59,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
     }
 
     mutating func run() async throws {
+        let startTime = Date()
         configureVerboseLogging()
         Logger.shared.operationStart("see_command", metadata: [
             "app": self.app ?? "none",
@@ -108,7 +109,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand {
             }
 
             // Output results
-            let executionTime = Date().timeIntervalSince(Date())
+            let executionTime = Date().timeIntervalSince(startTime)
             Logger.shared.operationComplete("see_command", metadata: [
                 "executionTimeMs": Int(executionTime * 1000),
                 "success": true,

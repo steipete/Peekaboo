@@ -3,9 +3,9 @@ import AXorcist
 import Foundation
 import PeekabooCore
 
-/// Internal executor for agent commands that uses native functions instead of CLI
+/// Executor for agent commands that uses PeekabooCore services directly
 @available(macOS 14.0, *)
-struct AgentInternalExecutor {
+struct AgentExecutor {
     let verbose: Bool
     let sessionManager = SessionManager.shared
 
