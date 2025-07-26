@@ -33,7 +33,7 @@ Perfect for:
 Peekaboo bridges the gap between visual content on your screen and AI understanding. It provides:
 
 - **Lightning-fast screenshots** of screens, applications, or specific windows
-- **AI-powered image analysis** using GPT-4 Vision, Claude, or local models
+- **AI-powered image analysis** using GPT-4.1 Vision, Claude, or local models
 - **Complete GUI automation** (v3) - Click, type, scroll, and interact with any macOS app
 - **Natural language automation** (v3) - AI agent that understands tasks like "Open TextEdit and write a poem"
 - **Smart UI element detection** - Automatically identifies buttons, text fields, links, and more with precise coordinate mapping
@@ -98,6 +98,10 @@ peekaboo see --app Safari               # Identify UI elements
 peekaboo click "Submit"                 # Click button by text
 peekaboo type "Hello world"             # Type at current focus
 peekaboo scroll down --amount 5         # Scroll down 5 ticks
+
+# AI Agent - Natural language automation
+peekaboo "Open Safari and search for weather"
+peekaboo agent "Fill out the contact form" --verbose
 peekaboo hotkey cmd,c                   # Press Cmd+C
 
 # AI Agent Automation (v3) 🤖
@@ -187,7 +191,7 @@ peekaboo config show --effective
 {
   // AI Provider Settings
   "aiProviders": {
-    "providers": "openai/gpt-4o,ollama/llava:latest",
+    "providers": "openai/gpt-4.1,ollama/llava:latest",
     // NOTE: API keys should be in ~/.peekaboo/credentials
     "ollamaBaseUrl": "http://localhost:11434"
   },
@@ -269,7 +273,7 @@ Edit your Claude Desktop configuration:
       "command": "npx",
       "args": ["-y", "@steipete/peekaboo-mcp"],
       "env": {
-        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
+        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4.1,ollama/llava:latest",
         "OPENAI_API_KEY": "your-openai-api-key-here"
       }
     }
@@ -312,7 +316,7 @@ Add to your Cursor settings:
       "command": "npx",
       "args": ["-y", "@steipete/peekaboo-mcp"],
       "env": {
-        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
+        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4.1,ollama/llava:latest",
         "OPENAI_API_KEY": "your-openai-api-key-here"
       }
     }
@@ -564,8 +568,33 @@ Peekaboo v3 introduces an AI-powered agent that can understand and execute compl
 # Set your OpenAI API key
 export OPENAI_API_KEY="your-api-key-here"
 
+# Or save it securely in Peekaboo's config
+peekaboo config set-credential OPENAI_API_KEY your-api-key-here
+
 # Now you can use natural language automation!
 peekaboo "Open Safari and search for weather"
+```
+
+### Two Ways to Use the Agent
+
+#### 1. Direct Natural Language (Default)
+When you provide a text argument without a subcommand, Peekaboo automatically uses the agent:
+
+```bash
+# These all invoke the agent directly
+peekaboo "Click the Submit button"
+peekaboo "Open TextEdit and write Hello"
+peekaboo "Take a screenshot of Safari"
+```
+
+#### 2. Explicit Agent Command
+Use the `agent` subcommand for more control and options:
+
+```bash
+# With options and flags
+peekaboo agent "Fill out the contact form" --verbose
+peekaboo agent "Close all Finder windows" --dry-run
+peekaboo agent "Install this app" --max-steps 30 --json-output
 ```
 
 ### How the Agent Works
@@ -576,19 +605,33 @@ peekaboo "Open Safari and search for weather"
 4. **Verifies Results** - Takes screenshots to confirm actions succeeded
 5. **Handles Errors** - Can retry failed actions or adjust approach
 
-### Agent Examples
+### Real-World Examples
 
 ```bash
-# Direct invocation (no subcommand needed)
-peekaboo "Open TextEdit and write a thank you letter"
-peekaboo "Take a screenshot of all open windows"
-peekaboo "Find the Terminal app and run ls -la"
-peekaboo "Close all Finder windows except Downloads"
+# Web Automation
+peekaboo "Go to github.com and search for peekaboo"
+peekaboo "Click the first search result"
+peekaboo "Star this repository"
 
-# Using the agent subcommand with options
-peekaboo agent "Click the login button and sign in" --verbose
-peekaboo agent "Fill out the contact form" --dry-run
-peekaboo agent "Install this app from the DMG file" --max-steps 30
+# Document Creation
+peekaboo "Open Pages and create a new blank document"
+peekaboo "Type 'Meeting Agenda' as the title and make it bold"
+peekaboo "Add bullet points for Introduction, Main Topics, and Action Items"
+
+# File Management
+peekaboo "Open Finder and navigate to Downloads"
+peekaboo "Select all PDF files and move them to Documents"
+peekaboo "Create a new folder called 'Archived PDFs'"
+
+# Application Testing
+peekaboo "Launch Calculator and calculate 42 * 17"
+peekaboo "Take a screenshot of the result"
+peekaboo "Clear the calculator and close it"
+
+# System Tasks
+peekaboo "Open System Settings and go to Display settings"
+peekaboo "Change the display resolution to 1920x1080"
+peekaboo "Take a screenshot to confirm the change"
 ```
 
 ### Agent Options
@@ -610,19 +653,53 @@ The agent has access to all Peekaboo commands:
 - **File Operations** - Save files, handle dialogs
 - **Complex Workflows** - Chain multiple actions together
 
+### Understanding Agent Execution
+
+When you run an agent command, here's what happens behind the scenes:
+
+```bash
+# Your command:
+peekaboo "Click the Submit button"
+
+# Agent breaks it down into:
+peekaboo see                    # Capture screen and identify elements
+peekaboo click "Submit"         # Click the identified button
+```
+
 ### Example Workflow
 
 ```bash
 # Complex multi-step task
 peekaboo agent --verbose "Create a new document in Pages with the title 'Meeting Notes' and add today's date"
 
-# Agent will:
-# 1. Use 'see' to check current screen
-# 2. Use 'app launch Pages' if needed
-# 3. Use 'click' on New Document
-# 4. Use 'type' to enter the title
-# 5. Use 'hotkey' for formatting
-# 6. Use 'type' to add the date
+# Agent will execute commands like:
+# 1. peekaboo see --app Pages              # Check if Pages is open
+# 2. peekaboo app launch Pages             # Launch if needed
+# 3. peekaboo sleep --duration 2000        # Wait for app to load
+# 4. peekaboo click "Create Document"      # Click new document
+# 5. peekaboo type "Meeting Notes"         # Enter title
+# 6. peekaboo hotkey cmd+b                 # Make text bold
+# 7. peekaboo hotkey return                # New line
+# 8. peekaboo type "Date: $(date)"         # Add current date
+```
+
+### Debugging Agent Actions
+
+Use `--verbose` to see exactly what the agent is doing:
+
+```bash
+peekaboo agent --verbose "Find and click the login button"
+
+# Output will show:
+# [Agent] Analyzing request...
+# [Agent] Planning steps:
+#   1. Capture current screen
+#   2. Identify login button
+#   3. Click on the button
+# [Agent] Executing: peekaboo see
+# [Agent] Found elements: button "Login" at (834, 423)
+# [Agent] Executing: peekaboo click "Login"
+# [Agent] Action completed successfully
 ```
 
 ### Tips for Best Results
@@ -844,7 +921,7 @@ Settings follow this precedence (highest to lowest):
 
 | Setting | Config File | Environment Variable | Description |
 |---------|-------------|---------------------|-------------|
-| AI Providers | `aiProviders.providers` | `PEEKABOO_AI_PROVIDERS` | Comma-separated list (e.g., "openai/gpt-4o,ollama/llava:latest") |
+| AI Providers | `aiProviders.providers` | `PEEKABOO_AI_PROVIDERS` | Comma-separated list (e.g., "openai/gpt-4.1,ollama/llava:latest") |
 | OpenAI API Key | Use `credentials` file | `OPENAI_API_KEY` | Required for OpenAI provider |
 | Anthropic API Key | Use `credentials` file | `ANTHROPIC_API_KEY` | For Claude Vision (coming soon) |
 | Ollama URL | `aiProviders.ollamaBaseUrl` | `PEEKABOO_OLLAMA_BASE_URL` | Default: http://localhost:11434 |
@@ -876,11 +953,11 @@ For security, Peekaboo supports three methods for API key storage (in order of r
 
 - **`PEEKABOO_AI_PROVIDERS`**: Comma-separated list of AI providers to use for image analysis
   - Format: `provider/model,provider/model`
-  - Example: `"openai/gpt-4o,ollama/llava:latest"`
+  - Example: `"openai/gpt-4.1,ollama/llava:latest"`
   - The first available provider will be used
-  - Default: `"openai/gpt-4o,ollama/llava:latest"`
+  - Default: `"openai/gpt-4.1,ollama/llava:latest"`
 
-- **`OPENAI_API_KEY`**: Your OpenAI API key for GPT-4 Vision
+- **`OPENAI_API_KEY`**: Your OpenAI API key for GPT-4.1 Vision
   - Required when using the `openai` provider
   - Get your key at: https://platform.openai.com/api-keys
 

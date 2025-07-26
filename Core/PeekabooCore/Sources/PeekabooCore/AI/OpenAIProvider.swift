@@ -17,7 +17,7 @@ open class OpenAIProvider: AIProvider {
         URLSession.shared
     }
 
-    public init(model: String = "gpt-4o") {
+    public init(model: String = "gpt-4.1") {
         self.model = model
     }
 

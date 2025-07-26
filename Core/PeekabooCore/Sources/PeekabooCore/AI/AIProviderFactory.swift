@@ -24,7 +24,7 @@ public enum AIProviderFactory {
     public static func getDefaultModel(for provider: String) -> String {
         switch provider.lowercased() {
         case "openai":
-            "gpt-4o"
+            "gpt-4.1"
         case "ollama":
             "llava:latest"
         default:

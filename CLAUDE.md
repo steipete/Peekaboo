@@ -5,6 +5,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 To test this project interactive we can use:
 `PEEKABOO_AI_PROVIDERS="ollama/llava:latest" npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp@beta`
 
+## Quick Build Commands
+
+When the user types "build/compile peekaboo cli" or similar:
+1. Build the CLI in debug mode using the debug build script
+2. Replace the `peekaboo` binary in the project root with the newly built version
+3. This ensures the binary is always up-to-date and easily accessible
+
+```bash
+# This is what should happen:
+./scripts/build-swift-debug.sh
+cp -f Apps/CLI/.build/debug/peekaboo ./peekaboo
+```
+
 ## Recent Updates
 
 - **Playground test app created** (2025-01-24): Added comprehensive SwiftUI test application at `Playground/` for testing all Peekaboo automation features. Includes its own logging utility `playground-log.sh` based on vtlog. See the "Playground Test App" section below.
@@ -169,11 +182,11 @@ peekaboo-mcp
 ./peekaboo-cli/.build/debug/peekaboo list windows --app "Finder" --json-output
 
 # Analyze images with AI (NEW)
-PEEKABOO_AI_PROVIDERS="openai/gpt-4o" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "What is shown in this image?"
+PEEKABOO_AI_PROVIDERS="openai/gpt-4.1" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "What is shown in this image?"
 PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "Describe this screenshot" --json-output
 
 # Use multiple AI providers (auto-selects first available)
-PEEKABOO_AI_PROVIDERS="openai/gpt-4o,ollama/llava:latest" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "What application is this?"
+PEEKABOO_AI_PROVIDERS="openai/gpt-4.1,ollama/llava:latest" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "What application is this?"
 
 # Configuration management (UPDATED)
 ./peekaboo-cli/.build/debug/peekaboo config init                    # Create default config file
@@ -349,7 +362,7 @@ try await services.windows.resizeWindow(
    {
      // AI Provider Settings
      "aiProviders": {
-       "providers": "openai/gpt-4o,ollama/llava:latest",
+       "providers": "openai/gpt-4.1,ollama/llava:latest",
        // NOTE: API keys should be in ~/.peekaboo/credentials or env vars
        "ollamaBaseUrl": "http://localhost:11434"
      },

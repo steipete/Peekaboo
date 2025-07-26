@@ -498,7 +498,7 @@ public final class ConfigurationManager: @unchecked Sendable {
             // Comma-separated list of AI providers in order of preference
             // Format: "provider/model,provider/model"
             // Supported providers: openai, ollama
-            "providers": "openai/gpt-4o,ollama/llava:latest",
+            "providers": "openai/gpt-4.1,ollama/llava:latest",
             
             // NOTE: API keys should be stored in ~/.peekaboo/credentials
             // or set as environment variables, not in this file

@@ -331,7 +331,7 @@ async function analyzeWithOpenAI(
   const prompt = question.trim() || "Please describe what you see in this image.";
 
   const response = await openai.chat.completions.create({
-    model: model || "gpt-4o",
+    model: model || "gpt-4.1",
     messages: [
       {
         role: "user",
@@ -357,7 +357,7 @@ export function getDefaultModelForProvider(provider: string): string {
     case "ollama":
       return "llava:latest";
     case "openai":
-      return "gpt-4o";
+      return "gpt-4.1";
     case "anthropic":
       return "claude-3-sonnet-20240229";
     default:
