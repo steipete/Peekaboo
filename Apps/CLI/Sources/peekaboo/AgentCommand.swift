@@ -95,17 +95,11 @@ struct AgentCommand: AsyncParsableCommand {
                 outputAgentJSON(response)
             } else if !(self.verbose || effectiveShowThoughts) {
                 // Simple human-readable output when not in verbose/showThoughts mode
-                print("\n✅ Task completed successfully!")
-                print("\nSteps executed:")
-                for (index, step) in result.steps.enumerated() {
-                    print("\n\(index + 1). \(step.description)")
-                    if let output = step.output {
-                        print("   Result: \(output)")
-                    }
-                }
-
                 if let summary = result.summary {
-                    print("\n📝 Summary: \(summary)")
+                    // For information queries, the summary is the answer
+                    print("\n\(summary)")
+                } else {
+                    print("\n✅ Task completed successfully!")
                 }
             }
         } catch let error as AgentError {
@@ -454,8 +448,10 @@ struct OpenAIAgent {
                 let messages = try await getMessages(threadId: threadId)
                 let summary = messages.first?.content.first?.text?.value
                 if (self.verbose || self.showThoughts), let summary {
-                    print("\nAgent's Summary:")
-                    print("\(summary)")
+                    print("\n═══════════════════════════════════════════════════════")
+                    print(" RESULT")
+                    print("═══════════════════════════════════════════════════════")
+                    print("\n\(summary)")
                     
                     if self.showThoughts {
                         print("\nThoughts:")
@@ -494,7 +490,7 @@ struct OpenAIAgent {
 
         return AgentResult(
             steps: steps,
-            summary: "Task completed after \(stepCount) steps",
+            summary: "I completed \(stepCount) steps but the agent did not provide a specific summary. The task appears to have been executed.",
             success: true)
     }
 
@@ -574,34 +570,56 @@ struct OpenAIAgent {
             2. **TO LIST WINDOWS**: Use 'list' with target='windows' and app='AppName'
             3. **TO DISCOVER MENUS**: Use 'menu list --app AppName' to get full menu structure OR 'see' command which includes basic menu_bar data
             4. For UI interaction: Use 'see' to capture screenshots and map UI elements
-            5. Break down complex tasks into specific actions
-            6. Execute each action using the appropriate command
-            7. Verify results when needed
+            5. Break down complex tasks into MINIMAL specific actions
+            6. Execute each action ONCE before retrying - don't repeat failed patterns
+            7. Verify results only when necessary for the task
+            
+            FINAL RESPONSE REQUIREMENTS:
+            - ALWAYS provide a meaningful final message that summarizes what you accomplished
+            - For information retrieval (weather, search results, etc.): Include the actual information found
+            - For actions/tasks: Describe what was done and confirm success or explain any issues
+            - Be specific about the outcome - avoid generic "task completed" messages
+            - Examples:
+              - Information: "The weather in London is currently 15°C with cloudy skies and 70% humidity."
+              - Action success: "I've opened Safari and navigated to the Apple homepage. The page is now displayed."
+              - Action with issues: "I opened TextEdit but couldn't find a save button. The document remains unsaved."
+            - Use 'see' with analyze=true when you need to understand or verify what's on screen
             
             IMPORTANT APP BEHAVIORS & OPTIMIZATIONS:
             - ALWAYS check window_count in app launch response BEFORE any other action
-            - If window_count > 0, the app has windows - use 'see' to verify
-            - If window_count = 0, FIRST try 'see' command - it may take a moment for windows to appear
-            - ONLY use 'hotkey' ["cmd", "n"] if BOTH conditions are met:
-              1. window_count was 0 in launch response
-              2. 'see' command fails with "No windows found" error
-            - Safari typically opens with a window - wait for it rather than forcing new windows
-            - If 'see' fails once, try it again before using cmd+n (windows may still be opening)
+            - Safari launch pattern:
+              1. Launch Safari and check window_count
+              2. If window_count = 0, wait ONE second (agent processing time), then try 'see' ONCE
+              3. If 'see' still fails, use 'app' focus command, then 'hotkey' ["cmd", "n"] ONCE
+              4. Do NOT repeat the see/cmd+n pattern multiple times
+            - STOP trying if a window is created - one window is enough
+            - Browser windows may take 1-2 seconds to fully appear after launch
             - NEVER use 'wait' commands - the agent processing time provides natural delays
             - If content appears to be loading, use 'see' again instead of 'wait'
+            - BE EFFICIENT: Minimize redundant commands and retries
             
             SAVING FILES:
             - After opening Save dialog, type the filename then use 'hotkey' with ["cmd", "s"] or ["return"] to save
             - To navigate to Desktop in save dialog: use 'hotkey' with ["cmd", "shift", "d"]
 
+            EFFICIENCY & TIMING:
+            - Your processing time naturally adds 1-2 seconds between commands - use this instead of 'wait'
+            - One retry is usually enough - if something fails twice, try a different approach
+            - For Safari/browser launches: Allow 2-3 seconds total for window to appear (your thinking time counts)
+            - Reduce steps by combining related actions when possible
+            - Each command costs time - optimize for minimal command count
+            
             CRITICAL INSTRUCTIONS:
             - When asked to "list applications" or "show running apps", ALWAYS use: list(target="apps")
             - Do NOT launch Activity Monitor to list apps - use the list command!
             - Do NOT take screenshots to find running apps - use the list command!
             - MINIMIZE command usage - be efficient and avoid redundant operations
+            - STOP repeating failed command patterns - try something different
 
             Always maintain session_id across related commands for element tracking.
             Be precise with UI interactions and verify the current state before acting.
+            
+            REMEMBER: Your final message is what the user sees as the result. Make it informative and specific to what you accomplished or discovered.
             """,
             tools: tools)
 
