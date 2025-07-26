@@ -324,7 +324,8 @@ public struct OpenAIChatCompletionRequest: Codable, Sendable {
         stream: Bool? = nil,
         maxTokens: Int? = nil,
         reasoningEffort: String? = nil,
-        maxCompletionTokens: Int? = nil
+        maxCompletionTokens: Int? = nil,
+        reasoning: OpenAIReasoning? = nil
     ) {
         self.model = model
         self.messages = messages
@@ -336,6 +337,7 @@ public struct OpenAIChatCompletionRequest: Codable, Sendable {
         self.maxTokens = maxTokens
         self.reasoningEffort = reasoningEffort
         self.maxCompletionTokens = maxCompletionTokens
+        self.reasoning = reasoning
     }
 }
 

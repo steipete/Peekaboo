@@ -39,6 +39,28 @@ struct EnhancedErrorTests {
         #expect(result.content.contains("Exit code: 1"))
     }
     
+    @Test("Which command shows 'not found' message from stdout")
+    func testWhichCommandNotFound() async throws {
+        let services = MockPeekabooServices()
+        let agent = PeekabooAgentService(services: services)
+        
+        // Mock shell tool to simulate 'which pandoc' output
+        services.mockShellOutput = ShellOutput(
+            stdout: "pandoc not found\n",
+            stderr: "",
+            exitCode: 1
+        )
+        
+        let result = try await agent.executeTask(
+            "Run shell command 'which pandoc'",
+            dryRun: false
+        )
+        
+        // Should show the actual "pandoc not found" message
+        #expect(result.content.contains("pandoc not found"))
+        #expect(result.content.contains("Exit code: 1"))
+    }
+    
     // MARK: - Application Launch Errors
     
     @Test("Launch app with typo shows fuzzy matches")
@@ -461,6 +483,7 @@ class MockPeekabooServices: PeekabooServices {
     var mockActiveDialogs: [ActiveDialog] = []
     var mockPermissions: MockPermissions?
     var mockError: Error?
+    var mockShellOutput: ShellOutput?
     
     override init() {
         super.init()
@@ -474,6 +497,7 @@ class MockPeekabooServices: PeekabooServices {
         self.dialogs = MockDialogService(parent: self)
         self.permissions = mockPermissions ?? MockPermissions()
         self.screenCapture = MockScreenCaptureService(parent: self)
+        self.process = MockProcessService(parent: self)
     }
 }
 
@@ -846,4 +870,57 @@ struct DialogResult {
     let success: Bool
     let action: DialogAction
     let details: String
+}
+
+struct ShellOutput {
+    let stdout: String
+    let stderr: String
+    let exitCode: Int32
+}
+
+@available(macOS 14.0, *)
+class MockProcessService: ProcessServiceProtocol {
+    weak var parent: MockPeekabooServices?
+    
+    init(parent: MockPeekabooServices) {
+        self.parent = parent
+    }
+    
+    func execute(command: String, arguments: [String], environment: [String: String]?, currentDirectory: String?) async throws -> ProcessResult {
+        // If we have mock shell output, return it
+        if let mockOutput = parent?.mockShellOutput {
+            return ProcessResult(
+                output: mockOutput.stdout,
+                errorOutput: mockOutput.stderr,
+                exitCode: mockOutput.exitCode
+            )
+        }
+        
+        // Default implementation for common commands
+        if command.contains("which") {
+            let target = arguments.last ?? ""
+            if ["ls", "cat", "echo", "pwd"].contains(target) {
+                return ProcessResult(output: "/usr/bin/\(target)\n", errorOutput: "", exitCode: 0)
+            } else {
+                return ProcessResult(output: "\(target) not found\n", errorOutput: "", exitCode: 1)
+            }
+        }
+        
+        // Default error
+        return ProcessResult(
+            output: "",
+            errorOutput: "command not found",
+            exitCode: 127
+        )
+    }
+    
+    func executeScript(script: String, language: ScriptLanguage) async throws -> ProcessResult {
+        return ProcessResult(output: "", errorOutput: "", exitCode: 0)
+    }
+}
+
+struct ProcessResult {
+    let output: String
+    let errorOutput: String
+    let exitCode: Int32
 }

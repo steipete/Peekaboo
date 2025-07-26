@@ -1795,10 +1795,31 @@ extension PeekabooAgentService {
                             "exitCode": Int(process.terminationStatus)
                         ])
                     } else {
+                        // For failed commands, combine output and error for better context
+                        var errorMessage = ""
+                        
+                        // Include stdout if it has content (e.g., "pandoc not found" from which)
+                        if !output.isEmpty {
+                            errorMessage = output.trimmingCharacters(in: .whitespacesAndNewlines)
+                        }
+                        
+                        // Add stderr if present
+                        if !errorOutput.isEmpty {
+                            if !errorMessage.isEmpty {
+                                errorMessage += "\n"
+                            }
+                            errorMessage += errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+                        }
+                        
+                        // Fallback if both are empty
+                        if errorMessage.isEmpty {
+                            errorMessage = "Command failed with exit code \(process.terminationStatus)"
+                        }
+                        
                         return .dictionary([
                             "success": false,
-                            "output": output,
-                            "error": errorOutput.isEmpty ? "Command failed with exit code \(process.terminationStatus)" : errorOutput,
+                            "output": output, // Still include raw output for completeness
+                            "error": errorMessage,
                             "exitCode": Int(process.terminationStatus)
                         ])
                     }

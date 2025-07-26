@@ -273,7 +273,6 @@ struct AgentCommand: AsyncParsableCommand {
             case .compact:
                 let modelName = model ?? "o3"  // Default model
                 print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)v\(Version.fullVersion) (\(modelName))\(TerminalColor.reset)")
-                print("\(TerminalColor.gray)📋 Task: \(task)\(TerminalColor.reset)")
                 if let sessionId = sessionId {
                     print("\(TerminalColor.gray)🔄 Session: \(sessionId.prefix(8))...\(TerminalColor.reset)")
                 }

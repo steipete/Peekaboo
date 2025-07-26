@@ -17,6 +17,8 @@ public enum StreamEventType: String, Codable, Sendable {
     case toolCallCompleted = "tool_call_completed"
     case error = "error"
     case unknown = "unknown"
+    case reasoningSummaryDelta = "reasoning_summary_delta"
+    case reasoningSummaryCompleted = "reasoning_summary_completed"
 }
 
 /// Main streaming event enum that encompasses all event types
@@ -28,6 +30,8 @@ public enum StreamEvent: Codable, Sendable {
     case toolCallCompleted(StreamToolCallCompleted)
     case error(StreamError)
     case unknown(StreamUnknown)
+    case reasoningSummaryDelta(StreamReasoningSummaryDelta)
+    case reasoningSummaryCompleted(StreamReasoningSummaryCompleted)
     
     // Custom coding for the enum
     enum CodingKeys: String, CodingKey {
@@ -60,6 +64,12 @@ public enum StreamEvent: Codable, Sendable {
         case .unknown:
             let data = try container.decode(StreamUnknown.self, forKey: .data)
             self = .unknown(data)
+        case .reasoningSummaryDelta:
+            let data = try container.decode(StreamReasoningSummaryDelta.self, forKey: .data)
+            self = .reasoningSummaryDelta(data)
+        case .reasoningSummaryCompleted:
+            let data = try container.decode(StreamReasoningSummaryCompleted.self, forKey: .data)
+            self = .reasoningSummaryCompleted(data)
         }
     }
     
@@ -87,6 +97,12 @@ public enum StreamEvent: Codable, Sendable {
             try container.encode(data, forKey: .data)
         case .unknown(let data):
             try container.encode(StreamEventType.unknown, forKey: .type)
+            try container.encode(data, forKey: .data)
+        case .reasoningSummaryDelta(let data):
+            try container.encode(StreamEventType.reasoningSummaryDelta, forKey: .type)
+            try container.encode(data, forKey: .data)
+        case .reasoningSummaryCompleted(let data):
+            try container.encode(StreamEventType.reasoningSummaryCompleted, forKey: .type)
             try container.encode(data, forKey: .data)
         }
     }
@@ -202,6 +218,30 @@ public struct StreamUnknown: StreamingEvent, Codable, Sendable {
         if let data = try? JSONSerialization.data(withJSONObject: rawData) {
             try container.encode(data, forKey: .rawData)
         }
+    }
+}
+
+/// Reasoning summary delta event for o3 models
+public struct StreamReasoningSummaryDelta: StreamingEvent, Codable, Sendable {
+    public var type = StreamEventType.reasoningSummaryDelta
+    public let delta: String
+    public let index: Int?
+    
+    public init(delta: String, index: Int? = nil) {
+        self.delta = delta
+        self.index = index
+    }
+}
+
+/// Reasoning summary completed event for o3 models
+public struct StreamReasoningSummaryCompleted: StreamingEvent, Codable, Sendable {
+    public var type = StreamEventType.reasoningSummaryCompleted
+    public let summary: String
+    public let reasoningTokens: Int?
+    
+    public init(summary: String, reasoningTokens: Int? = nil) {
+        self.summary = summary
+        self.reasoningTokens = reasoningTokens
     }
 }
 
