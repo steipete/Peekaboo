@@ -50,6 +50,13 @@ public final class OpenAIModel: ModelInterface {
     
     // MARK: - ModelInterface Implementation
     
+    public var maskedApiKey: String {
+        guard apiKey.count > 8 else { return "***" }
+        let start = apiKey.prefix(6)
+        let end = apiKey.suffix(2)
+        return "\(start)...\(end)"
+    }
+    
     public func getResponse(request: ModelRequest) async throws -> ModelResponse {
         let openAIRequest = try convertToOpenAIRequest(request, stream: false)
         let endpoint = getEndpointForModel(request.settings.modelName)
@@ -145,8 +152,8 @@ public final class OpenAIModel: ModelInterface {
                     }
                     
                     // Process SSE stream
-                    var currentToolCalls: [String: PartialToolCall] = [:]
-                    var toolCallIndexMap: [Int: String] = [:]  // Track tool call IDs by index
+                    let currentToolCalls: [String: PartialToolCall] = [:]
+                    // var toolCallIndexMap: [Int: String] = [:]  // Not used in current implementation
                     
                     for try await line in bytes.lines {
                         aiDebugPrint("DEBUG: SSE line: \(line)")
@@ -328,6 +335,7 @@ public final class OpenAIModel: ModelInterface {
         // Debug: Print request body
         if let bodyData = request.httpBody,
            let bodyString = String(data: bodyData, encoding: .utf8) {
+            aiDebugPrint("DEBUG: OpenAI API Key: \(maskedApiKey)")
             aiDebugPrint("DEBUG: OpenAI Request Body:")
             aiDebugPrint(bodyString)
         }
@@ -744,7 +752,7 @@ public final class OpenAIModel: ModelInterface {
             // Handle function call arguments delta
             if let itemId = chunk.itemId, let delta = chunk.delta, let outputIndex = chunk.outputIndex {
                 // For function calls, we need to parse the JSON arguments incrementally
-                var toolCallId = itemId
+                let toolCallId = itemId
                 
                 // Store or update the tool call
                 if toolCalls[toolCallId] == nil {

@@ -152,9 +152,11 @@ This issue typically occurs when:
 
 ## Recent Updates
 
+- **Anthropic SDK support** (2025-01-26): Added native Swift implementation for Anthropic's Claude models. Features full streaming support, tool calling, multimodal inputs, and all Claude 3/3.5/4 models. No external dependencies required.
+
 - **O3 reasoning summaries** (2025-01-26): Fixed o3 model reasoning output by implementing support for reasoning summaries. Added handling for `response.reasoning_summary_text.delta` events and proper passing of `reasoning: { summary: "detailed" }` parameter to the API. Now displays "💭 Thinking: " prefix followed by actual reasoning summaries when available.
 
-- **Complete Responses API migration** (2025-01-26): Migrated exclusively to OpenAI Responses API, removing all Chat Completions API code. Updated tool format to use flatter structure. Added proper model-specific parameter handling (reasoning for o3/o4, temperature restrictions).
+- **Complete Responses API migration** (2025-01-26): Migrated exclusively to OpenAI Responses API, removing all Chat Completions API code. Updated tool format to use flatter structure. Added proper model-specific parameter handling (reasoning for o3/o4, temperature restrictions)
 
 - **VibeTunnel integration** (2025-01-26): Added VibeTunnel terminal title management to agent command for better visibility across multiple Claude sessions. Terminal titles update automatically during task execution and tool calls.
 
@@ -224,7 +226,7 @@ pb config set-credential OPENAI_API_KEY sk-...
 
 ### Agent Command
 
-The `peekaboo agent` command provides natural language automation capabilities through OpenAI integration:
+The `peekaboo agent` command provides natural language automation capabilities through AI model integration (OpenAI and Anthropic):
 
 ```bash
 # Basic usage
@@ -284,8 +286,10 @@ O3 and o4 models use advanced reasoning but don't expose raw chain-of-thought. I
 # Set API key
 ./peekaboo config set-credential OPENAI_API_KEY sk-...
 
-# Use specific model
+# Use specific model (with lenient matching)
 ./peekaboo agent "do something" --model gpt-4.1
+./peekaboo agent "do something" --model gpt-4    # Resolves to gpt-4.1
+./peekaboo agent "do something" --model gpt      # Resolves to gpt-4.1
 ```
 
 ### References
@@ -293,12 +297,83 @@ O3 and o4 models use advanced reasoning but don't expose raw chain-of-thought. I
 - [OpenAI OpenAPI Spec](https://raw.githubusercontent.com/openai/openai-openapi/refs/heads/manual_spec/openapi.yaml)
 - [Responses API Documentation](https://cookbook.openai.com/examples/responses_api/reasoning_items)
 
+## Anthropic API Integration
+
+### Current Models (2025)
+
+**Claude 4 Series** (Latest Generation - Released May 2025):
+- **Claude Opus 4** (`claude-opus-4-20250514`) - **DEFAULT MODEL**
+  - Most powerful model, world's best coding model
+  - Leads on SWE-bench (72.5%) and Terminal-bench (43.2%)
+  - Supports extended thinking mode: `claude-opus-4-20250514-thinking`
+  - Can work continuously for several hours on long-running tasks
+  - Pricing: $15/$75 per million tokens (input/output)
+  - Level 3 safety classification
+- **Claude Sonnet 4** (`claude-sonnet-4-20250514`)
+  - Cost-optimized general-purpose model
+  - Supports extended thinking mode: `claude-sonnet-4-20250514-thinking`
+  - Pricing: $3/$15 per million tokens (input/output)
+
+**Claude 3.7 Series** (February 2025):
+- **Claude 3.7 Sonnet** - Hybrid reasoning model with rapid/extended thinking modes
+  - Knowledge cutoff: October 2024
+  - Supports up to 128k output tokens
+
+**Claude 3.5 Series** (Still Available):
+- `claude-3-5-haiku` - Fast, cost-effective
+- `claude-3-5-sonnet` - Balanced, includes computer use capabilities
+- `claude-3-5-opus` - Previous generation flagship
+
+**Note**: Claude 3.0 models (opus, sonnet, haiku) have been deprecated and are no longer available via the API.
+
+### Configuration
+```bash
+# Set API key
+./peekaboo config set-credential ANTHROPIC_API_KEY sk-ant-...
+
+# Use Claude Opus 4 (default for Anthropic)
+./peekaboo agent "analyze this code" --model claude-opus-4
+./peekaboo agent "analyze this code" --model claude-4-opus      # Lenient matching
+./peekaboo agent "analyze this code" --model claude-opus        # Resolves to Opus 4
+./peekaboo agent "analyze this code" --model claude             # Defaults to Opus 4
+
+# Use specific models
+./peekaboo agent "quick task" --model claude-sonnet-4
+./peekaboo agent "extended reasoning" --model claude-opus-4-thinking
+
+# Environment variable usage
+PEEKABOO_AI_PROVIDERS="anthropic/claude-opus-4-20250514" ./peekaboo analyze image.png "What is shown?"
+```
+
+### Features
+- **Streaming Support**: Real-time response streaming with SSE
+- **Tool Calling**: Full support for function calling
+- **Multimodal**: Image analysis via base64 encoding
+- **System Prompts**: Separate system parameter for instructions
+- **Token Limits**: Configurable max_tokens (default 4096)
+- **Extended Thinking**: Claude 4 models support thinking modes for complex reasoning
+- **Long Task Support**: Claude 4 can work continuously for several hours
+
+### Key Differences from OpenAI
+- System prompts use separate `system` parameter, not a message
+- Content blocks for multimodal messages
+- Tool results sent as user messages with `tool_result` blocks
+- Different streaming event types and format
+- No support for image URLs (base64 only)
+- Hybrid reasoning models offer both instant and extended thinking modes
+- Claude 4 models support much longer task execution times
+
 ## Important Implementation Details
 
+### Default Model Selection
+
+**The default model for Peekaboo agent is Claude Opus 4** (`claude-opus-4-20250514`), Anthropic's most capable model for coding and complex reasoning tasks. To use a different model, specify it with the `--model` flag or set the `PEEKABOO_AI_PROVIDERS` environment variable.
+
 ### Environment Variables
-- `PEEKABOO_AI_PROVIDERS`: Configure AI backends (e.g., `openai/o3,ollama/llava:latest`)
+- `PEEKABOO_AI_PROVIDERS`: Configure AI backends (e.g., `openai/o3,anthropic/claude-opus-4-20250514`)
 - `PEEKABOO_LOG_LEVEL`: Control logging verbosity
 - `OPENAI_API_KEY`: Required for OpenAI provider
+- `ANTHROPIC_API_KEY`: Required for Anthropic provider
 - `PEEKABOO_USE_MODERN_CAPTURE`: Set to `false` to use legacy API if ScreenCaptureKit hangs
 
 ### Configuration

@@ -43,7 +43,7 @@ public class OpenAIProvider: AIProvider {
     }
     
     public func analyze(imageBase64: String, question: String) async throws -> String {
-        guard let apiKey = apiKey else {
+        guard apiKey != nil else {
             throw AIProviderError.apiKeyMissing("OpenAI API key not configured")
         }
         

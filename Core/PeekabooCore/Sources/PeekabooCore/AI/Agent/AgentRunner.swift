@@ -137,6 +137,9 @@ public struct AgentMetadata: Sendable {
     
     /// Whether this was a resumed session
     public let isResumed: Bool
+    
+    /// Masked API key for verification
+    public let maskedApiKey: String?
 }
 
 // MARK: - Implementation
@@ -144,25 +147,48 @@ public struct AgentMetadata: Sendable {
 private actor AgentRunnerImpl<Context> where Context: Sendable {
     private let agent: PeekabooAgent<Context>
     private let context: Context
-    private let model: any ModelInterface
+    private var model: (any ModelInterface)?
     private let sessionManager: AgentSessionManager
     
     init(agent: PeekabooAgent<Context>, context: Context, model: (any ModelInterface)? = nil) {
         self.agent = agent
         self.context = context
-        
-        // Use provided model or get from provider
-        if let model = model {
-            self.model = model
-        } else {
-            // Get model from provider based on agent settings
-            // Note: This is synchronous init, so we can't use async methods
-            // We'll use the fallback approach for now
-            let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? ""
-            self.model = OpenAIModel(apiKey: apiKey)
+        self.model = model
+        self.sessionManager = AgentSessionManager()
+    }
+    
+    /// Get or create the model instance
+    private func getModel() async throws -> any ModelInterface {
+        if let model = self.model {
+            return model
         }
         
-        self.sessionManager = AgentSessionManager()
+        // Try to get model from ModelProvider
+        let modelName = agent.modelSettings.modelName
+        do {
+            let model = try await ModelProvider.shared.getModel(modelName: modelName)
+            self.model = model
+            return model
+        } catch {
+            // Continue to fallback
+        }
+        
+        // Fallback for unregistered models
+        if modelName.contains("claude") {
+            guard let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] else {
+                throw ModelError.authenticationFailed
+            }
+            let model = AnthropicModel(apiKey: apiKey, modelName: modelName)
+            self.model = model
+            return model
+        } else {
+            guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
+                throw ModelError.authenticationFailed
+            }
+            let model = OpenAIModel(apiKey: apiKey)
+            self.model = model
+            return model
+        }
     }
     
     // MARK: - Non-Streaming Run
@@ -185,7 +211,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         )
         
         // Get response
-        let response = try await model.getResponse(request: request)
+        let currentModel = try await getModel()
+        let response = try await currentModel.getResponse(request: request)
         
         // Process response
         let (finalMessages, toolCalls) = try await processResponse(
@@ -214,7 +241,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 endTime: Date(),
                 toolCallCount: toolCalls.count,
                 modelName: agent.modelSettings.modelName,
-                isResumed: isResumed
+                isResumed: isResumed,
+                maskedApiKey: currentModel.maskedApiKey
             )
         )
     }
@@ -249,6 +277,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             metadata: ["agent": agent.name, "lastActivity": ISO8601DateFormatter().string(from: Date())]
         )
         
+        let currentModel = try await getModel()
         return AgentExecutionResult(
             content: responseContent,
             messages: finalMessages,
@@ -260,7 +289,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 endTime: Date(),
                 toolCallCount: allToolCalls.count,
                 modelName: agent.modelSettings.modelName,
-                isResumed: isResumed
+                isResumed: isResumed,
+                maskedApiKey: currentModel.maskedApiKey
             )
         )
     }
@@ -293,7 +323,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             )
             
             // Get streaming response
-            let eventStream = try await model.getStreamedResponse(request: request)
+            let currentModel = try await getModel()
+            let eventStream = try await currentModel.getStreamedResponse(request: request)
             
             // Process stream
             var responseContent = ""
@@ -506,7 +537,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 settings: agent.modelSettings
             )
             
-            let followUpResponse = try await model.getResponse(request: followUpRequest)
+            let currentModel = try await getModel()
+            let followUpResponse = try await currentModel.getResponse(request: followUpRequest)
             
             // Add follow-up assistant message
             updatedMessages.append(AssistantMessageItem(

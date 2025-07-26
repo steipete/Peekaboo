@@ -44,7 +44,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                     endTime: Date(),
                     toolCallCount: 0,
                     modelName: defaultModelName,
-                    isResumed: false
+                    isResumed: false,
+                    maskedApiKey: nil
                 )
             )
         }

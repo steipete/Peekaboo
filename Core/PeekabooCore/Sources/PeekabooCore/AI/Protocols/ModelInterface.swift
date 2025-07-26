@@ -14,6 +14,11 @@ public protocol ModelInterface: Sendable {
     /// - Parameter request: The model request containing messages, tools, and settings
     /// - Returns: An async stream of events
     func getStreamedResponse(request: ModelRequest) async throws -> AsyncThrowingStream<StreamEvent, Error>
+    
+    /// Get a masked version of the API key for debugging
+    /// Returns the first 6 and last 2 characters of the API key
+    /// - Returns: Masked API key string (e.g., "sk-ant...AA")
+    var maskedApiKey: String { get }
 }
 
 // MARK: - Model Request & Response Types
