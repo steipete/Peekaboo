@@ -127,7 +127,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             tools: createPeekabooTools(),
             modelSettings: ModelSettings(
                 modelName: modelName,
-                toolChoice: .auto  // Encourage tool usage
+                toolChoice: .auto  // Let model decide when to use tools
             ),
             description: "An AI assistant for macOS automation using Peekaboo"
         )
@@ -258,7 +258,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         tools.append(createListElementsTool())
         
         // Focus detection tool
-        // tools.append(createFocusedTool()) // Removed: getFocusedElement not available
+        tools.append(createFocusedTool())
+        
+        // Shell command tool for system operations
+        tools.append(createShellTool())
         
         return tools
     }
@@ -528,46 +531,69 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         
         IMPORTANT: You MUST use the provided tools to accomplish tasks. Do not describe what you would do - actually do it using the tools.
         
+        ## Your Capabilities
+        
         You have access to powerful tools for:
-        - Taking screenshots and capturing windows
-        - Clicking on UI elements and typing text
-        - Managing windows and applications
-        - Finding and interacting with specific UI elements
-        - Checking what UI element is currently focused
+        - **Shell Commands**: Execute any shell command including file operations, AppleScript, and system utilities
+        - **UI Automation**: Click, type, scroll, and interact with any UI element
+        - **Window Management**: Launch apps, focus windows, resize, and control window states
+        - **Screen Capture**: Take screenshots of screens, windows, or specific applications
+        - **Element Detection**: Find and interact with specific UI elements by text or type
         
-        When helping users:
-        1. ALWAYS use tools to perform actions rather than describing them
-        2. Be precise and efficient in your automation tasks
-        3. Always verify actions were successful before proceeding
-        4. Use element detection sessions to cache UI lookups when performing multiple operations
-        5. Provide clear feedback about what you're doing
-        6. Handle errors gracefully and suggest alternatives
+        ## Creative Problem Solving
         
-        Focus Awareness:
-        The type, click, and hotkey tools automatically return information about the focused UI element after the action.
-        Use this information to verify your actions were successful:
+        Use your tools creatively to accomplish complex tasks:
         
-        - focusAfterTyping: Shows which element received the typed text
-        - focusAfterClick: Shows which element is focused after clicking  
-        - focusAfterHotkey: Shows which element is focused after the keyboard shortcut
+        ### File Operations via Shell
+        - List files: `ls ~/Downloads/*.ods`
+        - Check file existence: `test -f ~/Downloads/file.ods && echo "exists"`
+        - Move/copy files: `cp source.txt destination.txt`
+        - Read file contents: `cat filename.txt`
+        - Convert files using command-line tools: `pandoc input.ods -o output.md`
         
-        Use the 'focused' tool to check what element is currently focused before taking actions.
+        ### Application Automation via AppleScript
+        - Navigate Finder: `osascript -e 'tell application "Finder" to open folder "Downloads" of home'`
+        - Control any app: `osascript -e 'tell application "AppName" to activate'`
+        - Interact with menus: `osascript -e 'tell application "System Events" to click menu item "Save As..." of menu "File" of menu bar 1 of process "AppName"'`
+        - Get window properties: `osascript -e 'tell application "AppName" to get bounds of window 1'`
         
-        Focus information includes:
-        - app: Which application contains the focused element
-        - element.role: Type of element (AXTextField, AXButton, etc.)
-        - element.title: Label or title of the element
-        - element.value: Current content of the element
-        - element.isTextInput: Whether the element accepts text input
-        - element.canAcceptKeyboardInput: Whether the element can receive keyboard input
+        ### Email Automation
+        - Open Mail with recipient: `open "mailto:email@example.com?subject=Subject&body=Body"`
+        - Use AppleScript for complex email tasks: `osascript -e 'tell application "Mail" to make new outgoing message with properties {subject:"Test", content:"Hello", visible:true}'`
         
-        Important guidelines:
-        - When searching for UI elements, prefer text-based searches as they're more reliable
-        - Use session IDs to improve performance when doing multiple operations
-        - For window management, always check if the target window exists first
-        - When typing sensitive information, warn the user first
-        - Pay attention to focus information to detect when actions target the wrong element
-        - If you type text and the focusAfterTyping shows an unexpected element (like Safari's address bar instead of an email field), acknowledge the error and take corrective action
+        ### Web Automation
+        - Open URLs: `open "https://example.com"`
+        - Download files: `curl -O https://example.com/file.pdf`
+        - Use online converters by opening them in browser and automating the UI
+        
+        ### Process Management
+        - Check running processes: `ps aux | grep AppName`
+        - Kill processes: `killall AppName`
+        - Launch applications: Use launch_app tool or `open -a "Application Name"`
+        
+        ## Best Practices
+        
+        1. **Chain Commands**: Use shell operators (&&, ||, ;) to chain multiple commands
+        2. **Check Before Acting**: Verify files exist, apps are running, etc. before interacting
+        3. **Use Both UI and Shell**: Combine UI automation with shell commands for maximum effectiveness
+        4. **Error Handling**: Check command exit codes and handle failures gracefully
+        5. **Path Expansion**: Use ~ for home directory, handle spaces in paths with quotes
+        
+        ## Example Approaches
+        
+        For "Convert ODS to Markdown and email it":
+        1. Use shell to find the file: `ls ~/Downloads/*.ods`
+        2. Check for conversion tools: `which pandoc || which libreoffice`
+        3. Convert using available tools or open in app and export
+        4. Compose email using Mail app or `open "mailto:..."` with the file
+        
+        For "Organize files on desktop":
+        1. List files: `ls ~/Desktop`
+        2. Create folders: `mkdir -p ~/Desktop/Documents ~/Desktop/Images`
+        3. Move files by type: `mv ~/Desktop/*.pdf ~/Desktop/Documents/`
+        4. Or use Finder with AppleScript for visual feedback
+        
+        Remember: You have full system access through the shell tool. Use it creatively alongside UI automation to accomplish any task. Don't just describe what to do - DO IT using your tools!
         
         You are running on macOS with full automation permissions granted to Peekaboo.
         """
@@ -918,13 +944,13 @@ extension PeekabooAgentService {
             description: "List all UI elements in the current context",
             parameters: .object(
                 properties: [
-                    "sessionId": .string(description: "Session ID for element detection"),
+                    "sessionId": .string(description: "Optional session ID for element detection"),
                     "elementType": .enumeration(
                         ["all", "buttons", "textFields", "labels", "links"],
                         description: "Type of elements to list"
                     )
                 ],
-                required: ["sessionId"]
+                required: []
             ),
             execute: { input, services in
                 let sessionId: String = input.value(for: "sessionId") ?? UUID().uuidString
@@ -948,34 +974,382 @@ extension PeekabooAgentService {
         )
     }
     
-    // REMOVED: getFocusedElement is not available in UIAutomationServiceProtocol
-    /*
     private func createFocusedTool() -> Tool<PeekabooServices> {
         Tool(
             name: "focused",
             description: "Get information about the currently focused UI element that would receive keyboard input",
             parameters: .object(properties: [:], required: []),
             execute: { _, services in
-                guard let focusInfo = await services.automation.getFocusedElement() else {
+                await MainActor.run {
+                    guard let focusInfo = services.automation.getFocusedElement() else {
+                        return .dictionary([
+                            "success": true,
+                            "focused": false,
+                            "message": "No UI element is currently focused"
+                        ])
+                    }
+                    
                     return .dictionary([
                         "success": true,
-                        "focused": false,
-                        "message": "No UI element is currently focused"
+                        "focused": true,
+                        "focusInfo": focusInfo.toDictionary()
                     ])
                 }
-                
-                return .dictionary([
-                    "success": true,
-                    "focused": true,
-                    "focusInfo": focusInfo.toDictionary()
-                ])
             }
         )
     }
-    */
+    
+    private func createShellTool() -> Tool<PeekabooServices> {
+        Tool(
+            name: "shell",
+            description: "Execute shell commands for file operations, AppleScript automation, and system tasks",
+            parameters: .object(
+                properties: [
+                    "command": .string(
+                        description: "Shell command to execute (e.g., 'ls ~/Downloads/*.ods', 'osascript -e \"tell application \\\"Finder\\\" to activate\"')"
+                    ),
+                    "workingDirectory": .string(
+                        description: "Optional working directory for the command (defaults to home directory)"
+                    )
+                ],
+                required: ["command"]
+            ),
+            execute: { input, services in
+                let command: String = input.value(for: "command") ?? ""
+                let workingDir: String? = input.value(for: "workingDirectory")
+                
+                // Create a Process to run the shell command
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/bin/bash")
+                process.arguments = ["-c", command]
+                
+                if let dir = workingDir {
+                    process.currentDirectoryURL = URL(fileURLWithPath: dir)
+                }
+                
+                let pipe = Pipe()
+                let errorPipe = Pipe()
+                process.standardOutput = pipe
+                process.standardError = errorPipe
+                
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+                    
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                    
+                    let output = String(data: data, encoding: .utf8) ?? ""
+                    let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+                    
+                    if process.terminationStatus == 0 {
+                        return .dictionary([
+                            "success": true,
+                            "output": output,
+                            "exitCode": Int(process.terminationStatus)
+                        ])
+                    } else {
+                        return .dictionary([
+                            "success": false,
+                            "output": output,
+                            "error": errorOutput.isEmpty ? "Command failed with exit code \(process.terminationStatus)" : errorOutput,
+                            "exitCode": Int(process.terminationStatus)
+                        ])
+                    }
+                } catch {
+                    return .dictionary([
+                        "success": false,
+                        "error": error.localizedDescription,
+                        "exitCode": -1
+                    ])
+                }
+            }
+        )
+    }
+    
+    // MARK: - Menu Tools
+    
+    private func createMenuClickTool() -> Tool<PeekabooServices> {
+        Tool(
+            name: "menu_click",
+            description: "Click a menu item in an application's menu bar",
+            parameters: .object(
+                properties: [
+                    "appName": .string(
+                        description: "Application name (defaults to frontmost app if not specified)"
+                    ),
+                    "menuPath": .string(
+                        description: "Menu item path (e.g., 'File > New', 'Edit > Copy', or just 'Copy')"
+                    )
+                ],
+                required: ["menuPath"]
+            ),
+            execute: { input, services in
+                let appName: String? = input.value(for: "appName")
+                let menuPath: String = input.value(for: "menuPath") ?? ""
+                
+                do {
+                    if let app = appName {
+                        try await services.menu.clickMenuItem(app: app, itemPath: menuPath)
+                    } else {
+                        // Get frontmost app and click menu
+                        let frontmostApp = try await services.applications.getFrontmostApplication()
+                        try await services.menu.clickMenuItem(app: frontmostApp.name, itemPath: menuPath)
+                    }
+                    
+                    return .dictionary([
+                        "success": true,
+                        "menuPath": menuPath,
+                        "app": appName ?? "frontmost"
+                    ])
+                } catch {
+                    return .dictionary([
+                        "success": false,
+                        "error": error.localizedDescription
+                    ])
+                }
+            }
+        )
+    }
+    
+    private func createListMenusTool() -> Tool<PeekabooServices> {
+        Tool(
+            name: "list_menus",
+            description: "List all menu items for an application",
+            parameters: .object(
+                properties: [
+                    "appName": .string(
+                        description: "Application name (defaults to frontmost app if not specified)"
+                    )
+                ],
+                required: []
+            ),
+            execute: { input, services in
+                let appName: String? = input.value(for: "appName")
+                
+                do {
+                    let menuStructure: MenuStructure
+                    
+                    if let app = appName {
+                        menuStructure = try await services.menu.listMenus(for: app)
+                    } else {
+                        menuStructure = try await services.menu.listFrontmostMenus()
+                    }
+                    
+                    // Convert menu structure to simple format
+                    var menuItems: [[String: Any]] = []
+                    for menu in menuStructure.menus {
+                        menuItems.append(contentsOf: flattenMenuItems(menu: menu, parentPath: menu.title))
+                    }
+                    
+                    return .dictionary([
+                        "success": true,
+                        "app": menuStructure.application.name,
+                        "totalItems": menuStructure.totalItems,
+                        "items": menuItems
+                    ])
+                } catch {
+                    return .dictionary([
+                        "success": false,
+                        "error": error.localizedDescription
+                    ])
+                }
+            }
+        )
+    }
+    
+    // MARK: - Dock Tools
+    
+    private func createDockLaunchTool() -> Tool<PeekabooServices> {
+        Tool(
+            name: "dock_launch",
+            description: "Launch an application from the Dock",
+            parameters: .object(
+                properties: [
+                    "appName": .string(
+                        description: "Name of the application in the Dock"
+                    )
+                ],
+                required: ["appName"]
+            ),
+            execute: { input, services in
+                let appName: String = input.value(for: "appName") ?? ""
+                
+                do {
+                    try await services.dock.launchFromDock(appName: appName)
+                    
+                    return .dictionary([
+                        "success": true,
+                        "launched": appName
+                    ])
+                } catch {
+                    return .dictionary([
+                        "success": false,
+                        "error": error.localizedDescription
+                    ])
+                }
+            }
+        )
+    }
+    
+    private func createListDockTool() -> Tool<PeekabooServices> {
+        Tool(
+            name: "list_dock",
+            description: "List all items in the Dock",
+            parameters: .object(
+                properties: [
+                    "includeAll": .boolean(
+                        description: "Include separators and spacers (default: false)"
+                    )
+                ],
+                required: []
+            ),
+            execute: { input, services in
+                let includeAll: Bool = input.value(for: "includeAll") ?? false
+                
+                do {
+                    let dockItems = try await services.dock.listDockItems(includeAll: includeAll)
+                    
+                    let items = dockItems.map { item in
+                        [
+                            "index": item.index,
+                            "title": item.title,
+                            "type": item.itemType.rawValue,
+                            "isRunning": item.isRunning as Any
+                        ]
+                    }
+                    
+                    return .dictionary([
+                        "success": true,
+                        "count": dockItems.count,
+                        "items": items
+                    ])
+                } catch {
+                    return .dictionary([
+                        "success": false,
+                        "error": error.localizedDescription
+                    ])
+                }
+            }
+        )
+    }
+    
+    // MARK: - Dialog Tools
+    
+    private func createDialogClickTool() -> Tool<PeekabooServices> {
+        Tool(
+            name: "dialog_click",
+            description: "Click a button in an active dialog or alert",
+            parameters: .object(
+                properties: [
+                    "buttonText": .string(
+                        description: "Text of the button to click (e.g., 'OK', 'Cancel', 'Save')"
+                    ),
+                    "windowTitle": .string(
+                        description: "Optional specific dialog window title to target"
+                    )
+                ],
+                required: ["buttonText"]
+            ),
+            execute: { input, services in
+                let buttonText: String = input.value(for: "buttonText") ?? ""
+                let windowTitle: String? = input.value(for: "windowTitle")
+                
+                do {
+                    let result = try await services.dialogs.clickButton(
+                        buttonText: buttonText,
+                        windowTitle: windowTitle
+                    )
+                    
+                    return .dictionary([
+                        "success": result.success,
+                        "action": result.action.rawValue,
+                        "details": result.details
+                    ])
+                } catch {
+                    return .dictionary([
+                        "success": false,
+                        "error": error.localizedDescription
+                    ])
+                }
+            }
+        )
+    }
+    
+    private func createDialogInputTool() -> Tool<PeekabooServices> {
+        Tool(
+            name: "dialog_input",
+            description: "Enter text in a dialog field",
+            parameters: .object(
+                properties: [
+                    "text": .string(
+                        description: "Text to enter in the field"
+                    ),
+                    "fieldIdentifier": .string(
+                        description: "Field label, placeholder, or index to target (optional)"
+                    ),
+                    "clearExisting": .boolean(
+                        description: "Whether to clear existing text first (default: true)"
+                    ),
+                    "windowTitle": .string(
+                        description: "Optional specific dialog window title to target"
+                    )
+                ],
+                required: ["text"]
+            ),
+            execute: { input, services in
+                let text: String = input.value(for: "text") ?? ""
+                let fieldIdentifier: String? = input.value(for: "fieldIdentifier")
+                let clearExisting: Bool = input.value(for: "clearExisting") ?? true
+                let windowTitle: String? = input.value(for: "windowTitle")
+                
+                do {
+                    let result = try await services.dialogs.enterText(
+                        text: text,
+                        fieldIdentifier: fieldIdentifier,
+                        clearExisting: clearExisting,
+                        windowTitle: windowTitle
+                    )
+                    
+                    return .dictionary([
+                        "success": result.success,
+                        "action": result.action.rawValue,
+                        "details": result.details
+                    ])
+                } catch {
+                    return .dictionary([
+                        "success": false,
+                        "error": error.localizedDescription
+                    ])
+                }
+            }
+        )
+    }
 }
 
 // MARK: - Helper Functions
+
+private func flattenMenuItems(menu: Menu, parentPath: String) -> [[String: Any]] {
+    var items: [[String: Any]] = []
+    
+    for item in menu.items {
+        let path = "\(parentPath) > \(item.title)"
+        items.append([
+            "path": path,
+            "title": item.title,
+            "enabled": item.isEnabled,
+            "hasSubmenu": !item.submenu.isEmpty
+        ])
+        
+        // Recursively add submenu items
+        if !item.submenu.isEmpty {
+            let submenu = Menu(title: item.title, items: item.submenu)
+            items.append(contentsOf: flattenMenuItems(menu: submenu, parentPath: path))
+        }
+    }
+    
+    return items
+}
 
 private func formatElementList(_ elements: DetectedElements, filterType: String) -> ToolOutput {
     let filteredElements: [DetectedElement]

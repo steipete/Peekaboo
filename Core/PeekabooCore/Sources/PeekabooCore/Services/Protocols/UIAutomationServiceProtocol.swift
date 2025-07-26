@@ -84,6 +84,11 @@ public protocol UIAutomationServiceProtocol: Sendable {
     ///   - duration: Duration of the movement in milliseconds (0 for instant)
     ///   - steps: Number of intermediate steps for smooth movement
     func moveMouse(to: CGPoint, duration: Int, steps: Int) async throws
+    
+    /// Get information about the currently focused UI element
+    /// - Returns: Information about the focused element, or nil if no element has focus
+    @MainActor
+    func getFocusedElement() -> FocusInfo?
 }
 
 /// Result of element detection

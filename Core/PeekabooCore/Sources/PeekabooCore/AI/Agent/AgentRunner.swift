@@ -217,135 +217,16 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         let startTime = Date()
         
         // Load or create session
-        let (messages, actualSessionId, isResumed) = try await prepareSession(
+        let (initialMessages, actualSessionId, isResumed) = try await prepareSession(
             input: input,
             sessionId: sessionId
         )
         
-        // Create request
-        let request = ModelRequest(
-            messages: messages,
-            tools: agent.toolDefinitions,
-            settings: agent.modelSettings,
-            systemInstructions: nil
+        // Process messages recursively until no more tool calls
+        let (finalMessages, allToolCalls, responseContent, usage) = try await processMessagesRecursively(
+            messages: initialMessages,
+            streamHandler: streamHandler
         )
-        
-        // Get streaming response
-        let eventStream = try await model.getStreamedResponse(request: request)
-        
-        // Process stream
-        var responseContent = ""
-        var responseId = ""
-        var toolCalls: [ToolCallItem] = []
-        var pendingToolCalls: [String: PartialToolCall] = [:]
-        var usage: Usage?
-        
-        for try await event in eventStream {
-            switch event {
-            case .responseStarted(let started):
-                responseId = started.id
-                
-            case .textDelta(let delta):
-                responseContent += delta.delta
-                await streamHandler(delta.delta)
-                
-            case .toolCallDelta(let delta):
-                updatePartialToolCall(&pendingToolCalls, with: delta)
-                aiDebugPrint("DEBUG: Tool call delta: id=\(delta.id), name=\(delta.function.name ?? "nil"), args=\(delta.function.arguments ?? "nil")")
-                
-            case .toolCallCompleted(let completed):
-                // Don't use the completed event's function - use our accumulated one
-                if let pendingCall = pendingToolCalls[completed.id] {
-                    aiDebugPrint("DEBUG: Tool call completed: \(completed.id), function: \(pendingCall.name ?? "?"), args: \(pendingCall.arguments)")
-                    if let name = pendingCall.name {
-                        toolCalls.append(ToolCallItem(
-                            id: completed.id,
-                            type: .function,
-                            function: FunctionCall(name: name, arguments: pendingCall.arguments)
-                        ))
-                    }
-                } else {
-                    aiDebugPrint("DEBUG: Tool call completed but no pending call found: \(completed.id)")
-                }
-                
-            case .responseCompleted(let completed):
-                usage = completed.usage
-                
-            case .error(let error):
-                throw ModelError.requestFailed(
-                    NSError(domain: "AgentRunner", code: 0, userInfo: [
-                        NSLocalizedDescriptionKey: error.error.message
-                    ])
-                )
-                
-            default:
-                break
-            }
-        }
-        
-        // Handle tool calls if any
-        var finalMessages = messages
-        if !toolCalls.isEmpty {
-            let toolResults = try await executeTools(toolCalls)
-            
-            // Add assistant message with tool calls
-            var assistantContent: [AssistantContent] = []
-            if !responseContent.isEmpty {
-                assistantContent.append(.outputText(responseContent))
-            }
-            for toolCall in toolCalls {
-                assistantContent.append(.toolCall(toolCall))
-            }
-            
-            finalMessages.append(AssistantMessageItem(
-                id: responseId,
-                content: assistantContent,
-                status: .completed
-            ))
-            
-            // Add tool results
-            for (toolCall, result) in zip(toolCalls, toolResults) {
-                finalMessages.append(ToolMessageItem(
-                    id: UUID().uuidString,
-                    toolCallId: toolCall.id,
-                    content: result
-                ))
-            }
-            
-            // Get final response after tools
-            let followUpRequest = ModelRequest(
-                messages: finalMessages,
-                tools: agent.toolDefinitions,
-                settings: agent.modelSettings
-            )
-            
-            let followUpStream = try await model.getStreamedResponse(request: followUpRequest)
-            
-            for try await event in followUpStream {
-                switch event {
-                case .textDelta(let delta):
-                    responseContent += delta.delta
-                    await streamHandler(delta.delta)
-                    
-                case .responseCompleted(let completed):
-                    if let completedUsage = completed.usage {
-                        usage = completedUsage
-                    }
-                    
-                default:
-                    break
-                }
-            }
-        }
-        
-        // Add final assistant message only if we didn't already add one for tool calls
-        if toolCalls.isEmpty && !responseContent.isEmpty {
-            finalMessages.append(AssistantMessageItem(
-                id: responseId.isEmpty ? UUID().uuidString : responseId,
-                content: [.outputText(responseContent)],
-                status: .completed
-            ))
-        }
         
         // Save session
         try await sessionManager.saveSession(
@@ -359,15 +240,149 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             messages: finalMessages,
             sessionId: actualSessionId,
             usage: usage,
-            toolCalls: toolCalls,
+            toolCalls: allToolCalls,
             metadata: AgentMetadata(
                 startTime: startTime,
                 endTime: Date(),
-                toolCallCount: toolCalls.count,
+                toolCallCount: allToolCalls.count,
                 modelName: agent.modelSettings.modelName,
                 isResumed: isResumed
             )
         )
+    }
+    
+    // Recursive helper to process messages until no more tool calls
+    private func processMessagesRecursively(
+        messages: [any MessageItem],
+        streamHandler: @Sendable @escaping (String) async -> Void
+    ) async throws -> (messages: [any MessageItem], toolCalls: [ToolCallItem], content: String, usage: Usage?) {
+        var currentMessages = messages
+        var allToolCalls: [ToolCallItem] = []
+        var allContent = ""
+        var totalUsage: Usage?
+        
+        // Maximum iterations to prevent infinite loops
+        let maxIterations = 10
+        var iteration = 0
+        
+        while iteration < maxIterations {
+            iteration += 1
+            aiDebugPrint("DEBUG: Processing iteration \(iteration)")
+            
+            // Create request
+            let request = ModelRequest(
+                messages: currentMessages,
+                tools: agent.toolDefinitions,
+                settings: agent.modelSettings,
+                systemInstructions: nil
+            )
+            
+            // Get streaming response
+            let eventStream = try await model.getStreamedResponse(request: request)
+            
+            // Process stream
+            var responseContent = ""
+            var responseId = ""
+            var toolCalls: [ToolCallItem] = []
+            var pendingToolCalls: [String: PartialToolCall] = [:]
+            var usage: Usage?
+            
+            for try await event in eventStream {
+                switch event {
+                case .responseStarted(let started):
+                    responseId = started.id
+                    
+                case .textDelta(let delta):
+                    responseContent += delta.delta
+                    allContent += delta.delta
+                    await streamHandler(delta.delta)
+                    
+                case .toolCallDelta(let delta):
+                    updatePartialToolCall(&pendingToolCalls, with: delta)
+                    aiDebugPrint("DEBUG: Tool call delta: id=\(delta.id), name=\(delta.function.name ?? "nil"), args=\(delta.function.arguments ?? "nil")")
+                    
+                case .toolCallCompleted(let completed):
+                    // Don't use the completed event's function - use our accumulated one
+                    if let pendingCall = pendingToolCalls[completed.id] {
+                        aiDebugPrint("DEBUG: Tool call completed: \(completed.id), function: \(pendingCall.name ?? "?"), args: \(pendingCall.arguments)")
+                        if let name = pendingCall.name {
+                            toolCalls.append(ToolCallItem(
+                                id: completed.id,
+                                type: .function,
+                                function: FunctionCall(name: name, arguments: pendingCall.arguments)
+                            ))
+                        }
+                    } else {
+                        aiDebugPrint("DEBUG: Tool call completed but no pending call found: \(completed.id)")
+                    }
+                    
+                case .responseCompleted(let completed):
+                    usage = completed.usage
+                    totalUsage = usage
+                    
+                case .error(let error):
+                    throw ModelError.requestFailed(
+                        NSError(domain: "AgentRunner", code: 0, userInfo: [
+                            NSLocalizedDescriptionKey: error.error.message
+                        ])
+                    )
+                    
+                default:
+                    break
+                }
+            }
+            
+            // If no tool calls, we're done
+            if toolCalls.isEmpty {
+                // Add final assistant message if there's content
+                if !responseContent.isEmpty {
+                    currentMessages.append(AssistantMessageItem(
+                        id: responseId.isEmpty ? UUID().uuidString : responseId,
+                        content: [.outputText(responseContent)],
+                        status: .completed
+                    ))
+                }
+                break
+            }
+            
+            // Execute tools
+            let toolResults = try await executeTools(toolCalls)
+            
+            // Add assistant message with tool calls
+            var assistantContent: [AssistantContent] = []
+            if !responseContent.isEmpty {
+                assistantContent.append(.outputText(responseContent))
+            }
+            for toolCall in toolCalls {
+                assistantContent.append(.toolCall(toolCall))
+            }
+            
+            currentMessages.append(AssistantMessageItem(
+                id: responseId,
+                content: assistantContent,
+                status: .completed
+            ))
+            
+            // Add tool results
+            for (toolCall, result) in zip(toolCalls, toolResults) {
+                currentMessages.append(ToolMessageItem(
+                    id: UUID().uuidString,
+                    toolCallId: toolCall.id,
+                    content: result
+                ))
+            }
+            
+            // Add tool calls to our collection
+            allToolCalls.append(contentsOf: toolCalls)
+            
+            // Continue to next iteration
+        }
+        
+        if iteration >= maxIterations {
+            aiDebugPrint("WARNING: Reached maximum iterations (\(maxIterations)) in recursive processing")
+        }
+        
+        return (currentMessages, allToolCalls, allContent, totalUsage)
     }
     
     // MARK: - Helper Methods
