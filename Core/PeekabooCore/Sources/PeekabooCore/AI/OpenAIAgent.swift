@@ -1,7 +1,7 @@
 import Foundation
 import os.log
 
-@available(macOS 13.0, *)
+@available(macOS 14.0, *)
 public actor OpenAIAgent {
     private let apiKey: String
     private let model: String
