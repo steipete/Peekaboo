@@ -64,9 +64,9 @@ final class GhostAnimator {
     private let message: String
     
     init() {
-        // Create ghost animation frames with various ghost states
+        // Create ghost animation frames - emoji only, dots will be appended separately
         self.frames = [
-            "👻",
+            "👻 ",
             "👻 .",
             "👻 . .",
             "👻 . . .",
@@ -74,16 +74,16 @@ final class GhostAnimator {
             "💭 . . .",
             "💭 . .",
             "💭 .",
-            "💭",
-            "🌀",
+            "💭 ",
+            "🌀 ",
             "🌀 .",
             "🌀 . .",
             "🌀 . . .",
             "✨ . . .",
             "✨ . .",
             "✨ .",
-            "✨",
-            "👻",
+            "✨ ",
+            "👻 ",
             "👻 ~",
             "👻 ~~",
             "👻 ~~~",
@@ -102,7 +102,8 @@ final class GhostAnimator {
             
             while !Task.isCancelled {
                 let frame = self.frames[frameIndex % self.frames.count]
-                let output = "\(TerminalColor.moveToStart)\(TerminalColor.clearLine)\(TerminalColor.cyan)\(frame) \(self.message)...\(TerminalColor.reset)"
+                // Keep "Thinking" in a fixed position, only animate what comes after
+                let output = "\(TerminalColor.moveToStart)\(TerminalColor.clearLine)\(TerminalColor.cyan)\(self.message)... \(frame)\(TerminalColor.reset)"
                 print(output, terminator: "")
                 fflush(stdout)
                 
