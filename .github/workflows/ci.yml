@@ -15,7 +15,7 @@ jobs:
         node-version: [20.x, 22.x]
     
     env:
-      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
     
     steps:
     - uses: actions/checkout@v4
@@ -43,18 +43,27 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+        cache-dependency-path: Server/package-lock.json
     
     - name: Install dependencies
-      run: npm ci
+      run: |
+        cd Server
+        npm ci
     
     - name: Build TypeScript
-      run: npm run build
+      run: |
+        cd Server
+        npm run build
     
     - name: Run linter
-      run: npm run lint --if-present
+      run: |
+        cd Server
+        npm run lint --if-present
     
     - name: Run tests with coverage
-      run: npm run test:coverage
+      run: |
+        cd Server
+        npm run test:coverage
       env:
         CI: true
     
@@ -62,7 +71,7 @@ jobs:
       uses: codecov/codecov-action@v4
       if: matrix.node-version == '20.x'
       with:
-        file: ./coverage/lcov.info
+        file: ./Server/coverage/lcov.info
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
@@ -72,7 +81,7 @@ jobs:
     timeout-minutes: 30
     
     env:
-      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
     
     steps:
     - uses: actions/checkout@v4
