@@ -1147,47 +1147,7 @@ The release script creates:
 
 ### Debug Build Staleness Detection
 
-When developing Peekaboo, you can enable automatic staleness detection to ensure you're always using the latest built version of the CLI. This feature prevents common development issues where code changes aren't reflected because the binary wasn't rebuilt.
-
-#### Enabling Staleness Detection
-
-```bash
-# Enable staleness checking for this repository
-git config peekaboo.check-build-staleness true
-
-# Disable if needed
-git config peekaboo.check-build-staleness false
-
-# Check current setting
-git config peekaboo.check-build-staleness
-```
-
-#### How It Works
-
-When enabled, the debug CLI binary automatically checks for two types of staleness:
-
-1. **Git Commit Staleness**: Detects if the binary was built with a different git commit than the current one
-2. **File Modification Staleness**: Detects if any tracked files have been modified after the binary was built
-
-If staleness is detected, the CLI will exit with a clear message:
-
-```bash
-❌ CLI binary is outdated and needs to be rebuilt!
-   Built with commit: e7701f8
-   Current commit:    642426f
-
-   Run ./scripts/build-swift-debug.sh to rebuild
-```
-
-#### Benefits
-
-- **Prevents subtle bugs** from using outdated binaries
-- **Automatic detection** when rebuilds are needed
-- **Perfect for AI-assisted development** where code changes happen frequently
-- **Zero overhead** - only active in debug builds with explicit opt-in
-- **Developer-friendly** error messages with specific rebuild instructions
-
-This feature is especially useful when working with AI coding assistants like Claude Code, which may make multiple changes to the source code and attempt to run the CLI without rebuilding.
+For development, enable automatic staleness detection to ensure you're always using the latest built CLI version: `git config peekaboo.check-build-staleness true`. This is recommended when working with AI assistants that frequently modify source code, as it prevents using outdated binaries.
 
 ## 🧪 Testing
 
