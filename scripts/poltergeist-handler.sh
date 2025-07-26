@@ -232,8 +232,8 @@ else
     fi
     log "💡 Run 'poltergeist logs' to see the full error"
     
-    # Send failure notification
-    if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
-        osascript -e "display notification \"$NOTIFICATION_MESSAGE\" with title \"👻 Poltergeist\" subtitle \"Build Failed\" sound name \"Basso\""
-    fi
+    # Send failure notification - DISABLED
+    # if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
+    #     osascript -e "display notification \"$NOTIFICATION_MESSAGE\" with title \"👻 Poltergeist\" subtitle \"Build Failed\" sound name \"Basso\""
+    # fi
 fi

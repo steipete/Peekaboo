@@ -147,7 +147,9 @@ This issue typically occurs when:
 
 ## Recent Updates
 
-- **Agent communication fix for o3 models** (2025-01-26): Strengthened system prompt to ensure o3 models communicate their thought process. Changed default reasoning effort from "high" to "medium" for better balance between reasoning and communication.
+- **Agent communication fix for o3 models** (2025-01-26): Strengthened system prompt to ensure o3 models communicate their thought process. Reasoning effort is set to "high" with "detailed" summaries for maximum reasoning capability and transparency.
+
+- **Enhanced Poltergeist build failure detection** (2025-01-26): The peekaboo-wait.sh wrapper script now actively detects build failures and prompts Claude to fix them. When builds fail, the script shows recent error logs and exits with code 1, allowing Claude to automatically investigate and resolve compilation issues.
 
 - **Poltergeist file watcher** (2025-01-26): Added ghost-themed file watcher that automatically rebuilds Swift CLI on source changes. Uses Facebook's Watchman for efficient native file watching. See "Poltergeist" section above.
 

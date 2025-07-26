@@ -57,6 +57,7 @@ enum TerminalColor {
 
 /// Ghost animator for showing thinking/syncing state
 @available(macOS 14.0, *)
+@MainActor
 final class GhostAnimator {
     private var animationTask: Task<Void, Never>?
     private let frames: [String]

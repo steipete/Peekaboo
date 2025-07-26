@@ -467,8 +467,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 ],
                 required: ["mode"]
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let mode: String = input.value(for: "mode") ?? "screen"
                 let _: String? = input.value(for: "path")
                 let displayIndex: Int? = input.value(for: "displayIndex")
@@ -639,7 +638,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                             var available: [String]? = nil
                             
                             // Try to find available text fields
-                            if let sessionId = input.value(for: "sessionId") as? String {
+                            if let sessionId: String = input.value(for: "sessionId") {
                                 let textFields = try? await getAvailableElements(sessionId: sessionId, type: .textField)
                                 if let fields = textFields, !fields.isEmpty {
                                     available = fields
@@ -666,9 +665,9 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                             }
                             
                             return .dictionary(createEnhancedError(error, category: .state, context: context))
-                        } else if let info = focusInfo, !info.isEditable {
+                        } else if let info = focusInfo, !info.canAcceptKeyboardInput {
                             let context = createStateContext(
-                                currentState: "Focused element: \(info.elementType) - '\(info.title ?? "")'",
+                                currentState: "Focused element: \(info.element.typeDescription) - '\(info.element.title ?? "")'",
                                 requiredState: "Element must be editable",
                                 fix: "The focused element is not a text input field"
                             )
@@ -700,8 +699,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 ],
                 required: []
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let appName: String? = input.value(for: "appName")
                 
                 let windows: [ServiceWindowInfo]
@@ -1302,8 +1300,7 @@ extension PeekabooAgentService {
                 ],
                 required: ["direction", "amount"]
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let direction: String = input.value(for: "direction") ?? "down"
                 let amount: Int = input.value(for: "amount") ?? 100
                 let target: String? = input.value(for: "target")
@@ -1355,8 +1352,7 @@ extension PeekabooAgentService {
                 ],
                 required: ["keys"]
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let keys: String = input.value(for: "keys") ?? ""
                 let holdDuration: Int = input.value(for: "holdDuration") ?? 100
                 
@@ -1640,8 +1636,7 @@ extension PeekabooAgentService {
                 ],
                 required: ["appName"]
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let appName: String = input.value(for: "appName") ?? ""
                 
                 do {
@@ -1665,7 +1660,7 @@ extension PeekabooAgentService {
                        error.localizedDescription.lowercased().contains("unable to find") {
                         
                         // Find similar apps
-                        let similarApps = try? await findSimilarApps(appName)
+                        let similarApps = try? await self.findSimilarApps(appName)
                         
                         var context: [String: Any] = [:]
                         
@@ -1710,8 +1705,7 @@ extension PeekabooAgentService {
                 ],
                 required: []
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let sessionId: String = input.value(for: "sessionId") ?? UUID().uuidString
                 let elementType: String = input.value(for: "elementType") ?? "all"
                 
@@ -1773,8 +1767,7 @@ extension PeekabooAgentService {
                 ],
                 required: ["command"]
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let command: String = input.value(for: "command") ?? ""
                 let workingDir: String? = input.value(for: "workingDirectory")
                 
@@ -1865,8 +1858,7 @@ extension PeekabooAgentService {
                 ],
                 required: ["menuPath"]
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let appName: String? = input.value(for: "appName")
                 let menuPath: String = input.value(for: "menuPath") ?? ""
                 
@@ -1901,7 +1893,14 @@ extension PeekabooAgentService {
                        error.localizedDescription.lowercased().contains("menu") {
                         
                         // Try to get available menus
-                        let targetApp = appName ?? (try? await services.applications.getFrontmostApplication().name) ?? ""
+                        let targetApp: String
+                        if let app = appName {
+                            targetApp = app
+                        } else if let frontmost = try? await services.applications.getFrontmostApplication() {
+                            targetApp = frontmost.name
+                        } else {
+                            targetApp = ""
+                        }
                         
                         if !targetApp.isEmpty {
                             if let menuStructure = try? await services.menu.listMenus(for: targetApp) {
@@ -1958,8 +1957,7 @@ extension PeekabooAgentService {
                 ],
                 required: []
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let appName: String? = input.value(for: "appName")
                 
                 do {
@@ -2007,8 +2005,7 @@ extension PeekabooAgentService {
                 ],
                 required: ["appName"]
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let appName: String = input.value(for: "appName") ?? ""
                 
                 do {
@@ -2040,8 +2037,7 @@ extension PeekabooAgentService {
                 ],
                 required: []
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let includeAll: Bool = input.value(for: "includeAll") ?? false
                 
                 do {
@@ -2088,8 +2084,7 @@ extension PeekabooAgentService {
                 ],
                 required: ["buttonText"]
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let buttonText: String = input.value(for: "buttonText") ?? ""
                 let windowTitle: String? = input.value(for: "windowTitle")
                 
@@ -2119,19 +2114,8 @@ extension PeekabooAgentService {
                         
                         context["currentState"] = "No dialog window found"
                         context["requiredState"] = "An active dialog or alert must be present"
-                        
-                        // Try to detect what dialogs might be present
-                        if let activeDialogs = try? await services.dialogs.detectActiveDialogs() {
-                            if !activeDialogs.isEmpty {
-                                let dialogInfo = activeDialogs.map { dialog in
-                                    "\(dialog.title) - buttons: \(dialog.buttons.joined(separator: ", "))"
-                                }
-                                context["available"] = dialogInfo
-                                context["suggestions"] = ["Found dialogs with different buttons. Check the exact button text."]
-                            }
-                        }
-                        
                         context["fix"] = "Ensure a dialog is open before trying to click buttons"
+                        context["suggestions"] = ["Take a screenshot first to see what's on screen"]
                         
                         errorResponse["errorDetails"] = [
                             "category": "notFound",
@@ -2139,15 +2123,8 @@ extension PeekabooAgentService {
                         ]
                     } else if error.localizedDescription.lowercased().contains("button") {
                         context["currentState"] = "Button '\(buttonText)' not found in dialog"
-                        
-                        // Try to get available buttons
-                        if let activeDialogs = try? await services.dialogs.detectActiveDialogs(),
-                           let firstDialog = activeDialogs.first {
-                            context["available"] = firstDialog.buttons
-                            context["suggestions"] = ["Available buttons in the dialog"]
-                        }
-                        
                         context["example"] = "Common buttons: OK, Cancel, Save, Don't Save, Continue"
+                        context["suggestions"] = ["Check the exact button text", "Take a screenshot to see available buttons"]
                         
                         errorResponse["errorDetails"] = [
                             "category": "notFound",
@@ -2182,8 +2159,7 @@ extension PeekabooAgentService {
                 ],
                 required: ["text"]
             ),
-            execute: { [weak self] input, services in
-                guard let self = self else { return .dictionary(["success": false, "error": "Internal error"]) }
+            execute: { input, services in
                 let text: String = input.value(for: "text") ?? ""
                 let fieldIdentifier: String? = input.value(for: "fieldIdentifier")
                 let clearExisting: Bool = input.value(for: "clearExisting") ?? true
@@ -2388,9 +2364,9 @@ extension PeekabooAgentService {
         // Return formatted element descriptions
         return elements.prefix(5).map { element in
             if let label = element.label, !label.isEmpty {
-                return "'\(label)' (\(element.identifier))"
+                return "'\(label)' (\(element.id))"
             } else {
-                return "\(element.type.rawValue) (\(element.identifier))"
+                return "\(element.type.rawValue) (\(element.id))"
             }
         }
     }
@@ -2410,23 +2386,19 @@ extension PeekabooAgentService {
     
     /// Get current permission status
     private func getPermissionDiagnostics() async -> [String: Any] {
-        var diagnostics: [String: Any] = [:]
-        
-        // Check screen recording permission
-        diagnostics["screenRecording"] = await services.permissions?.hasScreenRecordingPermission() ?? false
-        
-        // Check accessibility permission
-        diagnostics["accessibility"] = await services.permissions?.hasAccessibilityPermission() ?? false
-        
-        return diagnostics
+        // TODO: Implement permission checks when available in services
+        return [
+            "screenRecording": "Check System Settings > Privacy & Security > Screen Recording",
+            "accessibility": "Check System Settings > Privacy & Security > Accessibility"
+        ]
     }
     
     /// Format element suggestions for click operations
     private func formatElementSuggestion(_ element: DetectedElement) -> String {
         if let label = element.label, !label.isEmpty {
-            return "Try: click \(element.identifier) for '\(label)'"
+            return "Try: click \(element.id) for '\(label)'"
         } else {
-            return "Try: click \(element.identifier)"
+            return "Try: click \(element.id)"
         }
     }
 }
