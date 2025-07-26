@@ -202,9 +202,39 @@ final class PeekabooSettings {
             }
         }
         
-        // Load from Peekaboo config file if exists
-        let configPath = FileManager.default.homeDirectoryForCurrentUser
+        // Load from Peekaboo credentials file if exists (new location)
+        let credentialsPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".peekaboo/credentials")
+        
+        if FileManager.default.fileExists(atPath: credentialsPath.path) {
+            do {
+                let credentialsContent = try String(contentsOf: credentialsPath)
+                let lines = credentialsContent.components(separatedBy: .newlines)
+                for line in lines {
+                    let trimmed = line.trimmingCharacters(in: .whitespaces)
+                    if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+                    
+                    if let equalIndex = trimmed.firstIndex(of: "=") {
+                        let key = String(trimmed[..<equalIndex]).trimmingCharacters(in: .whitespaces)
+                        let value = String(trimmed[trimmed.index(after: equalIndex)...]).trimmingCharacters(in: .whitespaces)
+                        
+                        if key == "OPENAI_API_KEY" && self.openAIAPIKey.isEmpty {
+                            self.openAIAPIKey = value
+                        }
+                    }
+                }
+            } catch {
+                // Ignore errors reading credentials file
+            }
+        }
+        
+        // Load from Peekaboo config file if exists (try new location first, then old)
+        let newConfigPath = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".peekaboo/config.json")
+        let oldConfigPath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".config/peekaboo/config.json")
+        
+        let configPath = FileManager.default.fileExists(atPath: newConfigPath.path) ? newConfigPath : oldConfigPath
         
         guard FileManager.default.fileExists(atPath: configPath.path) else { return }
         

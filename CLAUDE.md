@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **No Backwards Compatibility**: We never care about backwards compatibility. We prioritize clean, modern code and user experience over maintaining legacy support. Breaking changes are acceptable and expected as the project evolves.
 
+**Direct API Over Subprocess**: Always prefer using PeekabooCore services directly instead of spawning CLI subprocesses. The migration to direct API calls improves performance by ~10x and provides better type safety.
+
 To test this project interactive we can use:
 `PEEKABOO_AI_PROVIDERS="ollama/llava:latest" npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp@beta`
 
@@ -23,6 +25,12 @@ cp -f Apps/CLI/.build/debug/peekaboo ./peekaboo
 ```
 
 ## Recent Updates
+
+- **Agent resume feature** (2025-01-26): Added comprehensive session resume functionality for the agent command. The agent can now resume previous conversations and maintain context across sessions. See "Agent Command" section for details.
+
+- **CLI Agent command** (2025-01-26): Introduced `peekaboo agent` command with natural language automation capabilities. Features compact/verbose output modes, shell command support, and browser tab detection. See "Agent Command" section for usage.
+
+- **Direct API migration** (2025-01-25): Removed CLI subprocess execution in favor of direct PeekabooCore API calls, resulting in ~10x performance improvement. All Peekaboo apps now use the unified service layer.
 
 - **Playground test app created** (2025-01-24): Added comprehensive SwiftUI test application at `Playground/` for testing all Peekaboo automation features. Includes its own logging utility `playground-log.sh` based on vtlog. See the "Playground Test App" section below.
 
@@ -109,7 +117,7 @@ npm run test:watch
 npm run test:swift
 
 # Run Swift tests with local-only tests (requires test host app)
-cd peekaboo-cli
+cd Apps/CLI
 RUN_LOCAL_TESTS=true swift test
 
 # Full integration test suite
@@ -122,7 +130,7 @@ For comprehensive testing including actual screenshot functionality:
 
 1. **Open the test host app:**
    ```bash
-   cd peekaboo-cli/TestHost
+   cd Apps/CLI/TestHost
    swift run
    ```
 
@@ -134,7 +142,7 @@ For comprehensive testing including actual screenshot functionality:
 
 3. **Run local-only tests with the test host running:**
    ```bash
-   cd peekaboo-cli
+   cd Apps/CLI
    RUN_LOCAL_TESTS=true swift test --filter LocalIntegration
    ```
 
@@ -178,27 +186,83 @@ peekaboo-mcp
 ### Using the Swift CLI directly
 ```bash
 # Capture screenshots
-./peekaboo-cli/.build/debug/peekaboo image --app "Safari" --path screenshot.png
-./peekaboo-cli/.build/debug/peekaboo image --mode frontmost --path screenshot.png
+./Apps/CLI/.build/debug/peekaboo image --app "Safari" --path screenshot.png
+./Apps/CLI/.build/debug/peekaboo image --mode frontmost --path screenshot.png
 
 # List applications or windows
-./peekaboo-cli/.build/debug/peekaboo list apps --json-output
-./peekaboo-cli/.build/debug/peekaboo list windows --app "Finder" --json-output
+./Apps/CLI/.build/debug/peekaboo list apps --json-output
+./Apps/CLI/.build/debug/peekaboo list windows --app "Finder" --json-output
 
 # Analyze images with AI (NEW)
-PEEKABOO_AI_PROVIDERS="openai/gpt-4.1" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "What is shown in this image?"
-PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "Describe this screenshot" --json-output
+PEEKABOO_AI_PROVIDERS="openai/gpt-4.1" ./Apps/CLI/.build/debug/peekaboo analyze image.png "What is shown in this image?"
+PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./Apps/CLI/.build/debug/peekaboo analyze image.png "Describe this screenshot" --json-output
 
 # Use multiple AI providers (auto-selects first available)
-PEEKABOO_AI_PROVIDERS="openai/gpt-4.1,ollama/llava:latest" ./peekaboo-cli/.build/debug/peekaboo analyze image.png "What application is this?"
+PEEKABOO_AI_PROVIDERS="openai/gpt-4.1,ollama/llava:latest" ./Apps/CLI/.build/debug/peekaboo analyze image.png "What application is this?"
 
 # Configuration management (UPDATED)
-./peekaboo-cli/.build/debug/peekaboo config init                    # Create default config file
-./peekaboo-cli/.build/debug/peekaboo config show                    # Display current config
-./peekaboo-cli/.build/debug/peekaboo config show --effective        # Show merged configuration
-./peekaboo-cli/.build/debug/peekaboo config edit                    # Edit config in default editor
-./peekaboo-cli/.build/debug/peekaboo config validate                # Validate config syntax
-./peekaboo-cli/.build/debug/peekaboo config set-credential KEY VALUE # Set API key securely
+./Apps/CLI/.build/debug/peekaboo config init                    # Create default config file
+./Apps/CLI/.build/debug/peekaboo config show                    # Display current config
+./Apps/CLI/.build/debug/peekaboo config show --effective        # Show merged configuration
+./Apps/CLI/.build/debug/peekaboo config edit                    # Edit config in default editor
+./Apps/CLI/.build/debug/peekaboo config validate                # Validate config syntax
+./Apps/CLI/.build/debug/peekaboo config set-credential KEY VALUE # Set API key securely
+```
+
+### Agent Command (NEW)
+
+The `peekaboo agent` command provides natural language automation capabilities through OpenAI integration:
+
+```bash
+# Basic usage - describe what you want to do
+./peekaboo agent "Take a screenshot of Safari and save it to desktop"
+./peekaboo agent "Click on the Submit button in the current window"
+./peekaboo agent "Open Finder and create a new folder called Projects"
+
+# Output modes
+./peekaboo agent --quiet "Type hello world"        # Only show final result
+./peekaboo agent --verbose "Close all windows"     # Full debug output
+./peekaboo agent "Click login"                     # Default: compact colorized output
+
+# Resume previous sessions
+./peekaboo agent --resume                          # Continue last conversation
+./peekaboo agent --resume abc123                   # Resume specific session ID
+./peekaboo agent --list-sessions                   # Show available sessions
+
+# Shell command support
+./peekaboo agent "Search Google for Swift tutorials"  # Opens browser with search
+./peekaboo agent "Open the Peekaboo documentation"    # Navigates to URL
+
+# Advanced features
+./peekaboo agent --no-cache "Take screenshot"      # Don't use cached sessions
+OPENAI_API_KEY=sk-... ./peekaboo agent "Click OK"  # Use specific API key
+```
+
+**Agent Features:**
+- **Natural Language**: Describe tasks in plain English
+- **Smart Context**: Maintains conversation context across commands
+- **Session Resume**: Continue previous automation sessions
+- **Browser Integration**: Detects and interacts with browser tabs
+- **Shell Commands**: Executes web searches and opens URLs
+- **Output Modes**: Quiet (minimal), Compact (default), Verbose (debug)
+- **Tool Execution**: Automatically uses appropriate Peekaboo tools
+
+**Output Mode Examples:**
+```bash
+# Compact mode (default) - Clean, colorized output
+$ ./peekaboo agent "Take a screenshot"
+🤖 Peekaboo Agent v1.0.0
+📋 Task: Take a screenshot
+👁 see screenshot of active window
+✅ Done! Screenshot saved to /tmp/screenshot_123.png
+
+# Quiet mode - Only essential output
+$ ./peekaboo agent --quiet "Click Submit"
+Clicked on "Submit" button successfully.
+
+# Verbose mode - Full JSON responses for debugging
+$ ./peekaboo agent --verbose "Type hello"
+{"session_id": "abc123", "tools": [...], "response": {...}}
 ```
 
 ## Code Architecture
@@ -407,7 +471,7 @@ try await services.windows.resizeWindow(
 - Use `PEEKABOO_LOG_LEVEL=debug` for detailed debugging during development
 - Test permissions by running `./peekaboo list server_status --json-output`
 - Test AI analysis with: `PEEKABOO_AI_PROVIDERS="ollama/llava:latest" ./peekaboo analyze screenshot.png "What is this?"`
-- When adding new AI providers, implement the `AIProvider` protocol in `peekaboo-cli/Sources/peekaboo/AIProviders/`
+- When adding new AI providers, implement the `AIProvider` protocol in `Apps/CLI/Sources/peekaboo/AIProviders/`
 - Store API keys securely: `./peekaboo config set-credential OPENAI_API_KEY sk-...`
 - Check effective configuration: `./peekaboo config show --effective`
 - Migration: Old configs in `~/.config/peekaboo/` are auto-migrated to `~/.peekaboo/` on first run
@@ -940,3 +1004,77 @@ swift test --filter "!LocalIntegration"
 - **vtlog**: Use `./scripts/vtlog.sh` for Mac app and Inspector logs
 - **Debug Output**: Set `PEEKABOO_LOG_LEVEL=debug` for verbose CLI output
 - **Test Host**: Use the test host app for permission and UI testing
+
+## Best Practices & Common Pitfalls
+
+### Code Development
+
+**DO:**
+- Use PeekabooCore services directly instead of CLI subprocess calls
+- Follow the existing Swift Testing framework patterns (not XCTest)
+- Use AXorcist APIs for all accessibility operations
+- Test with the Playground app for controlled automation scenarios
+- Check permissions with `./peekaboo list server_status --json-output`
+- Use structured error codes from Swift CLI
+
+**DON'T:**
+- Spawn CLI subprocesses from Swift code (use PeekabooCore instead)
+- Use raw accessibility APIs (use AXorcist wrapper)
+- Add backwards compatibility code
+- Use XCTest assertions (use Swift Testing's `#expect`)
+- Hardcode paths or assume directory structure
+
+### Agent Development
+
+When working on agent functionality:
+1. **System Prompt**: Update in `PeekabooToolExecutor.swift` → `systemPrompt()` method
+2. **Tool Integration**: Agent uses PeekabooCore services directly for performance
+3. **Session Management**: Sessions are stored in `~/.peekaboo/agent/sessions/`
+4. **Output Formatting**: Use the OutputMode enum (quiet/compact/verbose)
+5. **Browser Tabs**: Remember that browser tabs appear as UI elements, not windows
+
+### Performance Optimization
+
+- **Direct API calls**: ~10x faster than CLI subprocess spawning
+- **Batch operations**: Use session IDs to reuse element detection
+- **Legacy capture API**: Use `PEEKABOO_USE_MODERN_CAPTURE=false` if ScreenCaptureKit hangs
+- **Cache AI sessions**: Agent automatically caches OpenAI threads for resume
+
+### Testing Strategy
+
+1. **Unit Tests**: Use Swift Testing framework with `@Test` attributes
+2. **Integration Tests**: Use Playground app for UI automation testing
+3. **Local Tests**: Run with `RUN_LOCAL_TESTS=true` and test host app
+4. **Logging**: Use vtlog.sh for Mac app, playground-log.sh for Playground
+5. **CI Tests**: Ensure tests work without local permissions
+
+### Common Issues
+
+**"Command not found" errors:**
+```bash
+# Always use full path or npm scripts
+./Apps/CLI/.build/debug/peekaboo  # Full path
+npm run build:swift                    # npm script
+./peekaboo                            # Project root binary (after build)
+```
+
+**Permission errors during development:**
+```bash
+# Check all permissions at once
+./peekaboo list server_status --json-output
+
+# Grant permissions in System Settings if needed
+# Screen Recording & Accessibility are most common
+```
+
+**Agent API key issues:**
+```bash
+# Set in credentials file (recommended)
+./peekaboo config set-credential OPENAI_API_KEY sk-...
+
+# Or use environment variable
+export OPENAI_API_KEY=sk-...
+
+# Check configuration
+./peekaboo config show --effective
+```

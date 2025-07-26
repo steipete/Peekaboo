@@ -101,6 +101,21 @@ struct AgentExecutor {
         case "shell":
             return try await self.executeShell(args: args)
 
+        case "menu":
+            return try await self.executeMenu(args: args)
+
+        case "dialog":
+            return try await self.executeDialog(args: args)
+
+        case "drag":
+            return try await self.executeDrag(args: args)
+
+        case "dock":
+            return try await self.executeDock(args: args)
+
+        case "swipe":
+            return try await self.executeSwipe(args: args)
+
         default:
             // Unknown command received
             throw AgentError.invalidArguments("Unknown command: \(command)")
@@ -892,6 +907,413 @@ struct AgentExecutor {
         }
         
         throw AgentError.commandFailed("Failed to serialize response")
+    }
+    
+    @MainActor
+    private func executeMenu(args: [String: Any]) async throws -> String {
+        let services = PeekabooServices.shared
+        
+        do {
+            guard let app = args["app"] as? String else {
+                throw AgentError.invalidArguments("Menu command requires 'app' parameter")
+            }
+            
+            let subcommand = args["subcommand"] as? String ?? "click"
+            
+            switch subcommand {
+            case "click":
+                // Get the menu path - either from 'path' or 'item'
+                let menuPath: String
+                if let path = args["path"] as? String {
+                    menuPath = path
+                } else if let item = args["item"] as? String {
+                    menuPath = item
+                } else {
+                    throw AgentError.invalidArguments("Menu click requires either 'path' or 'item' parameter")
+                }
+                
+                // Click the menu item
+                try await services.menu.clickMenuItem(app: app, itemPath: menuPath)
+                
+                // Prepare response
+                let response: [String: Any] = [
+                    "success": true,
+                    "data": [
+                        "message": "Menu item clicked successfully",
+                        "app": app,
+                        "menu_path": menuPath
+                    ]
+                ]
+                
+                if let data = try? JSONSerialization.data(withJSONObject: response),
+                   let jsonString = String(data: data, encoding: .utf8) {
+                    return jsonString
+                }
+                
+            case "list":
+                // List menu structure
+                let menuStructure = try await services.menu.listMenus(for: app)
+                
+                // Convert to simple structure for response
+                let menusData = menuStructure.menus.map { menu -> [String: Any] in
+                    return [
+                        "title": menu.title,
+                        "enabled": menu.isEnabled,
+                        "items": convertMenuItems(menu.items)
+                    ]
+                }
+                
+                let response: [String: Any] = [
+                    "success": true,
+                    "data": [
+                        "app": menuStructure.application.name,
+                        "menus": menusData
+                    ]
+                ]
+                
+                if let data = try? JSONSerialization.data(withJSONObject: response),
+                   let jsonString = String(data: data, encoding: .utf8) {
+                    return jsonString
+                }
+                
+            default:
+                throw AgentError.invalidArguments("Unknown menu subcommand: \(subcommand)")
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
+        } catch {
+            throw error
+        }
+    }
+    
+    private func convertMenuItems(_ items: [MenuItem]) -> [[String: Any]] {
+        items.map { item -> [String: Any] in
+            var itemData: [String: Any] = [
+                "title": item.title,
+                "enabled": item.isEnabled
+            ]
+            
+            if item.isSeparator {
+                itemData["separator"] = true
+            }
+            
+            if item.isChecked {
+                itemData["checked"] = true
+            }
+            
+            if let shortcut = item.keyboardShortcut {
+                itemData["shortcut"] = shortcut.displayString
+            }
+            
+            if !item.submenu.isEmpty {
+                itemData["items"] = convertMenuItems(item.submenu)
+            }
+            
+            return itemData
+        }
+    }
+    
+    @MainActor
+    private func executeDialog(args: [String: Any]) async throws -> String {
+        let services = PeekabooServices.shared
+        
+        do {
+            guard let action = args["action"] as? String else {
+                throw AgentError.invalidArguments("Dialog command requires 'action' parameter")
+            }
+            
+            switch action {
+            case "click":
+                guard let button = args["button"] as? String else {
+                    throw AgentError.invalidArguments("Dialog click requires 'button' parameter")
+                }
+                
+                let targetApp = args["app"] as? String
+                _ = try await services.dialogs.clickButton(
+                    buttonText: button,
+                    windowTitle: targetApp
+                )
+                
+                let response: [String: Any] = [
+                    "success": true,
+                    "data": [
+                        "message": "Dialog button clicked successfully",
+                        "button": button,
+                        "action": "click"
+                    ]
+                ]
+                
+                if let data = try? JSONSerialization.data(withJSONObject: response),
+                   let jsonString = String(data: data, encoding: .utf8) {
+                    return jsonString
+                }
+                
+            case "input":
+                guard let text = args["text"] as? String else {
+                    throw AgentError.invalidArguments("Dialog input requires 'text' parameter")
+                }
+                
+                let field = args["field"] as? String
+                let targetApp = args["app"] as? String
+                
+                _ = try await services.dialogs.enterText(
+                    text: text,
+                    fieldIdentifier: field,
+                    clearExisting: false,
+                    windowTitle: targetApp
+                )
+                
+                let response: [String: Any] = [
+                    "success": true,
+                    "data": [
+                        "message": "Text input successfully",
+                        "text": text,
+                        "action": "input"
+                    ]
+                ]
+                
+                if let data = try? JSONSerialization.data(withJSONObject: response),
+                   let jsonString = String(data: data, encoding: .utf8) {
+                    return jsonString
+                }
+                
+            case "dismiss":
+                let targetApp = args["app"] as? String
+                
+                _ = try await services.dialogs.dismissDialog(force: false, windowTitle: targetApp)
+                
+                let response: [String: Any] = [
+                    "success": true,
+                    "data": [
+                        "message": "Dialog dismissed successfully",
+                        "action": "dismiss"
+                    ]
+                ]
+                
+                if let data = try? JSONSerialization.data(withJSONObject: response),
+                   let jsonString = String(data: data, encoding: .utf8) {
+                    return jsonString
+                }
+                
+            default:
+                throw AgentError.invalidArguments("Unknown dialog action: \(action)")
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
+        } catch {
+            throw error
+        }
+    }
+    
+    @MainActor
+    private func executeDrag(args: [String: Any]) async throws -> String {
+        let services = PeekabooServices.shared
+        
+        do {
+            // Get start point
+            let fromX = args["from_x"] as? Double ?? args["fromX"] as? Double
+            let fromY = args["from_y"] as? Double ?? args["fromY"] as? Double
+            let toX = args["to_x"] as? Double ?? args["toX"] as? Double
+            let toY = args["to_y"] as? Double ?? args["toY"] as? Double
+            
+            guard let startX = fromX, let startY = fromY,
+                  let endX = toX, let endY = toY else {
+                throw AgentError.invalidArguments("Drag requires from_x, from_y, to_x, to_y parameters")
+            }
+            
+            let fromPoint = CGPoint(x: startX, y: startY)
+            let toPoint = CGPoint(x: endX, y: endY)
+            let duration = args["duration"] as? Double ?? 0.5
+            let _ = args["session_id"] as? String
+            
+            // Perform the drag
+            try await services.automation.drag(
+                from: fromPoint,
+                to: toPoint,
+                duration: Int(duration * 1000), // Convert seconds to milliseconds
+                steps: 10,
+                modifiers: nil
+            )
+            
+            let response: [String: Any] = [
+                "success": true,
+                "data": [
+                    "message": "Drag completed successfully",
+                    "from": ["x": fromPoint.x, "y": fromPoint.y],
+                    "to": ["x": toPoint.x, "y": toPoint.y],
+                    "duration": duration
+                ]
+            ]
+            
+            if let data = try? JSONSerialization.data(withJSONObject: response),
+               let jsonString = String(data: data, encoding: .utf8) {
+                return jsonString
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
+        } catch {
+            throw error
+        }
+    }
+    
+    @MainActor
+    private func executeDock(args: [String: Any]) async throws -> String {
+        let services = PeekabooServices.shared
+        
+        do {
+            guard let action = args["action"] as? String else {
+                throw AgentError.invalidArguments("Dock command requires 'action' parameter")
+            }
+            
+            switch action {
+            case "show":
+                try await services.dock.showDock()
+                
+                let response: [String: Any] = [
+                    "success": true,
+                    "data": [
+                        "message": "Dock shown successfully",
+                        "action": "show"
+                    ]
+                ]
+                
+                if let data = try? JSONSerialization.data(withJSONObject: response),
+                   let jsonString = String(data: data, encoding: .utf8) {
+                    return jsonString
+                }
+                
+            case "hide":
+                try await services.dock.hideDock()
+                
+                let response: [String: Any] = [
+                    "success": true,
+                    "data": [
+                        "message": "Dock hidden successfully",
+                        "action": "hide"
+                    ]
+                ]
+                
+                if let data = try? JSONSerialization.data(withJSONObject: response),
+                   let jsonString = String(data: data, encoding: .utf8) {
+                    return jsonString
+                }
+                
+            case "click":
+                guard let app = args["app"] as? String else {
+                    throw AgentError.invalidArguments("Dock click requires 'app' parameter")
+                }
+                
+                let rightClick = args["right_click"] as? Bool ?? false
+                
+                if rightClick {
+                    try await services.dock.rightClickDockItem(
+                        appName: app,
+                        menuItem: nil
+                    )
+                } else {
+                    try await services.dock.launchFromDock(appName: app)
+                }
+                
+                let response: [String: Any] = [
+                    "success": true,
+                    "data": [
+                        "message": "Dock item clicked successfully",
+                        "app": app,
+                        "action": "click",
+                        "rightClick": rightClick
+                    ]
+                ]
+                
+                if let data = try? JSONSerialization.data(withJSONObject: response),
+                   let jsonString = String(data: data, encoding: .utf8) {
+                    return jsonString
+                }
+                
+            default:
+                throw AgentError.invalidArguments("Unknown dock action: \(action)")
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
+        } catch {
+            throw error
+        }
+    }
+    
+    @MainActor
+    private func executeSwipe(args: [String: Any]) async throws -> String {
+        let services = PeekabooServices.shared
+        
+        do {
+            let direction = args["direction"] as? String ?? "left"
+            let distance = args["distance"] as? Double ?? 100.0
+            let duration = args["duration"] as? Double ?? 0.5
+            let _ = args["session_id"] as? String
+            
+            // Convert direction string to SwipeDirection
+            let swipeDirection: SwipeDirection
+            switch direction.lowercased() {
+            case "left":
+                swipeDirection = .left
+            case "right":
+                swipeDirection = .right
+            case "up":
+                swipeDirection = .up
+            case "down":
+                swipeDirection = .down
+            default:
+                throw AgentError.invalidArguments("Invalid swipe direction: \(direction)")
+            }
+            
+            // Get start point if provided, otherwise use current mouse position
+            let startPoint: CGPoint?
+            if let x = args["x"] as? Double, let y = args["y"] as? Double {
+                startPoint = CGPoint(x: x, y: y)
+            } else {
+                startPoint = nil
+            }
+            
+            // Calculate end point based on direction and distance
+            let currentPoint = startPoint ?? CGPoint(x: 500, y: 500) // Default center if not provided
+            let endPoint: CGPoint
+            
+            switch swipeDirection {
+            case .left:
+                endPoint = CGPoint(x: currentPoint.x - distance, y: currentPoint.y)
+            case .right:
+                endPoint = CGPoint(x: currentPoint.x + distance, y: currentPoint.y)
+            case .up:
+                endPoint = CGPoint(x: currentPoint.x, y: currentPoint.y - distance)
+            case .down:
+                endPoint = CGPoint(x: currentPoint.x, y: currentPoint.y + distance)
+            }
+            
+            // Perform the swipe
+            try await services.automation.swipe(
+                from: currentPoint,
+                to: endPoint,
+                duration: Int(duration * 1000), // Convert seconds to milliseconds
+                steps: 10
+            )
+            
+            let response: [String: Any] = [
+                "success": true,
+                "data": [
+                    "message": "Swipe completed successfully",
+                    "direction": direction,
+                    "distance": distance,
+                    "duration": duration
+                ]
+            ]
+            
+            if let data = try? JSONSerialization.data(withJSONObject: response),
+               let jsonString = String(data: data, encoding: .utf8) {
+                return jsonString
+            }
+            
+            throw AgentError.commandFailed("Failed to serialize response")
+        } catch {
+            throw error
+        }
     }
 }
 

@@ -93,6 +93,9 @@ final class PeekabooToolExecutor: ToolExecutor {
             case "permissions":
                 result = try await self.executePermissions(args: args)
                 
+            case "shell":
+                result = try await self.executeShell(args: args)
+                
             default:
                 await MainActor.run {
                     logger.error("Unknown tool requested: \(name)")
@@ -186,7 +189,12 @@ final class PeekabooToolExecutor: ToolExecutor {
     
     private func executeClick(args: [String: Any]) async throws -> String {
         let providedSessionId = args["session_id"] as? String
-        let sessionId = providedSessionId ?? await services.sessions.getMostRecentSession()
+        let sessionId: String?
+        if let provided = providedSessionId {
+            sessionId = provided
+        } else {
+            sessionId = await services.sessions.getMostRecentSession()
+        }
         let delay = args["delay"] as? Double
         
         await MainActor.run {
@@ -1063,6 +1071,90 @@ final class PeekabooToolExecutor: ToolExecutor {
         return try self.createJSONOutput(response)
     }
     
+    private func executeShell(args: [String: Any]) async throws -> String {
+        guard let command = args["command"] as? String else {
+            throw PeekabooError.invalidInput("Command parameter is required")
+        }
+        
+        let timeout = args["timeout"] as? Int ?? 30
+        
+        await MainActor.run {
+            logger.info("Executing 'shell' command: \(command)")
+        }
+        
+        // Create process
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = ["-c", command]
+        
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+        
+        // Run process
+        do {
+            try process.run()
+        } catch {
+            throw PeekabooError.invalidInput("Failed to execute shell command: \(error.localizedDescription)")
+        }
+        
+        // Wait for completion with timeout
+        let startTime = Date()
+        while process.isRunning && Date().timeIntervalSince(startTime) < Double(timeout) {
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+        }
+        
+        if process.isRunning {
+            process.terminate()
+            throw PeekabooError.invalidInput("Shell command timed out after \(timeout) seconds")
+        }
+        
+        // Read output
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        
+        let output = String(data: outputData, encoding: .utf8) ?? ""
+        let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+        
+        await MainActor.run {
+            logger.info("Shell command completed with exit code: \(process.terminationStatus)")
+            if !output.isEmpty {
+                logger.debug("Output: \(output.prefix(500))...")
+            }
+            if !errorOutput.isEmpty {
+                logger.debug("Error output: \(errorOutput.prefix(500))...")
+            }
+        }
+        
+        // Prepare response based on exit code
+        let response: [String: Any]
+        if process.terminationStatus == 0 {
+            response = [
+                "success": true,
+                "output": output,
+                "error_output": errorOutput,
+                "exit_code": 0,
+                "command": command
+            ]
+        } else {
+            // Still return success: true but include the error details
+            response = [
+                "success": true,
+                "output": output,
+                "error_output": errorOutput,
+                "exit_code": Int(process.terminationStatus),
+                "command": command,
+                "error": [
+                    "code": "SHELL_COMMAND_FAILED",
+                    "message": "Command exited with code \(process.terminationStatus)"
+                ]
+            ]
+        }
+        
+        return try self.createJSONOutput(response)
+    }
+    
     // MARK: - Helper Methods
     
     private func determineWindowTarget(appName: String?, title: String?) -> WindowTarget {
@@ -1140,58 +1232,163 @@ final class PeekabooToolExecutor: ToolExecutor {
             self.makePeekabooTool("sleep", "Pause execution for specified duration"),
             self.makePeekabooTool("analyze", "Analyze images using AI vision models"),
             self.makePeekabooTool("permissions", "Check system permissions status"),
+            self.makePeekabooTool("shell", "Execute shell commands (use for opening URLs with 'open', running CLI tools, etc)"),
         ]
     }
     
     nonisolated func systemPrompt() -> String {
         """
-        You are Peekaboo, an AI assistant specialized in macOS automation.
-        
-        You have access to tools that let you see and interact with the macOS UI.
-        Available tools:
-        
-        VISUALIZATION & CAPTURE:
-        - 'see': Capture current UI state with element mappings
-        - 'image': Capture screenshots of apps or entire screen
-        
+        You are a helpful AI agent that can see and interact with the macOS desktop.
+        You have access to comprehensive Peekaboo commands for UI automation:
+
+        DECISION MAKING PRIORITY:
+        1. ALWAYS attempt to make reasonable decisions with available information
+        2. Use context clues, common patterns, and best practices to infer intent  
+        3. Only ask questions when you genuinely cannot proceed without user input
+
+        WHEN TO ASK QUESTIONS:
+        - Ambiguous requests where multiple valid interpretations exist
+        - Missing critical information that cannot be reasonably inferred
+        - Potentially destructive actions that need confirmation
+
+        QUESTION FORMAT:
+        When you must ask a question, end your response with:
+        "❓ QUESTION: [specific question]"
+
+        VISION & SCREENSHOTS:
+        - 'see': Capture screenshots and map UI elements
+          The see command also extracts menu bar information showing available menus
+        - 'analyze': Analyze any screenshot with vision AI to understand UI elements and content
+        - 'image': Take screenshots of specific apps or screens
+
         UI INTERACTION:
-        - 'click': Click on elements (by ID from 'see') or coordinates
-        - 'type': Type text into focused fields
-        - 'scroll': Scroll in windows or elements
+        - 'click': Click on elements or coordinates
+        - 'type': Type text into the currently focused element (no element parameter needed)
+          NOTE: To press Enter after typing, use a separate 'hotkey' command with "return"
+          For efficiency, group related actions when possible
+        - 'scroll': Scroll in any direction
+        - 'hotkey': Press keyboard shortcuts - provide keys as string: "cmd+s" or "cmd+shift+d"
+          Common: "return" for Enter, "tab" for Tab, "escape" for Escape
         - 'drag': Drag and drop between elements
         - 'swipe': Perform swipe gestures
-        
-        KEYBOARD & SHORTCUTS:
-        - 'hotkey': Press keyboard shortcuts (e.g., "cmd+c", "cmd+shift+a")
-        
+
         APPLICATION CONTROL:
-        - 'app': Launch, quit, focus, hide/unhide apps
-        - 'window': Close, minimize, maximize, move, resize windows
+        - 'app': Launch, quit, focus, hide, or unhide applications
+        - 'window': Close, minimize, maximize, move, resize, or focus windows
+        - 'menu': Menu bar interaction - action='list' to discover menus, action='click' to click items
+          Example: menu(action="list", app="Calculator") to list all menus
+          Note: Use plain ellipsis "..." instead of Unicode "…" in menu paths (e.g., "Save..." not "Save…")
         - 'dock': Interact with Dock items
-        
+        - 'dialog': Handle system dialogs and alerts
+
         DISCOVERY & UTILITY:
-        - 'list': List running apps or windows
-        - 'menu': Discover and click menu items
-        - 'dialog': Handle system dialogs
-        - 'sleep': Pause execution
-        - 'analyze': Analyze images with AI vision
-        - 'permissions': Check system permissions
-        - 'move': Move mouse cursor to position
-        
-        IMPORTANT NOTES:
-        - The 'list' command can show 'apps' (running applications) or 'windows' (for a specific app)
-        - Browser tabs are not separate windows in macOS accessibility APIs - they are UI elements within the browser window
-        - When asked about tabs, explain that you can see browser windows but tabs require UI inspection with 'see' command
-        
+        - 'list': List running apps or windows - USE THIS TO LIST APPLICATIONS!
+        - 'wait': Pause execution for specified duration - AVOID USING THIS unless absolutely necessary
+          Instead of waiting, use 'see' again if content seems to be loading
+        - 'shell': Execute shell commands (use for opening URLs with 'open', running CLI tools, etc)
+
         When given a task:
-        1. Use 'see' to understand the current UI state
-        2. Use 'list' to discover running applications
-        3. Use 'menu list' to discover available menus
-        4. Break down complex tasks into specific actions
-        5. Execute each action using the appropriate command
-        6. Verify results when needed
+        1. **TO LIST APPLICATIONS**: Use 'list' with target='apps' - DO NOT use Activity Monitor or screenshots!
+        2. **TO LIST WINDOWS**: Use 'list' with target='windows' and app='AppName'
+        3. **TO DISCOVER MENUS**: Use 'menu' with action='list' and app='AppName' to get full menu structure OR 'see' command which includes basic menu_bar data
+        4. For UI interaction: Use 'see' to capture screenshots and map UI elements
+        5. Break down complex tasks into MINIMAL specific actions
+        6. Execute each action ONCE before retrying - don't repeat failed patterns
+        7. Verify results only when necessary for the task
         
-        Be precise with UI interactions and verify the current state before acting. Provide direct, actionable responses without asking follow-up questions.
+        FINAL RESPONSE REQUIREMENTS:
+        - ALWAYS provide a meaningful final message that summarizes what you accomplished
+        - For information retrieval (weather, search results, etc.): Include the actual information found
+        - For actions/tasks: Describe what was done and confirm success or explain any issues
+        - Be specific about the outcome - avoid generic "task completed" messages
+        - Examples:
+          - Information: "The weather in London is currently 15°C with cloudy skies and 70% humidity."
+          - Action success: "I've opened Safari and navigated to the Apple homepage. The page is now displayed."
+          - Action with issues: "I opened TextEdit but couldn't find a save button. The document remains unsaved."
+        
+        IMPORTANT APP BEHAVIORS & OPTIMIZATIONS:
+        - ALWAYS check window_count in app launch response BEFORE any other action
+        - Safari launch pattern:
+          1. Launch Safari and check window_count
+          2. If window_count = 0, wait ONE second (agent processing time), then try 'see' ONCE
+          3. If 'see' still fails, use 'app' focus command, then 'hotkey' "cmd+n" ONCE
+          4. Do NOT repeat the see/cmd+n pattern multiple times
+        - STOP trying if a window is created - one window is enough
+        - Browser windows may take 1-2 seconds to fully appear after launch
+        - NEVER use 'wait' commands - the agent processing time provides natural delays
+        - If content appears to be loading, use 'see' again instead of 'wait'
+        - BE EFFICIENT: Minimize redundant commands and retries
+        
+        SAVING FILES:
+        - After opening Save dialog, type the filename then use 'hotkey' with "cmd+s" or "return" to save
+        - To navigate to Desktop in save dialog: use 'hotkey' with "cmd+shift+d"
+
+        EFFICIENCY & TIMING:
+        - Your processing time naturally adds 1-2 seconds between commands - use this instead of 'wait'
+        - One retry is usually enough - if something fails twice, try a different approach
+        - For Safari/browser launches: Allow 2-3 seconds total for window to appear (your thinking time counts)
+        - Reduce steps by combining related actions when possible
+        - Each command costs time - optimize for minimal command count
+        
+        WEB SEARCH & INFORMATION RETRIEVAL:
+        When asked to find information online (weather, news, facts, etc.):
+        
+        PREFERRED METHOD - Using shell command:
+        1. Use shell(command="open https://www.google.com/search?q=weather+in+london+forecast")
+           This opens the URL in the user's default browser automatically
+        2. Wait a moment for the page to load
+        3. Use 'see' to read the search results
+        4. Extract and report the relevant information
+        
+        ALTERNATIVE METHOD - Manual browser control:
+        1. First check for running browsers using: list(target="apps")
+           Common browsers: Safari, Google Chrome, Firefox, Arc, Brave, Microsoft Edge, Opera
+        2. If a browser is running:
+           - Focus it using: app(action="focus", app="BrowserName")
+           - Open new tab: hotkey(keys="cmd+t")
+        3. If no browser is running:
+           - Try launching browsers OR use shell(command="open https://...")
+        4. Once browser window is open:
+           - Navigate to address bar: hotkey(keys="cmd+l")
+           - Type your search query
+           - Press Enter: hotkey(keys="return")
+        
+        SHELL COMMAND USAGE:
+        - shell(command="open https://google.com") - Opens URL in default browser
+        - shell(command="open -a Safari https://example.com") - Opens in specific browser
+        - shell(command="curl -s https://api.example.com") - Fetch API data directly
+        - shell(command="echo 'Hello World'") - Run any shell command
+        - Always check the success field in response
+        - IMPORTANT: Quote URLs with special characters to prevent shell expansion errors:
+          ✓ shell(command="open 'https://www.google.com/search?q=weather+forecast'")
+          ✗ shell(command="open https://www.google.com/search?q=weather+forecast") - fails with "no matches found"
+        
+        APPLESCRIPT AUTOMATION via shell:
+        - shell(command="osascript -e 'tell application \"Safari\" to activate'") - Activate Safari
+        - shell(command="osascript -e 'tell application \"TextEdit\" to make new document'") - Create new document
+        - shell(command="osascript -e 'tell application \"Finder\" to get selection as alias list'") - Get selected files
+        - shell(command="osascript -e 'tell application \"Safari\" to get URL of current tab of front window'") - Get current URL
+        - shell(command="osascript -e 'tell application \"Safari\" to get URL of every tab of front window'") - Get all tab URLs
+        - shell(command="osascript -e 'tell application \"Safari\" to get name of every tab of front window'") - Get all tab titles
+        - shell(command="osascript -e 'tell application \"System Events\" to keystroke \"v\" using command down'") - Send keyboard shortcut
+        - shell(command="osascript -e 'set volume output volume 50'") - Control system volume
+        - shell(command="osascript -e 'display dialog \"Hello World\"'") - Show dialog box
+        - shell(command="osascript ~/my-script.scpt") - Run AppleScript file
+        - Use AppleScript when native Peekaboo commands don't provide enough control
+        - AppleScript can access app-specific features not available through UI automation
+        
+        CRITICAL INSTRUCTIONS:
+        - When asked to "list applications" or "show running apps", ALWAYS use: list(target="apps")
+        - Do NOT launch Activity Monitor to list apps - use the list command!
+        - Do NOT take screenshots to find running apps - use the list command!
+        - MINIMIZE command usage - be efficient and avoid redundant operations
+        - STOP repeating failed command patterns - try something different
+        - For web information: ALWAYS try to search using Safari - don't say you can't access the web!
+
+        Always maintain session_id across related commands for element tracking.
+        Be precise with UI interactions and verify the current state before acting.
+        
+        REMEMBER: Your final message is what the user sees as the result. Make it informative and specific to what you accomplished or discovered. For web searches, include the actual information you found.
         """
     }
     
@@ -1370,6 +1567,14 @@ final class PeekabooToolExecutor: ToolExecutor {
             FunctionParameters(
                 properties: [:],
                 required: [])
+            
+        case "shell":
+            FunctionParameters(
+                properties: [
+                    "command": Property(type: "string", description: "Shell command to execute (e.g., 'open https://google.com', 'ls -la', 'echo Hello')"),
+                    "timeout": Property(type: "integer", description: "Command timeout in seconds (default: 30)"),
+                ],
+                required: ["command"])
             
         default:
             // Generic parameters
