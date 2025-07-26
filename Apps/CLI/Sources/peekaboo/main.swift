@@ -148,9 +148,11 @@ struct Main {
             let firstArg = args[0]
             if !knownSubcommands.contains(firstArg) && !firstArg.starts(with: "-") {
                 // This looks like a direct agent invocation
-                // Manually create and run the agent command
+                // Manually create and run the agent command with the full task string
                 do {
-                    var agentCommand = try AgentCommand.parse(args)
+                    let taskString = args.joined(separator: " ")
+                    // Create the AgentCommand by parsing with task as argument
+                    var agentCommand = try AgentCommand.parse([taskString])
                     try await agentCommand.run()
                     return
                 } catch {
