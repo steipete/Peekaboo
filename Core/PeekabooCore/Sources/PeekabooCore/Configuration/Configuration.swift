@@ -9,15 +9,18 @@ public struct Configuration: Codable {
     public var aiProviders: AIProviderConfig?
     public var defaults: DefaultsConfig?
     public var logging: LoggingConfig?
+    public var agent: AgentConfig?
     
     public init(
         aiProviders: AIProviderConfig? = nil,
         defaults: DefaultsConfig? = nil,
-        logging: LoggingConfig? = nil
+        logging: LoggingConfig? = nil,
+        agent: AgentConfig? = nil
     ) {
         self.aiProviders = aiProviders
         self.defaults = defaults
         self.logging = logging
+        self.agent = agent
     }
 
     /// Configuration for AI vision providers.
@@ -74,6 +77,26 @@ public struct Configuration: Codable {
         public init(level: String? = nil, path: String? = nil) {
             self.level = level
             self.path = path
+        }
+    }
+    
+    /// Agent configuration for AI-powered automation.
+    ///
+    /// Controls default settings for the Peekaboo agent, including the AI model
+    /// to use and behavior options.
+    public struct AgentConfig: Codable {
+        public var defaultModel: String?
+        public var maxSteps: Int?
+        public var showThoughts: Bool?
+        
+        public init(
+            defaultModel: String? = nil,
+            maxSteps: Int? = nil,
+            showThoughts: Bool? = nil
+        ) {
+            self.defaultModel = defaultModel
+            self.maxSteps = maxSteps
+            self.showThoughts = showThoughts
         }
     }
 }

@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import PeekabooCore
 
 /// AI Agent command that uses OpenAI Assistants API to automate complex tasks
 @available(macOS 14.0, *)
@@ -38,19 +39,27 @@ struct AgentCommand: AsyncParsableCommand {
     var dryRun = false
 
     @Option(name: .long, help: "Maximum number of steps the agent can take")
-    var maxSteps = 20
+    var maxSteps: Int?
 
     @Option(name: .long, help: "OpenAI model to use")
-    var model = "gpt-4-turbo"
+    var model: String?
 
     @Flag(name: .long, help: "Output in JSON format")
     var jsonOutput = false
 
     mutating func run() async throws {
+        // Load configuration defaults
+        let config = PeekabooCore.ConfigurationManager.shared.getConfiguration()
+        let agentConfig = config?.agent
+        
+        // Use command line args first, then config, then hardcoded defaults
+        let effectiveModel = model ?? agentConfig?.defaultModel ?? "gpt-4-turbo"
+        let effectiveMaxSteps = maxSteps ?? agentConfig?.maxSteps ?? 20
+        let effectiveShowThoughts = showThoughts || (agentConfig?.showThoughts ?? false)
         // Get OpenAI API key
         guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
             if self.jsonOutput {
-                outputAgentJSON(createAgentErrorResponse(.missingAPIKey))
+                outputAgentJSON(createAgentErrorResponse(AgentError.missingAPIKey))
             } else {
                 throw AgentError.missingAPIKey
             }
@@ -59,19 +68,19 @@ struct AgentCommand: AsyncParsableCommand {
 
         let agent = OpenAIAgent(
             apiKey: apiKey,
-            model: model,
-            verbose: verbose || showThoughts,
-            maxSteps: maxSteps,
-            showThoughts: showThoughts)
+            model: effectiveModel,
+            verbose: verbose || effectiveShowThoughts,
+            maxSteps: effectiveMaxSteps,
+            showThoughts: effectiveShowThoughts)
 
         do {
-            if (self.verbose || self.showThoughts), !self.jsonOutput {
+            if (self.verbose || effectiveShowThoughts), !self.jsonOutput {
                 print("\n🎭 ═══════════════════════════════════════════════════════════════")
                 print("🎭 PEEKABOO AGENT COMEDY SHOW")
                 print("🎭 ═══════════════════════════════════════════════════════════════\n")
                 print("🎯 Task: \"\(self.task)\"")
-                print("🧠 Model: \(self.model)")
-                print("🔢 Max steps: \(self.maxSteps)")
+                print("🧠 Model: \(effectiveModel)")
+                print("🔢 Max steps: \(effectiveMaxSteps)")
                 print("🔑 API Key: \(String(apiKey.prefix(10)))***")
                 print("\n✨ Let the show begin! ✨\n")
             }
@@ -79,12 +88,12 @@ struct AgentCommand: AsyncParsableCommand {
             let result = try await agent.executeTask(self.task, dryRun: self.dryRun)
 
             if self.jsonOutput {
-                let response = AgentJSONResponse(
+                let response = AgentJSONResponse<OpenAIAgent.AgentResult>(
                     success: true,
                     data: result,
                     error: nil)
                 outputAgentJSON(response)
-            } else if !(self.verbose || self.showThoughts) {
+            } else if !(self.verbose || effectiveShowThoughts) {
                 // Simple human-readable output when not in verbose/showThoughts mode
                 print("\n✅ Task completed successfully!")
                 print("\nSteps executed:")
@@ -107,7 +116,7 @@ struct AgentCommand: AsyncParsableCommand {
             }
         } catch {
             if self.jsonOutput {
-                outputAgentJSON(createAgentErrorResponse(.apiError(error.localizedDescription)))
+                outputAgentJSON(createAgentErrorResponse(AgentError.apiError(error.localizedDescription)))
             } else {
                 throw error
             }

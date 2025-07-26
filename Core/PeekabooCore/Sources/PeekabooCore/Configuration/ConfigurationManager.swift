@@ -115,7 +115,18 @@ public final class ConfigurationManager: @unchecked Sendable {
         loadCredentials()
         
         // Load configuration
-        return loadConfigurationFromPath(Self.configPath)
+        configuration = loadConfigurationFromPath(Self.configPath)
+        return configuration
+    }
+    
+    /// Get the current configuration.
+    ///
+    /// Returns the loaded configuration or loads it if not already loaded.
+    public func getConfiguration() -> Configuration? {
+        if configuration == nil {
+            _ = loadConfiguration()
+        }
+        return configuration
     }
     
     /// Load configuration from a specific path
