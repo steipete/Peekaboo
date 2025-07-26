@@ -1149,6 +1149,58 @@ The release script creates:
 
 For development, enable automatic staleness detection to ensure you're always using the latest built CLI version: `git config peekaboo.check-build-staleness true`. This is recommended when working with AI assistants that frequently modify source code, as it prevents using outdated binaries.
 
+## 👻 Poltergeist - Swift CLI Auto-rebuild Watcher
+
+Poltergeist is a helpful ghost that watches your Swift files and automatically rebuilds the CLI when they change. Perfect for development workflows!
+
+### Installation
+
+First, install Watchman (required):
+```bash
+brew install watchman
+```
+
+### Usage
+
+```bash
+# Start the watcher
+npm run poltergeist:start
+# or the more thematic:
+npm run poltergeist:haunt
+
+# Check status
+npm run poltergeist:status
+
+# View activity logs
+npm run poltergeist:logs
+
+# Stop watching
+npm run poltergeist:stop
+# or the more thematic:
+npm run poltergeist:rest
+```
+
+### What It Does
+
+Poltergeist monitors:
+- `Core/PeekabooCore/**/*.swift`
+- `Core/AXorcist/**/*.swift`
+- `Apps/CLI/**/*.swift`
+- All `Package.swift` and `Package.resolved` files
+
+When changes are detected, it automatically:
+1. Rebuilds the Swift CLI using `npm run build:swift`
+2. Copies the binary to the project root for easy access
+3. Logs all activity to `.poltergeist.log`
+
+### Features
+
+- 👻 **Smart Rebuilding** - Only rebuilds when Swift files actually change
+- 🔒 **Single Instance** - Prevents multiple concurrent builds
+- 📝 **Activity Logging** - Track all rebuild activity with timestamps
+- ⚡ **Native Performance** - Uses macOS FSEvents for minimal overhead
+- 🎯 **Persistent Watches** - Survives terminal sessions
+
 ## 🧪 Testing
 
 ```bash

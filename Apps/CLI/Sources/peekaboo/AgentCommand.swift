@@ -55,7 +55,7 @@ enum TerminalColor {
 func iconForTool(_ toolName: String) -> String {
     switch toolName {
     case "see", "screenshot", "window_capture": return "👁"
-    case "click": return "👆"
+    case "click": return "🖱"
     case "type": return "⌨️"
     case "list_apps", "launch_app": return "📱"
     case "list_windows", "focus_window", "resize_window": return "🪟"
@@ -63,7 +63,7 @@ func iconForTool(_ toolName: String) -> String {
     case "wait": return "⏱"
     case "scroll": return "📜"
     case "find_element", "list_elements": return "🔍"
-    case "shell": return "🐚"
+    case "shell": return "💻"
     case "menu": return "📋"
     case "dialog": return "💬"
     case "analyze_screenshot": return "🤖"
@@ -536,8 +536,8 @@ final class CompactEventDelegate: AgentEventDelegate {
             
         case "type":
             if let text = args["text"] as? String {
-                let preview = text.count > 30 ? String(text.prefix(30)) + "..." : text
-                return "'\(preview)'"
+                // Show full text in compact mode, even if it's long
+                return "'\(text)'"
             }
             return ""
             
@@ -579,8 +579,8 @@ final class CompactEventDelegate: AgentEventDelegate {
             
         case "shell":
             if let command = args["command"] as? String {
-                let preview = command.count > 30 ? String(command.prefix(30)) + "..." : command
-                return "'\(preview)'"
+                // Show full command in compact mode
+                return "'\(command)'"
             }
             return ""
             
