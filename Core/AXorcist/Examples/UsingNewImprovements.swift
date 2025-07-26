@@ -155,9 +155,9 @@ func exampleErrorHandling() {
         // Perform action with automatic error throwing
         try app.performAction(.press)
         print("Action performed successfully")
-    } catch let axError as AXError {
+    } catch let systemError as AccessibilitySystemError {
         // Convert to more descriptive error
-        let accessibilityError = axError.toAccessibilityError(context: "Pressing button")
+        let accessibilityError = systemError.axError.toAccessibilityError(context: "Pressing button")
         print("Error: \(accessibilityError)")
     } catch {
         print("Unexpected error: \(error)")

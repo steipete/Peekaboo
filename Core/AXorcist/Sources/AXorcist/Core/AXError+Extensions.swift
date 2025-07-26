@@ -8,13 +8,59 @@
 import ApplicationServices
 import Foundation
 
-extension AXError: @retroactive Error {}
+// Create a custom error type that wraps AXError
+public struct AccessibilitySystemError: Error, LocalizedError {
+    public let axError: AXError
+    
+    public init(_ axError: AXError) {
+        self.axError = axError
+    }
+    
+    public var errorDescription: String? {
+        switch axError {
+        case .success:
+            return "No error (success)"
+        case .apiDisabled:
+            return "Accessibility API is disabled"
+        case .invalidUIElement:
+            return "Invalid UI element"
+        case .attributeUnsupported:
+            return "Attribute is not supported"
+        case .parameterizedAttributeUnsupported:
+            return "Parameterized attribute is not supported"
+        case .actionUnsupported:
+            return "Action is not supported"
+        case .noValue:
+            return "No value available"
+        case .cannotComplete:
+            return "Cannot complete operation"
+        case .notImplemented:
+            return "Not implemented"
+        case .notificationUnsupported:
+            return "Notification is not supported"
+        case .notificationAlreadyRegistered:
+            return "Notification is already registered"
+        case .notificationNotRegistered:
+            return "Notification is not registered"
+        case .invalidUIElementObserver:
+            return "Invalid UI element observer"
+        case .notEnoughPrecision:
+            return "Not enough precision"
+        case .illegalArgument:
+            return "Illegal argument"
+        case .failure:
+            return "Operation failed"
+        @unknown default:
+            return "Unknown AXError: \(axError.rawValue)"
+        }
+    }
+}
 
 extension AXError {
     /// Throws if the AXError is not .success
     @usableFromInline func throwIfError() throws {
         if self != .success {
-            throw self
+            throw AccessibilitySystemError(self)
         }
     }
 

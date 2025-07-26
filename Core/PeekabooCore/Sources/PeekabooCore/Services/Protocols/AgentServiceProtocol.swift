@@ -12,7 +12,7 @@ public protocol AgentServiceProtocol: Sendable {
     func executeTask(
         _ task: String,
         dryRun: Bool,
-        eventDelegate: (@preconcurrency AgentEventDelegate)?
+        eventDelegate: AgentEventDelegate?
     ) async throws -> AgentExecutionResult
     
     /// Clean up any cached sessions or resources

@@ -41,6 +41,9 @@ public enum PeekabooError: LocalizedError, StandardizedError {
     case noAIProviderAvailable
     case aiProviderError(String)
     
+    // Service errors
+    case serviceUnavailable(String)
+    
     // Generic errors - removed context since it can't be Sendable
     case operationError(message: String)
     
@@ -92,6 +95,8 @@ public enum PeekabooError: LocalizedError, StandardizedError {
             return "No AI provider available"
         case .aiProviderError(let message):
             return "AI provider error: \(message)"
+        case .serviceUnavailable(let message):
+            return "Service unavailable: \(message)"
         case .operationError(let message):
             return message
         }
@@ -146,6 +151,8 @@ public enum PeekabooError: LocalizedError, StandardizedError {
             return .aiProviderUnavailable
         case .aiProviderError:
             return .aiAnalysisFailed
+        case .serviceUnavailable:
+            return .internalError
         case .operationError:
             return .unknownError
         }
@@ -188,6 +195,8 @@ public enum PeekabooError: LocalizedError, StandardizedError {
         case .encodingError(let message):
             return ["message": message]
         case .aiProviderError(let message):
+            return ["message": message]
+        case .serviceUnavailable(let message):
             return ["message": message]
         case .operationError(let message):
             return ["message": message]

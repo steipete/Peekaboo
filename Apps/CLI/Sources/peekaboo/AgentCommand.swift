@@ -230,21 +230,36 @@ struct AgentCommand: AsyncParsableCommand {
         }
     }
     
-    private func displayResult(_ result: AgentResult) {
+    private func displayResult(_ result: AgentExecutionResult) {
         if jsonOutput {
             let response = [
                 "success": true,
                 "result": [
-                    "steps": result.steps.map { step in
+                    "content": result.content,
+                    "sessionId": result.sessionId,
+                    "toolCalls": result.toolCalls.map { toolCall in
                         [
-                            "action": step.action,
-                            "description": step.description,
-                            "toolCalls": step.toolCalls,
-                            "reasoning": step.reasoning as Any,
-                            "observation": step.observation as Any
+                            "id": toolCall.id,
+                            "type": toolCall.type.rawValue,
+                            "function": [
+                                "name": toolCall.function.name,
+                                "arguments": toolCall.function.arguments
+                            ]
                         ]
                     },
-                    "summary": result.summary
+                    "metadata": [
+                        "duration": result.metadata.duration,
+                        "toolCallCount": result.metadata.toolCallCount,
+                        "modelName": result.metadata.modelName,
+                        "isResumed": result.metadata.isResumed
+                    ],
+                    "usage": result.usage.map { usage in
+                        [
+                            "promptTokens": usage.promptTokens,
+                            "completionTokens": usage.completionTokens,
+                            "totalTokens": usage.totalTokens
+                        ]
+                    } as Any
                 ]
             ] as [String: Any]
             if let jsonData = try? JSONSerialization.data(withJSONObject: response, options: .prettyPrinted) {
@@ -252,12 +267,12 @@ struct AgentCommand: AsyncParsableCommand {
             }
         } else if outputMode == .quiet {
             // Quiet mode - only show final result
-            print(result.summary)
+            print(result.content)
         } else {
             // Compact/verbose mode - show completion message
             print("\n\(TerminalColor.green)\(TerminalColor.bold)✅ Task completed\(TerminalColor.reset)")
-            if !result.summary.isEmpty {
-                print(result.summary)
+            if !result.content.isEmpty {
+                print(result.content)
             }
         }
     }
@@ -367,14 +382,6 @@ final class CompactEventDelegate: AgentEventDelegate {
         case .started(let task):
             if outputMode == .verbose {
                 print("🚀 Starting: \(task)")
-            }
-            
-        case .thinking(let message):
-            if outputMode != .quiet {
-                // Add thinking emoji and format the message
-                let thinkingMessage = "💭 \(message)"
-                print("\r\(TerminalColor.dim)\(thinkingMessage)\(TerminalColor.reset)", terminator: "")
-                fflush(stdout)
             }
             
         case .toolCallStarted(let name, let arguments):

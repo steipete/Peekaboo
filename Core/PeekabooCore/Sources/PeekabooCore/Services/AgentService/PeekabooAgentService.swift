@@ -28,7 +28,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     public func executeTask(
         _ task: String,
         dryRun: Bool = false,
-        eventDelegate: (@preconcurrency AgentEventDelegate)? = nil
+        eventDelegate: AgentEventDelegate? = nil
     ) async throws -> AgentExecutionResult {
         // For dry run, just return a simulated result
         if dryRun {
@@ -56,53 +56,46 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         
         // Execute with streaming if we have an event delegate
         if eventDelegate != nil {
-            // Create a continuation-based approach to handle the delegate properly
-            return try await withCheckedThrowingContinuation { continuation in
-                Task { @MainActor in
-                    do {
-                        // Now we're on MainActor, so we can safely access the delegate
-                        let delegate = eventDelegate!
-                        
-                        // Create event stream infrastructure
-                        let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
-                        
-                        // Create the event handler that sends to the stream
-                        let eventHandler = EventHandler { event in
-                            eventContinuation.yield(event)
-                        }
-                        
-                        // Process events on MainActor
-                        let eventTask = Task {
-                            for await event in eventStream {
-                                delegate.agentDidEmitEvent(event)
-                            }
-                        }
-                        
-                        defer {
-                            eventContinuation.finish()
-                            eventTask.cancel()
-                        }
-                        
-                        // Run the agent with streaming
-                        let result = try await AgentRunner.runStreaming(
-                            agent: agent,
-                            input: task,
-                            context: services,
-                            sessionId: sessionId
-                        ) { chunk in
-                            // Convert streaming chunks to events
-                            await eventHandler.send(.assistantMessage(content: chunk))
-                        }
-                        
-                        // Send completion event
-                        await eventHandler.send(.completed(summary: result.content))
-                        
-                        continuation.resume(returning: result)
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
+            // SAFETY: We ensure that the delegate is only accessed on MainActor
+            // This is a legacy API pattern that predates Swift's strict concurrency
+            let unsafeDelegate = UnsafeTransfer(eventDelegate!)
+            
+            // Create event stream infrastructure
+            let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
+            
+            // Start processing events on MainActor
+            let eventTask = Task { @MainActor in
+                let delegate = unsafeDelegate.wrappedValue
+                for await event in eventStream {
+                    delegate.agentDidEmitEvent(event)
                 }
             }
+            
+            // Create the event handler
+            let eventHandler = EventHandler { event in
+                eventContinuation.yield(event)
+            }
+            
+            defer {
+                eventContinuation.finish()
+                eventTask.cancel()
+            }
+            
+            // Run the agent with streaming
+            let result = try await AgentRunner.runStreaming(
+                agent: agent,
+                input: task,
+                context: services,
+                sessionId: sessionId
+            ) { chunk in
+                // Convert streaming chunks to events
+                await eventHandler.send(.assistantMessage(content: chunk))
+            }
+            
+            // Send completion event
+            await eventHandler.send(.completed(summary: result.content))
+            
+            return result
         } else {
             // Execute without streaming
             return try await AgentRunner.run(
@@ -146,69 +139,63 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         _ task: String,
         sessionId: String? = nil,
         modelName: String = "gpt-4-turbo-preview",
-        eventDelegate: (@preconcurrency AgentEventDelegate)? = nil
+        eventDelegate: AgentEventDelegate? = nil
     ) async throws -> AgentExecutionResult {
         let agent = createAutomationAgent(modelName: modelName)
         
         // If we have an event delegate, use streaming
         if eventDelegate != nil {
-            // Create a continuation-based approach to handle the delegate properly
-            return try await withCheckedThrowingContinuation { continuation in
-                Task { @MainActor in
-                    do {
-                        // Now we're on MainActor, so we can safely access the delegate
-                        let delegate = eventDelegate!
-                        
-                        // Send start event
-                        delegate.agentDidEmitEvent(.started(task: task))
-                        
-                        // Create event stream infrastructure
-                        let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
-                        
-                        // Create the event handler that sends to the stream
-                        let eventHandler = EventHandler { event in
-                            eventContinuation.yield(event)
-                        }
-                        
-                        // Process events on MainActor
-                        let eventTask = Task {
-                            for await event in eventStream {
-                                delegate.agentDidEmitEvent(event)
-                            }
-                        }
-                        
-                        defer {
-                            eventContinuation.finish()
-                            eventTask.cancel()
-                        }
-                        
-                        // Run the agent with streaming
-                        let result = try await AgentRunner.runStreaming(
-                            agent: agent,
-                            input: task,
-                            context: services,
-                            sessionId: sessionId
-                        ) { chunk in
-                            // Convert streaming chunks to events
-                            await eventHandler.send(.assistantMessage(content: chunk))
-                        }
-                        
-                        // Emit tool call events from the result
-                        for toolCall in result.toolCalls {
-                            await eventHandler.send(
-                                .toolCallStarted(name: toolCall.function.name, arguments: toolCall.function.arguments)
-                            )
-                        }
-                        
-                        // Send completion event
-                        await eventHandler.send(.completed(summary: result.content))
-                        
-                        continuation.resume(returning: result)
-                    } catch {
-                        continuation.resume(throwing: error)
-                    }
+            // SAFETY: We ensure that the delegate is only accessed on MainActor
+            // This is a legacy API pattern that predates Swift's strict concurrency
+            let unsafeDelegate = UnsafeTransfer(eventDelegate!)
+            
+            // Create event stream infrastructure
+            let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
+            
+            // Start processing events on MainActor
+            let eventTask = Task { @MainActor in
+                let delegate = unsafeDelegate.wrappedValue
+                
+                // Send start event
+                delegate.agentDidEmitEvent(.started(task: task))
+                
+                for await event in eventStream {
+                    delegate.agentDidEmitEvent(event)
                 }
             }
+            
+            // Create the event handler
+            let eventHandler = EventHandler { event in
+                eventContinuation.yield(event)
+            }
+            
+            defer {
+                eventContinuation.finish()
+                eventTask.cancel()
+            }
+            
+            // Run the agent with streaming
+            let result = try await AgentRunner.runStreaming(
+                agent: agent,
+                input: task,
+                context: services,
+                sessionId: sessionId
+            ) { chunk in
+                // Convert streaming chunks to events
+                await eventHandler.send(.assistantMessage(content: chunk))
+            }
+            
+            // Emit tool call events from the result
+            for toolCall in result.toolCalls {
+                await eventHandler.send(
+                    .toolCallStarted(name: toolCall.function.name, arguments: toolCall.function.arguments)
+                )
+            }
+            
+            // Send completion event
+            await eventHandler.send(.completed(summary: result.content))
+            
+            return result
         } else {
             // Non-streaming execution
             return try await AgentRunner.run(
@@ -600,6 +587,7 @@ extension PeekabooAgentService {
     }
 }
 
+
 // MARK: - Additional Tool Implementations
 
 extension PeekabooAgentService {
@@ -964,5 +952,15 @@ private struct EventHandler: Sendable {
     
     func send(_ event: AgentEvent) async {
         await sendEvent(event)
+    }
+}
+
+/// Helper to transfer non-Sendable values across isolation boundaries
+/// SAFETY: The caller must ensure the value is only accessed in the correct isolation domain
+private struct UnsafeTransfer<Value>: @unchecked Sendable {
+    let wrappedValue: Value
+    
+    init(_ value: Value) {
+        self.wrappedValue = value
     }
 }
