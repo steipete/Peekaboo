@@ -43,6 +43,7 @@ enum TerminalColor {
     static let cyan = "\u{001B}[36m"
     static let magenta = "\u{001B}[35m"
     static let gray = "\u{001B}[90m"
+    static let italic = "\u{001B}[3m"
     
     // Background colors
     static let bgBlue = "\u{001B}[44m"
