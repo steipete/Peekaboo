@@ -441,7 +441,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
     }
     
-    private func resumeSession(sessionId: String, continuationTask: String) async throws {
+    private func resumeSession(sessionId: String, continuationTask: String, skipHeader: Bool = false) async throws {
         guard let session = await AgentSessionManager.shared.getSession(id: sessionId) else {
             if jsonOutput {
                 let error = ["success": false, "error": "Session not found"] as [String: Any]
@@ -454,7 +454,7 @@ struct AgentCommand: AsyncParsableCommand {
             return
         }
         
-        if !jsonOutput {
+        if !jsonOutput && !skipHeader {
             print("\(TerminalColor.cyan)\(TerminalColor.bold)🔄 Resuming session \(sessionId.prefix(8))\(TerminalColor.reset)")
             print("\(TerminalColor.gray)Original task: \(session.task)\(TerminalColor.reset)")
             print("\(TerminalColor.gray)Previous steps: \(session.steps.count)\(TerminalColor.reset)")
@@ -465,7 +465,38 @@ struct AgentCommand: AsyncParsableCommand {
         }
         
         // Continue with the new task in the context of the existing session
-        let resumePrompt = "Continue with the original task. The user's response: \(continuationTask)"
+        // Build context from previous steps
+        var contextPrompt = "CONTEXT: You are resuming a previous task.\n\n"
+        contextPrompt += "ORIGINAL TASK: \(session.task)\n\n"
+        
+        if !session.steps.isEmpty {
+            contextPrompt += "PREVIOUS STEPS COMPLETED:\n"
+            for (index, step) in session.steps.enumerated() {
+                contextPrompt += "\(index + 1). \(step.description)\n"
+                if let output = step.output, !output.isEmpty {
+                    // Extract key information from JSON output if available
+                    if let data = output.data(using: .utf8),
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let success = json["success"] as? Bool {
+                        contextPrompt += "   Result: \(success ? "✓ Success" : "✗ Failed")\n"
+                        if let error = json["error"] as? [String: Any],
+                           let message = error["message"] as? String {
+                            contextPrompt += "   Error: \(message)\n"
+                        }
+                    }
+                }
+            }
+            contextPrompt += "\n"
+        }
+        
+        if let lastQuestion = session.lastQuestion {
+            contextPrompt += "LAST QUESTION ASKED: \(lastQuestion)\n\n"
+        }
+        
+        contextPrompt += "USER'S CONTINUATION REQUEST: \(continuationTask)\n\n"
+        contextPrompt += "Please continue from where you left off, taking into account all the previous steps and their results."
+        
+        let resumePrompt = contextPrompt
         
         // Load configuration for the resume
         let config = PeekabooCore.ConfigurationManager.shared.getConfiguration()
@@ -579,7 +610,7 @@ struct AgentCommand: AsyncParsableCommand {
             print()
         }
         
-        try await resumeSession(sessionId: latestSession.id, continuationTask: continuationTask)
+        try await resumeSession(sessionId: latestSession.id, continuationTask: continuationTask, skipHeader: true)
     }
 }
 
