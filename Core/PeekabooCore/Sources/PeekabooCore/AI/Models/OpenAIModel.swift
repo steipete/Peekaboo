@@ -319,11 +319,6 @@ public final class OpenAIModel: ModelInterface {
                 OpenAIReasoning(effort: request.settings.additionalParameters?["reasoning_effort"]?.value as? String ?? "high", summary: "detailed") : nil
         )
     }
-            reasoningEffort: nil,  // Not supported in current API
-            maxCompletionTokens: useMaxCompletionTokens ? request.settings.maxTokens : nil,
-            reasoning: nil  // Not supported in current API
-        )
-    }
     
     private func convertUserMessage(_ message: UserMessageItem) throws -> OpenAIMessage {
         switch message.content {
@@ -699,7 +694,6 @@ public final class OpenAIModel: ModelInterface {
             ))
         }
     }
-}
 
 // MARK: - Helper Types
 
@@ -739,3 +733,5 @@ private class PartialToolCall {
         return FunctionCall(name: name, arguments: arguments)
     }
 }
+
+} // End of OpenAIModel class
