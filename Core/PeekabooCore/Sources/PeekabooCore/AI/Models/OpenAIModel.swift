@@ -56,13 +56,23 @@ public final class OpenAIModel: ModelInterface {
         if httpResponse.statusCode != 200 {
             aiDebugPrint("DEBUG: HTTP Status Code: \(httpResponse.statusCode)")
             aiDebugPrint("DEBUG: Response Headers: \(httpResponse.allHeaderFields)")
+            
+            var errorMessage = "HTTP \(httpResponse.statusCode)"
             if let responseString = String(data: data, encoding: .utf8) {
                 aiDebugPrint("DEBUG: Error Response: \(responseString)")
+                errorMessage += ": \(responseString)"
             }
+            
             if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: data) {
                 throw handleOpenAIError(errorResponse, statusCode: httpResponse.statusCode)
             }
-            throw ModelError.requestFailed(URLError(.badServerResponse))
+            
+            // Create a more descriptive error
+            throw ModelError.requestFailed(NSError(
+                domain: "OpenAI",
+                code: httpResponse.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: errorMessage]
+            ))
         }
         
         // Debug: Print response for troubleshooting
@@ -105,12 +115,21 @@ public final class OpenAIModel: ModelInterface {
                             errorData.append(byte)
                         }
                         
-                        aiDebugPrint("DEBUG: Error response: \(String(data: errorData, encoding: .utf8) ?? "Unable to decode")")
+                        var errorMessage = "HTTP \(httpResponse.statusCode)"
+                        if let responseString = String(data: errorData, encoding: .utf8) {
+                            aiDebugPrint("DEBUG: Error response: \(responseString)")
+                            errorMessage += ": \(responseString)"
+                        }
                         
                         if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: errorData) {
                             continuation.finish(throwing: self.handleOpenAIError(errorResponse, statusCode: httpResponse.statusCode))
                         } else {
-                            continuation.finish(throwing: ModelError.requestFailed(URLError(.badServerResponse)))
+                            // Create a more descriptive error
+                            continuation.finish(throwing: ModelError.requestFailed(NSError(
+                                domain: "OpenAI",
+                                code: httpResponse.statusCode,
+                                userInfo: [NSLocalizedDescriptionKey: errorMessage]
+                            )))
                         }
                         return
                     }
@@ -258,6 +277,9 @@ public final class OpenAIModel: ModelInterface {
         let reasoningEffort = request.settings.additionalParameters?["reasoning_effort"]?.value as? String
         let maxCompletionTokens = request.settings.additionalParameters?["max_completion_tokens"]?.value as? Int
         
+        // For o3 models, use max_completion_tokens instead of max_tokens
+        let isO3Model = request.settings.modelName.hasPrefix("o3")
+        
         return OpenAIChatCompletionRequest(
             model: request.settings.modelName,
             messages: messages,
@@ -266,9 +288,9 @@ public final class OpenAIModel: ModelInterface {
             temperature: request.settings.temperature,
             topP: request.settings.topP,
             stream: stream,
-            maxTokens: request.settings.maxTokens,
+            maxTokens: isO3Model ? nil : request.settings.maxTokens,  // Don't send max_tokens for o3
             reasoningEffort: reasoningEffort,
-            maxCompletionTokens: maxCompletionTokens
+            maxCompletionTokens: isO3Model ? (maxCompletionTokens ?? request.settings.maxTokens) : nil
         )
     }
     

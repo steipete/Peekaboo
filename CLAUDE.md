@@ -15,14 +15,31 @@ To test this project interactive we can use:
 
 ## Quick Build Commands
 
-**DEPRECATED - Use Poltergeist Instead!**
+**IMPORTANT: AI AGENTS SHOULD NEVER MANUALLY BUILD**
 
-When the user asks to "build/compile peekaboo cli":
-1. Check if Poltergeist is running: `npm run poltergeist:status`
-2. If not running, start it: `npm run poltergeist:haunt`
-3. Poltergeist will handle all rebuilding automatically
+When working with the Peekaboo CLI:
+1. **ALWAYS** use the wrapper script: `./scripts/peekaboo-wait.sh`
+2. **NEVER** run `npm run build:swift` or other build commands
+3. **NEVER** use the raw `./peekaboo` binary directly
 
-**DO NOT manually run build scripts** - Poltergeist watches for changes and rebuilds as needed.
+**Why this matters**: I (Claude) manually rebuilt when I should have used the wrapper script. The wrapper would have detected the stale binary and waited for Poltergeist to rebuild it automatically. Manual rebuilding should only be done when troubleshooting Swift Package Manager issues (see troubleshooting section below).
+
+The wrapper script automatically:
+- Detects if the binary is stale
+- Waits for Poltergeist to finish rebuilding if needed
+- Runs your command with the fresh binary
+
+Example:
+```bash
+# WRONG: ./peekaboo agent "do something"
+# WRONG: npm run build:swift && ./peekaboo agent "do something"
+# RIGHT: ./scripts/peekaboo-wait.sh agent "do something"
+```
+
+If Poltergeist isn't running (rare), the wrapper will tell you to start it:
+```bash
+npm run poltergeist:haunt
+```
 
 ## Poltergeist - Automatic CLI Rebuilding
 
@@ -94,7 +111,36 @@ With Poltergeist running and using the wrapper script, you NEVER need to:
 
 Just use `./scripts/peekaboo-wait.sh` for all CLI commands and let Poltergeist handle the rest!
 
+### Troubleshooting Swift Package Manager Issues
+
+If you encounter Swift Package Manager errors like:
+```
+error: InternalError(description: "Internal error. Please file a bug at https://github.com/swiftlang/swift-package-manager/issues with this info. Failed to parse target info (malformed(json: \"\", underlyingError: Error Domain=NSCocoaErrorDomain Code=3840 \"Unable to parse empty data.\"
+```
+
+**Fix**: Clean all derived data and build caches:
+```bash
+# Stop Poltergeist first
+npm run poltergeist:stop
+
+# Clean everything
+rm -rf ~/Library/Developer/Xcode/DerivedData/*
+rm -rf ~/Library/Caches/org.swift.swiftpm
+find . -name ".build" -type d -exec rm -rf {} + 2>/dev/null || true
+find . -name ".swiftpm" -type d -exec rm -rf {} + 2>/dev/null || true
+
+# Restart Poltergeist
+npm run poltergeist:haunt
+```
+
+This issue typically occurs when:
+- Switching between Xcode versions (stable ↔ beta)
+- Package.swift files become corrupted
+- Build cache becomes inconsistent
+
 ## Recent Updates
+
+- **Agent communication fix for o3 models** (2025-01-26): Strengthened system prompt to ensure o3 models communicate their thought process. Changed default reasoning effort from "high" to "medium" for better balance between reasoning and communication.
 
 - **Poltergeist file watcher** (2025-01-26): Added ghost-themed file watcher that automatically rebuilds Swift CLI on source changes. Uses Facebook's Watchman for efficient native file watching. See "Poltergeist" section above.
 

@@ -354,15 +354,19 @@ public final class DockService: DockServiceProtocol {
                         let data = pipe.fileHandleForReading.readDataToEndOfFile()
                         let error = String(data: data, encoding: .utf8) ?? "Unknown error"
                         continuation.resume(throwing: PeekabooError.operationError(message: "AppleScript execution failed: \(error)"))
+                        return
                     } else if captureOutput {
                         let data = pipe.fileHandleForReading.readDataToEndOfFile()
                         let output = String(data: data, encoding: .utf8) ?? ""
                         continuation.resume(returning: output)
+                        return
                     } else {
                         continuation.resume(returning: "")
+                        return
                     }
                 } catch {
                     continuation.resume(throwing: error)
+                    return
                 }
             }
         }

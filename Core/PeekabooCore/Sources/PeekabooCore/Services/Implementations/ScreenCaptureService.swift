@@ -265,25 +265,27 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     
     // Helper function for timeout handling
     private func withTimeout<T: Sendable>(seconds: TimeInterval, operation: @escaping @Sendable () async throws -> T) async throws -> T {
-        let task = Task {
-            try await operation()
-        }
-        
-        let timeoutTask = Task {
-            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-            task.cancel()
-        }
-        
-        do {
-            let result = try await task.value
-            timeoutTask.cancel()
-            return result
-        } catch {
-            timeoutTask.cancel()
-            if task.isCancelled {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            // Add the main operation
+            group.addTask {
+                try await operation()
+            }
+            
+            // Add timeout task
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
                 throw OperationError.timeout(operation: "SCShareableContent", duration: seconds)
             }
-            throw error
+            
+            // Wait for the first task to complete
+            guard let result = try await group.next() else {
+                throw OperationError.timeout(operation: "SCShareableContent", duration: seconds)
+            }
+            
+            // Cancel remaining tasks
+            group.cancelAll()
+            
+            return result
         }
     }
     
@@ -313,8 +315,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     }
     
     private func captureWithStream(filter: SCContentFilter, configuration: SCStreamConfiguration) async throws -> CGImage {
+        // Create a stream delegate to handle errors
+        let streamDelegate = StreamDelegate()
+        
         // Create a stream for single frame capture
-        let stream = SCStream(filter: filter, configuration: configuration, delegate: nil)
+        let stream = SCStream(filter: filter, configuration: configuration, delegate: streamDelegate)
         
         // Add stream output
         let output = CaptureOutput()
@@ -323,8 +328,15 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         // Start capture
         try await stream.startCapture()
         
-        // Wait for frame
-        let image = try await output.waitForImage()
+        // Wait for frame with error handling
+        let image: CGImage
+        do {
+            image = try await output.waitForImage()
+        } catch {
+            // If we failed to get an image, stop the stream before re-throwing
+            try? await stream.stopCapture()
+            throw error
+        }
         
         // Stop capture
         try await stream.stopCapture()
@@ -587,19 +599,51 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     }
 }
 
+// MARK: - Stream Delegate
+
+private final class StreamDelegate: NSObject, SCStreamDelegate, @unchecked Sendable {
+    func stream(_ stream: SCStream, didStopWithError error: Error) {
+        // Log the error but don't need to do anything else since CaptureOutput handles errors
+        print("SCStream stopped with error: \(error)")
+    }
+}
+
 // MARK: - Capture Output Handler
 
 private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable {
     private var continuation: CheckedContinuation<CGImage, Error>?
+    private var timeoutTask: Task<Void, Never>?
+    
+    deinit {
+        // Ensure continuation is resumed if object is deallocated
+        if let continuation = continuation {
+            continuation.resume(throwing: OperationError.captureFailed(reason: "CaptureOutput deallocated before frame captured"))
+            self.continuation = nil
+        }
+        timeoutTask?.cancel()
+    }
     
     func waitForImage() async throws -> CGImage {
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
+            
+            // Add a timeout to ensure the continuation is always resumed
+            self.timeoutTask = Task {
+                try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+                if let cont = self.continuation {
+                    cont.resume(throwing: OperationError.timeout(operation: "CaptureOutput.waitForImage", duration: 5.0))
+                    self.continuation = nil
+                }
+            }
         }
     }
     
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
         guard type == .screen else { return }
+        
+        // Cancel timeout task since we received a frame
+        timeoutTask?.cancel()
+        timeoutTask = nil
         
         guard let imageBuffer = sampleBuffer.imageBuffer else {
             continuation?.resume(throwing: OperationError.captureFailed(reason: "No image buffer in sample"))

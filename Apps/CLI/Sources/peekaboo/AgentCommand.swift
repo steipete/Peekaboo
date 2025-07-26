@@ -259,15 +259,22 @@ struct AgentCommand: AsyncParsableCommand {
             aiDebugPrint("DEBUG: DecodingError caught: \(error)")
             throw error
         } catch {
+            // Extract the actual error message from NSError if available
+            var errorMessage = error.localizedDescription
+            if let nsError = error as? NSError,
+               let detailedMessage = nsError.userInfo[NSLocalizedDescriptionKey] as? String {
+                errorMessage = detailedMessage
+            }
+            
             if jsonOutput {
                 let response = [
                     "success": false,
-                    "error": error.localizedDescription
+                    "error": errorMessage
                 ] as [String: Any]
                 let jsonData = try JSONSerialization.data(withJSONObject: response, options: .prettyPrinted)
                 print(String(data: jsonData, encoding: .utf8) ?? "{}")
             } else {
-                print("\n\(TerminalColor.red)\(TerminalColor.bold)❌ Error:\(TerminalColor.reset) \(error.localizedDescription)")
+                print("\n\(TerminalColor.red)\(TerminalColor.bold)❌ Error:\(TerminalColor.reset) \(errorMessage)")
             }
             throw error
         }
