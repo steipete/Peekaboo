@@ -78,7 +78,7 @@ final class GhostAnimator {
             "🎭",                    // Theater masks (rare)
             "🌟"                     // Glowing star (rare)
         ]
-        self.message = "Thinking"
+        self.message = "Thinking..."
     }
     
     func start() {
@@ -345,7 +345,6 @@ struct AgentCommand: AsyncParsableCommand {
                 if let sessionId = sessionId {
                     print("\(TerminalColor.gray)🔄 Session: \(sessionId.prefix(8))...\(TerminalColor.reset)")
                 }
-                print()
             case .quiet:
                 break
             }
