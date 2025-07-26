@@ -501,7 +501,7 @@ final class CompactEventDelegate: AgentEventDelegate {
                 fflush(stdout)
             }
             
-        case .toolCallCompleted(_, let result):
+        case .toolCallCompleted(let name, let result):
             if outputMode != .quiet {
                 if let data = result.data(using: .utf8),
                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -510,9 +510,9 @@ final class CompactEventDelegate: AgentEventDelegate {
                         print(" \(TerminalColor.green)✓\(TerminalColor.reset)")
                     } else {
                         print(" \(TerminalColor.red)✗\(TerminalColor.reset)")
-                        if let error = json["error"] as? String {
-                            print("   \(TerminalColor.red)\(error)\(TerminalColor.reset)")
-                        }
+                        
+                        // Display enhanced error information
+                        displayEnhancedError(tool: name, json: json)
                     }
                 } else {
                     print(" \(TerminalColor.green)✓\(TerminalColor.reset)")
@@ -535,6 +535,64 @@ final class CompactEventDelegate: AgentEventDelegate {
         case .completed(_):
             // Final summary is handled by the main execution flow
             break
+        }
+    }
+    
+    private func displayEnhancedError(tool: String, json: [String: Any]) {
+        let error = json["error"] as? String ?? "Unknown error"
+        
+        // Check for enhanced error details
+        if let errorDetails = json["errorDetails"] as? [String: Any],
+           let context = errorDetails["context"] as? [String: Any] {
+            
+            // Display main error
+            print("   \(TerminalColor.red)Error: \(error)\(TerminalColor.reset)")
+            
+            // Display contextual information based on available fields
+            if let available = context["available"] as? [String], !available.isEmpty {
+                let availableStr = available.prefix(3).joined(separator: ", ")
+                let suffix = available.count > 3 ? " (+\(available.count - 3) more)" : ""
+                print("   \(TerminalColor.gray)Available: \(availableStr)\(suffix)\(TerminalColor.reset)")
+            }
+            
+            if let suggestions = context["suggestions"] as? [String], !suggestions.isEmpty {
+                let suggestion = suggestions.first!
+                print("   \(TerminalColor.yellow)Suggestion: \(suggestion)\(TerminalColor.reset)")
+            }
+            
+            if let currentState = context["currentState"] as? String {
+                print("   \(TerminalColor.gray)Current: \(currentState)\(TerminalColor.reset)")
+            }
+            
+            if let requiredState = context["requiredState"] as? String {
+                print("   \(TerminalColor.gray)Required: \(requiredState)\(TerminalColor.reset)")
+            }
+            
+            if let fix = context["fix"] as? String {
+                print("   \(TerminalColor.cyan)Fix: \(fix)\(TerminalColor.reset)")
+            }
+            
+            if let example = context["example"] as? String {
+                print("   \(TerminalColor.gray)Example: \(example)\(TerminalColor.reset)")
+            }
+        } else {
+            // Fallback to old error display for tools not yet updated
+            switch tool {
+            case "shell":
+                // Show command output if present
+                if let output = json["output"] as? String, !output.isEmpty {
+                    print("   \(TerminalColor.gray)Output: \(output.trimmingCharacters(in: .whitespacesAndNewlines))\(TerminalColor.reset)")
+                }
+                // Show error message
+                print("   \(TerminalColor.red)Error: \(error.trimmingCharacters(in: .whitespacesAndNewlines))\(TerminalColor.reset)")
+                // Show exit code
+                if let exitCode = json["exitCode"] as? Int {
+                    print("   \(TerminalColor.red)Exit code: \(exitCode)\(TerminalColor.reset)")
+                }
+            default:
+                // For other tools, just show the error
+                print("   \(TerminalColor.red)\(error)\(TerminalColor.reset)")
+            }
         }
     }
     

@@ -144,7 +144,8 @@ run_build() {
             log "🛑 Canceling current build due to newer changes (after ${ELAPSED}s)..."
             kill_process_tree "$BUILD_PID"
             rm -f "$build_output_file"
-            exit 0  # Exit with 0 for cancelled builds to avoid failure notification
+            # Don't exit here - let the function return with a special code
+            return 3  # Special code for cancellation
         fi
         sleep 0.5
     done
@@ -171,6 +172,14 @@ while true; do
     run_build
     BUILD_EXIT_CODE=$?
     
+    # Check for cancellation
+    if [ $BUILD_EXIT_CODE -eq 3 ]; then
+        log "🚫 Build was canceled by newer change"
+        rm -f "$CANCEL_FLAG"
+        # Exit silently without notification
+        exit 0
+    fi
+    
     if [ $BUILD_EXIT_CODE -eq 2 ] && [ $SPM_ERROR_RETRY_COUNT -lt $MAX_SPM_RETRIES ]; then
         SPM_ERROR_RETRY_COUNT=$((SPM_ERROR_RETRY_COUNT + 1))
         log "⚠️ SPM initialization error detected (attempt $SPM_ERROR_RETRY_COUNT/$MAX_SPM_RETRIES), retrying in 3s..."
@@ -182,10 +191,6 @@ while true; do
     break
 done
 
-# Check if we were canceled
-if should_cancel; then
-    exit 0
-fi
 
 if [ $BUILD_EXIT_CODE -eq 0 ]; then
     # Calculate build time

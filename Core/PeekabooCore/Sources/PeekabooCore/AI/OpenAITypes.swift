@@ -273,6 +273,19 @@ public struct AssistantRequest: Codable, Sendable {
     }
 }
 
+// MARK: - Reasoning Types (for o3 Responses API)
+
+/// Reasoning parameter for o3 models via Responses API
+public struct OpenAIReasoning: Codable, Sendable {
+    public let effort: String
+    public let summary: String?
+    
+    public init(effort: String, summary: String? = nil) {
+        self.effort = effort
+        self.summary = summary
+    }
+}
+
 // MARK: - Chat Completion Types
 
 /// OpenAI Chat Completion Request
@@ -287,6 +300,7 @@ public struct OpenAIChatCompletionRequest: Codable, Sendable {
     public let maxTokens: Int?
     public let reasoningEffort: String?
     public let maxCompletionTokens: Int?
+    public let reasoning: OpenAIReasoning?
     
     enum CodingKeys: String, CodingKey {
         case model, messages, tools
@@ -297,6 +311,7 @@ public struct OpenAIChatCompletionRequest: Codable, Sendable {
         case maxTokens = "max_tokens"
         case reasoningEffort = "reasoning_effort"
         case maxCompletionTokens = "max_completion_tokens"
+        case reasoning
     }
     
     public init(

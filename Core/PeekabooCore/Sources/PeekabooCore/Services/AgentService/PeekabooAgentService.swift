@@ -281,6 +281,18 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         // Focus detection tool
         tools.append(createFocusedTool())
         
+        // Menu tools
+        tools.append(createMenuClickTool())
+        tools.append(createListMenusTool())
+        
+        // Dialog tools
+        tools.append(createDialogClickTool())
+        tools.append(createDialogInputTool())
+        
+        // Dock tools
+        tools.append(createDockLaunchTool())
+        tools.append(createListDockTool())
+        
         // Shell command tool for system operations
         tools.append(createShellTool())
         
@@ -313,74 +325,124 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 let appName: String? = input.value(for: "app")
                 let analyzePrompt: String? = input.value(for: "analyze")
                 
-                // Capture the screen based on mode
-                let captureResult: CaptureResult
-                
-                if let appName = appName {
-                    captureResult = try await services.screenCapture.captureWindow(
-                        appIdentifier: appName,
-                        windowIndex: 0
-                    )
-                } else {
-                    switch mode {
-                    case "screen":
-                        captureResult = try await services.screenCapture.captureScreen(displayIndex: 0)
-                    case "window", "frontmost":
-                        captureResult = try await services.screenCapture.captureFrontmost()
-                    default:
-                        captureResult = try await services.screenCapture.captureFrontmost()
+                do {
+                    // Capture the screen based on mode
+                    let captureResult: CaptureResult
+                    
+                    if let appName = appName {
+                        captureResult = try await services.screenCapture.captureWindow(
+                            appIdentifier: appName,
+                            windowIndex: 0
+                        )
+                    } else {
+                        switch mode {
+                        case "screen":
+                            captureResult = try await services.screenCapture.captureScreen(displayIndex: 0)
+                        case "window", "frontmost":
+                            captureResult = try await services.screenCapture.captureFrontmost()
+                        default:
+                            captureResult = try await services.screenCapture.captureFrontmost()
+                        }
                     }
-                }
-                
-                // Generate a session ID for element detection
-                let sessionId = UUID().uuidString
-                
-                // Detect UI elements in the captured image
-                let detectionResult = try await services.automation.detectElements(
-                    in: captureResult.imageData,
-                    sessionId: sessionId
-                )
-                
-                // Store the detection result for future use
-                try await services.sessions.storeDetectionResult(
-                    sessionId: sessionId,
-                    result: detectionResult
-                )
-                
-                // Build response
-                var response: [String: Any] = [
-                    "success": true,
-                    "sessionId": sessionId,
-                    "path": captureResult.savedPath ?? "captured in memory",
-                    "size": [
-                        "width": captureResult.metadata.size.width,
-                        "height": captureResult.metadata.size.height
-                    ],
-                    "elements": [
-                        "total": detectionResult.elements.all.count,
-                        "buttons": detectionResult.elements.buttons.count,
-                        "textFields": detectionResult.elements.textFields.count,
-                        "other": detectionResult.elements.other.count,
-                        "links": detectionResult.elements.links.count
+                    
+                    // Generate a session ID for element detection
+                    let sessionId = UUID().uuidString
+                    
+                    // Detect UI elements in the captured image
+                    let detectionResult = try await services.automation.detectElements(
+                        in: captureResult.imageData,
+                        sessionId: sessionId
+                    )
+                    
+                    // Store the detection result for future use
+                    try await services.sessions.storeDetectionResult(
+                        sessionId: sessionId,
+                        result: detectionResult
+                    )
+                    
+                    // Build response
+                    var response: [String: Any] = [
+                        "success": true,
+                        "sessionId": sessionId,
+                        "path": captureResult.savedPath ?? "captured in memory",
+                        "size": [
+                            "width": captureResult.metadata.size.width,
+                            "height": captureResult.metadata.size.height
+                        ],
+                        "elements": [
+                            "total": detectionResult.elements.all.count,
+                            "buttons": detectionResult.elements.buttons.count,
+                            "textFields": detectionResult.elements.textFields.count,
+                            "other": detectionResult.elements.other.count,
+                            "links": detectionResult.elements.links.count
+                        ]
                     ]
-                ]
-                
-                // Add application info if available
-                if let appInfo = captureResult.metadata.applicationInfo {
-                    response["application"] = [
-                        "name": appInfo.name,
-                        "bundleId": appInfo.bundleIdentifier ?? ""
+                    
+                    // Add application info if available
+                    if let appInfo = captureResult.metadata.applicationInfo {
+                        response["application"] = [
+                            "name": appInfo.name,
+                            "bundleId": appInfo.bundleIdentifier ?? ""
+                        ]
+                    }
+                    
+                    // If analysis was requested, perform it
+                    if let prompt = analyzePrompt {
+                        // This would integrate with the AI analysis service
+                        // For now, we'll just note that analysis was requested
+                        response["analysisRequested"] = prompt
+                    }
+                    
+                    return .dictionary(response)
+                } catch {
+                    // Enhanced error handling for capture operations
+                    var errorResponse: [String: Any] = [
+                        "success": false,
+                        "error": error.localizedDescription
                     ]
+                    
+                    var context: [String: Any] = [:]
+                    
+                    // Check for permission errors
+                    if error.localizedDescription.lowercased().contains("permission") ||
+                       error.localizedDescription.lowercased().contains("denied") {
+                        
+                        let permissions = await getPermissionDiagnostics()
+                        
+                        context["currentState"] = "Permission denied for screen capture"
+                        context["requiredState"] = "Screen Recording permission must be granted"
+                        context["permissions"] = permissions
+                        context["fix"] = "Grant Screen Recording permission in System Settings > Privacy & Security > Screen Recording"
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "permission",
+                            "context": context
+                        ]
+                    } else if appName != nil && (error.localizedDescription.contains("not found") ||
+                                                 error.localizedDescription.contains("no such")) {
+                        // App not found
+                        let similarApps = try? await findSimilarApps(appName!)
+                        context["available"] = similarApps ?? []
+                        context["suggestions"] = ["Application '\(appName!)' not found"]
+                        context["fix"] = "Check the app name or use 'list_apps' to see running applications"
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "notFound",
+                            "context": context
+                        ]
+                    } else if error.localizedDescription.contains("no window") {
+                        context["currentState"] = "No active window to capture"
+                        context["fix"] = "Ensure an application window is open and focused"
+                        context["suggestions"] = ["Try mode: 'screen' to capture the entire screen instead"]
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "state",
+                            "context": context
+                        ]
+                    }
+                    
+                    return .dictionary(errorResponse)
                 }
-                
-                // If analysis was requested, perform it
-                if let prompt = analyzePrompt {
-                    // This would integrate with the AI analysis service
-                    // For now, we'll just note that analysis was requested
-                    response["analysisRequested"] = prompt
-                }
-                
-                return .dictionary(response)
             }
         )
     }
@@ -460,35 +522,67 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 let clickTypeEnum: ClickType = clickType == "double" ? .double :
                                                clickType == "right" ? .right : .single
                 
-                if target == "coordinates" {
-                    guard let x: Double = input.value(for: "x"),
-                          let y: Double = input.value(for: "y") else {
-                        throw PeekabooError.invalidInput("Coordinates required when target is 'coordinates'")
+                do {
+                    if target == "coordinates" {
+                        guard let x: Double = input.value(for: "x"),
+                              let y: Double = input.value(for: "y") else {
+                            throw PeekabooError.invalidInput("Coordinates required when target is 'coordinates'")
+                        }
+                        
+                        try await services.automation.click(
+                            target: .coordinates(CGPoint(x: x, y: y)),
+                            clickType: clickTypeEnum,
+                            sessionId: sessionId
+                        )
+                    } else {
+                        // Click by text
+                        try await services.automation.click(
+                            target: .query(target),
+                            clickType: clickTypeEnum,
+                            sessionId: sessionId
+                        )
                     }
                     
-                    try await services.automation.click(
-                        target: .coordinates(CGPoint(x: x, y: y)),
-                        clickType: clickTypeEnum,
-                        sessionId: sessionId
-                    )
-                } else {
-                    // Click by text
-                    try await services.automation.click(
-                        target: .query(target),
-                        clickType: clickTypeEnum,
-                        sessionId: sessionId
-                    )
+                    let response: [String: Any] = [
+                        "success": true,
+                        "action": "clicked",
+                        "target": target
+                    ]
+                    
+                    return .dictionary(response)
+                } catch {
+                    // Enhanced error handling for click operations
+                    if errorContains(error, keywords: ["not found", "no element"]) {
+                        // Get available elements
+                        let availableButtons = try? await getAvailableElements(sessionId: sessionId, type: .button)
+                        let availableElements = try? await getAvailableElements(sessionId: sessionId, type: nil)
+                        
+                        var suggestions: [String] = []
+                        var available: [String] = []
+                        
+                        if let buttons = availableButtons, !buttons.isEmpty {
+                            available = buttons
+                            if let firstButton = buttons.first {
+                                let elementId = firstButton.components(separatedBy: "(").last?.dropLast() ?? ""
+                                suggestions = ["Did you mean \(firstButton)? Try: click \(elementId)"]
+                            }
+                        } else if let elements = availableElements, !elements.isEmpty {
+                            available = elements
+                            suggestions = ["No buttons found. Available elements: \(elements.prefix(3).joined(separator: ", "))"]
+                        }
+                        
+                        let context = createNotFoundContext(
+                            available: available.isEmpty ? nil : available,
+                            suggestions: suggestions.isEmpty ? nil : suggestions,
+                            fix: sessionId == nil ? "Use 'see' tool first to capture screen and detect elements" : nil
+                        )
+                        
+                        return .dictionary(createEnhancedError(error, category: .notFound, context: context))
+                    }
+                    
+                    // Default error response
+                    return .dictionary(["success": false, "error": error.localizedDescription])
                 }
-                
-                
-                let response: [String: Any] = [
-                    "success": true,
-                    "action": "clicked",
-                    "target": target
-                ]
-                
-                
-                return .dictionary(response)
             }
         )
     }
@@ -512,22 +606,82 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 let text: String = input.value(for: "text") ?? ""
                 let delay: Int = input.value(for: "delay") ?? 20
                 
-                try await services.automation.type(
-                    text: text,
-                    target: nil,
-                    clearExisting: false,
-                    typingDelay: delay,
-                    sessionId: nil
-                )
-                
-                
-                let response: [String: Any] = [
-                    "success": true,
-                    "action": "typed",
-                    "text": text
-                ]
-                
-                return .dictionary(response)
+                do {
+                    try await services.automation.type(
+                        text: text,
+                        target: nil,
+                        clearExisting: false,
+                        typingDelay: delay,
+                        sessionId: nil
+                    )
+                    
+                    let response: [String: Any] = [
+                        "success": true,
+                        "action": "typed",
+                        "text": text
+                    ]
+                    
+                    return .dictionary(response)
+                } catch {
+                    // Enhanced error handling for type operations
+                    if errorContains(error, keywords: ["no element", "not focused"]) {
+                        // Get focus information
+                        let focusInfo = await MainActor.run {
+                            services.automation.getFocusedElement()
+                        }
+                        
+                        if focusInfo == nil {
+                            var suggestions: [String] = []
+                            var available: [String]? = nil
+                            
+                            // Try to find available text fields
+                            if let sessionId = input.value(for: "sessionId") as? String {
+                                let textFields = try? await getAvailableElements(sessionId: sessionId, type: .textField)
+                                if let fields = textFields, !fields.isEmpty {
+                                    available = fields
+                                    if let firstField = fields.first {
+                                        let elementId = firstField.components(separatedBy: "(").last?.dropLast() ?? ""
+                                        suggestions = ["Click on a text field first. Try: click \(elementId)"]
+                                    }
+                                }
+                            } else {
+                                suggestions = ["Use 'see' tool first, then click on a text field"]
+                            }
+                            
+                            let context = createStateContext(
+                                currentState: "No text field is currently focused",
+                                requiredState: "A text field must be focused to type",
+                                fix: "Click on a text field first before typing",
+                                suggestions: suggestions.isEmpty ? nil : suggestions
+                            )
+                            
+                            if let available = available {
+                                var mutableContext = context
+                                mutableContext["available"] = available
+                                return .dictionary(createEnhancedError(error, category: .state, context: mutableContext))
+                            }
+                            
+                            return .dictionary(createEnhancedError(error, category: .state, context: context))
+                        } else if let info = focusInfo, !info.isEditable {
+                            let context = createStateContext(
+                                currentState: "Focused element: \(info.elementType) - '\(info.title ?? "")'",
+                                requiredState: "Element must be editable",
+                                fix: "The focused element is not a text input field"
+                            )
+                            return .dictionary(createEnhancedError(error, category: .state, context: context))
+                        }
+                    } else if text.isEmpty {
+                        let context = createInvalidInputContext(
+                            currentState: "Empty text provided",
+                            requiredState: "Text must not be empty",
+                            example: "type \"Hello, World!\""
+                        )
+                        return .dictionary(createEnhancedError(error, category: .invalidInput, context: context))
+                    }
+                    
+                    // Default error response
+                    return .dictionary(["success": false, "error": error.localizedDescription])
+                }
             }
         )
     }
@@ -604,38 +758,102 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 let elementType: String = input.value(for: "elementType") ?? "any"
                 let sessionId: String = input.value(for: "sessionId") ?? UUID().uuidString
                 
-                let query: String
-                if let text = text {
-                    query = text
-                } else {
-                    query = "type:\(elementType)"
+                do {
+                    let query: String
+                    if let text = text {
+                        query = text
+                    } else {
+                        query = "type:\(elementType)"
+                    }
+                    
+                    let elements = try await services.sessions.findElements(
+                        sessionId: sessionId,
+                        matching: query
+                    )
+                    
+                    if elements.isEmpty {
+                        // No exact matches found - provide helpful context
+                        var errorResponse: [String: Any] = [
+                            "success": false,
+                            "error": "No elements found matching '\(query)'"
+                        ]
+                        
+                        var context: [String: Any] = [:]
+                        
+                        // Get all available elements for suggestions
+                        let allElements = try? await getAvailableElements(sessionId: sessionId, type: nil)
+                        
+                        if let available = allElements, !available.isEmpty {
+                            context["available"] = available
+                            
+                            // If searching by text, suggest partial matches
+                            if let searchText = text {
+                                let partialMatches = available.filter { element in
+                                    element.lowercased().contains(searchText.lowercased())
+                                }
+                                if !partialMatches.isEmpty {
+                                    context["suggestions"] = ["Found partial matches: \(partialMatches.first!)"]
+                                }
+                            }
+                            
+                            // If searching by type, show what types are available
+                            if text == nil {
+                                let detectionResult = try? await services.sessions.getDetectionResult(sessionId: sessionId)
+                                if let result = detectionResult {
+                                    var availableTypes: [String] = []
+                                    if !result.elements.buttons.isEmpty { availableTypes.append("button (\(result.elements.buttons.count))") }
+                                    if !result.elements.textFields.isEmpty { availableTypes.append("textField (\(result.elements.textFields.count))") }
+                                    if !result.elements.links.isEmpty { availableTypes.append("link (\(result.elements.links.count))") }
+                                    if !result.elements.other.isEmpty { availableTypes.append("other (\(result.elements.other.count))") }
+                                    
+                                    context["available"] = availableTypes
+                                    context["suggestions"] = ["No '\(elementType)' elements found. Try one of the available types."]
+                                }
+                            }
+                        } else {
+                            context["fix"] = "Use 'see' tool first to capture and detect elements"
+                        }
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "notFound",
+                            "context": context
+                        ]
+                        
+                        return .dictionary(errorResponse)
+                    }
+                    
+                    let elementData = elements.map { element in
+                        [
+                            "text": element.label ?? "",
+                            "type": element.role,
+                            "bounds": [
+                                "x": element.frame.origin.x,
+                                "y": element.frame.origin.y,
+                                "width": element.frame.width,
+                                "height": element.frame.height
+                            ],
+                            "isActionable": element.isActionable
+                        ]
+                    }
+                    
+                    return .dictionary([
+                        "success": true,
+                        "elements": elementData,
+                        "count": elements.count,
+                        "sessionId": sessionId
+                    ])
+                } catch {
+                    return .dictionary([
+                        "success": false,
+                        "error": error.localizedDescription,
+                        "errorDetails": [
+                            "category": "system",
+                            "context": [
+                                "fix": "Use 'see' tool first to capture screen and detect elements"
+                            ]
+                        ]
+                    ])
                 }
-                
-                let elements = try await services.sessions.findElements(
-                    sessionId: sessionId,
-                    matching: query
-                )
-                
-                let elementData = elements.map { element in
-                    [
-                        "text": element.label ?? "",
-                        "type": element.role,
-                        "bounds": [
-                            "x": element.frame.origin.x,
-                            "y": element.frame.origin.y,
-                            "width": element.frame.width,
-                            "height": element.frame.height
-                        ],
-                        "isActionable": element.isActionable
-                    ]
-                }
-                
-                return .dictionary([
-                    "success": true,
-                    "elements": elementData,
-                    "count": elements.count,
-                    "sessionId": sessionId
-                ])
             }
         )
     }
@@ -668,6 +886,76 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         3. State your next step
         
         The user cannot see the tool outputs directly - they rely on your explanations to understand what's happening. Silent tool execution without explanation is a failure mode.
+        
+        ## Task Completion Requirements
+        
+        When completing tasks, you MUST:
+        
+        1. **Follow ALL instructions literally**
+           - If asked to "say" something, use the `say` command
+           - If asked to "send" something, complete the action fully - creating a draft is NOT sufficient
+           - Complete every part of multi-step requests
+        
+        2. **Verify task completion**
+           - After automating UI actions, verify the expected result occurred
+           - For sending messages/emails: confirm the compose window closed or the send action completed
+           - For file operations: verify the output file exists and has content
+        
+        3. **Use appropriate tools for each action**
+           - "say X" → use shell tool with `say "X"` command
+           - "send email" → create draft AND click Send button
+           - "delete file" → verify file no longer exists after deletion
+        
+        ## Tool Selection Guidelines
+        
+        When a command fails with "command not found":
+        - This means the tool/program is NOT installed on the system
+        - Do NOT attempt to use it again
+        - Find an alternative approach using available tools
+        - The error message is definitive - trust it
+        
+        Example workflow for missing tools:
+        1. Try: pandoc file.ods -o file.md
+        2. Get: "pandoc: command not found" 
+        3. Conclusion: pandoc is NOT available
+        4. Action: Use alternative conversion method (e.g., via installed applications)
+        
+        ## UI Automation Best Practices
+        
+        When automating applications:
+        
+        1. **Complete the full user journey**
+           - Opening a compose window is not "sending" 
+           - Creating a document is not "saving"
+           - Always perform the final action (Send, Save, Submit, etc.)
+        
+        2. **Verify UI state before and after actions**
+           - Use see tool to confirm windows/dialogs are present
+           - After clicking buttons, verify the expected change occurred
+           - If a window should close after an action, confirm it closed
+        
+        3. **Handle multi-step workflows completely**
+           - Draft → Send (not just Draft)
+           - Open → Edit → Save (not just Open → Edit)
+           - Create → Fill → Submit (not just Create → Fill)
+        
+        ## Shell Command Best Practices
+        
+        When using shell commands:
+        
+        1. **Text-to-speech requests**
+           - "say [phrase]" in instructions → use `say "[phrase]"` command
+           - This applies to any verbal output request
+        
+        2. **Command availability is binary**
+           - "command not found" = definitely not installed
+           - No need to check multiple times or try variations
+           - Move to alternative approaches immediately
+        
+        3. **Escape and quote properly**
+           - Use proper escaping for spaces in filenames
+           - Handle special characters in shell commands
+           - Test commands incrementally when building complex pipelines
         
         ## Critical Guidelines
         
@@ -919,18 +1207,70 @@ extension PeekabooAgentService {
                 let appName: String = input.value(for: "appName") ?? ""
                 let windowIndex: Int? = input.value(for: "windowIndex")
                 
-                let result = try await services.screenCapture.captureWindow(
-                    appIdentifier: appName,
-                    windowIndex: windowIndex
-                )
-                
-                return .dictionary([
-                    "success": true,
-                    "path": result.savedPath ?? "captured in memory",
-                    "width": result.metadata.size.width,
-                    "height": result.metadata.size.height,
-                    "appName": result.metadata.applicationInfo?.name ?? appName
-                ])
+                do {
+                    let result = try await services.screenCapture.captureWindow(
+                        appIdentifier: appName,
+                        windowIndex: windowIndex
+                    )
+                    
+                    return .dictionary([
+                        "success": true,
+                        "path": result.savedPath ?? "captured in memory",
+                        "width": result.metadata.size.width,
+                        "height": result.metadata.size.height,
+                        "appName": result.metadata.applicationInfo?.name ?? appName
+                    ])
+                } catch {
+                    // Enhanced error handling for window capture
+                    var errorResponse: [String: Any] = [
+                        "success": false,
+                        "error": error.localizedDescription
+                    ]
+                    
+                    var context: [String: Any] = [:]
+                    
+                    // Check window state
+                    let windowState = try? await getWindowState(appName: appName)
+                    
+                    if let state = windowState {
+                        if !state.appRunning {
+                            let similarApps = try? await findSimilarApps(appName)
+                            context["available"] = similarApps ?? []
+                            context["suggestions"] = ["App '\(appName)' not found. Did you mean one of these?"]
+                            context["fix"] = "Use exact app name or launch it first"
+                        } else if state.windows.isEmpty {
+                            context["currentState"] = "App is running but has no windows"
+                            context["fix"] = "Open a window in \(appName) first"
+                        } else {
+                            // Show available windows
+                            let windowInfo = state.windows.enumerated().map { index, window in
+                                "\(index): \(window.title)" + (window.isMinimized ? " (minimized)" : "")
+                            }
+                            context["available"] = windowInfo
+                            
+                            if let idx = windowIndex, idx >= state.windows.count {
+                                context["currentState"] = "Window index \(idx) out of range"
+                                context["suggestions"] = ["Valid indices: 0 to \(state.windows.count - 1)"]
+                            }
+                        }
+                    }
+                    
+                    // Check permissions if needed
+                    if error.localizedDescription.lowercased().contains("permission") {
+                        let permissions = await getPermissionDiagnostics()
+                        context["currentState"] = "Permission denied"
+                        context["requiredState"] = "Screen Recording permission required"
+                        context["fix"] = "Grant Screen Recording permission in System Settings > Privacy & Security"
+                        context["permissions"] = permissions
+                    }
+                    
+                    errorResponse["errorDetails"] = [
+                        "category": error.localizedDescription.contains("permission") ? "permission" : "notFound",
+                        "context": context
+                    ]
+                    
+                    return .dictionary(errorResponse)
+                }
             }
         )
     }
@@ -1011,18 +1351,74 @@ extension PeekabooAgentService {
                 let keys: String = input.value(for: "keys") ?? ""
                 let holdDuration: Int = input.value(for: "holdDuration") ?? 100
                 
-                try await services.automation.hotkey(
-                    keys: keys,
-                    holdDuration: holdDuration
-                )
-                
-                let response: [String: Any] = [
-                    "success": true,
-                    "action": "hotkey",
-                    "keys": keys
-                ]
-                
-                return .dictionary(response)
+                do {
+                    try await services.automation.hotkey(
+                        keys: keys,
+                        holdDuration: holdDuration
+                    )
+                    
+                    let response: [String: Any] = [
+                        "success": true,
+                        "action": "hotkey",
+                        "keys": keys
+                    ]
+                    
+                    return .dictionary(response)
+                } catch {
+                    // Enhanced error handling for hotkey operations
+                    var errorResponse: [String: Any] = [
+                        "success": false,
+                        "error": error.localizedDescription
+                    ]
+                    
+                    var context: [String: Any] = [:]
+                    
+                    // Check for invalid key format
+                    if error.localizedDescription.lowercased().contains("invalid") ||
+                       error.localizedDescription.lowercased().contains("unknown key") ||
+                       keys.isEmpty {
+                        
+                        context["currentState"] = "Invalid key combination: '\(keys)'"
+                        context["requiredState"] = "Valid comma-separated key combination"
+                        
+                        // Provide examples based on common mistakes
+                        var examples = [
+                            "cmd,c - Copy",
+                            "cmd,v - Paste",
+                            "cmd,tab - Switch apps",
+                            "cmd,shift,4 - Screenshot",
+                            "cmd,space - Spotlight",
+                            "cmd,option,esc - Force quit"
+                        ]
+                        
+                        // Add specific suggestions based on the input
+                        if keys.contains("+") {
+                            context["suggestions"] = ["Use commas instead of '+' to separate keys"]
+                            examples.insert("cmd,shift,a (not cmd+shift+a)", at: 0)
+                        } else if keys.contains(" and ") || keys.contains("&") {
+                            context["suggestions"] = ["Use commas to separate keys"]
+                        }
+                        
+                        context["example"] = examples.joined(separator: ", ")
+                        context["fix"] = "Valid modifiers: cmd, shift, option/alt, control/ctrl, fn"
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "invalidInput",
+                            "context": context
+                        ]
+                    } else if holdDuration < 0 || holdDuration > 5000 {
+                        context["currentState"] = "Invalid hold duration: \(holdDuration)ms"
+                        context["requiredState"] = "Duration must be between 0 and 5000 milliseconds"
+                        context["example"] = "hotkey \"cmd,c\" 100"
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "invalidInput",
+                            "context": context
+                        ]
+                    }
+                    
+                    return .dictionary(errorResponse)
+                }
             }
         )
     }
@@ -1042,20 +1438,69 @@ extension PeekabooAgentService {
                 let appName: String = input.value(for: "appName") ?? ""
                 let windowTitle: String? = input.value(for: "windowTitle")
                 
-                let target: WindowTarget
-                if let windowTitle = windowTitle {
-                    target = .title(windowTitle)
-                } else {
-                    target = .application(appName)
+                do {
+                    let target: WindowTarget
+                    if let windowTitle = windowTitle {
+                        target = .title(windowTitle)
+                    } else {
+                        target = .application(appName)
+                    }
+                    
+                    try await services.windows.focusWindow(target: target)
+                    
+                    return .dictionary([
+                        "success": true,
+                        "action": "focused",
+                        "appName": appName
+                    ])
+                } catch {
+                    // Enhanced error handling for window operations
+                    var errorResponse: [String: Any] = [
+                        "success": false,
+                        "error": error.localizedDescription
+                    ]
+                    
+                    // Check window state
+                    let windowState = try? await getWindowState(appName: appName)
+                    
+                    var context: [String: Any] = [:]
+                    
+                    if let state = windowState {
+                        if !state.appRunning {
+                            // App not running
+                            let similarApps = try? await findSimilarApps(appName)
+                            if let similar = similarApps, !similar.isEmpty {
+                                context["available"] = similar
+                                context["suggestions"] = ["App '\(appName)' not running. Did you mean: \(similar.first!)?"]
+                                context["fix"] = "Launch the app first with: launch_app \"\(appName)\""
+                            }
+                        } else if state.windows.isEmpty {
+                            // App running but no windows
+                            context["currentState"] = "App is running but has no windows"
+                            context["suggestions"] = ["The app is running but has no open windows"]
+                            context["fix"] = "Create a new window in the app or check if windows are minimized"
+                        } else {
+                            // Windows exist, show them
+                            let windowTitles = state.windows.prefix(3).map { window in
+                                let status = window.isMinimized ? " (minimized)" : ""
+                                return "\(window.title)\(status)"
+                            }
+                            context["available"] = windowTitles
+                            
+                            if state.windows.allSatisfy({ $0.isMinimized }) {
+                                context["currentState"] = "All windows are minimized"
+                                context["fix"] = "Windows are minimized. They will be restored when focused."
+                            }
+                        }
+                    }
+                    
+                    errorResponse["errorDetails"] = [
+                        "category": "state",
+                        "context": context
+                    ]
+                    
+                    return .dictionary(errorResponse)
                 }
-                
-                try await services.windows.focusWindow(target: target)
-                
-                return .dictionary([
-                    "success": true,
-                    "action": "focused",
-                    "appName": appName
-                ])
             }
         )
     }
@@ -1079,24 +1524,71 @@ extension PeekabooAgentService {
                 let height: Double = input.value(for: "height") ?? 600
                 let windowTitle: String? = input.value(for: "windowTitle")
                 
-                let target: WindowTarget
-                if let windowTitle = windowTitle {
-                    target = .title(windowTitle)
-                } else {
-                    target = .application(appName)
+                do {
+                    let target: WindowTarget
+                    if let windowTitle = windowTitle {
+                        target = .title(windowTitle)
+                    } else {
+                        target = .application(appName)
+                    }
+                    
+                    try await services.windows.resizeWindow(
+                        target: target,
+                        to: CGSize(width: width, height: height)
+                    )
+                    
+                    return .dictionary([
+                        "success": true,
+                        "action": "resized",
+                        "appName": appName,
+                        "newSize": ["width": width, "height": height]
+                    ])
+                } catch {
+                    // Enhanced error handling for resize operations
+                    var errorResponse: [String: Any] = [
+                        "success": false,
+                        "error": error.localizedDescription
+                    ]
+                    
+                    var context: [String: Any] = [:]
+                    
+                    // Check if dimensions are valid
+                    if width <= 0 || height <= 0 {
+                        context["currentState"] = "Invalid dimensions: width=\(width), height=\(height)"
+                        context["requiredState"] = "Width and height must be positive numbers"
+                        context["example"] = "resize_window \"Safari\" 1200 800"
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "invalidInput",
+                            "context": context
+                        ]
+                    } else {
+                        // Check window state for other errors
+                        let windowState = try? await getWindowState(appName: appName)
+                        
+                        if let state = windowState {
+                            if !state.appRunning {
+                                let similarApps = try? await findSimilarApps(appName)
+                                context["available"] = similarApps ?? []
+                                context["suggestions"] = ["App '\(appName)' not found"]
+                                context["fix"] = "Check app name or use 'list_apps' to see available apps"
+                            } else if state.windows.isEmpty {
+                                context["currentState"] = "App has no windows"
+                                context["fix"] = "Open a window in \(appName) first"
+                            } else if state.windows.allSatisfy({ $0.isMinimized }) {
+                                context["currentState"] = "All windows are minimized"
+                                context["suggestions"] = ["Windows will be restored and resized"]
+                            }
+                        }
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "state",
+                            "context": context
+                        ]
+                    }
+                    
+                    return .dictionary(errorResponse)
                 }
-                
-                try await services.windows.resizeWindow(
-                    target: target,
-                    to: CGSize(width: width, height: height)
-                )
-                
-                return .dictionary([
-                    "success": true,
-                    "action": "resized",
-                    "appName": appName,
-                    "newSize": ["width": width, "height": height]
-                ])
             }
         )
     }
@@ -1140,13 +1632,54 @@ extension PeekabooAgentService {
             execute: { input, services in
                 let appName: String = input.value(for: "appName") ?? ""
                 
-                _ = try await services.applications.launchApplication(identifier: appName)
-                
-                return .dictionary([
-                    "success": true,
-                    "action": "launched",
-                    "appName": appName
-                ])
+                do {
+                    _ = try await services.applications.launchApplication(identifier: appName)
+                    
+                    return .dictionary([
+                        "success": true,
+                        "action": "launched",
+                        "appName": appName
+                    ])
+                } catch {
+                    // Enhanced error handling for app launch
+                    var errorResponse: [String: Any] = [
+                        "success": false,
+                        "error": error.localizedDescription
+                    ]
+                    
+                    // Check if it's an app not found error
+                    if error.localizedDescription.lowercased().contains("not found") ||
+                       error.localizedDescription.lowercased().contains("no such") ||
+                       error.localizedDescription.lowercased().contains("unable to find") {
+                        
+                        // Find similar apps
+                        let similarApps = try? await findSimilarApps(appName)
+                        
+                        var context: [String: Any] = [:]
+                        
+                        if let similar = similarApps, !similar.isEmpty {
+                            context["available"] = similar
+                            context["suggestions"] = ["Did you mean: \(similar.first!)? Try: launch_app \"\(similar.first!)\""]
+                        } else {
+                            // Get all running apps
+                            let allApps = try? await services.applications.listApplications()
+                            if let apps = allApps, !apps.isEmpty {
+                                let appNames = apps.prefix(5).map { $0.name }
+                                context["available"] = appNames
+                                context["suggestions"] = ["Use 'list_apps' to see all available applications"]
+                            }
+                        }
+                        
+                        context["example"] = "launch_app \"Safari\" or launch_app \"com.apple.Safari\""
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "notFound",
+                            "context": context
+                        ]
+                    }
+                    
+                    return .dictionary(errorResponse)
+                }
             }
         )
     }
@@ -1302,24 +1835,76 @@ extension PeekabooAgentService {
                 let menuPath: String = input.value(for: "menuPath") ?? ""
                 
                 do {
+                    let targetApp: String
                     if let app = appName {
-                        try await services.menu.clickMenuItem(app: app, itemPath: menuPath)
+                        targetApp = app
                     } else {
-                        // Get frontmost app and click menu
+                        // Get frontmost app
                         let frontmostApp = try await services.applications.getFrontmostApplication()
-                        try await services.menu.clickMenuItem(app: frontmostApp.name, itemPath: menuPath)
+                        targetApp = frontmostApp.name
                     }
+                    
+                    try await services.menu.clickMenuItem(app: targetApp, itemPath: menuPath)
                     
                     return .dictionary([
                         "success": true,
                         "menuPath": menuPath,
-                        "app": appName ?? "frontmost"
+                        "app": targetApp
                     ])
                 } catch {
-                    return .dictionary([
+                    // Enhanced error handling for menu operations
+                    var errorResponse: [String: Any] = [
                         "success": false,
                         "error": error.localizedDescription
-                    ])
+                    ]
+                    
+                    var context: [String: Any] = [:]
+                    
+                    // Check if it's a menu not found error
+                    if error.localizedDescription.lowercased().contains("not found") ||
+                       error.localizedDescription.lowercased().contains("menu") {
+                        
+                        // Try to get available menus
+                        let targetApp = appName ?? (try? await services.applications.getFrontmostApplication().name) ?? ""
+                        
+                        if !targetApp.isEmpty {
+                            if let menuStructure = try? await services.menu.listMenus(for: targetApp) {
+                                // Extract some available menu paths
+                                var availablePaths: [String] = []
+                                for menu in menuStructure.menus.prefix(3) {
+                                    for item in menu.items.prefix(3) {
+                                        availablePaths.append("\(menu.title) > \(item.title)")
+                                    }
+                                }
+                                
+                                if !availablePaths.isEmpty {
+                                    context["available"] = availablePaths
+                                }
+                                
+                                // Suggest correct format
+                                context["example"] = "File > New, Edit > Copy, or just Copy"
+                                context["suggestions"] = ["Menu path not found. Check the exact menu names."]
+                            }
+                        }
+                        
+                        context["fix"] = "Use 'list_menus' to see all available menu items"
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "notFound",
+                            "context": context
+                        ]
+                    } else if error.localizedDescription.lowercased().contains("disabled") {
+                        context["currentState"] = "Menu item is disabled"
+                        context["requiredState"] = "Menu item must be enabled"
+                        context["suggestions"] = ["The menu item exists but is currently disabled"]
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "state",
+                            "context": context
+                        ]
+                    }
+                    
+                    return .dictionary(errorResponse)
                 }
             }
         )
@@ -1480,10 +2065,57 @@ extension PeekabooAgentService {
                         "details": result.details
                     ])
                 } catch {
-                    return .dictionary([
+                    // Enhanced error handling for dialog operations
+                    var errorResponse: [String: Any] = [
                         "success": false,
                         "error": error.localizedDescription
-                    ])
+                    ]
+                    
+                    var context: [String: Any] = [:]
+                    
+                    // Check if it's a dialog not found error
+                    if error.localizedDescription.lowercased().contains("no dialog") ||
+                       error.localizedDescription.lowercased().contains("not found") {
+                        
+                        context["currentState"] = "No dialog window found"
+                        context["requiredState"] = "An active dialog or alert must be present"
+                        
+                        // Try to detect what dialogs might be present
+                        if let activeDialogs = try? await services.dialogs.detectActiveDialogs() {
+                            if !activeDialogs.isEmpty {
+                                let dialogInfo = activeDialogs.map { dialog in
+                                    "\(dialog.title) - buttons: \(dialog.buttons.joined(separator: ", "))"
+                                }
+                                context["available"] = dialogInfo
+                                context["suggestions"] = ["Found dialogs with different buttons. Check the exact button text."]
+                            }
+                        }
+                        
+                        context["fix"] = "Ensure a dialog is open before trying to click buttons"
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "notFound",
+                            "context": context
+                        ]
+                    } else if error.localizedDescription.lowercased().contains("button") {
+                        context["currentState"] = "Button '\(buttonText)' not found in dialog"
+                        
+                        // Try to get available buttons
+                        if let activeDialogs = try? await services.dialogs.detectActiveDialogs(),
+                           let firstDialog = activeDialogs.first {
+                            context["available"] = firstDialog.buttons
+                            context["suggestions"] = ["Available buttons in the dialog"]
+                        }
+                        
+                        context["example"] = "Common buttons: OK, Cancel, Save, Don't Save, Continue"
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "notFound",
+                            "context": context
+                        ]
+                    }
+                    
+                    return .dictionary(errorResponse)
                 }
             }
         )
@@ -1537,6 +2169,224 @@ extension PeekabooAgentService {
                 }
             }
         )
+    }
+}
+
+// MARK: - Error Enhancement Helpers
+
+extension PeekabooAgentService {
+    /// Create an enhanced error response with detailed context
+    private func createEnhancedError(
+        _ error: Error,
+        category: ErrorCategory,
+        context: [String: Any]
+    ) -> [String: Any] {
+        return [
+            "success": false,
+            "error": error.localizedDescription,
+            "errorDetails": [
+                "category": category.rawValue,
+                "context": context
+            ]
+        ]
+    }
+    
+    /// Error categories for consistent error handling
+    private enum ErrorCategory: String {
+        case notFound = "notFound"
+        case permission = "permission"
+        case state = "state"
+        case invalidInput = "invalidInput"
+        case system = "system"
+    }
+    
+    /// Check if error message contains any of the given keywords (case insensitive)
+    private func errorContains(_ error: Error, keywords: [String]) -> Bool {
+        let errorLower = error.localizedDescription.lowercased()
+        return keywords.contains { errorLower.contains($0.lowercased()) }
+    }
+    
+    /// Create a "not found" error context with suggestions
+    private func createNotFoundContext(
+        available: [String]? = nil,
+        suggestions: [String]? = nil,
+        fix: String? = nil,
+        example: String? = nil
+    ) -> [String: Any] {
+        var context: [String: Any] = [:]
+        if let available = available { context["available"] = available }
+        if let suggestions = suggestions { context["suggestions"] = suggestions }
+        if let fix = fix { context["fix"] = fix }
+        if let example = example { context["example"] = example }
+        return context
+    }
+    
+    /// Create a "state" error context
+    private func createStateContext(
+        currentState: String,
+        requiredState: String? = nil,
+        fix: String? = nil,
+        suggestions: [String]? = nil
+    ) -> [String: Any] {
+        var context: [String: Any] = ["currentState": currentState]
+        if let requiredState = requiredState { context["requiredState"] = requiredState }
+        if let fix = fix { context["fix"] = fix }
+        if let suggestions = suggestions { context["suggestions"] = suggestions }
+        return context
+    }
+    
+    /// Create an "invalid input" error context
+    private func createInvalidInputContext(
+        currentState: String,
+        requiredState: String,
+        example: String,
+        suggestions: [String]? = nil
+    ) -> [String: Any] {
+        var context: [String: Any] = [
+            "currentState": currentState,
+            "requiredState": requiredState,
+            "example": example
+        ]
+        if let suggestions = suggestions { context["suggestions"] = suggestions }
+        return context
+    }
+
+// MARK: - Original Helper Functions
+    
+    /// Find applications with names similar to the given name
+    private func findSimilarApps(_ searchName: String) async throws -> [String] {
+        let apps = try await services.applications.listApplications()
+        let appNames = apps.map { $0.name }
+        
+        // Simple fuzzy matching - find apps that contain the search term or vice versa
+        let searchLower = searchName.lowercased()
+        var matches: [(name: String, score: Int)] = []
+        
+        for appName in appNames {
+            let appLower = appName.lowercased()
+            
+            // Exact match
+            if appLower == searchLower {
+                matches.append((appName, 100))
+            }
+            // App name contains search
+            else if appLower.contains(searchLower) {
+                matches.append((appName, 80))
+            }
+            // Search contains app name
+            else if searchLower.contains(appLower) {
+                matches.append((appName, 70))
+            }
+            // Levenshtein distance for typos
+            else {
+                let distance = levenshteinDistance(searchLower, appLower)
+                if distance <= 3 {
+                    matches.append((appName, 60 - distance * 10))
+                }
+            }
+        }
+        
+        // Sort by score and return top 3
+        return matches
+            .sorted { $0.score > $1.score }
+            .prefix(3)
+            .map { $0.name }
+    }
+    
+    /// Simple Levenshtein distance implementation for fuzzy matching
+    private func levenshteinDistance(_ s1: String, _ s2: String) -> Int {
+        let s1Array = Array(s1)
+        let s2Array = Array(s2)
+        
+        if s1Array.isEmpty { return s2Array.count }
+        if s2Array.isEmpty { return s1Array.count }
+        
+        var matrix = [[Int]](repeating: [Int](repeating: 0, count: s2Array.count + 1), count: s1Array.count + 1)
+        
+        for i in 0...s1Array.count {
+            matrix[i][0] = i
+        }
+        
+        for j in 0...s2Array.count {
+            matrix[0][j] = j
+        }
+        
+        for i in 1...s1Array.count {
+            for j in 1...s2Array.count {
+                let cost = s1Array[i-1] == s2Array[j-1] ? 0 : 1
+                matrix[i][j] = min(
+                    matrix[i-1][j] + 1,     // deletion
+                    matrix[i][j-1] + 1,     // insertion
+                    matrix[i-1][j-1] + cost // substitution
+                )
+            }
+        }
+        
+        return matrix[s1Array.count][s2Array.count]
+    }
+    
+    /// Get available UI elements for error context
+    private func getAvailableElements(sessionId: String?, type: ElementType? = nil) async throws -> [String] {
+        guard let sessionId = sessionId,
+              let detectionResult = try await services.sessions.getDetectionResult(sessionId: sessionId) else {
+            return []
+        }
+        
+        let elements: [DetectedElement]
+        switch type {
+        case .button:
+            elements = detectionResult.elements.buttons
+        case .textField:
+            elements = detectionResult.elements.textFields
+        case .link:
+            elements = detectionResult.elements.links
+        default:
+            elements = detectionResult.elements.all
+        }
+        
+        // Return formatted element descriptions
+        return elements.prefix(5).map { element in
+            if let label = element.label, !label.isEmpty {
+                return "'\(label)' (\(element.identifier))"
+            } else {
+                return "\(element.type.rawValue) (\(element.identifier))"
+            }
+        }
+    }
+    
+    /// Get window state information for an application
+    private func getWindowState(appName: String) async throws -> (windows: [ServiceWindowInfo], appRunning: Bool) {
+        do {
+            let windows = try await services.applications.listWindows(for: appName)
+            return (windows, true)
+        } catch {
+            // Check if app is running
+            let apps = try await services.applications.listApplications()
+            let appRunning = apps.contains { $0.name.lowercased() == appName.lowercased() }
+            return ([], appRunning)
+        }
+    }
+    
+    /// Get current permission status
+    private func getPermissionDiagnostics() async -> [String: Any] {
+        var diagnostics: [String: Any] = [:]
+        
+        // Check screen recording permission
+        diagnostics["screenRecording"] = await services.permissions?.hasScreenRecordingPermission() ?? false
+        
+        // Check accessibility permission
+        diagnostics["accessibility"] = await services.permissions?.hasAccessibilityPermission() ?? false
+        
+        return diagnostics
+    }
+    
+    /// Format element suggestions for click operations
+    private func formatElementSuggestion(_ element: DetectedElement) -> String {
+        if let label = element.label, !label.isEmpty {
+            return "Try: click \(element.identifier) for '\(label)'"
+        } else {
+            return "Try: click \(element.identifier)"
+        }
     }
 }
 
