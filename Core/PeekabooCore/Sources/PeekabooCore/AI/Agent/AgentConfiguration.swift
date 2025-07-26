@@ -6,8 +6,8 @@ public struct AgentConfiguration {
     public static let maxIterations = 100
     
     /// Default reasoning effort for o3 models
-    /// Using "high" for maximum reasoning capability
-    public static let o3ReasoningEffort = "high"
+    /// Using "medium" for better balance between reasoning and tool usage
+    public static let o3ReasoningEffort = "medium"
     
     /// Maximum tokens for o3 models (they need more for reasoning)
     public static let o3MaxTokens = 65536
