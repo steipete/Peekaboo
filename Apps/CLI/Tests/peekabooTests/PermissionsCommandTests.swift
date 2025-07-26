@@ -9,7 +9,7 @@ struct PermissionsCommandTests {
         // Verify the command has the same configuration as the original
         #expect(PermissionsCommand.configuration.commandName == "permissions")
         #expect(PermissionsCommand.configuration.abstract == "Check system permissions required for Peekaboo")
-        #expect(PermissionsCommand.configuration.discussion != nil)
+        #expect(!PermissionsCommand.configuration.discussion.isEmpty)
     }
     
     @Test("PermissionsCommand has JSON output flag")

@@ -37,6 +37,14 @@ import {
   sleepToolSchema,
   cleanToolHandler,
   cleanToolSchema,
+  agentToolHandler,
+  agentToolSchema,
+  appToolHandler,
+  appToolSchema,
+  windowToolHandler,
+  windowToolSchema,
+  menuToolHandler,
+  menuToolSchema,
 } from "./tools/index.js";
 import { generateServerStatusString } from "./utils/server-status.js";
 import { initializeSwiftCliPath } from "./utils/peekaboo-cli.js";
@@ -47,13 +55,14 @@ import { z } from "zod";
 // Get package version and determine package root
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename); // This will be dist/
-const packageRootDir = path.resolve(__dirname, ".."); // Moves from dist/ to package root
+const projectRootDir = path.resolve(__dirname, "..", ".."); // Moves from dist/ to project root (not Server root)
+const packageRootDir = path.resolve(__dirname, ".."); // Server root for package.json
 const packageJsonPath = path.join(packageRootDir, "package.json");
 const packageJson = JSON.parse(await fs.readFile(packageJsonPath, "utf-8"));
 const SERVER_VERSION = packageJson.version;
 
 // Initialize the Swift CLI Path once
-initializeSwiftCliPath(packageRootDir);
+initializeSwiftCliPath(projectRootDir);
 
 // No longer need to track initial status display
 
@@ -283,6 +292,105 @@ Use this to free up disk space and remove orphaned session data.` +
           statusSuffix,
         inputSchema: zodToJsonSchema(cleanToolSchema),
       },
+      {
+        name: "app",
+        title: "Application Control",
+        description:
+`Control applications - launch, quit, focus, hide, unhide, and switch between apps.
+
+Actions:
+- launch: Start an application
+- quit: Quit an application (with optional force flag)
+- focus/switch: Bring an application to the foreground
+- hide: Hide an application
+- unhide: Show a hidden application
+
+Target applications by name (e.g., "Safari"), bundle ID (e.g., "com.apple.Safari"), 
+or process ID (e.g., "PID:663"). Fuzzy matching is supported for application names.
+
+Examples:
+- Launch Safari: { "action": "launch", "name": "Safari" }
+- Quit TextEdit: { "action": "quit", "name": "TextEdit" }
+- Focus Chrome: { "action": "focus", "name": "Google Chrome" }` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(appToolSchema),
+      },
+      {
+        name: "window",
+        title: "Window Management",
+        description:
+`Manipulate application windows - close, minimize, maximize, move, resize, and focus.
+
+Actions:
+- close: Close a window
+- minimize: Minimize a window
+- maximize: Maximize a window  
+- move: Move a window to specific coordinates (requires x, y)
+- resize: Resize a window to specific dimensions (requires width, height)
+- focus: Bring a window to the foreground
+
+Target windows by application name and optionally by window title or index.
+Supports partial title matching for convenience.
+
+Examples:
+- Close Safari window: { "action": "close", "app": "Safari" }
+- Move window: { "action": "move", "app": "TextEdit", "x": 100, "y": 100 }
+- Resize window: { "action": "resize", "app": "Terminal", "width": 800, "height": 600 }` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(windowToolSchema),
+      },
+      {
+        name: "menu",
+        title: "Menu Interaction",
+        description:
+`Interact with application menu bars - list available menus or click menu items.
+
+Actions:
+- list: Discover all available menus and menu items for an application
+- click: Click on a specific menu item using path notation
+
+Menu paths use ">" separator (e.g., "File > Save As..." or "Edit > Copy").
+Use plain ellipsis "..." instead of Unicode "…" in menu paths.
+
+Examples:
+- List Chrome menus: { "action": "list", "app": "Google Chrome" }
+- Save document: { "action": "click", "app": "TextEdit", "path": "File > Save" }
+- Copy selection: { "action": "click", "app": "Safari", "path": "Edit > Copy" }` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(menuToolSchema),
+      },
+      {
+        name: "agent",
+        title: "AI Agent Task Execution",
+        description:
+`Execute complex automation tasks using an AI agent powered by OpenAI's Assistants API.
+The agent can understand natural language instructions and break them down into specific 
+Peekaboo commands to accomplish complex workflows.
+
+Capabilities:
+- Natural Language Processing: Understands tasks described in plain English
+- Multi-step Automation: Breaks complex tasks into sequential steps
+- Visual Feedback: Can take screenshots to verify results
+- Context Awareness: Maintains session state across multiple actions
+- Error Recovery: Can adapt and retry when actions fail
+
+The agent has access to all Peekaboo automation tools including:
+- Screen capture and analysis
+- UI element interaction (click, type, scroll)
+- Application control (launch, quit, focus)
+- Window management (move, resize, close)
+- System interaction (hotkeys, shell commands)
+
+Example tasks:
+- "Open Safari and navigate to apple.com"
+- "Take a screenshot of the current window and save it to Desktop"
+- "Find the login button and click it, then type my credentials"
+- "Open TextEdit, write 'Hello World', and save the document"
+
+Requires OPENAI_API_KEY environment variable to be set.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(agentToolSchema),
+      },
     ],
   };
 });
@@ -367,6 +475,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "clean": {
         const validatedArgs = cleanToolSchema.parse(args || {});
         response = await cleanToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "agent": {
+        const validatedArgs = agentToolSchema.parse(args || {});
+        response = await agentToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "app": {
+        const validatedArgs = appToolSchema.parse(args || {});
+        response = await appToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "window": {
+        const validatedArgs = windowToolSchema.parse(args || {});
+        response = await windowToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "menu": {
+        const validatedArgs = menuToolSchema.parse(args || {});
+        response = await menuToolHandler(validatedArgs, toolContext);
         break;
       }
       default:

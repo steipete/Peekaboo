@@ -251,7 +251,7 @@ struct AgentCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Output in JSON format")
     var jsonOutput = false
     
-    @Option(name: .long, help: "Resume a previous agent session by ID (optional - will show recent sessions if not provided)")
+    @Option(name: .long, help: "Resume agent session: --resume \"<task>\" (latest session) or --resume <session-id> <task> (specific session) or --resume \"\" (show sessions)")
     var resume: String?
     
     /// Computed property for output mode based on flags
@@ -263,24 +263,31 @@ struct AgentCommand: AsyncParsableCommand {
         // Handle resume functionality
         if let resumeSessionId = resume {
             if resumeSessionId.isEmpty {
-                // Show recent sessions if no ID provided
+                // Show recent sessions if empty string provided
                 try await showRecentSessions()
                 return
             } else {
-                // Resume specific session - task is required for continuation
-                guard let continuationTask = task else {
-                    if jsonOutput {
-                        let error = ["success": false, "error": "Task argument required when resuming session"] as [String: Any]
-                        let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
-                        print(String(data: jsonData, encoding: .utf8) ?? "{}")
-                    } else {
-                        print("\(TerminalColor.red)Error: Task argument required when resuming session\(TerminalColor.reset)")
-                        print("Usage: peekaboo agent --resume <session-id> \"<continuation-task>\"")
+                // Check if this looks like a session ID (UUID format) or if it's actually the task
+                if isValidSessionId(resumeSessionId) {
+                    // Resume specific session - task is required for continuation
+                    guard let continuationTask = task else {
+                        if jsonOutput {
+                            let error = ["success": false, "error": "Task argument required when resuming session"] as [String: Any]
+                            let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
+                            print(String(data: jsonData, encoding: .utf8) ?? "{}")
+                        } else {
+                            print("\(TerminalColor.red)Error: Task argument required when resuming session\(TerminalColor.reset)")
+                            print("Usage: peekaboo agent --resume <session-id> \"<continuation-task>\"")
+                        }
+                        return
                     }
+                    try await resumeSession(sessionId: resumeSessionId, continuationTask: continuationTask)
+                    return
+                } else {
+                    // The "session ID" is actually a task - resume latest session with this task
+                    try await resumeLatestSession(continuationTask: resumeSessionId)
                     return
                 }
-                try await resumeSession(sessionId: resumeSessionId, continuationTask: continuationTask)
-                return
             }
         }
         
@@ -537,6 +544,42 @@ struct AgentCommand: AsyncParsableCommand {
             let days = Int(interval / 86400)
             return "\(days) day\(days == 1 ? "" : "s") ago"
         }
+    }
+    
+    private func isValidSessionId(_ sessionId: String) -> Bool {
+        // Check if it looks like a UUID (36 characters with dashes)
+        let uuidPattern = "^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$"
+        let regex = try? NSRegularExpression(pattern: uuidPattern, options: .caseInsensitive)
+        let range = NSRange(location: 0, length: sessionId.utf16.count)
+        return regex?.firstMatch(in: sessionId, options: [], range: range) != nil
+    }
+    
+    private func resumeLatestSession(continuationTask: String) async throws {
+        let sessions = await AgentSessionManager.shared.getRecentSessions(limit: 1)
+        
+        guard let latestSession = sessions.first else {
+            if jsonOutput {
+                let error = ["success": false, "error": "No previous sessions found to resume"] as [String: Any]
+                let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
+                print(String(data: jsonData, encoding: .utf8) ?? "{}")
+            } else {
+                print("\(TerminalColor.red)Error: No previous sessions found to resume\(TerminalColor.reset)")
+                print("Run a task first to create a session, then use --resume to continue it.")
+            }
+            return
+        }
+        
+        if !jsonOutput {
+            print("\(TerminalColor.cyan)\(TerminalColor.bold)🔄 Resuming latest session \(latestSession.id.prefix(8))\(TerminalColor.reset)")
+            print("\(TerminalColor.gray)Original task: \(latestSession.task)\(TerminalColor.reset)")
+            print("\(TerminalColor.gray)Previous steps: \(latestSession.steps.count)\(TerminalColor.reset)")
+            if let question = latestSession.lastQuestion {
+                print("\(TerminalColor.yellow)❓ Previous question: \(question)\(TerminalColor.reset)")
+            }
+            print()
+        }
+        
+        try await resumeSession(sessionId: latestSession.id, continuationTask: continuationTask)
     }
 }
 

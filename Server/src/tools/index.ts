@@ -10,4 +10,8 @@ export { swipeToolHandler, swipeToolSchema } from "./swipe.js";
 export { runToolHandler, runToolSchema } from "./run.js";
 export { sleepToolHandler, sleepToolSchema } from "./sleep.js";
 export { cleanToolHandler, cleanToolSchema } from "./clean.js";
+export { agentToolHandler, agentToolSchema } from "./agent.js";
+export { appToolHandler, appToolSchema } from "./app.js";
+export { windowToolHandler, windowToolSchema } from "./window.js";
+export { menuToolHandler, menuToolSchema } from "./menu.js";
 export { buildSwiftCliArgs } from "../utils/image-cli-args.js";

@@ -19,12 +19,12 @@ export default defineConfig({
       },
     },
     include: [
-      "**/tests/unit/**/*.test.ts",
+      "../tests/unit/**/*.test.ts",
       // Include all integration tests
-      "**/tests/integration/**/*.test.ts",
+      "../tests/integration/**/*.test.ts",
       // Only include E2E tests if running on macOS and not in CI
       ...(process.platform === "darwin" && !process.env.CI 
-        ? ["peekaboo-cli/tests/e2e/**/*.test.ts"] 
+        ? ["../peekaboo-cli/tests/e2e/**/*.test.ts"] 
         : []
       ),
     ],
@@ -33,7 +33,7 @@ export default defineConfig({
       "**/dist/**",
       // Exclude E2E tests in CI or non-macOS environments
       ...(process.platform !== "darwin" || process.env.CI 
-        ? ["peekaboo-cli/tests/e2e/**/*.test.ts"] 
+        ? ["../peekaboo-cli/tests/e2e/**/*.test.ts"] 
         : []
       ),
     ],
@@ -51,7 +51,7 @@ export default defineConfig({
       ],
     },
     // Global setup for platform-specific test skipping
-    setupFiles: ["./tests/setup.ts"],
+    setupFiles: ["../tests/setup.ts"],
     // alias: {
     //   '^(\.{1,2}/.*)\.js$': '$1',
     // },
