@@ -30,13 +30,8 @@ jobs:
     
     - name: Build Swift CLI for tests
       run: |
-        cd Apps/CLI
-        swift build -c release
-        # Copy the binary to the expected location
-        cp .build/release/peekaboo ../../peekaboo
-        cd ../..
-        # Make it executable
-        chmod +x peekaboo
+        # Use the build script that injects version
+        ./scripts/build-swift-universal.sh
         # Verify it exists
         ls -la peekaboo
     
@@ -98,8 +93,8 @@ jobs:
     
     - name: Build Swift CLI
       run: |
-        cd Apps/CLI
-        swift build -c release
+        # Use the build script that injects version
+        ./scripts/build-swift-universal.sh
     
     - name: Run Swift tests
       timeout-minutes: 15
