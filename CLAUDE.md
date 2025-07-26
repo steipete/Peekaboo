@@ -79,6 +79,7 @@ Poltergeist is a file watcher that automatically rebuilds the Swift CLI whenever
 - `Core/AXorcist/**/*.swift`
 - `Apps/CLI/**/*.swift`
 - All `Package.swift` files
+- Excludes auto-generated `Version.swift` to prevent infinite loops
 
 **The Wrapper Script** (`peekaboo-wait.sh`):
 - Checks if binary is fresh (newer than Swift sources)
@@ -86,6 +87,12 @@ Poltergeist is a file watcher that automatically rebuilds the Swift CLI whenever
 - Runs the CLI with your command once ready
 - Completely transparent - no manual build management needed
 - Shows progress updates every 10 seconds during long builds
+
+**Build Notifications**:
+- Poltergeist sends macOS notifications when builds complete
+- Success: Glass sound with build time
+- Failure: Basso sound with error details
+- Disable with: `export POLTERGEIST_NOTIFICATIONS=false`
 
 ### Why This Matters
 

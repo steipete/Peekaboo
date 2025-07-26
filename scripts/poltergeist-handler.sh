@@ -9,6 +9,7 @@ CANCEL_FLAG="/tmp/peekaboo-build-cancel"
 MIN_BUILD_TIME=5  # Minimum seconds before allowing cancellation
 SPM_ERROR_RETRY_COUNT=0
 MAX_SPM_RETRIES=2
+NOTIFICATIONS_ENABLED="${POLTERGEIST_NOTIFICATIONS:-true}"  # Can disable with POLTERGEIST_NOTIFICATIONS=false
 
 # Ensure log file exists
 touch "$LOG_FILE"
@@ -187,8 +188,10 @@ if [ $BUILD_EXIT_CODE -eq 0 ]; then
     
     if [ $SPM_ERROR_RETRY_COUNT -gt 0 ]; then
         log "✅ Swift CLI build completed successfully after $SPM_ERROR_RETRY_COUNT retries (${BUILD_TIME}s)"
+        NOTIFICATION_MESSAGE="Peekaboo build completed after $SPM_ERROR_RETRY_COUNT retries (${BUILD_TIME}s)"
     else
         log "✅ Swift CLI build completed successfully (${BUILD_TIME}s)"
+        NOTIFICATION_MESSAGE="Peekaboo build completed (${BUILD_TIME}s)"
     fi
     
     # Copy to root for easy access
@@ -197,11 +200,23 @@ if [ $BUILD_EXIT_CODE -eq 0 ]; then
     else
         log "❌ Failed to copy binary to project root"
     fi
+    
+    # Send success notification
+    if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
+        osascript -e "display notification \"$NOTIFICATION_MESSAGE\" with title \"👻 Poltergeist\" subtitle \"Build Succeeded\" sound name \"Glass\""
+    fi
 else
     if [ $BUILD_EXIT_CODE -eq 2 ]; then
         log "❌ Swift CLI build failed due to persistent SPM errors after $MAX_SPM_RETRIES retries"
+        NOTIFICATION_MESSAGE="Build failed: Persistent SPM errors after $MAX_SPM_RETRIES retries"
     else
         log "❌ Swift CLI build failed (exit code: $BUILD_EXIT_CODE)"
+        NOTIFICATION_MESSAGE="Build failed with exit code $BUILD_EXIT_CODE"
     fi
     log "💡 Run 'poltergeist logs' to see the full error"
+    
+    # Send failure notification
+    if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
+        osascript -e "display notification \"$NOTIFICATION_MESSAGE\" with title \"👻 Poltergeist\" subtitle \"Build Failed\" sound name \"Basso\""
+    fi
 fi
