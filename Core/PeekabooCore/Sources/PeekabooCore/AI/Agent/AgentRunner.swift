@@ -69,7 +69,7 @@ public struct AgentRunner {
         sessionId: String? = nil,
         streamHandler: @Sendable @escaping (String) async -> Void,
         eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil,
-        reasoningHandler: (@Sendable @escaping (String) async -> Void)? = nil
+        reasoningHandler: (@Sendable (String) async -> Void)? = nil
     ) async throws -> AgentExecutionResult where Context: Sendable {
         let runner = AgentRunnerImpl(
             agent: agent,
@@ -256,7 +256,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         sessionId: String? = nil,
         streamHandler: @Sendable @escaping (String) async -> Void,
         eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil,
-        reasoningHandler: (@Sendable @escaping (String) async -> Void)? = nil
+        reasoningHandler: (@Sendable (String) async -> Void)? = nil
     ) async throws -> AgentExecutionResult {
         let startTime = Date()
         
@@ -304,7 +304,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         messages: [any MessageItem],
         streamHandler: @Sendable @escaping (String) async -> Void,
         eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil,
-        reasoningHandler: (@Sendable @escaping (String) async -> Void)? = nil
+        reasoningHandler: (@Sendable (String) async -> Void)? = nil
     ) async throws -> (messages: [any MessageItem], toolCalls: [ToolCallItem], content: String, usage: Usage?) {
         var currentMessages = messages
         var allToolCalls: [ToolCallItem] = []

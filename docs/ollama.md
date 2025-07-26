@@ -449,6 +449,100 @@ class OllamaStreamHandler {
 }
 ```
 
+### Conversation Context and Session Management
+
+**Important**: Ollama is stateless - it does NOT maintain conversation history between API calls. You must manage context yourself.
+
+```swift
+// Managing conversation history
+class OllamaConversationManager {
+    private var messages: [OllamaMessage] = []
+    
+    func addUserMessage(_ content: String) {
+        messages.append(OllamaMessage(role: "user", content: content))
+    }
+    
+    func addAssistantMessage(_ content: String) {
+        messages.append(OllamaMessage(role: "assistant", content: content))
+    }
+    
+    func addSystemMessage(_ content: String) {
+        // System messages should typically be first
+        messages.insert(OllamaMessage(role: "system", content: content), at: 0)
+    }
+    
+    func getChatRequest(newMessage: String) -> OllamaChatRequest {
+        addUserMessage(newMessage)
+        
+        return OllamaChatRequest(
+            model: model,
+            messages: messages,  // Send full history
+            stream: true,
+            options: ["num_ctx": 32768]  // Ensure large context window
+        )
+    }
+    
+    func trimHistory(maxMessages: Int = 50) {
+        // Keep system message + recent messages
+        if messages.count > maxMessages {
+            let systemMessages = messages.filter { $0.role == "system" }
+            let recentMessages = Array(messages.suffix(maxMessages - systemMessages.count))
+            messages = systemMessages + recentMessages
+        }
+    }
+}
+```
+
+#### Key Differences from Cloud Providers
+
+1. **No Session IDs**: Unlike OpenAI/Anthropic, Ollama has no session management
+2. **Manual History**: You must send the complete conversation history with each request
+3. **Context Limits**: Be mindful of model context windows (varies by model)
+4. **Memory Usage**: Larger contexts use more VRAM/RAM
+
+#### Context Parameter (Deprecated)
+
+The old `/api/generate` endpoint used a `context` parameter (array of tokens) to maintain state:
+```swift
+// OLD WAY - DEPRECATED
+{
+  "model": "llama2",
+  "prompt": "continue our conversation",
+  "context": [1, 2, 3, ...]  // Token array from previous response
+}
+```
+
+**Use `/api/chat` with full message history instead** for better compatibility and clearer conversation management.
+
+#### Best Practices
+
+1. **Persistent Storage**: Store conversations in a database for multi-session support
+2. **Context Pruning**: Implement sliding window or importance-based pruning for long conversations
+3. **System Prompts**: Include system messages at the start of each conversation
+4. **Error Recovery**: Save conversation state periodically to recover from crashes
+
+```swift
+// Example: Peekaboo integration
+extension OllamaModel {
+    func continueConversation(sessionId: String, newMessage: String) async throws -> String {
+        // Load conversation from storage
+        let history = try await loadConversationHistory(sessionId)
+        
+        // Add new message
+        history.append(MessageItem.user(newMessage))
+        
+        // Send full history to Ollama
+        let response = try await getResponse(messages: history, tools: nil)
+        
+        // Save updated conversation
+        history.append(MessageItem.assistant(response))
+        try await saveConversationHistory(sessionId, history)
+        
+        return response
+    }
+}
+```
+
 ## Configuration
 
 ### User Setup

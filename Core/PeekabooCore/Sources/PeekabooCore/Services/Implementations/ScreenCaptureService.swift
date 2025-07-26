@@ -629,9 +629,9 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
             
             // Add a timeout to ensure the continuation is always resumed
             self.timeoutTask = Task {
-                try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+                try? await Task.sleep(nanoseconds: 10_000_000_000) // 10 seconds
                 if let cont = self.continuation {
-                    cont.resume(throwing: OperationError.timeout(operation: "CaptureOutput.waitForImage", duration: 5.0))
+                    cont.resume(throwing: OperationError.timeout(operation: "CaptureOutput.waitForImage", duration: 10.0))
                     self.continuation = nil
                 }
             }

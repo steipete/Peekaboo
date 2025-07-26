@@ -141,7 +141,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 modelName: modelName,
                 temperature: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? nil : nil,  // o3 doesn't support temperature
                 maxTokens: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? AgentConfiguration.o3MaxTokens : AgentConfiguration.defaultMaxTokens,
-                toolChoice: .required,  // Always require tool usage - the whole system is useless without tools
+                toolChoice: .auto,  // Let the model decide when to use tools vs generate text
                 additionalParameters: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? [
                     "reasoning_effort": AnyCodable(AgentConfiguration.o3ReasoningEffort),
                     "max_completion_tokens": AnyCodable(AgentConfiguration.o3MaxCompletionTokens),
