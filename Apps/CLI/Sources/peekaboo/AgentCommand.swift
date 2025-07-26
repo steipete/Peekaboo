@@ -230,8 +230,8 @@ struct AgentCommand: AsyncParsableCommand {
         5. Retry if needed
         """)
 
-    @Argument(help: "Natural language description of the task to perform")
-    var task: String
+    @Argument(help: "Natural language description of the task to perform (optional when using --resume)")
+    var task: String?
 
     @Flag(name: .shortAndLong, help: "Enable verbose output with full JSON debug information")
     var verbose = false
@@ -251,12 +251,52 @@ struct AgentCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Output in JSON format")
     var jsonOutput = false
     
+    @Option(name: .long, help: "Resume a previous agent session by ID (optional - will show recent sessions if not provided)")
+    var resume: String?
+    
     /// Computed property for output mode based on flags
     private var outputMode: OutputMode {
         return quiet ? .quiet : (verbose ? .verbose : .compact)
     }
 
     mutating func run() async throws {
+        // Handle resume functionality
+        if let resumeSessionId = resume {
+            if resumeSessionId.isEmpty {
+                // Show recent sessions if no ID provided
+                try await showRecentSessions()
+                return
+            } else {
+                // Resume specific session - task is required for continuation
+                guard let continuationTask = task else {
+                    if jsonOutput {
+                        let error = ["success": false, "error": "Task argument required when resuming session"] as [String: Any]
+                        let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
+                        print(String(data: jsonData, encoding: .utf8) ?? "{}")
+                    } else {
+                        print("\(TerminalColor.red)Error: Task argument required when resuming session\(TerminalColor.reset)")
+                        print("Usage: peekaboo agent --resume <session-id> \"<continuation-task>\"")
+                    }
+                    return
+                }
+                try await resumeSession(sessionId: resumeSessionId, continuationTask: continuationTask)
+                return
+            }
+        }
+        
+        // Regular execution requires task
+        guard let executionTask = task else {
+            if jsonOutput {
+                let error = ["success": false, "error": "Task argument is required"] as [String: Any]
+                let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
+                print(String(data: jsonData, encoding: .utf8) ?? "{}")
+            } else {
+                print("\(TerminalColor.red)Error: Task argument is required\(TerminalColor.reset)")
+                print("Usage: peekaboo agent \"<your-task>\"")
+            }
+            return
+        }
+        
         // Load configuration defaults
         let config = PeekabooCore.ConfigurationManager.shared.getConfiguration()
         let agentConfig = config?.agent
@@ -289,20 +329,20 @@ struct AgentCommand: AsyncParsableCommand {
                     print("\n═══════════════════════════════════════════════════════════════")
                     print(" PEEKABOO AGENT")
                     print("═══════════════════════════════════════════════════════════════\n")
-                    print("Task: \"\(self.task)\"")
+                    print("Task: \"\(executionTask)\"")
                     print("Model: \(effectiveModel)")
                     print("Max steps: \(effectiveMaxSteps)")
                     print("API Key: \(String(apiKey.prefix(10)))***")
                     print("\nInitializing agent...\n")
                 case .compact:
                     print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)(\(Version.fullVersion))\(TerminalColor.reset)")
-                    print("\(TerminalColor.gray)Task: \(self.task)\(TerminalColor.reset)\n")
+                    print("\(TerminalColor.gray)Task: \(executionTask)\(TerminalColor.reset)\n")
                 case .quiet:
                     break
                 }
             }
 
-            let result = try await agent.executeTask(self.task, dryRun: self.dryRun)
+            let result = try await agent.executeTask(executionTask, dryRun: self.dryRun)
 
             if self.jsonOutput {
                 let response = AgentJSONResponse<OpenAIAgent.AgentResult>(
@@ -338,6 +378,164 @@ struct AgentCommand: AsyncParsableCommand {
             } else {
                 throw error
             }
+        }
+    }
+    
+    // MARK: - Resume Functionality
+    
+    private func showRecentSessions() async throws {
+        let sessions = await AgentSessionManager.shared.getRecentSessions()
+        
+        if sessions.isEmpty {
+            if jsonOutput {
+                let response = ["success": true, "sessions": []] as [String: Any]
+                let jsonData = try JSONSerialization.data(withJSONObject: response, options: .prettyPrinted)
+                print(String(data: jsonData, encoding: .utf8) ?? "{}")
+            } else {
+                print("No recent agent sessions found.")
+            }
+            return
+        }
+        
+        if jsonOutput {
+            let sessionData = sessions.map { session in [
+                "id": session.id,
+                "task": session.task,
+                "steps": session.steps.count,
+                "lastQuestion": session.lastQuestion as Any,
+                "createdAt": ISO8601DateFormatter().string(from: session.createdAt),
+                "lastActivityAt": ISO8601DateFormatter().string(from: session.lastActivityAt)
+            ]}
+            let response = ["success": true, "sessions": sessionData] as [String: Any]
+            let jsonData = try JSONSerialization.data(withJSONObject: response, options: .prettyPrinted)
+            print(String(data: jsonData, encoding: .utf8) ?? "{}")
+        } else {
+            print("\(TerminalColor.cyan)\(TerminalColor.bold)Recent Agent Sessions:\(TerminalColor.reset)\n")
+            
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .short
+            dateFormatter.timeStyle = .short
+            
+            for (index, session) in sessions.enumerated() {
+                let timeAgo = formatTimeAgo(session.lastActivityAt)
+                print("\(TerminalColor.blue)\(index + 1).\(TerminalColor.reset) \(TerminalColor.bold)\(session.id.prefix(8))\(TerminalColor.reset)")
+                print("   Task: \(session.task)")
+                print("   Steps: \(session.steps.count)")
+                if let question = session.lastQuestion {
+                    print("   \(TerminalColor.yellow)❓ Question: \(question)\(TerminalColor.reset)")
+                }
+                print("   Last activity: \(timeAgo)")
+                if index < sessions.count - 1 {
+                    print()
+                }
+            }
+            
+            print("\n\(TerminalColor.dim)To resume a session: peekaboo agent --resume <session-id> \"<continuation>\"\(TerminalColor.reset)")
+        }
+    }
+    
+    private func resumeSession(sessionId: String, continuationTask: String) async throws {
+        guard let session = await AgentSessionManager.shared.getSession(id: sessionId) else {
+            if jsonOutput {
+                let error = ["success": false, "error": "Session not found"] as [String: Any]
+                let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
+                print(String(data: jsonData, encoding: .utf8) ?? "{}")
+            } else {
+                print("\(TerminalColor.red)Error: Session '\(sessionId)' not found.\(TerminalColor.reset)")
+                print("Use --resume without an ID to see available sessions.")
+            }
+            return
+        }
+        
+        if !jsonOutput {
+            print("\(TerminalColor.cyan)\(TerminalColor.bold)🔄 Resuming session \(sessionId.prefix(8))\(TerminalColor.reset)")
+            print("\(TerminalColor.gray)Original task: \(session.task)\(TerminalColor.reset)")
+            print("\(TerminalColor.gray)Previous steps: \(session.steps.count)\(TerminalColor.reset)")
+            if let question = session.lastQuestion {
+                print("\(TerminalColor.yellow)❓ Previous question: \(question)\(TerminalColor.reset)")
+            }
+            print()
+        }
+        
+        // Continue with the new task in the context of the existing session
+        let resumePrompt = "Continue with the original task. The user's response: \(continuationTask)"
+        
+        // Load configuration for the resume
+        let config = PeekabooCore.ConfigurationManager.shared.getConfiguration()
+        let agentConfig = config?.agent
+        let effectiveModel = self.model ?? agentConfig?.defaultModel ?? "gpt-4-turbo"
+        let effectiveMaxSteps = self.maxSteps ?? agentConfig?.maxSteps ?? 20
+        
+        guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
+            if self.jsonOutput {
+                outputAgentJSON(createAgentErrorResponse(AgentError.missingAPIKey))
+            } else {
+                throw AgentError.missingAPIKey
+            }
+            return
+        }
+        
+        let agent = OpenAIAgent(
+            apiKey: apiKey,
+            model: effectiveModel,
+            verbose: self.outputMode == .verbose,
+            maxSteps: effectiveMaxSteps,
+            showThoughts: self.outputMode != .quiet,
+            outputMode: self.outputMode)
+        
+        do {
+            let result = try await agent.executeTask(resumePrompt, dryRun: self.dryRun, sessionId: sessionId)
+            
+            if self.jsonOutput {
+                let response = AgentJSONResponse<OpenAIAgent.AgentResult>(
+                    success: true,
+                    data: result,
+                    error: nil)
+                outputAgentJSON(response)
+            } else if self.outputMode == .quiet {
+                if let summary = result.summary {
+                    print(summary)
+                } else {
+                    print("✅ Session resumed and task completed!")
+                }
+            } else {
+                if let summary = result.summary {
+                    print("\n\(TerminalColor.green)\(TerminalColor.bold)✅ Session resumed and completed\(TerminalColor.reset)")
+                    print("\(summary)")
+                } else {
+                    print("\n\(TerminalColor.green)\(TerminalColor.bold)✅ Session resumed successfully!\(TerminalColor.reset)")
+                }
+            }
+        } catch let error as AgentError {
+            if self.jsonOutput {
+                outputAgentJSON(createAgentErrorResponse(error))
+            } else {
+                throw error
+            }
+        } catch {
+            if self.jsonOutput {
+                outputAgentJSON(createAgentErrorResponse(AgentError.apiError(error.localizedDescription)))
+            } else {
+                throw error
+            }
+        }
+    }
+    
+    private func formatTimeAgo(_ date: Date) -> String {
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+        
+        if interval < 60 {
+            return "just now"
+        } else if interval < 3600 {
+            let minutes = Int(interval / 60)
+            return "\(minutes) minute\(minutes == 1 ? "" : "s") ago"
+        } else if interval < 86400 {
+            let hours = Int(interval / 3600)
+            return "\(hours) hour\(hours == 1 ? "" : "s") ago"
+        } else {
+            let days = Int(interval / 86400)
+            return "\(days) day\(days == 1 ? "" : "s") ago"
         }
     }
 }
@@ -381,7 +579,7 @@ struct OpenAIAgent {
         }
     }
 
-    func executeTask(_ task: String, dryRun: Bool) async throws -> AgentResult {
+    func executeTask(_ task: String, dryRun: Bool, sessionId: String? = nil) async throws -> AgentResult {
 
         // Get or create shared assistant (reused across commands)
         if self.outputMode == .verbose {
@@ -404,6 +602,14 @@ struct OpenAIAgent {
 
         // Store thread ID for cleanup (assistant is shared and persistent)
         let threadId = thread.id
+        
+        // Create or get session for tracking
+        let currentSessionId: String
+        if let existingSessionId = sessionId {
+            currentSessionId = existingSessionId
+        } else {
+            currentSessionId = await AgentSessionManager.shared.createSession(task: task, threadId: threadId)
+        }
 
         defer {
             // Only clean up thread - keep assistant for reuse
@@ -564,6 +770,14 @@ struct OpenAIAgent {
                         }
                         
                         toolOutputs.append((toolCallId: toolCall.id, output: output))
+                        
+                        // Log step to session
+                        await AgentSessionManager.shared.addStep(
+                            sessionId: currentSessionId,
+                            description: toolCall.function.name,
+                            command: toolCall.function.arguments,
+                            output: output
+                        )
                     }
 
                     steps.append(step)
