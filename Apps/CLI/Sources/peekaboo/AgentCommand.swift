@@ -326,9 +326,12 @@ struct AgentCommand: AsyncParsableCommand {
     // MARK: - Task Execution
     
     private func executeTask(_ agentService: AgentServiceProtocol, task: String, sessionId: String? = nil) async throws {
+        // Update terminal title with VibeTunnel
+        updateTerminalTitle("Starting: \(task.prefix(50))...")
+        
         // Create event delegate for real-time updates
         let eventDelegate = await MainActor.run {
-            CompactEventDelegate(outputMode: outputMode, jsonOutput: jsonOutput)
+            CompactEventDelegate(outputMode: outputMode, jsonOutput: jsonOutput, task: task)
         }
         
         // Show header
@@ -372,6 +375,9 @@ struct AgentCommand: AsyncParsableCommand {
             
             // Handle result display
             displayResult(result)
+            
+            // Update terminal title to show completion
+            updateTerminalTitle("Completed: \(task.prefix(50))")
         } catch let error as DecodingError {
             aiDebugPrint("DEBUG: DecodingError caught: \(error)")
             throw error
@@ -393,6 +399,9 @@ struct AgentCommand: AsyncParsableCommand {
             } else {
                 print("\n\(TerminalColor.red)\(TerminalColor.bold)❌ Error:\(TerminalColor.reset) \(errorMessage)")
             }
+            
+            // Update terminal title to show error
+            updateTerminalTitle("Error: \(task.prefix(40))...")
             throw error
         }
     }
@@ -508,6 +517,22 @@ struct AgentCommand: AsyncParsableCommand {
         
         // Execute task with existing session
         try await executeTask(agentService, task: task, sessionId: sessionId)
+    }
+    
+    private func updateTerminalTitle(_ title: String) {
+        // Use VibeTunnel to update terminal title if available
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["vt", "title", title]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            // Silently ignore if vt is not available
+        }
     }
     
     private func formatTimeAgo(_ date: Date) -> String {

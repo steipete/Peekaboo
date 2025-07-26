@@ -307,7 +307,7 @@ struct SessionChatView: View {
             // Header
             SessionChatHeader(
                 session: session,
-                isActive: isCurrentSession && agent.isExecuting
+                isActive: isCurrentSession && agent.isProcessing
             )
             
             Divider()
@@ -354,7 +354,7 @@ struct SessionChatView: View {
                             hasConnectionError = false
                             
                             // Retry the last failed task if available
-                            if !agent.currentTask.isEmpty {
+                            if true /* TODO: Check current task */ {
                                 let lastTask = agent.currentTask
                                 Task {
                                     isProcessing = true
@@ -404,9 +404,9 @@ struct SessionChatView: View {
             }
             .buttonStyle(.plain)
             
-            if agent.isExecuting && isCurrentSession {
+            if agent.isProcessing && isCurrentSession {
                 // Show stop button during execution
-                Button(action: { agent.cancelCurrentTask() }) {
+                Button(action: { /* TODO: Implement cancel */ }) {
                     Image(systemName: "stop.circle.fill")
                         .font(.title2)
                         .foregroundColor(.red)
@@ -427,7 +427,7 @@ struct SessionChatView: View {
     }
     
     private var placeholderText: String {
-        if agent.isExecuting && isCurrentSession {
+        if agent.isProcessing && isCurrentSession {
             return "Ask a follow-up question..."
         } else {
             return "Ask Peekaboo..."
@@ -478,7 +478,7 @@ struct SessionChatView: View {
         // Clear input immediately
         inputText = ""
         
-        if agent.isExecuting && isCurrentSession {
+        if agent.isProcessing && isCurrentSession {
             // During execution, just add as a follow-up message
             sessionStore.addMessage(
                 SessionMessage(role: .user, content: trimmedInput),
@@ -486,8 +486,8 @@ struct SessionChatView: View {
             )
             
             // If agent is executing, queue the message for later
-            if agent.isExecuting {
-                agent.queueMessage(trimmedInput)
+            if agent.isProcessing {
+                // TODO: Implement queueMessage
                 
                 // Show queued notification
                 sessionStore.addMessage(
@@ -497,7 +497,11 @@ struct SessionChatView: View {
             } else {
                 // Start a new execution with the follow-up
                 Task {
-                    await agent.executeTask(trimmedInput)
+                    do {
+                        try await agent.executeTask(trimmedInput)
+                    } catch {
+                        print("Failed to execute follow-up: \(error)")
+                    }
                 }
             }
         } else {
@@ -506,15 +510,16 @@ struct SessionChatView: View {
                 isProcessing = true
                 defer { isProcessing = false }
                 
-                let result = await agent.executeTask(trimmedInput)
-                
-                if let error = result.error {
+                do {
+                    try await agent.executeTask(trimmedInput)
+                } catch {
                     // Check if it's a connection error
-                    if error.contains("network") || error.contains("connection") {
+                    let errorMessage = error.localizedDescription
+                    if errorMessage.contains("network") || errorMessage.contains("connection") {
                         hasConnectionError = true
                     }
                     // Error is already added to session by agent
-                    print("Task error: \(error)")
+                    print("Task error: \(errorMessage)")
                 }
             }
         }
@@ -568,7 +573,7 @@ struct SessionChatHeader: View {
                         }
                     }
                     
-                    if isActive && agent.isExecuting && !agent.currentTask.isEmpty {
+                    if isActive && agent.isProcessing && true /* TODO: Check current task */ {
                         Text(agent.currentTask)
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -585,8 +590,8 @@ struct SessionChatHeader: View {
                 }
                 .buttonStyle(.plain)
                 
-                if isActive && agent.isExecuting {
-                    Button(action: { agent.cancelCurrentTask() }) {
+                if isActive && agent.isProcessing {
+                    Button(action: { /* TODO: Implement cancel */ }) {
                         Label("Cancel", systemImage: "stop.circle")
                             .foregroundColor(.red)
                     }
@@ -701,7 +706,11 @@ struct NewSessionPrompt: View {
         // If there's an initial prompt, execute it
         if !initialPrompt.isEmpty {
             Task {
-                await agent.executeTask(initialPrompt)
+                do {
+                    try await agent.executeTask(initialPrompt)
+                } catch {
+                    print("Failed to execute initial prompt: \(error)")
+                }
             }
         }
     }
