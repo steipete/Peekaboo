@@ -121,11 +121,11 @@ cd "$PROJECT_ROOT"
 START_TIME=$(date +%s)
 BUILD_START=$START_TIME
 
-# Send build start notification
-if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
-    GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    osascript -e "display notification \"Building CLI - $GIT_HASH\" with title \"👻 Poltergeist\" subtitle \"Build Started\""
-fi
+# Send build start notification - DISABLED
+# if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
+#     GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+#     osascript -e "display notification \"Building CLI - $GIT_HASH\" with title \"👻 Poltergeist\" subtitle \"Build Started\""
+# fi
 
 # Function to run build with retry logic
 run_build() {
