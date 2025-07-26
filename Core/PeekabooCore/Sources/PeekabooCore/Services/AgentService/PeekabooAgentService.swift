@@ -142,7 +142,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 maxTokens: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? AgentConfiguration.o3MaxTokens : AgentConfiguration.defaultMaxTokens,
                 toolChoice: .auto,  // Let model decide when to use tools
                 additionalParameters: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? [
-                    "reasoning_effort": AnyCodable(AgentConfiguration.o3ReasoningEffort),
+                    "reasoning_effort": AnyCodable("high"),
                     "max_completion_tokens": AnyCodable(AgentConfiguration.o3MaxCompletionTokens)
                 ] : nil
             ),

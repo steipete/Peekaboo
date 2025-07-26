@@ -119,6 +119,7 @@ With Poltergeist running and using the wrapper script, you NEVER need to:
 - Run any build commands manually
 - Worry about "build staleness" errors
 - Wait for builds to complete
+- Call `sleep` before using `peekaboo-wait.sh` (the wrapper waits automatically)
 
 Just use `./scripts/peekaboo-wait.sh` for all CLI commands and let Poltergeist handle the rest!
 

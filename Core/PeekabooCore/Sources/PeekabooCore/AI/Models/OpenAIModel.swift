@@ -37,7 +37,15 @@ public final class OpenAIModel: ModelInterface {
         self.apiKey = apiKey
         self.baseURL = baseURL
         self.organizationId = organizationId
-        self.session = session ?? URLSession.shared
+        // Create custom session with longer timeout for o3 models
+        if let session = session {
+            self.session = session
+        } else {
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = 600  // 10 minutes
+            config.timeoutIntervalForResource = 600
+            self.session = URLSession(configuration: config)
+        }
     }
     
     // MARK: - ModelInterface Implementation
@@ -141,6 +149,7 @@ public final class OpenAIModel: ModelInterface {
                     var toolCallIndexMap: [Int: String] = [:]  // Track tool call IDs by index
                     
                     for try await line in bytes.lines {
+                        aiDebugPrint("DEBUG: SSE line: \(line)")
                         // Handle SSE format
                         if line.hasPrefix("data: ") {
                             let data = String(line.dropFirst(6))
@@ -247,7 +256,12 @@ public final class OpenAIModel: ModelInterface {
             throw error
         }
         
-        request.timeoutInterval = 60
+        // o3 models need much longer timeouts for complex reasoning
+        if endpoint == "responses" {
+            request.timeoutInterval = 600  // 10 minutes for o3 models
+        } else {
+            request.timeoutInterval = 120  // 2 minutes for other models
+        }
         
         // Debug: Print request body
         if let bodyData = request.httpBody,
@@ -326,7 +340,7 @@ public final class OpenAIModel: ModelInterface {
             maxOutputTokens: request.settings.maxTokens ?? 65536,
             reasoningEffort: nil,  // Removed - now part of reasoning object
             reasoning: (request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4")) ? 
-                OpenAIReasoning(effort: request.settings.additionalParameters?["reasoning_effort"]?.value as? String ?? "high", summary: "detailed") : nil
+                OpenAIReasoning(effort: request.settings.additionalParameters?["reasoning_effort"]?.value as? String ?? "low", summary: nil) : nil
         )
     }
     
@@ -617,6 +631,35 @@ public final class OpenAIModel: ModelInterface {
                     model: response.model ?? "unknown",
                     systemFingerprint: nil
                 )))
+            }
+            
+        case "response.output_item.added":
+            // Handle when a new output item is added (reasoning or function call)
+            if let item = chunk.item, item.type == "reasoning" {
+                // This signals the start of reasoning output
+                aiDebugPrint("DEBUG: Reasoning output started for item: \(item.id)")
+            } else if let item = chunk.item, item.type == "function_call" {
+                // Initialize the function call in our tracking
+                if let itemId = chunk.itemId, let outputIndex = chunk.outputIndex {
+                    let partialCall = PartialToolCall()
+                    partialCall.id = itemId
+                    partialCall.type = "function"
+                    partialCall.index = outputIndex
+                    partialCall.name = item.name // Get the function name from the item
+                    toolCalls[itemId] = partialCall
+                }
+            }
+            
+        case "response.output_item.done":
+            // Handle when an output item is completed
+            if let item = chunk.item, item.type == "reasoning" {
+                // Reasoning is complete - we might get summary in item.summary
+                if let summary = item.summary?.joined(separator: "\n"), !summary.isEmpty {
+                    events.append(.reasoningSummaryCompleted(StreamReasoningSummaryCompleted(
+                        summary: summary,
+                        reasoningTokens: nil
+                    )))
+                }
             }
             
         case "response.output_text.delta":

@@ -715,6 +715,13 @@ public struct OpenAIResponsesEventItem: Codable, Sendable {
     public let content: [OpenAIResponsesEventContent]?
     public let role: String?
     public let summary: [String]?
+    public let name: String? // For function_call items
+    public let callId: String? // For function_call items
+    
+    enum CodingKeys: String, CodingKey {
+        case id, type, status, content, role, summary, name
+        case callId = "call_id"
+    }
 }
 
 /// Content part in responses streaming

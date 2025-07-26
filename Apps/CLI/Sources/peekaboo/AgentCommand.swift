@@ -60,26 +60,22 @@ enum TerminalColor {
 @MainActor
 final class GhostAnimator {
     private var animationTask: Task<Void, Never>?
-    private let frames: [String]
+    private let emojis: [String]
     private let message: String
     
     init() {
-        // Create animation frames - dots without spaces for cleaner look
-        self.frames = [
-            "",
-            ".",
-            "..",
-            "...",
-            "...",
-            "..",
-            ".",
-            "",
-            "~",
-            "~~",
-            "~~~",
-            "~~",
-            "~",
-            ""
+        // Rotating emojis with some rare ones that appear occasionally
+        self.emojis = [
+            "👻", "👻", "👻", "👻",  // Ghost appears most often
+            "💭", "💭", "💭",         // Thought bubble
+            "🤔", "🤔",              // Thinking face
+            "🌀", "🌀",              // Swirl
+            "✨", "✨",              // Sparkles
+            "🔮",                    // Crystal ball (rare)
+            "🧠",                    // Brain (rare)
+            "⚡",                    // Lightning (rare)
+            "🎭",                    // Theater masks (rare)
+            "🌟"                     // Glowing star (rare)
         ]
         self.message = "Thinking"
     }
@@ -92,17 +88,18 @@ final class GhostAnimator {
             var frameIndex = 0
             
             while !Task.isCancelled {
-                let frame = self.frames[frameIndex % self.frames.count]
-                // Emoji before "Thinking", then animate dots without spaces
-                let emoji = frameIndex < 7 ? "👻" : (frameIndex < 14 ? "💭" : (frameIndex < 21 ? "🌀" : "✨"))
-                let output = "\(TerminalColor.moveToStart)\(TerminalColor.clearLine)\(TerminalColor.cyan)\(emoji) \(self.message)\(frame)\(TerminalColor.reset)"
+                // Pick a random emoji from the weighted list
+                let emoji = self.emojis[frameIndex % self.emojis.count]
+                
+                // Clear line and print with new emoji
+                let output = "\(TerminalColor.moveToStart)\(TerminalColor.clearLine)\(TerminalColor.cyan)\(emoji) \(self.message)\(TerminalColor.reset)"
                 print(output, terminator: "")
                 fflush(stdout)
                 
-                frameIndex = (frameIndex + 1) % 28  // Cycle through emojis
+                frameIndex = (frameIndex + 1) % self.emojis.count
                 
                 do {
-                    try await Task.sleep(nanoseconds: 150_000_000) // 150ms per frame
+                    try await Task.sleep(nanoseconds: 200_000_000) // 200ms per frame for smoother rotation
                 } catch {
                     break
                 }
@@ -632,11 +629,21 @@ final class CompactEventDelegate: AgentEventDelegate {
             if outputMode == .verbose {
                 print("\n💭 Assistant: \(content)")
             } else if outputMode == .compact {
-                // Stop ghost animation when we receive content
-                if !hasReceivedContent && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                // Check if this is reasoning content
+                let isReasoningContent = content.contains("💭 Thinking:") || content.contains("💭 Reasoning:")
+                
+                // Only stop animation if it's not reasoning content
+                if !isReasoningContent && !hasReceivedContent && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     ghostAnimator.stop()
                     hasReceivedContent = true
                 }
+                
+                // For reasoning content, stop animation and print on new line
+                if isReasoningContent && isThinking {
+                    ghostAnimator.stop()
+                    isThinking = false
+                }
+                
                 // In compact mode, show streaming text directly
                 print(content, terminator: "")
                 fflush(stdout)
