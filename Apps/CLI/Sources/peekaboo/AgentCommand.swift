@@ -74,7 +74,7 @@ func compactArgsSummary(_ command: String, _ args: [String: Any]) -> String {
         return "element"
     case "type":
         if let text = args["text"] as? String {
-            let preview = text.count > 20 ? String(text.prefix(20)) + "..." : text
+            let preview = text.count > 40 ? String(text.prefix(40)) + "..." : text
             return "'\(preview)'"
         }
         return "text"
@@ -123,7 +123,7 @@ func compactArgsSummary(_ command: String, _ args: [String: Any]) -> String {
             } else if command.hasPrefix("curl ") {
                 return "fetch web data"
             } else {
-                let preview = command.count > 25 ? String(command.prefix(25)) + "..." : command
+                let preview = command.count > 50 ? String(command.prefix(50)) + "..." : command
                 return "'\(preview)'"
             }
         }
@@ -172,7 +172,7 @@ func compactArgsSummary(_ command: String, _ args: [String: Any]) -> String {
     default:
         // For unknown commands, try to extract the most important parameter
         if let text = args["text"] as? String {
-            let preview = text.count > 15 ? String(text.prefix(15)) + "..." : text
+            let preview = text.count > 30 ? String(text.prefix(30)) + "..." : text
             return "'\(preview)'"
         } else if let target = args["target"] as? String {
             return "'\(target)'"
