@@ -166,5 +166,3 @@ struct Main {
         await Peekaboo.main()
     }
 }
-// Test comment for staleness detection
-// Another test comment added after build
