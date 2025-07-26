@@ -23,6 +23,13 @@ public final class OpenAIModel: ModelInterface {
     
     public func getResponse(request: ModelRequest) async throws -> ModelResponse {
         let openAIRequest = try convertToOpenAIRequest(request, stream: false)
+        
+        // Debug: Print request for troubleshooting
+        if let requestData = try? JSONEncoder().encode(openAIRequest),
+           let requestString = String(data: requestData, encoding: .utf8) {
+            print("DEBUG: OpenAI Request: \(requestString)")
+        }
+        
         let urlRequest = try createURLRequest(endpoint: "chat/completions", body: openAIRequest)
         
         let (data, response) = try await session.data(for: urlRequest)
@@ -38,8 +45,21 @@ public final class OpenAIModel: ModelInterface {
             throw ModelError.requestFailed(URLError(.badServerResponse))
         }
         
-        let openAIResponse = try JSONDecoder().decode(OpenAIChatCompletionResponse.self, from: data)
-        return try convertFromOpenAIResponse(openAIResponse)
+        // Debug: Print response for troubleshooting
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("DEBUG: OpenAI Response: \(responseString)")
+        }
+        
+        do {
+            let openAIResponse = try JSONDecoder().decode(OpenAIChatCompletionResponse.self, from: data)
+            return try convertFromOpenAIResponse(openAIResponse)
+        } catch {
+            print("DEBUG: Failed to decode OpenAI response: \(error)")
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("DEBUG: Raw response was: \(responseString)")
+            }
+            throw ModelError.requestFailed(error)
+        }
     }
     
     public func getStreamedResponse(request: ModelRequest) async throws -> AsyncThrowingStream<StreamEvent, Error> {
