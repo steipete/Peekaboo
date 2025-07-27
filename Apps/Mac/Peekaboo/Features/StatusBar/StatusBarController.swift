@@ -271,12 +271,17 @@ final class StatusBarController: NSObject {
     }
     
     @objc private func openInspector() {
-        // Post notification to open inspector window
-        NotificationCenter.default.post(name: Notification.Name("OpenWindow.inspector"), object: nil)
+        self.logger.info("openInspector action triggered from menu")
         
-        // Activate app
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            NSApp.activate(ignoringOtherApps: true)
+        // First ensure the app is active
+        NSApp.activate(ignoringOtherApps: true)
+        
+        // Open the inspector window directly through app delegate
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            self.logger.info("Found AppDelegate, calling showInspector")
+            appDelegate.showInspector()
+        } else {
+            self.logger.error("Could not find AppDelegate!")
         }
     }
 

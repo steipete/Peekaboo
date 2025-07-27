@@ -308,10 +308,17 @@ struct MenuBarStatusView: View {
                 logger.info("Open Main Window button clicked")
                 // Show dock icon temporarily
                 DockIconManager.shared.temporarilyShowDock()
-                // Post notification to open window
-                NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
                 // Activate the app
                 NSApp.activate(ignoringOtherApps: true)
+                // Open the main window directly through app delegate
+                if let appDelegate = NSApp.delegate as? AppDelegate {
+                    logger.info("Found AppDelegate, calling showMainWindow")
+                    appDelegate.showMainWindow()
+                } else {
+                    logger.error("Could not find AppDelegate! Falling back to notification")
+                    // Fallback to notification
+                    NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+                }
             }) {
                 Label("Open Main Window", systemImage: "rectangle.stack")
                     .frame(maxWidth: .infinity)
@@ -322,14 +329,26 @@ struct MenuBarStatusView: View {
                 logger.info("New Session button clicked")
                 // Show dock icon temporarily
                 DockIconManager.shared.temporarilyShowDock()
-                // First open main window
-                NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+                // Activate the app
                 NSApp.activate(ignoringOtherApps: true)
                 
-                // Then start new session after a short delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    logger.info("Posting StartNewSession notification")
-                    NotificationCenter.default.post(name: Notification.Name("StartNewSession"), object: nil)
+                // Open main window first
+                if let appDelegate = NSApp.delegate as? AppDelegate {
+                    logger.info("Found AppDelegate, opening main window for new session")
+                    appDelegate.showMainWindow()
+                    
+                    // Create new session after a short delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        logger.info("Creating new session")
+                        _ = sessionStore.createSession(title: "New Session")
+                    }
+                } else {
+                    logger.error("Could not find AppDelegate! Falling back to notifications")
+                    // Fallback to notifications
+                    NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        NotificationCenter.default.post(name: Notification.Name("StartNewSession"), object: nil)
+                    }
                 }
             }) {
                 Label("New Session", systemImage: "plus.circle")

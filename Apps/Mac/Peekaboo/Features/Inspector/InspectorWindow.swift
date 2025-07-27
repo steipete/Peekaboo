@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Window wrapper for the Inspector feature
 struct InspectorWindow: View {
+    @Environment(\.openWindow) private var openWindow
     @Environment(PeekabooSettings.self) private var settings
     @Environment(Permissions.self) private var permissions
     @StateObject private var overlayManager = OverlayManager()
@@ -17,7 +18,10 @@ struct InspectorWindow: View {
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenWindow.inspector"))) { _ in
-                // Window will automatically open when this notification is received
+                // Open the window
+                DispatchQueue.main.async {
+                    self.openWindow(id: "inspector")
+                }
             }
     }
 }
