@@ -3,7 +3,7 @@ import os.log
 
 /// Main entry point for all Peekaboo services
 /// Provides a unified interface for screen capture, automation, and management operations
-public final class PeekabooServices: Sendable {
+public final class PeekabooServices: @unchecked Sendable {
     /// Shared instance for convenience
     public static let shared = PeekabooServices.createShared()
     
@@ -48,7 +48,10 @@ public final class PeekabooServices: Sendable {
     
     
     /// Agent service for AI-powered automation
-    public let agent: AgentServiceProtocol?
+    public private(set) var agent: AgentServiceProtocol?
+    
+    /// Lock for thread-safe agent updates
+    private let agentLock = NSLock()
     
     /// Initialize with default service implementations
     public init() {
@@ -281,6 +284,51 @@ public final class PeekabooServices: Sendable {
             configuration: config,
             agent: agent
         )
+    }
+    
+    /// Refresh the agent service when API keys change
+    public func refreshAgentService() {
+        logger.info("🔄 Refreshing agent service with updated configuration")
+        
+        // Reload configuration to get latest API keys
+        _ = configuration.loadConfiguration()
+        
+        // Check for available API keys
+        let hasOpenAI = configuration.getOpenAIAPIKey() != nil && !configuration.getOpenAIAPIKey()!.isEmpty
+        let hasAnthropic = configuration.getAnthropicAPIKey() != nil && !configuration.getAnthropicAPIKey()!.isEmpty
+        let hasOllama = true // Ollama doesn't require API key
+        
+        if hasOpenAI || hasAnthropic || hasOllama {
+            let agentConfig = configuration.getConfiguration()
+            let providers = configuration.getAIProviders()
+            
+            // Determine default model based on first available provider
+            var defaultModel = agentConfig?.agent?.defaultModel
+            if defaultModel == nil {
+                if providers.contains("anthropic") && hasAnthropic {
+                    defaultModel = "claude-opus-4-20250514"
+                } else if providers.contains("openai") && hasOpenAI {
+                    defaultModel = "gpt-4.1"
+                } else if providers.contains("ollama") {
+                    defaultModel = "llava:latest"
+                }
+            }
+            
+            agentLock.lock()
+            defer { agentLock.unlock() }
+            
+            self.agent = PeekabooAgentService(
+                services: self,
+                defaultModelName: defaultModel ?? "claude-opus-4-20250514"
+            )
+            logger.info("✅ Agent service refreshed with providers: \(providers)")
+        } else {
+            agentLock.lock()
+            defer { agentLock.unlock() }
+            
+            self.agent = nil
+            logger.warning("⚠️ No API keys available - agent service disabled")
+        }
     }
 }
 

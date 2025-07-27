@@ -271,49 +271,17 @@ final class PeekabooSettings {
     }
 
     private func loadFromPeekabooConfig() {
-        // First check environment variables for API keys
-        if self.openAIAPIKey.isEmpty {
-            if let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !envKey.isEmpty {
-                self.openAIAPIKey = envKey
-            }
-        }
-        
-        if self.anthropicAPIKey.isEmpty {
-            if let envKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !envKey.isEmpty {
-                self.anthropicAPIKey = envKey
-            }
-        }
-        
-        // Load from Peekaboo credentials file if exists (new location)
-        let credentialsPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".peekaboo/credentials")
-        
-        if FileManager.default.fileExists(atPath: credentialsPath.path) {
-            do {
-                let credentialsContent = try String(contentsOf: credentialsPath)
-                let lines = credentialsContent.components(separatedBy: .newlines)
-                for line in lines {
-                    let trimmed = line.trimmingCharacters(in: .whitespaces)
-                    if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
-                    
-                    if let equalIndex = trimmed.firstIndex(of: "=") {
-                        let key = String(trimmed[..<equalIndex]).trimmingCharacters(in: .whitespaces)
-                        let value = String(trimmed[trimmed.index(after: equalIndex)...]).trimmingCharacters(in: .whitespaces)
-                        
-                        if key == "OPENAI_API_KEY" && self.openAIAPIKey.isEmpty {
-                            self.openAIAPIKey = value
-                        } else if key == "ANTHROPIC_API_KEY" && self.anthropicAPIKey.isEmpty {
-                            self.anthropicAPIKey = value
-                        }
-                    }
-                }
-            } catch {
-                // Ignore errors reading credentials file
-            }
-        }
-        
         // Use ConfigurationManager to load from config.json
         _ = configManager.loadConfiguration()
+        
+        // Load API keys through ConfigurationManager (checks env vars, then credentials file)
+        if let openAIKey = configManager.getOpenAIAPIKey(), !openAIKey.isEmpty {
+            self.openAIAPIKey = openAIKey
+        }
+        
+        if let anthropicKey = configManager.getAnthropicAPIKey(), !anthropicKey.isEmpty {
+            self.anthropicAPIKey = anthropicKey
+        }
         
         // Load provider and model from config
         let selectedProvider = configManager.getSelectedProvider()
@@ -334,6 +302,12 @@ final class PeekabooSettings {
         let configTokens = configManager.getAgentMaxTokens()
         if configTokens != 16384 { // Only update if not default
             self.maxTokens = configTokens
+        }
+        
+        // Load Ollama base URL
+        let ollamaURL = configManager.getOllamaBaseURL()
+        if ollamaURL != "http://localhost:11434" {
+            self.ollamaBaseURL = ollamaURL
         }
     }
     
@@ -463,6 +437,9 @@ final class PeekabooSettings {
                 return
             }
             try configManager.setCredential(key: key, value: value)
+            
+            // Refresh the agent service to pick up new API keys
+            PeekabooServices.shared.refreshAgentService()
         } catch {
             print("Failed to save API key to credentials: \(error)")
         }
