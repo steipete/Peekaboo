@@ -30,15 +30,18 @@ public struct Configuration: Codable {
     public struct AIProviderConfig: Codable {
         public var providers: String?
         public var openaiApiKey: String?
+        public var anthropicApiKey: String?
         public var ollamaBaseUrl: String?
         
         public init(
             providers: String? = nil,
             openaiApiKey: String? = nil,
+            anthropicApiKey: String? = nil,
             ollamaBaseUrl: String? = nil
         ) {
             self.providers = providers
             self.openaiApiKey = openaiApiKey
+            self.anthropicApiKey = anthropicApiKey
             self.ollamaBaseUrl = ollamaBaseUrl
         }
     }
@@ -88,15 +91,21 @@ public struct Configuration: Codable {
         public var defaultModel: String?
         public var maxSteps: Int?
         public var showThoughts: Bool?
+        public var temperature: Double?
+        public var maxTokens: Int?
         
         public init(
             defaultModel: String? = nil,
             maxSteps: Int? = nil,
-            showThoughts: Bool? = nil
+            showThoughts: Bool? = nil,
+            temperature: Double? = nil,
+            maxTokens: Int? = nil
         ) {
             self.defaultModel = defaultModel
             self.maxSteps = maxSteps
             self.showThoughts = showThoughts
+            self.temperature = temperature
+            self.maxTokens = maxTokens
         }
     }
 }

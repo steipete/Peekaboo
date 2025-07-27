@@ -232,19 +232,37 @@ public final class PeekabooServices: Sendable {
             }
         }
         
-        // Now create agent service if API key is available
-        // Check both environment variable and credentials file
+        // Now create agent service if any API key is available
+        // Check for OpenAI, Anthropic, or Ollama availability
         let agent: AgentServiceProtocol?
-        if let apiKey = config.getOpenAIAPIKey(), !apiKey.isEmpty {
+        let hasOpenAI = config.getOpenAIAPIKey() != nil && !config.getOpenAIAPIKey()!.isEmpty
+        let hasAnthropic = config.getAnthropicAPIKey() != nil && !config.getAnthropicAPIKey()!.isEmpty
+        let hasOllama = true // Ollama doesn't require API key
+        
+        if hasOpenAI || hasAnthropic || hasOllama {
             let agentConfig = config.getConfiguration()
+            let providers = config.getAIProviders()
+            
+            // Determine default model based on first available provider
+            var defaultModel = agentConfig?.agent?.defaultModel
+            if defaultModel == nil {
+                if providers.contains("anthropic") && hasAnthropic {
+                    defaultModel = "claude-opus-4-20250514"
+                } else if providers.contains("openai") && hasOpenAI {
+                    defaultModel = "o3"
+                } else {
+                    defaultModel = "llava:latest"
+                }
+            }
+            
             agent = PeekabooAgentService(
                 services: services,
-                defaultModelName: agentConfig?.agent?.defaultModel ?? "o3"
+                defaultModelName: defaultModel ?? "claude-opus-4-20250514"
             )
-            logger.debug("✅ PeekabooAgentService initialized with API key from configuration")
+            logger.debug("✅ PeekabooAgentService initialized with available providers")
         } else {
             agent = nil
-            logger.debug("⚠️ PeekabooAgentService skipped - no OPENAI_API_KEY found in environment or credentials")
+            logger.debug("⚠️ PeekabooAgentService skipped - no API keys found for any provider")
         }
         
         // Return services with agent

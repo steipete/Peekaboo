@@ -50,8 +50,8 @@ final class SessionStore {
         self.loadSessions()
     }
 
-    func createSession(title: String = "") -> Session {
-        let session = Session(title: title.isEmpty ? "New Session" : title)
+    func createSession(title: String = "", modelName: String = "") -> Session {
+        let session = Session(title: title.isEmpty ? "New Session" : title, modelName: modelName)
         self.sessions.insert(session, at: 0)
         self.currentSession = session
         self.saveSessions()
@@ -117,11 +117,13 @@ public struct Session: Identifiable, Codable {
     public var messages: [SessionMessage] = []
     public let startTime: Date
     public var summary: String = ""
+    public var modelName: String = ""
 
-    public init(title: String) {
+    public init(title: String, modelName: String = "") {
         self.id = "session_\(UUID().uuidString)"
         self.title = title
         self.startTime = Date()
+        self.modelName = modelName
     }
 }
 

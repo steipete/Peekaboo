@@ -72,68 +72,83 @@ struct GeneralSettingsView: View {
 
 struct AISettingsView: View {
     @Environment(PeekabooSettings.self) private var settings
-    @State private var showingAPIKey = false
+    @State private var showingOpenAIKey = false
+    @State private var showingAnthropicKey = false
 
+    private var allModels: [(provider: String, models: [(id: String, name: String)])] {
+        [
+            ("openai", [
+                ("gpt-4.1", "GPT-4.1"),
+                ("gpt-4.1-mini", "GPT-4.1 mini"),
+                ("gpt-4o", "GPT-4o"),
+                ("gpt-4o-mini", "GPT-4o mini"),
+                ("o3", "o3"),
+                ("o3-pro", "o3 pro"),
+                ("o4-mini", "o4-mini")
+            ]),
+            ("anthropic", [
+                ("claude-opus-4-20250514", "Claude Opus 4"),
+                ("claude-sonnet-4-20250514", "Claude Sonnet 4"),
+                ("claude-3-5-haiku", "Claude 3.5 Haiku"),
+                ("claude-3-5-sonnet", "Claude 3.5 Sonnet")
+            ]),
+            ("ollama", [
+                ("llava:latest", "LLaVA"),
+                ("llama3.2-vision:latest", "Llama 3.2 Vision")
+            ])
+        ]
+    }
+    
     private var modelDescriptions: [String: String] {
         [
+            // OpenAI models
             "gpt-4o": "Flagship multimodal model with strong performance across text, vision, and audio. Excellent for general-purpose tasks with 128K context window.",
             "gpt-4o-mini": "Fast and cost-effective multimodal model. Great for high-volume tasks while maintaining vision capabilities.",
             "gpt-4.1": "Latest generation with superior coding and instruction following. Supports up to 1M tokens context window.",
             "gpt-4.1-mini": "Small but powerful model that outperforms GPT-4o in many benchmarks. Perfect for fast, efficient multimodal tasks.",
             "o3": "Advanced reasoning model with integrated vision analysis. Can combine tools and analyze visual inputs in its reasoning chain.",
             "o3-pro": "Same as o3 but with extended reasoning time for complex tasks. Best for challenging problems requiring deep analysis.",
-            "o4-mini": "Optimized for fast, cost-efficient reasoning with strong performance in math, coding, and visual tasks."
+            "o4-mini": "Optimized for fast, cost-efficient reasoning with strong performance in math, coding, and visual tasks.",
+            // Anthropic models
+            "claude-opus-4-20250514": "World's best coding model. Leads on SWE-bench (72.5%) and Terminal-bench (43.2%). Can work continuously for several hours on complex tasks.",
+            "claude-sonnet-4-20250514": "Cost-optimized general-purpose model with excellent performance across various tasks.",
+            "claude-3-5-haiku": "Fast and efficient model perfect for simple tasks and high-volume usage.",
+            "claude-3-5-sonnet": "Balanced model with computer use capabilities for automation tasks.",
+            // Ollama models
+            "llava:latest": "Open-source multimodal model that runs locally. Good for privacy-conscious users and offline usage.",
+            "llama3.2-vision:latest": "Meta's latest vision-capable model with strong performance on visual understanding tasks."
         ]
     }
 
     var body: some View {
         Form {
-            Section("OpenAI Configuration") {
-                // API Key
-                HStack {
-                    Text("API Key")
-                        .frame(width: 80, alignment: .trailing)
-
-                    if self.showingAPIKey {
-                        TextField("sk-...", text: Binding(
-                            get: { settings.openAIAPIKey },
-                            set: { settings.openAIAPIKey = $0 }
-                        ))
-                            .textFieldStyle(.roundedBorder)
-                    } else {
-                        SecureField("sk-...", text: Binding(
-                            get: { settings.openAIAPIKey },
-                            set: { settings.openAIAPIKey = $0 }
-                        ))
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    Button {
-                        self.showingAPIKey.toggle()
-                    } label: {
-                        Image(systemName: self.showingAPIKey ? "eye.slash" : "eye")
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                // Model selection
+            // Model Selection
+            Section("Model Selection") {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("Model")
                             .frame(width: 80, alignment: .trailing)
-
+                        
                         Picker("", selection: Binding(
                             get: { settings.selectedModel },
-                            set: { settings.selectedModel = $0 }
+                            set: { newModel in
+                                settings.selectedModel = newModel
+                                // Update provider based on model selection
+                                for (provider, models) in allModels {
+                                    if models.contains(where: { $0.id == newModel }) {
+                                        settings.selectedProvider = provider
+                                        break
+                                    }
+                                }
+                            }
                         )) {
-                            Text("GPT-4o").tag("gpt-4o")
-                            Text("GPT-4o mini").tag("gpt-4o-mini")
-                            Text("GPT-4.1").tag("gpt-4.1")
-                            Text("GPT-4.1 mini").tag("gpt-4.1-mini")
-                            Divider()
-                            Text("o3").tag("o3")
-                            Text("o3 pro").tag("o3-pro")
-                            Text("o4-mini").tag("o4-mini")
+                            ForEach(allModels, id: \.provider) { provider, models in
+                                Section(header: Text(provider.capitalized)) {
+                                    ForEach(models, id: \.id) { model in
+                                        Text(model.name).tag(model.id)
+                                    }
+                                }
+                            }
                         }
                         .pickerStyle(.menu)
                         .frame(width: 200)
@@ -154,8 +169,93 @@ struct AISettingsView: View {
                     }
                 }
             }
+            
+            // Provider-specific configuration
+            if settings.selectedProvider == "openai" {
+                Section("OpenAI Configuration") {
+                // API Key
+                HStack {
+                    Text("API Key")
+                        .frame(width: 80, alignment: .trailing)
 
-            Section("Parameters") {
+                    if self.showingOpenAIKey {
+                        TextField("sk-...", text: Binding(
+                            get: { settings.openAIAPIKey },
+                            set: { settings.openAIAPIKey = $0 }
+                        ))
+                            .textFieldStyle(.roundedBorder)
+                    } else {
+                        SecureField("sk-...", text: Binding(
+                            get: { settings.openAIAPIKey },
+                            set: { settings.openAIAPIKey = $0 }
+                        ))
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    Button {
+                        self.showingOpenAIKey.toggle()
+                    } label: {
+                        Image(systemName: self.showingOpenAIKey ? "eye.slash" : "eye")
+                    }
+                    .buttonStyle(.plain)
+                }
+                }
+            } else if settings.selectedProvider == "anthropic" {
+                Section("Anthropic Configuration") {
+                    // API Key
+                    HStack {
+                        Text("API Key")
+                            .frame(width: 80, alignment: .trailing)
+
+                        if self.showingAnthropicKey {
+                            TextField("sk-ant-...", text: Binding(
+                                get: { settings.anthropicAPIKey },
+                                set: { settings.anthropicAPIKey = $0 }
+                            ))
+                                .textFieldStyle(.roundedBorder)
+                        } else {
+                            SecureField("sk-ant-...", text: Binding(
+                                get: { settings.anthropicAPIKey },
+                                set: { settings.anthropicAPIKey = $0 }
+                            ))
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        Button {
+                            self.showingAnthropicKey.toggle()
+                        } label: {
+                            Image(systemName: self.showingAnthropicKey ? "eye.slash" : "eye")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            } else if settings.selectedProvider == "ollama" {
+                Section("Ollama Configuration") {
+                    // Base URL
+                    HStack {
+                        Text("Base URL")
+                            .frame(width: 80, alignment: .trailing)
+
+                        TextField("http://localhost:11434", text: Binding(
+                            get: { settings.ollamaBaseURL },
+                            set: { settings.ollamaBaseURL = $0 }
+                        ))
+                            .textFieldStyle(.roundedBorder)
+                    }
+                    
+                    // Connection status
+                    HStack {
+                        Spacer()
+                        Text("Ensure Ollama is running locally")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                }
+            }
+
+            if settings.selectedProvider != "ollama" {
+                Section("Parameters") {
                 // Temperature
                 HStack {
                     Text("Temperature")
@@ -194,11 +294,16 @@ struct AISettingsView: View {
                 Section {
                     HStack {
                         Spacer()
-                        Link("View API Usage", destination: URL(string: "https://platform.openai.com/usage")!)
+                        if settings.selectedProvider == "openai" {
+                            Link("View API Usage", destination: URL(string: "https://platform.openai.com/usage")!)
+                        } else if settings.selectedProvider == "anthropic" {
+                            Link("View API Usage", destination: URL(string: "https://console.anthropic.com/usage")!)
+                        }
                         Spacer()
                     }
                 }
             }
+        }
         }
         .formStyle(.grouped)
         .padding()

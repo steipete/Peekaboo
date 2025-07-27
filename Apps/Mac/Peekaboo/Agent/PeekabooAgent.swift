@@ -126,7 +126,14 @@ public final class PeekabooAgent {
                 
                 // Create or update session in store
                 if sessionStore.currentSession == nil {
-                    _ = sessionStore.createSession(title: task)
+                    _ = sessionStore.createSession(title: task, modelName: settings.selectedModel)
+                } else if sessionStore.currentSession?.modelName.isEmpty == true {
+                    // Update model name if not set
+                    if let currentSession = sessionStore.currentSession,
+                       let index = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }) {
+                        sessionStore.sessions[index].modelName = settings.selectedModel
+                        sessionStore.saveSessions()
+                    }
                 }
                 
                 // Add messages to current session

@@ -268,6 +268,14 @@ struct SessionRow: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                
+                if !session.modelName.isEmpty {
+                    Text("•")
+                        .foregroundColor(.secondary)
+                    Text(formatModelName(session.modelName))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             
             if !session.summary.isEmpty {
@@ -282,6 +290,28 @@ struct SessionRow: View {
         .onHover { hovering in
             isHovering = hovering
         }
+    }
+}
+
+// MARK: - Helper Functions
+
+private func formatModelName(_ model: String) -> String {
+    // Shorten common model names for display
+    switch model {
+    case "gpt-4.1": return "GPT-4.1"
+    case "gpt-4.1-mini": return "GPT-4.1 mini"
+    case "gpt-4o": return "GPT-4o"
+    case "gpt-4o-mini": return "GPT-4o mini"
+    case "o3": return "o3"
+    case "o3-pro": return "o3 pro"
+    case "o4-mini": return "o4-mini"
+    case "claude-opus-4-20250514": return "Claude Opus 4"
+    case "claude-sonnet-4-20250514": return "Claude Sonnet 4"
+    case "claude-3-5-haiku": return "Claude 3.5 Haiku"
+    case "claude-3-5-sonnet": return "Claude 3.5 Sonnet"
+    case "llava:latest": return "LLaVA"
+    case "llama3.2-vision:latest": return "Llama 3.2"
+    default: return model
     }
 }
 
@@ -575,11 +605,21 @@ struct SessionChatHeader: View {
                         }
                     }
                     
-                    if isActive && agent.isProcessing && !agent.currentTask.isEmpty {
-                        Text(agent.currentTask)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
+                    HStack(spacing: 4) {
+                        if !session.modelName.isEmpty {
+                            Text(formatModelName(session.modelName))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        if isActive && agent.isProcessing && !agent.currentTask.isEmpty {
+                            Text("•")
+                                .foregroundColor(.secondary)
+                            Text(agent.currentTask)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                 }
                 
