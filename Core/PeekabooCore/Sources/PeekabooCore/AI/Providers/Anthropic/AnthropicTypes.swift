@@ -1,5 +1,4 @@
 import Foundation
-import AXorcist
 
 // MARK: - Anthropic API Request Types
 
@@ -185,7 +184,7 @@ public struct AnthropicContentBlock: Codable, Sendable {
     // Tool use content
     public let id: String?
     public let name: String?
-    public let input: [String: AnyCodable]?
+    public let input: [String: AnthropicInputValue]?
     
     // Tool result content
     public let toolUseId: String?
@@ -243,18 +242,13 @@ public struct AnthropicTool: Codable, Sendable {
 /// JSON Schema for tool parameters
 public struct AnthropicJSONSchema: Codable, Sendable {
     public let type: String
-    public let properties: [String: AnyCodable]?
+    public let properties: [String: AnthropicPropertySchema]?
     public let required: [String]?
     public let description: String?
     
-    // Custom encoding/decoding for properties
-    enum CodingKeys: String, CodingKey {
-        case type, properties, required, description
-    }
-    
-    public init(type: String = "object", properties: [String: Any]? = nil, required: [String]? = nil, description: String? = nil) {
+    public init(type: String = "object", properties: [String: AnthropicPropertySchema]? = nil, required: [String]? = nil, description: String? = nil) {
         self.type = type
-        self.properties = properties?.mapValues { AnyCodable($0) }
+        self.properties = properties
         self.required = required
         self.description = description
     }
@@ -484,7 +478,7 @@ extension AnthropicContentBlock {
             source: nil,
             id: id,
             name: name,
-            input: input.mapValues { AnyCodable($0) },
+            input: input.compactMapValues { AnthropicInputValue(from: $0) },
             toolUseId: nil,
             content: nil,
             isError: nil,

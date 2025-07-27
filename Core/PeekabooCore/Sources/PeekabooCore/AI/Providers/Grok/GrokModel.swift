@@ -1,5 +1,4 @@
 import Foundation
-import AXorcist
 
 // Simple debug logging check
 fileprivate var isDebugLoggingEnabled: Bool {
@@ -369,60 +368,11 @@ public final class GrokModel: ModelInterface {
     }
     
     private func convertToolParameters(_ params: ToolParameters) -> GrokTool.Parameters {
-        // Convert ToolParameters to a dictionary for serialization
-        var properties: [String: Any] = [:]
-        
-        for (key, schema) in params.properties {
-            var prop: [String: Any] = [
-                "type": schema.type.rawValue
-            ]
-            
-            if let description = schema.description {
-                prop["description"] = description
-            }
-            
-            if let enumValues = schema.enumValues {
-                prop["enum"] = enumValues
-            }
-            
-            if let minimum = schema.minimum {
-                prop["minimum"] = minimum
-            }
-            
-            if let maximum = schema.maximum {
-                prop["maximum"] = maximum
-            }
-            
-            if let pattern = schema.pattern {
-                prop["pattern"] = pattern
-            }
-            
-            // Handle nested items for arrays
-            if schema.type == .array, let items = schema.items {
-                prop["items"] = [
-                    "type": items.value.type.rawValue
-                ]
-            }
-            
-            // Handle nested properties for objects
-            if schema.type == .object, let nestedProps = schema.properties {
-                var nestedProperties: [String: Any] = [:]
-                for (nestedKey, nestedSchema) in nestedProps {
-                    nestedProperties[nestedKey] = [
-                        "type": nestedSchema.type.rawValue,
-                        "description": nestedSchema.description ?? ""
-                    ]
-                }
-                prop["properties"] = nestedProperties
-            }
-            
-            properties[key] = prop
-        }
-        
+        let (type, properties, required) = params.toGrokParameters()
         return GrokTool.Parameters(
-            type: params.type,
+            type: type,
             properties: properties,
-            required: params.required
+            required: required
         )
     }
     
@@ -694,21 +644,8 @@ private struct GrokTool: Encodable {
     
     struct Parameters: Encodable {
         let type: String
-        let properties: [String: Any]
+        let properties: [String: GrokPropertySchema]
         let required: [String]
-        
-        func encode(to encoder: Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(type, forKey: .type)
-            try container.encode(required, forKey: .required)
-            
-            // Encode properties using AnyCodable
-            try container.encode(AnyCodable(properties), forKey: .properties)
-        }
-        
-        enum CodingKeys: String, CodingKey {
-            case type, properties, required
-        }
     }
 }
 

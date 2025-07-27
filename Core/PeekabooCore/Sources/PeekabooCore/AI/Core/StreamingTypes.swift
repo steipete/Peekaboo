@@ -1,5 +1,4 @@
 import Foundation
-import AXorcist
 
 // MARK: - Streaming Event Types
 
@@ -209,35 +208,26 @@ public struct StreamError: StreamingEvent, Codable, Sendable {
 /// Unknown event for forward compatibility
 public struct StreamUnknown: StreamingEvent, Codable, Sendable {
     public var type = StreamEventType.unknown
-    public let rawData: [String: AnyCodable]
+    public let eventType: String
+    public let rawJSON: Data
     
-    public init(rawData: [String: AnyCodable]) {
-        self.rawData = rawData
+    public init(eventType: String, rawJSON: Data) {
+        self.eventType = eventType
+        self.rawJSON = rawJSON
     }
     
-    // Custom codable implementation
-    enum CodingKeys: String, CodingKey {
-        case type, rawData
+    /// Get the raw data as a dictionary if possible
+    public func getRawData() throws -> [String: Any]? {
+        try JSONSerialization.jsonObject(with: rawJSON) as? [String: Any]
     }
     
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        
-        if let data = try? container.decode(Data.self, forKey: .rawData),
-           let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            self.rawData = dict.mapValues { AnyCodable($0) }
-        } else {
-            self.rawData = [:]
+    /// Get the raw data as a pretty-printed JSON string
+    public func getRawJSONString() -> String? {
+        if let json = try? JSONSerialization.jsonObject(with: rawJSON),
+           let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted) {
+            return String(data: prettyData, encoding: .utf8)
         }
-    }
-    
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(type, forKey: .type)
-        
-        if let data = try? JSONSerialization.data(withJSONObject: rawData) {
-            try container.encode(data, forKey: .rawData)
-        }
+        return String(data: rawJSON, encoding: .utf8)
     }
 }
 

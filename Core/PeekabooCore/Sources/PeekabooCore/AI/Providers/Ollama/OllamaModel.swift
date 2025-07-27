@@ -1,5 +1,4 @@
 import Foundation
-import AXorcist
 
 // Simple debug logging check
 fileprivate var isDebugLoggingEnabled: Bool {
@@ -287,7 +286,7 @@ public final class OllamaModel: ModelInterface {
                                                toolCall.type == "function" {
                                                 
                                                 // Convert parameters to JSON string
-                                                let paramsString = convertAnyCodableDictToJSON(toolCall.parameters)
+                                                let paramsString = convertToolParameterDictToJSON(toolCall.parameters)
                                                 
                                                 continuation.yield(StreamEvent.toolCallCompleted(
                                                     StreamToolCallCompleted(
@@ -507,10 +506,10 @@ public final class OllamaModel: ModelInterface {
         )
     }
     
-    /// Helper to convert AnyCodable dictionary to JSON string
-    private func convertAnyCodableDictToJSON(_ dict: [String: AnyCodable]) -> String {
+    /// Helper to convert ToolParameterValue dictionary to JSON string
+    private func convertToolParameterDictToJSON(_ dict: [String: ToolParameterValue]) -> String {
         let plainDict = dict.reduce(into: [String: Any]()) { result, item in
-            result[item.key] = item.value.value
+            result[item.key] = item.value.toAny()
         }
         
         guard let data = try? JSONSerialization.data(withJSONObject: plainDict),
@@ -528,7 +527,60 @@ public final class OllamaModel: ModelInterface {
 private struct TextBasedToolCall: Decodable {
     let type: String
     let name: String
-    let parameters: [String: AnyCodable]
+    let parameters: [String: ToolParameterValue]
+}
+
+/// Type-safe tool parameter value for Ollama
+private enum ToolParameterValue: Decodable {
+    case string(String)
+    case int(Int)
+    case double(Double)
+    case bool(Bool)
+    case array([ToolParameterValue])
+    case dictionary([String: ToolParameterValue])
+    case null
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        
+        if container.decodeNil() {
+            self = .null
+        } else if let string = try? container.decode(String.self) {
+            self = .string(string)
+        } else if let int = try? container.decode(Int.self) {
+            self = .int(int)
+        } else if let double = try? container.decode(Double.self) {
+            self = .double(double)
+        } else if let bool = try? container.decode(Bool.self) {
+            self = .bool(bool)
+        } else if let array = try? container.decode([ToolParameterValue].self) {
+            self = .array(array)
+        } else if let dict = try? container.decode([String: ToolParameterValue].self) {
+            self = .dictionary(dict)
+        } else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode tool parameter value")
+        }
+    }
+    
+    /// Convert to Any for JSON serialization
+    func toAny() -> Any {
+        switch self {
+        case .string(let value):
+            return value
+        case .int(let value):
+            return value
+        case .double(let value):
+            return value
+        case .bool(let value):
+            return value
+        case .array(let values):
+            return values.map { $0.toAny() }
+        case .dictionary(let dict):
+            return dict.mapValues { $0.toAny() }
+        case .null:
+            return NSNull()
+        }
+    }
 }
 
 /// Options for Ollama model configuration
@@ -599,11 +651,11 @@ private struct OllamaFunctionCall: Codable {
         // Try to decode arguments as string first
         if let argsString = try? container.decode(String.self, forKey: .arguments) {
             self.arguments = argsString
-        } else if let argsDict = try? container.decode([String: AnyCodable].self, forKey: .arguments) {
+        } else if let argsDict = try? container.decode([String: ToolParameterValue].self, forKey: .arguments) {
             // Convert dictionary to JSON string
             // Note: Using JSONCoding.encoder here for consistency
             let plainDict = argsDict.reduce(into: [String: Any]()) { dict, item in
-                dict[item.key] = item.value.value
+                dict[item.key] = item.value.toAny()
             }
             let data = try JSONSerialization.data(withJSONObject: plainDict)
             self.arguments = String(data: data, encoding: .utf8) ?? "{}"

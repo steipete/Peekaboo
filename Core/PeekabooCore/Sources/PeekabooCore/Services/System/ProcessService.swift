@@ -169,8 +169,16 @@ public actor ProcessService: ProcessServiceProtocol {
             screenshotParams = ProcessCommandParameters.ScreenshotParameters(path: "screenshot.png")
         }
         
-        let mode = (params as? ProcessCommandParameters)?.generic(["mode"])?.first ?? "window"
-        let annotate = true // Default to true for annotation
+        // Extract mode and annotate from generic parameters if present
+        let mode: String
+        let annotate: Bool
+        if case .generic(let dict) = params {
+            mode = dict["mode"] ?? "window"
+            annotate = dict["annotate"].flatMap { Bool($0) } ?? true
+        } else {
+            mode = "window"
+            annotate = true
+        }
         
         // Capture screenshot based on mode
         let captureResult: CaptureResult
@@ -180,8 +188,8 @@ public actor ProcessService: ProcessServiceProtocol {
         case "frontmost":
             captureResult = try await screenCaptureService.captureFrontmost()
         case "window":
-            if let appName = app {
-                let windowIndex = window.flatMap { title in
+            if let appName = screenshotParams.app {
+                let windowIndex = screenshotParams.window.flatMap { title in
                     // Try to parse as index
                     Int(title)
                 }
@@ -198,7 +206,8 @@ public actor ProcessService: ProcessServiceProtocol {
         
         // Save to output path if specified
         let screenshotPath: String
-        if let outputPath = outputPath {
+        let outputPath = screenshotParams.path
+        if !outputPath.isEmpty {
             try captureResult.imageData.write(to: URL(fileURLWithPath: outputPath))
             screenshotPath = outputPath
         } else {
@@ -267,21 +276,38 @@ public actor ProcessService: ProcessServiceProtocol {
         }
         
         return StepExecutionResult(
-            output: ["session_id": newSessionId, "screenshot_path": screenshotPath],
+            output: .data([
+                "session_id": .success(newSessionId),
+                "screenshot_path": .success(screenshotPath)
+            ]),
             sessionId: newSessionId
         )
     }
     
     private func executeClickCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
-        guard let effectiveSessionId = sessionId ?? step.params?["session"]?.value as? String else {
-            throw PeekabooError.invalidInput(field: "session", reason: "Missing required parameter for command 'click'")
+        // Extract click parameters
+        let clickParams: ProcessCommandParameters.ClickParameters
+        if case .click(let params) = step.params {
+            clickParams = params
+        } else if case .generic(let dict) = step.params {
+            // Fallback for generic parameters
+            clickParams = ProcessCommandParameters.ClickParameters(
+                x: dict["x"].flatMap { Double($0) },
+                y: dict["y"].flatMap { Double($0) },
+                label: dict["query"] ?? dict["label"],
+                app: dict["app"],
+                button: dict["button"] ?? (dict["right-click"] == "true" ? "right" : dict["double-click"] == "true" ? "double" : "left"),
+                modifiers: nil
+            )
+        } else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for click command")
         }
         
-        let query = step.params?["query"]?.value as? String
-        let elementId = step.params?["element"]?.value as? String
-        let rightClick = step.params?["right-click"]?.value as? Bool ?? false
-        let doubleClick = step.params?["double-click"]?.value as? Bool ?? false
-        let _ = parseModifiers(from: step.params) // Currently unused in click
+        let effectiveSessionId = sessionId ?? clickParams.app
+        
+        // Determine click type
+        let rightClick = clickParams.button == "right"
+        let doubleClick = clickParams.button == "double"
         
         // Get session detection result
         guard let _ = try await sessionManager.getDetectionResult(sessionId: effectiveSessionId) else {
