@@ -81,6 +81,14 @@ public actor ModelProvider {
         modelCache.removeAll()
     }
     
+    /// Clear all model registrations and cache (useful for testing)
+    public func clearAll() async {
+        modelCache.removeAll()
+        modelFactories.removeAll()
+        // Re-register default models
+        registerDefaultModels()
+    }
+    
     /// Unregister a model
     public func unregister(modelName: String) {
         modelFactories.removeValue(forKey: modelName)

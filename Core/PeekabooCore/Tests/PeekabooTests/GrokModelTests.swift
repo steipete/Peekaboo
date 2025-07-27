@@ -309,7 +309,7 @@ struct GrokModelProviderTests {
         setenv("X_AI_API_KEY", "xai-test-key", 1)
         defer { unsetenv("X_AI_API_KEY") }
         
-        await provider.clearCache()
+        await provider.clearAll()
         try await provider.setupFromEnvironment()
         
         do {
@@ -324,7 +324,7 @@ struct GrokModelProviderTests {
         setenv("XAI_API_KEY", "xai-test-key-2", 1)
         defer { unsetenv("XAI_API_KEY") }
         
-        await provider.clearCache()
+        await provider.clearAll()
         try await provider.setupFromEnvironment()
         
         do {
@@ -342,7 +342,7 @@ struct GrokModelProviderTests {
         unsetenv("XAI_API_KEY")
         
         let provider = ModelProvider.shared
-        await provider.clearCache()
+        await provider.clearAll()
         try await provider.setupFromEnvironment()
         
         // Should fail to get Grok model without API key
