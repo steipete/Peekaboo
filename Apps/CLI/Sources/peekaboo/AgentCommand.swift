@@ -318,16 +318,32 @@ struct AgentCommand: AsyncParsableCommand {
     
     // MARK: - Task Execution
     
+    private func getActualModelName(_ agentService: PeekabooAgentService) async -> String {
+        // If model is explicitly provided via CLI, use that
+        if let providedModel = model {
+            return providedModel
+        }
+        
+        // Otherwise, get the default model from the agent service
+        // The agent service determines this based on PEEKABOO_AI_PROVIDERS
+        return agentService.defaultModel
+    }
+    
     private func executeTask(_ agentService: AgentServiceProtocol, task: String, sessionId: String? = nil) async throws {
         // Update terminal title with VibeTunnel
         updateTerminalTitle("Starting: \(task.prefix(50))...")
+        
+        // Cast to PeekabooAgentService early for enhanced functionality
+        guard let peekabooAgent = agentService as? PeekabooAgentService else {
+            throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
+        }
         
         // Create event delegate for real-time updates
         let eventDelegate = await MainActor.run {
             CompactEventDelegate(outputMode: outputMode, jsonOutput: jsonOutput, task: task)
         }
         
-        // Show header
+        // Show header with placeholder model name (will show actual model from result)
         if outputMode != .quiet && !jsonOutput {
             switch outputMode {
             case .verbose:
@@ -335,15 +351,13 @@ struct AgentCommand: AsyncParsableCommand {
                 print(" PEEKABOO AGENT")
                 print("═══════════════════════════════════════════════════════════════\n")
                 print("Task: \"\(task)\"")
-                let modelName = model ?? "o3"  // Default model
-                print("Model: \(modelName)")
                 if let sessionId = sessionId {
                     print("Session: \(sessionId.prefix(8))... (resumed)")
                 }
                 print("\nInitializing agent...\n")
             case .compact:
-                let modelName = model ?? "o3"  // Default model
-                print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)v\(Version.fullVersion) (\(modelName))\(TerminalColor.reset)")
+                // Don't show model in header - will be determined by actual execution
+                print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)v\(Version.fullVersion)\(TerminalColor.reset)")
                 if let sessionId = sessionId {
                     print("\(TerminalColor.gray)🔄 Session: \(sessionId.prefix(8))...\(TerminalColor.reset)")
                 }
@@ -353,15 +367,11 @@ struct AgentCommand: AsyncParsableCommand {
         }
         
         do {
-            // Cast to PeekabooAgentService for enhanced functionality
-            guard let peekabooAgent = agentService as? PeekabooAgentService else {
-                throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
-            }
             
             let result = try await peekabooAgent.executeTask(
                 task,
                 sessionId: sessionId,
-                modelName: model ?? "o3",
+                modelName: model,  // Pass nil to use configured default
                 eventDelegate: eventDelegate
             )
             
@@ -444,7 +454,7 @@ struct AgentCommand: AsyncParsableCommand {
             print(result.content)
         } else {
             // Compact/verbose mode - show completion message
-            print("\n\(TerminalColor.green)\(TerminalColor.bold)✅ Task completed\(TerminalColor.reset)")
+            print("\n\(TerminalColor.green)\(TerminalColor.bold)✅ Task completed\(TerminalColor.reset) \(TerminalColor.gray)(Model: \(result.metadata.modelName))\(TerminalColor.reset)")
             if !result.content.isEmpty {
                 print(result.content)
             }

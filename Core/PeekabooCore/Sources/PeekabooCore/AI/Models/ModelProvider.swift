@@ -40,13 +40,17 @@ public actor ModelProvider {
     /// - Returns: A model instance
     /// - Throws: ModelError if model not found
     public func getModel(modelName: String) throws -> any ModelInterface {
+        // Look up model by name
+        
         // Check cache first
         if let cached = modelCache[modelName] {
+            // Return cached model
             return cached
         }
         
         // Try exact match first
         if let factory = modelFactories[modelName] {
+            // Create new model instance
             let model = try factory()
             modelCache[modelName] = model
             return model
@@ -55,6 +59,7 @@ public actor ModelProvider {
         // Try lenient matching for shortened names
         if let resolvedName = resolveLenientModelName(modelName),
            let factory = modelFactories[resolvedName] {
+            // Create model with resolved name
             let model = try factory()
             // Cache with both original and resolved names
             modelCache[modelName] = model
@@ -62,6 +67,7 @@ public actor ModelProvider {
             return model
         }
         
+        // Model not found in registry
         throw ModelError.modelNotFound(modelName)
     }
     
@@ -90,8 +96,8 @@ public actor ModelProvider {
         // Register Anthropic models
         registerAnthropicModels()
         
-        // Future: Register other providers
-        // registerOllamaModels()
+        // Register Ollama models
+        registerOllamaModels()
     }
     
     /// Resolve lenient model names to their full versions
@@ -247,6 +253,41 @@ public actor ModelProvider {
         
         return nil
     }
+    
+    private func registerOllamaModels() {
+        // Common Ollama models
+        let models = [
+            "llava:latest",
+            "llava",
+            "llama2",
+            "llama2:latest",
+            "codellama",
+            "codellama:latest",
+            "mistral",
+            "mistral:latest",
+            "mixtral",
+            "mixtral:latest",
+            "neural-chat",
+            "neural-chat:latest",
+            "gemma",
+            "gemma:latest"
+        ]
+        
+        // Get base URL from environment or config
+        let baseURLString = ProcessInfo.processInfo.environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
+        guard let baseURL = URL(string: baseURLString) else { return }
+        
+        for modelName in models {
+            register(modelName: modelName) {
+                OllamaModel(modelName: modelName, baseURL: baseURL)
+            }
+        }
+        
+        // Successfully registered Ollama models
+        
+        // Also register any model with ollama prefix dynamically
+        // This allows using any Ollama model without pre-registration
+    }
 }
 
 // MARK: - Model Provider Configuration
@@ -358,6 +399,32 @@ extension ModelProvider {
         }
     }
     
+    /// Configure Ollama models with specific settings
+    public func configureOllama(_ config: ModelProviderConfig.Ollama) {
+        let models = [
+            "llava:latest",
+            "llava",
+            "llama2",
+            "llama2:latest", 
+            "codellama",
+            "codellama:latest",
+            "mistral",
+            "mistral:latest",
+            "mixtral",
+            "mixtral:latest",
+            "neural-chat",
+            "neural-chat:latest",
+            "gemma",
+            "gemma:latest"
+        ]
+        
+        for modelName in models {
+            register(modelName: modelName) {
+                OllamaModel(modelName: modelName, baseURL: config.baseURL)
+            }
+        }
+    }
+    
     /// Quick setup with API key from environment
     public func setupFromEnvironment() async throws {
         if let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
@@ -366,6 +433,12 @@ extension ModelProvider {
         
         if let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] {
             configureAnthropic(ModelProviderConfig.Anthropic(apiKey: apiKey))
+        }
+        
+        // Configure Ollama (no API key needed)
+        let ollamaBaseURL = ProcessInfo.processInfo.environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
+        if let baseURL = URL(string: ollamaBaseURL) {
+            configureOllama(ModelProviderConfig.Ollama(baseURL: baseURL))
         }
     }
 }

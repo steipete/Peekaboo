@@ -12,6 +12,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     private let sessionManager: AgentSessionManager
     private let defaultModelName: String
     
+    /// The default model name used by this agent service
+    public var defaultModel: String { defaultModelName }
     
     public init(
         services: PeekabooServices = .shared,

@@ -593,13 +593,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     public func getSelectedProvider() -> String {
         // Extract provider from providers string (e.g., "anthropic/model" -> "anthropic")
         let providers = getAIProviders()
-        if let firstProvider = providers.split(separator: ",").first {
-            let providerString = String(firstProvider).trimmingCharacters(in: .whitespaces)
-            if let slashIndex = providerString.firstIndex(of: "/") {
-                return String(providerString[..<slashIndex])
-            }
-        }
-        return "anthropic" // Default
+        return AIProviderParser.parseFirst(providers)?.provider ?? "anthropic"
     }
     
     /// Get agent model

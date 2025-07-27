@@ -230,7 +230,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                 (amount, 3)
             }
             
-            for _ in 0..<tickCount {
+            for i in 0..<tickCount {
                 // Create scroll event using the same API as original
                 await MainActor.run {
                     let scrollEvent = CGEvent(

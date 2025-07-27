@@ -245,22 +245,43 @@ public final class PeekabooServices: @unchecked Sendable {
         if hasOpenAI || hasAnthropic || hasOllama {
             let agentConfig = config.getConfiguration()
             let providers = config.getAIProviders()
+            let isEnvironmentProvided = ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] != nil
             
-            // Determine default model based on first available provider
-            var defaultModel = agentConfig?.agent?.defaultModel
-            if defaultModel == nil {
-                if providers.contains("anthropic") && hasAnthropic {
-                    defaultModel = "claude-opus-4-20250514"
-                } else if providers.contains("openai") && hasOpenAI {
-                    defaultModel = "o3"
-                } else {
-                    defaultModel = "llava:latest"
-                }
+            logger.debug("🔍 AI Providers from config: '\(providers)'")
+            logger.debug("🔍 Environment PEEKABOO_AI_PROVIDERS: '\(ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] ?? "not set")'")
+            logger.debug("🔍 Has OpenAI: \(hasOpenAI), Has Anthropic: \(hasAnthropic), Has Ollama: \(hasOllama)")
+            
+            // Determine default model using the parser with conflict detection
+            let determination = AIProviderParser.determineDefaultModelWithConflict(
+                from: providers,
+                hasOpenAI: hasOpenAI,
+                hasAnthropic: hasAnthropic,
+                hasOllama: hasOllama,
+                configuredDefault: agentConfig?.agent?.defaultModel,
+                isEnvironmentProvided: isEnvironmentProvided
+            )
+            
+            logger.debug("🔍 Determined default model: '\(determination.model)'")
+            
+            // Print conflict warning if needed
+            if determination.hasConflict {
+                logger.warning("⚠️ Model configuration conflict detected:")
+                logger.warning("   Config file specifies: \(determination.configModel ?? "none")")
+                logger.warning("   Environment variable specifies: \(determination.environmentModel ?? "none")")
+                logger.warning("   Using environment variable: \(determination.model)")
+                
+                // Also print to stdout so user sees it as a warning
+                print("""
+                ⚠️  Model configuration conflict:
+                   Config (~/.peekaboo/config.json) specifies: \(determination.configModel ?? "none")
+                   PEEKABOO_AI_PROVIDERS environment variable specifies: \(determination.environmentModel ?? "none")
+                   → Using environment variable: \(determination.model)
+                """)
             }
             
             agent = PeekabooAgentService(
                 services: services,
-                defaultModelName: defaultModel ?? "claude-opus-4-20250514"
+                defaultModelName: determination.model
             )
             logger.debug("✅ PeekabooAgentService initialized with available providers")
         } else {
