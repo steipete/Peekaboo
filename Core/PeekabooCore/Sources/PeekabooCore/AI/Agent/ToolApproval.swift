@@ -28,7 +28,7 @@ public struct ToolApprovalConfig {
 }
 
 /// Handler for tool approval requests
-public protocol ApprovalHandler {
+public protocol ApprovalHandler: Sendable {
     func requestApproval(
         toolName: String,
         arguments: String,

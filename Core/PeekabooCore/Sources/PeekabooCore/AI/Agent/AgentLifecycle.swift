@@ -1,7 +1,7 @@
 import Foundation
 
 /// Events that can occur during agent execution
-public enum AgentLifecycleEvent {
+public enum AgentLifecycleEvent: Sendable {
     case agentStarted(agent: String, context: String?)
     case agentEnded(agent: String, output: String?)
     case toolStarted(name: String, arguments: String)
