@@ -125,8 +125,8 @@ public protocol ToolExecutor: Sendable {
 
 // MARK: - Tool Builder for Convenience
 
-/// Convenience builder for creating tools
-public struct ToolBuilder {
+/// Convenience factory for creating tools
+public struct ToolFactory {
     public static func tool<Context>(
         name: String,
         description: String,
