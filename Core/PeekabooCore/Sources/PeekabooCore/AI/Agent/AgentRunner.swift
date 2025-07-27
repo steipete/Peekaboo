@@ -176,11 +176,14 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         
         // Try to get model from ModelProvider
         let modelName = agent.modelSettings.modelName
+        aiDebugPrint("DEBUG: Getting model for name: \(modelName)")
         do {
             let model = try await ModelProvider.shared.getModel(modelName: modelName)
             self.model = model
+            aiDebugPrint("DEBUG: Successfully got model from provider: \(type(of: model))")
             return model
         } catch {
+            aiDebugPrint("DEBUG: Failed to get model from provider: \(error)")
             // Continue to fallback
         }
         
@@ -389,7 +392,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                     aiDebugPrint("DEBUG: Tool call delta: id=\(delta.id), name=\(delta.function.name ?? "nil"), args=\(delta.function.arguments ?? "nil")")
                     
                 case .toolCallCompleted(let completed):
-                    // Don't use the completed event's function - use our accumulated one
+                    // First check if we have accumulated deltas
                     if let pendingCall = pendingToolCalls[completed.id] {
                         aiDebugPrint("DEBUG: Tool call completed: \(completed.id), function: \(pendingCall.name ?? "?"), args: \(pendingCall.arguments)")
                         if let name = pendingCall.name {
@@ -399,8 +402,16 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                                 function: FunctionCall(name: name, arguments: pendingCall.arguments)
                             ))
                         }
+                    } else if !completed.function.name.isEmpty {
+                        // Some models (like Ollama) send completed events directly without deltas
+                        aiDebugPrint("DEBUG: Tool call completed directly: \(completed.id), function: \(completed.function.name), args: \(completed.function.arguments)")
+                        toolCalls.append(ToolCallItem(
+                            id: completed.id,
+                            type: .function,
+                            function: completed.function
+                        ))
                     } else {
-                        aiDebugPrint("DEBUG: Tool call completed but no pending call found: \(completed.id)")
+                        aiDebugPrint("DEBUG: Tool call completed but no function information: \(completed.id)")
                     }
                 case .functionCallArgumentsDelta(let delta):
                     updatePartialToolCall(&pendingToolCalls, with: delta)

@@ -152,6 +152,13 @@ public actor ModelProvider {
             return "grok-2-vision-1212"
         }
         
+        // Ollama model shortcuts
+        if lowercased == "ollama" || lowercased == "llama" {
+            return "llama3.3" // Default to llama3.3 - best for agent tasks with tool support
+        }
+        if lowercased == "llama3" || lowercased == "llama-3" {
+            return "llama3.3" // Default to latest llama 3.x
+        }
         // Check if it's a partial match for any registered model
         let registeredModels = Array(modelFactories.keys)
         for model in registeredModels {
@@ -327,10 +334,27 @@ public actor ModelProvider {
     private func registerOllamaModels() {
         // Common Ollama models
         let models = [
+            // Language models with tool support (recommended for agent tasks)
+            "llama3.3",
+            "llama3.3:latest",
+            "llama3.2",
+            "llama3.2:latest",
+            
+            // Vision models (NOTE: These do NOT support tool calling)
             "llava:latest",
             "llava",
+            "bakllava:latest",
+            "bakllava",
+            "llama3.2-vision:11b",
+            "llama3.2-vision:90b",
+            "qwen2.5vl:7b",
+            "qwen2.5vl:32b",
+            
+            // Other language models (tool support varies)
             "llama2",
             "llama2:latest",
+            "llama4",
+            "llama4:latest",
             "codellama",
             "codellama:latest",
             "mistral",
@@ -340,7 +364,11 @@ public actor ModelProvider {
             "neural-chat",
             "neural-chat:latest",
             "gemma",
-            "gemma:latest"
+            "gemma:latest",
+            "devstral",
+            "devstral:latest",
+            "deepseek-r1:8b",
+            "deepseek-r1:671b"
         ]
         
         // Get base URL from environment or config
@@ -486,10 +514,25 @@ extension ModelProvider {
     /// Configure Ollama models with specific settings
     public func configureOllama(_ config: ModelProviderConfig.Ollama) {
         let models = [
+            // Vision models
             "llava:latest",
             "llava",
+            "bakllava:latest",
+            "bakllava",
+            "llama3.2-vision:11b",
+            "llama3.2-vision:90b",
+            "qwen2.5vl:7b",
+            "qwen2.5vl:32b",
+            
+            // Language models
             "llama2",
-            "llama2:latest", 
+            "llama2:latest",
+            "llama3.2",
+            "llama3.2:latest",
+            "llama3.3",
+            "llama3.3:latest",
+            "llama4",
+            "llama4:latest",
             "codellama",
             "codellama:latest",
             "mistral",
@@ -499,7 +542,11 @@ extension ModelProvider {
             "neural-chat",
             "neural-chat:latest",
             "gemma",
-            "gemma:latest"
+            "gemma:latest",
+            "devstral",
+            "devstral:latest",
+            "deepseek-r1:8b",
+            "deepseek-r1:671b"
         ]
         
         for modelName in models {

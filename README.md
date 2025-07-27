@@ -33,7 +33,7 @@ Perfect for:
 Peekaboo bridges the gap between visual content on your screen and AI understanding. It provides:
 
 - **Lightning-fast screenshots** of screens, applications, or specific windows
-- **AI-powered image analysis** using GPT-4.1 Vision, Claude, Grok, or local models
+- **AI-powered image analysis** using GPT-4.1 Vision, Claude, Grok, or local models (Ollama)
 - **Complete GUI automation** (v3) - Click, type, scroll, and interact with any macOS app
 - **Natural language automation** (v3) - AI agent that understands tasks like "Open TextEdit and write a poem"
 - **Smart UI element detection** - Automatically identifies buttons, text fields, links, and more with precise coordinate mapping
@@ -1092,14 +1092,32 @@ For privacy-focused local AI analysis:
 brew install ollama
 ollama serve
 
-# Download vision models
-ollama pull llava:latest       # Recommended
-ollama pull qwen2-vl:7b        # Lighter alternative
+# Download recommended models
+ollama pull llama3.3           # RECOMMENDED for agent tasks (supports tool calling)
+ollama pull llava:latest       # Vision model (no tool support)
+ollama pull qwen2-vl:7b        # Lighter vision alternative
 
-# Configure Peekaboo
+# Use with Peekaboo
+PEEKABOO_AI_PROVIDERS="ollama/llama3.3" peekaboo agent "Click the Submit button"
+PEEKABOO_AI_PROVIDERS="ollama/llama" peekaboo agent "Take a screenshot"  # Defaults to llama3.3
+
+# Configure Peekaboo (optional)
 peekaboo config edit
-# Set providers to: "ollama/llava:latest"
+# Set providers to: "ollama/llama3.3" for agent tasks
+# Or: "ollama/llava:latest" for image analysis only
 ```
+
+### Ollama Model Support
+
+**Models with Tool Calling** (✅ Recommended for automation):
+- `llama3.3` - Best overall for agent tasks
+- `llama3.2` - Good alternative
+
+**Vision Models** (❌ No tool calling):
+- `llava` - Image analysis only
+- `bakllava` - Alternative vision model
+
+**Note**: For agent automation tasks, use `llama3.3`. Vision models like `llava` can analyze images but cannot perform GUI automation.
 
 ## 📋 Requirements
 

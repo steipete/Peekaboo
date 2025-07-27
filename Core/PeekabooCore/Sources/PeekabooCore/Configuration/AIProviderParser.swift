@@ -87,20 +87,27 @@ public enum AIProviderParser {
     ) -> ModelDetermination {
         // Parse providers and find first available one
         let providers = parseList(providersString)
+        print("[AIProviderParser] Parsing providers: \(providersString)")
+        print("[AIProviderParser] Parsed providers: \(providers)")
         var environmentModel: String?
         
         for config in providers {
+            print("[AIProviderParser] Checking provider: \(config.provider) with model: \(config.model)")
             switch config.provider.lowercased() {
             case "openai" where hasOpenAI:
                 environmentModel = config.model
+                print("[AIProviderParser] Found OpenAI model: \(config.model)")
                 break
             case "anthropic" where hasAnthropic:
                 environmentModel = config.model
+                print("[AIProviderParser] Found Anthropic model: \(config.model)")
                 break
             case "ollama" where hasOllama:
                 environmentModel = config.model
+                print("[AIProviderParser] Found Ollama model: \(config.model)")
                 break
             default:
+                print("[AIProviderParser] Provider not available or not recognized: \(config.provider)")
                 continue
             }
             if environmentModel != nil { break }
@@ -114,18 +121,24 @@ public enum AIProviderParser {
         
         // Environment variable takes precedence over config
         let finalModel: String
+        print("[AIProviderParser] isEnvironmentProvided: \(isEnvironmentProvided), environmentModel: \(environmentModel ?? "nil"), configuredDefault: \(configuredDefault ?? "nil")")
         if let envModel = environmentModel, isEnvironmentProvided {
             finalModel = envModel
+            print("[AIProviderParser] Using environment model: \(finalModel)")
         } else if let configuredDefault = configuredDefault {
             finalModel = configuredDefault
+            print("[AIProviderParser] Using configured default: \(finalModel)")
         } else {
             // Fall back to defaults based on available API keys
             if hasAnthropic {
                 finalModel = "claude-opus-4-20250514"
+                print("[AIProviderParser] Using Anthropic default: \(finalModel)")
             } else if hasOpenAI {
                 finalModel = "o3"
+                print("[AIProviderParser] Using OpenAI default: \(finalModel)")
             } else {
                 finalModel = "llava:latest"
+                print("[AIProviderParser] Using Ollama default: \(finalModel)")
             }
         }
         

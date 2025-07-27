@@ -355,6 +355,13 @@ struct SessionChatView: View {
                             DetailedMessageRow(message: message)
                                 .id(message.id)
                         }
+                        
+                        // Show progress indicator for active session
+                        if isCurrentSession && agent.isProcessing {
+                            ProgressIndicatorView(agent: agent)
+                                .id("progress")
+                                .padding(.top, 8)
+                        }
                     }
                     .padding()
                 }
@@ -612,13 +619,33 @@ struct SessionChatHeader: View {
                                 .foregroundColor(.secondary)
                         }
                         
-                        if isActive && agent.isProcessing && !agent.currentTask.isEmpty {
+                        if isActive && agent.isProcessing {
                             Text("•")
                                 .foregroundColor(.secondary)
-                            Text(agent.currentTask)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
+                            
+                            // Show current tool or thinking status
+                            if let currentTool = agent.currentTool {
+                                Text("\(PeekabooAgent.iconForTool(currentTool)) \(currentTool)")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                                
+                                if let args = agent.currentToolArgs, !args.isEmpty {
+                                    Text(args)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                }
+                            } else if agent.isThinking {
+                                Text("💭 Thinking...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .opacity(0.8)
+                            } else if !agent.currentTask.isEmpty {
+                                Text(agent.currentTask)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
                         }
                     }
                 }
@@ -828,6 +855,10 @@ struct DetailedMessageRow: View {
         message.role == .system && message.content.contains("⚠️")
     }
     
+    private var isToolMessage: Bool {
+        message.role == .system && (message.content.contains("🔧") || message.content.contains("✅"))
+    }
+    
     private var hasRunningTools: Bool {
         message.toolCalls.contains { $0.result == "Running..." }
     }
@@ -839,12 +870,17 @@ struct DetailedMessageRow: View {
             return Color.orange.opacity(0.1)
         } else if isThinkingMessage {
             return Color.purple.opacity(0.05)
+        } else if isToolMessage {
+            return Color.blue.opacity(0.05)
         } else {
             return Color(NSColor.controlBackgroundColor).opacity(0.3)
         }
     }
     
     private var iconName: String {
+        if isToolMessage {
+            return "wrench.and.screwdriver.fill"
+        }
         switch message.role {
         case .user: return "person.fill"
         case .assistant: return "sparkles"
@@ -853,6 +889,9 @@ struct DetailedMessageRow: View {
     }
     
     private var iconColor: Color {
+        if isToolMessage {
+            return .purple
+        }
         switch message.role {
         case .user: return .blue
         case .assistant: return .green
@@ -1107,6 +1146,85 @@ struct ImageInspectorView: View {
             .background(Color(NSColor.controlBackgroundColor))
         }
         .frame(minWidth: 600, idealWidth: 800, minHeight: 400, idealHeight: 600)
+    }
+}
+
+// MARK: - Progress Indicator View
+
+struct ProgressIndicatorView: View {
+    @Environment(PeekabooAgent.self) private var agent
+    @State private var animationPhase = 0.0
+    
+    init(agent: PeekabooAgent) {
+        // Just for interface consistency
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Animated icon
+            if let currentTool = agent.currentTool {
+                Text(PeekabooAgent.iconForTool(currentTool))
+                    .font(.title2)
+                    .scaleEffect(1 + sin(animationPhase) * 0.1)
+                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: animationPhase)
+            } else if agent.isThinking {
+                Text("💭")
+                    .font(.title2)
+                    .opacity(0.6 + sin(animationPhase) * 0.4)
+                    .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: animationPhase)
+            } else {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .scaleEffect(0.8)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                // Primary status
+                if let currentTool = agent.currentTool {
+                    HStack(spacing: 4) {
+                        Text(currentTool)
+                            .font(.system(.body, design: .rounded))
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+                        
+                        if let args = agent.currentToolArgs, !args.isEmpty {
+                            Text("•")
+                                .foregroundColor(.secondary)
+                            Text(args)
+                                .font(.system(.body))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                } else if agent.isThinking {
+                    Text("Thinking...")
+                        .font(.system(.body, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .italic()
+                } else {
+                    Text("Processing...")
+                        .font(.system(.body))
+                        .foregroundColor(.secondary)
+                }
+                
+                // Task context
+                if !agent.currentTask.isEmpty && agent.currentTool == nil {
+                    Text(agent.currentTask)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+        .cornerRadius(8)
+        .onAppear {
+            animationPhase = 1
+        }
     }
 }
 

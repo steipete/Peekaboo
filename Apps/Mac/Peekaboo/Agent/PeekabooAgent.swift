@@ -34,6 +34,15 @@ public final class PeekabooAgent {
     /// Current task description being processed
     public private(set) var currentTask: String = ""
     
+    /// Current tool being executed
+    public private(set) var currentTool: String?
+    
+    /// Current tool arguments for display
+    public private(set) var currentToolArgs: String?
+    
+    /// Whether agent is thinking (not executing tools)
+    public private(set) var isThinking = false
+    
     /// Current session
     public var currentSession: Session? {
         sessionStore.currentSession
@@ -82,6 +91,9 @@ public final class PeekabooAgent {
             isProcessing = true
             currentTask = task
             lastError = nil
+            isThinking = true
+            currentTool = nil
+            currentToolArgs = nil
             defer { 
                 isProcessing = false
                 currentTask = ""
@@ -142,18 +154,11 @@ public final class PeekabooAgent {
                     let userMessage = SessionMessage(role: .user, content: task)
                     sessionStore.addMessage(userMessage, to: currentSession)
                     
-                    // Add assistant message with tool calls
-                    let toolCalls = result.toolCalls.map { call in
-                        ToolCall(
-                            name: call.function.name,
-                            arguments: call.function.arguments
-                        )
-                    }
-                    
+                    // Add assistant message WITHOUT tool calls (they're tracked separately)
                     let assistantMessage = SessionMessage(
                         role: .assistant, 
                         content: result.content,
-                        toolCalls: toolCalls
+                        toolCalls: []  // Tool calls are now separate system messages
                     )
                     sessionStore.addMessage(assistantMessage, to: currentSession)
                     
@@ -374,28 +379,145 @@ public final class PeekabooAgent {
             lastError = message
             
         case .assistantMessage(let content):
-            // Could emit to UI if needed
-            print("Assistant: \(content)")
+            // When we get assistant messages, agent is thinking
+            if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                isThinking = true
+                currentTool = nil
+                currentToolArgs = nil
+            }
             
-        case .toolCallStarted(let name, _):
-            print("Tool started: \(name)")
+        case .toolCallStarted(let name, let arguments):
+            isThinking = false
+            currentTool = name
+            currentToolArgs = arguments
+            
+            // Create compact summary for display
+            if let data = arguments.data(using: .utf8),
+               let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                currentToolArgs = compactToolSummary(name, args)
+            }
+            
+            // Add tool execution message to session
+            if let currentSession = sessionStore.currentSession {
+                let toolMessage = SessionMessage(
+                    role: .system,
+                    content: "🔧 \(name): \(currentToolArgs ?? arguments)",
+                    toolCalls: [ToolCall(name: name, arguments: arguments, result: "Running...")]
+                )
+                sessionStore.addMessage(toolMessage, to: currentSession)
+            }
             
         case .toolCallCompleted(let name, let result):
-            print("Tool completed: \(name)")
-            
-            // Update the tool call result in the current session
+            // Find and update the tool execution message
             if let currentSession = sessionStore.currentSession,
-               let sessionIndex = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }),
-               let lastMessage = sessionStore.sessions[sessionIndex].messages.last,
-               lastMessage.role == .assistant,
-               let toolCallIndex = lastMessage.toolCalls.firstIndex(where: { $0.name == name }) {
-                // Update the tool call result
-                sessionStore.sessions[sessionIndex].messages[sessionStore.sessions[sessionIndex].messages.count - 1].toolCalls[toolCallIndex].result = result
-                sessionStore.saveSessions()
+               let sessionIndex = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }) {
+                // Find the most recent tool message for this tool
+                if let toolMessageIndex = sessionStore.sessions[sessionIndex].messages.lastIndex(where: { message in
+                    message.role == .system && 
+                    message.toolCalls.contains { $0.name == name && $0.result == "Running..." }
+                }) {
+                    // Update the tool call result
+                    if let toolCallIndex = sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls.firstIndex(where: { $0.name == name }) {
+                        sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls[toolCallIndex].result = result
+                        
+                        // Update the message content to show completion
+                        let successIcon = result.contains("error") || result.contains("failed") ? "❌" : "✅"
+                        sessionStore.sessions[sessionIndex].messages[toolMessageIndex].content = "\(successIcon) \(name): Completed"
+                        
+                        sessionStore.saveSessions()
+                    }
+                }
             }
+            
+            currentTool = nil
+            currentToolArgs = nil
+            isThinking = true
             
         default:
             break
+        }
+    }
+    
+    // MARK: - Tool Display Helpers
+    
+    /// Get icon for tool name
+    public static func iconForTool(_ toolName: String) -> String {
+        switch toolName {
+        case "see", "screenshot", "window_capture": return "👁"
+        case "click", "dialog_click": return "🖱"
+        case "type", "dialog_input": return "⌨️"
+        case "list_apps", "launch_app", "dock_launch": return "📱"
+        case "list_windows", "focus_window", "resize_window": return "🪟"
+        case "hotkey": return "⌨️"
+        case "wait": return "⏱"
+        case "scroll": return "📜"
+        case "find_element", "list_elements", "focused": return "🔍"
+        case "shell": return "💻"
+        case "menu", "menu_click", "list_menus": return "📋"
+        case "dialog": return "💬"
+        case "analyze_screenshot": return "🤖"
+        case "list", "list_dock": return "📋"
+        case "task_completed": return "✅"
+        case "need_more_information": return "❓"
+        default: return "⚙️"
+        }
+    }
+    
+    /// Create compact summary of tool arguments
+    private func compactToolSummary(_ toolName: String, _ args: [String: Any]) -> String {
+        switch toolName {
+        case "see":
+            var parts: [String] = []
+            if let mode = args["mode"] as? String {
+                parts.append(mode == "window" ? "active window" : mode)
+            } else if let app = args["app"] as? String {
+                parts.append(app)
+            } else {
+                parts.append("screen")
+            }
+            if args["analyze"] != nil {
+                parts.append("and analyze")
+            }
+            return parts.joined(separator: " ")
+            
+        case "click":
+            if let x = args["x"], let y = args["y"] {
+                return "at (\(x), \(y))"
+            } else if let text = args["text"] as? String {
+                return "on \"\(text)\""
+            }
+            return ""
+            
+        case "type":
+            if let text = args["text"] as? String {
+                let preview = text.count > 20 ? String(text.prefix(20)) + "..." : text
+                return "\"\(preview)\""
+            }
+            return ""
+            
+        case "focus_window":
+            if let title = args["window_title"] as? String {
+                return "\"\(title)\""
+            } else if let app = args["app_name"] as? String {
+                return app
+            }
+            return ""
+            
+        case "menu_click":
+            if let menuPath = args["menuPath"] as? [String] {
+                return menuPath.joined(separator: " → ")
+            }
+            return ""
+            
+        case "shell":
+            if let command = args["command"] as? String {
+                let preview = command.count > 30 ? String(command.prefix(30)) + "..." : command
+                return preview
+            }
+            return ""
+            
+        default:
+            return ""
         }
     }
 }
