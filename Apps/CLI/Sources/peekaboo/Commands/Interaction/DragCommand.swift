@@ -169,11 +169,11 @@ struct DragCommand: AsyncParsableCommand {
                 sessionId: activeSessionId)
 
             if !waitResult.found {
-                throw CLIError.elementNotFound
+                throw PeekabooError.elementNotFound("Element with ID '\(element)' not found")
             }
 
             guard let foundElement = waitResult.element else {
-                throw CLIError.interactionFailed("Element '\(element)' found but has no bounds")
+                throw PeekabooError.clickFailed("Element '\(element)' found but has no bounds")
             }
 
             // Return center of element
@@ -208,7 +208,7 @@ struct DragCommand: AsyncParsableCommand {
                     }
                 }
             }
-            throw CLIError.applicationNotFound("Trash")
+            throw PeekabooError.appNotFound("Trash")
         }
 
         // Try to find application window using ApplicationService
@@ -223,7 +223,7 @@ struct DragCommand: AsyncParsableCommand {
                     y: firstWindow.bounds.origin.y + firstWindow.bounds.height / 2)
             }
 
-            throw CLIError.windowNotFound("No window found for application '\(appName)'")
+            throw PeekabooError.windowNotFound(criteria: "No window found for application '\(appName)'")
         } catch {
             // If not found as running app, try dock
             if let dock = findDockApplication() {
@@ -245,7 +245,7 @@ struct DragCommand: AsyncParsableCommand {
                 }
             }
 
-            throw CLIError.applicationNotFound(appName)
+            throw PeekabooError.appNotFound(appName)
         }
     }
 
@@ -266,7 +266,7 @@ struct DragCommand: AsyncParsableCommand {
             let errorCode: ErrorCode
             let message: String
 
-            if let peekabooError = error as? CLIError {
+            if let peekabooError = error as? PeekabooError {
                 switch peekabooError {
                 case .sessionNotFound:
                     errorCode = .SESSION_NOT_FOUND
@@ -274,13 +274,16 @@ struct DragCommand: AsyncParsableCommand {
                 case .elementNotFound:
                     errorCode = .ELEMENT_NOT_FOUND
                     message = "Element not found"
-                case let .applicationNotFound(app):
+                case let .appNotFound(app):
                     errorCode = .APP_NOT_FOUND
                     message = "Application not found: \(app)"
-                case let .windowNotFound(msg):
+                case .windowNotFound(let criteria):
                     errorCode = .WINDOW_NOT_FOUND
+                    message = criteria ?? "Window not found"
+                case let .clickFailed(msg):
+                    errorCode = .INTERACTION_FAILED
                     message = msg
-                case let .interactionFailed(msg):
+                case let .typeFailed(msg):
                     errorCode = .INTERACTION_FAILED
                     message = msg
                 default:

@@ -33,33 +33,9 @@ extension ErrorHandlingCommand {
         case let captureError as CaptureError:
             return mapCaptureErrorToCode(captureError)
             
-        // NotFoundError mappings
-        case let notFoundError as NotFoundError:
-            switch notFoundError {
-            case .application:
-                return .APP_NOT_FOUND
-            case .window:
-                return .WINDOW_NOT_FOUND
-            case .element:
-                return .ELEMENT_NOT_FOUND
-            case .session:
-                return .SESSION_NOT_FOUND
-            }
-            
-        // ValidationError mappings
-        case let validationError as ValidationError:
-            switch validationError {
-            case .invalidImageFormat:
-                return .INVALID_IMAGE_FORMAT
-            case .ambiguousAppIdentifier:
-                return .AMBIGUOUS_APP_IDENTIFIER
-            default:
-                return .VALIDATION_ERROR
-            }
-            
-        // CLIError mappings
-        case let cliError as CLIError:
-            return mapCLIErrorToCode(cliError)
+        // ArgumentParser ValidationError
+        case is ArgumentParser.ValidationError:
+            return .VALIDATION_ERROR
             
         // Default
         default:
@@ -69,22 +45,50 @@ extension ErrorHandlingCommand {
     
     private func mapPeekabooErrorToCode(_ error: PeekabooError) -> ErrorCode {
         switch error {
-        case .invalidImageFormat:
-            return .INVALID_IMAGE_FORMAT
-        case .ambiguousApplication:
-            return .AMBIGUOUS_APP_IDENTIFIER
-        case .applicationNotFound:
+        case .appNotFound:
             return .APP_NOT_FOUND
+        case .ambiguousAppIdentifier:
+            return .AMBIGUOUS_APP_IDENTIFIER
+        case .windowNotFound:
+            return .WINDOW_NOT_FOUND
+        case .elementNotFound:
+            return .ELEMENT_NOT_FOUND
+        case .sessionNotFound:
+            return .SESSION_NOT_FOUND
+        case .menuNotFound:
+            return .MENU_BAR_NOT_FOUND
+        case .menuItemNotFound:
+            return .MENU_ITEM_NOT_FOUND
+        case .permissionDeniedScreenRecording:
+            return .PERMISSION_ERROR_SCREEN_RECORDING
+        case .permissionDeniedAccessibility:
+            return .PERMISSION_ERROR_ACCESSIBILITY
+        case .captureTimeout, .timeout:
+            return .TIMEOUT
+        case .captureFailed, .clickFailed, .typeFailed:
+            return .CAPTURE_FAILED
         case .invalidCoordinates:
-            return .VALIDATION_ERROR
-        case .invalidDimensions:
-            return .VALIDATION_ERROR
-        case .invalidDisplayIndex:
-            return .VALIDATION_ERROR
-        case .invalidWindowIndex:
-            return .VALIDATION_ERROR
-        case .accessibilityError:
-            return .ACCESSIBILITY_ERROR
+            return .INVALID_COORDINATES
+        case .fileIOError:
+            return .FILE_IO_ERROR
+        case .commandFailed:
+            return .UNKNOWN_ERROR
+        case .invalidInput:
+            return .INVALID_INPUT
+        case .encodingError:
+            return .UNKNOWN_ERROR
+        case .noAIProviderAvailable:
+            return .MISSING_API_KEY
+        case .aiProviderError:
+            return .AGENT_ERROR
+        case .serviceUnavailable:
+            return .UNKNOWN_ERROR
+        case .networkError:
+            return .UNKNOWN_ERROR
+        case .apiError:
+            return .UNKNOWN_ERROR
+        case .authenticationFailed:
+            return .MISSING_API_KEY
         default:
             return .UNKNOWN_ERROR
         }
@@ -92,55 +96,41 @@ extension ErrorHandlingCommand {
     
     private func mapCaptureErrorToCode(_ error: CaptureError) -> ErrorCode {
         switch error {
-        case .screenRecordingPermissionDenied:
-            return .SCREEN_RECORDING_PERMISSION_DENIED
+        case .screenRecordingPermissionDenied, .permissionDeniedScreenRecording:
+            return .PERMISSION_ERROR_SCREEN_RECORDING
         case .accessibilityPermissionDenied:
-            return .ACCESSIBILITY_PERMISSION_DENIED
-        case .captureConfigurationError:
-            return .CAPTURE_CONFIGURATION_ERROR
-        case .captureStreamNotFound:
-            return .CAPTURE_STREAM_NOT_FOUND
-        case .invalidImageFormat:
-            return .INVALID_IMAGE_FORMAT
-        case .fileWriteError:
-            return .FILE_WRITE_ERROR
-        case .timeout:
-            return .TIMEOUT
-        case .invalidFrameInfo:
-            return .CAPTURE_CONFIGURATION_ERROR
-        case .modernCaptureNotSupported:
-            return .MODERN_CAPTURE_NOT_SUPPORTED
-        case .screenshotCaptureFailed:
-            return .SCREENSHOT_CAPTURE_FAILED
-        case .invalidAppReference:
-            return .INVALID_APP_REFERENCE
-        case .windowInfoUnavailable:
-            return .WINDOW_INFO_UNAVAILABLE
+            return .PERMISSION_ERROR_ACCESSIBILITY
+        case .noDisplaysAvailable, .noDisplaysFound:
+            return .CAPTURE_FAILED
+        case .invalidDisplayID, .invalidDisplayIndex:
+            return .INVALID_ARGUMENT
+        case .captureCreationFailed, .windowCaptureFailed, .captureFailed, .captureFailure:
+            return .CAPTURE_FAILED
+        case .windowNotFound, .noWindowsFound:
+            return .WINDOW_NOT_FOUND
+        case .windowTitleNotFound:
+            return .WINDOW_NOT_FOUND
+        case .fileWriteError, .fileIOError:
+            return .FILE_IO_ERROR
+        case .appNotFound:
+            return .APP_NOT_FOUND
+        case .invalidWindowIndexOld, .invalidWindowIndex:
+            return .INVALID_ARGUMENT
+        case .invalidArgument:
+            return .INVALID_ARGUMENT
+        case .unknownError:
+            return .UNKNOWN_ERROR
+        case .noFrontmostApplication:
+            return .WINDOW_NOT_FOUND
+        case .invalidCaptureArea:
+            return .INVALID_ARGUMENT
+        case .ambiguousAppIdentifier:
+            return .AMBIGUOUS_APP_IDENTIFIER
+        case .imageConversionFailed:
+            return .CAPTURE_FAILED
         }
     }
     
-    private func mapCLIErrorToCode(_ error: CLIError) -> ErrorCode {
-        switch error {
-        case .windowNotFound:
-            return .WINDOW_NOT_FOUND
-        case .elementNotFound:
-            return .ELEMENT_NOT_FOUND
-        case .interactionFailed:
-            return .INTERACTION_FAILED
-        case .sessionNotFound, .noValidSessionFound:
-            return .SESSION_NOT_FOUND
-        case .applicationNotFound:
-            return .APP_NOT_FOUND
-        case .ambiguousAppIdentifier:
-            return .AMBIGUOUS_APP_IDENTIFIER
-        case .noFrontmostApplication:
-            return .APP_NOT_FOUND
-        case .timeout:
-            return .TIMEOUT
-        case .operationFailed:
-            return .UNKNOWN_ERROR
-        }
-    }
 }
 
 // MARK: - Output Formatting Protocol
@@ -152,7 +142,7 @@ protocol OutputFormattable {
 
 extension OutputFormattable {
     /// Output data in appropriate format
-    func output<T: Encodable>(_ data: T, humanReadable: () -> Void) {
+    func output<T: Codable>(_ data: T, humanReadable: () -> Void) {
         if jsonOutput {
             outputSuccessCodable(data: data)
         } else {
@@ -161,7 +151,7 @@ extension OutputFormattable {
     }
     
     /// Output success with optional data
-    func outputSuccess<T: Encodable>(data: T? = nil as Empty?) {
+    func outputSuccess<T: Codable>(data: T? = nil as Empty?) {
         if jsonOutput {
             if let data = data {
                 outputSuccessCodable(data: data)
@@ -173,7 +163,7 @@ extension OutputFormattable {
 }
 
 // Empty type for when there's no data
-struct Empty: Encodable {}
+struct Empty: Codable {}
 
 // MARK: - Permission Checking
 
@@ -194,7 +184,7 @@ func requireAccessibilityPermission() throws {
 // MARK: - Timeout Utilities
 
 /// Execute an async operation with a timeout
-func withTimeout<T>(
+func withTimeout<T: Sendable>(
     seconds: TimeInterval,
     operation: @escaping () async throws -> T
 ) async throws -> T {
@@ -214,7 +204,7 @@ func withTimeout<T>(
     } catch {
         timeoutTask.cancel()
         if task.isCancelled {
-            throw CaptureError.timeout(seconds)
+            throw CaptureError.captureFailure("Operation timed out after \(seconds) seconds")
         }
         throw error
     }
@@ -251,8 +241,11 @@ extension WindowIdentificationOptions {
 
 // MARK: - Common Command Base Classes
 
-/// Base class for commands that work with windows
-class WindowCommandBase: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+// Note: WindowCommandBase is currently unused and has been commented out
+// to avoid compilation issues with ArgumentParser Option types.
+/*
+/// Base struct for commands that work with windows
+struct WindowCommandBase: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     @Option(name: .shortAndLong, help: "Target application name or bundle ID")
     var app: String?
     
@@ -269,11 +262,12 @@ class WindowCommandBase: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
     var windowOptions: WindowIdentificationOptions {
         WindowIdentificationOptions(
             app: app,
-            windowIndex: windowIndex,
-            windowTitle: windowTitle
+            windowTitle: windowTitle,
+            windowIndex: windowIndex
         )
     }
 }
+*/
 
 // MARK: - Application Resolution
 
@@ -302,19 +296,19 @@ extension Error {
             return captureError
         }
         
-        // Map common errors
-        if let notFoundError = self as? NotFoundError {
-            switch notFoundError {
-            case .application(let identifier):
-                return .invalidAppReference("Application not found: \(identifier)")
-            case .window:
-                return .windowInfoUnavailable("Window not found")
+        // Map PeekabooError to CaptureError
+        if let peekabooError = self as? PeekabooError {
+            switch peekabooError {
+            case let .appNotFound(identifier):
+                return .appNotFound(identifier)
+            case .windowNotFound:
+                return .windowNotFound
             default:
-                break
+                return .unknownError(self.localizedDescription)
             }
         }
         
         // Default
-        return .captureConfigurationError(self.localizedDescription)
+        return .unknownError(self.localizedDescription)
     }
 }

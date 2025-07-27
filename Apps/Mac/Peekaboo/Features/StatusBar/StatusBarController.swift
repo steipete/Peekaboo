@@ -254,15 +254,7 @@ final class StatusBarController: NSObject {
         // First ensure the app is active
         NSApp.activate(ignoringOtherApps: true)
         
-        // Open the main window directly through app delegate
-        if let appDelegate = NSApp.delegate as? AppDelegate {
-            self.logger.info("Found AppDelegate, calling showMainWindow")
-            appDelegate.showMainWindow()
-        } else {
-            self.logger.error("Could not find AppDelegate!")
-        }
-        
-        // Also post notification as backup
+        // Post notification to open main window
         self.logger.info("Posting OpenWindow.main notification")
         NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
     }
@@ -277,13 +269,9 @@ final class StatusBarController: NSObject {
         // First ensure the app is active
         NSApp.activate(ignoringOtherApps: true)
         
-        // Open the inspector window directly through app delegate
-        if let appDelegate = NSApp.delegate as? AppDelegate {
-            self.logger.info("Found AppDelegate, calling showInspector")
-            appDelegate.showInspector()
-        } else {
-            self.logger.error("Could not find AppDelegate!")
-        }
+        // Post notification to open inspector window
+        self.logger.info("Posting OpenWindow.inspector notification")
+        NotificationCenter.default.post(name: Notification.Name("OpenWindow.inspector"), object: nil)
     }
 
     @objc private func showAbout() {

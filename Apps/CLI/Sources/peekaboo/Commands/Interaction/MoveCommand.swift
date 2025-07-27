@@ -95,14 +95,14 @@ struct MoveCommand: AsyncParsableCommand {
                     await PeekabooServices.shared.sessions.getMostRecentSession()
                 }
                 guard let activeSessionId = sessionId else {
-                    throw CLIError.sessionNotFound
+                    throw PeekabooError.sessionNotFound("No session found")
                 }
 
                 guard let detectionResult = try? await PeekabooServices.shared.sessions
                     .getDetectionResult(sessionId: activeSessionId),
                     let element = detectionResult.elements.findById(elementId)
                 else {
-                    throw CLIError.elementNotFound
+                    throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
                 }
 
                 targetLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
@@ -116,7 +116,7 @@ struct MoveCommand: AsyncParsableCommand {
                     await PeekabooServices.shared.sessions.getMostRecentSession()
                 }
                 guard let activeSessionId = sessionId else {
-                    throw CLIError.sessionNotFound
+                    throw PeekabooError.sessionNotFound("No session found")
                 }
 
                 // Wait for element to be available
@@ -126,7 +126,7 @@ struct MoveCommand: AsyncParsableCommand {
                     sessionId: activeSessionId)
 
                 guard waitResult.found, let element = waitResult.element else {
-                    throw CLIError.interactionFailed(
+                    throw PeekabooError.elementNotFound(
                         "No element found matching '\(query)'")
                 }
 
@@ -194,12 +194,12 @@ struct MoveCommand: AsyncParsableCommand {
     private func handleError(_ error: Error) {
         if self.jsonOutput {
             let errorCode: ErrorCode = if error is PeekabooError {
-                switch error as? CLIError {
+                switch error as? PeekabooError {
                 case .sessionNotFound:
                     .SESSION_NOT_FOUND
                 case .elementNotFound:
                     .ELEMENT_NOT_FOUND
-                case .interactionFailed:
+                case .clickFailed, .typeFailed:
                     .INTERACTION_FAILED
                 default:
                     .INTERNAL_SWIFT_ERROR

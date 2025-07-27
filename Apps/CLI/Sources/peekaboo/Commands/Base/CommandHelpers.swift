@@ -47,7 +47,7 @@ func findApplication(identifier: String) async throws -> (app: Element, runningA
     
     // Get the NSRunningApplication
     guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
-        throw ApplicationError.notFound(identifier)
+        throw PeekabooError.appNotFound(identifier)
     }
     
     let element = Element(AXUIElementCreateApplication(runningApp.processIdentifier))

@@ -88,7 +88,7 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     await PeekabooServices.shared.sessions.getMostRecentSession()
                 }
                 guard let foundSessionId = sessionId else {
-                    throw CLIError.sessionNotFound
+                    throw PeekabooError.sessionNotFound("No session found")
                 }
                 activeSessionId = foundSessionId
                 
@@ -101,7 +101,7 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                         sessionId: activeSessionId)
 
                     if !waitResult.found {
-                        throw CLIError.elementNotFound
+                        throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
                     }
 
                 } else if let searchQuery = query {
@@ -113,7 +113,7 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                         sessionId: activeSessionId)
 
                     if !waitResult.found {
-                        throw CLIError.interactionFailed(
+                        throw PeekabooError.elementNotFound(
                             "No actionable element found matching '\(searchQuery)' after \(self.waitFor)ms")
                     }
 

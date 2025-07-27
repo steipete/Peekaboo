@@ -474,7 +474,7 @@ struct AgentCommand: AsyncParsableCommand {
             let result = try await peekabooAgent.executeTask(
                 task,
                 sessionId: sessionId,
-                modelName: model,  // Pass nil to use configured default
+                modelName: model ?? "claude-opus-4",  // Use default if not specified
                 eventDelegate: eventDelegate
             )
             

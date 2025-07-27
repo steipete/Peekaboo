@@ -96,7 +96,7 @@ struct MenuCommand: AsyncParsableCommand {
             } catch let error as MenuError {
                 handleMenuError(error)
                 throw ExitCode(1)
-            } catch let error as ApplicationError {
+            } catch let error as PeekabooError {
                 handleApplicationError(error)
                 throw ExitCode(1)
             } catch {
@@ -129,7 +129,7 @@ struct MenuCommand: AsyncParsableCommand {
             }
         }
 
-        private func handleApplicationError(_ error: ApplicationError) {
+        private func handleApplicationError(_ error: PeekabooError) {
             if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,
@@ -291,7 +291,7 @@ struct MenuCommand: AsyncParsableCommand {
                     }
                 }
 
-            } catch let error as ApplicationError {
+            } catch let error as PeekabooError {
                 handleApplicationError(error)
                 throw ExitCode(1)
             } catch let error as MenuError {
@@ -407,7 +407,7 @@ struct MenuCommand: AsyncParsableCommand {
             }
         }
 
-        private func handleApplicationError(_ error: ApplicationError) {
+        private func handleApplicationError(_ error: PeekabooError) {
             if self.jsonOutput {
                 outputError(
                     message: error.localizedDescription,

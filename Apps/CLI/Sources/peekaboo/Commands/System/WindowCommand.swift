@@ -138,6 +138,8 @@ class WindowManipulationCommand: AsyncParsableCommand, ErrorHandlingCommand, Out
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
     
+    required init() {}
+    
     /// The action name for result reporting
     var actionName: String { "" }
     
@@ -284,8 +286,18 @@ struct MoveSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
             try await PeekabooServices.shared.windows.moveWindow(target: target, to: newOrigin)
             
             // Create result with new bounds
-            var updatedInfo = windowInfo
-            updatedInfo?.bounds.origin = newOrigin
+            let updatedInfo = windowInfo.map { info in
+                ServiceWindowInfo(
+                    windowID: info.windowID,
+                    title: info.title,
+                    bounds: CGRect(origin: newOrigin, size: info.bounds.size),
+                    isMinimized: info.isMinimized,
+                    isMainWindow: info.isMainWindow,
+                    windowLevel: info.windowLevel,
+                    alpha: info.alpha,
+                    index: info.index
+                )
+            }
             
             let data = createWindowActionResult(
                 action: "move",
@@ -339,8 +351,18 @@ struct ResizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
             try await PeekabooServices.shared.windows.resizeWindow(target: target, to: newSize)
             
             // Create result with new bounds
-            var updatedInfo = windowInfo
-            updatedInfo?.bounds.size = newSize
+            let updatedInfo = windowInfo.map { info in
+                ServiceWindowInfo(
+                    windowID: info.windowID,
+                    title: info.title,
+                    bounds: CGRect(origin: info.bounds.origin, size: newSize),
+                    isMinimized: info.isMinimized,
+                    isMainWindow: info.isMainWindow,
+                    windowLevel: info.windowLevel,
+                    alpha: info.alpha,
+                    index: info.index
+                )
+            }
             
             let data = createWindowActionResult(
                 action: "resize",
@@ -400,8 +422,18 @@ struct SetBoundsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFo
             try await PeekabooServices.shared.windows.setWindowBounds(target: target, bounds: newBounds)
             
             // Create result with new bounds
-            var updatedInfo = windowInfo
-            updatedInfo?.bounds = newBounds
+            let updatedInfo = windowInfo.map { info in
+                ServiceWindowInfo(
+                    windowID: info.windowID,
+                    title: info.title,
+                    bounds: newBounds,
+                    isMinimized: info.isMinimized,
+                    isMainWindow: info.isMainWindow,
+                    windowLevel: info.windowLevel,
+                    alpha: info.alpha,
+                    index: info.index
+                )
+            }
             
             let data = createWindowActionResult(
                 action: "set-bounds",
@@ -437,37 +469,48 @@ struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
         Logger.shared.setJsonOutputMode(self.jsonOutput)
         
         do {
+            // First find the application to get its info
+            let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: app)
+            
             let target = WindowTarget.application(app)
             let windows = try await PeekabooServices.shared.windows.listWindows(target: target)
             
-            let windowListData = windows.enumerated().map { index, window in
-                WindowListItem(
-                    index: index,
-                    title: window.title,
+            // Convert ServiceWindowInfo to WindowInfo for consistency
+            let windowInfos = windows.enumerated().map { index, window in
+                WindowInfo(
+                    window_title: window.title,
+                    window_id: UInt32(window.windowID),
+                    window_index: index,
                     bounds: WindowBounds(
                         x: Int(window.bounds.origin.x),
                         y: Int(window.bounds.origin.y),
                         width: Int(window.bounds.size.width),
                         height: Int(window.bounds.size.height)
                     ),
-                    is_minimized: window.isMinimized,
-                    is_fullscreen: window.isFullscreen
+                    is_on_screen: !window.isMinimized
                 )
             }
             
+            // Use PeekabooCore's WindowListData
             let data = WindowListData(
-                app_name: app,
-                window_count: windows.count,
-                windows: windowListData
+                windows: windowInfos,
+                target_application_info: TargetApplicationInfo(
+                    app_name: appInfo.name,
+                    bundle_id: appInfo.bundleIdentifier,
+                    pid: appInfo.processIdentifier
+                )
             )
             
             output(data) {
-                print("\(app) has \(windows.count) window(s):")
-                for (index, window) in windows.enumerated() {
-                    let status = window.isMinimized ? " [minimized]" : window.isFullscreen ? " [fullscreen]" : ""
-                    print("  [\(index)] \"\(window.title)\"\(status)")
-                    print("       Position: (\(Int(window.bounds.origin.x)), \(Int(window.bounds.origin.y)))")
-                    print("       Size: \(Int(window.bounds.size.width))x\(Int(window.bounds.size.height))")
+                print("\(data.target_application_info.app_name) has \(data.windows.count) window(s):")
+                for window in data.windows {
+                    let index = window.window_index ?? 0
+                    let status = (window.is_on_screen == false) ? " [minimized]" : ""
+                    print("  [\(index)] \"\(window.window_title)\"\(status)")
+                    if let bounds = window.bounds {
+                        print("       Position: (\(bounds.x), \(bounds.y))")
+                        print("       Size: \(bounds.width)x\(bounds.height)")
+                    }
                 }
             }
             
@@ -488,23 +531,4 @@ struct WindowActionResult: Codable {
     let new_bounds: WindowBounds?
 }
 
-struct WindowBounds: Codable {
-    let x: Int
-    let y: Int
-    let width: Int
-    let height: Int
-}
-
-struct WindowListData: Codable {
-    let app_name: String
-    let window_count: Int
-    let windows: [WindowListItem]
-}
-
-struct WindowListItem: Codable {
-    let index: Int
-    let title: String
-    let bounds: WindowBounds
-    let is_minimized: Bool
-    let is_fullscreen: Bool
-}
+// Using PeekabooCore.WindowListData for consistency

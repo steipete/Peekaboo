@@ -3,33 +3,8 @@ import PeekabooCore
 
 // MARK: - Common Error Handling
 
-func handleApplicationError(_ error: ApplicationError, jsonOutput: Bool) {
-    if jsonOutput {
-        let errorCode: ErrorCode = switch error {
-        case .notFound:
-            .APP_NOT_FOUND
-        case .ambiguous:
-            .AMBIGUOUS_APP_IDENTIFIER
-        case .ambiguousIdentifier:
-            .AMBIGUOUS_APP_IDENTIFIER
-        case .noFrontmostApplication:
-            .APP_NOT_FOUND
-        case .notInstalled:
-            .APP_NOT_FOUND
-        case .activationFailed:
-            .INTERACTION_FAILED
-        }
-
-        let response = JSONResponse(
-            success: false,
-            error: ErrorInfo(
-                message: error.localizedDescription,
-                code: errorCode))
-        outputJSON(response)
-    } else {
-        print("❌ \(error.localizedDescription)")
-    }
-}
+// ApplicationError has been replaced by PeekabooError
+// Callers should use handleGenericError instead
 
 func handleGenericError(_ error: Error, jsonOutput: Bool) {
     if jsonOutput {
@@ -57,6 +32,9 @@ func handleValidationError(_ error: Error, jsonOutput: Bool) {
     }
 }
 
+// CLIError has been replaced with PeekabooError
+// This function is deprecated - use handleGenericError instead
+/*
 func handleCLIError(_ error: CLIError, jsonOutput: Bool) {
     if jsonOutput {
         let errorCode: ErrorCode = switch error {
@@ -90,3 +68,4 @@ func handleCLIError(_ error: CLIError, jsonOutput: Bool) {
         print("❌ \(error.localizedDescription)")
     }
 }
+*/

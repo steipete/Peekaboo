@@ -91,13 +91,21 @@ struct AppCommand: AsyncParsableCommand {
                     try await waitForApplicationReady(launchedApp)
                 }
 
-                let data = [
-                    "action": "launch",
-                    "app_name": launchedApp.localizedName ?? app,
-                    "bundle_id": launchedApp.bundleIdentifier ?? "unknown",
-                    "pid": launchedApp.processIdentifier,
-                    "is_ready": launchedApp.isFinishedLaunching
-                ]
+                struct LaunchResult: Codable {
+                    let action: String
+                    let app_name: String
+                    let bundle_id: String
+                    let pid: Int32
+                    let is_ready: Bool
+                }
+                
+                let data = LaunchResult(
+                    action: "launch",
+                    app_name: launchedApp.localizedName ?? app,
+                    bundle_id: launchedApp.bundleIdentifier ?? "unknown",
+                    pid: launchedApp.processIdentifier,
+                    is_ready: launchedApp.isFinishedLaunching
+                )
 
                 output(data) {
                     print("✓ Launched \(launchedApp.localizedName ?? app) (PID: \(launchedApp.processIdentifier))")
@@ -110,7 +118,7 @@ struct AppCommand: AsyncParsableCommand {
         }
 
         private func findApplicationByName(_ name: String) -> URL? {
-            let workspace = NSWorkspace.shared
+            let _ = NSWorkspace.shared
             // Check common application directories
             let searchPaths = [
                 "/Applications",
@@ -136,7 +144,7 @@ struct AppCommand: AsyncParsableCommand {
                 let app = try await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
                 return app
             } catch {
-                throw InteractionError.launchFailed("Failed to launch \(name): \(error.localizedDescription)")
+                throw PeekabooError.commandFailed("Failed to launch \(name): \(error.localizedDescription)")
             }
         }
 
@@ -144,7 +152,7 @@ struct AppCommand: AsyncParsableCommand {
             let startTime = Date()
             while !app.isFinishedLaunching {
                 if Date().timeIntervalSince(startTime) > timeout {
-                    throw InteractionError.timeout("Application did not become ready within \(Int(timeout)) seconds")
+                    throw PeekabooError.timeout("Application did not become ready within \(Int(timeout)) seconds")
                 }
                 try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
             }
@@ -207,30 +215,40 @@ struct AppCommand: AsyncParsableCommand {
                 }
 
                 // Quit the apps
-                var results: [[String: Any]] = []
+                struct AppQuitInfo: Codable {
+                    let app_name: String
+                    let pid: Int32
+                    let success: Bool
+                }
+                
+                var results: [AppQuitInfo] = []
                 for (name, runningApp) in quitApps {
                     let success = force ? runningApp.forceTerminate() : runningApp.terminate()
-                    results.append([
-                        "app_name": name,
-                        "pid": runningApp.processIdentifier,
-                        "success": success
-                    ])
+                    results.append(AppQuitInfo(
+                        app_name: name,
+                        pid: runningApp.processIdentifier,
+                        success: success
+                    ))
                 }
 
-                let data = [
-                    "action": "quit",
-                    "force": force,
-                    "results": results
-                ]
+                struct QuitResult: Codable {
+                    let action: String
+                    let force: Bool
+                    let results: [AppQuitInfo]
+                }
+                
+                let data = QuitResult(
+                    action: "quit",
+                    force: force,
+                    results: results
+                )
 
                 output(data) {
                     for result in results {
-                        let name = result["app_name"] as? String ?? "Unknown"
-                        let success = result["success"] as? Bool ?? false
-                        if success {
-                            print("✓ Quit \(name)")
+                        if result.success {
+                            print("✓ Quit \(result.app_name)")
                         } else {
-                            print("✗ Failed to quit \(name)")
+                            print("✗ Failed to quit \(result.app_name)")
                         }
                     }
                 }
@@ -263,7 +281,7 @@ struct AppCommand: AsyncParsableCommand {
                 
                 await MainActor.run {
                     let element = Element(AXUIElementCreateApplication(appInfo.processIdentifier))
-                    _ = element.performAction(.init(kAXHideAction))
+                    _ = element.hideApplication()
                 }
 
                 let data = [
@@ -307,7 +325,7 @@ struct AppCommand: AsyncParsableCommand {
                 
                 await MainActor.run {
                     let element = Element(AXUIElementCreateApplication(appInfo.processIdentifier))
-                    _ = element.performAction(.init(kAXUnhideAction))
+                    _ = element.unhideApplication()
                 }
 
                 // Activate if requested
@@ -318,12 +336,19 @@ struct AppCommand: AsyncParsableCommand {
                     }
                 }
 
-                let data = [
-                    "action": "unhide",
-                    "app_name": appInfo.name,
-                    "bundle_id": appInfo.bundleIdentifier ?? "unknown",
-                    "activated": activate
-                ]
+                struct UnhideResult: Codable {
+                    let action: String
+                    let app_name: String
+                    let bundle_id: String
+                    let activated: Bool
+                }
+                
+                let data = UnhideResult(
+                    action: "unhide",
+                    app_name: appInfo.name,
+                    bundle_id: appInfo.bundleIdentifier ?? "unknown",
+                    activated: activate
+                )
 
                 output(data) {
                     print("✓ Shown \(appInfo.name)")
@@ -368,7 +393,12 @@ struct AppCommand: AsyncParsableCommand {
                     keyDown?.post(tap: .cghidEventTap)
                     keyUp?.post(tap: .cghidEventTap)
                     
-                    let data = ["action": "cycle", "success": true]
+                    struct CycleResult: Codable {
+                        let action: String
+                        let success: Bool
+                    }
+                    
+                    let data = CycleResult(action: "cycle", success: true)
                     
                     output(data) {
                         print("✓ Cycled to next application")
@@ -384,12 +414,19 @@ struct AppCommand: AsyncParsableCommand {
                     
                     let success = runningApp.activate(options: .activateIgnoringOtherApps)
                     
-                    let data = [
-                        "action": "switch",
-                        "app_name": appInfo.name,
-                        "bundle_id": appInfo.bundleIdentifier ?? "unknown",
-                        "success": success
-                    ]
+                    struct SwitchResult: Codable {
+                        let action: String
+                        let app_name: String
+                        let bundle_id: String
+                        let success: Bool
+                    }
+                    
+                    let data = SwitchResult(
+                        action: "switch",
+                        app_name: appInfo.name,
+                        bundle_id: appInfo.bundleIdentifier ?? "unknown",
+                        success: success
+                    )
                     
                     output(data) {
                         print("✓ Switched to \(appInfo.name)")
@@ -434,18 +471,31 @@ struct AppCommand: AsyncParsableCommand {
                     return true
                 }
 
-                let data = [
-                    "count": filtered.count,
-                    "apps": filtered.map { app in
-                        [
-                            "name": app.name,
-                            "bundle_id": app.bundleIdentifier ?? "unknown",
-                            "pid": app.processIdentifier,
-                            "is_active": app.isActive,
-                            "is_hidden": app.isHidden
-                        ]
+                struct AppInfo: Codable {
+                    let name: String
+                    let bundle_id: String
+                    let pid: Int32
+                    let is_active: Bool
+                    let is_hidden: Bool
+                }
+                
+                struct ListResult: Codable {
+                    let count: Int
+                    let apps: [AppInfo]
+                }
+                
+                let data = ListResult(
+                    count: filtered.count,
+                    apps: filtered.map { app in
+                        AppInfo(
+                            name: app.name,
+                            bundle_id: app.bundleIdentifier ?? "unknown",
+                            pid: app.processIdentifier,
+                            is_active: app.isActive,
+                            is_hidden: app.isHidden
+                        )
                     }
-                ]
+                )
 
                 output(data) {
                     print("Running Applications (\(filtered.count)):")

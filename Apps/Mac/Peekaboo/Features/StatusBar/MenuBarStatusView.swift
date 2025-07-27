@@ -313,15 +313,9 @@ struct MenuBarStatusView: View {
                 DockIconManager.shared.temporarilyShowDock()
                 // Activate the app
                 NSApp.activate(ignoringOtherApps: true)
-                // Open the main window directly through app delegate
-                if let appDelegate = NSApp.delegate as? AppDelegate {
-                    logger.info("Found AppDelegate, calling showMainWindow")
-                    appDelegate.showMainWindow()
-                } else {
-                    logger.error("Could not find AppDelegate! Falling back to notification")
-                    // Fallback to notification
-                    NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
-                }
+                // Post notification to open main window
+                logger.info("Posting OpenWindow.main notification")
+                NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
             }) {
                 Label("Open Main Window", systemImage: "rectangle.stack")
                     .frame(maxWidth: .infinity)

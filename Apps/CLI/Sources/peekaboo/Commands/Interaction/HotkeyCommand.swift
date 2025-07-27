@@ -91,10 +91,10 @@ struct HotkeyCommand: AsyncParsableCommand {
     private func handleError(_ error: Error) {
         if self.jsonOutput {
             let errorCode: ErrorCode = if error is PeekabooError {
-                switch error as? CLIError {
-                case .interactionFailed:
+                switch error as? PeekabooError {
+                case .clickFailed, .typeFailed:
                     .INTERACTION_FAILED
-                case let .operationFailed(msg) where msg.contains("accessibility"):
+                case .permissionDeniedAccessibility:
                     .PERMISSION_ERROR_ACCESSIBILITY
                 default:
                     .INTERNAL_SWIFT_ERROR

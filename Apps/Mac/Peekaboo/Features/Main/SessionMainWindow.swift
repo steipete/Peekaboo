@@ -207,9 +207,12 @@ struct SessionSidebar: View {
         savePanel.nameFieldStringValue = "\(session.title).json"
         
         savePanel.begin { response in
-            guard response == .OK, let url = savePanel.url else { return }
+            guard response == .OK else { return }
             
+            // Capture URL on main thread before Task
             Task { @MainActor in
+                guard let url = savePanel.url else { return }
+                
                 do {
                     let encoder = JSONEncoder()
                     encoder.dateEncodingStrategy = .iso8601
