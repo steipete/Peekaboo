@@ -22,6 +22,13 @@ let package = Package(
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "AXorcist", package: "AXorcist"),
+            ],
+            exclude: [
+                "README.md",
+                "Core/README.md",
+                "AI/README.md",
+                "Services/README.md",
+                "Services/Agent/Tools/README.md"
             ]),
         .testTarget(
             name: "PeekabooTests",
