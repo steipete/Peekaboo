@@ -100,9 +100,9 @@ describe("type tool", () => {
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].type).toBe("text");
-      expect(result.content[0].text).toContain("✅ Text typed successfully");
-      expect(result.content[0].text).toContain("Characters: 13");
-      expect(result.content[0].text).toContain('Text: "Hello, world!"');
+      expect(result.content[0].text).toContain("✅ Typing completed successfully");
+      expect(result.content[0].text).toContain("⌨️  Key presses: 13");
+      expect(result.content[0].text).toContain('📝 Text: "Hello, world!"');
     });
 
     it("should type with session", async () => {

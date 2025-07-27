@@ -122,9 +122,8 @@ describe("run tool", () => {
     });
 
     it("should handle partial script execution with errors", async () => {
-      const input: RunInput = {
+      const input = {
         script_path: "/tmp/failing.peekaboo.json",
-        session: "test-123",
       };
 
       const scriptContent = JSON.stringify({
@@ -139,25 +138,32 @@ describe("run tool", () => {
       mockReadFile.mockResolvedValue(scriptContent);
 
       mockExecuteSwiftCli.mockResolvedValue({
-        success: false,
+        success: true,
         data: {
           success: false,
-          script_path: "/tmp/failing.peekaboo.json",
-          commands_executed: 1,
-          total_commands: 3,
-          session_id: "test-123",
-          execution_time: 2.5,
-          errors: ["Command 2 failed: Element not found", "Command 3 skipped: Previous command failed"],
+          scriptPath: "/tmp/failing.peekaboo.json",
+          totalSteps: 3,
+          completedSteps: 1,
+          failedSteps: 2,
+          executionTime: 2.5,
+          steps: [
+            { stepNumber: 1, command: "see", success: true },
+            { stepNumber: 2, command: "click", success: false, error: "Element not found" },
+            { stepNumber: 3, command: "type", success: false, error: "Previous command failed" },
+          ],
         },
       });
 
       const result = await runToolHandler(input, mockContext);
 
       expect(result.content[0].text).toContain("❌ Script execution failed");
-      expect(result.content[0].text).toContain("Commands executed: 1/3");
-      expect(result.content[0].text).toContain("❌ Errors:");
-      expect(result.content[0].text).toContain("1. Command 2 failed: Element not found");
-      expect(result.content[0].text).toContain("2. Command 3 skipped: Previous command failed");
+      expect(result.content[0].text).toContain("📄 Script: /tmp/failing.peekaboo.json");
+      expect(result.content[0].text).toContain("🔢 Total steps: 3");
+      expect(result.content[0].text).toContain("✅ Completed: 1");
+      expect(result.content[0].text).toContain("❌ Failed: 2");
+      expect(result.content[0].text).toContain("⏱️  Total time: 2.50s");
+      expect(result.content[0].text).toContain("Step 2 (click)");
+      expect(result.content[0].text).toContain("Element not found");
     });
 
     it("should continue on error when specified", async () => {
@@ -191,37 +197,38 @@ describe("run tool", () => {
     });
 
     it("should handle custom timeout", async () => {
-      const input: RunInput = {
+      const input = {
         script_path: "/tmp/script.peekaboo.json",
-        timeout: 60000,
+        verbose: true,
       };
 
       mockReadFile.mockResolvedValue(JSON.stringify({
-        commands: [{ command: "sleep", args: ["--duration", "1000"] }],
+        commands: [{ command: "see" }],
       }));
 
       mockExecuteSwiftCli.mockResolvedValue({
         success: true,
         data: {
           success: true,
-          script_path: "/tmp/script.peekaboo.json",
-          commands_executed: 1,
-          total_commands: 1,
-          session_id: "auto-123",
-          execution_time: 1.0,
+          scriptPath: "/tmp/script.peekaboo.json",
+          totalSteps: 1,
+          completedSteps: 1,
+          failedSteps: 0,
+          executionTime: 1.0,
+          steps: [{ stepNumber: 1, command: "see", success: true }],
         },
       });
 
       await runToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        expect.arrayContaining(["--timeout", "60000"]),
+        expect.arrayContaining(["--verbose"]),
         mockContext.logger
       );
     });
 
     it("should handle invalid script file", async () => {
-      const input: RunInput = {
+      const input = {
         script_path: "/tmp/invalid.peekaboo.json",
       };
 

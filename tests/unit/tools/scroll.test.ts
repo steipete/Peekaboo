@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { scrollToolHandler, scrollToolSchema } from "../../../Server/src/tools/scroll";
-import type { ToolContext, ScrollInput } from "../../../Server/src/types/index";
+import type { ToolContext } from "../../../Server/src/types/index";
+import type { ScrollInput } from "../../../Server/src/tools/scroll";
 import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
 vi.mock("../../../Server/src/utils/peekaboo-cli");
@@ -64,7 +65,7 @@ describe("scroll tool", () => {
       const result = scrollToolSchema.safeParse(input);
       expect(result.success).toBe(true);
       expect(result.data?.amount).toBe(3);
-      expect(result.data?.delay).toBe(20);
+      expect(result.data?.delay).toBe(2);
       expect(result.data?.smooth).toBe(false);
     });
   });
@@ -93,7 +94,7 @@ describe("scroll tool", () => {
       const result = await scrollToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["scroll", "--direction", "down", "--amount", "5", "--delay", "20"],
+        ["scroll", "--direction", "down", "--amount", "5", "--delay", "2"],
         mockContext.logger
       );
 
@@ -127,7 +128,7 @@ describe("scroll tool", () => {
       const result = await scrollToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["scroll", "--direction", "up", "--amount", "3", "--on", "G2", "--session", "test-123", "--delay", "20"],
+        ["scroll", "--direction", "up", "--amount", "3", "--on", "G2", "--session", "test-123", "--delay", "2"],
         mockContext.logger
       );
 

@@ -142,7 +142,7 @@ export async function runToolHandler(
     lines.push(`🔢 Total steps: ${runData.totalSteps}`);
     lines.push(`✅ Completed: ${runData.completedSteps}`);
     lines.push(`❌ Failed: ${runData.failedSteps}`);
-    lines.push(`⏱️  Total time: ${runData.executionTime.toFixed(2)}s`);
+    lines.push(`⏱️  Total time: ${runData.executionTime?.toFixed(2) || "0.00"}s`);
 
     // Show failed steps
     const failedSteps = runData.steps.filter(step => !step.success);
