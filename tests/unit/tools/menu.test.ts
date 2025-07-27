@@ -43,20 +43,22 @@ describe("Menu Tool", () => {
       expect(result.success).toBe(false);
     });
 
-    it("should fail without app parameter", () => {
+    it("should accept list-all action without app parameter", () => {
       const result = menuToolSchema.safeParse({
-        action: "list"
+        action: "list-all"
       });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
 
     it("should validate all action types", () => {
-      const actions = ["list", "click"];
+      const actions = ["list", "click", "click-extra", "list-all"];
       
       actions.forEach(action => {
         const result = menuToolSchema.safeParse({
           action,
-          app: "TestApp"
+          app: action !== "list-all" ? "TestApp" : undefined,
+          title: action === "click-extra" ? "Menu Extra" : undefined,
+          item: action === "click" ? "Save" : undefined
         });
         expect(result.success).toBe(true);
       });
@@ -169,14 +171,14 @@ describe("Menu Tool", () => {
       expect(result.content[0].text).toContain("Menu item clicked successfully");
     });
 
-    it("should handle click action without path parameter", async () => {
+    it("should handle click action without item or path parameter", async () => {
       const result = await menuToolHandler(
         { action: "click", app: "Safari" },
         mockContext
       );
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toBe("❌ Click action requires 'path' parameter (e.g., 'File > Save As...')");
+      expect(result.content[0].text).toBe("❌ Click action requires either 'item' or 'path' parameter");
       expect(mockExecuteSwiftCli).not.toHaveBeenCalled();
     });
 

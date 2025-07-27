@@ -43,20 +43,20 @@ describe("App Tool", () => {
       expect(result.success).toBe(false);
     });
 
-    it("should fail without name parameter", () => {
+    it("should allow list action without name parameter", () => {
       const result = appToolSchema.safeParse({
-        action: "launch"
+        action: "list"
       });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
 
     it("should validate all action types", () => {
-      const actions = ["launch", "quit", "focus", "hide", "unhide", "switch"];
+      const actions = ["launch", "quit", "focus", "hide", "unhide", "switch", "list"];
       
       actions.forEach(action => {
         const result = appToolSchema.safeParse({
           action,
-          name: "TestApp"
+          name: action !== "list" ? "TestApp" : undefined
         });
         expect(result.success).toBe(true);
       });
@@ -194,7 +194,7 @@ describe("App Tool", () => {
       expect(result.content[0].text).toContain("✅ Application 'Safari' focused successfully");
     });
 
-    it("should handle switch action (alias for focus)", async () => {
+    it("should handle switch action with to parameter", async () => {
       const mockResponse = {
         app: "Chrome",
         action: "switch",
@@ -207,16 +207,16 @@ describe("App Tool", () => {
       });
 
       const result = await appToolHandler(
-        { action: "switch", name: "Chrome" },
+        { action: "switch", to: "Chrome" },
         mockContext
       );
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["app", "switch", "Chrome"],
+        ["app", "switch", "--to", "Chrome"],
         mockLogger
       );
       expect(result.isError).toBe(false);
-      expect(result.content[0].text).toContain("✅ Application 'Chrome' focused successfully");
+      expect(result.content[0].text).toContain("✅ Switched to application 'Chrome'");
     });
 
     it("should hide application successfully", async () => {

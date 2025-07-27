@@ -26,40 +26,50 @@ describe("type tool", () => {
   });
 
   describe("schema validation", () => {
-    it("should require text parameter", () => {
+    it("should accept empty input (for special keys)", () => {
       const input = {};
       const result = typeToolSchema.safeParse(input);
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
 
     it("should accept minimal valid input", () => {
-      const input: TypeInput = { text: "Hello, world!" };
+      const input = { text: "Hello, world!" };
       const result = typeToolSchema.safeParse(input);
       expect(result.success).toBe(true);
-      expect(result.data.text).toBe("Hello, world!");
+      if (result.success) {
+        expect(result.data.text).toBe("Hello, world!");
+      }
     });
 
     it("should accept all valid parameters", () => {
-      const input: TypeInput = {
+      const input = {
         text: "user@example.com",
-        on: "T1",
         session: "test-123",
         clear: true,
         delay: 100,
-        wait_for: 3000,
+        press_return: true,
+        tab: 2,
+        escape: false,
+        delete: false,
       };
       const result = typeToolSchema.safeParse(input);
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(input);
+      if (result.success) {
+        expect(result.data).toMatchObject(input);
+      }
     });
 
     it("should apply default values", () => {
       const input = { text: "test" };
       const result = typeToolSchema.safeParse(input);
       expect(result.success).toBe(true);
-      expect(result.data?.clear).toBe(false);
-      expect(result.data?.delay).toBe(50);
-      expect(result.data?.wait_for).toBe(5000);
+      if (result.success) {
+        expect(result.data.clear).toBe(false);
+        expect(result.data.delay).toBe(5);
+        expect(result.data.press_return).toBe(false);
+        expect(result.data.escape).toBe(false);
+        expect(result.data.delete).toBe(false);
+      }
     });
   });
 
@@ -84,7 +94,7 @@ describe("type tool", () => {
       const result = await typeToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["type", "Hello, world!", "--delay", "50"],
+        ["type", "Hello, world!", "--delay", "5", "--json-output"],
         mockContext.logger
       );
 
@@ -95,10 +105,9 @@ describe("type tool", () => {
       expect(result.content[0].text).toContain('Text: "Hello, world!"');
     });
 
-    it("should type into specific element", async () => {
-      const input: TypeInput = {
+    it("should type with session", async () => {
+      const input = {
         text: "john.doe@example.com",
-        on: "T2",
         session: "test-123",
       };
 
@@ -106,9 +115,8 @@ describe("type tool", () => {
         success: true,
         data: {
           success: true,
-          typed_text: "john.doe@example.com",
-          target_element: "AXTextField: Email",
-          characters_typed: 20,
+          text_typed: "john.doe@example.com",
+          keys_pressed: 20,
           execution_time: 1.0,
         },
       });
@@ -124,9 +132,8 @@ describe("type tool", () => {
     });
 
     it("should clear existing text before typing", async () => {
-      const input: TypeInput = {
+      const input = {
         text: "New Value",
-        on: "T1",
         clear: true,
       };
 
@@ -134,9 +141,8 @@ describe("type tool", () => {
         success: true,
         data: {
           success: true,
-          typed_text: "New Value",
-          target_element: "AXTextField: Name",
-          characters_typed: 9,
+          text_typed: "New Value",
+          keys_pressed: 9,
           execution_time: 0.5,
         },
       });
@@ -150,7 +156,7 @@ describe("type tool", () => {
     });
 
     it("should handle custom typing delay", async () => {
-      const input: TypeInput = {
+      const input = {
         text: "Slow typing",
         delay: 200,
       };
@@ -159,8 +165,8 @@ describe("type tool", () => {
         success: true,
         data: {
           success: true,
-          typed_text: "Slow typing",
-          characters_typed: 11,
+          text_typed: "Slow typing",
+          keys_pressed: 11,
           execution_time: 2.2,
         },
       });
@@ -191,12 +197,12 @@ describe("type tool", () => {
 
       const result = await typeToolHandler(input, mockContext);
 
-      expect(result.content[0].text).toContain('"' + "a".repeat(47) + '..."');
-      expect(result.content[0].text).toContain("Characters: 60");
+      expect(result.content[0].text).toContain('📝 Text: "' + "a".repeat(47) + '..."');
+      expect(result.content[0].text).toContain("⌨️  Key presses: 60");
     });
 
     it("should handle special keys in text", async () => {
-      const input: TypeInput = {
+      const input = {
         text: "First line{return}Second line{tab}Indented",
       };
 
@@ -204,8 +210,8 @@ describe("type tool", () => {
         success: true,
         data: {
           success: true,
-          typed_text: "First line{return}Second line{tab}Indented",
-          characters_typed: 40,
+          text_typed: "First line{return}Second line{tab}Indented",
+          keys_pressed: 40,
           execution_time: 2.0,
         },
       });
@@ -217,9 +223,8 @@ describe("type tool", () => {
     });
 
     it("should handle element not found error", async () => {
-      const input: TypeInput = {
+      const input = {
         text: "test",
-        on: "T99",
       };
 
       mockExecuteSwiftCli.mockResolvedValue({
@@ -238,7 +243,7 @@ describe("type tool", () => {
     });
 
     it("should handle exceptions gracefully", async () => {
-      const input: TypeInput = { text: "test" };
+      const input = { text: "test" };
 
       mockExecuteSwiftCli.mockRejectedValue(new Error("Keyboard access denied"));
 
@@ -249,17 +254,16 @@ describe("type tool", () => {
     });
 
     it("should skip wait-for parameter when no target element", async () => {
-      const input: TypeInput = {
+      const input = {
         text: "test",
-        wait_for: 10000, // This should be ignored when 'on' is not specified
       };
 
       mockExecuteSwiftCli.mockResolvedValue({
         success: true,
         data: {
           success: true,
-          typed_text: "test",
-          characters_typed: 4,
+          text_typed: "test",
+          keys_pressed: 4,
           execution_time: 0.2,
         },
       });
@@ -267,10 +271,10 @@ describe("type tool", () => {
       await typeToolHandler(input, mockContext);
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["type", "test", "--delay", "50"],
+        ["type", "test", "--delay", "5", "--json-output"],
         mockContext.logger
       );
-      // Note: --wait-for should NOT be included
+      // Note: --json-output should be included
     });
   });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { runToolHandler, runToolSchema } from "../../../Server/src/tools/run";
-import type { ToolContext, RunInput } from "../../../Server/src/types/index";
+import type { ToolContext } from "../../../Server/src/types/index";
 import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 import * as fs from "fs/promises";
 
@@ -39,31 +39,35 @@ describe("run tool", () => {
     });
 
     it("should accept minimal valid input", () => {
-      const input: RunInput = {
+      const input = {
         script_path: "/path/to/script.peekaboo.json",
       };
       const result = runToolSchema.safeParse(input);
       expect(result.success).toBe(true);
-      expect(result.data.stop_on_error).toBe(true); // default
-      expect(result.data.timeout).toBe(300000); // default 5 minutes
+      if (result.success) {
+        expect(result.data.no_fail_fast).toBe(false); // default
+        expect(result.data.verbose).toBe(false); // default
+      }
     });
 
     it("should accept all valid parameters", () => {
-      const input: RunInput = {
+      const input = {
         script_path: "/tmp/automation.peekaboo.json",
-        session: "test-123",
-        stop_on_error: false,
-        timeout: 60000,
+        output: "/tmp/output.json",
+        no_fail_fast: true,
+        verbose: true,
       };
       const result = runToolSchema.safeParse(input);
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(input);
+      if (result.success) {
+        expect(result.data).toEqual(input);
+      }
     });
   });
 
   describe("tool handler", () => {
     it("should run script successfully", async () => {
-      const input: RunInput = {
+      const input = {
         script_path: "/tmp/test.peekaboo.json",
       };
 
@@ -83,11 +87,12 @@ describe("run tool", () => {
         success: true,
         data: {
           success: true,
-          script_path: "/tmp/test.peekaboo.json",
-          commands_executed: 3,
-          total_commands: 3,
-          session_id: "auto-generated-123",
-          execution_time: 5.5,
+          scriptPath: "/tmp/test.peekaboo.json",
+          totalSteps: 3,
+          completedSteps: 3,
+          failedSteps: 0,
+          executionTime: 5.5,
+          steps: [],
         },
       };
 
@@ -102,7 +107,7 @@ describe("run tool", () => {
       );
 
       expect(mockExecuteSwiftCli).toHaveBeenCalledWith(
-        ["run", "/tmp/test.peekaboo.json", "--timeout", "300000"],
+        ["run", "/tmp/test.peekaboo.json", "--json-output"],
         mockContext.logger
       );
 

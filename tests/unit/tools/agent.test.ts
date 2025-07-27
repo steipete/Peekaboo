@@ -36,9 +36,11 @@ describe("Agent Tool", () => {
       }
     });
 
-    it("should fail without task parameter", () => {
-      const result = agentToolSchema.safeParse({});
-      expect(result.success).toBe(false);
+    it("should allow list-sessions without task parameter", () => {
+      const result = agentToolSchema.safeParse({
+        listSessions: true
+      });
+      expect(result.success).toBe(true);
     });
 
     it("should validate optional parameters", () => {
@@ -85,7 +87,7 @@ describe("Agent Tool", () => {
       );
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("OPENAI_API_KEY environment variable");
+      expect(result.content[0].text).toContain("OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable");
       expect(mockExecuteSwiftCli).not.toHaveBeenCalled();
     });
 
