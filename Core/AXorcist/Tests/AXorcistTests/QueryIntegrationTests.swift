@@ -124,23 +124,21 @@ class QueryIntegrationTests: XCTestCase {
 
         let attributes = queryResponse.data?.attributes
         XCTAssertEqual(
-            attributes?["AXRole"]?.value as? String, "AXApplication",
+            attributes?["AXRole"]?.value.stringValue, "AXApplication",
             "Application role should be AXApplication. Got: \(String(describing: attributes?["AXRole"]?.value))"
         )
         XCTAssertEqual(
-            attributes?["AXTitle"]?.value as? String, "TextEdit",
+            attributes?["AXTitle"]?.value.stringValue, "TextEdit",
             "Application title should be TextEdit. Got: \(String(describing: attributes?["AXTitle"]?.value))"
         )
 
         if let windowsAttr = attributes?["AXWindows"] {
             XCTAssertTrue(
-                windowsAttr.value is [Any],
+                windowsAttr.value.arrayValue != nil,
                 "AXWindows should be an array. Type: \(type(of: windowsAttr.value))"
             )
-            if let windowsArray = windowsAttr.value as? [AnyCodable] {
+            if let windowsArray = windowsAttr.value.arrayValue {
                 XCTAssertTrue(!windowsArray.isEmpty, "AXWindows array should not be empty if TextEdit has windows.")
-            } else if let windowsArray = windowsAttr.value as? [Any] {
-                XCTAssertTrue(!windowsArray.isEmpty, "AXWindows array should not be empty (general type check).")
             }
         } else {
             XCTAssertNotEqual(attributes?["AXWindows"], nil, "AXWindows attribute should be present.")

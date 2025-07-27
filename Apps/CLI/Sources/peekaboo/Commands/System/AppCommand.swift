@@ -332,7 +332,7 @@ struct AppCommand: AsyncParsableCommand {
                 if activate {
                     let runningApps = NSWorkspace.shared.runningApplications
                     if let runningApp = runningApps.first(where: { $0.processIdentifier == appInfo.processIdentifier }) {
-                        runningApp.activate(options: .activateIgnoringOtherApps)
+                        runningApp.activate()
                     }
                 }
 
@@ -412,7 +412,7 @@ struct AppCommand: AsyncParsableCommand {
                         throw NotFoundError.application(targetApp)
                     }
                     
-                    let success = runningApp.activate(options: .activateIgnoringOtherApps)
+                    let success = runningApp.activate()
                     
                     struct SwitchResult: Codable {
                         let action: String

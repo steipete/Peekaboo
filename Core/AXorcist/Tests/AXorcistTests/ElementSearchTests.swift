@@ -130,7 +130,7 @@ class ElementSearchTests: XCTestCase {
             debugLogging: true,
             locator: Locator(criteria: [Criterion(attribute: "AXRole", value: "AXTextArea")]),
             actionName: "AXSetValue",
-            actionValue: AnyCodable("Hello from AXorcist tests!")
+            actionValue: .string("Hello from AXorcist tests!")
         )
 
         let encoder = JSONEncoder()
@@ -198,7 +198,7 @@ class ElementSearchTests: XCTestCase {
             debugLogging: true,
             locator: Locator(criteria: [Criterion(attribute: "AXRole", value: "AXTextArea")]),
             actionName: "AXSetValue",
-            actionValue: AnyCodable("This is test content.\nIt has multiple lines.\nExtract this text.")
+            actionValue: .string("This is test content.\nIt has multiple lines.\nExtract this text.")
         )
 
         let encoder = JSONEncoder()

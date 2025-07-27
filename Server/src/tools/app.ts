@@ -5,27 +5,98 @@ import { Logger } from "pino";
 
 // Zod schema for app tool
 export const appToolSchema = z.object({
-  action: z.enum(["launch", "quit", "focus", "hide", "unhide", "switch"]).describe("The action to perform on the application"),
-  name: z.string().describe("Application name, bundle ID, or process ID (e.g., 'Safari', 'com.apple.Safari', 'PID:663')"),
+  action: z.enum(["launch", "quit", "focus", "hide", "unhide", "switch", "list"]).describe("The action to perform on the application"),
+  name: z.string().optional().describe("Application name, bundle ID, or process ID (e.g., 'Safari', 'com.apple.Safari', 'PID:663')"),
+  bundleId: z.string().optional().describe("Launch by bundle identifier instead of name (for 'launch' action)"),
+  waitUntilReady: z.boolean().optional().describe("Wait for the application to be ready (for 'launch' action)"),
   force: z.boolean().optional().describe("Force quit the application (only applicable for 'quit' action)"),
+  all: z.boolean().optional().describe("Quit all applications (for 'quit' action)"),
+  except: z.string().optional().describe("Comma-separated list of apps to exclude when using --all (for 'quit' action)"),
+  to: z.string().optional().describe("Application to switch to (for 'switch' action)"),
+  cycle: z.boolean().optional().describe("Cycle to next application like Cmd+Tab (for 'switch' action)"),
 });
 
 export type AppInput = z.infer<typeof appToolSchema>;
 
 export async function appToolHandler(
   input: AppInput,
-  context: { logger: Logger }
+  context: { logger: Logger },
 ): Promise<ToolResponse> {
   const { logger } = context;
-  
+
   try {
     logger.debug({ input }, "App tool called");
 
+    // Validate input based on action
+    if (input.action === "launch" && !input.name && !input.bundleId) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "❌ Launch action requires either 'name' or 'bundleId' parameter",
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    if (input.action === "switch" && !input.to && !input.cycle) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "❌ Switch action requires either 'to' parameter or 'cycle' flag",
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    if ((input.action === "quit" || input.action === "focus" || input.action === "hide" || input.action === "unhide") && !input.name && !input.all) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `❌ ${input.action} action requires 'name' parameter${input.action === "quit" ? " or 'all' flag" : ""}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
     // Build command arguments
-    const args = ["app", input.action, input.name];
-    
+    const args = ["app", input.action];
+
+    if (input.name) {
+      args.push(input.name);
+    }
+
+    if (input.bundleId && input.action === "launch") {
+      args.push("--bundle-id", input.bundleId);
+    }
+
+    if (input.waitUntilReady && input.action === "launch") {
+      args.push("--wait-until-ready");
+    }
+
     if (input.force && input.action === "quit") {
       args.push("--force");
+    }
+
+    if (input.all && input.action === "quit") {
+      args.push("--all");
+    }
+
+    if (input.except && input.action === "quit") {
+      args.push("--except", input.except);
+    }
+
+    if (input.to && input.action === "switch") {
+      args.push("--to", input.to);
+    }
+
+    if (input.cycle && input.action === "switch") {
+      args.push("--cycle");
     }
 
     logger.debug({ args }, "Executing app command");
@@ -40,16 +111,16 @@ export async function appToolHandler(
         content: [
           {
             type: "text",
-            text: `❌ App command failed: ${result.error?.message || "Unknown error"}`
-          }
+            text: `❌ App command failed: ${result.error?.message || "Unknown error"}`,
+          },
         ],
-        isError: true
+        isError: true,
       };
     }
 
     // Parse the response data
     let responseData = result.data;
-    if (typeof result.data === 'string') {
+    if (typeof result.data === "string") {
       try {
         responseData = JSON.parse(result.data);
       } catch (parseError) {
@@ -58,23 +129,23 @@ export async function appToolHandler(
           content: [
             {
               type: "text",
-              text: `App ${input.action} completed. Output: ${result.data}`
-            }
+              text: `App ${input.action} completed. Output: ${result.data}`,
+            },
           ],
-          isError: false
+          isError: false,
         };
       }
     }
 
     // Handle successful app command - the response format can vary
-    if (responseData && typeof responseData === 'object') {
+    if (responseData && typeof responseData === "object") {
       let appData = responseData as any;
-      
+
       // Check if it's wrapped in success/data structure
-      if ('success' in appData && appData.success && appData.data) {
+      if ("success" in appData && appData.success && appData.data) {
         appData = appData.data;
       }
-      
+
       // Check for direct response format (which seems to be what we're getting)
       if (appData.action || appData.app || appData.pid) {
         let responseText = "";
@@ -82,7 +153,7 @@ export async function appToolHandler(
         // Format the response based on action
         switch (input.action) {
           case "launch":
-            responseText = `✅ Application '${input.name}' launched successfully`;
+            responseText = `✅ Application '${input.bundleId || input.name}' launched successfully`;
             if (appData.pid) {
               responseText += `\nProcess ID: ${appData.pid}`;
             }
@@ -96,24 +167,61 @@ export async function appToolHandler(
               responseText += `\nBundle ID: ${appData.bundle_id}`;
             }
             break;
-            
+
           case "quit":
-            responseText = `✅ Application '${input.name}' quit successfully`;
+            if (input.all) {
+              responseText = `✅ All applications quit successfully`;
+              if (input.except) {
+                responseText += ` (except: ${input.except})`;
+              }
+            } else {
+              responseText = `✅ Application '${input.name}' quit successfully`;
+            }
             break;
-            
+
           case "focus":
-          case "switch":
             responseText = `✅ Application '${input.name}' focused successfully`;
             break;
-            
+
+          case "switch":
+            if (input.cycle) {
+              responseText = `✅ Cycled to next application`;
+            } else if (input.to) {
+              responseText = `✅ Switched to application '${input.to}'`;
+            } else {
+              responseText = `✅ Application switch completed`;
+            }
+            break;
+
           case "hide":
             responseText = `✅ Application '${input.name}' hidden successfully`;
             break;
-            
+
           case "unhide":
             responseText = `✅ Application '${input.name}' unhidden successfully`;
             break;
-            
+
+          case "list":
+            responseText = "✅ Running applications:\n";
+            if (appData.applications && Array.isArray(appData.applications)) {
+              appData.applications.forEach((app: any) => {
+                responseText += `\n• ${app.name || app.localizedName}`;
+                if (app.bundleIdentifier) {
+                  responseText += ` (${app.bundleIdentifier})`;
+                }
+                if (app.processIdentifier) {
+                  responseText += ` - PID: ${app.processIdentifier}`;
+                }
+                if (app.isActive) {
+                  responseText += " [Active]";
+                }
+                if (app.isHidden) {
+                  responseText += " [Hidden]";
+                }
+              });
+            }
+            break;
+
           default:
             responseText = `✅ App ${input.action} completed successfully`;
         }
@@ -126,24 +234,24 @@ export async function appToolHandler(
           content: [
             {
               type: "text",
-              text: responseText
-            }
+              text: responseText,
+            },
           ],
-          isError: false
+          isError: false,
         };
       }
 
       // Handle app command errors
-      if ('error' in appData) {
+      if ("error" in appData) {
         const errorMessage = appData.error.message || "App command failed";
         return {
           content: [
             {
               type: "text",
-              text: `❌ App Error: ${errorMessage}`
-            }
+              text: `❌ App Error: ${errorMessage}`,
+            },
           ],
-          isError: true
+          isError: true,
         };
       }
     }
@@ -153,25 +261,25 @@ export async function appToolHandler(
       content: [
         {
           type: "text",
-          text: `App ${input.action} completed with unexpected response format: ${JSON.stringify(responseData)}`
-        }
+          text: `App ${input.action} completed with unexpected response format: ${JSON.stringify(responseData)}`,
+        },
       ],
-      isError: false
+      isError: false,
     };
 
   } catch (error) {
     logger.error({ error, input }, "App tool execution failed");
-    
+
     const errorMessage = error instanceof Error ? error.message : String(error);
-    
+
     return {
       content: [
         {
           type: "text",
-          text: `❌ App ${input.action} failed: ${errorMessage}`
-        }
+          text: `❌ App ${input.action} failed: ${errorMessage}`,
+        },
       ],
-      isError: true
+      isError: true,
     };
   }
 }

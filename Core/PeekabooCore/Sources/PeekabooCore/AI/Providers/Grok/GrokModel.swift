@@ -63,7 +63,7 @@ public final class GrokModel: ModelInterface {
         
         let (data, response) = try await session.data(for: urlRequest)
         
-        guard let httpResponse = response as? HTTPURLResponse else {
+        guard response is HTTPURLResponse else {
             throw ModelError.requestFailed(URLError(.badServerResponse))
         }
         
@@ -239,7 +239,7 @@ public final class GrokModel: ModelInterface {
         }
         
         // Filter parameters for Grok 4
-        var temperature = request.settings.temperature
+        let temperature = request.settings.temperature
         var frequencyPenalty = request.settings.frequencyPenalty
         var presencePenalty = request.settings.presencePenalty
         var stop = request.settings.stopSequences

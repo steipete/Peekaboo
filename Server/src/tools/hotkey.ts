@@ -48,7 +48,7 @@ export async function hotkeyToolHandler(
     const holdDuration = input.hold_duration ?? 50;
     args.push("--hold-duration", holdDuration.toString());
 
-    
+
 
     // Execute the command
     const result = await executeSwiftCli(args, logger);

@@ -240,8 +240,8 @@ struct CommandEnvelope: Codable {
          maxElements: Int? = nil,
          outputFormat: OutputFormat? = nil,
          actionName: String? = nil,
-         actionValue: AnyCodable? = nil,
-         payload: [String: AnyCodable]? = nil,
+         actionValue: AttributeValue? = nil,
+         payload: [String: AttributeValue]? = nil,
          subCommands: [CommandEnvelope]? = nil)
     {
         self.commandId = commandId
@@ -287,8 +287,8 @@ struct CommandEnvelope: Codable {
     let maxElements: Int?
     let outputFormat: OutputFormat?
     let actionName: String?
-    let actionValue: AnyCodable?
-    let payload: [String: AnyCodable]?
+    let actionValue: AttributeValue?
+    let payload: [String: AttributeValue]?
     let subCommands: [CommandEnvelope]?
 }
 
@@ -362,14 +362,14 @@ struct ErrorResponse: Codable {
 struct AXElementData: Codable {
     // MARK: Lifecycle
 
-    init(attributes: [String: AnyCodable]? = nil, path: [String]? = nil) {
+    init(attributes: [String: AttributeValue]? = nil, path: [String]? = nil) {
         self.attributes = attributes
         self.path = path
     }
 
     // MARK: Internal
 
-    let attributes: [String: AnyCodable]?
+    let attributes: [String: AttributeValue]?
     let path: [String]?
 }
 

@@ -162,9 +162,6 @@ extension OutputFormattable {
     }
 }
 
-// Empty type for when there's no data
-struct Empty: Codable {}
-
 // MARK: - Permission Checking
 
 /// Check and require screen recording permission

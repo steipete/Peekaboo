@@ -122,7 +122,7 @@ extension PeekabooAgentService {
                     output.trimmingCharacters(in: .whitespacesAndNewlines),
                     metadata: [
                         "totalCount": String(filteredItems.count),
-                        "section": section ?? "all"
+                        "section": section
                     ]
                 )
             }

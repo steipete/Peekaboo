@@ -63,7 +63,7 @@ public final class OpenAIModel: ModelInterface {
         
         let (data, response) = try await session.data(for: urlRequest)
         
-        guard let httpResponse = response as? HTTPURLResponse else {
+        guard response is HTTPURLResponse else {
             throw PeekabooError.networkError("Invalid server response")
         }
         
@@ -362,7 +362,7 @@ public final class OpenAIModel: ModelInterface {
             case .assistant(_, let content, let status):
                 return try convertAssistantMessage(content, status: status)
                 
-            case .tool(_, let toolCallId, let content):
+            case .tool(_, _, let content):
                 // Responses API doesn't support 'tool' role, use 'user' instead
                 // Tool results are sent as user messages in the Responses API
                 return OpenAIMessage(
@@ -370,7 +370,7 @@ public final class OpenAIModel: ModelInterface {
                     content: .string(content)
                 )
                 
-            case .reasoning(_, let content):
+            case .reasoning(_, _):
                 // Skip reasoning messages for now - they may not be supported by the API
                 throw PeekabooError.invalidInput(field: "message", reason: "Reasoning messages not supported in OpenAI API")
             }
@@ -480,7 +480,7 @@ public final class OpenAIModel: ModelInterface {
             case .refusal(let refusal):
                 return OpenAIMessage(role: "assistant", content: .string(refusal))
                 
-            case .toolCall(let toolCall):
+            case .toolCall(_):
                 // For Responses API, we don't include tool_calls in assistant messages
                 // Tool calls are handled differently in the Responses API
                 // They appear in the output array of the response, not in messages

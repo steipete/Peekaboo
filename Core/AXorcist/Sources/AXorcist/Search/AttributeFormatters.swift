@@ -35,7 +35,7 @@ func extractAndFormatAttribute(
     attributeName: String,
     outputFormat: OutputFormat,
     valueFormatOption _: ValueFormatOption
-) async -> AnyCodable? {
+) async -> AttributeValue? {
     GlobalAXLogger.shared.log(AXLogEntry(
         level: .debug,
         message: "extractAndFormatAttribute: '\(attributeName)' for element \(element.briefDescription(option: .raw))"
@@ -47,7 +47,7 @@ func extractAndFormatAttribute(
         attributeName: attributeName,
         outputFormat: outputFormat
     ) {
-        return AnyCodable(extractedValue)
+        return AttributeValue(from: extractedValue)
     }
 
     // Fallback to raw attribute value
@@ -99,13 +99,13 @@ private func formatOptionalIntAttribute(_ value: Int32?, outputFormat: OutputFor
 
 @MainActor
 private func extractRawAttribute(element: Element, attributeName: String,
-                                 outputFormat: OutputFormat) async -> AnyCodable?
+                                 outputFormat: OutputFormat) async -> AttributeValue?
 {
     let rawCFValue = element.rawAttributeValue(named: attributeName)
 
     if outputFormat == .textContent {
         let formatted = await formatRawCFValueForTextContent(rawCFValue)
-        return AnyCodable(formatted)
+        return .string(formatted)
     }
 
     guard let unwrapped = ValueUnwrapper.unwrap(rawCFValue) else {
@@ -115,12 +115,12 @@ private func extractRawAttribute(element: Element, attributeName: String,
             GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message:
                 "extractAndFormatAttribute: '\(attributeName)' was non-nil CFTypeRef " +
                     "but unwrapped to nil. CFTypeID: \(cfTypeID)"))
-            return AnyCodable("<Raw CFTypeRef: \(cfTypeID)>")
+            return .string("<Raw CFTypeRef: \(cfTypeID)>")
         }
         return nil
     }
 
-    return AnyCodable(unwrapped)
+    return AttributeValue(from: unwrapped)
 }
 
 @MainActor
@@ -128,12 +128,12 @@ func formatParentAttribute(
     _ parent: Element?,
     outputFormat: OutputFormat,
     valueFormatOption _: ValueFormatOption
-) async -> AnyCodable {
-    guard let parentElement = parent else { return AnyCodable(nil as String?) }
+) async -> AttributeValue {
+    guard let parentElement = parent else { return .null }
     if outputFormat == .textContent {
-        return AnyCodable("Element: \(parentElement.role() ?? "?Role")")
+        return .string("Element: \(parentElement.role() ?? "?Role")")
     } else {
-        return AnyCodable(parentElement.briefDescription(option: .raw))
+        return .string(parentElement.briefDescription(option: .raw))
     }
 }
 
@@ -142,19 +142,19 @@ func formatChildrenAttribute(
     _ children: [Element]?,
     outputFormat: OutputFormat,
     valueFormatOption _: ValueFormatOption
-) async -> AnyCodable {
+) async -> AttributeValue {
     guard let actualChildren = children, !actualChildren.isEmpty else {
-        return AnyCodable(nil as String?)
+        return .null
     }
     if outputFormat == .textContent {
         var childrenSummaries: [String] = []
         for childElement in actualChildren {
             childrenSummaries.append(childElement.briefDescription(option: .raw))
         }
-        return AnyCodable("[\(childrenSummaries.joined(separator: ", "))]")
+        return .string("[\(childrenSummaries.joined(separator: ", "))]")
     } else {
         let childrenDescriptions = actualChildren.map { $0.briefDescription(option: .raw) }
-        return AnyCodable(childrenDescriptions)
+        return .array(childrenDescriptions.map { .string($0) })
     }
 }
 
@@ -163,11 +163,11 @@ func formatFocusedUIElementAttribute(
     _ focusedElement: Element?,
     outputFormat: OutputFormat,
     valueFormatOption _: ValueFormatOption
-) async -> AnyCodable {
-    guard let element = focusedElement else { return AnyCodable(nil as String?) }
+) async -> AttributeValue {
+    guard let element = focusedElement else { return .null }
     if outputFormat == .textContent {
-        return AnyCodable("Focused: \(element.role() ?? "?Role") - \(element.title() ?? "?Title")")
+        return .string("Focused: \(element.role() ?? "?Role") - \(element.title() ?? "?Title")")
     } else {
-        return AnyCodable(element.briefDescription(option: .raw))
+        return .string(element.briefDescription(option: .raw))
     }
 }

@@ -288,7 +288,7 @@ struct AgentCommand: AsyncParsableCommand {
             }
             
             // Get the most recent session
-            guard let peekabooAgent = agentService as? PeekabooAgentService else {
+            guard agentService is PeekabooAgentService else {
                 throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
             }
             // TODO: Implement session listing when PeekabooAgentService supports it
@@ -578,7 +578,7 @@ struct AgentCommand: AsyncParsableCommand {
     
     private func showSessions(_ agentService: AgentServiceProtocol) async throws {
         // Cast to PeekabooAgentService - this should always succeed
-        guard let peekabooAgent = agentService as? PeekabooAgentService else {
+        guard agentService is PeekabooAgentService else {
             throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
         }
         // TODO: Implement session listing when PeekabooAgentService supports it

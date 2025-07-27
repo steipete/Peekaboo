@@ -98,7 +98,7 @@ export async function cleanToolHandler(
     }
 
     const sessionsRemoved = cleanData.sessions_removed ?? 0;
-    
+
     if (sessionsRemoved === 0) {
       lines.push("✅ No sessions to clean");
     } else {
@@ -142,7 +142,7 @@ function formatBytes(bytes: number | undefined): string {
   if (bytes === undefined || bytes === null) {
     return "0.0 B";
   }
-  
+
   const units = ["B", "KB", "MB", "GB"];
   let size = bytes;
   let unitIndex = 0;

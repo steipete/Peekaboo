@@ -538,7 +538,14 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         // Capture the window
         // Note: CGWindowListCreateImage is deprecated but we intentionally use it here as a fallback
         // when ScreenCaptureKit hangs on certain macOS versions (controlled by PEEKABOO_USE_MODERN_CAPTURE env var)
-        guard let image = CGWindowListCreateImage(CGRect.null, .optionIncludingWindow, windowID, [.boundsIgnoreFraming, .nominalResolution]) else {
+        #if compiler(>=5.9)
+        @available(macOS, deprecated: 14.0)
+        #endif
+        let captureImage = { () -> CGImage? in
+            CGWindowListCreateImage(CGRect.null, .optionIncludingWindow, windowID, [.boundsIgnoreFraming, .nominalResolution])
+        }
+        
+        guard let image = captureImage() else {
             throw OperationError.captureFailed(reason: "Failed to create window image")
         }
         

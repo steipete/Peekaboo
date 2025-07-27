@@ -62,13 +62,16 @@ struct DockCommand: AsyncParsableCommand {
 
                 // Output result
                 if self.jsonOutput {
-                    let response = JSONResponse(
-                        success: true,
-                        data: AnyCodable([
-                            "action": "dock_launch",
-                            "app": dockItem.title,
-                        ]))
-                    outputJSON(response)
+                    struct DockLaunchResult: Codable {
+                        let action: String
+                        let app: String
+                    }
+                    
+                    let outputData = DockLaunchResult(
+                        action: "dock_launch",
+                        app: dockItem.title
+                    )
+                    outputSuccessCodable(data: outputData)
                 } else {
                     print("✓ Launched \(dockItem.title) from Dock")
                 }
@@ -114,14 +117,18 @@ struct DockCommand: AsyncParsableCommand {
 
                 // Output result
                 if self.jsonOutput {
-                    let response = JSONResponse(
-                        success: true,
-                        data: AnyCodable([
-                            "action": "dock_right_click",
-                            "app": dockItem.title,
-                            "selected_item": self.select,
-                        ]))
-                    outputJSON(response)
+                    struct DockRightClickResult: Codable {
+                        let action: String
+                        let app: String
+                        let selectedItem: String
+                    }
+                    
+                    let outputData = DockRightClickResult(
+                        action: "dock_right_click",
+                        app: dockItem.title,
+                        selectedItem: self.select ?? ""
+                    )
+                    outputSuccessCodable(data: outputData)
                 } else {
                     if let selected = select {
                         print("✓ Right-clicked \(dockItem.title) and selected '\(selected)'")
@@ -161,12 +168,12 @@ struct DockCommand: AsyncParsableCommand {
 
                 // Output result
                 if self.jsonOutput {
-                    let response = JSONResponse(
-                        success: true,
-                        data: AnyCodable([
-                            "action": "dock_hide",
-                        ]))
-                    outputJSON(response)
+                    struct DockHideResult: Codable {
+                        let action: String
+                    }
+                    
+                    let outputData = DockHideResult(action: "dock_hide")
+                    outputSuccessCodable(data: outputData)
                 } else {
                     print("✓ Dock hidden")
                 }
@@ -201,12 +208,12 @@ struct DockCommand: AsyncParsableCommand {
 
                 // Output result
                 if self.jsonOutput {
-                    let response = JSONResponse(
-                        success: true,
-                        data: AnyCodable([
-                            "action": "dock_show",
-                        ]))
-                    outputJSON(response)
+                    struct DockShowResult: Codable {
+                        let action: String
+                    }
+                    
+                    let outputData = DockShowResult(action: "dock_show")
+                    outputSuccessCodable(data: outputData)
                 } else {
                     print("✓ Dock shown")
                 }
@@ -243,34 +250,36 @@ struct DockCommand: AsyncParsableCommand {
                 // Get Dock items using the service
                 let dockItems = try await services.dock.listDockItems(includeAll: self.includeAll)
 
-                // Convert to output format
-                let itemsData = dockItems.map { item -> [String: Any] in
-                    var data: [String: Any] = [
-                        "index": item.index,
-                        "title": item.title,
-                        "type": item.itemType.rawValue,
-                    ]
-
-                    if let isRunning = item.isRunning {
-                        data["running"] = isRunning
-                    }
-
-                    if let bundleId = item.bundleIdentifier {
-                        data["bundle_id"] = bundleId
-                    }
-
-                    return data
-                }
-
                 // Output result
                 if self.jsonOutput {
-                    let response = JSONResponse(
-                        success: true,
-                        data: AnyCodable([
-                            "dock_items": itemsData,
-                            "count": itemsData.count,
-                        ]))
-                    outputJSON(response)
+                    struct DockListResult: Codable {
+                        let dockItems: [DockItemInfo]
+                        let count: Int
+                        
+                        struct DockItemInfo: Codable {
+                            let index: Int
+                            let title: String
+                            let type: String
+                            let running: Bool?
+                            let bundleId: String?
+                        }
+                    }
+                    
+                    let items = dockItems.map { item in
+                        DockListResult.DockItemInfo(
+                            index: item.index,
+                            title: item.title,
+                            type: item.itemType.rawValue,
+                            running: item.isRunning,
+                            bundleId: item.bundleIdentifier
+                        )
+                    }
+                    
+                    let outputData = DockListResult(
+                        dockItems: items,
+                        count: items.count
+                    )
+                    outputSuccessCodable(data: outputData)
                 } else {
                     print("Dock items:")
                     for item in dockItems {

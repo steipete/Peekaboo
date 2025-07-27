@@ -292,22 +292,36 @@ struct MenuBarSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
             // Use the enhanced menu service to get menu bar items
             let menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
             
-            let jsonItems = menuExtras.map { extra in
-                [
-                    "name": extra.title,
-                    "app_name": extra.title,
-                    "position": [
-                        "x": Int(extra.position.x),
-                        "y": Int(extra.position.y)
-                    ],
-                    "visible": extra.isVisible
-                ] as [String: Any]
+            struct MenuBarListResult: Codable {
+                let count: Int
+                let items: [MenuBarItem]
+                
+                struct MenuBarItem: Codable {
+                    let name: String
+                    let appName: String
+                    let position: Position
+                    let visible: Bool
+                    
+                    struct Position: Codable {
+                        let x: Int
+                        let y: Int
+                    }
+                }
             }
             
-            let outputData = AnyCodable([
-                "count": menuExtras.count,
-                "items": jsonItems
-            ])
+            let items = menuExtras.map { extra in
+                MenuBarListResult.MenuBarItem(
+                    name: extra.title,
+                    appName: extra.title,
+                    position: MenuBarListResult.MenuBarItem.Position(
+                        x: Int(extra.position.x),
+                        y: Int(extra.position.y)
+                    ),
+                    visible: extra.isVisible
+                )
+            }
+            
+            let outputData = MenuBarListResult(count: menuExtras.count, items: items)
             
             output(outputData) {
                 if menuExtras.isEmpty {

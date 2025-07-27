@@ -87,7 +87,7 @@ struct AXElementForEncoding: Codable {
 
     // MARK: Internal
 
-    let attributes: [String: AnyCodable]?
+    let attributes: [String: AttributeValue]?
     let path: [String]?
 }
 

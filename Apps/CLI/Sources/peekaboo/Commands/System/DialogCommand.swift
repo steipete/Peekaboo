@@ -63,14 +63,18 @@ struct DialogCommand: AsyncParsableCommand {
 
                 // Output result
                 if self.jsonOutput {
-                    let response = JSONResponse(
-                        success: result.success,
-                        data: AnyCodable([
-                            "action": "dialog_click",
-                            "button": result.details["button"] ?? self.button,
-                            "window": result.details["window"] ?? "Dialog",
-                        ]))
-                    outputJSON(response)
+                    struct DialogClickResult: Codable {
+                        let action: String
+                        let button: String
+                        let window: String
+                    }
+                    
+                    let outputData = DialogClickResult(
+                        action: "dialog_click",
+                        button: result.details["button"] ?? self.button,
+                        window: result.details["window"] ?? "Dialog"
+                    )
+                    outputSuccessCodable(data: outputData)
                 } else {
                     print("✓ Clicked '\(result.details["button"] ?? self.button)' button")
                 }
@@ -124,15 +128,20 @@ struct DialogCommand: AsyncParsableCommand {
 
                 // Output result
                 if self.jsonOutput {
-                    let response = JSONResponse(
-                        success: result.success,
-                        data: AnyCodable([
-                            "action": "dialog_input",
-                            "field": result.details["field"] ?? "Text Field",
-                            "text_length": result.details["text_length"] ?? String(self.text.count),
-                            "cleared": result.details["cleared"] ?? String(self.clear),
-                        ]))
-                    outputJSON(response)
+                    struct DialogInputResult: Codable {
+                        let action: String
+                        let field: String
+                        let textLength: String
+                        let cleared: String
+                    }
+                    
+                    let outputData = DialogInputResult(
+                        action: "dialog_input",
+                        field: result.details["field"] ?? "Text Field",
+                        textLength: result.details["text_length"] ?? String(self.text.count),
+                        cleared: result.details["cleared"] ?? String(self.clear)
+                    )
+                    outputSuccessCodable(data: outputData)
                 } else {
                     print("✓ Entered text in '\(result.details["field"] ?? "field")'")
                 }
@@ -179,15 +188,20 @@ struct DialogCommand: AsyncParsableCommand {
 
                 // Output result
                 if self.jsonOutput {
-                    let response = JSONResponse(
-                        success: result.success,
-                        data: AnyCodable([
-                            "action": "file_dialog",
-                            "path": result.details["path"],
-                            "name": result.details["filename"],
-                            "button_clicked": result.details["button_clicked"] ?? self.select,
-                        ]))
-                    outputJSON(response)
+                    struct FileDialogResult: Codable {
+                        let action: String
+                        let path: String?
+                        let name: String?
+                        let buttonClicked: String
+                    }
+                    
+                    let outputData = FileDialogResult(
+                        action: "file_dialog",
+                        path: result.details["path"],
+                        name: result.details["filename"],
+                        buttonClicked: result.details["button_clicked"] ?? self.select
+                    )
+                    outputSuccessCodable(data: outputData)
                 } else {
                     print("✓ Handled file dialog")
                     if let p = result.details["path"] { print("  Path: \(p)") }
@@ -233,14 +247,18 @@ struct DialogCommand: AsyncParsableCommand {
 
                 // Output result
                 if self.jsonOutput {
-                    let response = JSONResponse(
-                        success: result.success,
-                        data: AnyCodable([
-                            "action": "dialog_dismiss",
-                            "method": result.details["method"] ?? "unknown",
-                            "button": result.details["button"],
-                        ]))
-                    outputJSON(response)
+                    struct DialogDismissResult: Codable {
+                        let action: String
+                        let method: String
+                        let button: String?
+                    }
+                    
+                    let outputData = DialogDismissResult(
+                        action: "dialog_dismiss",
+                        method: result.details["method"] ?? "unknown",
+                        button: result.details["button"]
+                    )
+                    outputSuccessCodable(data: outputData)
                 } else {
                     if result.details["method"] == "escape" {
                         print("✓ Dismissed dialog with Escape")
@@ -279,33 +297,38 @@ struct DialogCommand: AsyncParsableCommand {
                 // List dialog elements using the service
                 let elements = try await PeekabooServices.shared.dialogs.listDialogElements(windowTitle: nil)
 
-                // Prepare dialog info for output
-                var dialogInfo: [String: Any] = [
-                    "title": elements.dialogInfo.title,
-                    "role": elements.dialogInfo.role,
-                ]
-
-                // Add buttons
-                dialogInfo["buttons"] = elements.buttons.map(\.title)
-
-                // Add text fields
-                dialogInfo["text_fields"] = elements.textFields.map { field in
-                    [
-                        "title": field.title ?? "",
-                        "value": field.value ?? "",
-                        "placeholder": field.placeholder ?? "",
-                    ]
-                }
-
-                // Add static texts
-                dialogInfo["text_elements"] = elements.staticTexts
-
                 // Output result
                 if self.jsonOutput {
-                    let response = JSONResponse(
-                        success: true,
-                        data: AnyCodable(dialogInfo))
-                    outputJSON(response)
+                    struct DialogListResult: Codable {
+                        let title: String
+                        let role: String
+                        let buttons: [String]
+                        let textFields: [TextField]
+                        let textElements: [String]
+                        
+                        struct TextField: Codable {
+                            let title: String
+                            let value: String
+                            let placeholder: String
+                        }
+                    }
+                    
+                    let textFields = elements.textFields.map { field in
+                        DialogListResult.TextField(
+                            title: field.title ?? "",
+                            value: field.value ?? "",
+                            placeholder: field.placeholder ?? ""
+                        )
+                    }
+                    
+                    let outputData = DialogListResult(
+                        title: elements.dialogInfo.title,
+                        role: elements.dialogInfo.role,
+                        buttons: elements.buttons.map(\.title),
+                        textFields: textFields,
+                        textElements: elements.staticTexts
+                    )
+                    outputSuccessCodable(data: outputData)
                 } else {
                     print("Dialog: \(elements.dialogInfo.title)")
 

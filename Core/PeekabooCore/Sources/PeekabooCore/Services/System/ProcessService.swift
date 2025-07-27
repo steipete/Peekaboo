@@ -103,43 +103,46 @@ public actor ProcessService: ProcessServiceProtocol {
         _ step: ScriptStep,
         sessionId: String?
     ) async throws -> StepExecutionResult {
+        // Normalize parameters from generic to typed if needed
+        let normalizedStep = normalizeStepParameters(step)
+        
         // Map command to appropriate service method
-        switch step.command.lowercased() {
+        switch normalizedStep.command.lowercased() {
         case "see":
-            return try await executeSeeCommand(step, sessionId: sessionId)
+            return try await executeSeeCommand(normalizedStep, sessionId: sessionId)
             
         case "click":
-            return try await executeClickCommand(step, sessionId: sessionId)
+            return try await executeClickCommand(normalizedStep, sessionId: sessionId)
             
         case "type":
-            return try await executeTypeCommand(step, sessionId: sessionId)
+            return try await executeTypeCommand(normalizedStep, sessionId: sessionId)
             
         case "scroll":
-            return try await executeScrollCommand(step, sessionId: sessionId)
+            return try await executeScrollCommand(normalizedStep, sessionId: sessionId)
             
         case "swipe":
-            return try await executeSwipeCommand(step, sessionId: sessionId)
+            return try await executeSwipeCommand(normalizedStep, sessionId: sessionId)
             
         case "drag":
-            return try await executeDragCommand(step, sessionId: sessionId)
+            return try await executeDragCommand(normalizedStep, sessionId: sessionId)
             
         case "hotkey":
-            return try await executeHotkeyCommand(step, sessionId: sessionId)
+            return try await executeHotkeyCommand(normalizedStep, sessionId: sessionId)
             
         case "sleep":
-            return try await executeSleepCommand(step)
+            return try await executeSleepCommand(normalizedStep)
             
         case "window":
-            return try await executeWindowCommand(step, sessionId: sessionId)
+            return try await executeWindowCommand(normalizedStep, sessionId: sessionId)
             
         case "menu":
-            return try await executeMenuCommand(step, sessionId: sessionId)
+            return try await executeMenuCommand(normalizedStep, sessionId: sessionId)
             
         case "dock":
-            return try await executeDockCommand(step)
+            return try await executeDockCommand(normalizedStep)
             
         case "app":
-            return try await executeAppCommand(step)
+            return try await executeAppCommand(normalizedStep)
             
         default:
             throw PeekabooError.invalidInput(field: "command", reason: "Unknown command: \(step.command)")
@@ -149,36 +152,18 @@ public actor ProcessService: ProcessServiceProtocol {
     // MARK: - Command Implementations
     
     private func executeSeeCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
-        // Parse parameters
-        let params = ProcessParameterParser.parseParameters(for: "see", from: step.params)
-        
-        // Extract screenshot parameters
+        // Extract screenshot parameters - should already be normalized
         let screenshotParams: ProcessCommandParameters.ScreenshotParameters
-        if case .screenshot(let p) = params {
-            screenshotParams = p
-        } else if case .generic(let dict) = params {
-            // Fallback for generic parameters
-            screenshotParams = ProcessCommandParameters.ScreenshotParameters(
-                path: dict["path"] ?? "screenshot.png",
-                app: dict["app"],
-                window: dict["window"],
-                display: dict["display"].flatMap { Int($0) }
-            )
+        if case .screenshot(let params) = step.params {
+            screenshotParams = params
         } else {
-            // Default parameters
+            // Use default if no params provided
             screenshotParams = ProcessCommandParameters.ScreenshotParameters(path: "screenshot.png")
         }
         
-        // Extract mode and annotate from generic parameters if present
-        let mode: String
-        let annotate: Bool
-        if case .generic(let dict) = params {
-            mode = dict["mode"] ?? "window"
-            annotate = dict["annotate"].flatMap { Bool($0) } ?? true
-        } else {
-            mode = "window"
-            annotate = true
-        }
+        // Use mode and annotate from parameters, with defaults
+        let mode = screenshotParams.mode ?? "window"
+        let annotate = screenshotParams.annotate ?? true
         
         // Capture screenshot based on mode
         let captureResult: CaptureResult
@@ -285,25 +270,14 @@ public actor ProcessService: ProcessServiceProtocol {
     }
     
     private func executeClickCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
-        // Extract click parameters
-        let clickParams: ProcessCommandParameters.ClickParameters
-        if case .click(let params) = step.params {
-            clickParams = params
-        } else if case .generic(let dict) = step.params {
-            // Fallback for generic parameters
-            clickParams = ProcessCommandParameters.ClickParameters(
-                x: dict["x"].flatMap { Double($0) },
-                y: dict["y"].flatMap { Double($0) },
-                label: dict["query"] ?? dict["label"],
-                app: dict["app"],
-                button: dict["button"] ?? (dict["right-click"] == "true" ? "right" : dict["double-click"] == "true" ? "double" : "left"),
-                modifiers: nil
-            )
-        } else {
+        // Extract click parameters - should already be normalized
+        guard case .click(let clickParams) = step.params else {
             throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for click command")
         }
         
-        let effectiveSessionId = sessionId ?? clickParams.app
+        guard let effectiveSessionId = sessionId else {
+            throw PeekabooError.invalidInput(field: "session", reason: "Session ID is required for click command")
+        }
         
         // Determine click type
         let rightClick = clickParams.button == "right"
@@ -316,12 +290,12 @@ public actor ProcessService: ProcessServiceProtocol {
         
         // Determine click target
         let clickTarget: ClickTarget
-        if let elementId = elementId {
-            clickTarget = .elementId(elementId)
-        } else if let query = query {
-            clickTarget = .query(query)
+        if let x = clickParams.x, let y = clickParams.y {
+            clickTarget = .coordinates(CGPoint(x: x, y: y))
+        } else if let label = clickParams.label {
+            clickTarget = .query(label)
         } else {
-            throw PeekabooError.invalidInput(field: "query/element", reason: "Either 'query' or 'element' parameter is required for click command")
+            throw PeekabooError.invalidInput(field: "target", reason: "Either coordinates (x,y) or label is required for click command")
         }
         
         // Perform click
@@ -333,51 +307,61 @@ public actor ProcessService: ProcessServiceProtocol {
         )
         
         return StepExecutionResult(
-            output: ["clicked": true],
+            output: .success("Clicked successfully"),
             sessionId: effectiveSessionId
         )
     }
     
     private func executeTypeCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
-        guard let text = step.params?["text"]?.value as? String else {
-            throw PeekabooError.invalidInput(field: "text", reason: "Missing required parameter for command 'type'")
+        // Extract type parameters - should already be normalized
+        guard case .type(let typeParams) = step.params else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for type command")
         }
         
-        let clearFirst = step.params?["clear-first"]?.value as? Bool ?? false
-        let pressEnter = step.params?["press-enter"]?.value as? Bool ?? false
-        
-        if clearFirst {
-            // Select all and delete
-            // Clear is handled by clearExisting parameter
-        }
+        let clearFirst = typeParams.clearFirst ?? false
+        let pressEnter = typeParams.pressEnter ?? false
         
         // Type the text
         try await uiAutomationService.type(
-            text: text,
-            target: nil,
+            text: typeParams.text,
+            target: typeParams.field,
             clearExisting: clearFirst,
             typingDelay: 50,
             sessionId: sessionId
         )
         
+        // Press Enter if requested
         if pressEnter {
-            try await uiAutomationService.hotkey(keys: "return", holdDuration: 0)
+            // Use typeActions to press Enter key
+            _ = try await uiAutomationService.typeActions(
+                [.key(.return)],
+                typingDelay: 50,
+                sessionId: sessionId
+            )
         }
         
         return StepExecutionResult(
-            output: ["typed": text, "cleared": clearFirst, "enter_pressed": pressEnter],
+            output: .data([
+                "typed": .success(typeParams.text),
+                "cleared": .success(String(clearFirst)),
+                "enter_pressed": .success(String(pressEnter))
+            ]),
             sessionId: sessionId
         )
     }
     
     private func executeScrollCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
-        let direction = step.params?["direction"]?.value as? String ?? "down"
-        let amount = step.params?["amount"]?.value as? Int ?? 5
-        let smooth = step.params?["smooth"]?.value as? Bool ?? false
-        let delay = step.params?["delay"]?.value as? Int ?? 100
+        // Extract scroll parameters - should already be normalized
+        guard case .scroll(let scrollParams) = step.params else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for scroll command")
+        }
+        
+        let amount = scrollParams.amount ?? 5
+        let smooth = false // Not in ScrollParameters, using default
+        let delay = 100 // Not in ScrollParameters, using default
         
         let scrollDirection: ScrollDirection
-        switch direction.lowercased() {
+        switch scrollParams.direction.lowercased() {
         case "up": scrollDirection = .up
         case "down": scrollDirection = .down
         case "left": scrollDirection = .left
@@ -385,27 +369,34 @@ public actor ProcessService: ProcessServiceProtocol {
         default: scrollDirection = .down
         }
         
-        let targetElement = step.params?["on"]?.value as? String
-        
         try await uiAutomationService.scroll(
             direction: scrollDirection,
             amount: amount,
-            target: targetElement,
+            target: scrollParams.target,
             smooth: smooth,
             delay: delay,
-            sessionId: sessionId ?? step.params?["session"]?.value as? String
+            sessionId: sessionId
         )
         
         return StepExecutionResult(
-            output: ["scrolled": direction, "amount": amount, "smooth": smooth],
+            output: .data([
+                "scrolled": .success(scrollParams.direction),
+                "amount": .success(String(amount)),
+                "smooth": .success(String(smooth))
+            ]),
             sessionId: sessionId
         )
     }
     
     private func executeSwipeCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
-        let direction = step.params?["direction"]?.value as? String ?? "right"
-        let distance = step.params?["distance"]?.value as? Double ?? 100.0
-        let duration = step.params?["duration"]?.value as? Double ?? 0.5
+        // Extract swipe parameters - should already be normalized
+        guard case .swipe(let swipeParams) = step.params else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for swipe command")
+        }
+        
+        let direction = swipeParams.direction
+        let distance = swipeParams.distance ?? 100.0
+        let duration = swipeParams.duration ?? 0.5
         
         let swipeDirection: SwipeDirection
         switch direction.lowercased() {
@@ -418,8 +409,8 @@ public actor ProcessService: ProcessServiceProtocol {
         
         // If coordinates are specified, use them as the starting point
         var startPoint: CGPoint?
-        if let x = step.params?["from-x"]?.value as? Double,
-           let y = step.params?["from-y"]?.value as? Double {
+        if let x = swipeParams.fromX,
+           let y = swipeParams.fromY {
             startPoint = CGPoint(x: x, y: y)
         }
         
@@ -464,71 +455,113 @@ public actor ProcessService: ProcessServiceProtocol {
         )
         
         return StepExecutionResult(
-            output: ["swiped": direction, "distance": distance, "duration": duration],
+            output: .data([
+                "swiped": .success(direction),
+                "distance": .success(String(distance)),
+                "duration": .success(String(duration))
+            ]),
             sessionId: sessionId
         )
     }
     
     private func executeDragCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
-        guard let fromX = step.params?["from-x"]?.value as? Double,
-              let fromY = step.params?["from-y"]?.value as? Double,
-              let toX = step.params?["to-x"]?.value as? Double,
-              let toY = step.params?["to-y"]?.value as? Double else {
-            throw PeekabooError.invalidInput(field: "coordinates", reason: "All coordinates (from-x, from-y, to-x, to-y) are required for drag command")
+        // Extract drag parameters - should already be normalized
+        guard case .drag(let dragParams) = step.params else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for drag command")
         }
         
-        let duration = step.params?["duration"]?.value as? Double ?? 1.0
-        let modifiers = parseModifiers(from: step.params)
+        let duration = dragParams.duration ?? 1.0
+        let modifiers = parseModifiers(from: dragParams.modifiers)
         
         let modifierString = modifiers.map { $0.rawValue }.joined(separator: ",")
         
         try await uiAutomationService.drag(
-            from: CGPoint(x: fromX, y: fromY),
-            to: CGPoint(x: toX, y: toY),
+            from: CGPoint(x: dragParams.fromX, y: dragParams.fromY),
+            to: CGPoint(x: dragParams.toX, y: dragParams.toY),
             duration: Int(duration * 1000), // Convert to milliseconds
             steps: 30,
             modifiers: modifierString.isEmpty ? nil : modifierString
         )
         
         return StepExecutionResult(
-            output: ["dragged": true, "from": ["x": fromX, "y": fromY], "to": ["x": toX, "y": toY]],
+            output: .data([
+                "dragged": .success("true"),
+                "from_x": .success(String(dragParams.fromX)),
+                "from_y": .success(String(dragParams.fromY)),
+                "to_x": .success(String(dragParams.toX)),
+                "to_y": .success(String(dragParams.toY))
+            ]),
             sessionId: sessionId
         )
     }
     
     private func executeHotkeyCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
-        guard let key = step.params?["key"]?.value as? String else {
-            throw PeekabooError.invalidInput(field: "key", reason: "Missing required parameter for command 'hotkey'")
+        // Extract hotkey parameters - should already be normalized
+        guard case .hotkey(let hotkeyParams) = step.params else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for hotkey command")
         }
         
-        let modifiers = parseModifiers(from: step.params)
+        let modifiers = hotkeyParams.modifiers.compactMap { mod -> ModifierKey? in
+            switch mod.lowercased() {
+            case "command", "cmd": return .command
+            case "shift": return .shift
+            case "control", "ctrl": return .control
+            case "option", "alt": return .option
+            case "function", "fn": return .function
+            default: return nil
+            }
+        }
         
-        let keyCombo = modifiers.map { $0.rawValue }.joined(separator: ",") + (modifiers.isEmpty ? "" : ",") + key
+        let keyCombo = modifiers.map { $0.rawValue }.joined(separator: ",") + (modifiers.isEmpty ? "" : ",") + hotkeyParams.key
         
         try await uiAutomationService.hotkey(keys: keyCombo, holdDuration: 0)
         
         return StepExecutionResult(
-            output: ["hotkey": key, "modifiers": modifiers.map { $0.rawValue }],
+            output: .data([
+                "hotkey": .success(hotkeyParams.key),
+                "modifiers": .success(modifiers.map { $0.rawValue }.joined(separator: ","))
+            ]),
             sessionId: sessionId
         )
     }
     
     private func executeSleepCommand(_ step: ScriptStep) async throws -> StepExecutionResult {
-        let duration = step.params?["duration"]?.value as? Double ?? 1.0
+        // Extract sleep parameters - should already be normalized
+        guard case .sleep(let sleepParams) = step.params else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for sleep command")
+        }
         
-        try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+        try await Task.sleep(nanoseconds: UInt64(sleepParams.duration * 1_000_000_000))
         
         return StepExecutionResult(
-            output: ["slept": duration],
+            output: .success("Slept for \(sleepParams.duration) seconds"),
             sessionId: nil
         )
     }
     
     private func executeWindowCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
-        let action = step.params?["action"]?.value as? String ?? "focus"
-        let app = step.params?["app"]?.value as? String
-        let title = step.params?["title"]?.value as? String
-        let index = step.params?["index"]?.value as? Int
+        // Extract window parameters
+        let action: String
+        let app: String?
+        let title: String?
+        let index: Int?
+        let resizeParams: ProcessCommandParameters.ResizeWindowParameters?
+        
+        if case .focusWindow(let params) = step.params {
+            action = "focus"
+            app = params.app
+            title = params.title
+            index = params.index
+            resizeParams = nil
+        } else if case .resizeWindow(let params) = step.params {
+            action = params.maximize == true ? "maximize" : params.minimize == true ? "minimize" : "resize"
+            app = params.app
+            title = nil
+            index = nil
+            resizeParams = params
+        } else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for window command")
+        }
         
         // Find the window
         let windows: [ServiceWindowInfo]
@@ -569,13 +602,11 @@ public actor ProcessService: ProcessServiceProtocol {
         case "focus":
             try await windowManagementService.focusWindow(target: .windowId(window.windowID))
         case "move":
-            if let x = step.params?["x"]?.value as? Double,
-               let y = step.params?["y"]?.value as? Double {
+            if let params = resizeParams, let x = params.x, let y = params.y {
                 try await windowManagementService.moveWindow(target: .windowId(window.windowID), to: CGPoint(x: x, y: y))
             }
         case "resize":
-            if let width = step.params?["width"]?.value as? Double,
-               let height = step.params?["height"]?.value as? Double {
+            if let params = resizeParams, let width = params.width, let height = params.height {
                 try await windowManagementService.resizeWindow(target: .windowId(window.windowID), to: CGSize(width: width, height: height))
             }
         default:
@@ -583,17 +614,22 @@ public actor ProcessService: ProcessServiceProtocol {
         }
         
         return StepExecutionResult(
-            output: ["window": window.title, "action": action],
+            output: .data([
+                "window": .success(window.title),
+                "action": .success(action)
+            ]),
             sessionId: sessionId
         )
     }
     
     private func executeMenuCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
-        guard let menuPath = step.params?["path"]?.value as? String else {
-            throw PeekabooError.invalidInput(field: "path", reason: "Missing required parameter for command 'menu'")
+        // Extract menu parameters - should already be normalized
+        guard case .menuClick(let menuParams) = step.params else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for menu command")
         }
         
-        let app = step.params?["app"]?.value as? String
+        let menuPath = menuParams.menuPath.joined(separator: " > ")
+        let app = menuParams.app
         
         let appName: String
         if let providedApp = app {
@@ -607,90 +643,97 @@ public actor ProcessService: ProcessServiceProtocol {
         try await menuService.clickMenuItem(app: appName, itemPath: menuPath)
         
         return StepExecutionResult(
-            output: ["menu_clicked": menuPath, "app": appName],
+            output: .success("Clicked menu: \(menuPath) in \(appName)"),
             sessionId: sessionId
         )
     }
     
     private func executeDockCommand(_ step: ScriptStep) async throws -> StepExecutionResult {
-        let action = step.params?["action"]?.value as? String ?? "list"
+        // Extract dock parameters - should already be normalized
+        guard case .dock(let dockParams) = step.params else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for dock command")
+        }
         
-        switch action.lowercased() {
+        switch dockParams.action.lowercased() {
         case "list":
             let items = try await dockService.listDockItems(includeAll: false)
             return StepExecutionResult(
-                output: ["dock_items": items.map { ["title": $0.title, "type": $0.itemType.rawValue, "index": $0.index] }],
+                output: .list(items.map { "\($0.title) (\($0.itemType.rawValue))" }),
                 sessionId: nil
             )
             
         case "click":
-            guard let itemName = step.params?["item"]?.value as? String else {
+            guard let itemName = dockParams.item else {
                 throw PeekabooError.invalidInput(field: "item", reason: "Missing required parameter for dock click command")
             }
             try await dockService.launchFromDock(appName: itemName)
             return StepExecutionResult(
-                output: ["clicked": itemName],
+                output: .success("Clicked dock item: \(itemName)"),
                 sessionId: nil
             )
             
         case "add":
-            guard let _ = step.params?["path"]?.value as? String else {
+            guard let _ = dockParams.path else {
                 throw PeekabooError.invalidInput(field: "path", reason: "Missing required parameter for dock add command")
             }
             // Dock service doesn't support adding items directly
             throw PeekabooError.operationError(message: "Adding items to Dock is not supported")
             
         case "remove":
-            guard let _ = step.params?["item"]?.value as? String else {
+            guard let _ = dockParams.item else {
                 throw PeekabooError.invalidInput(field: "item", reason: "Missing required parameter for dock remove command")
             }
             // Dock service doesn't support removing items directly
             throw PeekabooError.operationError(message: "Removing items from Dock is not supported")
             
         default:
-            throw PeekabooError.invalidInput(field: "action", reason: "Invalid action '\(action)' for dock command")
+            throw PeekabooError.invalidInput(field: "action", reason: "Invalid action '\(dockParams.action)' for dock command")
         }
     }
     
     private func executeAppCommand(_ step: ScriptStep) async throws -> StepExecutionResult {
-        let action = step.params?["action"]?.value as? String ?? "launch"
-        guard let appName = step.params?["name"]?.value as? String else {
-            throw PeekabooError.invalidInput(field: "name", reason: "Missing required parameter for command 'app'")
+        // Extract app parameters - should already be normalized
+        guard case .launchApp(let appParams) = step.params else {
+            throw PeekabooError.invalidInput(field: "params", reason: "Invalid parameters for app command")
         }
+        
+        let appName = appParams.appName
+        // Use action from parameters, default to launch
+        let action = appParams.action ?? "launch"
         
         switch action.lowercased() {
         case "launch":
             _ = try await applicationService.launchApplication(identifier: appName)
             return StepExecutionResult(
-                output: ["launched": appName],
+                output: .success("Launched application: \(appName)"),
                 sessionId: nil
             )
             
         case "quit":
-            _ = try await applicationService.quitApplication(identifier: appName, force: false)
+            _ = try await applicationService.quitApplication(identifier: appName, force: appParams.force ?? false)
             return StepExecutionResult(
-                output: ["quit": appName],
+                output: .success("Quit application: \(appName)"),
                 sessionId: nil
             )
             
         case "hide":
             try await applicationService.hideApplication(identifier: appName)
             return StepExecutionResult(
-                output: ["hidden": appName],
+                output: .success("Hidden application: \(appName)"),
                 sessionId: nil
             )
             
         case "show":
             try await applicationService.unhideApplication(identifier: appName)
             return StepExecutionResult(
-                output: ["shown": appName],
+                output: .success("Shown application: \(appName)"),
                 sessionId: nil
             )
             
         case "focus":
             try await applicationService.activateApplication(identifier: appName)
             return StepExecutionResult(
-                output: ["focused": appName],
+                output: .success("Focused application: \(appName)"),
                 sessionId: nil
             )
             
@@ -727,5 +770,164 @@ public actor ProcessService: ProcessServiceProtocol {
     }
     
     // Removed findBestMatch - now handled by UIAutomationService
+    
+    /// Normalize generic parameters to typed parameters based on command
+    private func normalizeStepParameters(_ step: ScriptStep) -> ScriptStep {
+        // If already typed or nil, return as-is
+        guard case .generic(let dict) = step.params else {
+            return step
+        }
+        
+        // Convert generic dictionary to typed parameters based on command
+        let typedParams: ProcessCommandParameters?
+        
+        switch step.command.lowercased() {
+        case "see":
+            typedParams = .screenshot(ProcessCommandParameters.ScreenshotParameters(
+                path: dict["path"] ?? "screenshot.png",
+                app: dict["app"],
+                window: dict["window"],
+                display: dict["display"].flatMap { Int($0) },
+                mode: dict["mode"],
+                annotate: dict["annotate"].flatMap { Bool($0) }
+            ))
+            
+        case "click":
+            typedParams = .click(ProcessCommandParameters.ClickParameters(
+                x: dict["x"].flatMap { Double($0) },
+                y: dict["y"].flatMap { Double($0) },
+                label: dict["query"] ?? dict["label"],
+                app: dict["app"],
+                button: dict["button"] ?? (dict["right-click"] == "true" ? "right" : dict["double-click"] == "true" ? "double" : "left"),
+                modifiers: nil
+            ))
+            
+        case "type":
+            if let text = dict["text"] {
+                typedParams = .type(ProcessCommandParameters.TypeParameters(
+                    text: text,
+                    app: dict["app"],
+                    field: dict["field"],
+                    clearFirst: dict["clear-first"].flatMap { Bool($0) },
+                    pressEnter: dict["press-enter"].flatMap { Bool($0) }
+                ))
+            } else {
+                typedParams = step.params // Keep generic if text is missing
+            }
+            
+        case "scroll":
+            typedParams = .scroll(ProcessCommandParameters.ScrollParameters(
+                direction: dict["direction"] ?? "down",
+                amount: dict["amount"].flatMap { Int($0) },
+                app: dict["app"],
+                target: dict["on"] ?? dict["target"]
+            ))
+            
+        case "hotkey":
+            if let key = dict["key"] {
+                var modifiers: [String] = []
+                if dict["cmd"] == "true" || dict["command"] == "true" { modifiers.append("command") }
+                if dict["shift"] == "true" { modifiers.append("shift") }
+                if dict["control"] == "true" || dict["ctrl"] == "true" { modifiers.append("control") }
+                if dict["option"] == "true" || dict["alt"] == "true" { modifiers.append("option") }
+                if dict["fn"] == "true" || dict["function"] == "true" { modifiers.append("function") }
+                
+                typedParams = .hotkey(ProcessCommandParameters.HotkeyParameters(
+                    key: key,
+                    modifiers: modifiers,
+                    app: dict["app"]
+                ))
+            } else {
+                typedParams = step.params // Keep generic if key is missing
+            }
+            
+        case "menu":
+            if let path = dict["path"] {
+                let menuPath = path.split(separator: ">").map { $0.trimmingCharacters(in: .whitespaces) }
+                typedParams = .menuClick(ProcessCommandParameters.MenuClickParameters(
+                    menuPath: menuPath,
+                    app: dict["app"]
+                ))
+            } else {
+                typedParams = step.params // Keep generic if path is missing
+            }
+            
+        case "window":
+            typedParams = .focusWindow(ProcessCommandParameters.FocusWindowParameters(
+                app: dict["app"],
+                title: dict["title"],
+                index: dict["index"].flatMap { Int($0) }
+            ))
+            
+        case "app":
+            if let appName = dict["name"] {
+                typedParams = .launchApp(ProcessCommandParameters.LaunchAppParameters(
+                    appName: appName,
+                    action: dict["action"],
+                    waitForLaunch: dict["wait"].flatMap { Bool($0) },
+                    bringToFront: dict["focus"].flatMap { Bool($0) },
+                    force: dict["force"].flatMap { Bool($0) }
+                ))
+            } else {
+                typedParams = step.params // Keep generic if name is missing
+            }
+            
+        case "swipe":
+            typedParams = .swipe(ProcessCommandParameters.SwipeParameters(
+                direction: dict["direction"] ?? "right",
+                distance: dict["distance"].flatMap { Double($0) },
+                duration: dict["duration"].flatMap { Double($0) },
+                fromX: dict["from-x"].flatMap { Double($0) },
+                fromY: dict["from-y"].flatMap { Double($0) }
+            ))
+            
+        case "drag":
+            if let fromX = dict["from-x"].flatMap({ Double($0) }),
+               let fromY = dict["from-y"].flatMap({ Double($0) }),
+               let toX = dict["to-x"].flatMap({ Double($0) }),
+               let toY = dict["to-y"].flatMap({ Double($0) }) {
+                var modifiers: [String] = []
+                if dict["cmd"] == "true" || dict["command"] == "true" { modifiers.append("command") }
+                if dict["shift"] == "true" { modifiers.append("shift") }
+                if dict["control"] == "true" || dict["ctrl"] == "true" { modifiers.append("control") }
+                if dict["option"] == "true" || dict["alt"] == "true" { modifiers.append("option") }
+                if dict["fn"] == "true" || dict["function"] == "true" { modifiers.append("function") }
+                
+                typedParams = .drag(ProcessCommandParameters.DragParameters(
+                    fromX: fromX,
+                    fromY: fromY,
+                    toX: toX,
+                    toY: toY,
+                    duration: dict["duration"].flatMap { Double($0) },
+                    modifiers: modifiers.isEmpty ? nil : modifiers
+                ))
+            } else {
+                typedParams = step.params // Keep generic if coordinates are missing
+            }
+            
+        case "sleep":
+            let duration = dict["duration"].flatMap { Double($0) } ?? 1.0
+            typedParams = .sleep(ProcessCommandParameters.SleepParameters(duration: duration))
+            
+        case "dock":
+            typedParams = .dock(ProcessCommandParameters.DockParameters(
+                action: dict["action"] ?? "list",
+                item: dict["item"],
+                path: dict["path"]
+            ))
+            
+        default:
+            // For unrecognized commands, keep generic
+            typedParams = step.params
+        }
+        
+        // Return new step with typed parameters
+        return ScriptStep(
+            stepId: step.stepId,
+            comment: step.comment,
+            command: step.command,
+            params: typedParams
+        )
+    }
 }
 

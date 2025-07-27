@@ -103,7 +103,7 @@ extension PeekabooAgentService {
             handler: { params, context in
                 let text = try params.string("text")
                 let fieldLabel = params.string("field", default: nil)
-                let appName = params.string("app", default: nil)
+                let _ = params.string("app", default: nil)
                 let clearFirst = params.bool("clear_first", default: false)
                 
                 // If a specific field is targeted, click it first
@@ -172,7 +172,7 @@ extension PeekabooAgentService {
                 let directionStr = try params.string("direction")
                 let amount = params.int("amount", default: 5) ?? 5
                 let target = params.string("target", default: nil)
-                let appName = params.string("app", default: nil)
+                let _ = params.string("app", default: nil)
                 
                 let direction: ScrollDirection
                 switch directionStr.lowercased() {

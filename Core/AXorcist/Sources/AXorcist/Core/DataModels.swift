@@ -5,7 +5,7 @@ import Foundation
 
 /// Type alias for a dictionary of accessibility element attributes.
 /// Keys are attribute names (e.g., "AXTitle", "AXValue") and values are wrapped in AnyCodable.
-public typealias ElementAttributes = [String: AnyCodable]
+public typealias ElementAttributes = [String: AttributeValue]
 
 /// Wrapper that makes accessibility attribute values Codable and Sendable.
 ///

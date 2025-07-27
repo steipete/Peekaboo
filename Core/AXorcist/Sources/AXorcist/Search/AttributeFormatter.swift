@@ -9,12 +9,12 @@ func formatParentAttribute(
     _ parent: Element?,
     outputFormat: OutputFormat,
     valueFormatOption: ValueFormatOption
-) -> AnyCodable {
-    guard let parentElement = parent else { return AnyCodable(nil as String?) }
+) -> AttributeValue {
+    guard let parentElement = parent else { return .null }
     if outputFormat == .textContent {
-        return AnyCodable("Element: \(parentElement.role() ?? "?Role")")
+        return .string("Element: \(parentElement.role() ?? "?Role")")
     } else {
-        return AnyCodable(parentElement.briefDescription(option: valueFormatOption))
+        return .string(parentElement.briefDescription(option: valueFormatOption))
     }
 }
 
@@ -24,9 +24,9 @@ func formatChildrenAttribute(
     _ children: [Element]?,
     outputFormat: OutputFormat,
     valueFormatOption: ValueFormatOption
-) -> AnyCodable {
+) -> AttributeValue {
     guard let actualChildren = children, !actualChildren.isEmpty else {
-        return AnyCodable(nil as String?)
+        return .null
     }
 
     if outputFormat == .textContent {
@@ -34,10 +34,10 @@ func formatChildrenAttribute(
         for childElement in actualChildren {
             childrenSummaries.append(childElement.briefDescription(option: valueFormatOption))
         }
-        return AnyCodable("[\(childrenSummaries.joined(separator: ", "))]")
+        return .string("[\(childrenSummaries.joined(separator: ", "))]")
     } else {
         let childrenDescriptions = actualChildren.map { $0.briefDescription(option: valueFormatOption) }
-        return AnyCodable(childrenDescriptions)
+        return .array(childrenDescriptions.map { .string($0) })
     }
 }
 
@@ -47,11 +47,11 @@ func formatFocusedUIElementAttribute(
     _ focusedElement: Element?,
     outputFormat: OutputFormat,
     valueFormatOption: ValueFormatOption
-) -> AnyCodable {
-    guard let actualFocusedElement = focusedElement else { return AnyCodable(nil as String?) }
+) -> AttributeValue {
+    guard let actualFocusedElement = focusedElement else { return .null }
     if outputFormat == .textContent {
-        return AnyCodable("Element: \(actualFocusedElement.role() ?? "?Role")")
+        return .string("Element: \(actualFocusedElement.role() ?? "?Role")")
     } else {
-        return AnyCodable(actualFocusedElement.briefDescription(option: valueFormatOption))
+        return .string(actualFocusedElement.briefDescription(option: valueFormatOption))
     }
 }

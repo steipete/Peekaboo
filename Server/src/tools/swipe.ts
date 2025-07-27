@@ -65,7 +65,7 @@ export async function swipeToolHandler(
     const steps = input.steps ?? 10;
     args.push("--steps", steps.toString());
 
-    
+
 
     // Execute the command
     const result = await executeSwiftCli(args, logger);

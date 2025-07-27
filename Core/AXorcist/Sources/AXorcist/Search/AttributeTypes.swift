@@ -33,6 +33,6 @@ public enum AttributeSource: String, Codable {
 
 // Struct to hold attribute data along with its source
 public struct AttributeData: Codable {
-    public let value: AnyCodable
+    public let value: AttributeValue
     public let source: AttributeSource
 }

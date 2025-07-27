@@ -85,7 +85,7 @@ class ActionIntegrationTests: XCTestCase {
             debugLogging: true,
             locator: textAreaLocator,
             actionName: "AXSetValue",
-            actionValue: AnyCodable(textToSet)
+            actionValue: .string(textToSet)
         )
 
         let response = try await executeCommand(performActionEnvelope)

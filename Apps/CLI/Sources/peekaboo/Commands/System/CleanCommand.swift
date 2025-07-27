@@ -69,26 +69,23 @@ struct CleanCommand: AsyncParsableCommand {
 
             // Output results
             if self.jsonOutput {
-                var output = result
-                output.executionTime = executionTime
-                outputJSON(JSONResponse(
-                    success: true,
-                    data: AnyCodable([
-                        "sessions_removed": output.sessionsRemoved,
-                        "bytes_freed": output.bytesFreed,
-                        "session_details": output.sessionDetails.map { detail in
-                            [
-                                "session_id": detail.sessionId,
-                                "path": detail.path,
-                                "size": detail.size,
-                                "creation_date": detail.creationDate?.timeIntervalSince1970 ?? 0,
-                                "modification_date": detail.modificationDate?.timeIntervalSince1970 ?? 0,
-                            ]
-                        },
-                        "dry_run": output.dryRun,
-                        "execution_time": output.executionTime ?? 0,
-                        "success": true,
-                    ])))
+                // Create a wrapper for the clean result with execution time
+                struct CleanResultWithTime: Codable {
+                    let sessionsRemoved: Int
+                    let bytesFreed: Int64
+                    let sessionDetails: [SessionDetail]
+                    let dryRun: Bool
+                    let executionTime: TimeInterval
+                }
+                
+                let outputData = CleanResultWithTime(
+                    sessionsRemoved: result.sessionsRemoved,
+                    bytesFreed: result.bytesFreed,
+                    sessionDetails: result.sessionDetails,
+                    dryRun: result.dryRun,
+                    executionTime: executionTime
+                )
+                outputSuccessCodable(data: outputData)
             } else {
                 self.printResults(result, executionTime: executionTime)
             }

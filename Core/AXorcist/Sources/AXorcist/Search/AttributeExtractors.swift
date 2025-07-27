@@ -131,7 +131,7 @@ func getComputedAttributes(for element: Element) async -> [String: AttributeData
 
     if let name = element.computedName() {
         computedAttrs[AXMiscConstants.computedNameAttributeKey] = AttributeData(
-            value: AnyCodable(name),
+            value: .string(name),
             source: .computed
         )
         GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message:
@@ -149,7 +149,7 @@ func getComputedAttributes(for element: Element) async -> [String: AttributeData
     // let hasPressAction = element.isActionSupported(AXActionNames.kAXPressAction)
     // if isButton || hasPressAction {
     //     computedAttrs[AXMiscConstants.isClickableAttributeKey] = AttributeData(
-    //         value: AnyCodable(true), source: .computed
+    //         value: .bool(true), source: .computed
     //     )
     // }
 

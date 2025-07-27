@@ -54,10 +54,10 @@ public struct GenericErrorResponse: APIErrorResponse {
             }
         }
         
-        self.code = try? container.decode(String.self, forKey: .code) ??
-                    container.decode(String.self, forKey: .errorCode)
-        self.type = try? container.decode(String.self, forKey: .type) ??
-                    container.decode(String.self, forKey: .errorType)
+        self.code = (try? container.decode(String.self, forKey: .code)) ??
+                    (try? container.decode(String.self, forKey: .errorCode))
+        self.type = (try? container.decode(String.self, forKey: .type)) ??
+                    (try? container.decode(String.self, forKey: .errorType))
     }
 }
 

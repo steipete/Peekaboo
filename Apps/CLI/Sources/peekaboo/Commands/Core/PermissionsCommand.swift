@@ -73,7 +73,7 @@ struct PermissionsCommand: AsyncParsableCommand {
 
         if self.jsonOutput {
             let data = PermissionStatusData(permissions: permissions)
-            outputSuccess(data: data)
+            outputSuccessCodable(data: data)
         } else {
             print("Peekaboo Permissions Status:")
             print("  Screen Recording: \(screenRecording ? "✅ Granted" : "❌ Not Granted")")

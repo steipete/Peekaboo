@@ -56,7 +56,7 @@ export async function typeToolHandler(
 
     // Build command arguments
     const args = ["type"];
-    
+
     // Add text if provided
     if (input.text) {
       args.push(input.text);

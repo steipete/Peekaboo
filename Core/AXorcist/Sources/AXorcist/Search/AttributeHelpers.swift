@@ -12,8 +12,8 @@ public func getElementAttributes(
     attributes attrNames: [String],
     outputFormat: OutputFormat,
     valueFormatOption: ValueFormatOption = .smart
-) async -> ([String: AnyCodable], [AXLogEntry]) {
-    var result: [String: AnyCodable] = [:]
+) async -> ([String: AttributeValue], [AXLogEntry]) {
+    var result: [String: AttributeValue] = [:]
 
     let requestingStr = attrNames.isEmpty ? "all" : attrNames.joined(separator: ", ")
     GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message:
@@ -56,7 +56,7 @@ public func getElementAttributes(
 
     if outputFormat == .verbose, result[AXMiscConstants.computedPathAttributeKey] == nil {
         let path = element.generatePathString()
-        result[AXMiscConstants.computedPathAttributeKey] = AnyCodable(path)
+        result[AXMiscConstants.computedPathAttributeKey] = .string(path)
     }
 
     GlobalAXLogger.shared.log(AXLogEntry(level: .debug, message:
@@ -70,8 +70,8 @@ public func getAllElementDataForAXpector(
     for element: Element,
     outputFormat _: OutputFormat = .jsonString, // Typically .jsonString for AXpector
     valueFormatOption _: ValueFormatOption = .smart
-) async -> ([String: AnyCodable], ElementDetails) {
-    var attributes: [String: AnyCodable] = [:]
+) async -> ([String: AttributeValue], ElementDetails) {
+    var attributes: [String: AttributeValue] = [:]
     var elementDetails = ElementDetails()
 
     let allAttributeNames = element.attributeNames() ?? []
@@ -89,14 +89,14 @@ public func getAllElementDataForAXpector(
 
         let rawCFValue = element.rawAttributeValue(named: attrName)
         let swiftValue = rawCFValue.flatMap { ValueUnwrapper.unwrap($0) }
-        attributes[attrName] = AnyCodable(swiftValue)
+        attributes[attrName] = AttributeValue(from: swiftValue)
     }
 
     elementDetails.title = element.title()
     elementDetails.role = element.role()
     elementDetails.roleDescription = element.roleDescription()
-    elementDetails.value = attributes[AXAttributeNames.kAXValueAttribute]?.value
-    elementDetails.help = attributes[AXAttributeNames.kAXHelpAttribute]?.value
+    elementDetails.value = attributes[AXAttributeNames.kAXValueAttribute]?.anyValue
+    elementDetails.help = attributes[AXAttributeNames.kAXHelpAttribute]?.anyValue
     elementDetails.isIgnored = element.isIgnored()
 
     var actionsToStore: [String]?
@@ -116,8 +116,8 @@ public func getAllElementDataForAXpector(
     elementDetails.isClickable = hasPressAction || pressActionSupported
 
     if let name = element.computedName() {
-        let attributeData = AttributeData(value: AnyCodable(name), source: .computed)
-        attributes[AXMiscConstants.computedNameAttributeKey] = AnyCodable(attributeData)
+        let attributeData = AttributeData(value: AttributeValue(from: name), source: .computed)
+        attributes[AXMiscConstants.computedNameAttributeKey] = AttributeValue(from: attributeData)
     }
     elementDetails.computedName = element.computedName()
     GlobalAXLogger.shared.log(AXLogEntry(
@@ -134,8 +134,8 @@ public func getElementFullDescription(
     includeActions: Bool = true,
     includeStoredAttributes: Bool = true,
     knownAttributes _: [String: AttributeData]? = nil
-) async -> ([String: AnyCodable], [AXLogEntry]) {
-    var attributes: [String: AnyCodable] = [:]
+) async -> ([String: AttributeValue], [AXLogEntry]) {
+    var attributes: [String: AttributeValue] = [:]
     GlobalAXLogger.shared.log(AXLogEntry(
         level: .debug,
         message: "getElementFullDescription called for element: \(element.briefDescription(option: .raw))"

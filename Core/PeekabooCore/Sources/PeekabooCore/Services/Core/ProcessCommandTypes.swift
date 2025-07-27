@@ -26,6 +26,14 @@ public enum ProcessCommandParameters: Codable, Sendable {
     case focusWindow(FocusWindowParameters)
     /// Resize window command parameters
     case resizeWindow(ResizeWindowParameters)
+    /// Swipe command parameters
+    case swipe(SwipeParameters)
+    /// Drag command parameters
+    case drag(DragParameters)
+    /// Sleep command parameters
+    case sleep(SleepParameters)
+    /// Dock command parameters
+    case dock(DockParameters)
     /// Generic parameters (for backward compatibility during migration)
     case generic([String: String])
     
@@ -55,12 +63,14 @@ public enum ProcessCommandParameters: Codable, Sendable {
         public let app: String?
         public let field: String?
         public let clearFirst: Bool?
+        public let pressEnter: Bool?
         
-        public init(text: String, app: String? = nil, field: String? = nil, clearFirst: Bool? = nil) {
+        public init(text: String, app: String? = nil, field: String? = nil, clearFirst: Bool? = nil, pressEnter: Bool? = nil) {
             self.text = text
             self.app = app
             self.field = field
             self.clearFirst = clearFirst
+            self.pressEnter = pressEnter
         }
     }
     
@@ -116,13 +126,17 @@ public enum ProcessCommandParameters: Codable, Sendable {
     
     public struct LaunchAppParameters: Codable, Sendable {
         public let appName: String
+        public let action: String?
         public let waitForLaunch: Bool?
         public let bringToFront: Bool?
+        public let force: Bool?
         
-        public init(appName: String, waitForLaunch: Bool? = nil, bringToFront: Bool? = nil) {
+        public init(appName: String, action: String? = nil, waitForLaunch: Bool? = nil, bringToFront: Bool? = nil, force: Bool? = nil) {
             self.appName = appName
+            self.action = action
             self.waitForLaunch = waitForLaunch
             self.bringToFront = bringToFront
+            self.force = force
         }
     }
     
@@ -145,12 +159,16 @@ public enum ProcessCommandParameters: Codable, Sendable {
         public let app: String?
         public let window: String?
         public let display: Int?
+        public let mode: String?
+        public let annotate: Bool?
         
-        public init(path: String, app: String? = nil, window: String? = nil, display: Int? = nil) {
+        public init(path: String, app: String? = nil, window: String? = nil, display: Int? = nil, mode: String? = nil, annotate: Bool? = nil) {
             self.path = path
             self.app = app
             self.window = window
             self.display = display
+            self.mode = mode
+            self.annotate = annotate
         }
     }
     
@@ -184,6 +202,62 @@ public enum ProcessCommandParameters: Codable, Sendable {
             self.app = app
             self.maximize = maximize
             self.minimize = minimize
+        }
+    }
+    
+    public struct SwipeParameters: Codable, Sendable {
+        public let direction: String
+        public let distance: Double?
+        public let duration: Double?
+        public let fromX: Double?
+        public let fromY: Double?
+        
+        public init(direction: String, distance: Double? = nil, duration: Double? = nil, 
+                   fromX: Double? = nil, fromY: Double? = nil) {
+            self.direction = direction
+            self.distance = distance
+            self.duration = duration
+            self.fromX = fromX
+            self.fromY = fromY
+        }
+    }
+    
+    public struct DragParameters: Codable, Sendable {
+        public let fromX: Double
+        public let fromY: Double
+        public let toX: Double
+        public let toY: Double
+        public let duration: Double?
+        public let modifiers: [String]?
+        
+        public init(fromX: Double, fromY: Double, toX: Double, toY: Double, 
+                   duration: Double? = nil, modifiers: [String]? = nil) {
+            self.fromX = fromX
+            self.fromY = fromY
+            self.toX = toX
+            self.toY = toY
+            self.duration = duration
+            self.modifiers = modifiers
+        }
+    }
+    
+    public struct SleepParameters: Codable, Sendable {
+        public let duration: Double
+        
+        public init(duration: Double) {
+            self.duration = duration
+        }
+    }
+    
+    public struct DockParameters: Codable, Sendable {
+        public let action: String
+        public let item: String?
+        public let path: String?
+        
+        public init(action: String, item: String? = nil, path: String? = nil) {
+            self.action = action
+            self.item = item
+            self.path = path
         }
     }
 }

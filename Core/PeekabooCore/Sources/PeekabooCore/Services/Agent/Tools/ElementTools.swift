@@ -29,9 +29,9 @@ extension PeekabooAgentService {
                 required: ["label"]
             ),
             handler: { params, context in
-                let label = try params.string("label")
-                let appName = params.string("app", default: nil)
-                let elementType = params.string("element_type", default: nil)
+                let _ = try params.string("label")
+                let _ = params.string("app", default: nil)
+                let _ = params.string("element_type", default: nil)
                 
                 // TODO: Replace with proper element finding implementation
                 throw PeekabooError.serviceUnavailable("Element finding not yet implemented")
@@ -83,13 +83,13 @@ extension PeekabooAgentService {
                 
                 // Format the element list based on type filter
                 let elements = detectionResult.elements
-                let filteredOutput = formatFilteredElements(elements, filterType: elementType ?? "all")
+                let filteredOutput = formatFilteredElements(elements, filterType: elementType)
                 
                 return .success(
                     filteredOutput.description,
                     metadata: [
                         "elementCount": String(filteredOutput.totalCount),
-                        "filter": elementType ?? "all",
+                        "filter": elementType,
                         "app": appName ?? "all applications"
                     ]
                 )

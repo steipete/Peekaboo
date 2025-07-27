@@ -581,3 +581,11 @@ When modifying agent behavior, update these prompts to guide the AI's responses 
 - **API key issues**: Run `./peekaboo config set-credential OPENAI_API_KEY sk-...`
 - **Build fails**: See Swift Package Manager troubleshooting section above
 
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+NEVER use AnyCodable anywhere in the codebase. We are actively removing all usage of AnyCodable. If you encounter a need for type-erased encoding/decoding, create proper typed structs instead. This is a critical architectural decision - AnyCodable leads to type-unsafe code and we've spent significant effort removing it.
+

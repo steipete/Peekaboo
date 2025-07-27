@@ -57,7 +57,7 @@ public final class AnthropicModel: ModelInterface {
         
         let (data, response) = try await session.data(for: urlRequest)
         
-        guard let httpResponse = response as? HTTPURLResponse else {
+        guard response is HTTPURLResponse else {
             throw PeekabooError.networkError("Invalid server response")
         }
         
@@ -451,59 +451,47 @@ public final class AnthropicModel: ModelInterface {
     }
     
     private func convertToolParameters(_ params: ToolParameters) -> AnthropicJSONSchema {
-        var properties: [String: Any] = [:]
+        var properties: [String: AnthropicPropertySchema] = [:]
         
         for (key, schema) in params.properties {
-            var prop: [String: Any] = [
-                "type": schema.type.rawValue
-            ]
-            
-            if let description = schema.description {
-                prop["description"] = description
-            }
-            
-            if let enumValues = schema.enumValues {
-                prop["enum"] = enumValues
-            }
-            
-            if let minimum = schema.minimum {
-                prop["minimum"] = minimum
-            }
-            
-            if let maximum = schema.maximum {
-                prop["maximum"] = maximum
-            }
-            
-            if let pattern = schema.pattern {
-                prop["pattern"] = pattern
-            }
-            
-            // Handle nested items for arrays
-            if schema.type == .array, let items = schema.items {
-                prop["items"] = [
-                    "type": items.value.type.rawValue
-                ]
-            }
-            
-            // Handle nested properties for objects
-            if schema.type == .object, let nestedProps = schema.properties {
-                var nestedProperties: [String: Any] = [:]
-                for (nestedKey, nestedSchema) in nestedProps {
-                    nestedProperties[nestedKey] = [
-                        "type": nestedSchema.type.rawValue,
-                        "description": nestedSchema.description ?? ""
-                    ]
-                }
-                prop["properties"] = nestedProperties
-            }
-            
-            properties[key] = prop
+            properties[key] = convertParameterSchema(schema)
         }
         
         return AnthropicJSONSchema(
             type: params.type,
             properties: properties,
             required: params.required
+        )
+    }
+    
+    private func convertParameterSchema(_ schema: ParameterSchema) -> AnthropicPropertySchema {
+        // Handle nested items for arrays
+        let items: AnthropicPropertySchema?
+        if schema.type == .array, let schemaItems = schema.items {
+            items = convertParameterSchema(schemaItems.value)
+        } else {
+            items = nil
+        }
+        
+        // Handle nested properties for objects
+        let properties: [String: AnthropicPropertySchema]?
+        if schema.type == .object, let schemaProps = schema.properties {
+            var convertedProps: [String: AnthropicPropertySchema] = [:]
+            for (key, nestedSchema) in schemaProps {
+                convertedProps[key] = convertParameterSchema(nestedSchema)
+            }
+            properties = convertedProps
+        } else {
+            properties = nil
+        }
+        
+        return AnthropicPropertySchema(
+            type: schema.type.rawValue,
+            description: schema.description,
+            enum: schema.enumValues,
+            items: items,
+            properties: properties,
+            required: nil  // ParameterSchema doesn't have required field at this level
         )
     }
     

@@ -187,8 +187,7 @@ func matchComputedNameAttributes(
 
     let computedAttrs = await getComputedAttributes(for: element)
     let computedNameKey = AXMiscConstants.computedNameAttributeKey
-    if let currentComputedNameAnyCodable = computedAttrs[computedNameKey]?.value as? AnyCodable,
-       let currentComputedName = currentComputedNameAnyCodable.value as? String
+    if let currentComputedName = computedAttrs[computedNameKey]?.value.stringValue
     {
         if let equals = computedNameEquals {
             if currentComputedName != equals {

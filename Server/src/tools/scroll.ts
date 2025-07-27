@@ -82,7 +82,7 @@ export async function scrollToolHandler(
       args.push("--smooth");
     }
 
-    
+
 
     // Execute the command
     const result = await executeSwiftCli(args, logger);

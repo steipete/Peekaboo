@@ -1,7 +1,7 @@
 import Foundation
 
 /// Type-safe property schema for Grok tool parameters
-struct GrokPropertySchema: Codable {
+struct GrokPropertySchema: Codable, Sendable {
     let type: String
     let description: String?
     let `enum`: [String]?

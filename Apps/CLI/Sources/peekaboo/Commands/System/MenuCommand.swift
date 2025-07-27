@@ -88,7 +88,7 @@ struct MenuCommand: AsyncParsableCommand {
                         app: appInfo.name,
                         menu_path: menuPath,
                         clicked_item: menuPath)
-                    outputSuccess(data: data)
+                    outputSuccessCodable(data: data)
                 } else {
                     print("✓ Clicked menu item: \(menuPath)")
                 }
@@ -196,7 +196,7 @@ struct MenuCommand: AsyncParsableCommand {
                         action: "menu_extra_click",
                         menu_extra: title,
                         clicked_item: item ?? self.title)
-                    outputSuccess(data: data)
+                    outputSuccessCodable(data: data)
                 } else {
                     if let clickedItem = item {
                         print("✓ Clicked '\(clickedItem)' in \(self.title) menu")
@@ -282,8 +282,8 @@ struct MenuCommand: AsyncParsableCommand {
                     let data = MenuListData(
                         app: menuStructure.application.name,
                         bundle_id: menuStructure.application.bundleIdentifier,
-                        menu_structure: self.convertMenusToJSON(filteredMenus))
-                    outputSuccess(data: data)
+                        menu_structure: self.convertMenusToTyped(filteredMenus))
+                    outputSuccessCodable(data: data)
                 } else {
                     print("Menu structure for \(menuStructure.application.name):")
                     for menu in filteredMenus {
@@ -326,45 +326,26 @@ struct MenuCommand: AsyncParsableCommand {
             }
         }
 
-        private func convertMenusToJSON(_ menus: [Menu]) -> [[String: Any]] {
+        private func convertMenusToTyped(_ menus: [Menu]) -> [MenuData] {
             menus.map { menu in
-                var menuData: [String: Any] = [
-                    "title": menu.title,
-                    "enabled": menu.isEnabled,
-                ]
-
-                if !menu.items.isEmpty {
-                    menuData["items"] = self.convertMenuItemsToJSON(menu.items)
-                }
-
-                return menuData
+                MenuData(
+                    title: menu.title,
+                    enabled: menu.isEnabled,
+                    items: menu.items.isEmpty ? nil : self.convertMenuItemsToTyped(menu.items)
+                )
             }
         }
 
-        private func convertMenuItemsToJSON(_ items: [MenuItem]) -> [[String: Any]] {
+        private func convertMenuItemsToTyped(_ items: [MenuItem]) -> [MenuItemData] {
             items.map { item in
-                var itemData: [String: Any] = [
-                    "title": item.title,
-                    "enabled": item.isEnabled,
-                ]
-
-                if let shortcut = item.keyboardShortcut {
-                    itemData["shortcut"] = shortcut.displayString
-                }
-
-                if item.isChecked {
-                    itemData["checked"] = true
-                }
-
-                if item.isSeparator {
-                    itemData["separator"] = true
-                }
-
-                if !item.submenu.isEmpty {
-                    itemData["items"] = self.convertMenuItemsToJSON(item.submenu)
-                }
-
-                return itemData
+                MenuItemData(
+                    title: item.title,
+                    enabled: item.isEnabled,
+                    shortcut: item.keyboardShortcut?.displayString,
+                    checked: item.isChecked ? true : nil,
+                    separator: item.isSeparator ? true : nil,
+                    items: item.submenu.isEmpty ? nil : self.convertMenuItemsToTyped(item.submenu)
+                )
             }
         }
 
@@ -486,40 +467,56 @@ struct MenuCommand: AsyncParsableCommand {
 
                 // Output results
                 if self.jsonOutput {
-                    var appData: [String: Any] = [
-                        "app_name": frontmostMenus.application.name,
-                        "bundle_id": frontmostMenus.application.bundleIdentifier ?? "unknown",
-                        "pid": frontmostMenus.application.processIdentifier,
-                        "menus": self.convertMenusToJSON(filteredMenus),
-                    ]
-
-                    // Add menu extras
-                    var extraData: [[String: Any]] = []
-                    for extra in menuExtras {
-                        var itemData: [String: Any] = [
-                            "type": "status_item",
-                            "title": extra.title,
-                            "enabled": true,
-                        ]
-
-                        if self.includeFrames {
-                            itemData["frame"] = [
-                                "x": extra.position.x,
-                                "y": extra.position.y,
-                                "width": 0, // Menu extras don't have size in our current model
-                                "height": 0,
-                            ]
+                    struct MenuAllResult: Codable {
+                        let apps: [AppMenuInfo]
+                        
+                        struct AppMenuInfo: Codable {
+                            let appName: String
+                            let bundleId: String
+                            let pid: Int32
+                            let menus: [MenuData]
+                            let statusItems: [StatusItem]?
                         }
-
-                        extraData.append(itemData)
+                        
+                        struct StatusItem: Codable {
+                            let type: String
+                            let title: String
+                            let enabled: Bool
+                            let frame: Frame?
+                            
+                            struct Frame: Codable {
+                                let x: Double
+                                let y: Double
+                                let width: Int
+                                let height: Int
+                            }
+                        }
                     }
-
-                    if !extraData.isEmpty {
-                        appData["status_items"] = extraData
+                    
+                    let statusItems = menuExtras.map { extra in
+                        MenuAllResult.StatusItem(
+                            type: "status_item",
+                            title: extra.title,
+                            enabled: true,
+                            frame: self.includeFrames ? MenuAllResult.StatusItem.Frame(
+                                x: Double(extra.position.x),
+                                y: Double(extra.position.y),
+                                width: 0,
+                                height: 0
+                            ) : nil
+                        )
                     }
-
-                    let data = ["apps": [appData]]
-                    outputSuccess(data: data)
+                    
+                    let appInfo = MenuAllResult.AppMenuInfo(
+                        appName: frontmostMenus.application.name,
+                        bundleId: frontmostMenus.application.bundleIdentifier ?? "unknown",
+                        pid: frontmostMenus.application.processIdentifier,
+                        menus: self.convertMenusToTyped(filteredMenus),
+                        statusItems: statusItems.isEmpty ? nil : statusItems
+                    )
+                    
+                    let outputData = MenuAllResult(apps: [appInfo])
+                    outputSuccessCodable(data: outputData)
                 } else {
                     print("\n=== \(frontmostMenus.application.name) ===")
                     for menu in filteredMenus {
@@ -569,45 +566,26 @@ struct MenuCommand: AsyncParsableCommand {
             }
         }
 
-        private func convertMenusToJSON(_ menus: [Menu]) -> [[String: Any]] {
+        private func convertMenusToTyped(_ menus: [Menu]) -> [MenuData] {
             menus.map { menu in
-                var menuData: [String: Any] = [
-                    "title": menu.title,
-                    "enabled": menu.isEnabled,
-                ]
-
-                if !menu.items.isEmpty {
-                    menuData["items"] = self.convertMenuItemsToJSON(menu.items)
-                }
-
-                return menuData
+                MenuData(
+                    title: menu.title,
+                    enabled: menu.isEnabled,
+                    items: menu.items.isEmpty ? nil : self.convertMenuItemsToTyped(menu.items)
+                )
             }
         }
 
-        private func convertMenuItemsToJSON(_ items: [MenuItem]) -> [[String: Any]] {
+        private func convertMenuItemsToTyped(_ items: [MenuItem]) -> [MenuItemData] {
             items.map { item in
-                var itemData: [String: Any] = [
-                    "title": item.title,
-                    "enabled": item.isEnabled,
-                ]
-
-                if let shortcut = item.keyboardShortcut {
-                    itemData["shortcut"] = shortcut.displayString
-                }
-
-                if item.isChecked {
-                    itemData["checked"] = true
-                }
-
-                if item.isSeparator {
-                    itemData["separator"] = true
-                }
-
-                if !item.submenu.isEmpty {
-                    itemData["items"] = self.convertMenuItemsToJSON(item.submenu)
-                }
-
-                return itemData
+                MenuItemData(
+                    title: item.title,
+                    enabled: item.isEnabled,
+                    shortcut: item.keyboardShortcut?.displayString,
+                    checked: item.isChecked ? true : nil,
+                    separator: item.isSeparator ? true : nil,
+                    items: item.submenu.isEmpty ? nil : self.convertMenuItemsToTyped(item.submenu)
+                )
             }
         }
 
@@ -702,34 +680,25 @@ struct MenuExtraClickResult: Codable {
     let clicked_item: String
 }
 
-struct MenuListData: Encodable {
+// Typed menu structures for JSON output
+struct MenuListData: Codable {
     let app: String
     let bundle_id: String?
-    let menu_structure: [[String: Any]]
-
-    enum CodingKeys: String, CodingKey {
-        case app
-        case bundle_id
-        case menu_structure
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.app, forKey: .app)
-        try container.encodeIfPresent(self.bundle_id, forKey: .bundle_id)
-
-        // Convert menu structure to AnyCodable for encoding
-        let codableMenuStructure = self.menu_structure.map { AnyCodable($0) }
-        try container.encode(codableMenuStructure, forKey: .menu_structure)
-    }
+    let menu_structure: [MenuData]
 }
 
-// MARK: - Helper Functions
-
-private func outputSuccess(data: some Encodable) {
-    let response = JSONResponse(
-        success: true,
-        data: data,
-        debugLogs: Logger.shared.getDebugLogs())
-    outputJSON(response)
+struct MenuData: Codable {
+    let title: String
+    let enabled: Bool
+    let items: [MenuItemData]?
 }
+
+struct MenuItemData: Codable {
+    let title: String
+    let enabled: Bool
+    let shortcut: String?
+    let checked: Bool?
+    let separator: Bool?
+    let items: [MenuItemData]?
+}
+

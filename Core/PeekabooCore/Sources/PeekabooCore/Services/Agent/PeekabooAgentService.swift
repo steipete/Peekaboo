@@ -354,7 +354,7 @@ extension PeekabooAgentService {
         eventDelegate: AgentEventDelegate? = nil
     ) async throws -> AgentExecutionResult {
         // Load the session
-        guard let session = try await sessionManager.loadSession(id: sessionId) else {
+        guard try await sessionManager.loadSession(id: sessionId) != nil else {
             throw PeekabooError.sessionNotFound(sessionId)
         }
         
