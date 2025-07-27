@@ -380,8 +380,19 @@ public final class PeekabooAgent {
         case .toolCallStarted(let name, _):
             print("Tool started: \(name)")
             
-        case .toolCallCompleted(let name, _):
+        case .toolCallCompleted(let name, let result):
             print("Tool completed: \(name)")
+            
+            // Update the tool call result in the current session
+            if let currentSession = sessionStore.currentSession,
+               let sessionIndex = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }),
+               let lastMessage = sessionStore.sessions[sessionIndex].messages.last,
+               lastMessage.role == .assistant,
+               let toolCallIndex = lastMessage.toolCalls.firstIndex(where: { $0.name == name }) {
+                // Update the tool call result
+                sessionStore.sessions[sessionIndex].messages[sessionStore.sessions[sessionIndex].messages.count - 1].toolCalls[toolCallIndex].result = result
+                sessionStore.saveSessions()
+            }
             
         default:
             break
