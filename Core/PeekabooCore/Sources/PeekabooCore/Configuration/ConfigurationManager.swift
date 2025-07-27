@@ -95,9 +95,7 @@ public final class ConfigurationManager: @unchecked Sendable {
                     }
                     
                     // Save updated config without hardcoded credentials
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = [.prettyPrinted]
-                    let data = try encoder.encode(updatedConfig)
+                    let data = try JSONCoding.encoder.encode(updatedConfig)
                     try data.write(to: URL(fileURLWithPath: Self.configPath), options: .atomic)
                 }
             }
@@ -149,7 +147,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
             // Parse JSON
             if let expandedData = expandedJSON.data(using: .utf8) {
-                let config = try JSONDecoder().decode(Configuration.self, from: expandedData)
+                let config = try JSONCoding.decoder.decode(Configuration.self, from: expandedData)
                 self.configuration = config
                 return config
             }
@@ -630,9 +628,7 @@ public final class ConfigurationManager: @unchecked Sendable {
         updates(&config)
         
         // Save updated configuration
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted]
-        let data = try encoder.encode(config)
+        let data = try JSONCoding.encoder.encode(config)
         
         // Create directory if needed
         try FileManager.default.createDirectory(

@@ -41,8 +41,8 @@ struct SessionCacheTests {
 
         // Create a new session with a specific ID
         let testSession = try SessionCache(sessionId: "test-session-123")
-        let testData = SessionCache.SessionData(
-            version: SessionCache.SessionData.currentVersion,
+        let testData = SessionCache.UIAutomationSession(
+            version: SessionCache.UIAutomationSession.currentVersion,
             screenshotPath: nil,
             annotatedPath: nil,
             uiMap: [:],
@@ -70,14 +70,14 @@ struct SessionCacheTests {
     }
 
     @Test("Save and load session data preserves all fields")
-    func saveAndLoadSessionData() async throws {
+    func saveAndLoadUIAutomationSession() async throws {
         // Create test data
-        let testData = SessionCache.SessionData(
-            version: SessionCache.SessionData.currentVersion,
+        let testData = SessionCache.UIAutomationSession(
+            version: SessionCache.UIAutomationSession.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [
-                "B1": SessionCache.SessionData.UIElement(
+                "B1": SessionCache.UIAutomationSession.UIElement(
                     id: "B1",
                     elementId: "element_1",
                     role: "AXButton",
@@ -121,12 +121,12 @@ struct SessionCacheTests {
     @Test("Find elements matching query returns correct results")
     func findElementsMatching() async throws {
         // Create test data with multiple elements
-        let testData = SessionCache.SessionData(
-            version: SessionCache.SessionData.currentVersion,
+        let testData = SessionCache.UIAutomationSession(
+            version: SessionCache.UIAutomationSession.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [
-                "B1": SessionCache.SessionData.UIElement(
+                "B1": SessionCache.UIAutomationSession.UIElement(
                     id: "B1",
                     elementId: "element_1",
                     role: "AXButton",
@@ -136,7 +136,7 @@ struct SessionCacheTests {
                     frame: CGRect(x: 100, y: 100, width: 80, height: 30),
                     isActionable: true
                 ),
-                "B2": SessionCache.SessionData.UIElement(
+                "B2": SessionCache.UIAutomationSession.UIElement(
                     id: "B2",
                     elementId: "element_2",
                     role: "AXButton",
@@ -146,7 +146,7 @@ struct SessionCacheTests {
                     frame: CGRect(x: 200, y: 100, width: 80, height: 30),
                     isActionable: true
                 ),
-                "T1": SessionCache.SessionData.UIElement(
+                "T1": SessionCache.UIAutomationSession.UIElement(
                     id: "T1",
                     elementId: "element_3",
                     role: "AXTextField",
@@ -156,7 +156,7 @@ struct SessionCacheTests {
                     frame: CGRect(x: 100, y: 150, width: 200, height: 30),
                     isActionable: true
                 ),
-                "G1": SessionCache.SessionData.UIElement(
+                "G1": SessionCache.UIAutomationSession.UIElement(
                     id: "G1",
                     elementId: "element_4",
                     role: "AXGroup",
@@ -206,12 +206,12 @@ struct SessionCacheTests {
 
     @Test("Get element by ID returns correct element")
     func getElementById() async throws {
-        let testData = SessionCache.SessionData(
-            version: SessionCache.SessionData.currentVersion,
+        let testData = SessionCache.UIAutomationSession(
+            version: SessionCache.UIAutomationSession.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [
-                "B1": SessionCache.SessionData.UIElement(
+                "B1": SessionCache.UIAutomationSession.UIElement(
                     id: "B1",
                     elementId: "element_1",
                     role: "AXButton",
@@ -242,8 +242,8 @@ struct SessionCacheTests {
 
     @Test("Clear session removes all data")
     func clearSession() async throws {
-        let testData = SessionCache.SessionData(
-            version: SessionCache.SessionData.currentVersion,
+        let testData = SessionCache.UIAutomationSession(
+            version: SessionCache.UIAutomationSession.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [:],
@@ -338,8 +338,8 @@ struct SessionCacheTests {
         // This test verifies atomic save operations work correctly
         // by saving multiple times rapidly
 
-        let testData = SessionCache.SessionData(
-            version: SessionCache.SessionData.currentVersion,
+        let testData = SessionCache.UIAutomationSession(
+            version: SessionCache.UIAutomationSession.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [:],

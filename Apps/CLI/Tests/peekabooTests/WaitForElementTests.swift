@@ -27,7 +27,7 @@ struct WaitForElementTests {
         // Test retrieving elements from session cache
         let sessionCache = try SessionCache(sessionId: "test-retrieval")
 
-        let element = SessionCache.SessionData.UIElement(
+        let element = SessionCache.UIAutomationSession.UIElement(
             id: "B1",
             elementId: "button1",
             role: "AXButton",
@@ -37,8 +37,8 @@ struct WaitForElementTests {
             frame: CGRect(x: 100, y: 100, width: 80, height: 30),
             isActionable: true)
 
-        let sessionData = SessionCache.SessionData(
-            version: SessionCache.SessionData.currentVersion,
+        let sessionData = SessionCache.UIAutomationSession(
+            version: SessionCache.UIAutomationSession.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: ["B1": element],
@@ -86,8 +86,8 @@ struct WaitForElementTests {
         // Test searching elements by query string
         let sessionCache = try SessionCache(sessionId: "test-search")
 
-        let elements: [String: SessionCache.SessionData.UIElement] = [
-            "B1": SessionCache.SessionData.UIElement(
+        let elements: [String: SessionCache.UIAutomationSession.UIElement] = [
+            "B1": SessionCache.UIAutomationSession.UIElement(
                 id: "B1",
                 elementId: "save_btn",
                 role: "AXButton",
@@ -97,7 +97,7 @@ struct WaitForElementTests {
                 frame: CGRect(x: 100, y: 100, width: 100, height: 30),
                 isActionable: true
             ),
-            "B2": SessionCache.SessionData.UIElement(
+            "B2": SessionCache.UIAutomationSession.UIElement(
                 id: "B2",
                 elementId: "cancel_btn",
                 role: "AXButton",
@@ -107,7 +107,7 @@ struct WaitForElementTests {
                 frame: CGRect(x: 220, y: 100, width: 80, height: 30),
                 isActionable: true
             ),
-            "T1": SessionCache.SessionData.UIElement(
+            "T1": SessionCache.UIAutomationSession.UIElement(
                 id: "T1",
                 elementId: "name_field",
                 role: "AXTextField",
@@ -119,8 +119,8 @@ struct WaitForElementTests {
             ),
         ]
 
-        let sessionData = SessionCache.SessionData(
-            version: SessionCache.SessionData.currentVersion,
+        let sessionData = SessionCache.UIAutomationSession(
+            version: SessionCache.UIAutomationSession.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: elements,
@@ -168,7 +168,7 @@ struct WaitForElementTests {
         // Create a session with test element
         let sessionCache = try SessionCache(sessionId: "test-wait-timeout")
 
-        let testElement = SessionCache.SessionData.UIElement(
+        let testElement = SessionCache.UIAutomationSession.UIElement(
             id: "B1",
             elementId: "button1",
             role: "AXButton",
@@ -178,8 +178,8 @@ struct WaitForElementTests {
             frame: CGRect(x: 100, y: 100, width: 80, height: 30),
             isActionable: true)
 
-        let sessionData = SessionCache.SessionData(
-            version: SessionCache.SessionData.currentVersion,
+        let sessionData = SessionCache.UIAutomationSession(
+            version: SessionCache.UIAutomationSession.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: ["B1": testElement],
@@ -202,8 +202,8 @@ struct WaitForElementTests {
         let sessionCache = try SessionCache(sessionId: "test-wait-query")
 
         // Create multiple elements
-        let elements: [String: SessionCache.SessionData.UIElement] = [
-            "B1": SessionCache.SessionData.UIElement(
+        let elements: [String: SessionCache.UIAutomationSession.UIElement] = [
+            "B1": SessionCache.UIAutomationSession.UIElement(
                 id: "B1",
                 elementId: "button1",
                 role: "AXButton",
@@ -213,7 +213,7 @@ struct WaitForElementTests {
                 frame: CGRect(x: 100, y: 100, width: 80, height: 30),
                 isActionable: false // Not actionable
             ),
-            "B2": SessionCache.SessionData.UIElement(
+            "B2": SessionCache.UIAutomationSession.UIElement(
                 id: "B2",
                 elementId: "button2",
                 role: "AXButton",
@@ -225,8 +225,8 @@ struct WaitForElementTests {
             ),
         ]
 
-        let sessionData = SessionCache.SessionData(
-            version: SessionCache.SessionData.currentVersion,
+        let sessionData = SessionCache.UIAutomationSession(
+            version: SessionCache.UIAutomationSession.currentVersion,
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: elements,

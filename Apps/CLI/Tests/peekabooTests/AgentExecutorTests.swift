@@ -30,7 +30,7 @@ struct AgentExecutorTests {
             #expect(responseData?["elements"] as? [[String: Any]] != nil)
         } catch {
             // Expected to fail without proper permissions
-            #expect(error is AgentError || error is PeekabooCore.ScreenCaptureError)
+            #expect(error is AgentError || error is PeekabooCore.CaptureError)
         }
     }
     
@@ -53,7 +53,7 @@ struct AgentExecutorTests {
             #expect(json["success"] as? Bool == true)
         } catch {
             // Expected to fail without proper permissions
-            #expect(error is AgentError || error is PeekabooCore.ScreenCaptureError)
+            #expect(error is AgentError || error is PeekabooCore.CaptureError)
         }
     }
     
@@ -197,7 +197,7 @@ struct AgentExecutorTests {
             #expect(responseData?["action"] as? String == "launch")
         } catch {
             // May fail if app not found
-            #expect(error is AgentError || error is PeekabooCore.ApplicationError)
+            #expect(error is AgentError || error is PeekabooCore.PeekabooError)
         }
     }
     
@@ -310,7 +310,7 @@ struct AgentExecutorTests {
             
             #expect(json["success"] != nil)
         } catch {
-            #expect(error is AgentError || error is PeekabooCore.MenuError)
+            #expect(error is AgentError || error is PeekabooCore.PeekabooError)
         }
     }
     
@@ -334,7 +334,7 @@ struct AgentExecutorTests {
             let responseData = json["data"] as? [String: Any]
             #expect(responseData?["menus"] as? [[String: Any]] != nil)
         } catch {
-            #expect(error is AgentError || error is PeekabooCore.MenuError)
+            #expect(error is AgentError || error is PeekabooCore.PeekabooError)
         }
     }
     
@@ -634,7 +634,7 @@ struct AgentExecutorTests {
             let responseData = json["data"] as? [String: Any]
             #expect(responseData?["windows"] as? [[String: Any]] != nil)
         } catch {
-            #expect(error is AgentError || error is PeekabooCore.ApplicationError)
+            #expect(error is AgentError || error is PeekabooCore.PeekabooError)
         }
     }
     

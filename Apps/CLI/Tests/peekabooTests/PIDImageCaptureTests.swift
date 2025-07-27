@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("PID Image Capture Tests", .serialized)
@@ -163,7 +164,7 @@ struct PIDImageCaptureTests {
         // For testing, we simulate the response
 
         guard let app = NSRunningApplication(processIdentifier: targetPID) else {
-            throw ApplicationError.notFound("No application found with PID: \(targetPID)")
+            throw PeekabooError.appNotFound("No application found with PID: \(targetPID)")
         }
 
         let savedFile = SavedFile(

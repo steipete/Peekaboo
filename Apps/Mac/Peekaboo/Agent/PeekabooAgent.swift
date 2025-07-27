@@ -3,22 +3,6 @@ import SwiftUI
 import PeekabooCore
 import Observation
 
-/// Represents a single tool execution in the history
-public struct ToolExecution: Identifiable {
-    public let id = UUID()
-    public let toolName: String
-    public let arguments: String
-    public let timestamp: Date
-    public var status: ToolExecutionStatus
-    public var result: String?
-    
-    public enum ToolExecutionStatus {
-        case running
-        case completed
-        case failed
-    }
-}
-
 /// Main agent class for the Peekaboo Mac app
 @Observable
 @MainActor
