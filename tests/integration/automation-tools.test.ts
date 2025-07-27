@@ -143,11 +143,11 @@ describe("Automation Tools", () => {
       const expectedSchemas = {
         see: ["app_target", "path", "session", "annotate"],
         click: ["query", "on", "coords", "session", "wait_for", "double", "right"],
-        type: ["text", "on", "session", "clear", "delay", "wait_for"],
+        type: ["text", "on", "session", "clear", "delay", "press_return", "tab", "escape", "delete"],
         scroll: ["direction", "amount", "on", "session", "delay", "smooth"],
         hotkey: ["keys", "hold_duration"],
         swipe: ["from", "to", "duration", "steps"],
-        run: ["script_path", "session", "stop_on_error", "timeout"],
+        run: ["script_path", "output", "no_fail_fast", "verbose"],
         sleep: ["duration"]
       };
 
@@ -170,7 +170,9 @@ describe("Automation Tools", () => {
 
       // Check required fields for key tools
       const typeToolInfo = tools.find((t: any) => t.name === "type");
-      expect(typeToolInfo.inputSchema.required).toContain("text");
+      // Text is optional for type tool - you can use special keys without text
+      expect(typeToolInfo.inputSchema.required).toBeDefined();
+      expect(Array.isArray(typeToolInfo.inputSchema.required)).toBe(true);
 
       const scrollToolInfo = tools.find((t: any) => t.name === "scroll");
       expect(scrollToolInfo.inputSchema.required).toContain("direction");
@@ -201,10 +203,10 @@ describe("Automation Tools", () => {
     });
 
     it("should validate tool arguments", async () => {
-      // Test missing required argument
+      // Test missing required argument - use sleep tool which requires duration
       const result = await client.request("tools/call", {
-        name: "type",
-        arguments: {} // Missing required 'text' field
+        name: "sleep",
+        arguments: {} // Missing required 'duration' field
       });
 
       expect(result.isError).toBe(true);

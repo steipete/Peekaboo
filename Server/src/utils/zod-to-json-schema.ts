@@ -148,6 +148,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
       properties,
     };
 
+    // Only add required array if it has elements
     if (required.length > 0) {
       jsonSchema.required = required;
     }

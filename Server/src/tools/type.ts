@@ -9,6 +9,9 @@ export const typeToolSchema = z.object({
   text: z.string().optional().describe(
     "The text to type. If not specified, can use special key flags instead.",
   ),
+  on: z.string().optional().describe(
+    "Optional. Element ID to type into (from see command). If not specified, types at current focus.",
+  ),
   session: z.string().optional().describe(
     "Optional. Session ID from see command. Uses latest session if not specified.",
   ),
@@ -65,6 +68,11 @@ export async function typeToolHandler(
     // Session
     if (input.session) {
       args.push("--session", input.session);
+    }
+
+    // Element target
+    if (input.on) {
+      args.push("--on", input.on);
     }
 
     // Delay

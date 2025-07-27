@@ -118,13 +118,17 @@ export async function clickToolHandler(
       lines.push(`🎯 Clicked: ${clickData.clicked_element}`);
     }
 
-    lines.push(`📍 Location: (${Math.round(clickData.click_location.x)}, ${Math.round(clickData.click_location.y)})`);
+    if (clickData.click_location && clickData.click_location.x !== undefined && clickData.click_location.y !== undefined) {
+      lines.push(`📍 Location: (${Math.round(clickData.click_location.x)}, ${Math.round(clickData.click_location.y)})`);
+    }
 
     if (clickData.wait_time && clickData.wait_time > 0) {
       lines.push(`⏳ Waited: ${(clickData.wait_time / 1000).toFixed(1)}s`);
     }
 
-    lines.push(`⏱️  Completed in ${clickData.execution_time.toFixed(2)}s`);
+    if (clickData.execution_time !== undefined) {
+      lines.push(`⏱️  Completed in ${clickData.execution_time.toFixed(2)}s`);
+    }
 
     return {
       content: [{
