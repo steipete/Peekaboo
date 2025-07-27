@@ -278,7 +278,9 @@ public actor ModelProvider {
     private func registerGrokModels() {
         let models = [
             // Grok 4 series
+            "grok-4",
             "grok-4-0709",
+            "grok-4-latest",
             
             // Grok 3 series
             "grok-3",
@@ -287,8 +289,13 @@ public actor ModelProvider {
             "grok-3-mini-fast",
             
             // Grok 2 series
+            "grok-2-1212",
             "grok-2-vision-1212",
-            "grok-2-image-1212"
+            "grok-2-image-1212",
+            
+            // Beta models
+            "grok-beta",
+            "grok-vision-beta"
         ]
         
         for modelName in models {
@@ -560,7 +567,9 @@ extension ModelProvider {
     public func configureGrok(_ config: ModelProviderConfig.Grok) {
         let models = [
             // Grok 4 series
+            "grok-4",
             "grok-4-0709",
+            "grok-4-latest",
             
             // Grok 3 series
             "grok-3",
@@ -569,8 +578,13 @@ extension ModelProvider {
             "grok-3-mini-fast",
             
             // Grok 2 series
+            "grok-2-1212",
             "grok-2-vision-1212",
-            "grok-2-image-1212"
+            "grok-2-image-1212",
+            
+            // Beta models
+            "grok-beta",
+            "grok-vision-beta"
         ]
         
         for modelName in models {

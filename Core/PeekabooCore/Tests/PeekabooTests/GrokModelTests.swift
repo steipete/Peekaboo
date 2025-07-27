@@ -64,7 +64,7 @@ struct GrokModelTests {
             Issue.record("Expected network error but got success")
         } catch {
             // Expected to fail due to no valid API key/network
-            #expect(error is ModelError)
+            #expect(error is PeekabooError)
         }
     }
     
@@ -110,7 +110,7 @@ struct GrokModelTests {
             Issue.record("Expected network error but got success")
         } catch {
             // Expected to fail due to no valid API key/network
-            #expect(error is ModelError)
+            #expect(error is PeekabooError)
         }
     }
     
@@ -141,7 +141,7 @@ struct GrokModelTests {
             Issue.record("Expected network error but got success")
         } catch {
             // Expected to fail due to no valid API key/network
-            #expect(error is ModelError)
+            #expect(error is PeekabooError)
         }
     }
     
@@ -169,7 +169,7 @@ struct GrokModelTests {
             Issue.record("Expected network error but got success")
         } catch {
             // Expected to fail due to no valid API key/network
-            #expect(error is ModelError)
+            #expect(error is PeekabooError)
         }
     }
     
@@ -199,7 +199,7 @@ struct GrokModelTests {
             Issue.record("Expected network error but got success with \(eventCount) events")
         } catch {
             // Expected to fail due to no valid API key/network
-            #expect(error is ModelError)
+            #expect(error is PeekabooError)
         }
     }
     
@@ -218,10 +218,10 @@ struct GrokModelTests {
         do {
             _ = try await model.getResponse(request: request)
             Issue.record("Expected error but got success")
-        } catch let error as ModelError {
+        } catch let error as PeekabooError {
             // Verify we get appropriate error types
             switch error {
-            case .authenticationFailed, .requestFailed:
+            case .apiError, .authenticationFailed:
                 // Expected error types for invalid API key
                 break
             default:
