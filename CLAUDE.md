@@ -570,6 +570,45 @@ Individual tool descriptions are defined in the same file (`PeekabooAgentService
 When modifying agent behavior, update these prompts to guide the AI's responses and tool usage patterns.
 
 
+## GitHub CI Logs via gh CLI
+
+### Viewing CI Status and Logs
+
+```bash
+# Check PR CI status
+gh pr checks <PR_NUMBER> --repo <owner>/<repo>
+# Example: gh pr checks 29 --repo steipete/Peekaboo
+
+# View workflow run logs
+gh run view <RUN_ID> --repo <owner>/<repo>
+
+# View only failed logs
+gh run view <RUN_ID> --repo <owner>/<repo> --log-failed
+
+# Search logs for specific text
+gh run view <RUN_ID> --repo <owner>/<repo> --log | grep "error"
+gh run view <RUN_ID> --repo <owner>/<repo> --log-failed | grep -A 10 -B 5 "error"
+
+# List recent workflow runs
+gh run list --repo <owner>/<repo>
+
+# Watch a running workflow
+gh run watch <RUN_ID> --repo <owner>/<repo>
+```
+
+### Examples from Peekaboo CI Debugging
+
+```bash
+# Check PR #29 CI status
+gh pr checks 29 --repo steipete/Peekaboo
+
+# View failed CI logs with context
+gh run view 16540228078 --repo steipete/Peekaboo --log-failed | head -100
+
+# Search for Swift compilation errors
+gh run view 16540228078 --repo steipete/Peekaboo --log-failed | grep -A 20 "error: cannot find"
+```
+
 ## Troubleshooting
 
 ### Permission Errors
