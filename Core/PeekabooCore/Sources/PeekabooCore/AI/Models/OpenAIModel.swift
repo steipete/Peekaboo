@@ -176,14 +176,13 @@ public final class OpenAIModel: ModelInterface {
                             
                             // Parse chunk
                             if let chunkData = data.data(using: .utf8) {
-                                // Use simple JSON parsing for now to avoid decoding issues
-                                if let jsonObj = try? JSONSerialization.jsonObject(with: chunkData, options: []) as? [String: Any] {
-                                    let chunkType = jsonObj["type"] as? String ?? "unknown"
+                                // Try to decode as structured chunk first
+                                if let chunk = try? JSONDecoder().decode(OpenAIStreamChunk.self, from: chunkData) {
+                                    let chunkType = chunk.type
                                     
                                     // Handle text delta events directly
                                     if chunkType == "response.output_text.delta" {
-                                        if let delta = jsonObj["delta"] as? String, 
-                                           let outputIndex = jsonObj["output_index"] as? Int {
+                                        if let delta = chunk.delta, let outputIndex = chunk.outputIndex {
                                             aiDebugPrint("DEBUG: Yielding text delta: '\(delta)'")
                                             let event = StreamEvent.textDelta(StreamTextDelta(delta: delta, index: outputIndex))
                                             continuation.yield(event)
@@ -191,22 +190,16 @@ public final class OpenAIModel: ModelInterface {
                                             aiDebugPrint("DEBUG: response.output_text.delta missing delta or outputIndex")
                                         }
                                     } else if chunkType == "response.reasoning_summary.delta" || chunkType == "response.reasoning_text.delta" || chunkType == "response.reasoning_summary_text.delta" {
-                                        // Handle reasoning deltas (summary, text, and summary_text variants)
-                                        if let delta = jsonObj["delta"] as? String {
+                                        // Handle reasoning deltas
+                                        if let delta = chunk.delta {
                                             aiDebugPrint("DEBUG: Yielding reasoning delta (\(chunkType)): '\(delta)'")
                                             let event = StreamEvent.reasoningSummaryDelta(StreamReasoningSummaryDelta(delta: delta))
                                             continuation.yield(event)
-                                        } else if let eventData = jsonObj["delta"] as? [String: Any],
-                                                  let deltaText = eventData["delta"] as? String {
-                                            // Some SDK versions use nested structure
-                                            aiDebugPrint("DEBUG: Yielding reasoning delta (\(chunkType)): '\(deltaText)'")
-                                            let event = StreamEvent.reasoningSummaryDelta(StreamReasoningSummaryDelta(delta: deltaText))
-                                            continuation.yield(event)
                                         }
                                     } else if chunkType == "response.created" || chunkType == "response.in_progress" {
-                                        if let responseData = jsonObj["response"] as? [String: Any],
-                                           let id = responseData["id"] as? String,
-                                           let model = responseData["model"] as? String {
+                                        if let responseData = chunk.response,
+                                           let id = responseData.id,
+                                           let model = responseData.model {
                                             let event = StreamEvent.responseStarted(StreamResponseStarted(
                                                 id: id,
                                                 model: model,
@@ -215,27 +208,23 @@ public final class OpenAIModel: ModelInterface {
                                             continuation.yield(event)
                                         }
                                     } else if chunkType == "response.completed" {
-                                        if let responseData = jsonObj["response"] as? [String: Any],
-                                           let id = responseData["id"] as? String {
+                                        if let responseData = chunk.response,
+                                           let id = responseData.id {
                                             
                                             // Check for tool calls in the output array
-                                            if let outputArray = responseData["output"] as? [[String: Any]] {
+                                            if let outputArray = responseData.output {
                                                 for (index, outputItem) in outputArray.enumerated() {
-                                                    if let itemType = outputItem["type"] as? String,
-                                                       itemType == "function_call",
-                                                       let itemId = outputItem["id"] as? String,
-                                                       let name = outputItem["name"] as? String,
-                                                       let arguments = outputItem["arguments"] as? String,
-                                                       let status = outputItem["status"] as? String,
-                                                       status == "completed" {
+                                                    if let item = outputItem.item,
+                                                       item.type == "function_call",
+                                                       let itemId = item.id,
+                                                       let name = item.name,
+                                                       let arguments = item.arguments {
                                                         
                                                         aiDebugPrint("DEBUG: Found tool call in response.completed: \(name)")
                                                         
-                                                        let toolCallId = outputItem["call_id"] as? String ?? itemId
-                                                        
                                                         // First emit a delta event to populate the pending tool calls
                                                         let deltaEvent = StreamEvent.toolCallDelta(StreamToolCallDelta(
-                                                            id: toolCallId,
+                                                            id: itemId,
                                                             index: index,
                                                             function: FunctionCallDelta(name: name, arguments: arguments)
                                                         ))
@@ -243,7 +232,7 @@ public final class OpenAIModel: ModelInterface {
                                                         
                                                         // Then emit the completed event
                                                         let completedEvent = StreamEvent.toolCallCompleted(StreamToolCallCompleted(
-                                                            id: toolCallId,
+                                                            id: itemId,
                                                             function: FunctionCall(name: name, arguments: arguments)
                                                         ))
                                                         continuation.yield(completedEvent)
@@ -260,8 +249,8 @@ public final class OpenAIModel: ModelInterface {
                                         }
                                     } else if chunkType == "response.output_item.added" {
                                         // Handle when a new output item is added (reasoning, message, or function call)
-                                        if let item = jsonObj["item"] as? [String: Any],
-                                           let itemType = item["type"] as? String {
+                                        if let item = chunk.item,
+                                           let itemType = item.type {
                                             aiDebugPrint("DEBUG: Output item added - type: \(itemType)")
                                             if itemType == "reasoning" {
                                                 // Reasoning will be streamed via response.reasoning_text.delta
@@ -273,26 +262,23 @@ public final class OpenAIModel: ModelInterface {
                                         }
                                     } else if chunkType == "response.output_item.done" {
                                         // Handle when an output item is completed
-                                        if let item = jsonObj["item"] as? [String: Any],
-                                           let itemType = item["type"] as? String,
-                                           itemType == "reasoning" {
-                                            // Check if there's a summary
-                                            if let summaryArray = item["summary"] as? [String] {
-                                                let summary = summaryArray.joined(separator: "\n")
-                                                if !summary.isEmpty {
-                                                    aiDebugPrint("DEBUG: Yielding reasoning summary completed: '\(summary)'")
-                                                    let event = StreamEvent.reasoningSummaryCompleted(StreamReasoningSummaryCompleted(
-                                                        summary: summary,
-                                                        reasoningTokens: nil
-                                                    ))
-                                                    continuation.yield(event)
-                                                }
+                                        if let item = chunk.item,
+                                           item.type == "reasoning" {
+                                            // For reasoning summaries, we need to handle the raw output
+                                            // This is a special case where output contains the summary text
+                                            if let output = item.output, !output.isEmpty {
+                                                aiDebugPrint("DEBUG: Yielding reasoning summary completed: '\(output)'")
+                                                let event = StreamEvent.reasoningSummaryCompleted(StreamReasoningSummaryCompleted(
+                                                    summary: output,
+                                                    reasoningTokens: nil
+                                                ))
+                                                continuation.yield(event)
                                             }
                                         }
                                     } else if chunkType == "response.function_call_arguments.delta" {
                                         // Handle function call arguments delta
-                                        if let itemId = jsonObj["item_id"] as? String,
-                                           let delta = jsonObj["delta"] as? String {
+                                        if let itemId = chunk.itemId,
+                                           let delta = chunk.delta {
                                             aiDebugPrint("DEBUG: Yielding function call arguments delta: '\(delta)'")
                                             let event = StreamEvent.functionCallArgumentsDelta(StreamFunctionCallArgumentsDelta(
                                                 id: itemId,
@@ -305,14 +291,14 @@ public final class OpenAIModel: ModelInterface {
                                         aiDebugPrint("DEBUG: Content part added")
                                     } else if chunkType == "response.output_text.done" {
                                         // Handle when text output is complete
-                                        if let text = jsonObj["text"] as? String {
+                                        if let text = chunk.text {
                                             aiDebugPrint("DEBUG: Output text completed: '\(text)'")
                                         }
                                     } else {
                                         // Log unhandled event types
                                         aiDebugPrint("DEBUG: Unhandled event type: \(chunkType)")
-                                        if let item = jsonObj["item"] as? [String: Any] {
-                                            aiDebugPrint("DEBUG: Event item: \(item)")
+                                        if let item = chunk.item {
+                                            aiDebugPrint("DEBUG: Event item type: \(item.type ?? "unknown")")
                                         }
                                     }
                                 }
@@ -447,7 +433,7 @@ public final class OpenAIModel: ModelInterface {
             reasoning: (request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4")) ? 
                 OpenAIReasoning(
                     effort: request.settings.additionalParameters?["reasoning_effort"]?.value as? String ?? "low",
-                    summary: (request.settings.additionalParameters?["reasoning"]?.value as? [String: Any])?["summary"] as? String
+                    summary: extractReasoningSummary(from: request.settings.additionalParameters)
                 ) : nil
         )
     }
@@ -541,60 +527,41 @@ public final class OpenAIModel: ModelInterface {
     }
     
     private func convertToolParameters(_ params: ToolParameters) -> OpenAITool.Parameters {
-        // Convert ToolParameters to a dictionary for serialization
-        var properties: [String: Any] = [:]
+        // Convert ToolParameters to PropertySchema
+        var properties: [String: PropertySchema] = [:]
         
         for (key, schema) in params.properties {
-            var prop: [String: Any] = [
-                "type": schema.type.rawValue
-            ]
-            
-            if let description = schema.description {
-                prop["description"] = description
-            }
-            
-            if let enumValues = schema.enumValues {
-                prop["enum"] = enumValues
-            }
-            
-            if let minimum = schema.minimum {
-                prop["minimum"] = minimum
-            }
-            
-            if let maximum = schema.maximum {
-                prop["maximum"] = maximum
-            }
-            
-            if let pattern = schema.pattern {
-                prop["pattern"] = pattern
-            }
-            
-            // Handle nested items for arrays
-            if schema.type == .array, let items = schema.items {
-                prop["items"] = [
-                    "type": items.value.type.rawValue
-                ]
-            }
-            
-            // Handle nested properties for objects
-            if schema.type == .object, let nestedProps = schema.properties {
-                var nestedProperties: [String: Any] = [:]
-                for (nestedKey, nestedSchema) in nestedProps {
-                    nestedProperties[nestedKey] = [
-                        "type": nestedSchema.type.rawValue,
-                        "description": nestedSchema.description ?? ""
-                    ]
-                }
-                prop["properties"] = nestedProperties
-            }
-            
-            properties[key] = prop
+            properties[key] = convertParameterSchema(schema)
         }
         
         return OpenAITool.Parameters(
             type: params.type,
             properties: properties,
-            required: params.required
+            required: params.required,
+            additionalProperties: params.additionalProperties ? true : nil
+        )
+    }
+    
+    private func convertParameterSchema(_ schema: ParameterSchema) -> PropertySchema {
+        var items: PropertySchema? = nil
+        if let schemaItems = schema.items {
+            items = convertParameterSchema(schemaItems.value)
+        }
+        
+        var properties: [String: PropertySchema]? = nil
+        if let schemaProperties = schema.properties {
+            properties = schemaProperties.mapValues { convertParameterSchema($0) }
+        }
+        
+        return PropertySchema(
+            type: schema.type.rawValue,
+            description: schema.description,
+            enum: schema.enumValues,
+            items: items,
+            properties: properties,
+            minimum: schema.minimum,
+            maximum: schema.maximum,
+            pattern: schema.pattern
         )
     }
     
@@ -882,5 +849,24 @@ private class PartialToolCall {
         return FunctionCall(name: name, arguments: arguments)
     }
 }
+    
+    /// Extract reasoning summary from additionalParameters
+    private func extractReasoningSummary(from params: [String: AnyCodable]?) -> String? {
+        guard let params = params,
+              let reasoning = params["reasoning"]?.value else {
+            return nil
+        }
+        
+        // Handle different formats of reasoning parameter
+        if let reasoningDict = reasoning as? [String: Any],
+           let summary = reasoningDict["summary"] as? String {
+            return summary
+        } else if let reasoningDict = reasoning as? [String: AnyCodable],
+                  let summary = reasoningDict["summary"]?.value as? String {
+            return summary
+        }
+        
+        return nil
+    }
 
 } // End of OpenAIModel class

@@ -120,68 +120,114 @@ public struct OpenAITool: Codable, Sendable {
     
     public struct Parameters: Codable, Sendable {
         public let type: String
-        // Using a JSON-serializable dictionary instead of [String: Any]
-        public let propertiesJSON: String
+        public let properties: [String: PropertySchema]
         public let required: [String]
+        public let additionalProperties: Bool?
         
-        public var properties: [String: Any] {
-            guard let data = propertiesJSON.data(using: .utf8),
-                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                return [:]
-            }
-            return dict
-        }
-        
-        public init(type: String = "object", properties: [String: Any] = [:], required: [String] = []) {
+        public init(type: String = "object", properties: [String: PropertySchema] = [:], required: [String] = [], additionalProperties: Bool? = nil) {
             self.type = type
-            // Convert properties to JSON string for Sendable conformance
-            do {
-                let data = try JSONSerialization.data(withJSONObject: properties, options: [])
-                if let json = String(data: data, encoding: .utf8) {
-                    self.propertiesJSON = json
-                } else {
-                    aiDebugPrint("DEBUG: Failed to create JSON string from data")
-                    self.propertiesJSON = "{}"
-                }
-            } catch {
-                aiDebugPrint("DEBUG: JSONSerialization failed in Parameters.init: \(error)")
-                aiDebugPrint("DEBUG: Properties: \(properties)")
-                self.propertiesJSON = "{}"
-            }
+            self.properties = properties
             self.required = required
+            self.additionalProperties = additionalProperties
         }
+    }
+}
+
+/// Property schema for OpenAI tool parameters
+public struct PropertySchema: Codable, Sendable {
+    public let type: String
+    public let description: String?
+    public let `enum`: [String]?
+    public let items: Box<PropertySchema>?
+    public let properties: [String: PropertySchema]?
+    public let minimum: Double?
+    public let maximum: Double?
+    public let pattern: String?
+    
+    public init(
+        type: String,
+        description: String? = nil,
+        enum enumValues: [String]? = nil,
+        items: PropertySchema? = nil,
+        properties: [String: PropertySchema]? = nil,
+        minimum: Double? = nil,
+        maximum: Double? = nil,
+        pattern: String? = nil
+    ) {
+        self.type = type
+        self.description = description
+        self.enum = enumValues
+        self.items = items.map(Box.init)
+        self.properties = properties
+        self.minimum = minimum
+        self.maximum = maximum
+        self.pattern = pattern
+    }
+}
+
+// MARK: - Streaming Response Types
+
+/// Base structure for OpenAI streaming chunks
+public struct OpenAIStreamChunk: Decodable {
+    public let type: String
+    public let delta: String?
+    public let outputIndex: Int?
+    public let response: ResponseData?
+    public let item: ItemData?
+    public let itemId: String?
+    public let text: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case type, delta
+        case outputIndex = "output_index"
+        case response, item
+        case itemId = "item_id"
+        case text
+    }
+    
+    public struct ResponseData: Decodable {
+        public let id: String?
+        public let model: String?
+        public let output: [OutputData]?
+        public let usage: UsageData?
+    }
+    
+    public struct OutputData: Decodable {
+        public let type: String?
+        public let index: Int?
+        public let item: ItemData?
+    }
+    
+    public struct ItemData: Decodable {
+        public let id: String?
+        public let type: String?
+        public let name: String?
+        public let arguments: String?
+        public let output: String?
         
-        // Custom encoding/decoding for the properties dictionary
-        public func encode(to encoder: Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(type, forKey: .type)
-            try container.encode(required, forKey: .required)
-            
-            // Encode properties as a JSON object
-            if let data = propertiesJSON.data(using: .utf8),
-               let jsonObject = try? JSONSerialization.jsonObject(with: data) {
-                try container.encode(AnyEncodable(jsonObject), forKey: .properties)
-            }
+        // For tool calls
+        public let functionCall: FunctionCallData?
+        
+        enum CodingKeys: String, CodingKey {
+            case id, type, name, arguments, output
+            case functionCall = "function_call"
         }
+    }
+    
+    public struct FunctionCallData: Decodable {
+        public let name: String?
+        public let arguments: String?
+    }
+    
+    public struct UsageData: Decodable {
+        public let inputTokens: Int?
+        public let outputTokens: Int?
+        public let totalTokens: Int?
         
-        public init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            self.type = try container.decode(String.self, forKey: .type)
-            self.required = try container.decode([String].self, forKey: .required)
-            
-            // Decode properties as Any
-            if let anyProperties = try? container.decode(AnyDecodable.self, forKey: .properties),
-               let dict = anyProperties.value as? [String: Any],
-               let data = try? JSONSerialization.data(withJSONObject: dict),
-               let json = String(data: data, encoding: .utf8) {
-                self.propertiesJSON = json
-            } else {
-                self.propertiesJSON = "{}"
-            }
-        }
-        
-        private enum CodingKeys: String, CodingKey {
-            case type, properties, required
+        enum CodingKeys: String, CodingKey {
+            case inputTokens = "input_tokens"
+            case outputTokens = "output_tokens"
+            case totalTokens = "total_tokens"
         }
     }
 }

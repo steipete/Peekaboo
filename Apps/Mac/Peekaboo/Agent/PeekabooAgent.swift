@@ -134,6 +134,17 @@ public final class PeekabooAgent {
                     throw AgentError.invalidConfiguration("Agent service not properly initialized")
                 }
                 
+                // Create or get session BEFORE task execution
+                if sessionStore.currentSession == nil {
+                    _ = sessionStore.createSession(title: task, modelName: settings.selectedModel)
+                }
+                
+                // Add user message at the very beginning
+                if let currentSession = sessionStore.currentSession {
+                    let userMessage = SessionMessage(role: .user, content: task)
+                    sessionStore.addMessage(userMessage, to: currentSession)
+                }
+                
                 // Create event delegate for real-time updates
                 let eventDelegate = AgentEventDelegateWrapper { [weak self] event in
                     guard let self = self else { return }
@@ -156,11 +167,8 @@ public final class PeekabooAgent {
                 // Update session ID for continuity
                 currentSessionId = result.sessionId
                 
-                // Create or update session in store
-                if sessionStore.currentSession == nil {
-                    _ = sessionStore.createSession(title: task, modelName: settings.selectedModel)
-                } else if sessionStore.currentSession?.modelName.isEmpty == true {
-                    // Update model name if not set
+                // Update model name if not set
+                if sessionStore.currentSession?.modelName.isEmpty == true {
                     if let currentSession = sessionStore.currentSession,
                        let index = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }) {
                         sessionStore.sessions[index].modelName = settings.selectedModel
@@ -168,12 +176,8 @@ public final class PeekabooAgent {
                     }
                 }
                 
-                // Add messages to current session
+                // Add assistant response to current session
                 if let currentSession = sessionStore.currentSession {
-                    // Add user message
-                    let userMessage = SessionMessage(role: .user, content: task)
-                    sessionStore.addMessage(userMessage, to: currentSession)
-                    
                     // Add assistant message WITHOUT tool calls (they're tracked separately)
                     let assistantMessage = SessionMessage(
                         role: .assistant, 
@@ -506,55 +510,153 @@ public final class PeekabooAgent {
         case "see":
             var parts: [String] = []
             if let mode = args["mode"] as? String {
-                parts.append(mode == "window" ? "active window" : mode)
+                switch mode {
+                case "window":
+                    parts.append("Taking screenshot of active window")
+                case "screen":
+                    parts.append("Taking screenshot of entire screen")
+                case "app":
+                    if let app = args["app"] as? String {
+                        parts.append("Taking screenshot of \(app) application")
+                    }
+                default:
+                    parts.append("Taking screenshot in \(mode) mode")
+                }
             } else if let app = args["app"] as? String {
-                parts.append(app)
+                parts.append("Taking screenshot of \(app)")
             } else {
-                parts.append("screen")
+                parts.append("Taking screenshot of screen")
             }
-            if args["analyze"] != nil {
-                parts.append("and analyze")
+            
+            if let analyze = args["analyze"] as? String {
+                parts.append("and analyzing: \(analyze)")
+            } else if args["analyze"] != nil {
+                parts.append("and analyzing the content")
             }
+            
             return parts.joined(separator: " ")
             
         case "click":
             if let x = args["x"], let y = args["y"] {
-                return "at (\(x), \(y))"
+                if let text = args["text"] as? String {
+                    return "Clicking on \"\(text)\" at coordinates (\(x), \(y))"
+                } else {
+                    return "Clicking at coordinates (\(x), \(y))"
+                }
             } else if let text = args["text"] as? String {
-                return "on \"\(text)\""
+                return "Clicking on element with text \"\(text)\""
             }
-            return ""
+            return "Performing click action"
             
         case "type":
             if let text = args["text"] as? String {
-                let preview = text.count > 20 ? String(text.prefix(20)) + "..." : text
-                return "\"\(preview)\""
+                let preview = text.count > 50 ? String(text.prefix(50)) + "..." : text
+                return "Typing text: \"\(preview)\""
             }
-            return ""
+            return "Typing text"
             
         case "focus_window":
             if let title = args["window_title"] as? String {
-                return "\"\(title)\""
+                return "Focusing window titled \"\(title)\""
             } else if let app = args["app_name"] as? String {
-                return app
+                return "Focusing \(app) application window"
             }
-            return ""
+            return "Focusing window"
             
         case "menu_click":
             if let menuPath = args["menuPath"] as? [String] {
-                return menuPath.joined(separator: " → ")
+                return "Clicking menu: \(menuPath.joined(separator: " → "))"
             }
-            return ""
+            return "Clicking menu item"
             
         case "shell":
             if let command = args["command"] as? String {
-                let preview = command.count > 30 ? String(command.prefix(30)) + "..." : command
-                return preview
+                let preview = command.count > 60 ? String(command.prefix(60)) + "..." : command
+                return "Running shell command: \(preview)"
             }
-            return ""
+            return "Running shell command"
+            
+        case "list_apps":
+            return "Listing all running applications"
+            
+        case "list_windows":
+            if let app = args["app_name"] as? String {
+                return "Listing windows for \(app)"
+            }
+            return "Listing all windows"
+            
+        case "launch_app":
+            if let app = args["app_name"] as? String {
+                return "Launching \(app) application"
+            }
+            return "Launching application"
+            
+        case "wait":
+            if let seconds = args["seconds"] as? Double {
+                return "Waiting for \(seconds) seconds"
+            }
+            return "Waiting"
+            
+        case "scroll":
+            var desc = "Scrolling"
+            if let direction = args["direction"] as? String {
+                desc += " \(direction)"
+            }
+            if let amount = args["amount"] as? Int {
+                desc += " by \(amount) units"
+            }
+            return desc
+            
+        case "find_element":
+            if let text = args["text"] as? String {
+                return "Finding element with text \"\(text)\""
+            }
+            return "Finding element"
+            
+        case "dialog_input":
+            if let label = args["label"] as? String, let text = args["text"] as? String {
+                let preview = text.count > 30 ? String(text.prefix(30)) + "..." : text
+                return "Entering \"\(preview)\" in field labeled \"\(label)\""
+            }
+            return "Entering text in dialog"
+            
+        case "dialog_click":
+            if let button = args["button"] as? String {
+                return "Clicking \"\(button)\" button in dialog"
+            }
+            return "Clicking dialog button"
+            
+        case "hotkey":
+            if let modifiers = args["modifiers"] as? [String], let key = args["key"] as? String {
+                let combo = (modifiers + [key]).joined(separator: "+")
+                return "Pressing hotkey: \(combo)"
+            }
+            return "Pressing hotkey"
+            
+        case "analyze_screenshot":
+            if let prompt = args["prompt"] as? String {
+                let preview = prompt.count > 50 ? String(prompt.prefix(50)) + "..." : prompt
+                return "Analyzing screenshot: \"\(preview)\""
+            }
+            return "Analyzing screenshot"
             
         default:
-            return ""
+            // For unknown tools, try to extract some meaningful info
+            var details: [String] = []
+            for (key, value) in args {
+                if let str = value as? String, !str.isEmpty {
+                    let preview = str.count > 30 ? String(str.prefix(30)) + "..." : str
+                    details.append("\(key): \(preview)")
+                } else if let num = value as? NSNumber {
+                    details.append("\(key): \(num)")
+                }
+                if details.count >= 2 { break } // Limit to 2 parameters
+            }
+            
+            if !details.isEmpty {
+                return details.joined(separator: ", ")
+            }
+            return "Executing \(toolName)"
         }
     }
 }
