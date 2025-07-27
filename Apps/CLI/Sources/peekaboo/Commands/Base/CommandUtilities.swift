@@ -186,7 +186,7 @@ func requireAccessibilityPermission() throws {
 /// Execute an async operation with a timeout
 func withTimeout<T: Sendable>(
     seconds: TimeInterval,
-    operation: @escaping () async throws -> T
+    operation: @escaping @Sendable () async throws -> T
 ) async throws -> T {
     let task = Task {
         try await operation()

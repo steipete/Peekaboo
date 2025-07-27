@@ -2,6 +2,15 @@ import ArgumentParser
 import Foundation
 import PeekabooCore
 
+// Temporary session info struct until PeekabooAgentService implements session management
+struct AgentSessionInfo: Codable {
+    let id: String
+    let task: String
+    let created: Date
+    let lastModified: Date
+    let messageCount: Int
+}
+
 // Simple debug logging check
 fileprivate var isDebugLoggingEnabled: Bool {
     // Check if verbose mode is enabled via log level
@@ -282,7 +291,8 @@ struct AgentCommand: AsyncParsableCommand {
             guard let peekabooAgent = agentService as? PeekabooAgentService else {
                 throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
             }
-            let sessions = try await peekabooAgent.listSessions()
+            // TODO: Implement session listing when PeekabooAgentService supports it
+        let sessions: [AgentSessionInfo] = []
             
             if let mostRecent = sessions.first {
                 try await resumeSession(agentService, sessionId: mostRecent.id, task: continuationTask)
@@ -571,7 +581,8 @@ struct AgentCommand: AsyncParsableCommand {
         guard let peekabooAgent = agentService as? PeekabooAgentService else {
             throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
         }
-        let sessions = try await peekabooAgent.listSessions()
+        // TODO: Implement session listing when PeekabooAgentService supports it
+        let sessions: [AgentSessionInfo] = []
         
         if sessions.isEmpty {
             if jsonOutput {
@@ -588,8 +599,8 @@ struct AgentCommand: AsyncParsableCommand {
             let sessionData = sessions.map { session in
                 [
                     "id": session.id,
-                    "createdAt": ISO8601DateFormatter().string(from: session.createdAt),
-                    "updatedAt": ISO8601DateFormatter().string(from: session.updatedAt),
+                    "createdAt": ISO8601DateFormatter().string(from: session.created),
+                    "updatedAt": ISO8601DateFormatter().string(from: session.lastModified),
                     "messageCount": session.messageCount
                 ]
             }
@@ -604,7 +615,7 @@ struct AgentCommand: AsyncParsableCommand {
             dateFormatter.timeStyle = .short
             
             for (index, session) in sessions.prefix(10).enumerated() {
-                let timeAgo = formatTimeAgo(session.updatedAt)
+                let timeAgo = formatTimeAgo(session.lastModified)
                 print("\(TerminalColor.blue)\(index + 1).\(TerminalColor.reset) \(TerminalColor.bold)\(session.id.prefix(8))\(TerminalColor.reset)")
                 print("   Messages: \(session.messageCount)")
                 print("   Last activity: \(timeAgo)")
