@@ -432,8 +432,17 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                         // App not found
                         let similarApps = try? await findSimilarApps(appName!)
                         context["available"] = similarApps ?? []
-                        context["suggestions"] = ["Application '\(appName!)' not found"]
-                        context["fix"] = "Check the app name or use 'list_apps' to see running applications"
+                        
+                        // Check if the app is running but has no windows
+                        let runningApps = try? await services.applications.listApplications()
+                        if let running = runningApps, running.contains(where: { $0.name.lowercased() == appName!.lowercased() }) {
+                            context["suggestions"] = ["Application '\(appName!)' is running but has no open windows."]
+                            context["fix"] = "Use menu_click 'File > New' or 'File > Open...' to create a window."
+                            context["alternative"] = "The app might be showing a start screen - try see 'screen' to check."
+                        } else {
+                            context["suggestions"] = ["Application '\(appName!)' not found"]
+                            context["fix"] = "Check the app name or use 'list_apps' to see running applications"
+                        }
                         
                         errorResponse["errorDetails"] = [
                             "category": "notFound",
@@ -995,6 +1004,29 @@ public final class PeekabooAgentService: AgentServiceProtocol {
            - Use `find` instead of `ls | grep` for more reliable file searching
            - Use `2>/dev/null` to suppress permission errors when searching directories
         
+        ## Window Management Strategy
+        
+        When an app is running but has no windows:
+        1. FIRST: Use menu_click 'File > New' or 'File > Open...'
+        2. THEN: Check if app has splash/welcome screen with see 'screen'
+        3. DON'T: Retry the same failing approach more than twice
+        
+        ## File Opening Workflow
+        
+        Never rely on auto-open. Always use explicit steps:
+        1. Launch app
+        2. Use menu_click 'File > Open...'
+        3. In dialog: Use ⌘⇧G hotkey for path navigation
+        4. Fallback: Extract/convert files directly without GUI
+        
+        ## Dialog Interaction
+        
+        After triggering menus that should open dialogs:
+        1. Use see 'screen' to verify dialog appeared
+        2. Try click on filename field before dialog_input
+        3. Use keyboard navigation (Tab, arrows) if needed
+        4. Alternative: Finder > right-click > Open With
+        
         ## Critical Guidelines
         
         1. **Be Resilient**: If a tool fails, try alternative approaches. Don't give up at the first error.
@@ -1031,6 +1063,15 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         4. Proceed with main task
         
         The `see` tool is your primary way to understand what's on screen. It combines screenshot capture with UI element detection, giving you a complete picture of the current state.
+        
+        ## Important Browser Limitation
+        
+        **UI element detection does NOT work for browser content**. When working with web browsers (Safari, Chrome, Firefox, etc.):
+        - The `see` tool will capture screenshots but element detection will be limited to browser UI (toolbar, tabs, buttons)
+        - Web page content (links, text, forms, etc.) will NOT be detected as individual elements
+        - You must rely on visual analysis of the screenshot to understand web content
+        - For web interactions, use click with coordinates based on visual inspection
+        - Consider using keyboard shortcuts (Tab, Enter, etc.) for navigation when possible
         
         ## Creative Problem Solving
         
@@ -1537,7 +1578,8 @@ extension PeekabooAgentService {
                             // App running but no windows
                             context["currentState"] = "App is running but has no windows"
                             context["suggestions"] = ["The app is running but has no open windows"]
-                            context["fix"] = "Create a new window in the app or check if windows are minimized"
+                            context["fix"] = "Use menu_click 'File > New' or 'File > Open...' to create a window"
+                            context["alternative"] = "The app might be showing a start screen - try see 'screen' to check"
                         } else {
                             // Windows exist, show them
                             let windowTitles = state.windows.prefix(3).map { window in
@@ -1656,18 +1698,24 @@ extension PeekabooAgentService {
     private func createListAppsTool() -> Tool<PeekabooServices> {
         Tool(
             name: "list_apps",
-            description: "List all running applications",
+            description: "List all running applications with window count information",
             parameters: .object(properties: [:], required: []),
             execute: { _, services in
                 let apps = try await services.applications.listApplications()
                 
-                let appData = apps.map { app in
-                    [
+                var appData: [[String: Any]] = []
+                for app in apps {
+                    // Get window count for each app
+                    let windowCount = try? await services.windows.listWindows(target: .application(app.name)).count
+                    
+                    appData.append([
                         "name": app.name,
                         "bundleId": app.bundleIdentifier ?? "",
                         "processId": app.processIdentifier,
-                        "isActive": app.isActive
-                    ]
+                        "isActive": app.isActive,
+                        "windowCount": windowCount ?? 0,
+                        "hasWindows": (windowCount ?? 0) > 0
+                    ])
                 }
                 
                 return .dictionary([
@@ -1808,11 +1856,11 @@ extension PeekabooAgentService {
     private func createShellTool() -> Tool<PeekabooServices> {
         Tool(
             name: "shell",
-            description: "Execute shell commands for file operations, AppleScript automation, and system tasks",
+            description: "Execute shell commands for file operations, AppleScript automation, and system tasks. QUOTE HANDLING: Use double quotes for outer command if nesting quotes: \"open -a 'Numbers' 'file.ods'\" NOT 'open -a 'Numbers' 'file.ods''. For paths with spaces: \"cd \\\"/path with spaces\\\"\" or use variables: 'cd \"$HOME/My Documents\"'",
             parameters: .object(
                 properties: [
                     "command": .string(
-                        description: "Shell command to execute (e.g., 'ls ~/Downloads/*.ods', 'osascript -e \"tell application \\\"Finder\\\" to activate\"')"
+                        description: "Shell command to execute. Examples: 'ls ~/Downloads/*.ods', \"open -a 'Numbers' 'file.ods'\", 'echo \"Hello World\"'"
                     ),
                     "workingDirectory": .string(
                         description: "Optional working directory for the command (defaults to home directory)"
@@ -2073,6 +2121,7 @@ extension PeekabooAgentService {
                         }
                         
                         context["fix"] = "Use 'list_menus' to see all available menu items"
+                        context["dialogNote"] = "If expecting a dialog after menu click, use 'see' tool to check if it appeared"
                         
                         errorResponse["errorDetails"] = [
                             "category": "notFound",
@@ -2291,7 +2340,7 @@ extension PeekabooAgentService {
     private func createDialogInputTool() -> Tool<PeekabooServices> {
         Tool(
             name: "dialog_input",
-            description: "Enter text in a dialog field",
+            description: "Enter text in the active dialog window. Common issues: File dialogs may need click in filename field first. No dialog found = menu might not have opened a dialog or it opened behind another window. Alternative: Use hotkey ⌘⇧G to 'Go to folder' in file dialogs",
             parameters: .object(
                 properties: [
                     "text": .string(
@@ -2329,10 +2378,35 @@ extension PeekabooAgentService {
                         "details": result.details
                     ])
                 } catch {
-                    return .dictionary([
+                    var errorResponse: [String: Any] = [
                         "success": false,
                         "error": error.localizedDescription
-                    ])
+                    ]
+                    
+                    // Enhanced error context for dialog operations
+                    if error.localizedDescription.lowercased().contains("no dialog") ||
+                       error.localizedDescription.lowercased().contains("not found") {
+                        let context: [String: Any] = [
+                            "suggestions": [
+                                "No active dialog window found",
+                                "Menu click might not have opened a dialog",
+                                "Dialog may have opened behind another window"
+                            ],
+                            "fix": "Use 'see' tool to verify dialog appeared after menu click",
+                            "alternatives": [
+                                "For file dialogs: Try hotkey ⌘⇧G for 'Go to folder'",
+                                "Click in the filename field first",
+                                "Use 'list_elements' to find dialog elements"
+                            ]
+                        ]
+                        
+                        errorResponse["errorDetails"] = [
+                            "category": "notFound",
+                            "context": context
+                        ]
+                    }
+                    
+                    return .dictionary(errorResponse)
                 }
             }
         )
