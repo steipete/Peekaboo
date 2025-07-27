@@ -81,6 +81,11 @@ private func checkFileModificationStaleness() {
         return // Could not parse build date, skip check
     }
     
+    // Get git repository root
+    guard let gitRoot = getGitRepositoryRoot() else {
+        return // Could not determine git root, skip check
+    }
+    
     // Get list of modified files from git status
     let gitStatusProcess = Process()
     gitStatusProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -106,7 +111,7 @@ private func checkFileModificationStaleness() {
         
         // Check each modified file's modification time
         for filePath in modifiedFiles {
-            if isFileNewerThanBuild(filePath: filePath, buildDate: buildDate) {
+            if isFileNewerThanBuild(filePath: filePath, buildDate: buildDate, gitRoot: gitRoot) {
                 logError("❌ CLI binary is outdated and needs to be rebuilt!")
                 logError("   Build time:     \(Version.buildDate)")
                 logError("   Modified file:  \(filePath)")
@@ -121,7 +126,7 @@ private func checkFileModificationStaleness() {
 }
 
 /// Parse git status --porcelain=1 output to extract file paths
-/// Format: "XY filename" where X and Y are status codes
+/// Format: "XY filename" or "XY orig_path -> new_path" for renames
 private func parseGitStatusOutput(_ output: String) -> [String] {
     let lines = output.components(separatedBy: .newlines)
     var filePaths: [String] = []
@@ -130,7 +135,7 @@ private func parseGitStatusOutput(_ output: String) -> [String] {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { continue }
         
-        // Git status format: "XY filename"
+        // Git status format: "XY filename" or "XY orig_path -> new_path"
         // X = staged status, Y = working tree status
         guard trimmed.count >= 3 else { continue }
         
@@ -145,6 +150,15 @@ private func parseGitStatusOutput(_ output: String) -> [String] {
         // Include files that are modified (M), added (A), or have other changes
         // Skip deleted files (D) since they can't be newer than build
         if statusCodes.contains("M") || statusCodes.contains("A") || statusCodes.contains("R") || statusCodes.contains("C") || statusCodes.contains("U") {
+            // Handle renamed files: "orig_path -> new_path"
+            // For renames, we want to check the new path
+            if filePath.contains(" -> ") {
+                let components = filePath.components(separatedBy: " -> ")
+                if components.count == 2 {
+                    filePath = components[1] // Use the new path
+                }
+            }
+            
             // Handle quoted paths (git quotes paths with special characters)
             let cleanPath = filePath.hasPrefix("\"") && filePath.hasSuffix("\"") 
                 ? String(filePath.dropFirst().dropLast()) 
@@ -156,11 +170,41 @@ private func parseGitStatusOutput(_ output: String) -> [String] {
     return filePaths
 }
 
+/// Get the git repository root directory
+private func getGitRepositoryRoot() -> String? {
+    let gitProcess = Process()
+    gitProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+    gitProcess.arguments = ["rev-parse", "--show-toplevel"]
+    
+    let pipe = Pipe()
+    gitProcess.standardOutput = pipe
+    gitProcess.standardError = Pipe() // Silence stderr
+    
+    do {
+        try gitProcess.run()
+        gitProcess.waitUntilExit()
+        
+        guard gitProcess.terminationStatus == 0 else {
+            return nil
+        }
+        
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Check if output is empty after trimming
+        guard let output = output, !output.isEmpty else {
+            return nil
+        }
+        return output
+    } catch {
+        return nil
+    }
+}
+
 /// Check if a file's modification time is newer than the build date
-private func isFileNewerThanBuild(filePath: String, buildDate: Date) -> Bool {
+private func isFileNewerThanBuild(filePath: String, buildDate: Date, gitRoot: String) -> Bool {
     let fileManager = FileManager.default
-    let currentDirectory = fileManager.currentDirectoryPath
-    let fullPath = (filePath.hasPrefix("/")) ? filePath : "\(currentDirectory)/\(filePath)"
+    // Git status paths are relative to repository root, not current directory
+    let fullPath = (filePath.hasPrefix("/")) ? filePath : "\(gitRoot)/\(filePath)"
     
     do {
         let attributes = try fileManager.attributesOfItem(atPath: fullPath)
