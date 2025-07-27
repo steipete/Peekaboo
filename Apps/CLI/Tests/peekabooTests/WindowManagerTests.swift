@@ -1,6 +1,5 @@
 import AppKit
 import Testing
-import PeekabooCore
 @testable import peekaboo
 
 @Suite("WindowManager Tests", .serialized, .tags(.windowManager, .unit))

@@ -1,7 +1,6 @@
 import AppKit
 import AXorcist
 import Testing
-import PeekabooCore
 @testable import peekaboo
 
 @Suite("Wait For Element Tests", .serialized)

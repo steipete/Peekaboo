@@ -1,7 +1,6 @@
 import Testing
 import Foundation
 import ArgumentParser
-import PeekabooCore
 @testable import peekaboo
 
 /// Tests for CleanCommand

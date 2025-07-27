@@ -1,7 +1,6 @@
 import Testing
 import ArgumentParser
 import Foundation
-import PeekabooCore
 @testable import peekaboo
 
 @Suite("ConfigCommand Tests")

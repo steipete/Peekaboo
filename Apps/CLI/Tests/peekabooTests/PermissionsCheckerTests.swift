@@ -1,6 +1,5 @@
 import AppKit
 import Testing
-import PeekabooCore
 @testable import peekaboo
 
 @Suite("PermissionsChecker Tests", .tags(.permissions, .unit))

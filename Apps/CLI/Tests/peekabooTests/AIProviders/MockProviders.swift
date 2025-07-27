@@ -1,5 +1,4 @@
 import Foundation
-import PeekabooCore
 @testable import peekaboo
 
 // NOTE: These mock providers are temporarily disabled as they reference old AI provider architecture

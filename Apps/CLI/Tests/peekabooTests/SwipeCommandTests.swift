@@ -1,7 +1,6 @@
 import CoreGraphics
 import Foundation
 import Testing
-import PeekabooCore
 @testable import peekaboo
 
 @Suite("SwipeCommand Tests", .serialized)

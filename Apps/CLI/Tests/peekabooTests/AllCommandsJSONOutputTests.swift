@@ -1,6 +1,5 @@
 import Foundation
 import Testing
-import PeekabooCore
 @testable import peekaboo
 
 @Suite("All Commands JSON Output Support", .serialized, .tags(.integration))

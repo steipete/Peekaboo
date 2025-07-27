@@ -1,6 +1,5 @@
 import Foundation
 import Testing
-import PeekabooCore
 @testable import peekaboo
 
 @Suite("Agent Executor Simple Tests")

@@ -4,7 +4,6 @@
 /*
 import AppKit
 import Testing
-import PeekabooCore
 @testable import peekaboo
 
 @Suite("ApplicationFinder Tests", .tags(.applicationFinder, .unit))
