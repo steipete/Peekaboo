@@ -220,8 +220,15 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             let (deltaX, deltaY) = getScrollDeltas(for: direction)
             
             // Determine tick count and size
-            let tickCount = smooth ? amount * 3 : amount
-            let tickSize = smooth ? 1 : 3
+            // For large amounts, use fewer but larger ticks to reduce total time
+            let (tickCount, tickSize): (Int, Int) = if smooth {
+                (amount * 3, 1)
+            } else if amount > 10 {
+                // For large scroll amounts, use bigger chunks
+                (min(amount / 2, 20), 6)
+            } else {
+                (amount, 3)
+            }
             
             for _ in 0..<tickCount {
                 // Create scroll event using the same API as original
@@ -241,8 +248,8 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                     scrollEvent?.post(tap: .cghidEventTap)
                 }
                 
-                // Delay between ticks
-                if delay > 0 {
+                // Delay between ticks (skip delay for last tick)
+                if delay > 0 && i < tickCount - 1 {
                     try await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000)
                 }
             }
