@@ -1,4 +1,44 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+
+// Use vi.hoisted to ensure mock functions are available when vi.mock runs
+const { mockList, mockCreate } = vi.hoisted(() => {
+  return {
+    mockList: vi.fn(),
+    mockCreate: vi.fn(),
+  };
+});
+
+// Mock OpenAI BEFORE importing modules that use it
+vi.mock("openai", () => {
+  const OpenAIMock = vi.fn();
+  OpenAIMock.prototype.models = {
+    list: vi.fn(),
+  };
+  OpenAIMock.prototype.chat = {
+    completions: {
+      create: vi.fn(),
+    },
+  };
+  
+  // Make the constructor return an instance with our mocked methods
+  OpenAIMock.mockImplementation(function(config) {
+    this.models = {
+      list: mockList,
+    };
+    this.chat = {
+      completions: {
+        create: mockCreate,
+      },
+    };
+    return this;
+  });
+  
+  return {
+    default: OpenAIMock,
+  };
+});
+
+// Import AFTER mocking
 import {
   parseAIProviders,
   isProviderAvailable,
@@ -17,30 +57,11 @@ const mockLogger = {
 
 global.fetch = vi.fn();
 
-// Mock OpenAI
-vi.mock("openai", () => {
-  const mockList = vi.fn();
-  const mockCreate = vi.fn();
-  
-  return {
-    default: vi.fn().mockImplementation((config) => ({
-      models: {
-        list: mockList,
-      },
-      chat: {
-        completions: {
-          create: mockCreate,
-        },
-      },
-    })),
-    __mockList: mockList,
-    __mockCreate: mockCreate,
-  };
-});
-
 describe("AI Providers Utility", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockList.mockReset();
+    mockCreate.mockReset();
     delete process.env.PEEKABOO_OLLAMA_BASE_URL;
     delete process.env.OPENAI_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
@@ -163,8 +184,7 @@ describe("AI Providers Utility", () => {
     it("should return true for available OpenAI (API key set)", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { __mockList } = await import("openai") as any;
-      __mockList.mockResolvedValue({
+      mockList.mockResolvedValue({
         data: [
           { id: "gpt-4o" },
           { id: "gpt-3.5-turbo" },
@@ -297,8 +317,7 @@ describe("AI Providers Utility", () => {
     it("should call analyzeWithOpenAI for openai provider", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { __mockCreate } = await import("openai") as any;
-      __mockCreate.mockResolvedValue({
+      mockCreate.mockResolvedValue({
         choices: [{ message: { content: "OpenAI says hello" } }],
       });
 
@@ -310,7 +329,7 @@ describe("AI Providers Utility", () => {
         mockLogger,
       );
       expect(result).toBe("OpenAI says hello");
-      expect(__mockCreate).toHaveBeenCalledWith(
+      expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           model: "gpt-4o",
           messages: expect.arrayContaining([
@@ -344,8 +363,7 @@ describe("AI Providers Utility", () => {
     it("should return default message if OpenAI provides no response content", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { __mockCreate } = await import("openai") as any;
-      __mockCreate.mockResolvedValue({
+      mockCreate.mockResolvedValue({
         choices: [{ message: { content: null } }],
       });
 
@@ -395,8 +413,7 @@ describe("AI Providers Utility", () => {
     it("should use default prompt for whitespace-only question with OpenAI", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { __mockCreate } = await import("openai") as any;
-      __mockCreate.mockResolvedValue({
+      mockCreate.mockResolvedValue({
         choices: [{ message: { content: "This image displays a user interface." } }],
       });
 
@@ -408,7 +425,7 @@ describe("AI Providers Utility", () => {
         mockLogger,
       );
       expect(result).toBe("This image displays a user interface.");
-      expect(__mockCreate).toHaveBeenCalledWith(
+      expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: expect.arrayContaining([
             expect.objectContaining({
@@ -470,8 +487,7 @@ describe("AI Providers Utility", () => {
     it("should select a specifically requested and available provider", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { __mockList } = await import("openai") as any;
-      __mockList.mockResolvedValue({
+      mockList.mockResolvedValue({
         data: [{ id: "gpt-4o-mini" }],
       });
 
@@ -487,8 +503,7 @@ describe("AI Providers Utility", () => {
     it("should use a requested model over the configured default", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { __mockList } = await import("openai") as any;
-      __mockList.mockResolvedValue({
+      mockList.mockResolvedValue({
         data: [{ id: "gpt-4-turbo" }],
       });
 
@@ -540,8 +555,7 @@ describe("AI Providers Utility", () => {
       
       // Mock OpenAI as also available
       process.env.OPENAI_API_KEY = "test-key";
-      const { __mockList } = await import("openai") as any;
-      __mockList.mockResolvedValue({
+      mockList.mockResolvedValue({
         data: [{ id: "gpt-4o-mini" }],
       });
 
@@ -565,8 +579,7 @@ describe("AI Providers Utility", () => {
       
       // Mock OpenAI as available
       process.env.OPENAI_API_KEY = "test-key";
-      const { __mockList } = await import("openai") as any;
-      __mockList.mockResolvedValue({
+      mockList.mockResolvedValue({
         data: [{ id: "gpt-4o-mini" }],
       });
 
