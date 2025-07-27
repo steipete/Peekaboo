@@ -56,9 +56,12 @@ function unwrapZodSchema(field: z.ZodTypeAny): {
   let hasDefault = false;
   let defaultValue: unknown;
 
+  // Get typeName for reliable type checking
+  const typeName = zodField._def?.typeName;
+
   // Handle wrapper types
-  if (field instanceof z.ZodOptional) {
-    const inner = unwrapZodSchema(field._def.innerType);
+  if (typeName === "ZodOptional") {
+    const inner = unwrapZodSchema((field as any)._def.innerType);
     return {
       coreSchema: inner.coreSchema,
       description: description || inner.description,
@@ -67,10 +70,10 @@ function unwrapZodSchema(field: z.ZodTypeAny): {
     };
   }
 
-  if (field instanceof z.ZodDefault) {
+  if (typeName === "ZodDefault") {
     hasDefault = true;
-    defaultValue = field._def.defaultValue();
-    const inner = unwrapZodSchema(field._def.innerType);
+    defaultValue = (field as any)._def.defaultValue();
+    const inner = unwrapZodSchema((field as any)._def.innerType);
     return {
       coreSchema: inner.coreSchema,
       description: description || inner.description,
@@ -79,8 +82,8 @@ function unwrapZodSchema(field: z.ZodTypeAny): {
     };
   }
 
-  if (field instanceof z.ZodEffects) {
-    const inner = unwrapZodSchema(field._def.schema);
+  if (typeName === "ZodEffects") {
+    const inner = unwrapZodSchema((field as any)._def.schema);
     return {
       coreSchema: inner.coreSchema,
       description: description || inner.description,
@@ -99,10 +102,13 @@ function unwrapZodSchema(field: z.ZodTypeAny): {
  */
 export function zodToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
   const { coreSchema, description: rootDescription, hasDefault, defaultValue } = unwrapZodSchema(schema);
+  
+  // Get the type name for reliable type checking
+  const typeName = (coreSchema as any)._def?.typeName;
 
   // Handle ZodObject
-  if (coreSchema instanceof z.ZodObject) {
-    const shape = coreSchema.shape;
+  if (typeName === "ZodObject") {
+    const shape = (coreSchema as any).shape;
     const properties: Record<string, JSONSchema> = {};
     const required: string[] = [];
 
@@ -110,8 +116,11 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
       const fieldSchema = value as z.ZodTypeAny;
       const unwrapped = unwrapZodSchema(fieldSchema);
 
-      // Check if field is optional
-      const isOptional = fieldSchema instanceof z.ZodOptional;
+      // Check if field is optional or has a default
+      const fieldTypeName = (fieldSchema as any)._def?.typeName;
+      const isOptional = fieldTypeName === "ZodOptional" || 
+                        fieldTypeName === "ZodDefault" || 
+                        unwrapped.hasDefault;
 
       // Build JSON schema for the property
       const propertySchema = zodToJsonSchema(unwrapped.coreSchema);
@@ -151,7 +160,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
   }
 
   // Handle ZodArray
-  if (coreSchema instanceof z.ZodArray) {
+  if (typeName === "ZodArray") {
     const jsonSchema: JSONSchema = {
       type: "array",
       items: zodToJsonSchema(coreSchema._def.type),
@@ -183,7 +192,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
   }
 
   // Handle ZodString
-  if (coreSchema instanceof z.ZodString) {
+  if (typeName === "ZodString") {
     const jsonSchema: JSONSchema = { type: "string" };
     if (rootDescription) {
       jsonSchema.description = rootDescription;
@@ -195,12 +204,14 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
   }
 
   // Handle ZodNumber
-  if (coreSchema instanceof z.ZodNumber) {
+  if (typeName === "ZodNumber") {
     const jsonSchema: JSONSchema = { type: "number" };
     if (rootDescription) {
       jsonSchema.description = rootDescription;
     }
-    if ((coreSchema as ZodDefAny & { isInt?: boolean }).isInt) {
+    // Check if it's an integer
+    const checks = (coreSchema as any)._def?.checks || [];
+    if (checks.some((check: any) => check.kind === "int")) {
       jsonSchema.type = "integer";
     }
     if (hasDefault && defaultValue !== undefined) {
@@ -210,7 +221,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
   }
 
   // Handle ZodBoolean
-  if (coreSchema instanceof z.ZodBoolean) {
+  if (typeName === "ZodBoolean") {
     const jsonSchema: JSONSchema = { type: "boolean" };
     if (rootDescription) {
       jsonSchema.description = rootDescription;
@@ -222,7 +233,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
   }
 
   // Handle ZodEnum
-  if (coreSchema instanceof z.ZodEnum) {
+  if (typeName === "ZodEnum") {
     const jsonSchema: JSONSchema = {
       type: "string",
       enum: coreSchema._def.values as unknown[],
@@ -237,7 +248,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
   }
 
   // Handle ZodUnion
-  if (coreSchema instanceof z.ZodUnion) {
+  if (typeName === "ZodUnion") {
     const jsonSchema: JSONSchema = {
       oneOf: coreSchema._def.options.map((option: z.ZodTypeAny) =>
         zodToJsonSchema(option),
@@ -250,7 +261,7 @@ export function zodToJsonSchema(schema: z.ZodTypeAny): JSONSchema {
   }
 
   // Handle ZodLiteral
-  if (coreSchema instanceof z.ZodLiteral) {
+  if (typeName === "ZodLiteral") {
     const value = coreSchema._def.value;
     const jsonSchema: JSONSchema = {};
 
