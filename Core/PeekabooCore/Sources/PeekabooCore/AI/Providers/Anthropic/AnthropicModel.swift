@@ -1,5 +1,4 @@
 import Foundation
-import AXorcist
 
 // Simple debug logging check
 fileprivate var isDebugLoggingEnabled: Bool {
@@ -300,48 +299,41 @@ public final class AnthropicModel: ModelInterface {
         
         // Convert messages
         for message in request.messages {
-            switch message.type {
-            case .system:
-                guard let system = message as? SystemMessageItem else {
-                    throw PeekabooError.invalidInput(field: "message", reason: "Invalid system message")
-                }
+            switch message {
+            case .system(_, let content):
                 // Anthropic uses a separate system parameter
                 if systemPrompt == nil {
-                    systemPrompt = system.content
+                    systemPrompt = content
                 } else {
-                    systemPrompt = (systemPrompt ?? "") + "\n\n" + system.content
+                    systemPrompt = (systemPrompt ?? "") + "\n\n" + content
                 }
                 
-            case .user:
-                guard let user = message as? UserMessageItem else {
-                    throw PeekabooError.invalidInput(field: "message", reason: "Invalid user message")
-                }
-                let anthropicMessage = try convertUserMessage(user)
+            case .user(_, let content):
+                let anthropicMessage = try convertUserMessage(content)
                 anthropicMessages.append(anthropicMessage)
                 
-            case .assistant:
-                guard let assistant = message as? AssistantMessageItem else {
-                    throw PeekabooError.invalidInput(field: "message", reason: "Invalid assistant message")
-                }
-                let anthropicMessage = try convertAssistantMessage(assistant)
+            case .assistant(_, let content, let status):
+                let anthropicMessage = try convertAssistantMessage(content, status: status)
                 anthropicMessages.append(anthropicMessage)
                 
-            case .tool:
-                guard let tool = message as? ToolMessageItem else {
-                    throw PeekabooError.invalidInput(field: "message", reason: "Invalid tool message")
-                }
+            case .tool(_, let toolCallId, let content):
                 // Convert tool result to user message with tool_result content block
                 let toolResultBlock = AnthropicContentBlock.toolResult(
-                    toolUseId: tool.toolCallId,
-                    content: tool.content
+                    toolUseId: toolCallId,
+                    content: content
                 )
                 anthropicMessages.append(AnthropicMessage(
                     role: .user,
                     content: .array([toolResultBlock])
                 ))
                 
-            default:
-                throw PeekabooError.invalidInput(field: "message", reason: "Unsupported message type: \(message.type)")
+            case .reasoning(_, let content):
+                // Treat reasoning as a system message for now
+                if systemPrompt == nil {
+                    systemPrompt = "[Reasoning] " + content
+                } else {
+                    systemPrompt = (systemPrompt ?? "") + "\n\n[Reasoning] " + content
+                }
             }
         }
         
@@ -379,7 +371,7 @@ public final class AnthropicModel: ModelInterface {
             maxTokens: request.settings.maxTokens ?? 4096,
             temperature: request.settings.temperature,
             topP: request.settings.topP,
-            topK: request.settings.additionalParameters?["top_k"]?.value as? Int,
+            topK: request.settings.additionalParameters?.int("top_k"),
             stream: stream,
             stopSequences: request.settings.stopSequences,
             tools: tools,
@@ -388,8 +380,8 @@ public final class AnthropicModel: ModelInterface {
         )
     }
     
-    private func convertUserMessage(_ message: UserMessageItem) throws -> AnthropicMessage {
-        switch message.content {
+    private func convertUserMessage(_ content: MessageContent) throws -> AnthropicMessage {
+        switch content {
         case .text(let text):
             return AnthropicMessage(role: .user, content: .string(text))
             
@@ -426,10 +418,10 @@ public final class AnthropicModel: ModelInterface {
         }
     }
     
-    private func convertAssistantMessage(_ message: AssistantMessageItem) throws -> AnthropicMessage {
+    private func convertAssistantMessage(_ content: [AssistantContent], status: MessageStatus) throws -> AnthropicMessage {
         var blocks: [AnthropicContentBlock] = []
         
-        for content in message.content {
+        for content in content {
             switch content {
             case .outputText(let text):
                 blocks.append(.text(text))

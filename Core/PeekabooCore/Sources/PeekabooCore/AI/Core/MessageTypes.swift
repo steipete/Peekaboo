@@ -1,130 +1,109 @@
 import Foundation
-import AXorcist
 
-// MARK: - Base Protocol for Message Items
+// MARK: - Unified Message Type
 
-/// Base protocol for all message items in the chat completion system
-public protocol MessageItem: Codable, Sendable {
-    var type: MessageItemType { get }
-    var id: String? { get }
-}
-
-/// Enum representing all possible message item types
-public enum MessageItemType: String, Codable, Sendable {
-    case system = "system"
-    case user = "user"
-    case assistant = "assistant"
-    case tool = "tool"
-    case reasoning = "reasoning"
-    case unknown = "unknown"
-}
-
-// MARK: - Concrete Message Types
-
-/// System message containing instructions for the AI
-public struct SystemMessageItem: MessageItem {
-    public var type = MessageItemType.system
-    public let id: String?
-    public let content: String
+/// Unified message enum that replaces the protocol-based approach
+/// This provides type-safe message handling without requiring type erasure
+public enum Message: Codable, Sendable {
+    case system(id: String? = nil, content: String)
+    case user(id: String? = nil, content: MessageContent)
+    case assistant(id: String? = nil, content: [AssistantContent], status: MessageStatus = .completed)
+    case tool(id: String? = nil, toolCallId: String, content: String)
+    case reasoning(id: String? = nil, content: String)
     
-    public init(id: String? = nil, content: String) {
-        self.id = id
-        self.content = content
-    }
-}
-
-/// User message containing user input
-public struct UserMessageItem: MessageItem {
-    public var type = MessageItemType.user
-    public let id: String?
-    public let content: MessageContent
+    // MARK: - Properties
     
-    public init(id: String? = nil, content: MessageContent) {
-        self.id = id
-        self.content = content
-    }
-}
-
-/// Assistant message containing AI response
-public struct AssistantMessageItem: MessageItem {
-    public var type = MessageItemType.assistant
-    public let id: String?
-    public let content: [AssistantContent]
-    public let status: MessageStatus
-    
-    public init(id: String? = nil, content: [AssistantContent], status: MessageStatus = .completed) {
-        self.id = id
-        self.content = content
-        self.status = status
-    }
-}
-
-/// Tool result message
-public struct ToolMessageItem: MessageItem {
-    public var type = MessageItemType.tool
-    public let id: String?
-    public let toolCallId: String
-    public let content: String
-    
-    public init(id: String? = nil, toolCallId: String, content: String) {
-        self.id = id
-        self.toolCallId = toolCallId
-        self.content = content
-    }
-}
-
-/// Reasoning message for chain-of-thought
-public struct ReasoningMessageItem: MessageItem {
-    public var type = MessageItemType.reasoning
-    public let id: String?
-    public let content: String
-    
-    public init(id: String? = nil, content: String) {
-        self.id = id
-        self.content = content
-    }
-}
-
-/// Unknown message type for forward compatibility
-public struct UnknownMessageItem: MessageItem {
-    public var type = MessageItemType.unknown
-    public let id: String?
-    public let rawData: [String: AnyCodable]
-    
-    public init(id: String? = nil, rawData: [String: Any]) {
-        self.id = id
-        self.rawData = rawData.mapValues { AnyCodable($0) }
+    /// Get the message type
+    public var type: MessageType {
+        switch self {
+        case .system: return .system
+        case .user: return .user
+        case .assistant: return .assistant
+        case .tool: return .tool
+        case .reasoning: return .reasoning
+        }
     }
     
-    // Custom codable implementation for rawData
-    enum CodingKeys: String, CodingKey {
-        case type, id, rawData
+    /// Get the message ID
+    public var id: String? {
+        switch self {
+        case .system(let id, _), .user(let id, _), .assistant(let id, _, _), 
+             .tool(let id, _, _), .reasoning(let id, _):
+            return id
+        }
+    }
+    
+    // MARK: - Codable Implementation
+    
+    private enum CodingKeys: String, CodingKey {
+        case type, id, content, status, toolCallId
+    }
+    
+    private enum MessageType: String, Codable {
+        case system, user, assistant, tool, reasoning
     }
     
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decodeIfPresent(String.self, forKey: .id)
+        let type = try container.decode(MessageType.self, forKey: .type)
+        let id = try container.decodeIfPresent(String.self, forKey: .id)
         
-        // Decode rawData as dictionary
-        if let data = try? container.decode(Data.self, forKey: .rawData),
-           let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            self.rawData = dict.mapValues { AnyCodable($0) }
-        } else {
-            self.rawData = [:]
+        switch type {
+        case .system:
+            let content = try container.decode(String.self, forKey: .content)
+            self = .system(id: id, content: content)
+            
+        case .user:
+            let content = try container.decode(MessageContent.self, forKey: .content)
+            self = .user(id: id, content: content)
+            
+        case .assistant:
+            let content = try container.decode([AssistantContent].self, forKey: .content)
+            let status = try container.decodeIfPresent(MessageStatus.self, forKey: .status) ?? .completed
+            self = .assistant(id: id, content: content, status: status)
+            
+        case .tool:
+            let toolCallId = try container.decode(String.self, forKey: .toolCallId)
+            let content = try container.decode(String.self, forKey: .content)
+            self = .tool(id: id, toolCallId: toolCallId, content: content)
+            
+        case .reasoning:
+            let content = try container.decode(String.self, forKey: .content)
+            self = .reasoning(id: id, content: content)
         }
     }
     
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(type, forKey: .type)
-        try container.encodeIfPresent(id, forKey: .id)
         
-        // Encode rawData as JSON data
-        if let data = try? JSONSerialization.data(withJSONObject: rawData) {
-            try container.encode(data, forKey: .rawData)
+        switch self {
+        case .system(let id, let content):
+            try container.encodeIfPresent(id, forKey: .id)
+            try container.encode(content, forKey: .content)
+            
+        case .user(let id, let content):
+            try container.encodeIfPresent(id, forKey: .id)
+            try container.encode(content, forKey: .content)
+            
+        case .assistant(let id, let content, let status):
+            try container.encodeIfPresent(id, forKey: .id)
+            try container.encode(content, forKey: .content)
+            try container.encode(status, forKey: .status)
+            
+        case .tool(let id, let toolCallId, let content):
+            try container.encodeIfPresent(id, forKey: .id)
+            try container.encode(toolCallId, forKey: .toolCallId)
+            try container.encode(content, forKey: .content)
+            
+        case .reasoning(let id, let content):
+            try container.encodeIfPresent(id, forKey: .id)
+            try container.encode(content, forKey: .content)
         }
     }
 }
+
+
 
 // MARK: - Content Types
 

@@ -1,5 +1,4 @@
 import Foundation
-import AXorcist
 
 // Simple debug logging check
 fileprivate var isDebugLoggingEnabled: Bool {
@@ -353,42 +352,27 @@ public final class OpenAIModel: ModelInterface {
     private func convertToOpenAIResponsesRequest(_ request: ModelRequest, stream: Bool) throws -> OpenAIResponsesRequest {
         // Convert messages to OpenAI format
         let messages = try request.messages.map { message -> OpenAIMessage in
-            switch message.type {
-            case .system:
-                guard let system = message as? SystemMessageItem else {
-                    throw PeekabooError.invalidInput(field: "message", reason: "Invalid system message")
-                }
-                return OpenAIMessage(role: "system", content: .string(system.content))
+            switch message {
+            case .system(_, let content):
+                return OpenAIMessage(role: "system", content: .string(content))
                 
-            case .user:
-                guard let user = message as? UserMessageItem else {
-                    throw PeekabooError.invalidInput(field: "message", reason: "Invalid user message")
-                }
-                return try convertUserMessage(user)
+            case .user(_, let content):
+                return try convertUserMessage(content)
                 
-            case .assistant:
-                guard let assistant = message as? AssistantMessageItem else {
-                    throw PeekabooError.invalidInput(field: "message", reason: "Invalid assistant message")
-                }
-                return try convertAssistantMessage(assistant)
+            case .assistant(_, let content, let status):
+                return try convertAssistantMessage(content, status: status)
                 
-            case .tool:
-                guard let tool = message as? ToolMessageItem else {
-                    throw PeekabooError.invalidInput(field: "message", reason: "Invalid tool message")
-                }
+            case .tool(_, let toolCallId, let content):
                 // Responses API doesn't support 'tool' role, use 'user' instead
                 // Tool results are sent as user messages in the Responses API
                 return OpenAIMessage(
                     role: "user", 
-                    content: .string(tool.content)
+                    content: .string(content)
                 )
                 
-            case .reasoning:
+            case .reasoning(_, let content):
                 // Skip reasoning messages for now - they may not be supported by the API
                 throw PeekabooError.invalidInput(field: "message", reason: "Reasoning messages not supported in OpenAI API")
-                
-            case .unknown:
-                throw PeekabooError.invalidInput(field: "message", reason: "Unknown message type")
             }
         }
         
@@ -414,14 +398,14 @@ public final class OpenAIModel: ModelInterface {
             reasoningEffort: nil,  // Removed - now part of reasoning object
             reasoning: (request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4")) ? 
                 OpenAIReasoning(
-                    effort: request.settings.additionalParameters?["reasoning_effort"]?.value as? String ?? "low",
+                    effort: request.settings.additionalParameters?.string("reasoning_effort") ?? "low",
                     summary: extractReasoningSummary(from: request.settings.additionalParameters)
                 ) : nil
         )
     }
     
-    private func convertUserMessage(_ message: UserMessageItem) throws -> OpenAIMessage {
-        switch message.content {
+    private func convertUserMessage(_ content: MessageContent) throws -> OpenAIMessage {
+        switch content {
         case .text(let text):
             return OpenAIMessage(role: "user", content: .string(text))
             
@@ -485,10 +469,10 @@ public final class OpenAIModel: ModelInterface {
         }
     }
     
-    private func convertAssistantMessage(_ message: AssistantMessageItem) throws -> OpenAIMessage {
+    private func convertAssistantMessage(_ content: [AssistantContent], status: MessageStatus) throws -> OpenAIMessage {
         var textContent = ""
         
-        for content in message.content {
+        for content in content {
             switch content {
             case .outputText(let text):
                 textContent += text
@@ -813,18 +797,14 @@ private class PartialToolCall {
 }
     
     /// Extract reasoning summary from additionalParameters
-    private func extractReasoningSummary(from params: [String: AnyCodable]?) -> String? {
-        guard let params = params,
-              let reasoning = params["reasoning"]?.value else {
-            return nil
-        }
+    private func extractReasoningSummary(from params: ModelParameters?) -> String? {
+        guard let params = params else { return nil }
         
-        // Handle different formats of reasoning parameter
-        if let reasoningDict = reasoning as? [String: Any],
-           let summary = reasoningDict["summary"] as? String {
-            return summary
-        } else if let reasoningDict = reasoning as? [String: AnyCodable],
-                  let summary = reasoningDict["summary"]?.value as? String {
+        // The reasoning parameter is a dictionary with "summary" key
+        // Since ModelParameters stores the raw value, we need to access it differently
+        if let reasoningValue = params["reasoning"],
+           case .dictionary(let reasoningDict) = reasoningValue,
+           case .string(let summary) = reasoningDict["summary"] {
             return summary
         }
         

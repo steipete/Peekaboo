@@ -1,5 +1,5 @@
 import Foundation
-import AXorcist
+import CoreGraphics
 
 // MARK: - Temporary Type Definitions
 // TODO: These should be properly defined in their respective modules
@@ -39,89 +39,6 @@ extension ToolOutput {
     }
 }
 
-// MARK: - Tool Parameter Helpers
-
-/// Helper for extracting and validating tool parameters
-@available(macOS 14.0, *)
-public struct ToolParameterExtractor {
-    private let params: [String: AnyCodable]
-    private let toolName: String
-    
-    init(_ params: ToolInput, toolName: String) {
-        switch params {
-        case .dictionary(let dict):
-            // Convert [String: Any] to [String: AnyCodable]
-            self.params = dict.mapValues { AnyCodable($0) }
-        default:
-            self.params = [:]
-        }
-        self.toolName = toolName
-    }
-    
-    /// Get a required string parameter
-    public func string(_ key: String) throws -> String {
-        guard let codable = params[key],
-              let value = codable.value as? String else {
-            throw PeekabooError.invalidInput("\(toolName): '\(key)' parameter is required")
-        }
-        return value
-    }
-    
-    /// Get an optional string parameter
-    public func string(_ key: String, default defaultValue: String? = nil) -> String? {
-        guard let codable = params[key] else { return defaultValue }
-        return codable.value as? String ?? defaultValue
-    }
-    
-    /// Get a required integer parameter
-    public func int(_ key: String) throws -> Int {
-        guard let codable = params[key],
-              let value = codable.value as? Int else {
-            throw PeekabooError.invalidInput("\(toolName): '\(key)' parameter is required")
-        }
-        return value
-    }
-    
-    /// Get an optional integer parameter
-    public func int(_ key: String, default defaultValue: Int? = nil) -> Int? {
-        guard let codable = params[key] else { return defaultValue }
-        return codable.value as? Int ?? defaultValue
-    }
-    
-    /// Get an optional boolean parameter
-    public func bool(_ key: String, default defaultValue: Bool = false) -> Bool {
-        guard let codable = params[key] else { return defaultValue }
-        return codable.value as? Bool ?? defaultValue
-    }
-    
-    /// Get an optional array of strings
-    public func stringArray(_ key: String) -> [String]? {
-        guard let codable = params[key],
-              let array = codable.value as? [Any] else { return nil }
-        return array.compactMap { $0 as? String }
-    }
-    
-    /// Parse coordinates from "x,y" format
-    public func coordinates(_ key: String) throws -> CGPoint? {
-        guard let codable = params[key],
-              let coordString = codable.value as? String else { return nil }
-        
-        guard coordString.contains(","),
-              let commaIndex = coordString.firstIndex(of: ",") else {
-            return nil
-        }
-        
-        let xStr = String(coordString[..<commaIndex]).trimmingCharacters(in: .whitespaces)
-        let yStr = String(coordString[coordString.index(after: commaIndex)...])
-            .trimmingCharacters(in: .whitespaces)
-        
-        guard let x = Double(xStr), let y = Double(yStr) else {
-            throw PeekabooError.invalidInput("\(toolName): Invalid coordinates format. Use 'x,y'")
-        }
-        
-        return CGPoint(x: x, y: y)
-    }
-}
 
 // MARK: - Tool Creation Helpers
 
@@ -132,15 +49,15 @@ extension PeekabooAgentService {
         name: String,
         description: String,
         parameters: ToolParameters,
-        handler: @escaping (ToolParameterExtractor, PeekabooServices) async throws -> ToolOutput
+        handler: @escaping (ToolParameterParser, PeekabooServices) async throws -> ToolOutput
     ) -> Tool<PeekabooServices> {
         Tool(
             name: name,
             description: description,
             parameters: parameters,
             execute: { params, context in
-                let toolParams = ToolParameterExtractor(params, toolName: name)
                 do {
+                    let toolParams = try ToolParameterParser(params, toolName: name)
                     return try await handler(toolParams, context)
                 } catch {
                     return await self.handleToolError(error, for: name, in: context)
@@ -148,6 +65,7 @@ extension PeekabooAgentService {
             }
         )
     }
+    
     
     /// Create a simple tool with no parameters
     func createSimpleTool(

@@ -1,6 +1,5 @@
 import Foundation
 import CoreGraphics
-import AXorcist
 
 // MARK: - Peekaboo Agent Service
 
@@ -304,31 +303,31 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     
     // MARK: - Helper Methods
     
-    private func buildAdditionalParameters(modelName: String, apiType: String?) -> [String: AnyCodable]? {
-        var params: [String: AnyCodable] = [:]
+    private func buildAdditionalParameters(modelName: String, apiType: String?) -> ModelParameters? {
+        var params = ModelParameters()
         
         // Check if API type is explicitly specified
         if let specifiedApiType = apiType {
-            params["apiType"] = AnyCodable(specifiedApiType)
+            params = params.with("apiType", value: specifiedApiType)
         } else if !modelName.hasPrefix("grok") && !modelName.hasPrefix("claude") {
             // Default to Responses API for OpenAI models only (better streaming support)
             // Grok and Anthropic models don't need this parameter
-            params["apiType"] = AnyCodable("responses")
+            params = params.with("apiType", value: "responses")
         }
         
         // Add reasoning parameters for o3/o4 models
         if modelName.hasPrefix("o3") || modelName.hasPrefix("o4") {
-            params["reasoning_effort"] = AnyCodable(AgentConfiguration.o3ReasoningEffort)
-            params["max_completion_tokens"] = AnyCodable(AgentConfiguration.o3MaxCompletionTokens)
-            params["reasoning"] = AnyCodable([
-                "summary": "detailed"  // Request detailed reasoning summaries
-            ])
+            params = params
+                .with("reasoning_effort", value: AgentConfiguration.o3ReasoningEffort)
+                .with("max_completion_tokens", value: AgentConfiguration.o3MaxCompletionTokens)
+                .with("reasoning", value: ["summary": "detailed"])
         }
         
         // Only log API type debug info in verbose mode
         if ProcessInfo.processInfo.arguments.contains("--verbose") || 
            ProcessInfo.processInfo.arguments.contains("-v") {
-            let debugMsg = "DEBUG PeekabooAgentService: Model '\(modelName)' -> API Type: \(params["apiType"]?.value ?? "nil")"
+            let apiTypeValue = params.string("apiType") ?? "nil"
+            let debugMsg = "DEBUG PeekabooAgentService: Model '\(modelName)' -> API Type: \(apiTypeValue)"
             FileHandle.standardError.write((debugMsg + "\n").data(using: .utf8)!)
         }
         

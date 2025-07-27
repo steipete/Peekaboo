@@ -1,5 +1,4 @@
 import Foundation
-import AXorcist
 
 // Simple debug logging check
 fileprivate var isDebugLoggingEnabled: Bool {
@@ -619,67 +618,67 @@ public struct OpenAIResponsesTool: Codable, Sendable {
     }
 }
 
-/// A type-erased Codable value
-public struct AnyCodable: Codable, @unchecked Sendable {
-    public let value: Any
+/// JSON Schema for response format
+public struct OpenAIJSONSchema: Codable, Sendable {
+    public let name: String
+    public let strict: Bool
+    public let schema: JSONSchema
     
-    public init(_ value: Any) {
+    public init(name: String, strict: Bool, schema: JSONSchema) {
+        self.name = name
+        self.strict = strict
+        self.schema = schema
+    }
+}
+
+/// Structured JSON schema definition
+public struct JSONSchema: Codable, Sendable {
+    public let type: String
+    public let properties: [String: Property]?
+    public let required: [String]?
+    public let items: Box<JSONSchema>?
+    public let additionalProperties: Bool?
+    
+    public struct Property: Codable, Sendable {
+        public let type: String
+        public let description: String?
+        public let `enum`: [String]?
+        public let items: Box<JSONSchema>?
+        public let properties: [String: Property]?
+        public let required: [String]?
+    }
+    
+    public init(
+        type: String,
+        properties: [String: Property]? = nil,
+        required: [String]? = nil,
+        items: JSONSchema? = nil,
+        additionalProperties: Bool? = nil
+    ) {
+        self.type = type
+        self.properties = properties
+        self.required = required
+        self.items = items.map(Box.init)
+        self.additionalProperties = additionalProperties
+    }
+}
+
+/// Box type for recursive structures
+public final class Box<T: Codable>: Codable {
+    public let value: T
+    
+    public init(_ value: T) {
         self.value = value
     }
     
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
-        if let intValue = try? container.decode(Int.self) {
-            value = intValue
-        } else if let doubleValue = try? container.decode(Double.self) {
-            value = doubleValue
-        } else if let boolValue = try? container.decode(Bool.self) {
-            value = boolValue
-        } else if let stringValue = try? container.decode(String.self) {
-            value = stringValue
-        } else if let arrayValue = try? container.decode([AnyCodable].self) {
-            value = arrayValue.map { $0.value }
-        } else if let dictValue = try? container.decode([String: AnyCodable].self) {
-            value = dictValue.mapValues { $0.value }
-        } else {
-            value = NSNull()
-        }
+        self.value = try container.decode(T.self)
     }
     
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        
-        switch value {
-        case let intValue as Int:
-            try container.encode(intValue)
-        case let doubleValue as Double:
-            try container.encode(doubleValue)
-        case let boolValue as Bool:
-            try container.encode(boolValue)
-        case let stringValue as String:
-            try container.encode(stringValue)
-        case let arrayValue as [Any]:
-            try container.encode(arrayValue.map { AnyCodable($0) })
-        case let dictValue as [String: Any]:
-            try container.encode(dictValue.mapValues { AnyCodable($0) })
-        default:
-            let context = EncodingError.Context(codingPath: container.codingPath, debugDescription: "Cannot encode value of type \(type(of: value))")
-            throw EncodingError.invalidValue(value, context)
-        }
-    }
-}
-
-/// JSON Schema for response format
-public struct OpenAIJSONSchema: Codable, Sendable {
-    public let name: String
-    public let strict: Bool
-    public let schema: AnyCodable
-    
-    public init(name: String, strict: Bool, schema: [String: Any]) {
-        self.name = name
-        self.strict = strict
-        self.schema = AnyCodable(schema)
+        try container.encode(value)
     }
 }
 

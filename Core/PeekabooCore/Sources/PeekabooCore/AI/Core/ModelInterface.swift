@@ -1,5 +1,4 @@
 import Foundation
-import AXorcist
 
 // MARK: - Model Interface Protocol
 
@@ -26,7 +25,7 @@ public protocol ModelInterface: Sendable {
 /// Request to send to a model
 public struct ModelRequest: Codable, Sendable {
     /// The messages to send to the model
-    public let messages: [any MessageItem]
+    public let messages: [Message]
     
     /// Available tools for the model to use
     public let tools: [ToolDefinition]?
@@ -38,7 +37,7 @@ public struct ModelRequest: Codable, Sendable {
     public let systemInstructions: String?
     
     public init(
-        messages: [any MessageItem],
+        messages: [Message],
         tools: [ToolDefinition]? = nil,
         settings: ModelSettings,
         systemInstructions: String? = nil
@@ -47,79 +46,6 @@ public struct ModelRequest: Codable, Sendable {
         self.tools = tools
         self.settings = settings
         self.systemInstructions = systemInstructions
-    }
-    
-    // Custom coding to handle array of protocol types
-    enum CodingKeys: String, CodingKey {
-        case messages, tools, settings, systemInstructions
-    }
-    
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        
-        // Decode messages as array of dictionaries first
-        var decodedMessages: [any MessageItem] = []
-        if let messageArray = try? container.decode([[String: AnyCodable]].self, forKey: .messages) {
-            for messageDict in messageArray {
-                if let typeAnyCodable = messageDict["type"],
-                   let typeStr = typeAnyCodable.value as? String,
-                   let type = MessageItemType(rawValue: typeStr) {
-                    // Decode based on type
-                    let convertedDict = messageDict.mapValues { $0.value }
-                    let data = try JSONSerialization.data(withJSONObject: convertedDict)
-                    switch type {
-                    case .system:
-                        if let msg = try? JSONCoding.decoder.decode(SystemMessageItem.self, from: data) {
-                            decodedMessages.append(msg)
-                        }
-                    case .user:
-                        if let msg = try? JSONCoding.decoder.decode(UserMessageItem.self, from: data) {
-                            decodedMessages.append(msg)
-                        }
-                    case .assistant:
-                        if let msg = try? JSONCoding.decoder.decode(AssistantMessageItem.self, from: data) {
-                            decodedMessages.append(msg)
-                        }
-                    case .tool:
-                        if let msg = try? JSONCoding.decoder.decode(ToolMessageItem.self, from: data) {
-                            decodedMessages.append(msg)
-                        }
-                    case .reasoning:
-                        if let msg = try? JSONCoding.decoder.decode(ReasoningMessageItem.self, from: data) {
-                            decodedMessages.append(msg)
-                        }
-                    case .unknown:
-                        if let msg = try? JSONCoding.decoder.decode(UnknownMessageItem.self, from: data) {
-                            decodedMessages.append(msg)
-                        }
-                    }
-                }
-            }
-        }
-        
-        self.messages = decodedMessages
-        self.tools = try container.decodeIfPresent([ToolDefinition].self, forKey: .tools)
-        self.settings = try container.decode(ModelSettings.self, forKey: .settings)
-        self.systemInstructions = try container.decodeIfPresent(String.self, forKey: .systemInstructions)
-    }
-    
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        
-        // Encode messages individually
-        var messageArray: [[String: AnyCodable]] = []
-        for message in messages {
-            if let data = try? JSONCoding.encoder.encode(message),
-               let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                let anyCodableDict = dict.mapValues { AnyCodable($0) }
-                messageArray.append(anyCodableDict)
-            }
-        }
-        try container.encode(messageArray, forKey: .messages)
-        
-        try container.encodeIfPresent(tools, forKey: .tools)
-        try container.encode(settings, forKey: .settings)
-        try container.encodeIfPresent(systemInstructions, forKey: .systemInstructions)
     }
 }
 
@@ -206,7 +132,7 @@ public struct ModelSettings: Codable, Sendable {
     public let user: String?
     
     /// Additional provider-specific parameters
-    public let additionalParameters: [String: AnyCodable]?
+    public let additionalParameters: ModelParameters?
     
     public init(
         modelName: String,
@@ -221,7 +147,7 @@ public struct ModelSettings: Codable, Sendable {
         responseFormat: ResponseFormat? = nil,
         seed: Int? = nil,
         user: String? = nil,
-        additionalParameters: [String: AnyCodable]? = nil
+        additionalParameters: ModelParameters? = nil
     ) {
         self.modelName = modelName
         self.temperature = temperature
@@ -268,12 +194,7 @@ public struct ModelSettings: Codable, Sendable {
         self.user = try container.decodeIfPresent(String.self, forKey: .user)
         
         // Decode additional parameters
-        if let data = try? container.decode(Data.self, forKey: .additionalParameters),
-           let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            self.additionalParameters = dict.mapValues { AnyCodable($0) }
-        } else {
-            self.additionalParameters = nil
-        }
+        self.additionalParameters = try container.decodeIfPresent(ModelParameters.self, forKey: .additionalParameters)
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -293,10 +214,7 @@ public struct ModelSettings: Codable, Sendable {
         try container.encodeIfPresent(user, forKey: .user)
         
         // Encode additional parameters
-        if let params = additionalParameters,
-           let data = try? JSONSerialization.data(withJSONObject: params) {
-            try container.encode(data, forKey: .additionalParameters)
-        }
+        try container.encodeIfPresent(additionalParameters, forKey: .additionalParameters)
     }
 }
 
@@ -383,43 +301,43 @@ public enum ResponseFormatType: String, Codable, Sendable {
 }
 
 /// JSON schema specification
+/// This is deprecated - use the structured JSONSchema type from OpenAITypes instead
 public struct JSONSchema: Codable, Sendable {
     public let name: String
     public let strict: Bool
-    public let schema: [String: AnyCodable]
+    private let schemaData: Data  // Store as raw JSON data
     
     // Custom coding for schema
     enum CodingKeys: String, CodingKey {
         case name, strict, schema
     }
     
-    public init(name: String, strict: Bool = true, schema: [String: Any]) {
+    public init(name: String, strict: Bool = true, schema: [String: Any]) throws {
         self.name = name
         self.strict = strict
-        self.schema = schema.mapValues { AnyCodable($0) }
+        self.schemaData = try JSONSerialization.data(withJSONObject: schema)
     }
     
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.name = try container.decode(String.self, forKey: .name)
         self.strict = try container.decode(Bool.self, forKey: .strict)
-        
-        if let data = try? container.decode(Data.self, forKey: .schema),
-           let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            self.schema = dict.mapValues { AnyCodable($0) }
-        } else {
-            self.schema = [:]
-        }
+        self.schemaData = try container.decode(Data.self, forKey: .schema)
     }
     
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(name, forKey: .name)
         try container.encode(strict, forKey: .strict)
-        
-        if let data = try? JSONSerialization.data(withJSONObject: schema) {
-            try container.encode(data, forKey: .schema)
+        try container.encode(schemaData, forKey: .schema)
+    }
+    
+    /// Get the schema as a dictionary
+    public func getSchema() throws -> [String: Any] {
+        guard let dict = try JSONSerialization.jsonObject(with: schemaData) as? [String: Any] else {
+            throw PeekabooError.invalidInput(field: "schema", reason: "Invalid JSON schema data")
         }
+        return dict
     }
 }
 
