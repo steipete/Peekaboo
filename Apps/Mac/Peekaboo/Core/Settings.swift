@@ -54,11 +54,17 @@ final class PeekabooSettings {
     }
     
     var openAIAPIKey: String = "" {
-        didSet { self.save() }
+        didSet { 
+            self.save()
+            self.saveAPIKeyToCredentials("OPENAI_API_KEY", openAIAPIKey)
+        }
     }
     
     var anthropicAPIKey: String = "" {
-        didSet { self.save() }
+        didSet { 
+            self.save()
+            self.saveAPIKeyToCredentials("ANTHROPIC_API_KEY", anthropicAPIKey)
+        }
     }
     
     var ollamaBaseURL: String = "http://localhost:11434" {
@@ -66,6 +72,21 @@ final class PeekabooSettings {
     }
 
     var selectedModel: String = "claude-opus-4-20250514" {
+        didSet { 
+            self.save()
+            self.updateConfigFile()
+        }
+    }
+    
+    // Vision model override
+    var useCustomVisionModel: Bool = false {
+        didSet { 
+            self.save()
+            self.updateConfigFile()
+        }
+    }
+    
+    var customVisionModel: String = "gpt-4o" {
         didSet { 
             self.save()
             self.updateConfigFile()
@@ -187,6 +208,8 @@ final class PeekabooSettings {
             defaultModel = "llava:latest"
         }
         self.selectedModel = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedModel") ?? defaultModel
+        self.useCustomVisionModel = self.userDefaults.bool(forKey: "\(self.keyPrefix)useCustomVisionModel")
+        self.customVisionModel = self.userDefaults.string(forKey: "\(self.keyPrefix)customVisionModel") ?? "gpt-4o"
         self.temperature = self.userDefaults.double(forKey: "\(self.keyPrefix)temperature")
         if self.temperature == 0 { self.temperature = 0.7 } // Default if not set
         self.maxTokens = self.userDefaults.integer(forKey: "\(self.keyPrefix)maxTokens")
@@ -232,6 +255,8 @@ final class PeekabooSettings {
         self.userDefaults.set(self.anthropicAPIKey, forKey: "\(self.keyPrefix)anthropicAPIKey")
         self.userDefaults.set(self.ollamaBaseURL, forKey: "\(self.keyPrefix)ollamaBaseURL")
         self.userDefaults.set(self.selectedModel, forKey: "\(self.keyPrefix)selectedModel")
+        self.userDefaults.set(self.useCustomVisionModel, forKey: "\(self.keyPrefix)useCustomVisionModel")
+        self.userDefaults.set(self.customVisionModel, forKey: "\(self.keyPrefix)customVisionModel")
         self.userDefaults.set(self.temperature, forKey: "\(self.keyPrefix)temperature")
         self.userDefaults.set(self.maxTokens, forKey: "\(self.keyPrefix)maxTokens")
 
@@ -428,6 +453,18 @@ final class PeekabooSettings {
             }
         } catch {
             print("Failed to update config.json: \(error)")
+        }
+    }
+    
+    private func saveAPIKeyToCredentials(_ key: String, _ value: String) {
+        do {
+            if value.isEmpty {
+                // Don't save empty keys
+                return
+            }
+            try configManager.setCredential(key: key, value: value)
+        } catch {
+            print("Failed to save API key to credentials: \(error)")
         }
     }
 }

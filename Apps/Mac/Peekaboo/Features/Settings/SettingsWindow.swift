@@ -170,9 +170,8 @@ struct AISettingsView: View {
                 }
             }
             
-            // Provider-specific configuration
-            if settings.selectedProvider == "openai" {
-                Section("OpenAI Configuration") {
+            // Provider-specific configuration - Always show all blocks
+            Section("OpenAI Configuration") {
                 // API Key
                 HStack {
                     Text("API Key")
@@ -199,63 +198,61 @@ struct AISettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                }
-            } else if settings.selectedProvider == "anthropic" {
-                Section("Anthropic Configuration") {
-                    // API Key
-                    HStack {
-                        Text("API Key")
-                            .frame(width: 80, alignment: .trailing)
+            }
+            
+            Section("Anthropic Configuration") {
+                // API Key
+                HStack {
+                    Text("API Key")
+                        .frame(width: 80, alignment: .trailing)
 
-                        if self.showingAnthropicKey {
-                            TextField("sk-ant-...", text: Binding(
-                                get: { settings.anthropicAPIKey },
-                                set: { settings.anthropicAPIKey = $0 }
-                            ))
-                                .textFieldStyle(.roundedBorder)
-                        } else {
-                            SecureField("sk-ant-...", text: Binding(
-                                get: { settings.anthropicAPIKey },
-                                set: { settings.anthropicAPIKey = $0 }
-                            ))
-                                .textFieldStyle(.roundedBorder)
-                        }
-
-                        Button {
-                            self.showingAnthropicKey.toggle()
-                        } label: {
-                            Image(systemName: self.showingAnthropicKey ? "eye.slash" : "eye")
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            } else if settings.selectedProvider == "ollama" {
-                Section("Ollama Configuration") {
-                    // Base URL
-                    HStack {
-                        Text("Base URL")
-                            .frame(width: 80, alignment: .trailing)
-
-                        TextField("http://localhost:11434", text: Binding(
-                            get: { settings.ollamaBaseURL },
-                            set: { settings.ollamaBaseURL = $0 }
+                    if self.showingAnthropicKey {
+                        TextField("sk-ant-...", text: Binding(
+                            get: { settings.anthropicAPIKey },
+                            set: { settings.anthropicAPIKey = $0 }
+                        ))
+                            .textFieldStyle(.roundedBorder)
+                    } else {
+                        SecureField("sk-ant-...", text: Binding(
+                            get: { settings.anthropicAPIKey },
+                            set: { settings.anthropicAPIKey = $0 }
                         ))
                             .textFieldStyle(.roundedBorder)
                     }
-                    
-                    // Connection status
-                    HStack {
-                        Spacer()
-                        Text("Ensure Ollama is running locally")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
+
+                    Button {
+                        self.showingAnthropicKey.toggle()
+                    } label: {
+                        Image(systemName: self.showingAnthropicKey ? "eye.slash" : "eye")
                     }
+                    .buttonStyle(.plain)
+                }
+            }
+            
+            Section("Ollama Configuration") {
+                // Base URL
+                HStack {
+                    Text("Base URL")
+                        .frame(width: 80, alignment: .trailing)
+
+                    TextField("http://localhost:11434", text: Binding(
+                        get: { settings.ollamaBaseURL },
+                        set: { settings.ollamaBaseURL = $0 }
+                    ))
+                        .textFieldStyle(.roundedBorder)
+                }
+                
+                // Connection status
+                HStack {
+                    Spacer()
+                    Text("Ensure Ollama is running locally")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
                 }
             }
 
-            if settings.selectedProvider != "ollama" {
-                Section("Parameters") {
+            Section("Parameters") {
                 // Temperature
                 HStack {
                     Text("Temperature")
@@ -288,6 +285,43 @@ struct AISettingsView: View {
                         .foregroundColor(.secondary)
                 }
             }
+            
+            // Vision Model Override
+            Section("Vision Model Override") {
+                Toggle(isOn: Binding(
+                    get: { settings.useCustomVisionModel },
+                    set: { settings.useCustomVisionModel = $0 }
+                )) {
+                    Text("Use custom model for vision tasks")
+                }
+                
+                if settings.useCustomVisionModel {
+                    HStack {
+                        Text("Vision Model")
+                            .frame(width: 80, alignment: .trailing)
+                        
+                        Picker("", selection: Binding(
+                            get: { settings.customVisionModel },
+                            set: { settings.customVisionModel = $0 }
+                        )) {
+                            ForEach(allModels, id: \.provider) { provider, models in
+                                Section(header: Text(provider.capitalized)) {
+                                    ForEach(models, id: \.id) { model in
+                                        Text(model.name).tag(model.id)
+                                    }
+                                }
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 200)
+                    }
+                    
+                    Text("When enabled, this model will be used for all vision-related tasks like screenshots and image analysis, regardless of the primary model selection.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 88)
+                }
+            }
 
             // API usage info
             if self.settings.hasValidAPIKey {
@@ -303,7 +337,6 @@ struct AISettingsView: View {
                     }
                 }
             }
-        }
         }
         .formStyle(.grouped)
         .padding()
