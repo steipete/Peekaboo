@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("DockCommand")

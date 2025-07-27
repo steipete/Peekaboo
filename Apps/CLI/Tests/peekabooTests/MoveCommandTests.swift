@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import ArgumentParser
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("MoveCommand Tests")

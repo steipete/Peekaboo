@@ -1,4 +1,5 @@
 import Testing
+import PeekabooCore
 @testable import peekaboo
 import Foundation
 

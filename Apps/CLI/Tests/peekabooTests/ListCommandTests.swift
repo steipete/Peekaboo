@@ -2,6 +2,7 @@
 import ArgumentParser
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("ListCommand Tests", .serialized, .tags(.unit))

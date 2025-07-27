@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("JSONOutput Tests", .tags(.jsonOutput, .unit))
@@ -14,7 +15,7 @@ struct JSONOutputTests {
         }
 
         // Test string
-        let stringWrapper = TestWrapper(value: AnyCodable("test string"))
+        let stringWrapper = TestWrapper(value: peekaboo.AnyCodable("test string"))
         let stringData = try JSONEncoder().encode(stringWrapper)
         let stringDict = try JSONSerialization.jsonObject(with: stringData) as? [String: Any]
         #expect(stringDict?["value"] as? String == "test string")

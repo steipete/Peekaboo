@@ -1,4 +1,5 @@
 import XCTest
+import PeekabooCore
 @testable import peekaboo
 
 // NOTE: These tests are temporarily disabled as they reference old AI provider architecture

@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import CoreGraphics
 import PeekabooCore
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("Annotation Coordinate Tests")

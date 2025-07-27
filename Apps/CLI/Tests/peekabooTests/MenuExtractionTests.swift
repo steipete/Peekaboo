@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("Menu Extraction Tests", .serialized)
