@@ -22,7 +22,7 @@ extension PeekabooAgentService {
             ),
             handler: { params, context in
                 let buttonLabel = try params.string("button")
-                let appName = params.string("app", default: nil)
+                let appName = try? params.string("app", default: nil)
                 
                 _ = try await context.dialogs.clickButton(
                     buttonText: buttonLabel,
@@ -56,9 +56,9 @@ extension PeekabooAgentService {
             ),
             handler: { params, context in
                 let text = try params.string("text")
-                let fieldLabel = params.string("field", default: nil)
-                let appName = params.string("app", default: nil)
-                let clearFirst = params.bool("clear_first", default: true)
+                let fieldLabel = try? params.string("field", default: nil)
+                let appName = try? params.string("app", default: nil)
+                let clearFirst = try? params.bool("clear_first", default: true) ?? true
                 
                 // For now, this is a simplified implementation
                 // Field-specific targeting is not yet supported
@@ -67,7 +67,7 @@ extension PeekabooAgentService {
                 }
                 
                 // Clear if requested
-                if clearFirst {
+                if clearFirst ?? true {
                     try await context.automation.hotkey(keys: "cmd,a", holdDuration: 0)
                     try await Task.sleep(nanoseconds: TimeInterval.shortDelay.nanoseconds)
                     try await context.automation.hotkey(keys: "delete", holdDuration: 0)

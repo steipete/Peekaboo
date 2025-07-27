@@ -362,12 +362,12 @@ public final class OllamaModel: ModelInterface {
         // Convert messages
         let messages = request.messages.compactMap { message -> OllamaMessage? in
             switch message {
-            case let systemMsg as SystemMessageItem:
-                return OllamaMessage(role: "system", content: systemMsg.content, images: nil, toolCalls: nil)
+            case .system(_, let content):
+                return OllamaMessage(role: "system", content: content, images: nil, toolCalls: nil)
                 
-            case let userMsg as UserMessageItem:
+            case .user(_, let content):
                 // Handle different content types
-                switch userMsg.content {
+                switch content {
                 case .text(let text):
                     return OllamaMessage(role: "user", content: text, images: nil, toolCalls: nil)
                     
@@ -404,8 +404,8 @@ public final class OllamaModel: ModelInterface {
                     return nil // Ollama doesn't support file content
                 }
                 
-            case let assistantMsg as AssistantMessageItem:
-                let textContent = assistantMsg.content.compactMap { content -> String? in
+            case .assistant(_, let content, _):
+                let textContent = content.compactMap { content -> String? in
                     if case .outputText(let text) = content {
                         return text
                     }
@@ -414,8 +414,13 @@ public final class OllamaModel: ModelInterface {
                 
                 return OllamaMessage(role: "assistant", content: textContent, images: nil, toolCalls: nil)
                 
-            default:
-                return nil
+            case .tool(_, let toolCallId, let content):
+                // Convert tool response to assistant message for Ollama
+                return OllamaMessage(role: "assistant", content: "Tool result for \(toolCallId): \(content)", images: nil, toolCalls: nil)
+                
+            case .reasoning(_, let content):
+                // Convert reasoning to assistant message
+                return OllamaMessage(role: "assistant", content: content, images: nil, toolCalls: nil)
             }
         }
         

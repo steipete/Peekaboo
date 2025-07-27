@@ -19,11 +19,11 @@ extension ToolOutput {
         _ output: String,
         metadata: (String, String)...
     ) -> ToolOutput {
-        var result: [String: Any] = ["result": output]
+        var result: [String: ToolOutput] = ["result": .string(output)]
         for (key, value) in metadata {
-            result[key] = value
+            result[key] = .string(value)
         }
-        return .dictionary(result)
+        return .object(result)
     }
     
     /// Create a success result with metadata dictionary
@@ -31,11 +31,11 @@ extension ToolOutput {
         _ output: String,
         metadata: [String: String] = [:]
     ) -> ToolOutput {
-        var result: [String: Any] = ["result": output]
+        var result: [String: ToolOutput] = ["result": .string(output)]
         for (key, value) in metadata {
-            result[key] = value
+            result[key] = .string(value)
         }
-        return .dictionary(result)
+        return .object(result)
     }
 }
 

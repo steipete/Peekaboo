@@ -39,7 +39,7 @@ public enum Message: Codable, Sendable {
         case type, id, content, status, toolCallId
     }
     
-    private enum MessageType: String, Codable {
+    public enum MessageType: String, Codable {
         case system, user, assistant, tool, reasoning
     }
     

@@ -26,7 +26,7 @@ extension PeekabooAgentService {
             ),
             handler: { params, context in
                 let menuPath = try params.string("path")
-                let appName = params.string("app", default: nil)
+                let appName = try? params.string("app", default: nil)
                 
                 // Parse menu path
                 let pathComponents = menuPath
@@ -92,8 +92,8 @@ extension PeekabooAgentService {
                 required: []
             ),
             handler: { params, context in
-                let appName = params.string("app", default: nil)
-                let specificMenu = params.string("menu", default: nil)
+                let appName = try? params.string("app", default: nil)
+                let specificMenu = try? params.string("menu", default: nil)
                 
                 // Get menu structure
                 let menuStructure: MenuStructure

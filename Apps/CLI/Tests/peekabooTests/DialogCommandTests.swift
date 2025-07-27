@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import peekaboo
+import PeekabooCore
 
 @Suite("Dialog Command  Tests", .serialized)
 struct DialogCommandTests {
@@ -80,8 +81,8 @@ struct DialogCommandTests {
         #expect(DialogError.noActiveDialog.localizedDescription.contains("No active dialog"))
         #expect(DialogError.noFileDialog.localizedDescription.contains("No file dialog"))
         #expect(DialogError.buttonNotFound("OK").localizedDescription.contains("Button 'OK' not found"))
-        #expect(DialogError.fieldNotFound("Password").localizedDescription.contains("Field 'Password' not found"))
-        #expect(DialogError.invalidFieldIndex(3).localizedDescription.contains("Invalid field index: 3"))
+        #expect(DialogError.fieldNotFound.localizedDescription.contains("Field not found"))
+        #expect(DialogError.invalidFieldIndex.localizedDescription.contains("Invalid field index"))
         #expect(DialogError.noTextFields.localizedDescription.contains("No text fields"))
         #expect(DialogError.noDismissButton.localizedDescription.contains("No dismiss button"))
     }
@@ -116,7 +117,7 @@ struct DialogCommandIntegrationTests {
                 #expect(dialogData["buttons"] != nil)
             }
         } else {
-            #expect(data.error?.code == .NO_ACTIVE_DIALOG)
+            #expect(data.error?.code == "NO_ACTIVE_DIALOG")
         }
     }
 
@@ -132,7 +133,7 @@ struct DialogCommandIntegrationTests {
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
         if !data.success {
             // Expected if no dialog is open
-            #expect(data.error?.code == .NO_ACTIVE_DIALOG)
+            #expect(data.error?.code == "NO_ACTIVE_DIALOG")
         }
     }
 
@@ -148,7 +149,7 @@ struct DialogCommandIntegrationTests {
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
         if !data.success {
             // Expected if no dialog is open
-            #expect(data.error?.code == .NO_ACTIVE_DIALOG)
+            #expect(data.error?.code == "NO_ACTIVE_DIALOG")
         }
     }
 
@@ -181,7 +182,7 @@ struct DialogCommandIntegrationTests {
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
         if !data.success {
             // Expected if no file dialog is open
-            #expect(data.error?.code == .NO_ACTIVE_DIALOG || data.error?.code == .NO_FILE_DIALOG)
+            #expect(data.error?.code == "NO_ACTIVE_DIALOG" || data.error?.code == "NO_FILE_DIALOG")
         } else {
             if let fileData = data.data?.value as? [String: Any] {
                 #expect(fileData["action"] as? String == "file_dialog")

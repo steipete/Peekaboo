@@ -110,8 +110,8 @@ extension ElementInfo {
             return isEnabled
         }
         
-        // Web content that's editable
-        if role == "AXWebArea" && subrole == "AXContentEditable" {
+        // Web areas can accept keyboard input for navigation
+        if role == "AXWebArea" {
             return isEnabled
         }
         
@@ -148,22 +148,26 @@ extension ElementInfo {
 extension FocusInfo {
     /// Convert to dictionary for JSON responses
     public func toDictionary() -> [String: Any] {
-        return [
+        var dict: [String: Any] = [
             "app": app,
-            "bundleId": bundleId as Any,
             "processId": processId,
             "element": element.toDictionary()
         ]
+        
+        // Only include bundleId if it's non-nil
+        if let bundleId = bundleId {
+            dict["bundleId"] = bundleId
+        }
+        
+        return dict
     }
 }
 
 extension ElementInfo {
     /// Convert to dictionary for JSON responses
     public func toDictionary() -> [String: Any] {
-        return [
+        var dict: [String: Any] = [
             "role": role,
-            "title": title as Any,
-            "value": value as Any,
             "bounds": [
                 "x": bounds.origin.x,
                 "y": bounds.origin.y,
@@ -172,11 +176,25 @@ extension ElementInfo {
             ],
             "isEnabled": isEnabled,
             "isVisible": isVisible,
-            "subrole": subrole as Any,
-            "description": description as Any,
             "isTextInput": isTextInput,
             "canAcceptKeyboardInput": canAcceptKeyboardInput,
             "typeDescription": typeDescription
         ]
+        
+        // Only include optional values if they are non-nil
+        if let title = title {
+            dict["title"] = title
+        }
+        if let value = value {
+            dict["value"] = value
+        }
+        if let subrole = subrole {
+            dict["subrole"] = subrole
+        }
+        if let description = description {
+            dict["description"] = description
+        }
+        
+        return dict
     }
 }

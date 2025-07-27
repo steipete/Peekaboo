@@ -36,7 +36,7 @@ extension PeekabooAgentService {
             }
         }
         
-        return .error(errorMessage)
+        return .error(message: errorMessage)
     }
     
     /// Enhance error with context-specific information

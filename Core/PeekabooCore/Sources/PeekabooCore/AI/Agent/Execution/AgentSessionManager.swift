@@ -40,7 +40,7 @@ public actor AgentSessionManager {
     /// Save a session
     public func saveSession(
         id: String,
-        messages: [any MessageItem],
+        messages: [Message],
         metadata: [String: Any]? = nil
     ) throws {
         let session = AgentSession(
@@ -102,40 +102,52 @@ public actor AgentSessionManager {
             options: .skipsHiddenFiles
         )
         
-        return contents.compactMap { url in
-            guard url.pathExtension == "json" else { return nil }
+        var summaries: [SessionSummary] = []
+        
+        for url in contents where url.pathExtension == "json" {
+            let sessionId = url.deletingPathExtension().lastPathComponent
             
-            do {
-                let data = try Data(contentsOf: url)
-                let session = try decoder.decode(AgentSession.self, from: data)
-                
-                return SessionSummary(
+            if let session = try? loadSession(id: sessionId) {
+                summaries.append(SessionSummary(
                     id: session.id,
                     createdAt: session.createdAt,
                     updatedAt: session.updatedAt,
                     messageCount: session.messages.count,
                     metadata: session.metadata
-                )
-            } catch {
-                // Skip invalid sessions
-                return nil
+                ))
             }
-        }.sorted { $0.updatedAt > $1.updatedAt }
+        }
+        
+        // Sort by updated date, newest first
+        summaries.sort { $0.updatedAt > $1.updatedAt }
+        
+        return summaries
     }
     
-    /// Clean up old sessions
-    public func cleanupSessions(olderThan date: Date) throws {
-        let sessions = try listSessions()
+    /// Clean up old sessions (older than 30 days)
+    public func cleanOldSessions(daysToKeep: Int = 30) throws {
+        let cutoffDate = Date().addingTimeInterval(-Double(daysToKeep * 24 * 60 * 60))
         
-        for session in sessions where session.updatedAt < date {
-            try deleteSession(id: session.id)
+        let contents = try fileManager.contentsOfDirectory(
+            at: sessionDirectory,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: .skipsHiddenFiles
+        )
+        
+        for url in contents where url.pathExtension == "json" {
+            if let modificationDate = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+               modificationDate < cutoffDate {
+                try fileManager.removeItem(at: url)
+            }
         }
     }
     
     /// Clear all sessions
     public func clearAllSessions() throws {
+        // Clear cache
         sessionCache.removeAll()
         
+        // Clear disk
         let contents = try fileManager.contentsOfDirectory(
             at: sessionDirectory,
             includingPropertiesForKeys: nil,
@@ -159,20 +171,20 @@ public actor AgentSessionManager {
 /// A stored agent conversation session
 public struct AgentSession: Codable, Sendable {
     public let id: String
-    public let messages: [AnyMessageItem]
+    public let messages: [Message]
     public let metadata: [String: AnyCodable]?
     public let createdAt: Date
     public let updatedAt: Date
     
     init(
         id: String,
-        messages: [any MessageItem],
+        messages: [Message],
         metadata: [String: Any]?,
         createdAt: Date,
         updatedAt: Date
     ) {
         self.id = id
-        self.messages = messages.map(AnyMessageItem.init)
+        self.messages = messages
         self.metadata = metadata?.mapValues(AnyCodable.init)
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -188,89 +200,21 @@ public struct SessionSummary: Sendable {
     public let metadata: [String: AnyCodable]?
 }
 
-// MARK: - Type Erasure for Messages
-
-/// Type-erased message item for storage
-public struct AnyMessageItem: Codable, Sendable {
-    private let wrapped: any MessageItem
-    
-    init(_ message: any MessageItem) {
-        self.wrapped = message
-    }
-    
-    var message: any MessageItem {
-        wrapped
-    }
-    
-    // Custom coding to handle different message types
-    enum CodingKeys: String, CodingKey {
-        case type, data
-    }
-    
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let type = try container.decode(MessageItemType.self, forKey: .type)
-        
-        switch type {
-        case .system:
-            let message = try container.decode(SystemMessageItem.self, forKey: .data)
-            self.wrapped = message
-        case .user:
-            let message = try container.decode(UserMessageItem.self, forKey: .data)
-            self.wrapped = message
-        case .assistant:
-            let message = try container.decode(AssistantMessageItem.self, forKey: .data)
-            self.wrapped = message
-        case .tool:
-            let message = try container.decode(ToolMessageItem.self, forKey: .data)
-            self.wrapped = message
-        case .reasoning:
-            let message = try container.decode(ReasoningMessageItem.self, forKey: .data)
-            self.wrapped = message
-        case .unknown:
-            let message = try container.decode(UnknownMessageItem.self, forKey: .data)
-            self.wrapped = message
-        }
-    }
-    
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(wrapped.type, forKey: .type)
-        
-        switch wrapped {
-        case let message as SystemMessageItem:
-            try container.encode(message, forKey: .data)
-        case let message as UserMessageItem:
-            try container.encode(message, forKey: .data)
-        case let message as AssistantMessageItem:
-            try container.encode(message, forKey: .data)
-        case let message as ToolMessageItem:
-            try container.encode(message, forKey: .data)
-        case let message as ReasoningMessageItem:
-            try container.encode(message, forKey: .data)
-        case let message as UnknownMessageItem:
-            try container.encode(message, forKey: .data)
-        default:
-            throw EncodingError.invalidValue(
-                wrapped,
-                EncodingError.Context(
-                    codingPath: container.codingPath,
-                    debugDescription: "Unknown message type"
-                )
-            )
-        }
-    }
-}
-
 // MARK: - Session Extensions
 
 extension AgentSession {
     /// Get the last user message
     public var lastUserMessage: String? {
         for message in messages.reversed() {
-            if let userMessage = message.message as? UserMessageItem,
-               case .text(let text) = userMessage.content {
-                return text
+            if case .user(_, let content) = message {
+                switch content {
+                case .text(let text):
+                    return text
+                case .multimodal(let parts):
+                    return parts.compactMap { $0.text }.first
+                default:
+                    continue
+                }
             }
         }
         return nil
@@ -279,8 +223,8 @@ extension AgentSession {
     /// Get the last assistant response
     public var lastAssistantResponse: String? {
         for message in messages.reversed() {
-            if let assistantMessage = message.message as? AssistantMessageItem {
-                return assistantMessage.content.compactMap { content in
+            if case .assistant(_, let content, _) = message {
+                return content.compactMap { content in
                     if case .outputText(let text) = content {
                         return text
                     }
@@ -294,8 +238,8 @@ extension AgentSession {
     /// Check if session has any tool calls
     public var hasToolCalls: Bool {
         messages.contains { message in
-            if let assistantMessage = message.message as? AssistantMessageItem {
-                return assistantMessage.content.contains { content in
+            if case .assistant(_, let content, _) = message {
+                return content.contains { content in
                     if case .toolCall = content {
                         return true
                     }

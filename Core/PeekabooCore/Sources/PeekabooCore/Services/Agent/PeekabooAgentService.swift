@@ -123,8 +123,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     /// Clean up any cached sessions or resources
     public func cleanup() async {
         // Clean up old sessions (older than 7 days)
-        let oneWeekAgo = Date().addingTimeInterval(-7 * 24 * 60 * 60)
-        try? await sessionManager.cleanupSessions(olderThan: oneWeekAgo)
+        try? await sessionManager.cleanOldSessions(daysToKeep: 7)
     }
     
     // MARK: - Agent Creation

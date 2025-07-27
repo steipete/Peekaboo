@@ -63,7 +63,7 @@ extension PeekabooAgentService {
                 required: []
             ),
             handler: { params, context in
-                let section = params.string("section", default: "all") ?? "all"
+                let section = try? params.string("section", default: "all") ?? "all"
                 
                 let dockItems = try await context.dock.listDockItems(includeAll: true)
                 
@@ -122,7 +122,7 @@ extension PeekabooAgentService {
                     output.trimmingCharacters(in: .whitespacesAndNewlines),
                     metadata: [
                         "totalCount": String(filteredItems.count),
-                        "section": section
+                        "section": section ?? "all"
                     ]
                 )
             }

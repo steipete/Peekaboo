@@ -171,8 +171,14 @@ public final class SessionManager: SessionManagerProtocol {
     
     public func cleanSession(sessionId: String) async throws {
         let sessionPath = getSessionPath(for: sessionId)
-        try FileManager.default.removeItem(at: sessionPath)
-        logger.info("Cleaned session: \(sessionId)")
+        
+        // Only try to remove if the directory exists
+        if FileManager.default.fileExists(atPath: sessionPath.path) {
+            try FileManager.default.removeItem(at: sessionPath)
+            logger.info("Cleaned session: \(sessionId)")
+        } else {
+            logger.debug("Session \(sessionId) does not exist, skipping cleanup")
+        }
     }
     
     public func cleanSessionsOlderThan(days: Int) async throws -> Int {

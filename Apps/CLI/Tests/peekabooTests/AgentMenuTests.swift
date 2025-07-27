@@ -247,7 +247,7 @@ struct AgentStep: Decodable {
         self.output = try container.decodeIfPresent(String.self, forKey: .output)
 
         // Handle arguments as Any
-        if let args = try container.decodeIfPresent([String: AgentAnyDecodable].self, forKey: .arguments) {
+        if let args = try container.decodeIfPresent([String: AnyCodable].self, forKey: .arguments) {
             self.arguments = args.mapValues { $0.value }
         } else {
             self.arguments = nil

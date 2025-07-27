@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import peekaboo
+import PeekabooCore
 
 @Suite("Agent Resume CLI Tests")
 struct AgentResumeCLITests {
@@ -177,7 +178,7 @@ struct AgentResumeCLITests {
         await manager.setLastQuestion(sessionId: sessionId3, question: "What should I do next?")
         
         let sessions = await manager.getRecentSessions()
-        let testSessions = sessions.filter { [$sessionId1, $sessionId2, $sessionId3].contains($0.id) }
+        let testSessions = sessions.filter { [sessionId1, sessionId2, sessionId3].contains($0.id) }
         
         #expect(testSessions.count == 3)
         

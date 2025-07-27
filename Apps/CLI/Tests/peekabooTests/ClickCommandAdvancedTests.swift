@@ -71,33 +71,35 @@ struct ClickCommandAdvancedTests {
     func elementLocatorFromQuery() {
         // Text content search
         var locator = ClickCommand.createLocatorFromQuery("Bold")
-        #expect(locator.title == "Bold")
-        #expect(locator.label == "Bold")
+        #expect(locator.type == "text")
         #expect(locator.value == "Bold")
-        // Note: roleDescription property doesn't exist on ElementLocator
 
-        // Role-based search
+        // ID-based search
+        locator = ClickCommand.createLocatorFromQuery("#my-id")
+        #expect(locator.type == "id")
+        #expect(locator.value == "my-id")
+
+        // Class-based search
+        locator = ClickCommand.createLocatorFromQuery(".my-class")
+        #expect(locator.type == "class")
+        #expect(locator.value == "my-class")
+
+        // Role-based search - these are just text searches now
         locator = ClickCommand.createLocatorFromQuery("checkbox")
-        #expect(locator.role == "AXCheckBox")
-
-        locator = ClickCommand.createLocatorFromQuery("button")
-        #expect(locator.role == "AXButton")
-
-        locator = ClickCommand.createLocatorFromQuery("text")
-        #expect(locator.role == "AXStaticText")
+        #expect(locator.type == "text")
+        #expect(locator.value == "checkbox")
     }
 
     @Test("Click result JSON structure")
     func clickResultJSON() throws {
         // Create a test result using the correct structure
         let clickLocation = CGPoint(x: 100, y: 200)
-        let resultData = ClickResultData(
-            action: "click",
-            clicked_element: "AXButton: Save",
-            click_type: "single",
-            click_location: ["x": Int(clickLocation.x), "y": Int(clickLocation.y)],
-            wait_time: 1.5,
-            execution_time: 2.0
+        let resultData = ClickResult(
+            success: true,
+            clickedElement: "AXButton: Save",
+            clickLocation: clickLocation,
+            waitTime: 1.5,
+            executionTime: 2.0
         )
         
         let encoder = JSONEncoder()
@@ -105,25 +107,25 @@ struct ClickCommandAdvancedTests {
         let data = try encoder.encode(resultData)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
 
-        let action = json?["action"] as? String
-        #expect(action == "click")
+        let success = json?["success"] as? Bool
+        #expect(success == true)
         
-        let clickedElement = json?["clicked_element"] as? String
+        let clickedElement = json?["clickedElement"] as? String
         #expect(clickedElement == "AXButton: Save")
         
-        let waitTime = json?["wait_time"] as? Double
+        let waitTime = json?["waitTime"] as? Double
         #expect(waitTime == 1.5)
         
-        let executionTime = json?["execution_time"] as? Double
+        let executionTime = json?["executionTime"] as? Double
         #expect(executionTime == 2.0)
 
-        if let location = json?["click_location"] as? [String: Any] {
-            let x = location["x"] as? Int
-            #expect(x == 100)
-            let y = location["y"] as? Int
-            #expect(y == 200)
+        if let location = json?["clickLocation"] as? [String: Any] {
+            let x = location["x"] as? Double
+            #expect(x == 100.0)
+            let y = location["y"] as? Double
+            #expect(y == 200.0)
         } else {
-            Issue.record("click_location not found in JSON")
+            Issue.record("clickLocation not found in JSON")
         }
     }
 

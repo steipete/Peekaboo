@@ -315,7 +315,7 @@ struct FocusInfoTests {
         
         #expect(dict["role"] as? String == "AXButton")
         #expect(dict["title"] as? String == "Cancel")
-        #expect(dict["value"] == nil || (dict["value"] as? NSNull) != nil)
+        #expect(dict["value"] == nil)
         #expect(dict["isEnabled"] as? Bool == false)
         #expect(dict["isVisible"] as? Bool == true)
         #expect(dict["subrole"] as? String == "AXCloseButton")

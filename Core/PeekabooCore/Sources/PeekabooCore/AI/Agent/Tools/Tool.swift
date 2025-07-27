@@ -271,36 +271,212 @@ public enum ToolInput {
     }
 }
 
-/// Output from a tool
-public enum ToolOutput: @unchecked Sendable {
+/// Strongly-typed output from a tool
+public enum ToolOutput: Codable, Sendable {
     case string(String)
-    case dictionary([String: Any])
-    case array([Any])
+    case number(Double)
+    case boolean(Bool)
+    case object([String: ToolOutput])
+    case array([ToolOutput])
     case null
-    case error(String)
+    case error(message: String, code: String? = nil)
+    
+    // MARK: - Codable Implementation
+    
+    private enum CodingKeys: String, CodingKey {
+        case type, value, message, code
+    }
+    
+    private enum OutputType: String, Codable {
+        case string, number, boolean, object, array, null, error
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(OutputType.self, forKey: .type)
+        
+        switch type {
+        case .string:
+            let value = try container.decode(String.self, forKey: .value)
+            self = .string(value)
+        case .number:
+            let value = try container.decode(Double.self, forKey: .value)
+            self = .number(value)
+        case .boolean:
+            let value = try container.decode(Bool.self, forKey: .value)
+            self = .boolean(value)
+        case .object:
+            let value = try container.decode([String: ToolOutput].self, forKey: .value)
+            self = .object(value)
+        case .array:
+            let value = try container.decode([ToolOutput].self, forKey: .value)
+            self = .array(value)
+        case .null:
+            self = .null
+        case .error:
+            let message = try container.decode(String.self, forKey: .message)
+            let code = try container.decodeIfPresent(String.self, forKey: .code)
+            self = .error(message: message, code: code)
+        }
+    }
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        switch self {
+        case .string(let value):
+            try container.encode(OutputType.string, forKey: .type)
+            try container.encode(value, forKey: .value)
+        case .number(let value):
+            try container.encode(OutputType.number, forKey: .type)
+            try container.encode(value, forKey: .value)
+        case .boolean(let value):
+            try container.encode(OutputType.boolean, forKey: .type)
+            try container.encode(value, forKey: .value)
+        case .object(let value):
+            try container.encode(OutputType.object, forKey: .type)
+            try container.encode(value, forKey: .value)
+        case .array(let value):
+            try container.encode(OutputType.array, forKey: .type)
+            try container.encode(value, forKey: .value)
+        case .null:
+            try container.encode(OutputType.null, forKey: .type)
+        case .error(let message, let code):
+            try container.encode(OutputType.error, forKey: .type)
+            try container.encode(message, forKey: .message)
+            try container.encodeIfPresent(code, forKey: .code)
+        }
+    }
+    
+    // MARK: - Conversion Methods
     
     /// Convert to JSON string for the model
     public func toJSONString() throws -> String {
-        let object: Any
-        
         switch self {
         case .string(let str):
             return str // Return string directly for text output
-        case .dictionary(let dict):
-            object = dict
+        case .error(let message, let code):
+            // Special handling for errors to match expected format
+            var errorDict: [String: ToolOutput] = ["error": .string(message)]
+            if let code = code {
+                errorDict["error_code"] = .string(code)
+            }
+            let data = try JSONEncoder().encode(ToolOutput.object(errorDict))
+            guard let string = String(data: data, encoding: .utf8) else {
+                throw ToolError.serializationFailed
+            }
+            return string
+        default:
+            // For all other types, encode normally
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            let data = try encoder.encode(self)
+            guard let string = String(data: data, encoding: .utf8) else {
+                throw ToolError.serializationFailed
+            }
+            return string
+        }
+    }
+    
+    /// Convert to a dictionary representation (for compatibility)
+    public func toDictionary() -> [String: Any]? {
+        switch self {
+        case .object(let dict):
+            var result: [String: Any] = [:]
+            for (key, value) in dict {
+                if let converted = value.toAny() {
+                    result[key] = converted
+                }
+            }
+            return result
+        default:
+            return nil
+        }
+    }
+    
+    /// Convert to Any (for legacy compatibility)
+    private func toAny() -> Any? {
+        switch self {
+        case .string(let value):
+            return value
+        case .number(let value):
+            return value
+        case .boolean(let value):
+            return value
+        case .object(let dict):
+            var result: [String: Any] = [:]
+            for (key, value) in dict {
+                if let converted = value.toAny() {
+                    result[key] = converted
+                }
+            }
+            return result
         case .array(let array):
-            object = array
+            return array.compactMap { $0.toAny() }
         case .null:
-            return "null"
-        case .error(let message):
-            object = ["error": message]
+            return NSNull()
+        case .error(let message, _):
+            return ["error": message]
         }
-        
-        let data = try JSONSerialization.data(withJSONObject: object, options: .prettyPrinted)
-        guard let string = String(data: data, encoding: .utf8) else {
-            throw ToolError.serializationFailed
+    }
+}
+
+// MARK: - Builder Methods
+
+extension ToolOutput {
+    /// Create a dictionary/object output using a builder pattern
+    public static func dictionary(_ builder: () -> [String: ToolOutput]) -> ToolOutput {
+        .object(builder())
+    }
+    
+    /// Create a dictionary/object output from key-value pairs
+    public static func dictionary(_ pairs: (String, ToolOutput)...) -> ToolOutput {
+        var dict: [String: ToolOutput] = [:]
+        for (key, value) in pairs {
+            dict[key] = value
         }
-        return string
+        return .object(dict)
+    }
+    
+    /// Create from a Swift dictionary with automatic type conversion
+    public static func from(_ dict: [String: Any]) -> ToolOutput {
+        var result: [String: ToolOutput] = [:]
+        for (key, value) in dict {
+            result[key] = from(value)
+        }
+        return .object(result)
+    }
+    
+    /// Create from any Swift value with automatic type conversion
+    public static func from(_ value: Any) -> ToolOutput {
+        switch value {
+        case let str as String:
+            return .string(str)
+        case let num as Int:
+            return .number(Double(num))
+        case let num as Double:
+            return .number(num)
+        case let bool as Bool:
+            return .boolean(bool)
+        case let dict as [String: Any]:
+            return from(dict)
+        case let array as [Any]:
+            return .array(array.map { from($0) })
+        case is NSNull:
+            return .null
+        default:
+            // Fallback to string representation
+            return .string(String(describing: value))
+        }
+    }
+    
+    /// Convenience method for success results
+    public static func success(_ message: String, metadata: (String, ToolOutput)...) -> ToolOutput {
+        var dict: [String: ToolOutput] = ["result": .string(message)]
+        for (key, value) in metadata {
+            dict[key] = value
+        }
+        return .object(dict)
     }
 }
 

@@ -88,10 +88,15 @@ struct SessionManagerTests {
             isActionable: true
         )
         
+        // Create a temporary test image file
+        let testImagePath = "/tmp/test.png"
+        let testImageData = Data([0x89, 0x50, 0x4E, 0x47]) // PNG header
+        try testImageData.write(to: URL(fileURLWithPath: testImagePath))
+        
         // Store screenshot with UI map
         try await sessionManager.storeScreenshot(
             sessionId: sessionId,
-            screenshotPath: "/tmp/test.png",
+            screenshotPath: testImagePath,
             applicationName: "TestApp",
             windowTitle: "Test Window",
             windowBounds: nil
@@ -103,15 +108,19 @@ struct SessionManagerTests {
             .appendingPathComponent(sessionId)
         let sessionFile = sessionPath.appendingPathComponent("map.json")
         
+        // Ensure the session directory exists
+        try FileManager.default.createDirectory(at: sessionPath, withIntermediateDirectories: true)
+        
         var sessionData = UIAutomationSession()
         sessionData.uiMap = ["B1": uiElement1, "B2": uiElement2]
         sessionData.applicationName = "TestApp"
         sessionData.windowTitle = "Test Window"
+        sessionData.lastUpdateTime = Date()
         
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let jsonData = try encoder.encode(sessionData)
-        try jsonData.write(to: sessionFile)
+        try jsonData.write(to: sessionFile, options: .atomic)
         
         // Find elements by query
         let foundElements = try await sessionManager.findElements(sessionId: sessionId, matching: "save")

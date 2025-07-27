@@ -72,7 +72,7 @@ public struct OpenAIFunctionCall: Codable, Sendable {
     public let arguments: String
 }
 
-public struct Message: Codable, Sendable {
+public struct OpenAIThreadMessage: Codable, Sendable {
     public let id: String
     public let object: String
     public let role: String
@@ -90,7 +90,7 @@ public struct TextContent: Codable, Sendable {
 }
 
 public struct MessageList: Codable, Sendable {
-    public let data: [Message]
+    public let data: [OpenAIThreadMessage]
 }
 
 // MARK: - Tool Definition
@@ -622,9 +622,9 @@ public struct OpenAIResponsesTool: Codable, Sendable {
 public struct OpenAIJSONSchema: Codable, Sendable {
     public let name: String
     public let strict: Bool
-    public let schema: JSONSchema
+    public let schema: OpenAIJSONSchemaDefinition
     
-    public init(name: String, strict: Bool, schema: JSONSchema) {
+    public init(name: String, strict: Bool, schema: OpenAIJSONSchemaDefinition) {
         self.name = name
         self.strict = strict
         self.schema = schema
@@ -632,18 +632,18 @@ public struct OpenAIJSONSchema: Codable, Sendable {
 }
 
 /// Structured JSON schema definition
-public struct JSONSchema: Codable, Sendable {
+public struct OpenAIJSONSchemaDefinition: Codable, Sendable {
     public let type: String
     public let properties: [String: Property]?
     public let required: [String]?
-    public let items: Box<JSONSchema>?
+    public let items: Box<OpenAIJSONSchemaDefinition>?
     public let additionalProperties: Bool?
     
     public struct Property: Codable, Sendable {
         public let type: String
         public let description: String?
         public let `enum`: [String]?
-        public let items: Box<JSONSchema>?
+        public let items: Box<OpenAIJSONSchemaDefinition>?
         public let properties: [String: Property]?
         public let required: [String]?
     }
@@ -652,7 +652,7 @@ public struct JSONSchema: Codable, Sendable {
         type: String,
         properties: [String: Property]? = nil,
         required: [String]? = nil,
-        items: JSONSchema? = nil,
+        items: OpenAIJSONSchemaDefinition? = nil,
         additionalProperties: Bool? = nil
     ) {
         self.type = type
@@ -663,24 +663,7 @@ public struct JSONSchema: Codable, Sendable {
     }
 }
 
-/// Box type for recursive structures
-public final class Box<T: Codable>: Codable {
-    public let value: T
-    
-    public init(_ value: T) {
-        self.value = value
-    }
-    
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        self.value = try container.decode(T.self)
-    }
-    
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(value)
-    }
-}
+// Box type is imported from Tool.swift
 
 // MARK: - Responses API Types
 

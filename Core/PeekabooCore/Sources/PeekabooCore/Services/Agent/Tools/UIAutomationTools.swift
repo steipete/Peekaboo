@@ -32,12 +32,13 @@ extension PeekabooAgentService {
             ),
             handler: { params, context in
                 let target = try params.string("target")
-                let appName = params.string("app", default: nil)
-                let doubleClick = params.bool("double_click", default: false)
-                let rightClick = params.bool("right_click", default: false)
+                let appName = try? params.string("app", default: nil)
+                let doubleClick = (try? params.bool("double_click", default: false)) ?? false
+                let rightClick = (try? params.bool("right_click", default: false)) ?? false
                 
-                // Check if target is coordinates
-                if let coordinates = try params.coordinates("target") {
+                // Check if target is coordinates (e.g., "100,200")
+                if target.contains(","), let coordParts = target.split(separator: ",").map(String.init).map(Double.init) as? [Double], coordParts.count == 2 {
+                    let coordinates = CGPoint(x: coordParts[0], y: coordParts[1])
                     let clickType: ClickType = rightClick ? .right : (doubleClick ? .double : .single)
                     
                     try await context.automation.click(
@@ -101,9 +102,9 @@ extension PeekabooAgentService {
             ),
             handler: { params, context in
                 let text = try params.string("text")
-                let fieldLabel = params.string("field", default: nil)
-                let appName = params.string("app", default: nil)
-                let clearFirst = params.bool("clear_first", default: false)
+                let fieldLabel = try? params.string("field", default: nil)
+                let appName = try? params.string("app", default: nil)
+                let clearFirst = (try? params.bool("clear_first", default: false)) ?? false
                 
                 // If a specific field is targeted, click it first
                 if let fieldLabel = fieldLabel {
@@ -169,9 +170,9 @@ extension PeekabooAgentService {
             ),
             handler: { params, context in
                 let directionStr = try params.string("direction")
-                let amount = params.int("amount", default: 5) ?? 5
-                let target = params.string("target", default: nil)
-                let appName = params.string("app", default: nil)
+                let amount = (try? params.int("amount", default: 5)) ?? 5
+                let target = try? params.string("target", default: nil)
+                let appName = try? params.string("app", default: nil)
                 
                 let direction: ScrollDirection
                 switch directionStr.lowercased() {
@@ -232,7 +233,7 @@ extension PeekabooAgentService {
             ),
             handler: { params, context in
                 let keyStr = try params.string("key")
-                let modifierStrs = params.stringArray("modifiers") ?? []
+                let modifierStrs = (try? params.stringArray("modifiers")) ?? []
                 
                 // Map key names to match what hotkey expects
                 let mappedKey: String

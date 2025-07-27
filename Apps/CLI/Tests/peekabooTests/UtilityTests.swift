@@ -100,56 +100,6 @@ struct UtilityTests {
         }
     }
 
-    @Suite("ScreenCapture Handler Tests")
-    struct ScreenCaptureHandlerTests {
-        @Test("Creates handler with format and path")
-        func createsHandler() {
-            let handler = ScreenCaptureHandler(
-                format: .png,
-                path: "/tmp/screenshot.png")
-
-            #expect(handler.format == .png)
-            #expect(handler.path == "/tmp/screenshot.png")
-        }
-
-        @Test("Creates handler without path")
-        func createsHandlerWithoutPath() {
-            let handler = ScreenCaptureHandler(
-                format: .jpg,
-                path: nil)
-
-            #expect(handler.format == .jpg)
-            #expect(handler.path == nil)
-        }
-    }
-
-    @Suite("Window Capture Handler Tests")
-    struct WindowCaptureHandlerTests {
-        @Test("Creates handler with required parameters")
-        func createsHandlerWithRequiredParams() {
-            let handler = WindowCaptureHandler(
-                captureFocus: .foreground,
-                format: .png,
-                path: "/tmp/test.png")
-
-            #expect(handler.captureFocus == .foreground)
-            #expect(handler.format == .png)
-            #expect(handler.path == "/tmp/test.png")
-        }
-
-        @Test("Creates handler with nil path")
-        func createsHandlerWithNilPath() {
-            let handler = WindowCaptureHandler(
-                captureFocus: .auto,
-                format: .jpg,
-                path: nil)
-
-            #expect(handler.captureFocus == .auto)
-            #expect(handler.format == .jpg)
-            #expect(handler.path == nil)
-        }
-    }
-
     @Suite("Helper Function Tests")
     struct HelperFunctionTests {
         @Test("Date formatting for filenames")

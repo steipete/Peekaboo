@@ -21,13 +21,13 @@ public enum AIProviderParser {
     /// - Parameter providerString: String like "openai/gpt-4" or "ollama/llava:latest"
     /// - Returns: Parsed configuration or nil if invalid format
     public static func parse(_ providerString: String) -> ProviderConfig? {
-        let trimmed = providerString.trimmingCharacters(in: .whitespaces)
+        let trimmed = providerString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let slashIndex = trimmed.firstIndex(of: "/") else {
             return nil
         }
         
-        let provider = String(trimmed[..<slashIndex])
-        let model = String(trimmed[trimmed.index(after: slashIndex)...])
+        let provider = String(trimmed[..<slashIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = String(trimmed[trimmed.index(after: slashIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Validate both parts are non-empty
         guard !provider.isEmpty && !model.isEmpty else {
@@ -118,6 +118,9 @@ public enum AIProviderParser {
             finalModel = envModel
         } else if let configuredDefault = configuredDefault {
             finalModel = configuredDefault
+        } else if let envModel = environmentModel {
+            // Use the first available provider from the list even when not from environment
+            finalModel = envModel
         } else {
             // Fall back to defaults based on available API keys
             if hasAnthropic {

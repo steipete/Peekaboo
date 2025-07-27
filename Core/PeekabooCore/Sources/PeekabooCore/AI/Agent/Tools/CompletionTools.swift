@@ -21,17 +21,17 @@ public enum CompletionTools {
                 let success: Bool = input.value(for: "success") ?? true
                 let nextSteps: String? = input.value(for: "next_steps")
                 
-                var result: [String: Any] = [
-                    "type": "task_completion",
-                    "summary": summary,
-                    "success": success
+                var result: [String: ToolOutput] = [
+                    "type": .string("task_completion"),
+                    "summary": .string(summary),
+                    "success": .boolean(success)
                 ]
                 
                 if let next = nextSteps {
-                    result["next_steps"] = next
+                    result["next_steps"] = .string(next)
                 }
                 
-                return .dictionary(result)
+                return .object(result)
             }
         )
     }
@@ -52,11 +52,11 @@ public enum CompletionTools {
                 let question: String = input.value(for: "question") ?? ""
                 let context: String = input.value(for: "context") ?? ""
                 
-                return .dictionary([
-                    "type": "need_info",
-                    "question": question,
-                    "context": context
-                ])
+                return .dictionary(
+                    ("type", .string("need_info")),
+                    ("question", .string(question)),
+                    ("context", .string(context))
+                )
             }
         )
     }

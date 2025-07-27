@@ -61,52 +61,6 @@ public func performOperation<T>(
     }
 }
 
-// MARK: - Parameter Validation
-
-extension Dictionary where Key == String, Value == AnyCodable {
-    /// Extract a required string parameter
-    public func requireString(_ key: String) throws -> String {
-        guard let codable = self[key],
-              let value = codable.value as? String else {
-            throw PeekabooError.invalidInput("Missing required parameter: \(key)")
-        }
-        return value
-    }
-    
-    /// Extract a required integer parameter
-    public func requireInt(_ key: String) throws -> Int {
-        guard let codable = self[key],
-              let value = codable.value as? Int else {
-            throw PeekabooError.invalidInput("Missing required parameter: \(key)")
-        }
-        return value
-    }
-    
-    /// Extract an optional string parameter
-    public func optionalString(_ key: String) -> String? {
-        if let codable = self[key] {
-            return codable.value as? String
-        }
-        return nil
-    }
-    
-    /// Extract an optional boolean parameter with default
-    public func optionalBool(_ key: String, default defaultValue: Bool = false) -> Bool {
-        if let codable = self[key] {
-            return codable.value as? Bool ?? defaultValue
-        }
-        return defaultValue
-    }
-    
-    /// Extract an optional integer parameter with default
-    public func optionalInt(_ key: String, default defaultValue: Int) -> Int {
-        if let codable = self[key] {
-            return codable.value as? Int ?? defaultValue
-        }
-        return defaultValue
-    }
-}
-
 // MARK: - Path Utilities
 
 extension String {

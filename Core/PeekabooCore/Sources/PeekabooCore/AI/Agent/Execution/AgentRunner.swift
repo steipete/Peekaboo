@@ -103,7 +103,7 @@ public struct AgentExecutionResult: Sendable {
     public let content: String
     
     /// All messages in the conversation
-    public let messages: [any MessageItem]
+    public let messages: [Message]
     
     /// The session ID for resuming
     public let sessionId: String
@@ -330,11 +330,11 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
     
     // Recursive helper to process messages until no more tool calls
     private func processMessagesRecursively(
-        messages: [any MessageItem],
+        messages: [Message],
         streamHandler: @Sendable @escaping (String) async -> Void,
         eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil,
         reasoningHandler: (@Sendable (String) async -> Void)? = nil
-    ) async throws -> (messages: [any MessageItem], toolCalls: [ToolCallItem], content: String, usage: Usage?) {
+    ) async throws -> (messages: [Message], toolCalls: [ToolCallItem], content: String, usage: Usage?) {
         var currentMessages = messages
         var allToolCalls: [ToolCallItem] = []
         var allContent = ""
@@ -454,7 +454,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             
             // Only add message if we have some content
             if !assistantContent.isEmpty {
-                currentMessages.append(AssistantMessageItem(
+                currentMessages.append(.assistant(
                     id: responseId.isEmpty ? UUID().uuidString : responseId,
                     content: assistantContent,
                     status: .completed
@@ -478,7 +478,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                     // Execute final tools and break
                     let toolResults = try await executeTools(toolCalls, eventHandler: eventHandler)
                     for (toolCall, result) in zip(toolCalls, toolResults) {
-                        currentMessages.append(ToolMessageItem(
+                        currentMessages.append(.tool(
                             id: UUID().uuidString,
                             toolCallId: toolCall.id,
                             content: result
@@ -504,7 +504,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 
                 // Add tool results
                 for (toolCall, result) in zip(toolCalls, toolResults) {
-                    currentMessages.append(ToolMessageItem(
+                    currentMessages.append(.tool(
                         id: UUID().uuidString,
                         toolCallId: toolCall.id,
                         content: result
@@ -528,7 +528,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 
                 // Add tool results
                 for (toolCall, result) in zip(toolCalls, toolResults) {
-                    currentMessages.append(ToolMessageItem(
+                    currentMessages.append(.tool(
                         id: UUID().uuidString,
                         toolCallId: toolCall.id,
                         content: result
@@ -545,7 +545,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             
             // Add tool results
             for (toolCall, result) in zip(toolCalls, toolResults) {
-                currentMessages.append(ToolMessageItem(
+                currentMessages.append(.tool(
                     id: UUID().uuidString,
                     toolCallId: toolCall.id,
                     content: result
@@ -600,7 +600,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                 
                 // Add final message
                 if !finalContent.isEmpty {
-                    currentMessages.append(AssistantMessageItem(
+                    currentMessages.append(.assistant(
                         id: UUID().uuidString,
                         content: [.outputText(finalContent)],
                         status: .completed
@@ -617,21 +617,21 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
     private func prepareSession(
         input: String,
         sessionId: String?
-    ) async throws -> (messages: [any MessageItem], sessionId: String, isResumed: Bool) {
-        var messages: [any MessageItem] = []
+    ) async throws -> (messages: [Message], sessionId: String, isResumed: Bool) {
+        var messages: [Message] = []
         let actualSessionId: String
         let isResumed: Bool
         
         if let sessionId = sessionId,
            let session = try await sessionManager.loadSession(id: sessionId) {
             // Resume existing session
-            messages = session.messages.map { $0.message }
+            messages = session.messages
             actualSessionId = sessionId
             isResumed = true
             aiDebugPrint("DEBUG: Resuming session \(sessionId) with \(messages.count) messages")
         } else {
             // Create new session
-            messages.append(SystemMessageItem(
+            messages.append(.system(
                 id: UUID().uuidString,
                 content: agent.generateSystemPrompt()
             ))
@@ -641,7 +641,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         }
         
         // Add user message
-        messages.append(UserMessageItem(
+        messages.append(.user(
             id: UUID().uuidString,
             content: .text(input)
         ))
@@ -656,8 +656,8 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
     
     private func processResponse(
         response: ModelResponse,
-        messages: [any MessageItem]
-    ) async throws -> (messages: [any MessageItem], toolCalls: [ToolCallItem]) {
+        messages: [Message]
+    ) async throws -> (messages: [Message], toolCalls: [ToolCallItem]) {
         var updatedMessages = messages
         var toolCalls: [ToolCallItem] = []
         
@@ -669,7 +669,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         }
         
         // Add assistant message
-        updatedMessages.append(AssistantMessageItem(
+        updatedMessages.append(.assistant(
             id: response.id,
             content: response.content,
             status: .completed
@@ -681,7 +681,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             
             // Add tool results as messages
             for (toolCall, result) in zip(toolCalls, toolResults) {
-                updatedMessages.append(ToolMessageItem(
+                updatedMessages.append(.tool(
                     id: UUID().uuidString,
                     toolCallId: toolCall.id,
                     content: result
@@ -699,7 +699,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             let followUpResponse = try await currentModel.getResponse(request: followUpRequest)
             
             // Add follow-up assistant message
-            updatedMessages.append(AssistantMessageItem(
+            updatedMessages.append(.assistant(
                 id: followUpResponse.id,
                 content: followUpResponse.content,
                 status: .completed

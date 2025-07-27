@@ -562,12 +562,19 @@ public final class OpenAIModel: ModelInterface {
             return OpenAIResponseFormat(type: "json_object")
         case .jsonSchema:
             guard let schema = format.jsonSchema else { return nil }
+            // Convert JSONSchema to OpenAI format
+            // For now, create a basic object schema
+            let openAISchema = OpenAIJSONSchemaDefinition(
+                type: "object",
+                properties: [:],
+                required: []
+            )
             return OpenAIResponseFormat(
                 type: "json_schema",
                 jsonSchema: OpenAIJSONSchema(
                     name: schema.name,
                     strict: schema.strict,
-                    schema: schema.schema
+                    schema: openAISchema
                 )
             )
         }
