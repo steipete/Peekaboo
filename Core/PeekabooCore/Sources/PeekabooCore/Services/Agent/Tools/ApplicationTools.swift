@@ -52,7 +52,7 @@ extension PeekabooAgentService {
             ),
             handler: { params, context in
                 let appName = try params.string("name")
-                let waitForLaunch = try? params.bool("wait_for_launch", default: true) ?? true
+                let waitForLaunch = params.bool("wait_for_launch", default: true)
                 
                 // First check if already running
                 let runningApps = try await context.applications.listApplications()

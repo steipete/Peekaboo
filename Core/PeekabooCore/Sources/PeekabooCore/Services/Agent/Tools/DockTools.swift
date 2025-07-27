@@ -63,7 +63,7 @@ extension PeekabooAgentService {
                 required: []
             ),
             handler: { params, context in
-                let section = try? params.string("section", default: "all") ?? "all"
+                let section = params.string("section", default: "all") ?? "all"
                 
                 let dockItems = try await context.dock.listDockItems(includeAll: true)
                 

@@ -204,38 +204,26 @@ public final class GrokModel: ModelInterface {
     private func convertToGrokRequest(_ request: ModelRequest, stream: Bool) throws -> GrokChatCompletionRequest {
         // Convert messages to OpenAI-compatible format
         let messages = try request.messages.map { message -> GrokMessage in
-            switch message.type {
-            case .system:
-                guard let system = message as? SystemMessageItem else {
-                    throw ModelError.invalidConfiguration("Invalid system message")
-                }
-                return GrokMessage(role: "system", content: .string(system.content), toolCalls: nil, toolCallId: nil)
+            switch message {
+            case .system(_, let content):
+                return GrokMessage(role: "system", content: .string(content), toolCalls: nil, toolCallId: nil)
                 
-            case .user:
-                guard let user = message as? UserMessageItem else {
-                    throw ModelError.invalidConfiguration("Invalid user message")
-                }
-                return try convertUserMessage(user)
+            case .user(_, let content):
+                return try convertUserMessageContent(content)
                 
-            case .assistant:
-                guard let assistant = message as? AssistantMessageItem else {
-                    throw ModelError.invalidConfiguration("Invalid assistant message")
-                }
-                return try convertAssistantMessage(assistant)
+            case .assistant(_, let content, _):
+                return try convertAssistantMessageContent(content)
                 
-            case .tool:
-                guard let tool = message as? ToolMessageItem else {
-                    throw ModelError.invalidConfiguration("Invalid tool message")
-                }
+            case .tool(_, let toolCallId, let content):
                 return GrokMessage(
                     role: "tool",
-                    content: .string(tool.content),
+                    content: .string(content),
                     toolCalls: nil,
-                    toolCallId: tool.toolCallId
+                    toolCallId: toolCallId
                 )
                 
-            default:
-                throw ModelError.invalidConfiguration("Unsupported message type: \(message.type)")
+            case .reasoning(_, _):
+                throw ModelError.invalidConfiguration("Reasoning messages not supported in Grok")
             }
         }
         
@@ -278,8 +266,8 @@ public final class GrokModel: ModelInterface {
         )
     }
     
-    private func convertUserMessage(_ message: UserMessageItem) throws -> GrokMessage {
-        switch message.content {
+    private func convertUserMessageContent(_ content: MessageContent) throws -> GrokMessage {
+        switch content {
         case .text(let text):
             return GrokMessage(role: "user", content: .string(text), toolCalls: nil, toolCallId: nil)
             
@@ -343,11 +331,11 @@ public final class GrokModel: ModelInterface {
         }
     }
     
-    private func convertAssistantMessage(_ message: AssistantMessageItem) throws -> GrokMessage {
+    private func convertAssistantMessageContent(_ contentArray: [AssistantContent]) throws -> GrokMessage {
         var textContent = ""
         var toolCalls: [GrokToolCall] = []
         
-        for content in message.content {
+        for content in contentArray {
             switch content {
             case .outputText(let text):
                 textContent += text

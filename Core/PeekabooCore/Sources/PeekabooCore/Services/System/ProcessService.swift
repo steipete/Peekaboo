@@ -149,12 +149,28 @@ public actor ProcessService: ProcessServiceProtocol {
     // MARK: - Command Implementations
     
     private func executeSeeCommand(_ step: ScriptStep, sessionId: String?) async throws -> StepExecutionResult {
-        // Extract parameters
-        let mode = step.params?["mode"]?.value as? String ?? "window"
-        let app = step.params?["app"]?.value as? String
-        let window = step.params?["window"]?.value as? String
-        let outputPath = step.params?["path"]?.value as? String
-        let annotate = step.params?["annotate"]?.value as? Bool ?? true
+        // Parse parameters
+        let params = ProcessParameterParser.parseParameters(for: "see", from: step.params)
+        
+        // Extract screenshot parameters
+        let screenshotParams: ProcessCommandParameters.ScreenshotParameters
+        if case .screenshot(let p) = params {
+            screenshotParams = p
+        } else if case .generic(let dict) = params {
+            // Fallback for generic parameters
+            screenshotParams = ProcessCommandParameters.ScreenshotParameters(
+                path: dict["path"] ?? "screenshot.png",
+                app: dict["app"],
+                window: dict["window"],
+                display: dict["display"].flatMap { Int($0) }
+            )
+        } else {
+            // Default parameters
+            screenshotParams = ProcessCommandParameters.ScreenshotParameters(path: "screenshot.png")
+        }
+        
+        let mode = (params as? ProcessCommandParameters)?.generic(["mode"])?.first ?? "window"
+        let annotate = true // Default to true for annotation
         
         // Capture screenshot based on mode
         let captureResult: CaptureResult
@@ -659,23 +675,26 @@ public actor ProcessService: ProcessServiceProtocol {
     
     // MARK: - Helper Methods
     
-    private func parseModifiers(from params: [String: AnyCodable]?) -> [ModifierKey] {
+    private func parseModifiers(from modifierStrings: [String]?) -> [ModifierKey] {
+        guard let modifierStrings = modifierStrings else { return [] }
+        
         var modifiers: [ModifierKey] = []
         
-        if params?["cmd"]?.value as? Bool == true || params?["command"]?.value as? Bool == true {
-            modifiers.append(.command)
-        }
-        if params?["shift"]?.value as? Bool == true {
-            modifiers.append(.shift)
-        }
-        if params?["option"]?.value as? Bool == true || params?["alt"]?.value as? Bool == true {
-            modifiers.append(.option)
-        }
-        if params?["control"]?.value as? Bool == true || params?["ctrl"]?.value as? Bool == true {
-            modifiers.append(.control)
-        }
-        if params?["fn"]?.value as? Bool == true || params?["function"]?.value as? Bool == true {
-            modifiers.append(.function)
+        for modifier in modifierStrings {
+            switch modifier.lowercased() {
+            case "cmd", "command":
+                modifiers.append(.command)
+            case "shift":
+                modifiers.append(.shift)
+            case "option", "alt":
+                modifiers.append(.option)
+            case "control", "ctrl":
+                modifiers.append(.control)
+            case "fn", "function":
+                modifiers.append(.function)
+            default:
+                break
+            }
         }
         
         return modifiers

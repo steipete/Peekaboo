@@ -1,5 +1,4 @@
 import Foundation
-import AXorcist
 
 /// Service for executing Peekaboo automation scripts
 @available(macOS 14.0, *)
@@ -51,13 +50,13 @@ public struct ScriptStep: Codable, Sendable {
     public let stepId: String
     public let comment: String?
     public let command: String
-    public let params: [String: AnyCodable]?
+    public let params: ProcessCommandParameters?
     
     public init(
         stepId: String,
         comment: String?,
         command: String,
-        params: [String: AnyCodable]?
+        params: ProcessCommandParameters?
     ) {
         self.stepId = stepId
         self.comment = comment
@@ -72,7 +71,7 @@ public struct StepResult: Codable, Sendable {
     public let stepNumber: Int
     public let command: String
     public let success: Bool
-    public let output: AnyCodable?
+    public let output: ProcessCommandOutput?
     public let error: String?
     public let executionTime: TimeInterval
     
@@ -81,7 +80,7 @@ public struct StepResult: Codable, Sendable {
         stepNumber: Int,
         command: String,
         success: Bool,
-        output: AnyCodable?,
+        output: ProcessCommandOutput?,
         error: String?,
         executionTime: TimeInterval
     ) {
@@ -97,11 +96,11 @@ public struct StepResult: Codable, Sendable {
 
 /// Detailed result from step execution
 public struct StepExecutionResult: Sendable {
-    public let output: AnyCodable?
+    public let output: ProcessCommandOutput?
     public let sessionId: String?
     
-    public init(output: Any?, sessionId: String?) {
-        self.output = output.map { AnyCodable($0) }
+    public init(output: ProcessCommandOutput?, sessionId: String?) {
+        self.output = output
         self.sessionId = sessionId
     }
 }

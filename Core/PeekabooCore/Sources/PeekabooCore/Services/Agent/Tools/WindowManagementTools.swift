@@ -21,7 +21,7 @@ extension PeekabooAgentService {
                 required: []
             ),
             handler: { params, context in
-                let appFilter = try? params.string("app", default: nil)
+                let appFilter = params.string("app", default: nil)
                 
                 // Get all windows from all applications
                 let apps = try await context.applications.listApplications()
@@ -86,9 +86,9 @@ extension PeekabooAgentService {
                 required: []
             ),
             handler: { params, context in
-                let title = try? params.string("title", default: nil)
-                let appName = try? params.string("app", default: nil)
-                let windowId = try? params.int("window_id", default: nil)
+                let title = params.string("title", default: nil)
+                let appName = params.string("app", default: nil)
+                let windowId = params.int("window_id", default: nil)
                 
                 // Require at least one parameter
                 guard title != nil || appName != nil || windowId != nil else {
@@ -173,13 +173,13 @@ extension PeekabooAgentService {
                 required: []
             ),
             handler: { (params: ToolParameterParser, context: PeekabooServices) in
-                let title = try? params.string("title", default: nil)
-                let appName = try? params.string("app", default: nil)
-                let width = try? params.int("width", default: nil)
-                let height = try? params.int("height", default: nil)
-                let x = try? params.int("x", default: nil)
-                let y = try? params.int("y", default: nil)
-                let preset = try? params.string("preset", default: nil)
+                let title = params.string("title", default: nil)
+                let appName = params.string("app", default: nil)
+                let width = params.int("width", default: nil)
+                let height = params.int("height", default: nil)
+                let x = params.int("x", default: nil)
+                let y = params.int("y", default: nil)
+                let preset = params.string("preset", default: nil)
                 
                 guard title != nil || appName != nil else {
                     throw PeekabooError.invalidInput("Either 'title' or 'app' must be provided")

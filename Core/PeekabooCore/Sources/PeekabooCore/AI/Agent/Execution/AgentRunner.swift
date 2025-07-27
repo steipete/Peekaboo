@@ -247,7 +247,9 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         try await sessionManager.saveSession(
             id: actualSessionId,
             messages: finalMessages,
-            metadata: ["agent": agent.name, "lastActivity": ISO8601DateFormatter().string(from: Date())]
+            metadata: SessionMetadata()
+                .with("agent", value: agent.name)
+                .with("lastActivity", value: ISO8601DateFormatter().string(from: Date()))
         )
         
         // Extract content
@@ -302,7 +304,9 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         try await sessionManager.saveSession(
             id: actualSessionId,
             messages: finalMessages,
-            metadata: ["agent": agent.name, "lastActivity": ISO8601DateFormatter().string(from: Date())]
+            metadata: SessionMetadata()
+                .with("agent", value: agent.name)
+                .with("lastActivity", value: ISO8601DateFormatter().string(from: Date()))
         )
         
         let currentModel = try await getModel()

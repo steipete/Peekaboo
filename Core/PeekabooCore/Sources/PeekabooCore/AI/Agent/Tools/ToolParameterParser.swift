@@ -62,9 +62,9 @@ public struct ToolParameterParser {
         return value
     }
     
-    /// Get an optional string parameter
-    public func string(_ key: String, default defaultValue: String? = nil) throws -> String? {
-        let dict = try asDictionary()
+    /// Get an optional string parameter (non-throwing)
+    public func string(_ key: String, default defaultValue: String?) -> String? {
+        guard let dict = try? asDictionary() else { return defaultValue }
         return dict[key] as? String ?? defaultValue
     }
     
@@ -81,9 +81,9 @@ public struct ToolParameterParser {
         throw PeekabooError.invalidInput("\(toolName): '\(key)' parameter is required as integer")
     }
     
-    /// Get an optional integer parameter
-    public func int(_ key: String, default defaultValue: Int? = nil) throws -> Int? {
-        let dict = try asDictionary()
+    /// Get an optional integer parameter (non-throwing)
+    public func int(_ key: String, default defaultValue: Int?) -> Int? {
+        guard let dict = try? asDictionary() else { return defaultValue }
         if let value = dict[key] as? Int {
             return value
         }
@@ -93,22 +93,22 @@ public struct ToolParameterParser {
         return defaultValue
     }
     
-    /// Get an optional boolean parameter
-    public func bool(_ key: String, default defaultValue: Bool = false) throws -> Bool {
-        let dict = try asDictionary()
+    /// Get an optional boolean parameter (non-throwing)
+    public func bool(_ key: String, default defaultValue: Bool = false) -> Bool {
+        guard let dict = try? asDictionary() else { return defaultValue }
         return dict[key] as? Bool ?? defaultValue
     }
     
-    /// Get an optional array of strings
-    public func stringArray(_ key: String) throws -> [String]? {
-        let dict = try asDictionary()
+    /// Get an optional array of strings (non-throwing)
+    public func stringArray(_ key: String) -> [String]? {
+        guard let dict = try? asDictionary() else { return nil }
         guard let array = dict[key] as? [Any] else { return nil }
         return array.compactMap { $0 as? String }
     }
     
-    /// Get an optional double parameter
-    public func double(_ key: String, default defaultValue: Double? = nil) throws -> Double? {
-        let dict = try asDictionary()
+    /// Get an optional double parameter (non-throwing)
+    public func double(_ key: String, default defaultValue: Double?) -> Double? {
+        guard let dict = try? asDictionary() else { return defaultValue }
         if let value = dict[key] as? Double {
             return value
         }

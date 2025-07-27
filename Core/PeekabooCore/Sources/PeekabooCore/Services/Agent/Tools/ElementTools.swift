@@ -30,8 +30,8 @@ extension PeekabooAgentService {
             ),
             handler: { params, context in
                 let label = try params.string("label")
-                let appName = try? params.string("app", default: nil)
-                let elementType = try? params.string("element_type", default: nil)
+                let appName = params.string("app", default: nil)
+                let elementType = params.string("element_type", default: nil)
                 
                 // TODO: Replace with proper element finding implementation
                 throw PeekabooError.serviceUnavailable("Element finding not yet implemented")
@@ -57,8 +57,8 @@ extension PeekabooAgentService {
                 required: []
             ),
             handler: { params, context in
-                let appName = try? params.string("app", default: nil)
-                let elementType = try? params.string("element_type", default: "all") ?? "all"
+                let appName = params.string("app", default: nil)
+                let elementType = params.string("element_type", default: "all") ?? "all"
                 
                 // Capture screen or app to get elements
                 let captureResult: CaptureResult
@@ -89,7 +89,7 @@ extension PeekabooAgentService {
                     filteredOutput.description,
                     metadata: [
                         "elementCount": String(filteredOutput.totalCount),
-                        "filter": elementType,
+                        "filter": elementType ?? "all",
                         "app": appName ?? "all applications"
                     ]
                 )

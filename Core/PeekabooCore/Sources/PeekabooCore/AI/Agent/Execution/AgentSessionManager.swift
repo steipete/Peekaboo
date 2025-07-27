@@ -1,5 +1,4 @@
 import Foundation
-import AXorcist
 
 // MARK: - Agent Session Manager
 
@@ -41,7 +40,7 @@ public actor AgentSessionManager {
     public func saveSession(
         id: String,
         messages: [Message],
-        metadata: [String: Any]? = nil
+        metadata: SessionMetadata? = nil
     ) throws {
         let session = AgentSession(
             id: id,
@@ -172,20 +171,20 @@ public actor AgentSessionManager {
 public struct AgentSession: Codable, Sendable {
     public let id: String
     public let messages: [Message]
-    public let metadata: [String: AnyCodable]?
+    public let metadata: SessionMetadata?
     public let createdAt: Date
     public let updatedAt: Date
     
     init(
         id: String,
         messages: [Message],
-        metadata: [String: Any]?,
+        metadata: SessionMetadata?,
         createdAt: Date,
         updatedAt: Date
     ) {
         self.id = id
         self.messages = messages
-        self.metadata = metadata?.mapValues(AnyCodable.init)
+        self.metadata = metadata
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -197,7 +196,7 @@ public struct SessionSummary: Sendable {
     public let createdAt: Date
     public let updatedAt: Date
     public let messageCount: Int
-    public let metadata: [String: AnyCodable]?
+    public let metadata: SessionMetadata?
 }
 
 // MARK: - Session Extensions

@@ -28,8 +28,8 @@ extension PeekabooAgentService {
             ),
             handler: { params, context in
                 let command = try params.string("command")
-                let workingDirectory = try? params.string("working_directory", default: nil)
-                let timeout = (try? params.int("timeout", default: 30)) ?? 30
+                let workingDirectory = params.string("working_directory", default: nil)
+                let timeout = params.int("timeout", default: 30) ?? 30
                 
                 // Safety check for dangerous commands
                 let dangerousCommands = ["rm -rf /", "dd if=", "mkfs", "format"]
