@@ -454,14 +454,10 @@ public final class PeekabooAgent {
                     // Update the tool call result
                     if let toolCallIndex = sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls.firstIndex(where: { $0.name == name }) {
                         sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls[toolCallIndex].result = result
-                        
-                        // Update the message content to show completion
-                        let successIcon = result.contains("error") || result.contains("failed") ? "❌" : "✅"
-                        sessionStore.sessions[sessionIndex].messages[toolMessageIndex].content = "\(successIcon) \(name): Completed"
-                        
                         sessionStore.saveSessions()
                     }
                 }
+                
             }
             
             // Update tool execution history

@@ -362,13 +362,6 @@ struct SessionChatView: View {
                                 .id("progress")
                                 .padding(.top, 8)
                         }
-                        
-                        // Show tool execution history
-                        if isCurrentSession && !agent.toolExecutionHistory.isEmpty {
-                            ToolExecutionHistoryView()
-                                .id("tool-history")
-                                .padding(.top, 8)
-                        }
                     }
                     .padding()
                 }
@@ -807,6 +800,32 @@ struct DetailedMessageRow: View {
                             .foregroundColor(.orange)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
+                    } else if isToolMessage {
+                        HStack(spacing: 8) {
+                            // Show dynamic status based on tool execution state
+                            if let toolCall = message.toolCalls.first {
+                                let isRunning = toolCall.result == "Running..."
+                                let statusIcon = isRunning ? "🔧" : (toolCall.result.contains("error") || toolCall.result.contains("failed") ? "❌" : "✅")
+                                let statusText = isRunning ? message.content : message.content.replacingOccurrences(of: "🔧", with: statusIcon)
+                                
+                                Text(statusText)
+                                    .font(.system(.body, design: .monospaced))
+                                    .foregroundColor(.primary)
+                                
+                                if isRunning {
+                                    ProgressView()
+                                        .progressViewStyle(.circular)
+                                        .scaleEffect(0.7)
+                                }
+                            } else {
+                                Text(message.content)
+                                    .font(.system(.body, design: .monospaced))
+                                    .foregroundColor(.primary)
+                            }
+                            
+                            Spacer()
+                        }
+                        .textSelection(.enabled)
                     } else {
                         Text(message.content)
                             .textSelection(.enabled)
@@ -863,7 +882,7 @@ struct DetailedMessageRow: View {
     }
     
     private var isToolMessage: Bool {
-        message.role == .system && (message.content.contains("🔧") || message.content.contains("✅"))
+        message.role == .system && (message.content.contains("🔧") || message.content.contains("✅") || message.content.contains("❌"))
     }
     
     private var hasRunningTools: Bool {

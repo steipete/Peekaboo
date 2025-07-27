@@ -2,10 +2,44 @@ import Foundation
 import AXorcist
 
 /// Ollama model implementation conforming to ModelInterface
+///
+/// This implementation supports tool/function calling for compatible models.
+/// 
+/// Tool Calling Limitations:
+/// - Not all Ollama models support tools (e.g., vision models like llava don't support tools)
+/// - Some models (like llama3.3) output tool calls as JSON text rather than structured tool_calls
+/// - Models without tool support will return HTTP 400 errors when tools are provided
+/// - The implementation automatically detects and parses both standard and text-based tool calls
+///
+/// Recommended models for tool calling:
+/// - llama3.3 (best overall)
+/// - llama3.2, llama3.1
+/// - mistral-nemo, firefunction-v2
+/// - command-r-plus, command-r
 public final class OllamaModel: ModelInterface {
     private let baseURL: URL
     private let session: URLSession
     private let modelName: String
+    
+    // Models known to support tool/function calling
+    private static let modelsWithToolSupport: Set<String> = [
+        "llama3.3", "llama3.3:latest",
+        "llama3.2", "llama3.2:latest", 
+        "llama3.1", "llama3.1:latest",
+        "mistral-nemo", "mistral-nemo:latest",
+        "firefunction-v2", "firefunction-v2:latest",
+        "command-r-plus", "command-r-plus:latest",
+        "command-r", "command-r:latest"
+    ]
+    
+    // Models known to NOT support tool calling (vision models, etc)
+    private static let modelsWithoutToolSupport: Set<String> = [
+        "llava", "llava:latest",
+        "bakllava", "bakllava:latest",
+        "llama3.2-vision:11b", "llama3.2-vision:90b",
+        "qwen2.5vl:7b", "qwen2.5vl:32b",
+        "devstral", "devstral:latest"
+    ]
     
     // Create a custom URLSession with longer timeout for Ollama
     // Note: Ollama can take up to a minute before responding, especially with large models
@@ -24,6 +58,49 @@ public final class OllamaModel: ModelInterface {
         self.modelName = modelName
         self.baseURL = baseURL
         self.session = session ?? Self.createDefaultSession()
+    }
+    
+    // MARK: - Tool Support Detection
+    
+    /// Check if the current model supports tool calling
+    private var supportsTools: Bool {
+        // Check if model is in the known supported list
+        if Self.modelsWithToolSupport.contains(modelName) {
+            return true
+        }
+        
+        // Check if model is in the known unsupported list
+        if Self.modelsWithoutToolSupport.contains(modelName) {
+            return false
+        }
+        
+        // For unknown models, check if it's a variant of a known model
+        // e.g., "llama3.3:70b" should match "llama3.3"
+        for supportedModel in Self.modelsWithToolSupport {
+            let baseModel = supportedModel.replacingOccurrences(of: ":latest", with: "")
+            if modelName.hasPrefix(baseModel) {
+                return true
+            }
+        }
+        
+        for unsupportedModel in Self.modelsWithoutToolSupport {
+            let baseModel = unsupportedModel.replacingOccurrences(of: ":latest", with: "")
+            if modelName.hasPrefix(baseModel) {
+                return false
+            }
+        }
+        
+        // Default to false for unknown models (safer assumption)
+        return false
+    }
+    
+    /// Get a user-friendly error message for models without tool support
+    private func getToolSupportError() -> String {
+        if Self.modelsWithoutToolSupport.contains(modelName) {
+            return "Model '\(modelName)' does not support tool calling. Vision models like llava and bakllava cannot use tools. Please use llama3.3 or another model with tool support."
+        } else {
+            return "Model '\(modelName)' may not support tool calling. Recommended models: llama3.3, llama3.2, mistral-nemo, firefunction-v2, or command-r-plus."
+        }
     }
     
     // MARK: - ModelInterface Implementation
@@ -61,6 +138,18 @@ public final class OllamaModel: ModelInterface {
         
         if httpResponse.statusCode != 200 {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+            
+            // Check if this is a tool-related error
+            if httpResponse.statusCode == 400 && request.tools != nil && !request.tools!.isEmpty {
+                // Model likely doesn't support tools
+                let enhancedMessage = "\(errorMessage)\n\n\(getToolSupportError())"
+                throw ModelError.requestFailed(NSError(
+                    domain: "Ollama",
+                    code: httpResponse.statusCode,
+                    userInfo: [NSLocalizedDescriptionKey: "HTTP 400: \(enhancedMessage)"]
+                ))
+            }
+            
             throw ModelError.requestFailed(NSError(
                 domain: "Ollama",
                 code: httpResponse.statusCode,
@@ -93,10 +182,11 @@ public final class OllamaModel: ModelInterface {
         let request = urlRequest
         let capturedSession = self.session
         let debugModelName = self.modelName
+        let capturedSelf = self
         
         return AsyncThrowingStream { continuation in
             // Use detached task to avoid potential actor isolation issues
-            Task.detached { [request, capturedSession, debugModelName] in
+            Task.detached { [request, capturedSession, debugModelName, capturedSelf] in
                 do {
                     if ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() == "debug" {
                         print("[OllamaModel] Starting streaming request for model \(debugModelName)")
@@ -123,6 +213,21 @@ public final class OllamaModel: ModelInterface {
                             errorData.append(byte)
                         }
                         let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+                        
+                        // Check if this is a tool-related error
+                        if httpResponse.statusCode == 400 && 
+                           (errorMessage.contains("tools") || errorMessage.contains("function")) {
+                            // Model likely doesn't support tools
+                            let modelError = capturedSelf.getToolSupportError()
+                            let enhancedMessage = "\(errorMessage)\n\n\(modelError)"
+                            continuation.finish(throwing: ModelError.requestFailed(NSError(
+                                domain: "Ollama",
+                                code: httpResponse.statusCode,
+                                userInfo: [NSLocalizedDescriptionKey: "HTTP 400: \(enhancedMessage)"]
+                            )))
+                            return
+                        }
+                        
                         continuation.finish(throwing: ModelError.requestFailed(NSError(
                             domain: "Ollama",
                             code: httpResponse.statusCode,
@@ -163,8 +268,10 @@ public final class OllamaModel: ModelInterface {
                                                 print("[OllamaModel] Skipping malformed content: \(content)")
                                             }
                                         } else if content.hasPrefix("{") && content.contains("\"type\": \"function\"") {
-                                            // Check if content is a tool call JSON (some models output tool calls as text)
-                                            // Try to parse as tool call
+                                            // IMPORTANT: Some Ollama models (especially llama3.3) output tool calls as JSON text
+                                            // in the content field instead of using the structured tool_calls field.
+                                            // This is a workaround to detect and parse these text-based tool calls.
+                                            // Expected format: {"type": "function", "name": "tool_name", "parameters": {...}}
                                             if let data = content.data(using: .utf8),
                                                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                                                let type = json["type"] as? String, type == "function",
@@ -194,7 +301,8 @@ public final class OllamaModel: ModelInterface {
                                         }
                                     }
                                     
-                                    // Handle tool calls
+                                    // Handle standard tool calls (models that properly use the tool_calls field)
+                                    // This is the preferred method for tool calling, supported by newer models
                                     if let toolCalls = chunk.message?.toolCalls, !toolCalls.isEmpty {
                                         print("[OllamaModel] Processing \(toolCalls.count) tool calls")
                                         for toolCall in toolCalls {
@@ -340,6 +448,13 @@ public final class OllamaModel: ModelInterface {
         // Convert tools to Ollama format if provided
         var ollamaTools: [[String: Any]]? = nil
         if let tools = request.tools, !tools.isEmpty {
+            // Check if model supports tools
+            if !supportsTools {
+                // Log warning but don't fail - model might still support tools
+                print("[OllamaModel] Warning: \(getToolSupportError())")
+                print("[OllamaModel] Attempting to use tools anyway, but this may fail.")
+            }
+            
             ollamaTools = tools.map { tool in
                 // Convert parameters to dictionary
                 let paramsDict = convertParametersToDict(tool.function.parameters)

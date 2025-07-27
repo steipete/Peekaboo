@@ -23,7 +23,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         self.modelProvider = .shared
         self.sessionManager = AgentSessionManager()
         self.defaultModelName = defaultModelName
-        print("[PeekabooAgentService] Initialized with defaultModelName: \(defaultModelName)")
     }
     
     // MARK: - AgentServiceProtocol Conformance
@@ -1245,14 +1244,7 @@ extension PeekabooAgentService {
         apiType: String? = nil
     ) async throws -> AgentExecutionResult {
         let effectiveModelName = modelName ?? defaultModelName
-<<<<<<< HEAD
         let agent = createAutomationAgent(modelName: effectiveModelName, apiType: apiType)
-||||||| parent of 1fc9037 (feat: Add real-time task progress display to Mac app)
-        let agent = createAutomationAgent(modelName: effectiveModelName)
-=======
-        print("[PeekabooAgentService] executeTask called with modelName: \(modelName ?? "nil"), using effectiveModelName: \(effectiveModelName)")
-        let agent = createAutomationAgent(modelName: effectiveModelName)
->>>>>>> 1fc9037 (feat: Add real-time task progress display to Mac app)
         let effectiveSessionId = sessionId ?? UUID().uuidString
         
         // Execute with streaming if we have an event delegate

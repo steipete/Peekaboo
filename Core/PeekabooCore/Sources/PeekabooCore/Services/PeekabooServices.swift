@@ -279,7 +279,6 @@ public final class PeekabooServices: @unchecked Sendable {
                 """)
             }
             
-            print("[PeekabooServices] Creating PeekabooAgentService with model: \(determination.model)")
             agent = PeekabooAgentService(
                 services: services,
                 defaultModelName: determination.model
