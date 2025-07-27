@@ -119,7 +119,8 @@ public final class OllamaModel: ModelInterface {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpBody = try ollamaRequest.toData()
+        let encoder = JSONEncoder()
+        urlRequest.httpBody = try encoder.encode(ollamaRequest)
         
         if ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() == "debug" {
             print("[OllamaModel] Sending request to \(url) for model \(modelName)")
@@ -174,7 +175,8 @@ public final class OllamaModel: ModelInterface {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpBody = try ollamaRequest.toData()
+        let encoder = JSONEncoder()
+        urlRequest.httpBody = try encoder.encode(ollamaRequest)
         
         print("[OllamaModel] Sending streaming request to: \(url)")
         
@@ -273,20 +275,17 @@ public final class OllamaModel: ModelInterface {
                                             // This is a workaround to detect and parse these text-based tool calls.
                                             // Expected format: {"type": "function", "name": "tool_name", "parameters": {...}}
                                             if let data = content.data(using: .utf8),
-                                               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                                               let type = json["type"] as? String, type == "function",
-                                               let name = json["name"] as? String,
-                                               let params = json["parameters"] as? [String: Any] {
+                                               let toolCall = try? JSONDecoder().decode(TextBasedToolCall.self, from: data),
+                                               toolCall.type == "function" {
                                                 
-                                                // Convert to tool call event
-                                                let paramsData = try? JSONSerialization.data(withJSONObject: params)
-                                                let paramsString = paramsData.flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+                                                // Convert parameters to JSON string
+                                                let paramsString = convertAnyCodableDictToJSON(toolCall.parameters)
                                                 
                                                 continuation.yield(StreamEvent.toolCallCompleted(
                                                     StreamToolCallCompleted(
                                                         id: UUID().uuidString,
                                                         function: FunctionCall(
-                                                            name: name,
+                                                            name: toolCall.name,
                                                             arguments: paramsString
                                                         )
                                                     )
@@ -307,32 +306,13 @@ public final class OllamaModel: ModelInterface {
                                         print("[OllamaModel] Processing \(toolCalls.count) tool calls")
                                         for toolCall in toolCalls {
                                             print("[OllamaModel] Tool call: \(toolCall.function.name) with args: \(toolCall.function.arguments)")
-                                            // Convert arguments to JSON string
-                                            let argumentsString: String
-                                            
-                                            // Handle different argument formats
-                                            let argsDict = toolCall.function.argumentsDict
-                                            if argsDict.isEmpty {
-                                                argumentsString = "{}"
-                                            } else {
-                                                // Convert dictionary to JSON
-                                                let plainDict = argsDict.reduce(into: [String: Any]()) { dict, item in
-                                                    dict[item.key] = item.value.value
-                                                }
-                                                if let data = try? JSONSerialization.data(withJSONObject: plainDict),
-                                                   let str = String(data: data, encoding: .utf8) {
-                                                    argumentsString = str
-                                                } else {
-                                                    argumentsString = "{}"
-                                                }
-                                            }
                                             
                                             let event = StreamEvent.toolCallCompleted(
                                                 StreamToolCallCompleted(
                                                     id: UUID().uuidString,
                                                     function: FunctionCall(
                                                         name: toolCall.function.name,
-                                                        arguments: argumentsString
+                                                        arguments: toolCall.function.arguments
                                                     )
                                                 )
                                             )
@@ -431,22 +411,15 @@ public final class OllamaModel: ModelInterface {
         }
         
         // Build options from settings
-        var options: [String: Any] = [:]
-        if let temperature = request.settings.temperature {
-            options["temperature"] = temperature
-        }
-        if let topP = request.settings.topP {
-            options["top_p"] = topP
-        }
-        if let maxTokens = request.settings.maxTokens {
-            options["num_predict"] = maxTokens
-        }
-        if let seed = request.settings.seed {
-            options["seed"] = seed
-        }
+        let options = OllamaOptions(
+            temperature: request.settings.temperature,
+            topP: request.settings.topP,
+            numPredict: request.settings.maxTokens,
+            seed: request.settings.seed.flatMap { Int($0) }
+        )
         
         // Convert tools to Ollama format if provided
-        var ollamaTools: [[String: Any]]? = nil
+        var ollamaTools: [OllamaToolDefinition]? = nil
         if let tools = request.tools, !tools.isEmpty {
             // Check if model supports tools
             if !supportsTools {
@@ -455,92 +428,32 @@ public final class OllamaModel: ModelInterface {
                 print("[OllamaModel] Attempting to use tools anyway, but this may fail.")
             }
             
-            ollamaTools = tools.map { tool in
-                // Convert parameters to dictionary
-                let paramsDict = convertParametersToDict(tool.function.parameters)
+            ollamaTools = try tools.map { tool in
+                let parameters = try convertToOllamaParameters(tool.function.parameters)
                 
-                let toolDict: [String: Any] = [
-                    "type": "function",
-                    "function": [
-                        "name": tool.function.name,
-                        "description": tool.function.description,
-                        "parameters": paramsDict
-                    ]
-                ]
-                return toolDict
+                return OllamaToolDefinition(
+                    function: OllamaFunctionDefinition(
+                        name: tool.function.name,
+                        description: tool.function.description,
+                        parameters: parameters
+                    )
+                )
             }
         }
+        
+        // Only pass options if at least one value is set
+        let hasOptions = options.temperature != nil || options.topP != nil || 
+                        options.numPredict != nil || options.seed != nil
         
         return OllamaRequest(
             model: modelName,
             messages: messages,
             stream: false,
-            options: options.isEmpty ? nil : options,
+            options: hasOptions ? options : nil,
             tools: ollamaTools
         )
     }
     
-    private func convertParametersToDict(_ parameters: ToolParameters) -> [String: Any] {
-        var dict: [String: Any] = [
-            "type": parameters.type
-        ]
-        
-        // Convert properties
-        if !parameters.properties.isEmpty {
-            dict["properties"] = parameters.properties.mapValues { schema in
-                convertSchemaToDict(schema)
-            }
-        }
-        
-        // Convert required array
-        if !parameters.required.isEmpty {
-            dict["required"] = parameters.required
-        }
-        
-        if parameters.additionalProperties {
-            dict["additionalProperties"] = true
-        }
-        
-        return dict
-    }
-    
-    private func convertSchemaToDict(_ schema: ParameterSchema) -> [String: Any] {
-        var dict: [String: Any] = [
-            "type": schema.type.rawValue
-        ]
-        
-        if let description = schema.description {
-            dict["description"] = description
-        }
-        
-        if let enumValues = schema.enumValues {
-            dict["enum"] = enumValues
-        }
-        
-        // Handle recursive items for arrays
-        if let items = schema.items {
-            dict["items"] = convertSchemaToDict(items.value)
-        }
-        
-        // Handle nested properties for objects
-        if let properties = schema.properties {
-            dict["properties"] = properties.mapValues { convertSchemaToDict($0) }
-        }
-        
-        if let minimum = schema.minimum {
-            dict["minimum"] = minimum
-        }
-        
-        if let maximum = schema.maximum {
-            dict["maximum"] = maximum
-        }
-        
-        if let pattern = schema.pattern {
-            dict["pattern"] = pattern
-        }
-        
-        return dict
-    }
     
     private func convertFromOllamaResponse(_ response: OllamaResponse) throws -> ModelResponse {
         var content: [AssistantContent] = []
@@ -553,20 +466,12 @@ public final class OllamaModel: ModelInterface {
         // Add tool calls if present
         if let toolCalls = response.message.toolCalls, !toolCalls.isEmpty {
             for toolCall in toolCalls {
-                // Convert arguments dictionary to JSON string
-                let argsDict = toolCall.function.argumentsDict
-                let plainDict = argsDict.reduce(into: [String: Any]()) { dict, item in
-                    dict[item.key] = item.value.value
-                }
-                let argumentsData = try JSONSerialization.data(withJSONObject: plainDict)
-                let argumentsString = String(data: argumentsData, encoding: .utf8) ?? "{}"
-                
                 let toolCallItem = ToolCallItem(
                     id: UUID().uuidString,
                     type: .function,
                     function: FunctionCall(
                         name: toolCall.function.name,
-                        arguments: argumentsString
+                        arguments: toolCall.function.arguments
                     )
                 )
                 content.append(.toolCall(toolCallItem))
@@ -587,61 +492,63 @@ public final class OllamaModel: ModelInterface {
             finishReason: response.done ? .stop : nil
         )
     }
+    
+    /// Helper to convert AnyCodable dictionary to JSON string
+    private func convertAnyCodableDictToJSON(_ dict: [String: AnyCodable]) -> String {
+        let plainDict = dict.reduce(into: [String: Any]()) { result, item in
+            result[item.key] = item.value.value
+        }
+        
+        guard let data = try? JSONSerialization.data(withJSONObject: plainDict),
+              let jsonString = String(data: data, encoding: .utf8) else {
+            return "{}"
+        }
+        
+        return jsonString
+    }
 }
 
 // MARK: - Ollama API Types
 
-private struct OllamaRequest {
+/// Text-based tool call format used by some models like llama3.3
+private struct TextBasedToolCall: Decodable {
+    let type: String
+    let name: String
+    let parameters: [String: AnyCodable]
+}
+
+/// Options for Ollama model configuration
+private struct OllamaOptions: Codable {
+    let temperature: Double?
+    let topP: Double?
+    let numPredict: Int?
+    let seed: Int?
+    
+    enum CodingKeys: String, CodingKey {
+        case temperature
+        case topP = "top_p"
+        case numPredict = "num_predict"
+        case seed
+    }
+}
+
+private struct OllamaRequest: Codable {
     let model: String
     let messages: [OllamaMessage]
     var stream: Bool = false
-    let options: [String: Any]?
-    let tools: [[String: Any]]?
+    let options: OllamaOptions?
+    let tools: [OllamaToolDefinition]?
     
     enum CodingKeys: String, CodingKey {
         case model, messages, stream, options, tools
     }
     
-    init(model: String, messages: [OllamaMessage], stream: Bool = false, options: [String: Any]?, tools: [[String: Any]]?) {
+    init(model: String, messages: [OllamaMessage], stream: Bool = false, options: OllamaOptions?, tools: [OllamaToolDefinition]?) {
         self.model = model
         self.messages = messages
         self.stream = stream
         self.options = options
         self.tools = tools
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(model, forKey: .model)
-        try container.encode(messages, forKey: .messages)
-        try container.encode(stream, forKey: .stream)
-        
-        // We'll encode the entire request as JSON manually
-        // This is necessary because Swift's Codable doesn't handle [String: Any] well
-    }
-    
-    func toData() throws -> Data {
-        var dict: [String: Any] = [
-            "model": model,
-            "messages": messages.map { msg in
-                var msgDict: [String: Any] = ["role": msg.role, "content": msg.content]
-                if let images = msg.images {
-                    msgDict["images"] = images
-                }
-                return msgDict
-            },
-            "stream": stream
-        ]
-        
-        if let options = options {
-            dict["options"] = options
-        }
-        
-        if let tools = tools {
-            dict["tools"] = tools
-        }
-        
-        return try JSONSerialization.data(withJSONObject: dict, options: [])
     }
 }
 
@@ -663,21 +570,36 @@ private struct OllamaToolCall: Codable {
 
 private struct OllamaFunctionCall: Codable {
     let name: String
-    let arguments: AnyCodable
+    let arguments: String // JSON string of arguments
     
-    init(name: String, arguments: AnyCodable) {
+    init(name: String, arguments: String) {
         self.name = name
         self.arguments = arguments
     }
     
-    // Helper to get arguments as dictionary
-    var argumentsDict: [String: AnyCodable] {
-        if let dict = arguments.value as? [String: Any] {
-            return dict.mapValues { AnyCodable($0) }
-        } else if let dict = arguments.value as? [String: AnyCodable] {
-            return dict
+    // Custom decoding to handle different argument formats
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.name = try container.decode(String.self, forKey: .name)
+        
+        // Try to decode arguments as string first
+        if let argsString = try? container.decode(String.self, forKey: .arguments) {
+            self.arguments = argsString
+        } else if let argsDict = try? container.decode([String: AnyCodable].self, forKey: .arguments) {
+            // Convert dictionary to JSON string
+            let encoder = JSONEncoder()
+            let plainDict = argsDict.reduce(into: [String: Any]()) { dict, item in
+                dict[item.key] = item.value.value
+            }
+            let data = try JSONSerialization.data(withJSONObject: plainDict)
+            self.arguments = String(data: data, encoding: .utf8) ?? "{}"
+        } else {
+            self.arguments = "{}"
         }
-        return [:]
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case name, arguments
     }
 }
 
