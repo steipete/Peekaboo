@@ -142,11 +142,14 @@ public actor ModelProvider {
         }
         
         // Grok model shortcuts
-        if lowercased == "grok" || lowercased == "grok2" || lowercased == "grok-2" {
-            return "grok-2-1212"
+        if lowercased == "grok" || lowercased == "grok4" || lowercased == "grok-4" {
+            return "grok-4-0709"
         }
-        if lowercased == "grok-beta" {
-            return "grok-beta"
+        if lowercased == "grok3" || lowercased == "grok-3" {
+            return "grok-3"
+        }
+        if lowercased == "grok2" || lowercased == "grok-2" {
+            return "grok-2-vision-1212"
         }
         
         // Check if it's a partial match for any registered model
@@ -267,13 +270,18 @@ public actor ModelProvider {
     
     private func registerGrokModels() {
         let models = [
-            // Grok 2 series (latest available)
-            "grok-2-1212",
-            "grok-2-vision-1212",
+            // Grok 4 series
+            "grok-4-0709",
             
-            // Beta models
-            "grok-beta",
-            "grok-vision-beta"
+            // Grok 3 series
+            "grok-3",
+            "grok-3-mini",
+            "grok-3-fast",
+            "grok-3-mini-fast",
+            
+            // Grok 2 series
+            "grok-2-vision-1212",
+            "grok-2-image-1212"
         ]
         
         for modelName in models {
@@ -504,13 +512,18 @@ extension ModelProvider {
     /// Configure Grok models with specific settings
     public func configureGrok(_ config: ModelProviderConfig.Grok) {
         let models = [
-            // Grok 2 series (latest available)
-            "grok-2-1212",
-            "grok-2-vision-1212",
+            // Grok 4 series
+            "grok-4-0709",
             
-            // Beta models
-            "grok-beta",
-            "grok-vision-beta"
+            // Grok 3 series
+            "grok-3",
+            "grok-3-mini",
+            "grok-3-fast",
+            "grok-3-mini-fast",
+            
+            // Grok 2 series
+            "grok-2-vision-1212",
+            "grok-2-image-1212"
         ]
         
         for modelName in models {

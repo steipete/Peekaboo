@@ -581,7 +581,7 @@ peekaboo config set-credential X_AI_API_KEY your-grok-key-here
 
 # Now you can use natural language automation!
 peekaboo "Open Safari and search for weather"
-peekaboo agent "Fill out the form" --model grok-2-1212
+peekaboo agent "Fill out the form" --model grok-4-0709
 peekaboo agent "Create a document" --model claude-opus-4
 ```
 

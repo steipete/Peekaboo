@@ -162,7 +162,7 @@ This issue typically occurs when:
 
 ## Recent Updates
 
-- **Grok (xAI) support** (2025-01-27): Added full support for xAI's Grok models including grok-4, grok-2, and beta variants. Uses OpenAI-compatible Chat Completions API at `https://api.x.ai/v1`. Supports X_AI_API_KEY or XAI_API_KEY environment variables. Parameter filtering for Grok 4 models (no frequencyPenalty, presencePenalty, or stop parameters).
+- **Grok (xAI) support** (2025-01-27): Added full support for xAI's Grok models including grok-4-0709 (256K context), grok-3 series, and grok-2-vision. Uses OpenAI-compatible Chat Completions API at `https://api.x.ai/v1`. Supports X_AI_API_KEY or XAI_API_KEY environment variables. Parameter filtering for Grok 4 models (no frequencyPenalty, presencePenalty, or stop parameters). Default model shortcut: `grok` → `grok-4-0709`.
 
 - **Dual API support** (2025-01-27): Restored Chat Completions API alongside Responses API. All models now default to Responses API for superior streaming support. Chat Completions API can be explicitly selected using `--api-mode chat` CLI parameter or `apiType` parameter in model settings. The Responses API is preferred as it provides better streaming capabilities for all models including GPT-4.1.
 

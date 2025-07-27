@@ -271,8 +271,8 @@ public final class GrokModel: ModelInterface {
         var presencePenalty = request.settings.presencePenalty
         var stop = request.settings.stopSequences
         
-        if request.settings.modelName.contains("grok-4") {
-            // Grok 4 doesn't support these parameters
+        if request.settings.modelName.contains("grok-4") || request.settings.modelName.contains("grok-3") {
+            // Grok 3 and 4 models don't support these parameters
             frequencyPenalty = nil
             presencePenalty = nil
             stop = nil
