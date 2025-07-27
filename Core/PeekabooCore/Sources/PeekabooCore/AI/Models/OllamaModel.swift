@@ -8,10 +8,11 @@ public final class OllamaModel: ModelInterface {
     private let modelName: String
     
     // Create a custom URLSession with longer timeout for Ollama
+    // Note: Ollama can take up to a minute before responding, especially with large models
     private static func createDefaultSession() -> URLSession {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 300 // 5 minutes for request
-        config.timeoutIntervalForResource = 600 // 10 minutes for resource
+        config.timeoutIntervalForRequest = 600 // 10 minutes for request (Ollama can be very slow)
+        config.timeoutIntervalForResource = 1200 // 20 minutes for resource
         return URLSession(configuration: config)
     }
     

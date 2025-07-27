@@ -441,8 +441,8 @@ PEEKABOO_AI_PROVIDERS="ollama/llama3" ./scripts/peekaboo-wait.sh agent "Type hel
 ### Available Models
 
 **Models with Tool Calling Support** (✅ Recommended for agent tasks):
-- `llama3.3`, `llama3.3:latest` - Best overall for automation tasks
-- `llama3.2`, `llama3.2:latest` - Good alternative
+- `llama3.3`, `llama3.3:latest` - Best overall for automation tasks (70B model, can be slow)
+- `llama3.2`, `llama3.2:latest` - Faster alternative (smaller model, better for quick responses)
 
 **Vision Models** (❌ No tool calling support):
 - `llava`, `llava:latest` - Vision model without tool support
@@ -469,10 +469,10 @@ PEEKABOO_OLLAMA_BASE_URL="http://remote-server:11434" ./scripts/peekaboo-wait.sh
 ### Important Notes
 
 1. **Tool Calling**: Not all Ollama models support tool/function calling. Models that don't support tools will return HTTP 400 errors.
-2. **Performance**: Local models may be slower than cloud APIs, especially for large models. The first response may take 30-60 seconds while the model loads.
+2. **Performance**: Local models may be slower than cloud APIs, especially for large models. **Ollama can take up to a minute before responding**, particularly with larger models like llama3.3 (70B parameters).
 3. **Memory**: Large models like llama3.3 (70B parameters) require significant RAM/VRAM.
-4. **Timeouts**: Ollama requests have a 5-minute timeout to accommodate model loading and processing time.
-5. **Streaming**: Ollama supports streaming responses, showing text as it's generated.
+4. **Timeouts**: Ollama requests have been configured with a 10-minute timeout to accommodate slow model responses. The resource timeout is set to 20 minutes for very long operations.
+5. **Streaming**: Ollama supports streaming responses, showing text as it's generated, though initial response may still take significant time.
 6. **Tool Call Format**: Some models (like llama3.3) output tool calls as JSON text in the content field rather than using the `tool_calls` field. Peekaboo automatically detects and parses these.
 
 ## Important Implementation Details

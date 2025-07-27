@@ -362,6 +362,13 @@ struct SessionChatView: View {
                                 .id("progress")
                                 .padding(.top, 8)
                         }
+                        
+                        // Show tool execution history
+                        if isCurrentSession && !agent.toolExecutionHistory.isEmpty {
+                            ToolExecutionHistoryView()
+                                .id("tool-history")
+                                .padding(.top, 8)
+                        }
                     }
                     .padding()
                 }

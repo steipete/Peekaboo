@@ -3,6 +3,22 @@ import SwiftUI
 import PeekabooCore
 import Observation
 
+/// Represents a single tool execution in the history
+public struct ToolExecution: Identifiable {
+    public let id = UUID()
+    public let toolName: String
+    public let arguments: String
+    public let timestamp: Date
+    public var status: ToolExecutionStatus
+    public var result: String?
+    
+    public enum ToolExecutionStatus {
+        case running
+        case completed
+        case failed
+    }
+}
+
 /// Main agent class for the Peekaboo Mac app
 @Observable
 @MainActor
@@ -42,6 +58,9 @@ public final class PeekabooAgent {
     
     /// Whether agent is thinking (not executing tools)
     public private(set) var isThinking = false
+    
+    /// Tool execution history for current task
+    public private(set) var toolExecutionHistory: [ToolExecution] = []
     
     /// Current session
     public var currentSession: Session? {
@@ -94,6 +113,7 @@ public final class PeekabooAgent {
             isThinking = true
             currentTool = nil
             currentToolArgs = nil
+            toolExecutionHistory = [] // Clear history for new task
             defer { 
                 isProcessing = false
                 currentTask = ""
@@ -378,6 +398,13 @@ public final class PeekabooAgent {
         case .error(let message):
             lastError = message
             
+            // Mark any running tools as failed
+            if let currentTool = currentTool,
+               let index = toolExecutionHistory.lastIndex(where: { $0.toolName == currentTool && $0.status == .running }) {
+                toolExecutionHistory[index].status = .failed
+                toolExecutionHistory[index].result = message
+            }
+            
         case .assistantMessage(let content):
             // When we get assistant messages, agent is thinking
             if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -407,6 +434,14 @@ public final class PeekabooAgent {
                 sessionStore.addMessage(toolMessage, to: currentSession)
             }
             
+            // Add to tool execution history
+            let execution = ToolExecution(
+                toolName: name,
+                arguments: currentToolArgs ?? arguments,
+                timestamp: Date(),
+                status: .running
+            )
+            toolExecutionHistory.append(execution)
         case .toolCallCompleted(let name, let result):
             // Find and update the tool execution message
             if let currentSession = sessionStore.currentSession,
@@ -427,6 +462,12 @@ public final class PeekabooAgent {
                         sessionStore.saveSessions()
                     }
                 }
+            }
+            
+            // Update tool execution history
+            if let index = toolExecutionHistory.lastIndex(where: { $0.toolName == name && $0.status == .running }) {
+                toolExecutionHistory[index].status = .completed
+                toolExecutionHistory[index].result = result
             }
             
             currentTool = nil
