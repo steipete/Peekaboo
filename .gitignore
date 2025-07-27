@@ -165,8 +165,7 @@ Thumbs.db
 # npm package files
 *.tgz
 
-# Auto-generated version file
-Apps/CLI/Sources/peekaboo/Version.swift
+# Version file is now checked in
 Apps/CLI/peekaboo
 
 # Release artifacts
