@@ -114,13 +114,11 @@ describe("run tool", () => {
       expect(result.isError).toBeFalsy();
       expect(result.content[0].type).toBe("text");
       expect(result.content[0].text).toContain("✅ Script executed successfully");
-      expect(result.content[0].text).toContain("Commands executed: 3/3");
-      expect(result.content[0].text).toContain("Session ID: auto-generated-123");
-      expect(result.content[0].text).toContain("Total time: 5.50s");
-      
-      expect(result._meta?.session_id).toBe("auto-generated-123");
-      expect(result._meta?.commands_executed).toBe(3);
-      expect(result._meta?.success).toBe(true);
+      expect(result.content[0].text).toContain("📄 Script: /tmp/test.peekaboo.json");
+      expect(result.content[0].text).toContain("🔢 Total steps: 3");
+      expect(result.content[0].text).toContain("✅ Completed: 3");
+      expect(result.content[0].text).toContain("❌ Failed: 0");
+      expect(result.content[0].text).toContain("⏱️  Total time: 5.50s");
     });
 
     it("should handle partial script execution with errors", async () => {
