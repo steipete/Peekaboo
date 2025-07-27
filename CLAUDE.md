@@ -123,6 +123,16 @@ With Poltergeist running and using the wrapper script, you NEVER need to:
 
 Just use `./scripts/peekaboo-wait.sh` for all CLI commands and let Poltergeist handle the rest!
 
+### Build Failure Recovery
+
+**IMPORTANT**: When you detect a build failure via `poltergeist:status`:
+- **DON'T** call `poltergeist:logs` to investigate
+- **DO** build it yourself immediately with `npm run build:swift`
+- Fix any compilation errors you encounter
+- Then continue with your original task
+
+This approach is faster and more efficient than analyzing logs.
+
 ### Troubleshooting Swift Package Manager Issues
 
 If you encounter Swift Package Manager errors like:
@@ -152,11 +162,14 @@ This issue typically occurs when:
 
 ## Recent Updates
 
+- **Grok (xAI) support** (2025-01-27): Added full support for xAI's Grok models including grok-4, grok-2, and beta variants. Uses OpenAI-compatible Chat Completions API at `https://api.x.ai/v1`. Supports X_AI_API_KEY or XAI_API_KEY environment variables. Parameter filtering for Grok 4 models (no frequencyPenalty, presencePenalty, or stop parameters).
+
+- **Dual API support** (2025-01-27): Restored Chat Completions API alongside Responses API. All models now default to Responses API for superior streaming support. Chat Completions API can be explicitly selected using `--api-mode chat` CLI parameter or `apiType` parameter in model settings. The Responses API is preferred as it provides better streaming capabilities for all models including GPT-4.1.
+
 - **Anthropic SDK support** (2025-01-26): Added native Swift implementation for Anthropic's Claude models. Features full streaming support, tool calling, multimodal inputs, and all Claude 3/3.5/4 models. No external dependencies required.
 
 - **O3 reasoning summaries** (2025-01-26): Fixed o3 model reasoning output by implementing support for reasoning summaries. Added handling for `response.reasoning_summary_text.delta` events and proper passing of `reasoning: { summary: "detailed" }` parameter to the API. Now displays "💭 Thinking: " prefix followed by actual reasoning summaries when available.
 
-- **Complete Responses API migration** (2025-01-26): Migrated exclusively to OpenAI Responses API, removing all Chat Completions API code. Updated tool format to use flatter structure. Added proper model-specific parameter handling (reasoning for o3/o4, temperature restrictions)
 
 - **VibeTunnel integration** (2025-01-26): Added VibeTunnel terminal title management to agent command for better visibility across multiple Claude sessions. Terminal titles update automatically during task execution and tool calls.
 
@@ -166,7 +179,7 @@ This issue typically occurs when:
 
 - **Poltergeist file watcher** (2025-01-26): Added ghost-themed file watcher that automatically rebuilds Swift CLI on source changes. Uses Facebook's Watchman for efficient native file watching. See "Poltergeist" section above.
 
-- **Responses API migration** (2025-01-26): Completely migrated from Chat Completions API to Responses API for all models. The Responses API provides better streaming support, reasoning visibility for o3/o4 models, and unified handling across all supported models.
+- **Dual API support restored** (2025-01-27): Restored Chat Completions API alongside Responses API. All models now default to Responses API for better streaming support. API can be explicitly selected via `--api-mode` CLI parameter or `apiType` parameter in `additionalParameters`.
 
 - **Direct API migration** (2025-01-25): Removed CLI subprocess execution in favor of direct PeekabooCore API calls, resulting in ~10x performance improvement. All Peekaboo apps now use the unified service layer.
 
@@ -263,15 +276,20 @@ This helps track multiple Claude Code sessions at a glance, especially useful wh
 - **gpt-4.1**, **gpt-4.1-mini** - Latest models with 1M token context
 - **gpt-4o**, **gpt-4o-mini** - Multimodal models (128K context)
 
-**Note**: GPT-3.5 and GPT-4 models are NOT supported. Only modern models with Responses API support are available.
+**Note**: GPT-3.5 and GPT-4 models are NOT supported. Only modern models (GPT-4o, GPT-4.1, o3, o4) are available.
 
 ### API Requirements
-- All models use the Responses API at `/v1/responses`
-- Uses `max_output_tokens` parameter for all models
-- o3/o4 models support reasoning parameters (effort: high/medium/low)
+- **Dual API Support**: System automatically selects appropriate API:
+  - Chat Completions API (`/v1/chat/completions`): Default for GPT-4o, GPT-4.1 models
+  - Responses API (`/v1/responses`): Required for o3/o4 models, optional for others
+- **API Selection**: Controlled via `apiType` parameter in model settings ("chat" or "responses")
+- Chat Completions API uses `max_tokens`, Responses API uses `max_output_tokens`
+- o3/o4 models support reasoning parameters (effort: high/medium/low) - Responses API only
 - o3/o4 models do NOT support temperature parameter
-- Supports streaming responses with event-based format
-- Tool format uses flatter structure (name at top level, not nested)
+- Both APIs support streaming responses with SSE format
+- Tool format differs between APIs:
+  - Chat Completions: Nested structure with `function` object
+  - Responses: Flatter structure with name at top level
 
 ### Reasoning Summaries (o3/o4 models)
 O3 and o4 models use advanced reasoning but don't expose raw chain-of-thought. Instead:
@@ -291,6 +309,46 @@ O3 and o4 models use advanced reasoning but don't expose raw chain-of-thought. I
 ./peekaboo agent "do something" --model gpt-4    # Resolves to gpt-4.1
 ./peekaboo agent "do something" --model gpt      # Resolves to gpt-4.1
 ```
+
+## Grok (xAI) API Integration
+
+### Supported Models (2025)
+- **grok-4** - Latest Grok 4 model (aliases: grok, grok4)
+- **grok-4-0709** - Specific July 9, 2025 release
+- **grok-4-latest** - Always points to newest Grok 4 features
+- **grok-2-1212** - Grok 2 model (alias: grok2, grok-2)
+- **grok-2-vision-1212** - Grok 2 with vision capabilities
+- **grok-beta** - Beta generation with 128k context
+- **grok-vision-beta** - Beta vision model
+
+### Configuration
+```bash
+# Set API key (supports two environment variable names)
+export X_AI_API_KEY=xai-...
+# OR
+export XAI_API_KEY=xai-...
+
+# Or use credentials file
+./peekaboo config set-credential X_AI_API_KEY xai-...
+
+# Use Grok models
+./peekaboo agent "do something" --model grok-4
+./peekaboo agent "do something" --model grok      # Resolves to grok-4
+./peekaboo agent "do something" --model grok4     # Resolves to grok-4
+```
+
+### Key Features
+- Uses OpenAI-compatible Chat Completions API
+- Endpoint: `https://api.x.ai/v1/chat/completions`
+- Full streaming support
+- Tool calling support
+- Multimodal support (for vision models)
+- Parameter filtering for Grok 4 (no frequencyPenalty, presencePenalty, stop)
+
+### Important Notes
+- Grok 4 models do not support `frequencyPenalty`, `presencePenalty`, or `stop` parameters
+- Uses standard Chat Completions format, not Responses API
+- Pricing and rate limits per xAI documentation
 
 ### References
 - [OpenAI API Spec](https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml)

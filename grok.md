@@ -1,5 +1,9 @@
 # Grok 4 Implementation Guide for Peekaboo
 
+## Implementation Status: IMPLEMENTED ✅
+
+**As of 2025-01-27, Grok models are now implemented in Peekaboo!** You can use Grok models by setting your xAI API key.
+
 ## Overview
 
 This document outlines the implementation plan for integrating xAI's Grok 4 model into Peekaboo. Grok 4 is xAI's flagship reasoning model, designed to deliver truthful, insightful answers with native tool use and real-time search integration.
@@ -9,7 +13,7 @@ This document outlines the implementation plan for integrating xAI's Grok 4 mode
 ### Base Details
 - **API Base URL**: `https://api.x.ai/v1`
 - **Authentication**: Bearer token via `X_AI_API_KEY` or `XAI_API_KEY`
-- **Compatibility**: Fully compatible with OpenAI and Anthropic SDKs
+- **Compatibility**: Fully compatible with OpenAI SDK
 - **Documentation**: https://docs.x.ai/
 
 ### Important: API Endpoints
@@ -17,12 +21,16 @@ This document outlines the implementation plan for integrating xAI's Grok 4 mode
 - **Messages**: Anthropic-compatible endpoint also available
 - **Note**: xAI does **NOT** use the `/v1/responses` endpoint - it uses standard chat completions
 
-### Available Models
-- **grok-4** - Latest Grok 4 model (no reasoning_effort parameter)
+### Available Models (per xAI API documentation)
+- **grok-4-0709** - Specific dated version of Grok 4 (July 9, 2025 release)
+- **grok-4** - Latest Grok 4 model (aliased to latest stable version)
+- **grok-4-latest** - Always points to the latest Grok 4 with newest features
 - **grok-beta** - Previous generation with 128k context
 - **grok-2-1212** - Grok 2 model
 - **grok-2-vision-1212** - Grok 2 with vision capabilities
 - **grok-vision-beta** - Beta vision model
+
+Note: The model name "grok4" (without hyphen) is NOT valid. Use "grok-4" instead.
 
 ### Key Features
 - Native tool use support (function calling)
@@ -629,14 +637,14 @@ Once implemented, Grok can be used like this:
 PEEKABOO_AI_PROVIDERS="grok/grok-4-0709" ./peekaboo analyze image.png "What is shown?"
 ```
 
-## Implementation Steps
+## Implementation Steps (COMPLETED)
 
-1. **Create GrokModel.swift** in `Core/PeekabooCore/Sources/PeekabooCore/AI/Models/`
-2. **Update ModelProvider.swift** to register Grok models
-3. **Add Grok configuration** to ModelProviderConfig
-4. **Create tests** in `Core/PeekabooCore/Tests/PeekabooTests/`
-5. **Update CLAUDE.md** with Grok model information
-6. **Test with real API key** to ensure compatibility
+1. ✅ **Created GrokModel.swift** in `Core/PeekabooCore/Sources/PeekabooCore/AI/Models/`
+2. ✅ **Updated ModelProvider.swift** to register Grok models
+3. ✅ **Added Grok configuration** to ModelProviderConfig
+4. ⏳ **Create tests** in `Core/PeekabooCore/Tests/PeekabooTests/` (pending)
+5. ✅ **Updated documentation** with Grok model information
+6. ⏳ **Test with real API key** to ensure compatibility (pending)
 
 ## Important Considerations
 

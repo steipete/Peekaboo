@@ -133,7 +133,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     /// Create a Peekaboo automation agent with all available tools
     public func createAutomationAgent(
         name: String = "Peekaboo Assistant",
-        modelName: String = "o3"
+        modelName: String = "o3",
+        apiType: String? = nil
     ) -> PeekabooAgent<PeekabooServices> {
         let agent = PeekabooAgent<PeekabooServices>(
             name: name,
@@ -144,13 +145,33 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 temperature: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? nil : nil,  // o3 doesn't support temperature
                 maxTokens: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? AgentConfiguration.o3MaxTokens : AgentConfiguration.defaultMaxTokens,
                 toolChoice: .auto,  // Let the model decide when to use tools vs generate text
-                additionalParameters: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? [
-                    "reasoning_effort": AnyCodable(AgentConfiguration.o3ReasoningEffort),
-                    "max_completion_tokens": AnyCodable(AgentConfiguration.o3MaxCompletionTokens),
-                    "reasoning": AnyCodable([
-                        "summary": "detailed"  // Request detailed reasoning summaries
-                    ])
-                ] : nil
+                additionalParameters: {
+                    var params: [String: AnyCodable] = [:]
+                    
+                    // Check if API type is explicitly specified
+                    if let specifiedApiType = apiType {
+                        params["apiType"] = AnyCodable(specifiedApiType)
+                    } else if !modelName.hasPrefix("grok") {
+                        // Default to Responses API for OpenAI models only (better streaming support)
+                        // Grok models don't need this parameter as they use their own implementation
+                        params["apiType"] = AnyCodable("responses")
+                    }
+                    
+                    // Add reasoning parameters for o3/o4 models
+                    if modelName.hasPrefix("o3") || modelName.hasPrefix("o4") {
+                        params["reasoning_effort"] = AnyCodable(AgentConfiguration.o3ReasoningEffort)
+                        params["max_completion_tokens"] = AnyCodable(AgentConfiguration.o3MaxCompletionTokens)
+                        params["reasoning"] = AnyCodable([
+                            "summary": "detailed"  // Request detailed reasoning summaries
+                        ])
+                    }
+                    
+                    let debugMsg = "DEBUG PeekabooAgentService: Model '\(modelName)' -> API Type: \(params["apiType"]?.value ?? "nil")"
+                    print(debugMsg)
+                    FileHandle.standardError.write((debugMsg + "\n").data(using: .utf8)!)
+                    
+                    return params.isEmpty ? nil : params
+                }()
             ),
             description: "An AI assistant for macOS automation using Peekaboo"
         )
@@ -1216,10 +1237,11 @@ extension PeekabooAgentService {
         _ task: String,
         sessionId: String? = nil,
         modelName: String? = nil,
-        eventDelegate: AgentEventDelegate? = nil
+        eventDelegate: AgentEventDelegate? = nil,
+        apiType: String? = nil
     ) async throws -> AgentExecutionResult {
         let effectiveModelName = modelName ?? defaultModelName
-        let agent = createAutomationAgent(modelName: effectiveModelName)
+        let agent = createAutomationAgent(modelName: effectiveModelName, apiType: apiType)
         let effectiveSessionId = sessionId ?? UUID().uuidString
         
         // Execute with streaming if we have an event delegate
