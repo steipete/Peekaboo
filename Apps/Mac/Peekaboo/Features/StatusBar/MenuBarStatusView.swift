@@ -1,5 +1,6 @@
 import SwiftUI
 import os.log
+import PeekabooCore
 
 struct MenuBarStatusView: View {
     private let logger = Logger(subsystem: "com.steipete.Peekaboo", category: "MenuBarStatus")
@@ -282,7 +283,9 @@ struct MenuBarStatusView: View {
                             onDelete: {
                                 withAnimation {
                                     sessionStore.sessions.removeAll { $0.id == session.id }
-                                    sessionStore.saveSessions()
+                                    Task {
+                                        try? await sessionStore.saveSessions()
+                                    }
                                 }
                             }
                         )

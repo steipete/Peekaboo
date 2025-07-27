@@ -37,7 +37,7 @@ final class Permissions {
     func check() async {
         logger.info("Checking all permissions...")
         permissionsService.checkPermissions()
-        logger.info("Permission check complete - Accessibility: \(self.accessibilityStatus), Screen Recording: \(self.screenRecordingStatus)")
+        logger.info("Permission check complete - Accessibility: \(String(describing: self.accessibilityStatus)), Screen Recording: \(String(describing: self.screenRecordingStatus))")
     }
 
     func requestScreenRecording() {

@@ -19,17 +19,22 @@ global.fetch = vi.fn();
 
 // Mock OpenAI
 vi.mock("openai", () => {
+  const mockList = vi.fn();
+  const mockCreate = vi.fn();
+  
   return {
     default: vi.fn().mockImplementation((config) => ({
       models: {
-        list: vi.fn(),
+        list: mockList,
       },
       chat: {
         completions: {
-          create: vi.fn(),
+          create: mockCreate,
         },
       },
     })),
+    __mockList: mockList,
+    __mockCreate: mockCreate,
   };
 });
 
@@ -158,18 +163,13 @@ describe("AI Providers Utility", () => {
     it("should return true for available OpenAI (API key set)", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { default: OpenAI } = await import("openai");
-      const mockOpenAI = OpenAI as any;
-      const mockList = vi.fn().mockResolvedValue({
+      const { __mockList } = await import("openai") as any;
+      __mockList.mockResolvedValue({
         data: [
           { id: "gpt-4o" },
           { id: "gpt-3.5-turbo" },
         ],
       });
-      
-      mockOpenAI.mockImplementation(() => ({
-        models: { list: mockList },
-      }));
 
       const result = await isProviderAvailable(
         { provider: "openai", model: "gpt-4o" },
@@ -186,13 +186,13 @@ describe("AI Providers Utility", () => {
       expect(result).toBe(false);
     });
 
-    it("should return false for Anthropic (not yet implemented)", async () => {
+    it("should return true for Anthropic when API key is set", async () => {
       process.env.ANTHROPIC_API_KEY = "test-key";
       const result = await isProviderAvailable(
         { provider: "anthropic", model: "claude-3" },
         mockLogger,
       );
-      expect(result).toBe(false);  // Not yet implemented
+      expect(result).toBe(true);  // Available when API key is present
     });
 
     it("should return false for unavailable Anthropic (API key not set)", async () => {
@@ -297,17 +297,10 @@ describe("AI Providers Utility", () => {
     it("should call analyzeWithOpenAI for openai provider", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { default: OpenAI } = await import("openai");
-      const mockOpenAI = OpenAI as any;
-      const mockCreate = vi.fn().mockResolvedValue({
+      const { __mockCreate } = await import("openai") as any;
+      __mockCreate.mockResolvedValue({
         choices: [{ message: { content: "OpenAI says hello" } }],
       });
-      
-      mockOpenAI.mockImplementation(() => ({
-        chat: {
-          completions: { create: mockCreate },
-        },
-      }));
 
       const result = await analyzeImageWithProvider(
         { provider: "openai", model: "gpt-4o" },
@@ -317,7 +310,7 @@ describe("AI Providers Utility", () => {
         mockLogger,
       );
       expect(result).toBe("OpenAI says hello");
-      expect(mockCreate).toHaveBeenCalledWith(
+      expect(__mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           model: "gpt-4o",
           messages: expect.arrayContaining([
@@ -351,17 +344,10 @@ describe("AI Providers Utility", () => {
     it("should return default message if OpenAI provides no response content", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { default: OpenAI } = await import("openai");
-      const mockOpenAI = OpenAI as any;
-      const mockCreate = vi.fn().mockResolvedValue({
+      const { __mockCreate } = await import("openai") as any;
+      __mockCreate.mockResolvedValue({
         choices: [{ message: { content: null } }],
       });
-      
-      mockOpenAI.mockImplementation(() => ({
-        chat: {
-          completions: { create: mockCreate },
-        },
-      }));
 
       const result = await analyzeImageWithProvider(
         { provider: "openai", model: "gpt-4o" },
@@ -409,17 +395,10 @@ describe("AI Providers Utility", () => {
     it("should use default prompt for whitespace-only question with OpenAI", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { default: OpenAI } = await import("openai");
-      const mockOpenAI = OpenAI as any;
-      const mockCreate = vi.fn().mockResolvedValue({
+      const { __mockCreate } = await import("openai") as any;
+      __mockCreate.mockResolvedValue({
         choices: [{ message: { content: "This image displays a user interface." } }],
       });
-      
-      mockOpenAI.mockImplementation(() => ({
-        chat: {
-          completions: { create: mockCreate },
-        },
-      }));
 
       const result = await analyzeImageWithProvider(
         { provider: "openai", model: "gpt-4o" },
@@ -429,7 +408,7 @@ describe("AI Providers Utility", () => {
         mockLogger,
       );
       expect(result).toBe("This image displays a user interface.");
-      expect(mockCreate).toHaveBeenCalledWith(
+      expect(__mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: expect.arrayContaining([
             expect.objectContaining({
@@ -470,7 +449,7 @@ describe("AI Providers Utility", () => {
   describe("getDefaultModelForProvider", () => {
     it("should return correct default models", () => {
       expect(getDefaultModelForProvider("ollama")).toBe("llava:latest");
-      expect(getDefaultModelForProvider("openai")).toBe("gpt-4o");
+      expect(getDefaultModelForProvider("openai")).toBe("gpt-4.1");
       expect(getDefaultModelForProvider("anthropic")).toBe(
         "claude-3-sonnet-20240229",
       );
@@ -491,15 +470,10 @@ describe("AI Providers Utility", () => {
     it("should select a specifically requested and available provider", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { default: OpenAI } = await import("openai");
-      const mockOpenAI = OpenAI as any;
-      const mockList = vi.fn().mockResolvedValue({
+      const { __mockList } = await import("openai") as any;
+      __mockList.mockResolvedValue({
         data: [{ id: "gpt-4o-mini" }],
       });
-      
-      mockOpenAI.mockImplementation(() => ({
-        models: { list: mockList },
-      }));
 
       const result = await determineProviderAndModel(
         { type: "openai" },
@@ -513,15 +487,10 @@ describe("AI Providers Utility", () => {
     it("should use a requested model over the configured default", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
-      const { default: OpenAI } = await import("openai");
-      const mockOpenAI = OpenAI as any;
-      const mockList = vi.fn().mockResolvedValue({
+      const { __mockList } = await import("openai") as any;
+      __mockList.mockResolvedValue({
         data: [{ id: "gpt-4-turbo" }],
       });
-      
-      mockOpenAI.mockImplementation(() => ({
-        models: { list: mockList },
-      }));
 
       const result = await determineProviderAndModel(
         { type: "openai", model: "gpt-4-turbo" },
@@ -571,15 +540,10 @@ describe("AI Providers Utility", () => {
       
       // Mock OpenAI as also available
       process.env.OPENAI_API_KEY = "test-key";
-      const { default: OpenAI } = await import("openai");
-      const mockOpenAI = OpenAI as any;
-      const mockList = vi.fn().mockResolvedValue({
+      const { __mockList } = await import("openai") as any;
+      __mockList.mockResolvedValue({
         data: [{ id: "gpt-4o-mini" }],
       });
-      
-      mockOpenAI.mockImplementation(() => ({
-        models: { list: mockList },
-      }));
 
       const result = await determineProviderAndModel(
         undefined, // auto mode
@@ -601,15 +565,10 @@ describe("AI Providers Utility", () => {
       
       // Mock OpenAI as available
       process.env.OPENAI_API_KEY = "test-key";
-      const { default: OpenAI } = await import("openai");
-      const mockOpenAI = OpenAI as any;
-      const mockList = vi.fn().mockResolvedValue({
+      const { __mockList } = await import("openai") as any;
+      __mockList.mockResolvedValue({
         data: [{ id: "gpt-4o-mini" }],
       });
-      
-      mockOpenAI.mockImplementation(() => ({
-        models: { list: mockList },
-      }));
 
       const result = await determineProviderAndModel(
         undefined, // auto mode

@@ -9,8 +9,7 @@ import AXorcist
 public final class PeekabooAgentService: AgentServiceProtocol {
     private let services: PeekabooServices
     private let modelProvider: ModelProvider
-    // TODO: Implement session management
-    // private let sessionManager: AgentSessionManager
+    private let sessionManager: AgentSessionManager
     private let defaultModelName: String
     
     /// The default model name used by this agent service
@@ -22,7 +21,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     ) {
         self.services = services
         self.modelProvider = .shared
-        // self.sessionManager = AgentSessionManager()
+        self.sessionManager = AgentSessionManager()
         self.defaultModelName = defaultModelName
     }
     
@@ -124,10 +123,9 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     
     /// Clean up any cached sessions or resources
     public func cleanup() async {
-        // TODO: Implement session cleanup
         // Clean up old sessions (older than 7 days)
-        // let oneWeekAgo = Date().addingTimeInterval(-7 * 24 * 60 * 60)
-        // try? await sessionManager.cleanupSessions(olderThan: oneWeekAgo)
+        let oneWeekAgo = Date().addingTimeInterval(-7 * 24 * 60 * 60)
+        try? await sessionManager.cleanupSessions(olderThan: oneWeekAgo)
     }
     
     // MARK: - Agent Creation
@@ -357,25 +355,81 @@ extension PeekabooAgentService {
         modelName: String = "claude-opus-4-20250514",
         eventDelegate: AgentEventDelegate? = nil
     ) async throws -> AgentExecutionResult {
-        // TODO: Implement session loading
-        // let messages = try await sessionManager.loadSession(sessionId)
-        let messages: [Message] = []
+        // Load the session
+        guard let session = try await sessionManager.loadSession(id: sessionId) else {
+            throw PeekabooError.sessionNotFound(sessionId)
+        }
         
-        // For now, always throw session not found
-        throw PeekabooError.sessionNotFound(sessionId)
-        
-        // Create agent and continue conversation
+        // Use AgentRunner to resume the session with existing messages
         let agent = createAutomationAgent(modelName: modelName)
         
-        // Create a continuation prompt
-        let continuationPrompt = "Continue the previous conversation"
+        // Create a continuation prompt if needed
+        let continuationPrompt = "Continue from where we left off."
         
-        return try await executeTask(
-            continuationPrompt,
-            sessionId: sessionId,
-            modelName: modelName,
-            eventDelegate: eventDelegate
-        )
+        // Execute with the loaded session
+        if eventDelegate != nil {
+            // SAFETY: We ensure that the delegate is only accessed on MainActor
+            let unsafeDelegate = UnsafeTransfer(eventDelegate!)
+            
+            // Create event stream infrastructure
+            let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
+            
+            // Start processing events on MainActor
+            let eventTask = Task { @MainActor in
+                let delegate = unsafeDelegate.wrappedValue
+                
+                // Send start event
+                delegate.agentDidEmitEvent(.started(task: continuationPrompt))
+                
+                for await event in eventStream {
+                    delegate.agentDidEmitEvent(event)
+                }
+            }
+            
+            // Create the event handler
+            let eventHandler = EventHandler { event in
+                eventContinuation.yield(event)
+            }
+            
+            defer {
+                eventContinuation.finish()
+                eventTask.cancel()
+            }
+            
+            // Run the agent with streaming
+            let result = try await AgentRunner.runStreaming(
+                agent: agent,
+                input: continuationPrompt,
+                context: services,
+                sessionId: sessionId,
+                streamHandler: { chunk in
+                    // Convert streaming chunks to events
+                    await eventHandler.send(.assistantMessage(content: chunk))
+                },
+                eventHandler: { toolEvent in
+                    // Convert tool events to agent events
+                    switch toolEvent {
+                    case .started(let name, let arguments):
+                        await eventHandler.send(.toolCallStarted(name: name, arguments: arguments))
+                    case .completed(let name, let result):
+                        await eventHandler.send(.toolCallCompleted(name: name, result: result))
+                    }
+                }
+            )
+            
+            // Send completion event
+            await eventHandler.send(.completed(summary: result.content))
+            
+            return result
+        } else {
+            // Execute without streaming
+            return try await AgentRunner.run(
+                agent: agent,
+                input: continuationPrompt,
+                context: services,
+                sessionId: sessionId
+            )
+        }
     }
     
     // TODO: Implement session management
@@ -417,7 +471,7 @@ private actor EventHandler {
 // MARK: - Unsafe Transfer
 
 /// Safely transfer non-Sendable values across isolation boundaries
-private struct UnsafeTransfer<T> {
+private struct UnsafeTransfer<T>: @unchecked Sendable {
     let wrappedValue: T
     
     init(_ value: T) {

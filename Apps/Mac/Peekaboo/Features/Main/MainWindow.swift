@@ -1,4 +1,5 @@
 import SwiftUI
+import PeekabooCore
 
 struct MainWindow: View {
     @Environment(PeekabooSettings.self) private var settings

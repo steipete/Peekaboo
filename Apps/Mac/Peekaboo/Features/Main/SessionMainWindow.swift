@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import PeekabooCore
 
 struct SessionMainWindow: View {
     @Environment(PeekabooSettings.self) private var settings
@@ -178,7 +179,9 @@ struct SessionSidebar: View {
         guard session.id != agent.currentSession?.id else { return }
         
         sessionStore.sessions.removeAll { $0.id == session.id }
-        sessionStore.saveSessions()
+        Task {
+            try? await sessionStore.saveSessions()
+        }
         
         if selectedSessionId == session.id {
             selectedSessionId = nil
@@ -191,7 +194,9 @@ struct SessionSidebar: View {
         newSession.summary = session.summary
         
         sessionStore.sessions.insert(newSession, at: 0)
-        sessionStore.saveSessions()
+        Task {
+            try? await sessionStore.saveSessions()
+        }
         
         selectedSessionId = newSession.id
     }

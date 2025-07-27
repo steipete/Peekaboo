@@ -233,11 +233,13 @@ function checkAnthropicStatus(_model: string): ProviderStatus {
     };
   }
 
+  // Anthropic is implemented in the Swift CLI, mark as available when API key is present
   return {
-    available: false,
-    error: "Anthropic support not yet implemented",
+    available: true,
     details: {
       apiKeyPresent: true,
+      serverReachable: true,
+      modelAvailable: true,
     },
   };
 }

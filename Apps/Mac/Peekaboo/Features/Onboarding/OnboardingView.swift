@@ -1,4 +1,13 @@
 import SwiftUI
+import PeekabooCore
+
+// Type alias for permission status
+typealias PermissionStatus = ObservablePermissionsService.PermissionState
+
+// Notification name extension
+extension Notification.Name {
+    static let permissionsUpdated = Notification.Name("PermissionsUpdated")
+}
 
 struct OnboardingView: View {
     @Environment(PeekabooSettings.self) private var settings

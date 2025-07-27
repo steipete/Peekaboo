@@ -156,7 +156,9 @@ public final class PeekabooAgent {
                     if let currentSession = sessionStore.currentSession,
                        let index = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }) {
                         sessionStore.sessions[index].modelName = settings.selectedModel
-                        sessionStore.saveSessions()
+                        Task {
+                            try? await sessionStore.saveSessions()
+                        }
                     }
                 }
                 
@@ -252,16 +254,9 @@ public final class PeekabooAgent {
     }
     
     /// List available sessions
-    public func listSessions() async throws -> [SessionSummary] {
-        guard let agentService = agentService else {
-            throw AgentError.serviceUnavailable
-        }
-        
-        guard let peekabooAgent = agentService as? PeekabooAgentService else {
-            throw AgentError.invalidConfiguration("Agent service not properly initialized")
-        }
-        
-        return try await peekabooAgent.listSessions()
+    public func listSessions() async throws -> [ConversationSessionSummary] {
+        // Return summaries from the session store
+        return sessionStore.sessions.map { ConversationSessionSummary(from: $0) }
     }
     
     /// Clear current session
@@ -442,7 +437,9 @@ public final class PeekabooAgent {
                     // Update the tool call result
                     if let toolCallIndex = sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls.firstIndex(where: { $0.name == name }) {
                         sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls[toolCallIndex].result = result
-                        sessionStore.saveSessions()
+                        Task {
+                            try? await sessionStore.saveSessions()
+                        }
                     }
                 }
                 

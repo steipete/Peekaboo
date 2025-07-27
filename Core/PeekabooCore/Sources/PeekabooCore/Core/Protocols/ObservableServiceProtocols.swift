@@ -102,10 +102,14 @@ public enum ServiceLifecycleState: String, Sendable {
 
 // MARK: - Observable Service Wrapper
 
+// TODO: Fix concurrency issues with ObservableServiceWrapper
+// This generic wrapper is not currently used in the codebase.
+// Commented out to fix build issues with Swift 6 concurrency.
+/*
 /// Generic wrapper for making services observable
 @available(macOS 14.0, *)
 @Observable
-public class ObservableServiceWrapper<Service, State: ServiceState> {
+public class ObservableServiceWrapper<Service, State: ServiceState> where Service: Sendable {
     /// The wrapped service
     private let service: Service
     
@@ -116,7 +120,7 @@ public class ObservableServiceWrapper<Service, State: ServiceState> {
     public private(set) var isMonitoring = false
     
     /// State update handler
-    private let stateUpdateHandler: (Service) async -> State
+    private let stateUpdateHandler: @Sendable (Service) async -> State
     
     /// Monitoring task
     private var monitoringTask: Task<Void, Never>?
@@ -124,7 +128,7 @@ public class ObservableServiceWrapper<Service, State: ServiceState> {
     public init(
         service: Service,
         initialState: State,
-        stateUpdateHandler: @escaping (Service) async -> State
+        stateUpdateHandler: @escaping @Sendable (Service) async -> State
     ) {
         self.service = service
         self.state = initialState
@@ -143,9 +147,7 @@ public class ObservableServiceWrapper<Service, State: ServiceState> {
                 
                 // Update state
                 let newState = await self.stateUpdateHandler(self.service)
-                await MainActor.run {
-                    self.state = newState
-                }
+                self.state = newState
                 
                 // Wait for next interval
                 try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
@@ -164,6 +166,7 @@ public class ObservableServiceWrapper<Service, State: ServiceState> {
         monitoringTask?.cancel()
     }
 }
+*/
 
 // MARK: - Service Registry Protocol
 

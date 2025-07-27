@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import os.log
+import PeekabooCore
 
 /// Controls the Peekaboo status bar item and popover interface.
 ///

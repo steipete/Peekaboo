@@ -171,6 +171,7 @@ public final class PeekabooServices: @unchecked Sendable {
         sessions: SessionManagerProtocol,
         files: FileServiceProtocol,
         process: ProcessServiceProtocol,
+        permissions: PermissionsService,
         configuration: ConfigurationManager,
         agent: AgentServiceProtocol?
     ) {
@@ -185,6 +186,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.sessions = sessions
         self.files = files
         self.process = process
+        self.permissions = permissions
         self.configuration = configuration
         self.agent = agent
     }
@@ -205,6 +207,7 @@ public final class PeekabooServices: @unchecked Sendable {
         let dialogs = DialogService()
         let files = FileService()
         let config = ConfigurationManager.shared
+        let permissions = PermissionsService()
         let process = ProcessService(
             applicationService: apps,
             screenCaptureService: screenCap,
@@ -228,6 +231,7 @@ public final class PeekabooServices: @unchecked Sendable {
             sessions: sess,
             files: files,
             process: process,
+            permissions: permissions,
             configuration: config,
             agent: nil
         )
@@ -310,6 +314,7 @@ public final class PeekabooServices: @unchecked Sendable {
             sessions: sess,
             files: files,
             process: process,
+            permissions: permissions,
             configuration: config,
             agent: agent
         )

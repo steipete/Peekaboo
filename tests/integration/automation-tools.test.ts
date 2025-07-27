@@ -78,7 +78,7 @@ class JSONRPCClient {
   }
 }
 
-describe("MCP Spec v3 Tools", () => {
+describe("Automation Tools", () => {
   let client: JSONRPCClient;
 
   beforeAll(() => {
@@ -90,7 +90,7 @@ describe("MCP Spec v3 Tools", () => {
   });
 
   describe("tools/list", () => {
-    it("should list all spec v3 tools", async () => {
+    it("should list all automation tools", async () => {
       const result = await client.request("tools/list");
       
       expect(result.tools).toBeInstanceOf(Array);

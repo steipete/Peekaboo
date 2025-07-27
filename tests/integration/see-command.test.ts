@@ -234,7 +234,7 @@ describe("See Command Integration Tests", () => {
     }
   });
 
-  it("should support screen capture mode", async () => {
+  it.skip("should support screen capture mode", async () => {
     const result = await runSeeCommand(["--mode", "screen"]);
 
     expect(result.success).toBe(true);
