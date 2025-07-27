@@ -2,6 +2,7 @@ import ApplicationServices
 import AXorcist
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("Label Extraction Tests", .serialized, .tags(.localOnly))
@@ -9,7 +10,8 @@ struct LabelExtractionTests {
     @Test("AXLabel attribute extraction for Calculator buttons")
     func calculatorButtonLabelExtraction() async throws {
         // This test requires Calculator to be running
-        guard let calculator = try? ApplicationFinder.findApplication(identifier: "Calculator") else {
+        let appService = PeekabooServices.shared.applications
+        guard let calculator = try? await appService.findApplication(identifier: "Calculator") else {
             Issue.record("Calculator app not running, skipping test")
             return
         }
@@ -32,7 +34,7 @@ struct LabelExtractionTests {
 
         // Process the first window
         let window = windows[0]
-        var uiMap: [String: SessionCache.UIAutomationSession.UIElement] = [:]
+        var uiMap: [String: UIElement] = [:]
         var roleCounters: [String: Int] = [:]
 
         // Process elements to build UI map
@@ -165,7 +167,7 @@ struct LabelExtractionTests {
     private func processElementForTest(
         _ element: Element,
         parentId: String?,
-        uiMap: inout [String: SessionCache.UIAutomationSession.UIElement],
+        uiMap: inout [String: UIElement],
         roleCounters: inout [String: Int]) async
     {
         let role = element.role() ?? "AXGroup"
@@ -198,7 +200,7 @@ struct LabelExtractionTests {
         let elementId = "\(prefix)\(counter)"
 
         // Create UI element
-        let uiElement = SessionCache.UIAutomationSession.UIElement(
+        let uiElement = UIElement(
             id: elementId,
             elementId: "element_\(uiMap.count)",
             role: role,
