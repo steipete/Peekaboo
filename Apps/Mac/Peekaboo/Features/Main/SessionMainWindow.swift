@@ -10,7 +10,6 @@ struct SessionMainWindow: View {
     
     @State private var selectedSessionId: String?
     @State private var searchText = ""
-    @State private var showNewSessionPrompt = false
     
     var body: some View {
         NavigationSplitView {
@@ -18,7 +17,7 @@ struct SessionMainWindow: View {
             SessionSidebar(
                 selectedSessionId: $selectedSessionId,
                 searchText: $searchText,
-                showNewSessionPrompt: $showNewSessionPrompt
+                onCreateNewSession: createNewSession
             )
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
         } detail: {
@@ -26,10 +25,13 @@ struct SessionMainWindow: View {
             if let sessionId = selectedSessionId,
                let session = sessionStore.sessions.first(where: { $0.id == sessionId }) {
                 SessionChatView(session: session)
+                    .toolbar(removing: .sidebarToggle)
             } else if let currentSession = sessionStore.currentSession {
                 SessionChatView(session: currentSession)
+                    .toolbar(removing: .sidebarToggle)
             } else {
-                EmptySessionView(showNewSessionPrompt: $showNewSessionPrompt)
+                EmptySessionView(onCreateNewSession: createNewSession)
+                    .toolbar(removing: .sidebarToggle)
             }
         }
         .navigationTitle("Peekaboo Sessions")
@@ -52,14 +54,17 @@ struct SessionMainWindow: View {
                 selectedSessionId = newId
             }
         }
-        .sheet(isPresented: $showNewSessionPrompt) {
-            NewSessionPrompt(isPresented: $showNewSessionPrompt)
-        }
+        // Removed sheet - creating sessions directly
     }
     
     private func toggleSidebar() {
         NSApp.keyWindow?.firstResponder?
             .tryToPerform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
+    }
+    
+    private func createNewSession() {
+        let newSession = sessionStore.createSession(title: "New Session")
+        selectedSessionId = newSession.id
     }
 }
 
@@ -71,7 +76,7 @@ struct SessionSidebar: View {
     
     @Binding var selectedSessionId: String?
     @Binding var searchText: String
-    @Binding var showNewSessionPrompt: Bool
+    var onCreateNewSession: () -> Void
     
     private var filteredSessions: [Session] {
         if searchText.isEmpty {
@@ -96,7 +101,7 @@ struct SessionSidebar: View {
                 
                 Spacer()
                 
-                Button(action: { showNewSessionPrompt = true }) {
+                Button(action: onCreateNewSession) {
                     Image(systemName: "plus")
                 }
                 .buttonStyle(.plain)
@@ -263,6 +268,14 @@ struct SessionRow: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                
+                if !session.modelName.isEmpty {
+                    Text("•")
+                        .foregroundColor(.secondary)
+                    Text(formatModelName(session.modelName))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             
             if !session.summary.isEmpty {
@@ -277,6 +290,28 @@ struct SessionRow: View {
         .onHover { hovering in
             isHovering = hovering
         }
+    }
+}
+
+// MARK: - Helper Functions
+
+private func formatModelName(_ model: String) -> String {
+    // Shorten common model names for display
+    switch model {
+    case "gpt-4.1": return "GPT-4.1"
+    case "gpt-4.1-mini": return "GPT-4.1 mini"
+    case "gpt-4o": return "GPT-4o"
+    case "gpt-4o-mini": return "GPT-4o mini"
+    case "o3": return "o3"
+    case "o3-pro": return "o3 pro"
+    case "o4-mini": return "o4-mini"
+    case "claude-opus-4-20250514": return "Claude Opus 4"
+    case "claude-sonnet-4-20250514": return "Claude Sonnet 4"
+    case "claude-3-5-haiku": return "Claude 3.5 Haiku"
+    case "claude-3-5-sonnet": return "Claude 3.5 Sonnet"
+    case "llava:latest": return "LLaVA"
+    case "llama3.2-vision:latest": return "Llama 3.2"
+    default: return model
     }
 }
 
@@ -307,7 +342,7 @@ struct SessionChatView: View {
             // Header
             SessionChatHeader(
                 session: session,
-                isActive: isCurrentSession && agent.isExecuting
+                isActive: isCurrentSession && agent.isProcessing
             )
             
             Divider()
@@ -319,6 +354,13 @@ struct SessionChatView: View {
                         ForEach(session.messages) { message in
                             DetailedMessageRow(message: message)
                                 .id(message.id)
+                        }
+                        
+                        // Show progress indicator for active session
+                        if isCurrentSession && agent.isProcessing {
+                            ProgressIndicatorView(agent: agent)
+                                .id("progress")
+                                .padding(.top, 8)
                         }
                     }
                     .padding()
@@ -361,11 +403,11 @@ struct SessionChatView: View {
                                     defer { isProcessing = false }
                                     
                                     // Re-execute the last task
-                                    let result = await agent.executeTask(lastTask)
-                                    
-                                    // Check if retry was successful
-                                    if result.error == nil {
+                                    do {
+                                        try await agent.executeTask(lastTask)
                                         hasConnectionError = false
+                                    } catch {
+                                        // Error persists
                                     }
                                 }
                             }
@@ -404,9 +446,11 @@ struct SessionChatView: View {
             }
             .buttonStyle(.plain)
             
-            if agent.isExecuting && isCurrentSession {
+            if agent.isProcessing && isCurrentSession {
                 // Show stop button during execution
-                Button(action: { agent.cancelCurrentTask() }) {
+                Button(action: { 
+                    agent.cancelCurrentTask()
+                }) {
                     Image(systemName: "stop.circle.fill")
                         .font(.title2)
                         .foregroundColor(.red)
@@ -427,7 +471,7 @@ struct SessionChatView: View {
     }
     
     private var placeholderText: String {
-        if agent.isExecuting && isCurrentSession {
+        if agent.isProcessing && isCurrentSession {
             return "Ask a follow-up question..."
         } else {
             return "Ask Peekaboo..."
@@ -478,7 +522,7 @@ struct SessionChatView: View {
         // Clear input immediately
         inputText = ""
         
-        if agent.isExecuting && isCurrentSession {
+        if agent.isProcessing && isCurrentSession {
             // During execution, just add as a follow-up message
             sessionStore.addMessage(
                 SessionMessage(role: .user, content: trimmedInput),
@@ -486,18 +530,17 @@ struct SessionChatView: View {
             )
             
             // If agent is executing, queue the message for later
-            if agent.isExecuting {
+            if agent.isProcessing {
+                // Queue the message
                 agent.queueMessage(trimmedInput)
-                
-                // Show queued notification
-                sessionStore.addMessage(
-                    SessionMessage(role: .system, content: "📋 Message queued. It will be processed after the current task completes."),
-                    to: session
-                )
             } else {
                 // Start a new execution with the follow-up
                 Task {
-                    await agent.executeTask(trimmedInput)
+                    do {
+                        try await agent.executeTask(trimmedInput)
+                    } catch {
+                        print("Failed to execute follow-up: \(error)")
+                    }
                 }
             }
         } else {
@@ -506,15 +549,16 @@ struct SessionChatView: View {
                 isProcessing = true
                 defer { isProcessing = false }
                 
-                let result = await agent.executeTask(trimmedInput)
-                
-                if let error = result.error {
+                do {
+                    try await agent.executeTask(trimmedInput)
+                } catch {
                     // Check if it's a connection error
-                    if error.contains("network") || error.contains("connection") {
+                    let errorMessage = error.localizedDescription
+                    if errorMessage.contains("network") || errorMessage.contains("connection") {
                         hasConnectionError = true
                     }
                     // Error is already added to session by agent
-                    print("Task error: \(error)")
+                    print("Task error: \(errorMessage)")
                 }
             }
         }
@@ -568,11 +612,41 @@ struct SessionChatHeader: View {
                         }
                     }
                     
-                    if isActive && agent.isExecuting && !agent.currentTask.isEmpty {
-                        Text(agent.currentTask)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
+                    HStack(spacing: 4) {
+                        if !session.modelName.isEmpty {
+                            Text(formatModelName(session.modelName))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        if isActive && agent.isProcessing {
+                            Text("•")
+                                .foregroundColor(.secondary)
+                            
+                            // Show current tool or thinking status
+                            if let currentTool = agent.currentTool {
+                                Text("\(PeekabooAgent.iconForTool(currentTool)) \(currentTool)")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                                
+                                if let args = agent.currentToolArgs, !args.isEmpty {
+                                    Text(args)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                }
+                            } else if agent.isThinking {
+                                Text("💭 Thinking...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .opacity(0.8)
+                            } else if !agent.currentTask.isEmpty {
+                                Text(agent.currentTask)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
                     }
                 }
                 
@@ -585,8 +659,10 @@ struct SessionChatHeader: View {
                 }
                 .buttonStyle(.plain)
                 
-                if isActive && agent.isExecuting {
-                    Button(action: { agent.cancelCurrentTask() }) {
+                if isActive && agent.isProcessing {
+                    Button(action: { 
+                        agent.cancelCurrentTask()
+                    }) {
                         Label("Cancel", systemImage: "stop.circle")
                             .foregroundColor(.red)
                     }
@@ -612,7 +688,7 @@ struct SessionChatHeader: View {
 // MARK: - Empty Session View
 
 struct EmptySessionView: View {
-    @Binding var showNewSessionPrompt: Bool
+    var onCreateNewSession: () -> Void
     
     var body: some View {
         VStack(spacing: 20) {
@@ -630,80 +706,13 @@ struct EmptySessionView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             
-            Button(action: { showNewSessionPrompt = true }) {
+            Button(action: onCreateNewSession) {
                 Label("New Session", systemImage: "plus.circle")
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-// MARK: - New Session Prompt
-
-struct NewSessionPrompt: View {
-    @Binding var isPresented: Bool
-    @State private var sessionTitle = ""
-    @State private var initialPrompt = ""
-    
-    @Environment(SessionStore.self) private var sessionStore
-    @Environment(PeekabooAgent.self) private var agent
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("New Session")
-                .font(.headline)
-            
-            Form {
-                TextField("Session Title (optional)", text: $sessionTitle)
-                    .textFieldStyle(.roundedBorder)
-                
-                VStack(alignment: .leading) {
-                    Text("Initial Task (optional)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    TextEditor(text: $initialPrompt)
-                        .font(.body)
-                        .frame(minHeight: 60)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color(NSColor.separatorColor), lineWidth: 1)
-                        )
-                }
-            }
-            
-            HStack {
-                Button("Cancel") {
-                    isPresented = false
-                }
-                .keyboardShortcut(.cancelAction)
-                
-                Spacer()
-                
-                Button("Create") {
-                    createSession()
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(sessionTitle.isEmpty && initialPrompt.isEmpty)
-            }
-        }
-        .padding()
-        .frame(width: 400, height: 250)
-    }
-    
-    private func createSession() {
-        let title = sessionTitle.isEmpty ? "New Session" : sessionTitle
-        _ = sessionStore.createSession(title: title)
-        
-        isPresented = false
-        
-        // If there's an initial prompt, execute it
-        if !initialPrompt.isEmpty {
-            Task {
-                await agent.executeTask(initialPrompt)
-            }
-        }
     }
 }
 
@@ -791,6 +800,32 @@ struct DetailedMessageRow: View {
                             .foregroundColor(.orange)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
+                    } else if isToolMessage {
+                        HStack(spacing: 8) {
+                            // Show dynamic status based on tool execution state
+                            if let toolCall = message.toolCalls.first {
+                                let isRunning = toolCall.result == "Running..."
+                                let statusIcon = isRunning ? "🔧" : (toolCall.result.contains("error") || toolCall.result.contains("failed") ? "❌" : "✅")
+                                let statusText = isRunning ? message.content : message.content.replacingOccurrences(of: "🔧", with: statusIcon)
+                                
+                                Text(statusText)
+                                    .font(.system(.body, design: .monospaced))
+                                    .foregroundColor(.primary)
+                                
+                                if isRunning {
+                                    ProgressView()
+                                        .progressViewStyle(.circular)
+                                        .scaleEffect(0.7)
+                                }
+                            } else {
+                                Text(message.content)
+                                    .font(.system(.body, design: .monospaced))
+                                    .foregroundColor(.primary)
+                            }
+                            
+                            Spacer()
+                        }
+                        .textSelection(.enabled)
                     } else {
                         Text(message.content)
                             .textSelection(.enabled)
@@ -846,6 +881,10 @@ struct DetailedMessageRow: View {
         message.role == .system && message.content.contains("⚠️")
     }
     
+    private var isToolMessage: Bool {
+        message.role == .system && (message.content.contains("🔧") || message.content.contains("✅") || message.content.contains("❌"))
+    }
+    
     private var hasRunningTools: Bool {
         message.toolCalls.contains { $0.result == "Running..." }
     }
@@ -857,12 +896,17 @@ struct DetailedMessageRow: View {
             return Color.orange.opacity(0.1)
         } else if isThinkingMessage {
             return Color.purple.opacity(0.05)
+        } else if isToolMessage {
+            return Color.blue.opacity(0.05)
         } else {
             return Color(NSColor.controlBackgroundColor).opacity(0.3)
         }
     }
     
     private var iconName: String {
+        if isToolMessage {
+            return "wrench.and.screwdriver.fill"
+        }
         switch message.role {
         case .user: return "person.fill"
         case .assistant: return "sparkles"
@@ -871,6 +915,9 @@ struct DetailedMessageRow: View {
     }
     
     private var iconColor: Color {
+        if isToolMessage {
+            return .purple
+        }
         switch message.role {
         case .user: return .blue
         case .assistant: return .green
@@ -1125,6 +1172,85 @@ struct ImageInspectorView: View {
             .background(Color(NSColor.controlBackgroundColor))
         }
         .frame(minWidth: 600, idealWidth: 800, minHeight: 400, idealHeight: 600)
+    }
+}
+
+// MARK: - Progress Indicator View
+
+struct ProgressIndicatorView: View {
+    @Environment(PeekabooAgent.self) private var agent
+    @State private var animationPhase = 0.0
+    
+    init(agent: PeekabooAgent) {
+        // Just for interface consistency
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Animated icon
+            if let currentTool = agent.currentTool {
+                Text(PeekabooAgent.iconForTool(currentTool))
+                    .font(.title2)
+                    .scaleEffect(1 + sin(animationPhase) * 0.1)
+                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: animationPhase)
+            } else if agent.isThinking {
+                Text("💭")
+                    .font(.title2)
+                    .opacity(0.6 + sin(animationPhase) * 0.4)
+                    .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: animationPhase)
+            } else {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .scaleEffect(0.8)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                // Primary status
+                if let currentTool = agent.currentTool {
+                    HStack(spacing: 4) {
+                        Text(currentTool)
+                            .font(.system(.body, design: .rounded))
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+                        
+                        if let args = agent.currentToolArgs, !args.isEmpty {
+                            Text("•")
+                                .foregroundColor(.secondary)
+                            Text(args)
+                                .font(.system(.body))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                } else if agent.isThinking {
+                    Text("Thinking...")
+                        .font(.system(.body, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .italic()
+                } else {
+                    Text("Processing...")
+                        .font(.system(.body))
+                        .foregroundColor(.secondary)
+                }
+                
+                // Task context
+                if !agent.currentTask.isEmpty && agent.currentTool == nil {
+                    Text(agent.currentTask)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+        .cornerRadius(8)
+        .onAppear {
+            animationPhase = 1
+        }
     }
 }
 

@@ -13,7 +13,7 @@ struct ScrollCommandTests {
         let command = try ScrollCommand.parse(["--direction", direction])
         #expect(command.direction == direction)
         #expect(command.amount == 3) // default
-        #expect(command.delay == 20) // default
+        #expect(command.delay == 2) // default
         #expect(command.smooth == false) // default
     }
 

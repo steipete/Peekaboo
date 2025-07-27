@@ -2,6 +2,7 @@ import ArgumentParser
 import CoreGraphics
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("ClickCommand Advanced Tests")
@@ -147,10 +148,17 @@ struct ClickCommandAdvancedTests {
     @Test("Find element by text in session")
     func testFindElementByText() throws {
         // Create mock session data using the correct types
+        let metadata = DetectionMetadata(
+            detectionTime: 0.5,
+            elementCount: 1,
+            method: "mock",
+            warnings: []
+        )
+        
         let testData = ElementDetectionResult(
             sessionId: "test123",
             screenshotPath: "/tmp/test.png",
-            elements: ElementSet(
+            elements: DetectedElements(
                 buttons: [
                     DetectedElement(
                         id: "C1",
@@ -158,15 +166,21 @@ struct ClickCommandAdvancedTests {
                         label: "Bold",
                         value: nil,
                         bounds: CGRect(x: 100, y: 100, width: 50, height: 20),
-                        isEnabled: true
+                        isEnabled: true,
+                        isSelected: nil,
+                        attributes: [:]
                     )
                 ],
-                labels: [],
                 textFields: [],
+                links: [],
                 images: [],
+                groups: [],
+                sliders: [],
+                checkboxes: [],
+                menus: [],
                 other: []
             ),
-            metadata: nil
+            metadata: metadata
         )
 
         // The actual element finding would be done through SessionCache

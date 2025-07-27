@@ -32,7 +32,7 @@ struct LabelExtractionTests {
 
         // Process the first window
         let window = windows[0]
-        var uiMap: [String: SessionCache.SessionData.UIElement] = [:]
+        var uiMap: [String: SessionCache.UIAutomationSession.UIElement] = [:]
         var roleCounters: [String: Int] = [:]
 
         // Process elements to build UI map
@@ -125,8 +125,8 @@ struct LabelExtractionTests {
 
     @Test("SessionCache UIElement includes label and identifier fields")
     func sessionCacheUIElementFormat() async throws {
-        // Test that SessionCache.SessionData.UIElement includes label and identifier fields
-        let element = SessionCache.SessionData.UIElement(
+        // Test that SessionCache.UIAutomationSession.UIElement includes label and identifier fields
+        let element = SessionCache.UIAutomationSession.UIElement(
             id: "B1",
             elementId: "element_1",
             role: "AXButton",
@@ -146,8 +146,8 @@ struct LabelExtractionTests {
         #expect(element.identifier == "Seven")
 
         // Test session data with the element
-        let sessionData = SessionCache.SessionData(
-            version: SessionCache.SessionData.currentVersion,
+        let sessionData = SessionCache.UIAutomationSession(
+            version: SessionCache.UIAutomationSession.currentVersion,
             screenshotPath: nil,
             annotatedPath: nil,
             uiMap: ["B1": element],
@@ -165,7 +165,7 @@ struct LabelExtractionTests {
     private func processElementForTest(
         _ element: Element,
         parentId: String?,
-        uiMap: inout [String: SessionCache.SessionData.UIElement],
+        uiMap: inout [String: SessionCache.UIAutomationSession.UIElement],
         roleCounters: inout [String: Int]) async
     {
         let role = element.role() ?? "AXGroup"
@@ -198,7 +198,7 @@ struct LabelExtractionTests {
         let elementId = "\(prefix)\(counter)"
 
         // Create UI element
-        let uiElement = SessionCache.SessionData.UIElement(
+        let uiElement = SessionCache.UIAutomationSession.UIElement(
             id: elementId,
             elementId: "element_\(uiMap.count)",
             role: role,

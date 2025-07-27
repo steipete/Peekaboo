@@ -5,9 +5,9 @@ final class AIProviderTests: XCTestCase {
     // MARK: - AIProviderConfig Tests
 
     func testAIProviderConfigParsing() {
-        let config1 = AIProviderConfig(from: "openai/gpt-4o")
+        let config1 = AIProviderConfig(from: "openai/gpt-4.1")
         XCTAssertEqual(config1.provider, "openai")
-        XCTAssertEqual(config1.model, "gpt-4o")
+        XCTAssertEqual(config1.model, "gpt-4.1")
         XCTAssertTrue(config1.isValid)
 
         let config2 = AIProviderConfig(from: "ollama/llava:latest")
@@ -27,19 +27,19 @@ final class AIProviderTests: XCTestCase {
     }
 
     func testParseAIProviders() {
-        let providers1 = parseAIProviders("openai/gpt-4o,ollama/llava:latest")
+        let providers1 = parseAIProviders("openai/gpt-4.1,ollama/llava:latest")
         XCTAssertEqual(providers1.count, 2)
         XCTAssertEqual(providers1[0].provider, "openai")
-        XCTAssertEqual(providers1[0].model, "gpt-4o")
+        XCTAssertEqual(providers1[0].model, "gpt-4.1")
         XCTAssertEqual(providers1[1].provider, "ollama")
         XCTAssertEqual(providers1[1].model, "llava:latest")
 
-        let providers2 = parseAIProviders("openai/gpt-4o, ollama/llava:latest , anthropic/claude-3")
+        let providers2 = parseAIProviders("openai/gpt-4.1, ollama/llava:latest , anthropic/claude-3")
         XCTAssertEqual(providers2.count, 3)
         XCTAssertEqual(providers2[2].provider, "anthropic")
         XCTAssertEqual(providers2[2].model, "claude-3")
 
-        let providers3 = parseAIProviders("invalid,openai/gpt-4o,/nomodel,noprovider/")
+        let providers3 = parseAIProviders("invalid,openai/gpt-4.1,/nomodel,noprovider/")
         XCTAssertEqual(providers3.count, 1)
         XCTAssertEqual(providers3[0].provider, "openai")
 

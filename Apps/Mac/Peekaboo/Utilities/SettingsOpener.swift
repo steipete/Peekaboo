@@ -108,14 +108,8 @@ struct HiddenWindowView: View {
             .onAppear {
                 // Hide this window from the dock menu and window lists
                 if let window = NSApp.windows.first(where: { $0.identifier?.rawValue.contains("HiddenWindow") ?? false }) {
-                    window.collectionBehavior = [.auxiliary, .ignoresCycle, .transient]
                     window.isExcludedFromWindowsMenu = true
-                    window.level = .floating
-                    window.isOpaque = false
-                    window.backgroundColor = .clear
-                    window.hasShadow = false
-                    window.ignoresMouseEvents = true
-                    window.canHide = false
+                    window.title = ""  // Remove title to ensure it doesn't show anywhere
                 }
             }
     }

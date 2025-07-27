@@ -2,6 +2,7 @@
 import AppKit
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("Image Capture Logic Tests", .tags(.imageCapture, .unit))

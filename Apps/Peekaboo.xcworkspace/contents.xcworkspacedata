@@ -7,4 +7,10 @@
    <FileRef
       location = "group:CLI">
    </FileRef>
+   <FileRef
+      location = "group:Playground/Playground.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:PeekabooInspector/PeekabooInspector.xcodeproj">
+   </FileRef>
 </Workspace>

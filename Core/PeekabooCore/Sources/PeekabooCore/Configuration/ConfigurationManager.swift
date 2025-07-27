@@ -95,10 +95,8 @@ public final class ConfigurationManager: @unchecked Sendable {
                     }
                     
                     // Save updated config without hardcoded credentials
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = [.prettyPrinted]
-                    let data = try encoder.encode(updatedConfig)
-                    try data.write(to: URL(fileURLWithPath: Self.configPath))
+                    let data = try JSONCoding.encoder.encode(updatedConfig)
+                    try data.write(to: URL(fileURLWithPath: Self.configPath), options: .atomic)
                 }
             }
             
@@ -149,7 +147,7 @@ public final class ConfigurationManager: @unchecked Sendable {
 
             // Parse JSON
             if let expandedData = expandedJSON.data(using: .utf8) {
-                let config = try JSONDecoder().decode(Configuration.self, from: expandedData)
+                let config = try JSONCoding.decoder.decode(Configuration.self, from: expandedData)
                 self.configuration = config
                 return config
             }
@@ -441,6 +439,26 @@ public final class ConfigurationManager: @unchecked Sendable {
 
         return nil
     }
+    
+    /// Get Anthropic API key with proper precedence
+    public func getAnthropicAPIKey() -> String? {
+        // 1. Environment variable (highest priority)
+        if let envValue = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] {
+            return envValue
+        }
+        
+        // 2. Credentials file
+        if let credValue = credentials["ANTHROPIC_API_KEY"] {
+            return credValue
+        }
+
+        // 3. Config file (for backwards compatibility, but discouraged)
+        if let configValue = configuration?.aiProviders?.anthropicApiKey {
+            return configValue
+        }
+
+        return nil
+    }
 
     /// Get Ollama base URL with proper precedence
     public func getOllamaBaseURL() -> String {
@@ -497,8 +515,8 @@ public final class ConfigurationManager: @unchecked Sendable {
           "aiProviders": {
             // Comma-separated list of AI providers in order of preference
             // Format: "provider/model,provider/model"
-            // Supported providers: openai, ollama
-            "providers": "openai/gpt-4.1,ollama/llava:latest",
+            // Supported providers: openai, anthropic, ollama
+            "providers": "anthropic/claude-opus-4-20250514,openai/gpt-4.1,ollama/llava:latest",
             
             // NOTE: API keys should be stored in ~/.peekaboo/credentials
             // or set as environment variables, not in this file
@@ -567,5 +585,62 @@ public final class ConfigurationManager: @unchecked Sendable {
         
         // Update
         try saveCredentials([key: value])
+    }
+    
+    /// Get selected AI provider
+    public func getSelectedProvider() -> String {
+        // Extract provider from providers string (e.g., "anthropic/model" -> "anthropic")
+        let providers = getAIProviders()
+        return AIProviderParser.parseFirst(providers)?.provider ?? "anthropic"
+    }
+    
+    /// Get agent model
+    public func getAgentModel() -> String? {
+        configuration?.agent?.defaultModel
+    }
+    
+    /// Get agent temperature
+    public func getAgentTemperature() -> Double {
+        getValue(
+            cliValue: nil as Double?,
+            envVar: nil,
+            configValue: configuration?.agent?.temperature,
+            defaultValue: 0.7
+        )
+    }
+    
+    /// Get agent max tokens
+    public func getAgentMaxTokens() -> Int {
+        getValue(
+            cliValue: nil as Int?,
+            envVar: nil,
+            configValue: configuration?.agent?.maxTokens,
+            defaultValue: 16384
+        )
+    }
+    
+    /// Update configuration file with new values
+    public func updateConfiguration(_ updates: (inout Configuration) -> Void) throws {
+        // Load current configuration or create new one
+        var config = configuration ?? Configuration()
+        
+        // Apply updates
+        updates(&config)
+        
+        // Save updated configuration
+        let data = try JSONCoding.encoder.encode(config)
+        
+        // Create directory if needed
+        try FileManager.default.createDirectory(
+            atPath: Self.baseDir,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
+        
+        // Write file
+        try data.write(to: URL(fileURLWithPath: Self.configPath), options: .atomic)
+        
+        // Reload configuration
+        configuration = config
     }
 }

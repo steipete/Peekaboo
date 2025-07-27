@@ -103,7 +103,7 @@ struct SessionManagerTests {
             .appendingPathComponent(sessionId)
         let sessionFile = sessionPath.appendingPathComponent("map.json")
         
-        var sessionData = SessionData()
+        var sessionData = UIAutomationSession()
         sessionData.uiMap = ["B1": uiElement1, "B2": uiElement2]
         sessionData.applicationName = "TestApp"
         sessionData.windowTitle = "Test Window"

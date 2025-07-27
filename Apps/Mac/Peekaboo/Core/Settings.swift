@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import ServiceManagement
+import PeekabooCore
 
 /// Application settings and preferences manager.
 ///
@@ -41,13 +42,55 @@ import ServiceManagement
 /// - ``save()``
 @Observable
 final class PeekabooSettings {
-    // API Configuration
+    // Reference to ConfigurationManager
+    private let configManager = ConfigurationManager.shared
+    
+    // API Configuration - Now synced with config.json
+    var selectedProvider: String = "anthropic" {
+        didSet { 
+            self.save()
+            self.updateConfigFile()
+        }
+    }
+    
     var openAIAPIKey: String = "" {
+        didSet { 
+            self.save()
+            self.saveAPIKeyToCredentials("OPENAI_API_KEY", openAIAPIKey)
+        }
+    }
+    
+    var anthropicAPIKey: String = "" {
+        didSet { 
+            self.save()
+            self.saveAPIKeyToCredentials("ANTHROPIC_API_KEY", anthropicAPIKey)
+        }
+    }
+    
+    var ollamaBaseURL: String = "http://localhost:11434" {
         didSet { self.save() }
     }
 
-    var selectedModel: String = "gpt-4.1" {
-        didSet { self.save() }
+    var selectedModel: String = "claude-opus-4-20250514" {
+        didSet { 
+            self.save()
+            self.updateConfigFile()
+        }
+    }
+    
+    // Vision model override
+    var useCustomVisionModel: Bool = false {
+        didSet { 
+            self.save()
+            self.updateConfigFile()
+        }
+    }
+    
+    var customVisionModel: String = "gpt-4o" {
+        didSet { 
+            self.save()
+            self.updateConfigFile()
+        }
     }
 
     var temperature: Double = 0.7 {
@@ -57,6 +100,7 @@ final class PeekabooSettings {
                 self.temperature = clamped
             } else {
                 self.save()
+                self.updateConfigFile()
             }
         }
     }
@@ -68,6 +112,7 @@ final class PeekabooSettings {
                 self.maxTokens = clamped
             } else {
                 self.save()
+                self.updateConfigFile()
             }
         }
     }
@@ -109,7 +154,7 @@ final class PeekabooSettings {
         didSet { self.save() }
     }
 
-    // Features
+    // Mac-specific UI Features
     var voiceActivationEnabled: Bool = true {
         didSet { self.save() }
     }
@@ -124,7 +169,16 @@ final class PeekabooSettings {
 
     // Computed Properties
     var hasValidAPIKey: Bool {
-        !self.openAIAPIKey.isEmpty
+        switch selectedProvider {
+        case "openai":
+            return !openAIAPIKey.isEmpty
+        case "anthropic":
+            return !anthropicAPIKey.isEmpty
+        case "ollama":
+            return true // Ollama doesn't require API key
+        default:
+            return false
+        }
     }
 
     // Storage
@@ -134,11 +188,28 @@ final class PeekabooSettings {
     init() {
         self.load()
         self.loadFromPeekabooConfig()
+        self.migrateSettingsIfNeeded()
     }
 
     private func load() {
+        self.selectedProvider = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedProvider") ?? "anthropic"
         self.openAIAPIKey = self.userDefaults.string(forKey: "\(self.keyPrefix)openAIAPIKey") ?? ""
-        self.selectedModel = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedModel") ?? "gpt-4.1"
+        self.anthropicAPIKey = self.userDefaults.string(forKey: "\(self.keyPrefix)anthropicAPIKey") ?? ""
+        self.ollamaBaseURL = self.userDefaults.string(forKey: "\(self.keyPrefix)ollamaBaseURL") ?? "http://localhost:11434"
+        
+        // Set default model based on provider
+        let defaultProvider = self.selectedProvider
+        let defaultModel: String
+        if defaultProvider == "openai" {
+            defaultModel = "gpt-4.1"
+        } else if defaultProvider == "anthropic" {
+            defaultModel = "claude-opus-4-20250514"
+        } else {
+            defaultModel = "llava:latest"
+        }
+        self.selectedModel = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedModel") ?? defaultModel
+        self.useCustomVisionModel = self.userDefaults.bool(forKey: "\(self.keyPrefix)useCustomVisionModel")
+        self.customVisionModel = self.userDefaults.string(forKey: "\(self.keyPrefix)customVisionModel") ?? "gpt-4o"
         self.temperature = self.userDefaults.double(forKey: "\(self.keyPrefix)temperature")
         if self.temperature == 0 { self.temperature = 0.7 } // Default if not set
         self.maxTokens = self.userDefaults.integer(forKey: "\(self.keyPrefix)maxTokens")
@@ -179,8 +250,13 @@ final class PeekabooSettings {
     }
 
     private func save() {
+        self.userDefaults.set(self.selectedProvider, forKey: "\(self.keyPrefix)selectedProvider")
         self.userDefaults.set(self.openAIAPIKey, forKey: "\(self.keyPrefix)openAIAPIKey")
+        self.userDefaults.set(self.anthropicAPIKey, forKey: "\(self.keyPrefix)anthropicAPIKey")
+        self.userDefaults.set(self.ollamaBaseURL, forKey: "\(self.keyPrefix)ollamaBaseURL")
         self.userDefaults.set(self.selectedModel, forKey: "\(self.keyPrefix)selectedModel")
+        self.userDefaults.set(self.useCustomVisionModel, forKey: "\(self.keyPrefix)useCustomVisionModel")
+        self.userDefaults.set(self.customVisionModel, forKey: "\(self.keyPrefix)customVisionModel")
         self.userDefaults.set(self.temperature, forKey: "\(self.keyPrefix)temperature")
         self.userDefaults.set(self.maxTokens, forKey: "\(self.keyPrefix)maxTokens")
 
@@ -195,88 +271,177 @@ final class PeekabooSettings {
     }
 
     private func loadFromPeekabooConfig() {
-        // First check environment variable for OpenAI API key
-        if self.openAIAPIKey.isEmpty {
-            if let envKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !envKey.isEmpty {
-                self.openAIAPIKey = envKey
-            }
+        // Use ConfigurationManager to load from config.json
+        _ = configManager.loadConfiguration()
+        
+        // Load API keys through ConfigurationManager (checks env vars, then credentials file)
+        if let openAIKey = configManager.getOpenAIAPIKey(), !openAIKey.isEmpty {
+            self.openAIAPIKey = openAIKey
         }
         
-        // Load from Peekaboo credentials file if exists (new location)
-        let credentialsPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".peekaboo/credentials")
-        
-        if FileManager.default.fileExists(atPath: credentialsPath.path) {
-            do {
-                let credentialsContent = try String(contentsOf: credentialsPath)
-                let lines = credentialsContent.components(separatedBy: .newlines)
-                for line in lines {
-                    let trimmed = line.trimmingCharacters(in: .whitespaces)
-                    if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
-                    
-                    if let equalIndex = trimmed.firstIndex(of: "=") {
-                        let key = String(trimmed[..<equalIndex]).trimmingCharacters(in: .whitespaces)
-                        let value = String(trimmed[trimmed.index(after: equalIndex)...]).trimmingCharacters(in: .whitespaces)
-                        
-                        if key == "OPENAI_API_KEY" && self.openAIAPIKey.isEmpty {
-                            self.openAIAPIKey = value
-                        }
-                    }
-                }
-            } catch {
-                // Ignore errors reading credentials file
-            }
+        if let anthropicKey = configManager.getAnthropicAPIKey(), !anthropicKey.isEmpty {
+            self.anthropicAPIKey = anthropicKey
         }
         
-        // Load from Peekaboo config file if exists (try new location first, then old)
-        let newConfigPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".peekaboo/config.json")
-        let oldConfigPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/peekaboo/config.json")
+        // Load provider and model from config
+        let selectedProvider = configManager.getSelectedProvider()
+        if !selectedProvider.isEmpty {
+            self.selectedProvider = selectedProvider
+        }
         
-        let configPath = FileManager.default.fileExists(atPath: newConfigPath.path) ? newConfigPath : oldConfigPath
+        // Load agent settings from config
+        if let model = configManager.getAgentModel() {
+            self.selectedModel = model
+        }
         
-        guard FileManager.default.fileExists(atPath: configPath.path) else { return }
+        let configTemp = configManager.getAgentTemperature()
+        if configTemp != 0.7 { // Only update if not default
+            self.temperature = configTemp
+        }
         
+        let configTokens = configManager.getAgentMaxTokens()
+        if configTokens != 16384 { // Only update if not default
+            self.maxTokens = configTokens
+        }
+        
+        // Load Ollama base URL
+        let ollamaURL = configManager.getOllamaBaseURL()
+        if ollamaURL != "http://localhost:11434" {
+            self.ollamaBaseURL = ollamaURL
+        }
+    }
+    
+    private func migrateSettingsIfNeeded() {
+        // Check if we've already migrated
+        let migrationKey = "\(keyPrefix)migratedToConfigJson"
+        guard !userDefaults.bool(forKey: migrationKey) else { return }
+        
+        // Migrate settings from UserDefaults to config.json
         do {
-            let data = try Data(contentsOf: configPath)
-            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                // Load AI provider settings
-                if let aiProviders = json["aiProviders"] as? [String: Any] {
-                    // Only override if we don't have a key yet
-                    if self.openAIAPIKey.isEmpty {
-                        if let apiKey = aiProviders["openaiApiKey"] as? String {
-                            // Handle environment variable expansion
-                            if apiKey.hasPrefix("${") && apiKey.hasSuffix("}") {
-                                let envVar = String(apiKey.dropFirst(2).dropLast(1))
-                                if let envValue = ProcessInfo.processInfo.environment[envVar] {
-                                    self.openAIAPIKey = envValue
-                                }
-                            } else {
-                                self.openAIAPIKey = apiKey
-                            }
+            try configManager.updateConfiguration { config in
+                // Ensure structures exist
+                if config.agent == nil {
+                    config.agent = Configuration.AgentConfig()
+                }
+                
+                // Migrate agent settings
+                config.agent?.defaultModel = self.selectedModel
+                config.agent?.temperature = self.temperature
+                config.agent?.maxTokens = self.maxTokens
+                
+                // Update AI providers if needed
+                if config.aiProviders == nil {
+                    config.aiProviders = Configuration.AIProviderConfig()
+                }
+                
+                // Build providers string based on selected provider and model
+                let providerString: String
+                switch self.selectedProvider {
+                case "openai":
+                    providerString = "openai/\(self.selectedModel)"
+                case "anthropic":
+                    providerString = "anthropic/\(self.selectedModel)"
+                case "ollama":
+                    providerString = "ollama/\(self.selectedModel)"
+                default:
+                    providerString = "anthropic/claude-opus-4-20250514"
+                }
+                
+                // Set providers string with fallbacks
+                config.aiProviders?.providers = "\(providerString),ollama/llava:latest"
+                
+                // Set Ollama base URL if custom
+                if self.ollamaBaseURL != "http://localhost:11434" {
+                    config.aiProviders?.ollamaBaseUrl = self.ollamaBaseURL
+                }
+            }
+            
+            // Mark as migrated
+            userDefaults.set(true, forKey: migrationKey)
+            
+            print("Successfully migrated settings to config.json")
+        } catch {
+            print("Failed to migrate settings to config.json: \(error)")
+        }
+    }
+    
+    private func updateConfigFile() {
+        do {
+            try configManager.updateConfiguration { config in
+                // Ensure structures exist
+                if config.agent == nil {
+                    config.agent = Configuration.AgentConfig()
+                }
+                
+                // Update agent settings
+                config.agent?.defaultModel = self.selectedModel
+                config.agent?.temperature = self.temperature
+                config.agent?.maxTokens = self.maxTokens
+                
+                // Update AI providers
+                if config.aiProviders == nil {
+                    config.aiProviders = Configuration.AIProviderConfig()
+                }
+                
+                // Build providers string based on selected provider and model
+                let providerString: String
+                switch self.selectedProvider {
+                case "openai":
+                    providerString = "openai/\(self.selectedModel)"
+                case "anthropic":
+                    providerString = "anthropic/\(self.selectedModel)"
+                case "ollama":
+                    providerString = "ollama/\(self.selectedModel)"
+                default:
+                    providerString = "anthropic/claude-opus-4-20250514"
+                }
+                
+                // Update providers string
+                if let currentProviders = config.aiProviders?.providers {
+                    // Replace the first provider while keeping fallbacks
+                    let providers = currentProviders.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+                    var newProviders = [providerString]
+                    
+                    // Add other providers that aren't the same type
+                    for provider in providers.dropFirst() {
+                        let providerType = provider.split(separator: "/").first.map(String.init) ?? ""
+                        if providerType != self.selectedProvider {
+                            newProviders.append(provider)
                         }
                     }
                     
-                    // Load preferred model from providers list
-                    if let providers = aiProviders["providers"] as? String {
-                        let providerList = providers.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
-                        for provider in providerList {
-                            if provider.starts(with: "openai/") {
-                                let model = String(provider.dropFirst("openai/".count))
-                                // Only override if it's a valid model
-                                if ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "o3", "o3-pro", "o4-mini"].contains(model) {
-                                    self.selectedModel = model
-                                    break
-                                }
-                            }
-                        }
+                    // Ensure we have a fallback
+                    if newProviders.count == 1 && !providerString.starts(with: "ollama/") {
+                        newProviders.append("ollama/llava:latest")
                     }
+                    
+                    config.aiProviders?.providers = newProviders.joined(separator: ",")
+                } else {
+                    config.aiProviders?.providers = "\(providerString),ollama/llava:latest"
+                }
+                
+                // Update Ollama base URL if custom
+                if self.ollamaBaseURL != "http://localhost:11434" {
+                    config.aiProviders?.ollamaBaseUrl = self.ollamaBaseURL
                 }
             }
         } catch {
-            // Silently ignore config loading errors
-            print("Failed to load Peekaboo config: \(error)")
+            print("Failed to update config.json: \(error)")
+        }
+    }
+    
+    private func saveAPIKeyToCredentials(_ key: String, _ value: String) {
+        do {
+            if value.isEmpty {
+                // Don't save empty keys
+                return
+            }
+            try configManager.setCredential(key: key, value: value)
+            
+            // Refresh the agent service to pick up new API keys
+            PeekabooServices.shared.refreshAgentService()
+        } catch {
+            print("Failed to save API key to credentials: \(error)")
         }
     }
 }

@@ -3,7 +3,6 @@ import Testing
 @testable import peekaboo
 
 @Suite("Agent Resume CLI Tests")
-@available(macOS 14.0, *)
 struct AgentResumeCLITests {
     
     // MARK: - Command Line Argument Tests

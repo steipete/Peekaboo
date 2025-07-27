@@ -18,8 +18,8 @@ export const scrollToolSchema = z.object({
   session: z.string().optional().describe(
     "Optional. Session ID from see command. Uses latest session if not specified.",
   ),
-  delay: z.number().optional().default(20).describe(
-    "Optional. Delay between scroll ticks in milliseconds. Default: 20.",
+  delay: z.number().optional().default(2).describe(
+    "Optional. Delay between scroll ticks in milliseconds. Default: 2.",
   ),
   smooth: z.boolean().optional().default(false).describe(
     "Optional. Use smooth scrolling with smaller increments.",
@@ -74,7 +74,7 @@ export async function scrollToolHandler(
     }
 
     // Delay between ticks
-    const delay = input.delay ?? 20;
+    const delay = input.delay ?? 2;
     args.push("--delay", delay.toString());
 
     // Smooth scrolling

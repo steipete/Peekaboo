@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import CoreGraphics
+import PeekabooCore
 
 // Simple stderr logging function
 func logError(_ message: String) {

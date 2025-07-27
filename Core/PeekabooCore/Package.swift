@@ -21,7 +21,7 @@ let package = Package(
             name: "PeekabooCore",
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
-                "AXorcist",
+                .product(name: "AXorcist", package: "AXorcist"),
             ]),
         .testTarget(
             name: "PeekabooTests",
