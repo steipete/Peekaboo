@@ -33,7 +33,7 @@ Perfect for:
 Peekaboo bridges the gap between visual content on your screen and AI understanding. It provides:
 
 - **Lightning-fast screenshots** of screens, applications, or specific windows
-- **AI-powered image analysis** using GPT-4.1 Vision, Claude, or local models
+- **AI-powered image analysis** using GPT-4.1 Vision, Claude, Grok, or local models
 - **Complete GUI automation** (v3) - Click, type, scroll, and interact with any macOS app
 - **Natural language automation** (v3) - AI agent that understands tasks like "Open TextEdit and write a poem"
 - **Smart UI element detection** - Automatically identifies buttons, text fields, links, and more with precise coordinate mapping
@@ -92,6 +92,7 @@ peekaboo list windows --app "Visual Studio Code"
 # Analyze images with AI
 peekaboo analyze screenshot.png "What error is shown?"
 peekaboo analyze ui.png "Find all buttons" --provider ollama
+peekaboo analyze page.png "Describe this UI" --provider grok
 
 # GUI Automation (v3)
 peekaboo see --app Safari               # Identify UI elements
@@ -191,7 +192,7 @@ peekaboo config show --effective
 {
   // AI Provider Settings
   "aiProviders": {
-    "providers": "openai/gpt-4.1,ollama/llava:latest",
+    "providers": "openai/gpt-4.1,anthropic/claude-opus-4,grok/grok-4,ollama/llava:latest",
     // NOTE: API keys should be in ~/.peekaboo/credentials
     "ollamaBaseUrl": "http://localhost:11434"
   },
@@ -218,6 +219,7 @@ peekaboo config show --effective
 # This file contains sensitive API keys and should not be shared
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
+X_AI_API_KEY=xai-...
 ```
 
 ### Common Workflows
@@ -565,14 +567,22 @@ Peekaboo v3 introduces an AI-powered agent that can understand and execute compl
 ### Setting Up the Agent
 
 ```bash
-# Set your OpenAI API key
-export OPENAI_API_KEY="your-api-key-here"
+# Set your API key (OpenAI, Anthropic, or Grok)
+export OPENAI_API_KEY="your-openai-key-here"
+# OR
+export ANTHROPIC_API_KEY="your-anthropic-key-here"
+# OR
+export X_AI_API_KEY="your-grok-key-here"
 
 # Or save it securely in Peekaboo's config
 peekaboo config set-credential OPENAI_API_KEY your-api-key-here
+peekaboo config set-credential ANTHROPIC_API_KEY your-anthropic-key-here
+peekaboo config set-credential X_AI_API_KEY your-grok-key-here
 
 # Now you can use natural language automation!
 peekaboo "Open Safari and search for weather"
+peekaboo agent "Fill out the form" --model grok-2-1212
+peekaboo agent "Create a document" --model claude-opus-4
 ```
 
 ### Two Ways to Use the Agent
@@ -654,6 +664,7 @@ The agent has access to all Peekaboo commands:
 - **Application Control** - Launch apps, switch between them
 - **File Operations** - Save files, handle dialogs
 - **Complex Workflows** - Chain multiple actions together
+- **Multiple AI Models** - Supports OpenAI (GPT-4o, o3), Anthropic (Claude), and Grok (xAI)
 
 ### Understanding Agent Execution
 
@@ -973,9 +984,10 @@ Settings follow this precedence (highest to lowest):
 
 | Setting | Config File | Environment Variable | Description |
 |---------|-------------|---------------------|-------------|
-| AI Providers | `aiProviders.providers` | `PEEKABOO_AI_PROVIDERS` | Comma-separated list (e.g., "openai/gpt-4.1,ollama/llava:latest") |
+| AI Providers | `aiProviders.providers` | `PEEKABOO_AI_PROVIDERS` | Comma-separated list (e.g., "openai/gpt-4.1,anthropic/claude,grok/grok-4,ollama/llava:latest") |
 | OpenAI API Key | Use `credentials` file | `OPENAI_API_KEY` | Required for OpenAI provider |
-| Anthropic API Key | Use `credentials` file | `ANTHROPIC_API_KEY` | For Claude Vision (coming soon) |
+| Anthropic API Key | Use `credentials` file | `ANTHROPIC_API_KEY` | Required for Claude models |
+| Grok API Key | Use `credentials` file | `X_AI_API_KEY` or `XAI_API_KEY` | Required for Grok (xAI) models |
 | Ollama URL | `aiProviders.ollamaBaseUrl` | `PEEKABOO_OLLAMA_BASE_URL` | Default: http://localhost:11434 |
 | Default Save Path | `defaults.savePath` | `PEEKABOO_DEFAULT_SAVE_PATH` | Where screenshots are saved (default: current directory) |
 | Log Level | `logging.level` | `PEEKABOO_LOG_LEVEL` | trace, debug, info, warn, error, fatal |
@@ -1005,17 +1017,23 @@ For security, Peekaboo supports three methods for API key storage (in order of r
 
 - **`PEEKABOO_AI_PROVIDERS`**: Comma-separated list of AI providers to use for image analysis
   - Format: `provider/model,provider/model`
-  - Example: `"openai/gpt-4.1,ollama/llava:latest"`
+  - Example: `"openai/gpt-4.1,anthropic/claude-opus-4,grok/grok-4,ollama/llava:latest"`
   - The first available provider will be used
   - Default: `"openai/gpt-4.1,ollama/llava:latest"`
+  - Supported providers: `openai`, `anthropic`, `grok`, `ollama`
 
 - **`OPENAI_API_KEY`**: Your OpenAI API key for GPT-4.1 Vision
   - Required when using the `openai` provider
   - Get your key at: https://platform.openai.com/api-keys
 
-- **`ANTHROPIC_API_KEY`**: Your Anthropic API key for Claude Vision
-  - Will be required when Claude Vision support is added
-  - Currently not implemented
+- **`ANTHROPIC_API_KEY`**: Your Anthropic API key for Claude models
+  - Required when using the `anthropic` provider
+  - Get your key at: https://console.anthropic.com/
+
+- **`X_AI_API_KEY`** or **`XAI_API_KEY`**: Your xAI API key for Grok models
+  - Required when using the `grok` provider
+  - Get your key at: https://console.x.ai/
+  - Both environment variable names are supported
 
 - **`PEEKABOO_OLLAMA_BASE_URL`**: Base URL for your Ollama server
   - Default: `http://localhost:11434`
@@ -1055,10 +1073,14 @@ PEEKABOO_AI_PROVIDERS="ollama/llava:latest" peekaboo analyze image.png "What is 
 
 # Export for the current session
 export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+export X_AI_API_KEY="xai-..."
 export PEEKABOO_DEFAULT_SAVE_PATH="~/Desktop/Screenshots"
 
 # Add to your shell profile (~/.zshrc or ~/.bash_profile)
 echo 'export OPENAI_API_KEY="sk-..."' >> ~/.zshrc
+echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.zshrc
+echo 'export X_AI_API_KEY="xai-..."' >> ~/.zshrc
 ```
 
 ## 🎨 Setting Up Local AI with Ollama

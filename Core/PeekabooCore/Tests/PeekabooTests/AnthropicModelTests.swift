@@ -12,9 +12,9 @@ struct AnthropicModelTests {
         // Create a simple request
         let request = ModelRequest(
             messages: [
-                UserMessageItem(content: [.text("Hello, Claude!")], cacheControl: nil),
-                AssistantMessageItem(content: [.text("Hello! How can I help you?")], toolCalls: nil),
-                UserMessageItem(content: [.text("What's 2+2?")], cacheControl: nil)
+                UserMessageItem(content: .text("Hello, Claude!")),
+                AssistantMessageItem(content: [.outputText("Hello! How can I help you?")]),
+                UserMessageItem(content: .text("What's 2+2?"))
             ],
             tools: nil,
             settings: ModelSettings(
@@ -36,8 +36,8 @@ struct AnthropicModelTests {
         
         let request = ModelRequest(
             messages: [
-                SystemMessageItem(content: [.text("You are a helpful assistant.")]),
-                UserMessageItem(content: [.text("Hello!")], cacheControl: nil)
+                SystemMessageItem(content: "You are a helpful assistant."),
+                UserMessageItem(content: .text("Hello!"))
             ],
             tools: nil,
             settings: ModelSettings(modelName: "claude-3-opus-20240229")
@@ -52,16 +52,19 @@ struct AnthropicModelTests {
         let model = AnthropicModel(apiKey: "test-key")
         
         let toolDef = ToolDefinition(
-            function: ToolDefinition.Function(
+            function: FunctionDefinition(
                 name: "get_weather",
                 description: "Get the current weather",
-                parameters: ["type": "object", "properties": ["location": ["type": "string"]]]
+                parameters: ToolParameters(
+                    properties: ["location": ParameterSchema(type: .string, description: "The location")],
+                    required: ["location"]
+                )
             )
         )
         
         let request = ModelRequest(
             messages: [
-                UserMessageItem(content: [.text("What's the weather?")], cacheControl: nil)
+                UserMessageItem(content: .text("What's the weather?"))
             ],
             tools: [toolDef],
             settings: ModelSettings(modelName: "claude-3-opus-20240229")
@@ -79,29 +82,37 @@ struct AnthropicModelTests {
         
         let request = ModelRequest(
             messages: [
-                UserMessageItem(content: [
-                    .text("What's in this image?"),
-                    .image(ImageMessageContent(base64: imageData, url: nil))
-                ], cacheControl: nil)
+                UserMessageItem(content: .multimodal([
+                    MessageContentPart(type: "text", text: "What's in this image?"),
+                    MessageContentPart(type: "image", imageUrl: ImageContent(base64: imageData))
+                ]))
             ],
             tools: nil,
             settings: ModelSettings(modelName: "claude-3-opus-20240229")
         )
         
-        #expect(request.messages.first?.content.count == 2)
+        if let userMessage = request.messages.first as? UserMessageItem,
+           case .multimodal(let parts) = userMessage.content {
+            #expect(parts.count == 2)
+        } else {
+            Issue.record("Expected multimodal content")
+        }
         
-        // Test that URL images throw error
+        // Test that URL images are supported
         let urlRequest = ModelRequest(
             messages: [
-                UserMessageItem(content: [
-                    .image(ImageMessageContent(base64: nil, url: URL(string: "https://example.com/image.jpg")))
-                ], cacheControl: nil)
+                UserMessageItem(content: .image(ImageContent(url: "https://example.com/image.jpg")))
             ],
             tools: nil,
             settings: ModelSettings(modelName: "claude-3-opus-20240229")
         )
         
-        #expect(urlRequest.messages.first?.content.first?.type == .image)
+        if let userMessage = urlRequest.messages.first as? UserMessageItem,
+           case .image = userMessage.content {
+            // Expected image content
+        } else {
+            Issue.record("Expected image content")
+        }
     }
     
     @Test("Model registration in provider")

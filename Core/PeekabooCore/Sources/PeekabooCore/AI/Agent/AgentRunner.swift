@@ -192,6 +192,14 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
             let model = AnthropicModel(apiKey: apiKey, modelName: modelName)
             self.model = model
             return model
+        } else if modelName.contains("grok") {
+            guard let apiKey = ProcessInfo.processInfo.environment["X_AI_API_KEY"] ?? 
+                             ProcessInfo.processInfo.environment["XAI_API_KEY"] else {
+                throw ModelError.authenticationFailed
+            }
+            let model = GrokModel(apiKey: apiKey)
+            self.model = model
+            return model
         } else {
             guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
                 throw ModelError.authenticationFailed

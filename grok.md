@@ -21,16 +21,11 @@ This document outlines the implementation plan for integrating xAI's Grok 4 mode
 - **Messages**: Anthropic-compatible endpoint also available
 - **Note**: xAI does **NOT** use the `/v1/responses` endpoint - it uses standard chat completions
 
-### Available Models (per xAI API documentation)
-- **grok-4-0709** - Specific dated version of Grok 4 (July 9, 2025 release)
-- **grok-4** - Latest Grok 4 model (aliased to latest stable version)
-- **grok-4-latest** - Always points to the latest Grok 4 with newest features
-- **grok-beta** - Previous generation with 128k context
-- **grok-2-1212** - Grok 2 model
-- **grok-2-vision-1212** - Grok 2 with vision capabilities
-- **grok-vision-beta** - Beta vision model
+### Available Models (confirmed working)
+- **grok-2-1212** - Grok 2 model (confirmed working)
+- **grok-2-vision-1212** - Grok 2 with vision capabilities (likely available)
 
-Note: The model name "grok4" (without hyphen) is NOT valid. Use "grok-4" instead.
+Note: `grok-4` and `grok-beta` models were not accessible with the provided API key. The available models may depend on your account tier.
 
 ### Key Features
 - Native tool use support (function calling)

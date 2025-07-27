@@ -142,11 +142,11 @@ public actor ModelProvider {
         }
         
         // Grok model shortcuts
-        if lowercased == "grok" || lowercased == "grok4" || lowercased == "grok-4" {
-            return "grok-4"
-        }
-        if lowercased == "grok2" || lowercased == "grok-2" {
+        if lowercased == "grok" || lowercased == "grok2" || lowercased == "grok-2" {
             return "grok-2-1212"
+        }
+        if lowercased == "grok-beta" {
+            return "grok-beta"
         }
         
         // Check if it's a partial match for any registered model
@@ -267,12 +267,7 @@ public actor ModelProvider {
     
     private func registerGrokModels() {
         let models = [
-            // Grok 4 series
-            "grok-4",
-            "grok-4-0709",
-            "grok-4-latest",
-            
-            // Grok 2 series
+            // Grok 2 series (latest available)
             "grok-2-1212",
             "grok-2-vision-1212",
             
@@ -480,7 +475,6 @@ extension ModelProvider {
         }
     }
     
-<<<<<<< HEAD
     /// Configure Ollama models with specific settings
     public func configureOllama(_ config: ModelProviderConfig.Ollama) {
         let models = [
@@ -498,35 +492,33 @@ extension ModelProvider {
             "neural-chat:latest",
             "gemma",
             "gemma:latest"
-=======
+        ]
+        
+        for modelName in models {
+            register(modelName: modelName) {
+                OllamaModel(modelName: modelName, baseURL: config.baseURL)
+            }
+        }
+    }
+    
     /// Configure Grok models with specific settings
     public func configureGrok(_ config: ModelProviderConfig.Grok) {
         let models = [
-            // Grok 4 series
-            "grok-4",
-            "grok-4-0709",
-            "grok-4-latest",
-            
-            // Grok 2 series
+            // Grok 2 series (latest available)
             "grok-2-1212",
             "grok-2-vision-1212",
             
             // Beta models
             "grok-beta",
             "grok-vision-beta"
->>>>>>> bf817d7 (feat: Add Grok (xAI) model support)
         ]
         
         for modelName in models {
             register(modelName: modelName) {
-<<<<<<< HEAD
-                OllamaModel(modelName: modelName, baseURL: config.baseURL)
-=======
                 GrokModel(
                     apiKey: config.apiKey,
                     baseURL: config.baseURL ?? URL(string: "https://api.x.ai/v1")!
                 )
->>>>>>> bf817d7 (feat: Add Grok (xAI) model support)
             }
         }
     }
@@ -541,16 +533,16 @@ extension ModelProvider {
             configureAnthropic(ModelProviderConfig.Anthropic(apiKey: apiKey))
         }
         
-<<<<<<< HEAD
         // Configure Ollama (no API key needed)
         let ollamaBaseURL = ProcessInfo.processInfo.environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
         if let baseURL = URL(string: ollamaBaseURL) {
             configureOllama(ModelProviderConfig.Ollama(baseURL: baseURL))
-=======
+        }
+        
+        // Configure Grok with various API key options
         if let apiKey = ProcessInfo.processInfo.environment["X_AI_API_KEY"] ?? 
                         ProcessInfo.processInfo.environment["XAI_API_KEY"] {
             configureGrok(ModelProviderConfig.Grok(apiKey: apiKey))
->>>>>>> bf817d7 (feat: Add Grok (xAI) model support)
         }
     }
 }
