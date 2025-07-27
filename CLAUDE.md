@@ -416,9 +416,26 @@ PEEKABOO_AI_PROVIDERS="anthropic/claude-opus-4-20250514" ./peekaboo analyze imag
 
 Also available: `./scripts/playground-log.sh` for Playground app logs.
 
-## Agent System Prompt
+## Agent System and Tool Prompts
 
-The OpenAI agent system prompt is defined in `Apps/Mac/Peekaboo/Services/PeekabooToolExecutor.swift` in the `systemPrompt()` method. When modifying agent behavior, update this prompt to guide the AI's responses and tool usage patterns.
+### System Prompt
+The agent system prompt is defined in `/Core/PeekabooCore/Sources/PeekabooCore/Services/AgentService/PeekabooAgentService.swift` in the `generateSystemPrompt()` method (around line 875). This prompt contains:
+- Communication style requirements
+- Task completion guidelines
+- Window management strategies
+- Dialog interaction patterns
+- Error recovery approaches
+
+### Tool Prompts
+Individual tool descriptions are defined in the same file (`PeekabooAgentService.swift`) in their respective creation methods:
+- `createSeeTool()` - Primary screen capture and UI analysis
+- `createShellTool()` - Shell command execution with quote handling examples
+- `createMenuClickTool()` - Menu navigation with error guidance
+- `createDialogInputTool()` - Dialog interaction with common issues
+- `createFocusWindowTool()` - Window focusing with app state detection
+- And many more...
+
+When modifying agent behavior, update these prompts to guide the AI's responses and tool usage patterns.
 
 
 ## Troubleshooting
