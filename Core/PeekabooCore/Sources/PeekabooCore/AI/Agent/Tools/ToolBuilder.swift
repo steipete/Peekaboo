@@ -47,8 +47,14 @@ public struct ToolParameterExtractor {
     private let params: [String: AnyCodable]
     private let toolName: String
     
-    init(_ params: [String: AnyCodable], toolName: String) {
-        self.params = params
+    init(_ params: ToolInput, toolName: String) {
+        switch params {
+        case .dictionary(let dict):
+            // Convert [String: Any] to [String: AnyCodable]
+            self.params = dict.mapValues { AnyCodable($0) }
+        default:
+            self.params = [:]
+        }
         self.toolName = toolName
     }
     
@@ -172,13 +178,25 @@ extension PeekabooAgentService {
     func performWindowOperation(
         appName: String?,
         context: PeekabooServices,
-        operation: (WindowInfo) async throws -> ToolOutput
+        operation: (ServiceWindowInfo) async throws -> ToolOutput
     ) async throws -> ToolOutput {
-        let windows = try await context.windowManagement.listWindows()
+        // Get all windows from all applications
+        let apps = try await context.applications.listApplications()
+        var windows: [ServiceWindowInfo] = []
+        for app in apps {
+            let appWindows = try await context.windows.listWindows(target: .application(app.name))
+            windows.append(contentsOf: appWindows)
+        }
         
-        let targetWindow: WindowInfo
+        let targetWindow: ServiceWindowInfo
         if let appName = appName {
-            targetWindow = try windows.findWindow(byAppName: appName)
+            // We need to match windows by the app name
+            // Since ServiceWindowInfo doesn't have applicationName, we need to filter differently
+            let matchingWindows = try await context.windows.listWindows(target: .application(appName))
+            guard let window = matchingWindows.first else {
+                throw PeekabooError.windowNotFound(criteria: "application '\(appName)'")
+            }
+            targetWindow = window
         } else {
             // Use frontmost window
             guard let window = windows.first else {
@@ -194,11 +212,11 @@ extension PeekabooAgentService {
     func performAppOperation(
         appName: String,
         context: PeekabooServices,
-        operation: (ApplicationInfo) async throws -> ToolOutput
+        operation: (ServiceApplicationInfo) async throws -> ToolOutput
     ) async throws -> ToolOutput {
-        let apps = try await context.application.listApplications()
+        let apps = try await context.applications.listApplications()
         
-        guard let app = apps.findApp(byName: appName) else {
+        guard let app = apps.first(where: { $0.name.lowercased() == appName.lowercased() }) else {
             throw PeekabooError.appNotFound(appName)
         }
         

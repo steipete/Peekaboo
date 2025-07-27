@@ -126,9 +126,8 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         case .index(let app, let index):
             let windows = try await applicationService.listWindows(for: app)
             guard index >= 0 && index < windows.count else {
-                throw ValidationError.invalidInput(
-                    field: "windowIndex",
-                    reason: "Index \(index) is out of range. Available windows: 0-\(windows.count-1)"
+                throw PeekabooError.invalidInput(
+                    "windowIndex: Index \(index) is out of range. Available windows: 0-\(windows.count-1)"
                 )
             }
             return [windows[index]]
@@ -149,7 +148,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
                 }
             }
             
-            throw PeekabooError.windowNotFound
+            throw PeekabooError.windowNotFound()
         }
     }
     
@@ -231,9 +230,8 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         }
         
         guard index >= 0 && index < windows.count else {
-            throw ValidationError.invalidInput(
-                field: "windowIndex",
-                reason: "Index \(index) is out of range. Available windows: 0-\(windows.count-1)"
+            throw PeekabooError.invalidInput(
+                "windowIndex: Index \(index) is out of range. Available windows: 0-\(windows.count-1)"
             )
         }
         
@@ -256,7 +254,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             }
         }
         
-        throw PeekabooError.windowNotFound
+        throw PeekabooError.windowNotFound()
     }
     
     @MainActor
@@ -275,6 +273,6 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             }
         }
         
-        throw PeekabooError.windowNotFound
+        throw PeekabooError.windowNotFound()
     }
 }

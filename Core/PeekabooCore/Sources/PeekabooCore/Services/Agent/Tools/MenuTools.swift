@@ -15,20 +15,18 @@ extension PeekabooAgentService {
             description: "Click a menu item in the menu bar",
             parameters: .object(
                 properties: [
-                    "path": .string(
-                        description: "Menu path (e.g., 'File > New' or 'Edit > Copy')",
-                        required: true
+                    "path": ParameterSchema.string(
+                        description: "Menu path (e.g., 'File > New' or 'Edit > Copy')"
                     ),
-                    "app": .string(
-                        description: "Optional: Application name (defaults to frontmost app)",
-                        required: false
+                    "app": ParameterSchema.string(
+                        description: "Optional: Application name (defaults to frontmost app)"
                     )
                 ],
                 required: ["path"]
             ),
             handler: { params, context in
                 let menuPath = try params.string("path")
-                let appName = params.string("app")
+                let appName = params.string("app", default: nil)
                 
                 // Parse menu path
                 let pathComponents = menuPath
@@ -41,23 +39,37 @@ extension PeekabooAgentService {
                 
                 // Ensure app is focused if specified
                 if let appName = appName {
-                    let apps = try await context.application.listApplications()
-                    if let app = apps.findApp(byName: appName) {
-                        try await context.application.activateApplication(
-                            bundleID: app.bundleIdentifier
+                    let apps = try await context.applications.listApplications()
+                    if let app = apps.first(where: { $0.name.lowercased() == appName.lowercased() }) {
+                        try await context.applications.activateApplication(
+                            identifier: app.bundleIdentifier ?? app.name
                         )
                         // Small delay to ensure activation
                         try await Task.sleep(nanoseconds: TimeInterval.mediumDelay.nanoseconds)
                     }
                 }
                 
-                // Click the menu item
-                try await context.menu.clickMenuItem(path: pathComponents)
+                // Click the menu item using menu service
+                let targetApp: String
+                if let appName = appName {
+                    targetApp = appName
+                } else {
+                    // Get frontmost app
+                    let apps = try await context.applications.listApplications()
+                    guard let frontmost = apps.first(where: { $0.isActive }) else {
+                        throw PeekabooError.operationError(message: "No active application found")
+                    }
+                    targetApp = frontmost.name
+                }
+                
+                try await context.menu.clickMenuItem(app: targetApp, itemPath: menuPath)
                 
                 return .success(
                     "Successfully clicked menu item: \(menuPath)",
-                    metadata: "menuPath", menuPath,
-                    "app", appName ?? "frontmost app"
+                    metadata: [
+                        "menuPath": menuPath,
+                        "app": appName ?? "frontmost app"
+                    ]
                 )
             }
         )
@@ -70,54 +82,53 @@ extension PeekabooAgentService {
             description: "List all available menu items for an application",
             parameters: .object(
                 properties: [
-                    "app": .string(
-                        description: "Optional: Application name (defaults to frontmost app)",
-                        required: false
+                    "app": ParameterSchema.string(
+                        description: "Optional: Application name (defaults to frontmost app)"
                     ),
-                    "menu": .string(
-                        description: "Optional: Specific menu to expand (e.g., 'File', 'Edit')",
-                        required: false
+                    "menu": ParameterSchema.string(
+                        description: "Optional: Specific menu to expand (e.g., 'File', 'Edit')"
                     )
                 ],
                 required: []
             ),
             handler: { params, context in
-                let appName = params.string("app")
-                let specificMenu = params.string("menu")
-                
-                // Get the target app
-                let targetApp: String
-                if let appName = appName {
-                    // Ensure app is running
-                    let apps = try await context.application.listApplications()
-                    guard let app = apps.findApp(byName: appName) else {
-                        throw PeekabooError.appNotFound(appName)
-                    }
-                    targetApp = app.name
-                } else {
-                    // Use frontmost app
-                    let focusInfo = try await context.uiAutomation.getFocusedElement()
-                    targetApp = focusInfo.app
-                }
+                let appName = params.string("app", default: nil)
+                let specificMenu = params.string("menu", default: nil)
                 
                 // Get menu structure
-                let menuStructure = try await context.menu.getMenuStructure(
-                    for: targetApp,
-                    menuName: specificMenu
-                )
+                let menuStructure: MenuStructure
+                if let appName = appName {
+                    // Get menus for specific app
+                    menuStructure = try await context.menu.listMenus(for: appName)
+                } else {
+                    // Get menus for frontmost app
+                    menuStructure = try await context.menu.listFrontmostMenus()
+                }
                 
                 // Format output
-                var output = "Menu structure for \(targetApp):\n\n"
+                var output = "Menu structure:\n\n"
                 
-                for menu in menuStructure.menus {
-                    output += formatMenu(menu, indent: 0)
-                    output += "\n"
+                // If specific menu requested, filter
+                if let specificMenu = specificMenu {
+                    if let targetMenu = menuStructure.menus.first(where: { $0.title.lowercased() == specificMenu.lowercased() }) {
+                        output += formatMenu(targetMenu, indent: 0)
+                    } else {
+                        output = "Menu '\(specificMenu)' not found"
+                    }
+                } else {
+                    // Show all menus
+                    for menu in menuStructure.menus {
+                        output += formatMenu(menu, indent: 0)
+                        output += "\n"
+                    }
                 }
                 
                 return .success(
                     output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: "app", targetApp,
-                    "menuCount", String(menuStructure.menus.count)
+                    metadata: [
+                        "app": appName ?? "frontmost app",
+                        "menuCount": String(menuStructure.menus.count)
+                    ]
                 )
             }
         )
@@ -126,23 +137,41 @@ extension PeekabooAgentService {
 
 // MARK: - Helper Functions
 
-private func formatMenu(_ menu: MenuStructure, indent: Int) -> String {
+private func formatMenu(_ menu: Menu, indent: Int) -> String {
     let indentStr = String(repeating: "  ", count: indent)
     var output = "\(indentStr)\(menu.title)"
     
-    if menu.enabled == false {
+    if !menu.isEnabled {
         output += " (disabled)"
     }
     
-    if let shortcut = menu.keyboardShortcut, !shortcut.isEmpty {
-        output += " [\(shortcut)]"
+    output += "\n"
+    
+    // Format menu items
+    for item in menu.items {
+        output += formatMenuItem(item, indent: indent + 1)
+    }
+    
+    return output
+}
+
+private func formatMenuItem(_ item: MenuItem, indent: Int) -> String {
+    let indentStr = String(repeating: "  ", count: indent)
+    var output = "\(indentStr)\(item.title)"
+    
+    if !item.isEnabled {
+        output += " (disabled)"
+    }
+    
+    if let shortcut = item.keyboardShortcut {
+        output += " [\(shortcut.displayString)]"
     }
     
     output += "\n"
     
     // Format submenu items
-    for item in menu.items {
-        output += formatMenu(item, indent: indent + 1)
+    for subitem in item.submenu {
+        output += formatMenuItem(subitem, indent: indent + 1)
     }
     
     return output

@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 // MARK: - JSON Coding
 
@@ -28,7 +29,7 @@ extension Error {
         context: String,
         logger: LoggingServiceProtocol? = nil
     ) -> PeekabooError {
-        logger?.error("\(context): \(self.localizedDescription)", error: self)
+        logger?.error("\(context): \(self.localizedDescription)", category: "error-conversion")
         
         // Try to preserve specific PeekabooError types
         if let peekabooError = self as? PeekabooError {
@@ -41,7 +42,7 @@ extension Error {
         }
         
         // Default to operation error
-        return .operationError("\(context): \(self.localizedDescription)")
+        return .operationError(message: "\(context): \(self.localizedDescription)")
     }
 }
 
@@ -65,7 +66,8 @@ public func performOperation<T>(
 extension Dictionary where Key == String, Value == AnyCodable {
     /// Extract a required string parameter
     public func requireString(_ key: String) throws -> String {
-        guard let value = self[key]?.stringValue else {
+        guard let codable = self[key],
+              let value = codable.value as? String else {
             throw PeekabooError.invalidInput("Missing required parameter: \(key)")
         }
         return value
@@ -73,7 +75,8 @@ extension Dictionary where Key == String, Value == AnyCodable {
     
     /// Extract a required integer parameter
     public func requireInt(_ key: String) throws -> Int {
-        guard let value = self[key]?.intValue else {
+        guard let codable = self[key],
+              let value = codable.value as? Int else {
             throw PeekabooError.invalidInput("Missing required parameter: \(key)")
         }
         return value
@@ -81,17 +84,26 @@ extension Dictionary where Key == String, Value == AnyCodable {
     
     /// Extract an optional string parameter
     public func optionalString(_ key: String) -> String? {
-        self[key]?.stringValue
+        if let codable = self[key] {
+            return codable.value as? String
+        }
+        return nil
     }
     
     /// Extract an optional boolean parameter with default
     public func optionalBool(_ key: String, default defaultValue: Bool = false) -> Bool {
-        self[key]?.boolValue ?? defaultValue
+        if let codable = self[key] {
+            return codable.value as? Bool ?? defaultValue
+        }
+        return defaultValue
     }
     
     /// Extract an optional integer parameter with default
     public func optionalInt(_ key: String, default defaultValue: Int) -> Int {
-        self[key]?.intValue ?? defaultValue
+        if let codable = self[key] {
+            return codable.value as? Int ?? defaultValue
+        }
+        return defaultValue
     }
 }
 
@@ -112,20 +124,13 @@ extension String {
 // MARK: - Window Finding
 
 extension Array where Element == WindowInfo {
-    /// Find a window by application name (case-insensitive)
-    public func findWindow(byAppName appName: String) throws -> WindowInfo {
-        guard let window = first(where: { 
-            $0.applicationName.lowercased() == appName.lowercased() 
-        }) else {
-            throw PeekabooError.windowNotFound(criteria: "application '\(appName)'")
-        }
-        return window
-    }
+    // Note: WindowInfo doesn't have an applicationName property, so this method can't be implemented
+    // It would need to be implemented at a higher level where we have access to both window and app info
     
     /// Find a window by title (partial match, case-insensitive)
     public func findWindow(byTitle title: String) throws -> WindowInfo {
         guard let window = first(where: { 
-            $0.title.lowercased().contains(title.lowercased()) 
+            $0.window_title.lowercased().contains(title.lowercased()) 
         }) else {
             throw PeekabooError.windowNotFound(criteria: "title containing '\(title)'")
         }
@@ -134,7 +139,7 @@ extension Array where Element == WindowInfo {
     
     /// Find a window by ID
     public func findWindow(byID windowID: CGWindowID) throws -> WindowInfo {
-        guard let window = first(where: { $0.windowID == windowID }) else {
+        guard let window = first(where: { $0.window_id == UInt32(windowID) }) else {
             throw PeekabooError.windowNotFound(criteria: "ID \(windowID)")
         }
         return window
@@ -147,13 +152,13 @@ extension Array where Element == ApplicationInfo {
     /// Find an application by name (case-insensitive)
     public func findApp(byName name: String) -> ApplicationInfo? {
         first(where: { 
-            $0.name.lowercased() == name.lowercased() 
+            $0.app_name.lowercased() == name.lowercased() 
         })
     }
     
     /// Find an application by bundle ID
     public func findApp(byBundleID bundleID: String) -> ApplicationInfo? {
-        first(where: { $0.bundleIdentifier == bundleID })
+        first(where: { $0.bundle_id == bundleID })
     }
 }
 

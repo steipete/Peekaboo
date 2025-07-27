@@ -9,7 +9,8 @@ import AXorcist
 public final class PeekabooAgentService: AgentServiceProtocol {
     private let services: PeekabooServices
     private let modelProvider: ModelProvider
-    private let sessionManager: AgentSessionManager
+    // TODO: Implement session management
+    // private let sessionManager: AgentSessionManager
     private let defaultModelName: String
     
     /// The default model name used by this agent service
@@ -21,7 +22,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     ) {
         self.services = services
         self.modelProvider = .shared
-        self.sessionManager = AgentSessionManager()
+        // self.sessionManager = AgentSessionManager()
         self.defaultModelName = defaultModelName
     }
     
@@ -123,9 +124,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     
     /// Clean up any cached sessions or resources
     public func cleanup() async {
+        // TODO: Implement session cleanup
         // Clean up old sessions (older than 7 days)
-        let oneWeekAgo = Date().addingTimeInterval(-7 * 24 * 60 * 60)
-        try? await sessionManager.cleanupSessions(olderThan: oneWeekAgo)
+        // let oneWeekAgo = Date().addingTimeInterval(-7 * 24 * 60 * 60)
+        // try? await sessionManager.cleanupSessions(olderThan: oneWeekAgo)
     }
     
     // MARK: - Agent Creation
@@ -355,12 +357,12 @@ extension PeekabooAgentService {
         modelName: String = "claude-opus-4-20250514",
         eventDelegate: AgentEventDelegate? = nil
     ) async throws -> AgentExecutionResult {
-        // Load previous messages from session
-        let messages = try await sessionManager.loadSession(sessionId)
+        // TODO: Implement session loading
+        // let messages = try await sessionManager.loadSession(sessionId)
+        let messages: [Message] = []
         
-        if messages.isEmpty {
-            throw PeekabooError.sessionNotFound(sessionId)
-        }
+        // For now, always throw session not found
+        throw PeekabooError.sessionNotFound(sessionId)
         
         // Create agent and continue conversation
         let agent = createAutomationAgent(modelName: modelName)
@@ -376,6 +378,8 @@ extension PeekabooAgentService {
         )
     }
     
+    // TODO: Implement session management
+    /*
     /// List available sessions
     public func listSessions() async throws -> [AgentSessionInfo] {
         return try await sessionManager.listSessions()
@@ -386,11 +390,14 @@ extension PeekabooAgentService {
         let sessions = try await sessionManager.listSessions()
         return sessions.first { $0.id == sessionId }
     }
+    */
     
+    /*
     /// Delete a specific session
     public func deleteSession(sessionId: String) async throws {
         try await sessionManager.deleteSession(sessionId)
     }
+    */
 }
 
 // MARK: - Event Handler

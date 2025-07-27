@@ -15,30 +15,26 @@ extension PeekabooAgentService {
             description: "Click a button in a dialog, sheet, or alert",
             parameters: .object(
                 properties: [
-                    "button": .string(
-                        description: "Button label to click (e.g., 'OK', 'Cancel', 'Save')",
-                        required: true
-                    ),
-                    "app": .string(
-                        description: "Optional: Application name",
-                        required: false
-                    )
+                    "button": ParameterSchema.string(description: "Button label to click (e.g., 'OK', 'Cancel', 'Save')"),
+                    "app": ParameterSchema.string(description: "Optional: Application name")
                 ],
                 required: ["button"]
             ),
             handler: { params, context in
                 let buttonLabel = try params.string("button")
-                let appName = params.string("app")
+                let appName = params.string("app", default: nil)
                 
-                try await context.dialog.clickDialogButton(
-                    buttonLabel: buttonLabel,
-                    in: appName
+                _ = try await context.dialogs.clickButton(
+                    buttonText: buttonLabel,
+                    windowTitle: appName
                 )
                 
                 return .success(
                     "Clicked '\(buttonLabel)' button in dialog",
-                    metadata: "button", buttonLabel,
-                    "app", appName ?? "current app"
+                    metadata: [
+                        "button": buttonLabel,
+                        "app": appName ?? "current app"
+                    ]
                 )
             }
         )
@@ -51,79 +47,41 @@ extension PeekabooAgentService {
             description: "Enter text into a field in a dialog or sheet",
             parameters: .object(
                 properties: [
-                    "text": .string(
-                        description: "Text to enter",
-                        required: true
-                    ),
-                    "field": .string(
-                        description: "Optional: Field label or placeholder text",
-                        required: false
-                    ),
-                    "app": .string(
-                        description: "Optional: Application name",
-                        required: false
-                    ),
-                    "clear_first": .boolean(
-                        description: "Clear the field before typing (default: true)",
-                        required: false
-                    )
+                    "text": ParameterSchema.string(description: "Text to enter"),
+                    "field": ParameterSchema.string(description: "Optional: Field label or placeholder text"),
+                    "app": ParameterSchema.string(description: "Optional: Application name"),
+                    "clear_first": ParameterSchema.boolean(description: "Clear the field before typing (default: true)")
                 ],
                 required: ["text"]
             ),
             handler: { params, context in
                 let text = try params.string("text")
-                let fieldLabel = params.string("field")
-                let appName = params.string("app")
+                let fieldLabel = params.string("field", default: nil)
+                let appName = params.string("app", default: nil)
                 let clearFirst = params.bool("clear_first", default: true)
                 
-                // Find and focus the dialog
-                let dialogInfo = try await context.dialog.findActiveDialog(in: appName)
-                
-                // Find the text field
-                if let fieldLabel = fieldLabel {
-                    // Find specific field
-                    let element = try await findElementWithRetry(
-                        criteria: .label(fieldLabel),
-                        in: dialogInfo.applicationName,
-                        context: context
-                    )
-                    
-                    // Click to focus
-                    try await element.performAction(.press)
-                    try await Task.sleep(nanoseconds: TimeInterval.shortDelay.nanoseconds)
-                } else {
-                    // Find first text field in dialog
-                    let textFields = dialogInfo.textFields
-                    guard !textFields.isEmpty else {
-                        throw PeekabooError.elementNotFound(
-                            type: "text field",
-                            in: "dialog"
-                        )
-                    }
-                    
-                    // Click the first field
-                    let firstField = textFields[0]
-                    let location = CGPoint(
-                        x: firstField.bounds.midX,
-                        y: firstField.bounds.midY
-                    )
-                    try await context.uiAutomation.click(at: location)
-                    try await Task.sleep(nanoseconds: TimeInterval.shortDelay.nanoseconds)
+                // For now, this is a simplified implementation
+                // Field-specific targeting is not yet supported
+                if fieldLabel != nil {
+                    throw PeekabooError.serviceUnavailable("Field-specific text entry not yet implemented")
                 }
                 
                 // Clear if requested
                 if clearFirst {
-                    try await context.uiAutomation.pressKey(
-                        key: .a,
-                        modifiers: [.command]
-                    )
+                    try await context.automation.hotkey(keys: "cmd,a", holdDuration: 0)
                     try await Task.sleep(nanoseconds: TimeInterval.shortDelay.nanoseconds)
-                    try await context.uiAutomation.pressKey(key: .delete)
+                    try await context.automation.hotkey(keys: "delete", holdDuration: 0)
                     try await Task.sleep(nanoseconds: TimeInterval.shortDelay.nanoseconds)
                 }
                 
                 // Type the text
-                try await context.uiAutomation.typeText(text)
+                try await context.automation.type(
+                    text: text,
+                    target: nil,
+                    clearExisting: false,
+                    typingDelay: 0,
+                    sessionId: nil
+                )
                 
                 var output = "Entered text in dialog"
                 if let fieldLabel = fieldLabel {
@@ -132,10 +90,11 @@ extension PeekabooAgentService {
                 
                 return .success(
                     output,
-                    metadata: "text", text,
-                    "field", fieldLabel ?? "first field",
-                    "dialog", dialogInfo.title ?? "untitled dialog",
-                    "app", dialogInfo.applicationName
+                    metadata: [
+                        "text": text,
+                        "field": fieldLabel ?? "current field",
+                        "app": appName ?? "current app"
+                    ]
                 )
             }
         )

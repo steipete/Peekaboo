@@ -15,10 +15,7 @@ extension PeekabooAgentService {
             description: "Launch an application from the Dock",
             parameters: .object(
                 properties: [
-                    "name": .string(
-                        description: "Application name as it appears in the Dock",
-                        required: true
-                    )
+                    "name": ParameterSchema.string(description: "Application name as it appears in the Dock")
                 ],
                 required: ["name"]
             ),
@@ -31,7 +28,7 @@ extension PeekabooAgentService {
                 try await Task.sleep(nanoseconds: TimeInterval.mediumDelay.nanoseconds)
                 
                 // Verify launch
-                let apps = try await context.application.listApplications()
+                let apps = try await context.applications.listApplications()
                 let launched = apps.contains { 
                     $0.name.lowercased() == appName.lowercased() 
                 }
@@ -39,12 +36,12 @@ extension PeekabooAgentService {
                 if launched {
                     return .success(
                         "Successfully launched \(appName) from Dock",
-                        metadata: "app", appName
+                        metadata: ["app": appName]
                     )
                 } else {
                     return .success(
                         "Clicked \(appName) in Dock (app may be starting)",
-                        metadata: "app", appName
+                        metadata: ["app": appName]
                     )
                 }
             }
@@ -58,10 +55,9 @@ extension PeekabooAgentService {
             description: "List all items in the Dock",
             parameters: .object(
                 properties: [
-                    "section": .string(
-                        description: "Dock section to list",
-                        required: false,
-                        enum: ["apps", "recent", "all"]
+                    "section": ParameterSchema.enumeration(
+                        ["apps", "recent", "all"],
+                        description: "Dock section to list (default: all)"
                     )
                 ],
                 required: []
@@ -69,7 +65,7 @@ extension PeekabooAgentService {
             handler: { params, context in
                 let section = params.string("section", default: "all") ?? "all"
                 
-                let dockItems = try await context.dock.listDockItems()
+                let dockItems = try await context.dock.listDockItems(includeAll: true)
                 
                 if dockItems.isEmpty {
                     return .success("No items found in Dock")
@@ -81,22 +77,23 @@ extension PeekabooAgentService {
                 let filteredItems: [DockItem]
                 switch section {
                 case "apps":
-                    filteredItems = dockItems.filter { $0.type == .application }
+                    filteredItems = dockItems.filter { $0.itemType == .application }
                 case "recent":
-                    filteredItems = dockItems.filter { $0.type == .recent }
+                    // Recent items are typically folders
+                    filteredItems = dockItems.filter { $0.itemType == .folder }
                 default:
                     filteredItems = dockItems
                 }
                 
                 // Group by type
-                let grouped = Dictionary(grouping: filteredItems) { $0.type }
+                let grouped = Dictionary(grouping: filteredItems) { $0.itemType }
                 
                 // Show applications
                 if let apps = grouped[.application], !apps.isEmpty {
                     output += "Applications:\n"
                     for app in apps {
-                        output += "  • \(app.name)"
-                        if app.isRunning {
+                        output += "  • \(app.title)"
+                        if app.isRunning == true {
                             output += " (running)"
                         }
                         output += "\n"
@@ -104,27 +101,29 @@ extension PeekabooAgentService {
                     output += "\n"
                 }
                 
-                // Show recent items
-                if let recent = grouped[.recent], !recent.isEmpty {
-                    output += "Recent Items:\n"
-                    for item in recent {
-                        output += "  • \(item.name)\n"
+                // Show folders (which may include recent items)
+                if let folders = grouped[.folder], !folders.isEmpty {
+                    output += "Folders:\n"
+                    for item in folders {
+                        output += "  • \(item.title)\n"
                     }
                     output += "\n"
                 }
                 
                 // Show other items
-                if let other = grouped[.other], !other.isEmpty {
+                if let other = grouped[.unknown], !other.isEmpty {
                     output += "Other:\n"
                     for item in other {
-                        output += "  • \(item.name)\n"
+                        output += "  • \(item.title)\n"
                     }
                 }
                 
                 return .success(
                     output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: "totalCount", String(filteredItems.count),
-                    "section", section
+                    metadata: [
+                        "totalCount": String(filteredItems.count),
+                        "section": section
+                    ]
                 )
             }
         )

@@ -9,7 +9,7 @@ public enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProto
     // App and window errors
     case appNotFound(String)
     case ambiguousAppIdentifier(String, suggestions: [String])
-    case windowNotFound
+    case windowNotFound(criteria: String? = nil)
     case displayNotFound
     
     // Element errors
@@ -68,7 +68,10 @@ public enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProto
             return "Application '\(name)' not found"
         case .ambiguousAppIdentifier(let name, let suggestions):
             return "Multiple apps match '\(name)'. Did you mean: \(suggestions.joined(separator: ", "))"
-        case .windowNotFound:
+        case .windowNotFound(let criteria):
+            if let criteria = criteria {
+                return "Window not found: \(criteria)"
+            }
             return "Window not found"
         case .displayNotFound:
             return "Display not found"
@@ -183,6 +186,20 @@ public enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProto
             return .unknownError
         case .operationError:
             return .unknownError
+        case .networkError:
+            return .unknownError
+        case .apiError:
+            return .unknownError
+        case .authenticationFailed:
+            return .unknownError
+        case .rateLimited:
+            return .unknownError
+        case .serverError:
+            return .unknownError
+        case .notFound:
+            return .unknownError
+        case .permissionDenied:
+            return .unknownError
         }
     }
     
@@ -228,6 +245,28 @@ public enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProto
             return ["message": message]
         case .operationError(let message):
             return ["message": message]
+        case .windowNotFound(let criteria):
+            if let criteria = criteria {
+                return ["criteria": criteria]
+            }
+            return [:]
+        case .networkError(let message):
+            return ["message": message]
+        case .apiError(let code, let message):
+            return ["code": "\(code)", "message": message]
+        case .authenticationFailed(let message):
+            return ["message": message]
+        case .rateLimited(let retryAfter, let message):
+            if let retryAfter = retryAfter {
+                return ["retryAfter": "\(retryAfter)", "message": message]
+            }
+            return ["message": message]
+        case .serverError(let message):
+            return ["message": message]
+        case .notFound(let message):
+            return ["message": message]
+        case .permissionDenied(let message):
+            return ["message": message]
         default:
             return [:]
         }
@@ -264,6 +303,12 @@ public enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProto
             return .configuration
         case .operationError:
             return .unknown
+        case .networkError, .apiError, .authenticationFailed, .rateLimited, .serverError:
+            return .network
+        case .notFound:
+            return .unknown
+        case .permissionDenied:
+            return .permissions
         }
     }
     

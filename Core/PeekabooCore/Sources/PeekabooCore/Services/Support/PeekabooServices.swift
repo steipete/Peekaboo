@@ -238,7 +238,7 @@ public final class PeekabooServices: @unchecked Sendable {
                 try await ModelProvider.shared.setupFromEnvironment()
                 logger.debug("✅ ModelProvider initialized from environment")
             } catch {
-                let peekabooError = error.asPeekabooError(context: "Failed to setup ModelProvider", logger: logger)
+                let peekabooError = error.asPeekabooError(context: "Failed to setup ModelProvider")
                 logger.error("⚠️ ModelProvider setup failed: \(peekabooError.localizedDescription)")
             }
         }
@@ -451,7 +451,7 @@ extension PeekabooServices {
                 ))
             } catch {
                 let duration = Date().timeIntervalSince(startTime)
-                let peekabooError = error.asPeekabooError(context: "Action execution failed", logger: logger)
+                let peekabooError = error.asPeekabooError(context: "Action execution failed")
                 logger.error("❌ Action failed after \(String(format: "%.2f", duration))s: \(peekabooError.localizedDescription)")
                 
                 executedActions.append(ExecutedAction(

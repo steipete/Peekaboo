@@ -70,7 +70,7 @@ public actor ProcessService: ProcessServiceProtocol {
                     stepNumber: stepNumber,
                     command: step.command,
                     success: true,
-                    output: AnyCodable(executionResult.output),
+                    output: executionResult.output,
                     error: nil,
                     executionTime: Date().timeIntervalSince(stepStartTime)
                 )
@@ -513,7 +513,7 @@ public actor ProcessService: ProcessServiceProtocol {
         }
         
         guard let window = targetWindow else {
-            throw PeekabooError.windowNotFound
+            throw PeekabooError.windowNotFound()
         }
         
         // Perform the action
@@ -596,14 +596,14 @@ public actor ProcessService: ProcessServiceProtocol {
                 throw PeekabooError.invalidInput(field: "path", reason: "Missing required parameter for dock add command")
             }
             // Dock service doesn't support adding items directly
-            throw PeekabooError.operationFailed(action: "add dock item", reason: "Adding items to Dock is not supported")
+            throw PeekabooError.operationError(message: "Adding items to Dock is not supported")
             
         case "remove":
             guard let _ = step.params?["item"]?.value as? String else {
                 throw PeekabooError.invalidInput(field: "item", reason: "Missing required parameter for dock remove command")
             }
             // Dock service doesn't support removing items directly
-            throw PeekabooError.operationFailed(action: "remove dock item", reason: "Removing items from Dock is not supported")
+            throw PeekabooError.operationError(message: "Removing items from Dock is not supported")
             
         default:
             throw PeekabooError.invalidInput(field: "action", reason: "Invalid action '\(action)' for dock command")

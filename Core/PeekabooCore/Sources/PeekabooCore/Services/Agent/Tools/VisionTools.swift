@@ -15,60 +15,59 @@ extension PeekabooAgentService {
             description: "Capture and analyze the screen or a specific application window. This is your primary tool for understanding the current UI state.",
             parameters: .object(
                 properties: [
-                    "app": .string(
-                        description: "Optional: Application name to capture (e.g., 'Safari', 'Finder'). If not specified, captures the entire screen.",
-                        required: false
+                    "app": ParameterSchema.string(
+                        description: "Optional: Application name to capture (e.g., 'Safari', 'Finder'). If not specified, captures the entire screen."
                     ),
-                    "format": .string(
-                        description: "Output format - 'full' (default) for detailed element list with coordinates, or 'brief' for a summary",
-                        required: false,
-                        enum: ["full", "brief"]
+                    "format": ParameterSchema.enumeration(
+                        ["full", "brief"],
+                        description: "Output format - 'full' (default) for detailed element list with coordinates, or 'brief' for a summary"
                     ),
-                    "filter": .string(
-                        description: "Optional: Filter elements by type (button, text_field, image, link, menu, static_text)",
-                        required: false,
-                        enum: ["button", "text_field", "image", "link", "menu", "static_text"]
+                    "filter": ParameterSchema.enumeration(
+                        ["button", "text_field", "image", "link", "menu", "static_text"],
+                        description: "Optional: Filter elements by type"
                     )
                 ],
                 required: []
             ),
             handler: { params, context in
-                let appName = params.string("app")
+                let appName = params.string("app", default: nil)
                 let format = params.string("format", default: "full") ?? "full"
-                let filterType = params.string("filter")
+                let filterType = params.string("filter", default: nil)
                 
-                let result: CaptureResultWithElements
+                let captureResult: CaptureResult
                 
                 if let appName = appName {
                     // Capture specific application
-                    let windows = try await context.windowManagement.listWindows()
-                    let window = try windows.findWindow(byAppName: appName)
-                    
-                    // Get window bounds for element detection
-                    let windowElement = try await context.uiAutomation.findWindow(
-                        matching: .title(window.title),
-                        in: appName
-                    )
-                    let bounds = try await windowElement.frame()
-                    
-                    result = try await context.screenCapture.captureWindowWithElements(
-                        windowID: window.windowID,
-                        windowBounds: bounds
+                    captureResult = try await context.screenCapture.captureWindow(
+                        appIdentifier: appName,
+                        windowIndex: nil
                     )
                 } else {
                     // Capture entire screen
-                    result = try await context.screenCapture.captureScreenWithElements()
+                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
                 }
                 
+                // Detect elements in the screenshot
+                let detectionResult = try await context.automation.detectElements(
+                    in: captureResult.imageData,
+                    sessionId: nil
+                )
+                
                 // Filter elements if requested
-                var elements = result.elements
+                var elements = detectionResult.elements
                 if let filterType = filterType {
-                    elements.buttons = filterType == "button" ? elements.buttons : []
-                    elements.textFields = filterType == "text_field" ? elements.textFields : []
-                    elements.images = filterType == "image" ? elements.images : []
-                    elements.links = filterType == "link" ? elements.links : []
-                    elements.menus = filterType == "menu" ? elements.menus : []
-                    elements.staticTexts = filterType == "static_text" ? elements.staticTexts : []
+                    // Create a filtered copy
+                    elements = DetectedElements(
+                        buttons: filterType == "button" ? elements.buttons : [],
+                        textFields: filterType == "text_field" ? elements.textFields : [],
+                        links: filterType == "link" ? elements.links : [],
+                        images: filterType == "image" ? elements.images : [],
+                        groups: filterType == "group" ? elements.groups : [],
+                        sliders: filterType == "slider" ? elements.sliders : [],
+                        checkboxes: filterType == "checkbox" ? elements.checkboxes : [],
+                        menus: filterType == "menu" ? elements.menus : [],
+                        other: filterType == "static_text" ? elements.other : []
+                    )
                 }
                 
                 // Format output based on requested format
@@ -84,15 +83,17 @@ extension PeekabooAgentService {
                     if !elements.links.isEmpty {
                         summary += "- \(elements.links.count) links\n"
                     }
-                    if !elements.staticTexts.isEmpty {
-                        summary += "- \(elements.staticTexts.count) text elements\n"
+                    if !elements.other.isEmpty {
+                        summary += "- \(elements.other.count) text elements\n"
                     }
                     
                     return .success(
                         summary,
-                        metadata: "path", result.imagePath,
-                        "resolution", "\(result.width)x\(result.height)",
-                        "app", appName ?? "entire screen"
+                        metadata: [
+                            "path": captureResult.savedPath ?? detectionResult.screenshotPath,
+                            "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
+                            "app": appName ?? "entire screen"
+                        ]
                     )
                 }
                 
@@ -104,10 +105,12 @@ extension PeekabooAgentService {
                 
                 return .success(
                     elementList.description,
-                    metadata: "path", result.imagePath,
-                    "resolution", "\(result.width)x\(result.height)",
-                    "elementCount", String(elementList.totalCount),
-                    "app", appName ?? "entire screen"
+                    metadata: [
+                        "path": captureResult.savedPath ?? detectionResult.screenshotPath,
+                        "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
+                        "elementCount": String(elementList.totalCount),
+                        "app": appName ?? "entire screen"
+                    ]
                 )
             }
         )
@@ -120,42 +123,38 @@ extension PeekabooAgentService {
             description: "Take a screenshot and save it to a file",
             parameters: .object(
                 properties: [
-                    "path": .string(
-                        description: "Path to save the screenshot (e.g., ~/Desktop/screenshot.png)",
-                        required: true
-                    ),
-                    "app": .string(
-                        description: "Optional: Application name to capture. If not specified, captures entire screen",
-                        required: false
-                    )
+                    "path": ParameterSchema.string(description: "Path to save the screenshot (e.g., ~/Desktop/screenshot.png)"),
+                    "app": ParameterSchema.string(description: "Optional: Application name to capture. If not specified, captures entire screen")
                 ],
                 required: ["path"]
             ),
             handler: { params, context in
                 let path = try params.string("path")
                 let expandedPath = path.expandedPath
-                let appName = params.string("app")
+                let appName = params.string("app", default: nil)
                 
                 let captureResult: CaptureResult
                 
                 if let appName = appName {
-                    // Find the window
-                    let windows = try await context.windowManagement.listWindows()
-                    let window = try windows.findWindow(byAppName: appName)
-                    
-                    captureResult = try await context.screenCapture.captureWindow(windowID: window.windowID)
+                    captureResult = try await context.screenCapture.captureWindow(
+                        appIdentifier: appName,
+                        windowIndex: nil
+                    )
                 } else {
-                    captureResult = try await context.screenCapture.captureScreen()
+                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
                 }
                 
-                // Save to the specified path
-                try await context.file.saveScreenshot(captureResult.imagePath, to: expandedPath)
+                // Save the image data to the specified path
+                let fileURL = URL(fileURLWithPath: expandedPath)
+                try captureResult.imageData.write(to: fileURL)
                 
                 return .success(
                     "Screenshot saved to \(expandedPath)",
-                    metadata: "path", expandedPath,
-                    "resolution", "\(captureResult.width)x\(captureResult.height)",
-                    "source", appName ?? "entire screen"
+                    metadata: [
+                        "path": expandedPath,
+                        "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
+                        "source": appName ?? "entire screen"
+                    ]
                 )
             }
         )
@@ -168,58 +167,70 @@ extension PeekabooAgentService {
             description: "Capture a specific window by title or window ID",
             parameters: .object(
                 properties: [
-                    "title": .string(
-                        description: "Window title to search for (partial match supported)",
-                        required: false
-                    ),
-                    "window_id": .integer(
-                        description: "Specific window ID to capture",
-                        required: false
-                    ),
-                    "save_path": .string(
-                        description: "Optional: Path to save the screenshot",
-                        required: false
-                    )
+                    "title": ParameterSchema.string(description: "Window title to search for (partial match supported)"),
+                    "window_id": ParameterSchema.integer(description: "Specific window ID to capture"),
+                    "save_path": ParameterSchema.string(description: "Optional: Path to save the screenshot")
                 ],
                 required: []
             ),
             handler: { params, context in
-                let title = params.string("title")
-                let windowId = params.int("window_id").map { CGWindowID($0) }
-                let savePath = params.string("save_path")
+                let title = params.string("title", default: nil)
+                let windowId = params.int("window_id", default: nil).map { CGWindowID($0) }
+                let savePath = params.string("save_path", default: nil)
                 
                 guard title != nil || windowId != nil else {
                     throw PeekabooError.invalidInput("Either 'title' or 'window_id' must be provided")
                 }
                 
-                let windows = try await context.windowManagement.listWindows()
+                // Get all windows from all applications
+                let apps = try await context.applications.listApplications()
+                var windows: [ServiceWindowInfo] = []
+                for app in apps {
+                    let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                    windows.append(contentsOf: appWindows)
+                }
                 
-                let window: WindowInfo
+                let window: ServiceWindowInfo
                 if let windowId = windowId {
-                    window = try windows.findWindow(byID: windowId)
+                    guard let foundWindow = windows.first(where: { $0.windowID == windowId }) else {
+                        throw PeekabooError.windowNotFound(criteria: "ID \(windowId)")
+                    }
+                    window = foundWindow
                 } else if let title = title {
-                    window = try windows.findWindow(byTitle: title)
+                    guard let foundWindow = windows.first(where: { $0.title.lowercased().contains(title.lowercased()) }) else {
+                        throw PeekabooError.windowNotFound(criteria: "title '\(title)'")
+                    }
+                    window = foundWindow
                 } else {
                     throw PeekabooError.windowNotFound(criteria: "no criteria provided")
                 }
                 
-                let result = try await context.screenCapture.captureWindowWithElements(
-                    windowID: window.windowID,
-                    windowBounds: CGRect(origin: window.position, size: window.size)
+                // Capture the window
+                let captureResult = try await context.screenCapture.captureWindow(
+                    appIdentifier: title ?? String(windowId ?? 0),
+                    windowIndex: nil
+                )
+                
+                // Detect elements
+                let detectionResult = try await context.automation.detectElements(
+                    in: captureResult.imageData,
+                    sessionId: nil
                 )
                 
                 // Save if path provided
                 if let savePath = savePath {
                     let expandedPath = savePath.expandedPath
-                    try await context.file.saveScreenshot(result.imagePath, to: expandedPath)
+                    let fileURL = URL(fileURLWithPath: expandedPath)
+                    try captureResult.imageData.write(to: fileURL)
                 }
                 
                 return .success(
-                    formatElementList(result.elements, filterType: "all").description,
-                    metadata: "window", window.title,
-                    "app", window.applicationName,
-                    "path", savePath?.expandedPath ?? result.imagePath,
-                    "resolution", "\(result.width)x\(result.height)"
+                    formatElementList(detectionResult.elements, filterType: "all").description,
+                    metadata: [
+                        "window": window.title,
+                        "path": (savePath?.expandedPath) ?? detectionResult.screenshotPath,
+                        "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))"
+                    ]
                 )
             }
         )
@@ -229,7 +240,7 @@ extension PeekabooAgentService {
 // MARK: - Helper Functions
 
 /// Format detected elements into a structured list
-private func formatElementList(_ elements: DetectedElements, filterType: String) -> ToolOutput {
+private func formatElementList(_ elements: DetectedElements, filterType: String) -> ElementListOutput {
     var output = ""
     var totalCount = 0
     
@@ -237,8 +248,8 @@ private func formatElementList(_ elements: DetectedElements, filterType: String)
     if !elements.buttons.isEmpty && (filterType == "all" || filterType == "button") {
         output += "BUTTONS:\n"
         for button in elements.buttons {
-            output += "  • \(button.label) [\(Int(button.bounds.minX)),\(Int(button.bounds.minY))]"
-            if button.enabled {
+            output += "  • \(button.label ?? "Unlabeled button") [\(Int(button.bounds.minX)),\(Int(button.bounds.minY))]"
+            if button.isEnabled {
                 output += " (enabled)"
             } else {
                 output += " (disabled)"
@@ -253,11 +264,11 @@ private func formatElementList(_ elements: DetectedElements, filterType: String)
     if !elements.textFields.isEmpty && (filterType == "all" || filterType == "text_field") {
         output += "TEXT FIELDS:\n"
         for field in elements.textFields {
-            output += "  • \(field.label.isEmpty ? "Unlabeled" : field.label) [\(Int(field.bounds.minX)),\(Int(field.bounds.minY))]"
-            if !field.value.isEmpty {
-                output += " (value: \(field.value))"
+            output += "  • \(field.label?.isEmpty ?? true ? "Unlabeled" : field.label ?? "Unlabeled") [\(Int(field.bounds.minX)),\(Int(field.bounds.minY))]"
+            if let value = field.value, !value.isEmpty {
+                output += " (value: \(value))"
             }
-            if field.enabled {
+            if field.isEnabled {
                 output += " (enabled)"
             } else {
                 output += " (disabled)"
@@ -272,28 +283,32 @@ private func formatElementList(_ elements: DetectedElements, filterType: String)
     if !elements.links.isEmpty && (filterType == "all" || filterType == "link") {
         output += "LINKS:\n"
         for link in elements.links {
-            output += "  • \(link.label) [\(Int(link.bounds.minX)),\(Int(link.bounds.minY))]\n"
+            output += "  • \(link.label ?? "Unlabeled link") [\(Int(link.bounds.minX)),\(Int(link.bounds.minY))]\n"
         }
         output += "\n"
         totalCount += elements.links.count
     }
     
     // Static Texts
-    if !elements.staticTexts.isEmpty && (filterType == "all" || filterType == "static_text") {
+    if !elements.other.isEmpty && (filterType == "all" || filterType == "static_text") {
         output += "TEXT ELEMENTS:\n"
-        for text in elements.staticTexts {
-            let truncated = text.value.count > 50 ? String(text.value.prefix(50)) + "..." : text.value
+        for text in elements.other {
+            let truncated = if let value = text.value, value.count > 50 {
+                String(value.prefix(50)) + "..."
+            } else {
+                text.value ?? "[no text]"
+            }
             output += "  • \(truncated) [\(Int(text.bounds.minX)),\(Int(text.bounds.minY))]\n"
         }
         output += "\n"
-        totalCount += elements.staticTexts.count
+        totalCount += elements.other.count
     }
     
     // Images
     if !elements.images.isEmpty && (filterType == "all" || filterType == "image") {
         output += "IMAGES:\n"
         for image in elements.images {
-            output += "  • \(image.label.isEmpty ? "Unlabeled image" : image.label) [\(Int(image.bounds.minX)),\(Int(image.bounds.minY))]\n"
+            output += "  • \(image.label?.isEmpty ?? true ? "Unlabeled image" : image.label ?? "Unlabeled image") [\(Int(image.bounds.minX)),\(Int(image.bounds.minY))]\n"
         }
         output += "\n"
         totalCount += elements.images.count
@@ -303,7 +318,7 @@ private func formatElementList(_ elements: DetectedElements, filterType: String)
     if !elements.menus.isEmpty && (filterType == "all" || filterType == "menu") {
         output += "MENUS:\n"
         for menu in elements.menus {
-            output += "  • \(menu.label) [\(Int(menu.bounds.minX)),\(Int(menu.bounds.minY))]\n"
+            output += "  • \(menu.label ?? "Unlabeled menu") [\(Int(menu.bounds.minX)),\(Int(menu.bounds.minY))]\n"
         }
         totalCount += elements.menus.count
     }
@@ -312,10 +327,10 @@ private func formatElementList(_ elements: DetectedElements, filterType: String)
         output = "No \(filterType == "all" ? "interactive elements" : "\(filterType) elements") found in the current view."
     }
     
-    return ToolOutput(description: output, totalCount: totalCount)
+    return ElementListOutput(description: output, totalCount: totalCount)
 }
 
-private struct ToolOutput {
+private struct ElementListOutput {
     let description: String
     let totalCount: Int
 }

@@ -14,24 +14,21 @@ extension PeekabooAgentService {
             description: "Execute a shell command",
             parameters: .object(
                 properties: [
-                    "command": .string(
-                        description: "Shell command to execute",
-                        required: true
+                    "command": ParameterSchema.string(
+                        description: "Shell command to execute"
                     ),
-                    "working_directory": .string(
-                        description: "Optional: Working directory for the command",
-                        required: false
+                    "working_directory": ParameterSchema.string(
+                        description: "Optional: Working directory for the command"
                     ),
-                    "timeout": .integer(
-                        description: "Command timeout in seconds (default: 30)",
-                        required: false
+                    "timeout": ParameterSchema.integer(
+                        description: "Command timeout in seconds (default: 30)"
                     )
                 ],
                 required: ["command"]
             ),
             handler: { params, context in
                 let command = try params.string("command")
-                let workingDirectory = params.string("working_directory")
+                let workingDirectory = params.string("working_directory", default: nil)
                 let timeout = params.int("timeout", default: 30) ?? 30
                 
                 // Safety check for dangerous commands
@@ -82,7 +79,7 @@ extension PeekabooAgentService {
                     if !output.isEmpty {
                         errorMessage += "\n\nStandard output:\n\(output)"
                     }
-                    throw PeekabooError.operationError(errorMessage)
+                    throw PeekabooError.operationError(message: errorMessage)
                 }
                 
                 var result = output
@@ -97,9 +94,11 @@ extension PeekabooAgentService {
                 
                 return .success(
                     result,
-                    metadata: "command", command,
-                    "exitCode", "0",
-                    "workingDirectory", workingDirectory?.expandedPath ?? FileManager.default.currentDirectoryPath
+                    metadata: [
+                        "command": command,
+                        "exitCode": "0",
+                        "workingDirectory": workingDirectory?.expandedPath ?? FileManager.default.currentDirectoryPath
+                    ]
                 )
             }
         )

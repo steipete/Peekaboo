@@ -9,14 +9,14 @@ extension PeekabooAgentService {
     /// Handle tool errors with consistent formatting and error enhancement
     func handleToolError(_ error: Error, for toolName: String, in context: PeekabooServices) async -> ToolOutput {
         // Log the error
-        context.logging.error("Tool \(toolName) failed", error: error)
+        context.logging.error("Tool \(toolName) failed: \(error.localizedDescription)", category: "Tool")
         
         // Convert to PeekabooError if possible
         let peekabooError: PeekabooError
         if let pError = error as? PeekabooError {
             peekabooError = pError
         } else {
-            peekabooError = .operationError(error.localizedDescription)
+            peekabooError = .operationError(message: error.localizedDescription)
         }
         
         // Get enhanced error information
@@ -60,26 +60,28 @@ extension PeekabooAgentService {
             metadata["app_name"] = appName
             
         case .windowNotFound(let criteria):
-            message = "No window found matching: \(criteria)"
+            if let criteria = criteria {
+                message = "No window found matching: \(criteria)"
+                metadata["criteria"] = criteria
+            } else {
+                message = "No window found"
+            }
             suggestion = "Use 'list_windows' to see available windows, or check if the app is running"
-            metadata["criteria"] = criteria
             
-        case .elementNotFound(let type, let location):
-            message = "Element not found: \(type) in \(location)"
+        case .elementNotFound(let id):
+            message = "Element not found: \(id)"
             suggestion = "Use 'see' to view available elements, or check if the element is visible"
-            metadata["element_type"] = type
-            metadata["location"] = location
+            metadata["element"] = id
             
         case .menuNotFound(let menu):
             message = "Menu '\(menu)' not found"
             suggestion = "Use 'list_menus' to see available menus, ensure the app is focused"
             metadata["menu"] = menu
             
-        case .menuItemNotFound(let item, let menu):
-            message = "Menu item '\(item)' not found in '\(menu)'"
+        case .menuItemNotFound(let item):
+            message = "Menu item '\(item)' not found"
             suggestion = "Check the exact spelling (case-sensitive) or if the item is disabled"
             metadata["item"] = item
-            metadata["menu"] = menu
             
         case .timeout(let operation):
             message = "Operation timed out: \(operation)"

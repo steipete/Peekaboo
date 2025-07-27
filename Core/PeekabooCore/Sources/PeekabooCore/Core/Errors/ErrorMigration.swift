@@ -20,7 +20,7 @@ public struct NotFoundError {
     }
     
     public static func window(app: String, index: Int? = nil) -> PeekabooError {
-        .windowNotFound
+        .windowNotFound()
     }
     
     public static func element(_ description: String) -> PeekabooError {
@@ -42,7 +42,7 @@ extension NotFoundError: Error {
             }
             return .operationError(message: userMessage)
         case .windowNotFound:
-            return .windowNotFound
+            return .windowNotFound(criteria: nil)
         case .elementNotFound:
             if let element = context["element"] {
                 return .elementNotFound(element)
@@ -65,7 +65,7 @@ extension NotFoundError: Error {
 }
 
 /// Temporary struct for ValidationError migration
-public struct ValidationError {
+public struct LegacyValidationError {
     public let code: StandardErrorCode
     public let userMessage: String
     public let context: [String: String]
@@ -90,7 +90,7 @@ public struct ValidationError {
 }
 
 // Make ValidationError throwable
-extension ValidationError: Error {
+extension LegacyValidationError: Error {
     public var asPeekabooError: PeekabooError {
         switch code {
         case .invalidInput:

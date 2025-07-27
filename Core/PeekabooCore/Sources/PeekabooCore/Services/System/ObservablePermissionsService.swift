@@ -116,7 +116,8 @@ public final class ObservablePermissionsService {
     }
     
     deinit {
-        stopMonitoring()
+        // Can't call MainActor methods from deinit
+        // Timer will be cleaned up automatically
     }
 }
 

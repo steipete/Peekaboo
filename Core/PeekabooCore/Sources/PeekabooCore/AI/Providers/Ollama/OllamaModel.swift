@@ -198,7 +198,7 @@ public final class OllamaModel: ModelInterface {
         
         return AsyncThrowingStream { continuation in
             // Use detached task to avoid potential actor isolation issues
-            Task.detached { [request, capturedSession, debugModelName, capturedSelf] in
+            Task.detached { [self, request, capturedSession, debugModelName, capturedSelf] in
                 do {
                     aiDebugPrint("[OllamaModel] Starting streaming request for model \(debugModelName)")
                     
@@ -610,6 +610,63 @@ private struct OllamaFunctionCall: Codable {
     enum CodingKeys: String, CodingKey {
         case name, arguments
     }
+}
+
+// MARK: - Tool Definition Types
+
+private struct OllamaToolDefinition: Codable {
+    var type: String = "function"
+    let function: OllamaFunctionDefinition
+}
+
+private struct OllamaFunctionDefinition: Codable {
+    let name: String
+    let description: String
+    let parameters: OllamaToolParameters
+}
+
+private struct OllamaToolParameters: Codable {
+    let type: String
+    let properties: [String: OllamaParameterSchema]
+    let required: [String]
+    
+    init(type: String = "object", properties: [String: OllamaParameterSchema] = [:], required: [String] = []) {
+        self.type = type
+        self.properties = properties
+        self.required = required
+    }
+}
+
+private struct OllamaParameterSchema: Codable {
+    let type: String
+    let description: String?
+    let `enum`: [String]?
+    // Note: Ollama doesn't support nested items, so we'll omit this for now
+    
+    init(type: String, description: String? = nil, enum enumValues: [String]? = nil) {
+        self.type = type
+        self.description = description
+        self.enum = enumValues
+    }
+}
+
+// Helper function to convert ToolParameters to OllamaToolParameters
+private func convertToOllamaParameters(_ params: ToolParameters) throws -> OllamaToolParameters {
+    var properties: [String: OllamaParameterSchema] = [:]
+    
+    for (key, schema) in params.properties {
+        properties[key] = OllamaParameterSchema(
+            type: schema.type.rawValue,
+            description: schema.description,
+            enum: schema.enumValues
+        )
+    }
+    
+    return OllamaToolParameters(
+        type: params.type,
+        properties: properties,
+        required: params.required
+    )
 }
 
 private struct OllamaResponse: Decodable {

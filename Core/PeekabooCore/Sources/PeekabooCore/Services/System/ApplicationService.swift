@@ -81,7 +81,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
             // Otherwise throw ambiguous error
             let names = matches.compactMap { $0.localizedName }
             logger.error("Ambiguous identifier '\(identifier)' matches: \(names.joined(separator: ", "))")
-            throw ValidationError.ambiguousAppIdentifier(identifier, matches: names)
+            throw PeekabooError.ambiguousAppIdentifier(identifier, matches: names)
         }
         
         logger.error("Application not found: \(identifier)")
@@ -178,9 +178,8 @@ public final class ApplicationService: ApplicationServiceProtocol {
         let app = try await findApplication(identifier: identifier)
         
         guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
-            throw PeekabooError.operationFailed(
-                action: "activate application",
-                reason: "Could not find running application process"
+            throw PeekabooError.operationError(
+                message: "Failed to activate application: Could not find running application process"
             )
         }
         
@@ -188,9 +187,8 @@ public final class ApplicationService: ApplicationServiceProtocol {
         
         if !activated {
             logger.error("Failed to activate application: \(app.name)")
-            throw PeekabooError.operationFailed(
-                action: "activate application",
-                reason: "Application failed to activate"
+            throw PeekabooError.operationError(
+                message: "Failed to activate application: Application failed to activate"
             )
         }
         
@@ -234,7 +232,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
                 self.logger.debug("Hidden via AX action: \(app.name)")
             } catch {
                 // Log the error but use fallback
-                _ = error.asPeekabooError(context: "AX hide action failed for \(app.name)", logger: self.logger)
+                _ = error.asPeekabooError(context: "AX hide action failed for \(app.name)")
                 // Fallback to NSRunningApplication method
                 self.logger.debug("Using NSRunningApplication fallback")
                 if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
@@ -258,7 +256,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
                 self.logger.debug("Unhidden via AX action: \(app.name)")
             } catch {
                 // Log the error but use fallback
-                _ = error.asPeekabooError(context: "AX unhide action failed for \(app.name)", logger: self.logger)
+                _ = error.asPeekabooError(context: "AX unhide action failed for \(app.name)")
                 // Fallback to activating the app if unhide fails
                 self.logger.debug("Using activate fallback")
                 if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
@@ -283,7 +281,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
                 self.logger.debug("Hidden others via AX action")
             } catch {
                 // Log the error but use fallback
-                _ = error.asPeekabooError(context: "AX hide others action failed", logger: self.logger)
+                _ = error.asPeekabooError(context: "AX hide others action failed")
                 // Fallback: hide each app individually
                 self.logger.debug("Hiding apps individually")
                 let workspace = NSWorkspace.shared
@@ -312,7 +310,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
                 self.logger.debug("Shown all via AX action")
             } catch {
                 // Log the error but use fallback
-                _ = error.asPeekabooError(context: "AX show all action failed", logger: self.logger)
+                _ = error.asPeekabooError(context: "AX show all action failed")
                 // Fallback: unhide each hidden app
                 self.logger.debug("Unhiding apps individually")
                 let workspace = NSWorkspace.shared

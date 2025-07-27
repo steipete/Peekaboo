@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import AppKit
 import AXorcist
 
 // MARK: - Window Management Tools
@@ -15,54 +16,57 @@ extension PeekabooAgentService {
             description: "List all visible windows across all applications",
             parameters: .object(
                 properties: [
-                    "app": .string(
-                        description: "Optional: Filter windows by application name",
-                        required: false
-                    )
+                    "app": ParameterSchema.string(description: "Optional: Filter windows by application name")
                 ],
                 required: []
             ),
             handler: { params, context in
-                let appFilter = params.string("app")
+                let appFilter = params.string("app", default: nil)
                 
-                var windows = try await context.windowManagement.listWindows()
+                // Get all windows from all applications
+                let apps = try await context.applications.listApplications()
+                var windows: [ServiceWindowInfo] = []
+                for app in apps {
+                    let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                    windows.append(contentsOf: appWindows)
+                }
                 
                 // Apply app filter if specified
                 if let appFilter = appFilter {
-                    windows = windows.filter { 
-                        $0.applicationName.lowercased().contains(appFilter.lowercased()) 
+                    // Filter by getting windows from specific app only
+                    windows = []
+                    if let targetApp = apps.first(where: { $0.name.lowercased().contains(appFilter.lowercased()) }) {
+                        let appWindows = try await context.windows.listWindows(target: .application(targetApp.name))
+                        windows = appWindows
                     }
                 }
                 
                 if windows.isEmpty {
-                    let message = appFilter != nil 
-                        ? "No windows found for application '\(appFilter!)'"
-                        : "No windows found"
+                    let message = if let appFilter = appFilter {
+                        "No windows found for application '\(appFilter)'"
+                    } else {
+                        "No windows found"
+                    }
                     return .success(message)
                 }
                 
-                // Group windows by application
-                let grouped = Dictionary(grouping: windows) { $0.applicationName }
+                // Since we don't have applicationName on ServiceWindowInfo, we'll display all windows
+                // without grouping by application
                 
                 var output = "Found \(windows.count) window(s):\n\n"
                 
-                for (app, appWindows) in grouped.sorted(by: { $0.key < $1.key }) {
-                    output += "\(app):\n"
-                    for window in appWindows {
-                        output += "  • \(window.title.isEmpty ? "Untitled" : window.title)"
-                        output += " [ID: \(window.windowID)]"
-                        if window.isMinimized {
-                            output += " (minimized)"
-                        }
-                        output += "\n"
+                for window in windows {
+                    output += "  • \(window.title.isEmpty ? "Untitled" : window.title)"
+                    output += " [ID: \(window.windowID)]"
+                    if window.isMinimized {
+                        output += " (minimized)"
                     }
                     output += "\n"
                 }
                 
                 return .success(
                     output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: "count", String(windows.count),
-                    "apps", grouped.keys.sorted().joined(separator: ",")
+                    metadata: ["count": String(windows.count)]
                 )
             }
         )
@@ -75,25 +79,16 @@ extension PeekabooAgentService {
             description: "Bring a window to the front and give it focus",
             parameters: .object(
                 properties: [
-                    "title": .string(
-                        description: "Window title to search for (partial match supported)",
-                        required: false
-                    ),
-                    "app": .string(
-                        description: "Application name",
-                        required: false
-                    ),
-                    "window_id": .integer(
-                        description: "Specific window ID",
-                        required: false
-                    )
+                    "title": ParameterSchema.string(description: "Window title to search for (partial match supported)"),
+                    "app": ParameterSchema.string(description: "Application name"),
+                    "window_id": ParameterSchema.integer(description: "Specific window ID")
                 ],
                 required: []
             ),
             handler: { params, context in
-                let title = params.string("title")
-                let appName = params.string("app")
-                let windowId = params.int("window_id").map { CGWindowID($0) }
+                let title = params.string("title", default: nil)
+                let appName = params.string("app", default: nil)
+                let windowId = params.int("window_id", default: nil)
                 
                 // Require at least one parameter
                 guard title != nil || appName != nil || windowId != nil else {
@@ -103,49 +98,55 @@ extension PeekabooAgentService {
                 // First ensure the app is running and not hidden
                 if let appName = appName {
                     // Get running applications
-                    let apps = try await context.application.listApplications()
-                    if let app = apps.findApp(byName: appName) {
+                    let apps = try await context.applications.listApplications()
+                    if let app = apps.first(where: { $0.name.lowercased() == appName.lowercased() }) {
                         // Activate the application first
-                        try await context.application.activateApplication(bundleID: app.bundleIdentifier)
+                        try await context.applications.activateApplication(identifier: app.bundleIdentifier ?? app.name)
                         
                         // Give it a moment to activate
                         try await Task.sleep(nanoseconds: TimeInterval.mediumDelay.nanoseconds)
                     }
                 }
                 
-                let windows = try await context.windowManagement.listWindows()
+                // Get all windows from all applications
+                let apps = try await context.applications.listApplications()
+                var windows: [ServiceWindowInfo] = []
+                for app in apps {
+                    let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                    windows.append(contentsOf: appWindows)
+                }
                 
                 // Find the target window
-                let window: WindowInfo
+                let window: ServiceWindowInfo
                 if let windowId = windowId {
-                    window = try windows.findWindow(byID: windowId)
+                    guard let targetWindow = windows.first(where: { $0.windowID == windowId }) else {
+                        throw PeekabooError.windowNotFound(criteria: "ID \(windowId)")
+                    }
+                    window = targetWindow
                 } else {
                     guard let targetWindow = windows.first(where: { window in
                         var matches = true
-                        if let title = title {
-                            matches = matches && window.title.lowercased().contains(title.lowercased())
+                        if let titleFilter = title {
+                            matches = matches && window.title.lowercased().contains(titleFilter.lowercased())
                         }
-                        if let appName = appName {
-                            matches = matches && window.applicationName.lowercased() == appName.lowercased()
-                        }
+                        // Note: ServiceWindowInfo doesn't have applicationName, so we can't filter by app here
                         return matches
                     }) else {
                         var criteria = ""
-                        if let title = title { criteria += "title '\(title)' " }
-                        if let appName = appName { criteria += "app '\(appName)' " }
+                        if let titleValue = title { criteria += "title '\(titleValue)' " }
+                        if let appNameValue = appName { criteria += "app '\(appNameValue)' " }
                         throw PeekabooError.windowNotFound(criteria: criteria.trimmingCharacters(in: .whitespaces))
                     }
                     window = targetWindow
                 }
                 
                 // Focus the window
-                try await context.windowManagement.focusWindow(windowID: window.windowID)
+                try await context.windows.focusWindow(target: .windowId(window.windowID))
                 
                 return .success(
-                    "Focused window: \(window.title) (\(window.applicationName))",
-                    metadata: "window", window.title,
-                    "app", window.applicationName,
-                    "window_id", String(window.windowID)
+                    "Focused window: \(window.title)",
+                    metadata: ["window": window.title,
+                               "window_id": String(window.windowID)]
                 )
             }
         )
@@ -158,72 +159,61 @@ extension PeekabooAgentService {
             description: "Resize and/or move a window",
             parameters: .object(
                 properties: [
-                    "title": .string(
-                        description: "Window title (partial match)",
-                        required: false
-                    ),
-                    "app": .string(
-                        description: "Application name",
-                        required: false
-                    ),
-                    "width": .integer(
-                        description: "New width in pixels",
-                        required: false
-                    ),
-                    "height": .integer(
-                        description: "New height in pixels",
-                        required: false
-                    ),
-                    "x": .integer(
-                        description: "New X position",
-                        required: false
-                    ),
-                    "y": .integer(
-                        description: "New Y position",
-                        required: false
-                    ),
-                    "preset": .string(
-                        description: "Preset size/position",
-                        required: false,
-                        enum: ["maximize", "center", "left_half", "right_half", "top_half", "bottom_half"]
+                    "title": ParameterSchema.string(description: "Window title (partial match)"),
+                    "app": ParameterSchema.string(description: "Application name"),
+                    "width": ParameterSchema.integer(description: "New width in pixels"),
+                    "height": ParameterSchema.integer(description: "New height in pixels"),
+                    "x": ParameterSchema.integer(description: "New X position"),
+                    "y": ParameterSchema.integer(description: "New Y position"),
+                    "preset": ParameterSchema.enumeration(
+                        ["maximize", "center", "left_half", "right_half", "top_half", "bottom_half"],
+                        description: "Preset size/position"
                     )
                 ],
                 required: []
             ),
             handler: { params, context in
-                let title = params.string("title")
-                let appName = params.string("app")
-                let width = params.int("width")
-                let height = params.int("height")
-                let x = params.int("x")
-                let y = params.int("y")
-                let preset = params.string("preset")
+                let title = params.string("title", default: nil)
+                let appName = params.string("app", default: nil)
+                let width = params.int("width", default: nil)
+                let height = params.int("height", default: nil)
+                let x = params.int("x", default: nil)
+                let y = params.int("y", default: nil)
+                let preset = params.string("preset", default: nil)
                 
                 guard title != nil || appName != nil else {
                     throw PeekabooError.invalidInput("Either 'title' or 'app' must be provided")
                 }
                 
                 // Find the window
-                let windows = try await context.windowManagement.listWindows()
+                // Get all windows from all applications
+                let apps = try await context.applications.listApplications()
+                var windows: [ServiceWindowInfo] = []
+                for app in apps {
+                    let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                    windows.append(contentsOf: appWindows)
+                }
                 guard let window = windows.first(where: { window in
                     var matches = true
-                    if let title = title {
-                        matches = matches && window.title.lowercased().contains(title.lowercased())
+                    if let titleFilter = title {
+                        matches = matches && window.title.lowercased().contains(titleFilter.lowercased())
                     }
-                    if let appName = appName {
-                        matches = matches && window.applicationName.lowercased() == appName.lowercased()
-                    }
+                    // Note: ServiceWindowInfo doesn't have applicationName, so we can't filter by app here
                     return matches
                 }) else {
-                    let criteria = [
-                        title.map { "title '\($0)'" },
-                        appName.map { "app '\($0)'" }
-                    ].compactMap { $0 }.joined(separator: " ")
+                    var criteriaItems: [String] = []
+                    if let titleValue = title {
+                        criteriaItems.append("title '\(titleValue)'")
+                    }
+                    if let appNameValue = appName {
+                        criteriaItems.append("app '\(appNameValue)'")
+                    }
+                    let criteria = criteriaItems.joined(separator: " ")
                     throw PeekabooError.windowNotFound(criteria: criteria)
                 }
                 
                 // Calculate new bounds
-                var newBounds = CGRect(origin: window.position, size: window.size)
+                var newBounds = window.bounds
                 
                 if let preset = preset {
                     // Get screen bounds
@@ -275,17 +265,10 @@ extension PeekabooAgentService {
                 }
                 
                 // Apply the new bounds
-                try await context.windowManagement.moveWindow(
-                    windowID: window.windowID,
-                    to: newBounds.origin
+                try await context.windows.setWindowBounds(
+                    target: .windowId(window.windowID),
+                    bounds: newBounds
                 )
-                
-                if newBounds.size != window.size {
-                    try await context.windowManagement.resizeWindow(
-                        windowID: window.windowID,
-                        to: newBounds.size
-                    )
-                }
                 
                 var output = "Window '\(window.title)' "
                 if let preset = preset {
@@ -298,12 +281,13 @@ extension PeekabooAgentService {
                 
                 return .success(
                     output,
-                    metadata: "window", window.title,
-                    "app", window.applicationName,
-                    "x", String(Int(newBounds.origin.x)),
-                    "y", String(Int(newBounds.origin.y)),
-                    "width", String(Int(newBounds.width)),
-                    "height", String(Int(newBounds.height))
+                    metadata: [
+                        "window": window.title,
+                        "x": String(Int(newBounds.origin.x)),
+                        "y": String(Int(newBounds.origin.y)),
+                        "width": String(Int(newBounds.width)),
+                        "height": String(Int(newBounds.height))
+                    ]
                 )
             }
         )

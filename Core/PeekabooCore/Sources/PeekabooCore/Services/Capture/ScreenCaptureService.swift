@@ -48,9 +48,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         let targetDisplay: SCDisplay
         if let index = displayIndex {
             guard index >= 0 && index < displays.count else {
-                throw ValidationError.invalidInput(
-                    field: "displayIndex",
-                    reason: "Index \(index) is out of range. Available displays: 0-\(displays.count-1)"
+                throw PeekabooError.invalidInput(
+                    "displayIndex: Index \(index) is out of range. Available displays: 0-\(displays.count-1)"
                 )
             }
             targetDisplay = displays[index]
@@ -199,9 +198,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             logger.error("No display contains the specified area", metadata: [
                 "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)"
             ], correlationId: correlationId)
-            throw ValidationError.invalidInput(
-                field: "captureArea",
-                reason: "The specified area is not within any display bounds"
+            throw PeekabooError.invalidInput(
+                "captureArea: The specified area is not within any display bounds"
             )
         }
         logger.debug("Found display for area", metadata: ["displayID": display.displayID], correlationId: correlationId)
@@ -404,7 +402,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 "candidates": names.joined(separator: ", "),
                 "count": matches.count
             ])
-            throw ValidationError.ambiguousAppIdentifier(identifier, matches: names)
+            throw PeekabooError.ambiguousAppIdentifier(identifier, matches: names)
         }
         
         logger.warning("Application not found", metadata: ["identifier": identifier])
@@ -433,9 +431,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         let targetWindow: SCWindow
         if let index = windowIndex {
             guard index >= 0 && index < appWindows.count else {
-                throw ValidationError.invalidInput(
-                    field: "windowIndex",
-                    reason: "Index \(index) is out of range. Available windows: 0-\(appWindows.count-1)"
+                throw PeekabooError.invalidInput(
+                    "windowIndex: Index \(index) is out of range. Available windows: 0-\(appWindows.count-1)"
                 )
             }
             targetWindow = appWindows[index]
@@ -518,9 +515,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         let targetWindow: [String: Any]
         if let index = windowIndex {
             guard index >= 0 && index < appWindows.count else {
-                throw ValidationError.invalidInput(
-                    field: "windowIndex",
-                    reason: "Index \(index) is out of range. Available windows: 0-\(appWindows.count-1)"
+                throw PeekabooError.invalidInput(
+                    "windowIndex: Index \(index) is out of range. Available windows: 0-\(appWindows.count-1)"
                 )
             }
             targetWindow = appWindows[index]
