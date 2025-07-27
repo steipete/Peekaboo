@@ -329,6 +329,102 @@ struct AgentCommand: AsyncParsableCommand {
         return agentService.defaultModel
     }
     
+    /// Convert internal model names to properly cased display names
+    private func getDisplayModelName(_ modelName: String) -> String {
+        let lowercased = modelName.lowercased()
+        
+        // OpenAI models - GPT should be uppercase with hyphen
+        if lowercased.hasPrefix("gpt-") {
+            let parts = modelName.split(separator: "-", maxSplits: 1)
+            if parts.count == 2 {
+                return "GPT-\(parts[1])"
+            }
+        }
+        
+        // O3/O4 models - keep lowercase "o" as OpenAI uses
+        if lowercased.hasPrefix("o3") || lowercased.hasPrefix("o4") {
+            return modelName.lowercased()
+        }
+        
+        // Grok models - "Grok" with capital G and hyphen
+        if lowercased.hasPrefix("grok-") {
+            let parts = modelName.split(separator: "-", maxSplits: 1)
+            if parts.count == 2 {
+                let version = String(parts[1])
+                // Handle special cases like "grok-2-vision-1212"
+                if version.contains("-vision-") {
+                    return "Grok-2 Vision"
+                } else if version.contains("-image-") {
+                    return "Grok-2 Image"
+                } else if version.hasSuffix("-fast") {
+                    let base = version.replacingOccurrences(of: "-fast", with: "")
+                    return "Grok-\(base) Fast"
+                } else if version.hasSuffix("-mini-fast") {
+                    let base = version.replacingOccurrences(of: "-mini-fast", with: "")
+                    return "Grok-\(base) Mini Fast"
+                } else if version.hasSuffix("-mini") {
+                    let base = version.replacingOccurrences(of: "-mini", with: "")
+                    return "Grok-\(base) Mini"
+                } else {
+                    // Simple version like grok-3, grok-4-0709
+                    return "Grok-\(version)"
+                }
+            }
+        }
+        
+        // Claude models - proper spacing and capitalization
+        if lowercased.hasPrefix("claude-") {
+            // Special handling for specific model formats
+            if modelName.contains("opus-4-") {
+                return "Claude Opus 4"
+            } else if modelName.contains("sonnet-4-") {
+                return "Claude Sonnet 4"
+            } else if modelName.contains("haiku-4-") {
+                return "Claude Haiku 4"
+            }
+            
+            // Handle Claude 3.x models
+            let parts = modelName.split(separator: "-")
+            if parts.count >= 3 {
+                var result = "Claude"
+                
+                // Check for model type first (opus, sonnet, haiku)
+                if let modelTypeIndex = parts.firstIndex(where: { ["opus", "sonnet", "haiku"].contains($0.lowercased()) }) {
+                    let modelType = String(parts[modelTypeIndex]).capitalized
+                    
+                    // Look for version number before model type
+                    if modelTypeIndex > 1 {
+                        let version = String(parts[1])
+                        if parts.count > 2 && modelTypeIndex > 2, let decimal = Int(parts[2]) {
+                            result += " \(version).\(decimal)"
+                        } else {
+                            result += " \(version)"
+                        }
+                    }
+                    
+                    result += " \(modelType)"
+                    return result
+                }
+                
+                // Fallback for other formats
+                if parts.count > 1 {
+                    let version = String(parts[1])
+                    result += " \(version)"
+                    
+                    if parts.count > 2 {
+                        let modelType = String(parts[2]).capitalized
+                        result += " \(modelType)"
+                    }
+                }
+                
+                return result
+            }
+        }
+        
+        // Default: return as-is
+        return modelName
+    }
+    
     private func executeTask(_ agentService: AgentServiceProtocol, task: String, sessionId: String? = nil) async throws {
         // Update terminal title with VibeTunnel
         updateTerminalTitle("Starting: \(task.prefix(50))...")
@@ -340,13 +436,14 @@ struct AgentCommand: AsyncParsableCommand {
         
         // Get the actual model name that will be used
         let actualModelName = await getActualModelName(peekabooAgent)
+        let displayModelName = getDisplayModelName(actualModelName)
         
         // Create event delegate for real-time updates
         let eventDelegate = await MainActor.run {
             CompactEventDelegate(outputMode: outputMode, jsonOutput: jsonOutput, task: task)
         }
         
-        // Show header with actual model name
+        // Show header with properly cased model name
         if outputMode != .quiet && !jsonOutput {
             switch outputMode {
             case .verbose:
@@ -354,7 +451,7 @@ struct AgentCommand: AsyncParsableCommand {
                 print(" PEEKABOO AGENT")
                 print("═══════════════════════════════════════════════════════════════\n")
                 print("Task: \"\(task)\"")
-                print("Model: \(actualModelName)")
+                print("Model: \(displayModelName)")
                 if let sessionId = sessionId {
                     print("Session: \(sessionId.prefix(8))... (resumed)")
                 }
@@ -363,7 +460,7 @@ struct AgentCommand: AsyncParsableCommand {
                 // Show model in header
                 let versionNumber = Version.current.replacingOccurrences(of: "Peekaboo ", with: "")
                 let versionInfo = "(\(Version.gitBranch)/\(Version.gitCommit), \(Version.gitCommitDate))"
-                print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)\(versionNumber) using \(actualModelName) \(versionInfo)\(TerminalColor.reset)")
+                print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)\(versionNumber) using \(displayModelName) \(versionInfo)\(TerminalColor.reset)")
                 if let sessionId = sessionId {
                     print("\(TerminalColor.gray)🔄 Session: \(sessionId.prefix(8))...\(TerminalColor.reset)")
                 }
