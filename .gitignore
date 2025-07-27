@@ -19,6 +19,8 @@ Temporary Items
 
 # Node.js / TypeScript
 node_modules/
+/node_modules/
+Server/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -72,12 +74,17 @@ lib-cov/
 *.sublime-project
 
 # Swift / Xcode
-## Build
-.build/
-DerivedData/
-build/
-*.xcodeproj/project.xcworkspace/xcshareddata/
-*.xcworkspace/xcshareddata/
+## Build artifacts (at any level)
+**/.build/
+**/DerivedData/
+**/build/
+**/*.xcodeproj/project.xcworkspace/xcshareddata/
+**/*.xcworkspace/xcshareddata/
+
+## Build binaries
+/peekaboo
+/Apps/CLI/peekaboo
+Apps/*/peekaboo
 
 ## Various Xcode settings
 *.pbxuser
@@ -88,12 +95,12 @@ build/
 !default.mode2v3
 *.perspectivev3
 !default.perspectivev3
-xcuserdata/
+**/xcuserdata/
 *.xccheckout
 *.moved-aside
-*.xcuserstate
+**/*.xcuserstate
 *.xcscmblueprint
-*.xcworkspace/xcuserdata/
+**/*.xcworkspace/xcuserdata/
 
 ## Xcode Patch
 *.xcodeproj/*
@@ -105,8 +112,9 @@ xcuserdata/
 ## Swift Package Manager
 Packages/
 Package.pins
-Package.resolved
-.swiftpm/
+**/Package.resolved
+**/.swiftpm/
+*.xcworkspace/xcshareddata/swiftpm/
 
 ## Playgrounds
 playground.xcworkspace
@@ -136,21 +144,15 @@ iOSInjectionProject/
 ## LLVM bitcode files (Swift compiler artifacts)
 *.bc
 
-## Compiled CLI binary
-/peekaboo
-Apps/CLI/.build/
-Apps/CLI/DerivedData/
-Apps/CLI/.swiftpm/
-Apps/CLI/*.bc
+## Module-specific build artifacts
+Core/**/.build/
+Core/**/DerivedData/
+Core/**/.swiftpm/
 
-## Swift build artifacts
+## Swift compiler artifacts
 *.hmap
-*.ipa
-
-## Mac app specific
-Apps/Mac/.build/
-Apps/Mac/DerivedData/
-Apps/Mac/.swiftpm/
+*.bc
+**/*.dia
 
 # Temporary files
 *.tmp
@@ -200,3 +202,14 @@ menubar_elements.json
 # Documentation audits and summaries
 docc-class-audit.md
 test-fixes-summary.md
+
+# Archive directory (if truly archived)
+# Uncomment if Archive/ should be excluded:
+# /Archive/
+
+# Root level test scripts that should be in scripts/
+/test-*.sh
+/check-*.sh
+
+# AppleScript at root
+/peekaboo.scpt

@@ -3,6 +3,12 @@
   "version": "3.0.0",
   "private": true,
   "description": "Peekaboo - Lightning-fast macOS Screenshots & GUI Automation",
+  "comments": [
+    "This package.json is for convenience scripts only.",
+    "All dependencies should be in Server/package.json.",
+    "DO NOT run 'npm install' in the root directory.",
+    "Run 'npm install' from the Server/ directory instead."
+  ],
   "scripts": {
     "build": "cd Server && npm run build",
     "build:swift": "./scripts/build-swift-universal.sh",

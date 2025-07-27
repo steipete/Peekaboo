@@ -1,6 +1,20 @@
 import Foundation
 import AXorcist
 
+// Simple debug logging check
+fileprivate var isDebugLoggingEnabled: Bool {
+    if let logLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
+        return logLevel == "debug" || logLevel == "trace"
+    }
+    return false
+}
+
+fileprivate func aiDebugPrint(_ message: String) {
+    if isDebugLoggingEnabled {
+        print(message)
+    }
+}
+
 /// Ollama model implementation conforming to ModelInterface
 ///
 /// This implementation supports tool/function calling for compatible models.
@@ -122,12 +136,10 @@ public final class OllamaModel: ModelInterface {
         let encoder = JSONEncoder()
         urlRequest.httpBody = try encoder.encode(ollamaRequest)
         
-        if ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() == "debug" {
-            print("[OllamaModel] Sending request to \(url) for model \(modelName)")
-            if let jsonString = String(data: urlRequest.httpBody ?? Data(), encoding: .utf8) {
-                print("[OllamaModel] Request body: \(jsonString.prefix(500))...") // Show first 500 chars
-                print("[OllamaModel] Total request size: \(urlRequest.httpBody?.count ?? 0) bytes")
-            }
+        aiDebugPrint("[OllamaModel] Sending request to \(url) for model \(modelName)")
+        if let jsonString = String(data: urlRequest.httpBody ?? Data(), encoding: .utf8) {
+            aiDebugPrint("[OllamaModel] Request body: \(jsonString.prefix(500))...") // Show first 500 chars
+            aiDebugPrint("[OllamaModel] Total request size: \(urlRequest.httpBody?.count ?? 0) bytes")
         }
         
         // Make request
@@ -164,7 +176,7 @@ public final class OllamaModel: ModelInterface {
     }
     
     public func getStreamedResponse(request: ModelRequest) async throws -> AsyncThrowingStream<StreamEvent, Error> {
-        print("[OllamaModel] getStreamedResponse called for model: \(modelName)")
+        aiDebugPrint("[OllamaModel] getStreamedResponse called for model: \(modelName)")
         
         // Convert ModelRequest to Ollama format with streaming enabled
         var ollamaRequest = try convertToOllamaRequest(request)
@@ -178,7 +190,7 @@ public final class OllamaModel: ModelInterface {
         let encoder = JSONEncoder()
         urlRequest.httpBody = try encoder.encode(ollamaRequest)
         
-        print("[OllamaModel] Sending streaming request to: \(url)")
+        aiDebugPrint("[OllamaModel] Sending streaming request to: \(url)")
         
         // Capture immutable copies for use in closure
         let request = urlRequest
@@ -190,18 +202,16 @@ public final class OllamaModel: ModelInterface {
             // Use detached task to avoid potential actor isolation issues
             Task.detached { [request, capturedSession, debugModelName, capturedSelf] in
                 do {
-                    if ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() == "debug" {
-                        print("[OllamaModel] Starting streaming request for model \(debugModelName)")
-                    }
+                    aiDebugPrint("[OllamaModel] Starting streaming request for model \(debugModelName)")
                     
                     // Send response started event immediately
                     continuation.yield(StreamEvent.responseStarted(StreamResponseStarted(id: UUID().uuidString)))
                     
-                    print("[OllamaModel] About to call session.bytes...")
+                    aiDebugPrint("[OllamaModel] About to call session.bytes...")
                     let (bytes, response) = try await capturedSession.bytes(for: request)
-                    print("[OllamaModel] session.bytes returned!")
+                    aiDebugPrint("[OllamaModel] session.bytes returned!")
                     
-                    print("[OllamaModel] Got response, status: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+                    aiDebugPrint("[OllamaModel] Got response, status: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
                     
                     guard let httpResponse = response as? HTTPURLResponse else {
                         continuation.finish(throwing: ModelError.requestFailed(URLError(.badServerResponse)))
@@ -246,14 +256,14 @@ public final class OllamaModel: ModelInterface {
                         buffer.append(byte)
                         byteCount += 1
                         if byteCount % 100 == 0 {
-                            print("[OllamaModel] Received \(byteCount) bytes so far...")
+                            aiDebugPrint("[OllamaModel] Received \(byteCount) bytes so far...")
                         }
                         
                         // Look for newline
                         if byte == 0x0A { // \n
                             if let line = String(data: buffer, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
                                !line.isEmpty {
-                                print("[OllamaModel] Processing line: \(line)")
+                                aiDebugPrint("[OllamaModel] Processing line: \(line)")
                                 
                                 // Parse JSON chunk
                                 if let data = line.data(using: .utf8),
@@ -266,9 +276,7 @@ public final class OllamaModel: ModelInterface {
                                         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
                                         if trimmedContent.hasPrefix("\",") || trimmedContent.hasPrefix("\"}") {
                                             // Skip this malformed content
-                                            if ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() == "debug" {
-                                                print("[OllamaModel] Skipping malformed content: \(content)")
-                                            }
+                                            aiDebugPrint("[OllamaModel] Skipping malformed content: \(content)")
                                         } else if content.hasPrefix("{") && content.contains("\"type\": \"function\"") {
                                             // IMPORTANT: Some Ollama models (especially llama3.3) output tool calls as JSON text
                                             // in the content field instead of using the structured tool_calls field.
@@ -303,9 +311,9 @@ public final class OllamaModel: ModelInterface {
                                     // Handle standard tool calls (models that properly use the tool_calls field)
                                     // This is the preferred method for tool calling, supported by newer models
                                     if let toolCalls = chunk.message?.toolCalls, !toolCalls.isEmpty {
-                                        print("[OllamaModel] Processing \(toolCalls.count) tool calls")
+                                        aiDebugPrint("[OllamaModel] Processing \(toolCalls.count) tool calls")
                                         for toolCall in toolCalls {
-                                            print("[OllamaModel] Tool call: \(toolCall.function.name) with args: \(toolCall.function.arguments)")
+                                            aiDebugPrint("[OllamaModel] Tool call: \(toolCall.function.name) with args: \(toolCall.function.arguments)")
                                             
                                             let event = StreamEvent.toolCallCompleted(
                                                 StreamToolCallCompleted(
@@ -316,7 +324,7 @@ public final class OllamaModel: ModelInterface {
                                                     )
                                                 )
                                             )
-                                            print("[OllamaModel] Yielding tool call event: \(toolCall.function.name)")
+                                            aiDebugPrint("[OllamaModel] Yielding tool call event: \(toolCall.function.name)")
                                             continuation.yield(event)
                                         }
                                     }
