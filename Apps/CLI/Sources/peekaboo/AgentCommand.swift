@@ -338,12 +338,15 @@ struct AgentCommand: AsyncParsableCommand {
             throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
         }
         
+        // Get the actual model name that will be used
+        let actualModelName = await getActualModelName(peekabooAgent)
+        
         // Create event delegate for real-time updates
         let eventDelegate = await MainActor.run {
             CompactEventDelegate(outputMode: outputMode, jsonOutput: jsonOutput, task: task)
         }
         
-        // Show header with placeholder model name (will show actual model from result)
+        // Show header with actual model name
         if outputMode != .quiet && !jsonOutput {
             switch outputMode {
             case .verbose:
@@ -351,13 +354,16 @@ struct AgentCommand: AsyncParsableCommand {
                 print(" PEEKABOO AGENT")
                 print("═══════════════════════════════════════════════════════════════\n")
                 print("Task: \"\(task)\"")
+                print("Model: \(actualModelName)")
                 if let sessionId = sessionId {
                     print("Session: \(sessionId.prefix(8))... (resumed)")
                 }
                 print("\nInitializing agent...\n")
             case .compact:
-                // Don't show model in header - will be determined by actual execution
-                print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)v\(Version.fullVersion)\(TerminalColor.reset)")
+                // Show model in header
+                let versionNumber = Version.current.replacingOccurrences(of: "Peekaboo ", with: "")
+                let versionInfo = "(\(Version.gitBranch)/\(Version.gitCommit), \(Version.gitCommitDate))"
+                print("\(TerminalColor.cyan)\(TerminalColor.bold)🤖 Peekaboo Agent\(TerminalColor.reset) \(TerminalColor.gray)\(versionNumber) using \(actualModelName) \(versionInfo)\(TerminalColor.reset)")
                 if let sessionId = sessionId {
                     print("\(TerminalColor.gray)🔄 Session: \(sessionId.prefix(8))...\(TerminalColor.reset)")
                 }
@@ -454,7 +460,7 @@ struct AgentCommand: AsyncParsableCommand {
             print(result.content)
         } else {
             // Compact/verbose mode - show completion message
-            print("\n\(TerminalColor.green)\(TerminalColor.bold)✅ Task completed\(TerminalColor.reset) \(TerminalColor.gray)(Model: \(result.metadata.modelName))\(TerminalColor.reset)")
+            print("\n\(TerminalColor.green)\(TerminalColor.bold)✅ Task completed\(TerminalColor.reset)")
             if !result.content.isEmpty {
                 print(result.content)
             }

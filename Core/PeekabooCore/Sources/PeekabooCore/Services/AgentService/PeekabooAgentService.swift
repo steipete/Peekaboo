@@ -166,9 +166,12 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                         ])
                     }
                     
-                    let debugMsg = "DEBUG PeekabooAgentService: Model '\(modelName)' -> API Type: \(params["apiType"]?.value ?? "nil")"
-                    print(debugMsg)
-                    FileHandle.standardError.write((debugMsg + "\n").data(using: .utf8)!)
+                    // Only log API type debug info in verbose mode
+                    if ProcessInfo.processInfo.arguments.contains("--verbose") || 
+                       ProcessInfo.processInfo.arguments.contains("-v") {
+                        let debugMsg = "DEBUG PeekabooAgentService: Model '\(modelName)' -> API Type: \(params["apiType"]?.value ?? "nil")"
+                        FileHandle.standardError.write((debugMsg + "\n").data(using: .utf8)!)
+                    }
                     
                     return params.isEmpty ? nil : params
                 }()

@@ -24,15 +24,18 @@ fileprivate func aiDebugPrint(_ message: String) {
 /// Grok model implementation using OpenAI-compatible Chat Completions API
 public final class GrokModel: ModelInterface {
     private let apiKey: String
+    private let modelName: String
     private let baseURL: URL
     private let session: URLSession
     
     public init(
         apiKey: String,
+        modelName: String = "grok-4-0709",
         baseURL: URL = URL(string: "https://api.x.ai/v1")!,
         session: URLSession? = nil
     ) {
         self.apiKey = apiKey
+        self.modelName = modelName
         self.baseURL = baseURL
         
         // Create custom session with appropriate timeout
@@ -271,7 +274,7 @@ public final class GrokModel: ModelInterface {
         var presencePenalty = request.settings.presencePenalty
         var stop = request.settings.stopSequences
         
-        if request.settings.modelName.contains("grok-4") || request.settings.modelName.contains("grok-3") {
+        if self.modelName.contains("grok-4") || self.modelName.contains("grok-3") {
             // Grok 3 and 4 models don't support these parameters
             frequencyPenalty = nil
             presencePenalty = nil
@@ -279,7 +282,7 @@ public final class GrokModel: ModelInterface {
         }
         
         return GrokChatCompletionRequest(
-            model: request.settings.modelName,
+            model: self.modelName,
             messages: messages,
             tools: tools,
             toolChoice: convertToolChoice(request.settings.toolChoice),

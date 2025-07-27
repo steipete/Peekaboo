@@ -197,7 +197,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
                              ProcessInfo.processInfo.environment["XAI_API_KEY"] else {
                 throw ModelError.authenticationFailed
             }
-            let model = GrokModel(apiKey: apiKey)
+            let model = GrokModel(apiKey: apiKey, modelName: modelName)
             self.model = model
             return model
         } else {

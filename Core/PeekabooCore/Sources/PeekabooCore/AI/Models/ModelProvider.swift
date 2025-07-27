@@ -290,7 +290,7 @@ public actor ModelProvider {
                     throw ModelError.authenticationFailed
                 }
                 
-                return GrokModel(apiKey: apiKey)
+                return GrokModel(apiKey: apiKey, modelName: modelName)
             }
         }
     }
@@ -530,6 +530,7 @@ extension ModelProvider {
             register(modelName: modelName) {
                 GrokModel(
                     apiKey: config.apiKey,
+                    modelName: modelName,
                     baseURL: config.baseURL ?? URL(string: "https://api.x.ai/v1")!
                 )
             }
