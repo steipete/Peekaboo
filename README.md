@@ -5,7 +5,7 @@
 [![npm version](https://badge.fury.io/js/%40steipete%2Fpeekaboo-mcp.svg)](https://www.npmjs.com/package/@steipete/peekaboo-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/macOS-14.0%2B-blue.svg)](https://www.apple.com/macos/)
-[![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange.svg)](https://swift.org/)
+[![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 
 > 🎉 **NEW in v3**: Complete GUI automation framework with AI Agent! Click, type, scroll, and automate any macOS application using natural language. Plus comprehensive menu bar extraction without clicking! See the [GUI Automation section](#-gui-automation-with-peekaboo-v3) and [AI Agent section](#-ai-agent-automation) for details.
@@ -344,6 +344,14 @@ Add to your Cursor settings:
 11. **`sleep`** - Pause execution
 12. **`clean`** - Clean up session cache
 13. **`window`** - Manipulate application windows (close, minimize, maximize, move, resize, focus)
+14. **`menu`** - Interact with application menus and system menu extras
+15. **`shell`** - Execute shell commands from the agent
+16. **`dialog`** - Handle dialog windows (click buttons, input text)
+17. **`dock`** - Launch apps from dock and manage dock items
+18. **`app`** - Launch and manage applications
+19. **`find_element`** - Advanced element search with accessibility attributes
+20. **`list_elements`** - List all UI elements in the current context
+21. **`focused`** - Get information about the currently focused element
 
 ## 🚀 GUI Automation with Peekaboo v3
 
@@ -1141,8 +1149,8 @@ peekaboo config edit
 
 - macOS 14.0+ (Sonoma or later)
 - Node.js 20.0+ and npm
-- Xcode Command Line Tools (`xcode-select --install`)
-- Swift 5.9+ (included with Xcode)
+- Xcode 16.4+ with Command Line Tools (`xcode-select --install`)
+- Swift 6.0+ (included with Xcode 16.4+)
 
 ### Build Commands
 
@@ -1245,6 +1253,23 @@ When changes are detected, it automatically:
 
 ## 🧪 Testing
 
+### Running Tests
+
+Peekaboo uses Swift Testing framework (Swift 6.0+) for all test suites:
+
+```bash
+# Run all tests
+swift test
+
+# Run specific test target
+swift test --filter PeekabooTests
+
+# Run tests with verbose output
+swift test --verbose
+```
+
+### Testing the CLI
+
 ```bash
 # Test CLI directly
 peekaboo list server_status
@@ -1306,5 +1331,3 @@ Created by [Peter Steinberger](https://steipete.com) - [@steipete](https://githu
 - The Swift and TypeScript communities
 
 ---
-
-**Note**: This is Peekaboo v3.0, which introduces GUI automation and AI agent capabilities. Configuration has moved from `~/.config/peekaboo/` to `~/.peekaboo/` for better discoverability. Migration happens automatically on first run. For full upgrade details, see the [CHANGELOG](./CHANGELOG.md).
