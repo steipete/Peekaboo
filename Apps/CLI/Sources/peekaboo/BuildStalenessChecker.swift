@@ -190,6 +190,10 @@ private func getGitRepositoryRoot() -> String? {
         
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Check if output is empty after trimming
+        guard let output = output, !output.isEmpty else {
+            return nil
+        }
         return output
     } catch {
         return nil
