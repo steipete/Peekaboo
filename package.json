@@ -36,7 +36,10 @@
     "poltergeist:stop": "./scripts/poltergeist.sh stop",
     "poltergeist:rest": "./scripts/poltergeist.sh rest",
     "poltergeist:status": "./scripts/poltergeist.sh status",
-    "poltergeist:logs": "./scripts/poltergeist.sh logs"
+    "poltergeist:logs": "./scripts/poltergeist.sh logs",
+    "mcp:build": "cd Server && npm run build:all",
+    "mcp:publish": "cd Server && npm publish",
+    "mcp:publish:beta": "cd Server && npm publish --tag beta"
   },
   "repository": {
     "type": "git",

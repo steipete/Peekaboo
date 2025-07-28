@@ -106,9 +106,48 @@ Based on `list-tools` inspection:
 - ⚠️ **see** - Requires valid window target
 - ⚠️ **analyze** - Requires AI provider environment setup
 
+## Critical Bugs Found
+
+### See Tool Data Format Mismatch ❌
+Testing the `see` tool revealed a critical data format incompatibility:
+
+**Error**: `Cannot read properties of undefined (reading 'x')`
+
+**Root Cause**: 
+- CLI returns UI elements with `frame` property as `[[x,y], [width,height]]` array format
+- MCP tool expects `bounds` property as `{x, y, width, height}` object format
+
+**Example of CLI output** (from `/Users/steipete/.peekaboo/session/[ID]/map.json`):
+```json
+{
+  "frame": [[0, 0], [1920, 1243]],
+  "isActionable": false,
+  "label": "scroll area",
+  "role": "AXUnknown"
+}
+```
+
+**Expected by MCP tool**:
+```json
+{
+  "bounds": {
+    "x": 0,
+    "y": 0,
+    "width": 1920,
+    "height": 1243
+  },
+  "is_actionable": false,
+  "label": "scroll area",
+  "role": "AXUnknown"
+}
+```
+
+This bug prevents the see tool from working through the MCP interface.
+
 ## Next Steps
 
-1. Fix the CLI command recognition bug (add "analyze" to known commands or document removal)
+1. ~~Fix the CLI command recognition bug (add "analyze" to known commands or document removal)~~ ✅ Reverted - analyze command doesn't exist
 2. Make MCP server read Peekaboo config file for AI providers
-3. Test automation tools (click, type, scroll) with proper targets
-4. Test error handling scenarios
+3. **PRIORITY**: Fix see tool data format transformation in MCP handler
+4. Test automation tools (click, type, scroll) with proper targets
+5. Test error handling scenarios
