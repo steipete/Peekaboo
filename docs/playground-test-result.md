@@ -101,7 +101,7 @@ USAGE: peekaboo click [<query>] [--session <session>] [--on <on>] [--coords <coo
 
 **Parameter Observations**:
 - The `<query>` is a positional argument for text search
-- `--on` is for specific element IDs (e.g., B1, T2) from the UI map
+- `--on` or `--id` are for specific element IDs (e.g., B1, T2) from the UI map
 - This is actually correct design, but could benefit from clearer help text
 
 **Source Code Review**: 

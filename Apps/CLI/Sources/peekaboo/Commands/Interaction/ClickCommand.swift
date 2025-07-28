@@ -41,6 +41,9 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
     @Option(help: "Element ID to click (e.g., B1, T2)")
     var on: String?
     
+    @Option(name: .customLong("id"), help: "Element ID to click (alias for --on)")
+    var id: String?
+    
     @Option(help: "Application name to focus before clicking")
     var app: String?
 
@@ -86,16 +89,14 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                 activeSessionId = "" // Not needed for coordinate clicks
                 
             } else {
-                // For element-based clicks, we need a session
+                // For element-based clicks, try to get a session but allow fallback
                 let sessionId: String? = if let providedSession = session {
                     providedSession
                 } else {
                     await PeekabooServices.shared.sessions.getMostRecentSession()
                 }
-                guard let foundSessionId = sessionId else {
-                    throw PeekabooError.sessionNotFound("No session found")
-                }
-                activeSessionId = foundSessionId
+                // Use session if available, otherwise use empty string to indicate no session
+                activeSessionId = sessionId ?? ""
                 
                 // If app is specified, focus it first
                 if let appName = app {
@@ -111,13 +112,21 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     options: focusOptions
                 )
                 
-                if let elementId = on {
+                // Check if both --on and --id are specified
+                if on != nil && id != nil {
+                    throw ArgumentParser.ValidationError("Cannot specify both --on and --id")
+                }
+                
+                // Use whichever element ID parameter was provided
+                let elementId = on ?? id
+                
+                if let elementId = elementId {
                     // Click by element ID with auto-wait
                     clickTarget = .elementId(elementId)
                     waitResult = try await PeekabooServices.shared.automation.waitForElement(
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
-                        sessionId: activeSessionId)
+                        sessionId: activeSessionId.isEmpty ? nil : activeSessionId)
 
                     if !waitResult.found {
                         throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
@@ -129,7 +138,7 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     waitResult = try await PeekabooServices.shared.automation.waitForElement(
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
-                        sessionId: activeSessionId)
+                        sessionId: activeSessionId.isEmpty ? nil : activeSessionId)
 
                     if !waitResult.found {
                         throw PeekabooError.elementNotFound(
@@ -137,7 +146,7 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     }
 
                 } else {
-                    throw ArgumentParser.ValidationError("Specify an element query, --on, or --coords")
+                    throw ArgumentParser.ValidationError("Specify an element query, --on/--id, or --coords")
                 }
             }
 
@@ -156,7 +165,7 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                 try await PeekabooServices.shared.automation.click(
                     target: clickTarget,
                     clickType: clickType,
-                    sessionId: activeSessionId)
+                    sessionId: activeSessionId.isEmpty ? nil : activeSessionId)
             }
 
             // Brief delay to ensure click is processed

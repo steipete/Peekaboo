@@ -102,12 +102,12 @@ public final class ClickService: Sendable {
     private func findElementByQuery(_ query: String) -> Element? {
         let queryLower = query.lowercased()
         
-        // Search in frontmost application first
-        guard let frontApp = NSWorkspace.shared.frontmostApplication else {
+        // Find the application at the mouse position
+        guard let app = MouseLocationUtilities.findApplicationAtMouseLocation() else {
             return nil
         }
         
-        let axApp = AXUIElementCreateApplication(frontApp.processIdentifier)
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
         let appElement = Element(axApp)
         
         // Search recursively
