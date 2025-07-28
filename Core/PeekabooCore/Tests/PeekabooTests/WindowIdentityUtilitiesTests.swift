@@ -12,9 +12,9 @@ struct WindowIdentityUtilitiesTests {
     @Test("WindowIdentityService initialization")
     @MainActor
     func windowIdentityServiceInit() {
-        let service = WindowIdentityService()
+        let _ = WindowIdentityService()
         // Should initialize without crashing
-        #expect(service != nil)
+        // Service is non-optional, so it will always be created
     }
     
     @Test("getWindowID from nil element returns nil")
@@ -194,7 +194,7 @@ struct WindowIdentityUtilitiesTests {
     @MainActor
     func getWindowInfoRealWindow() async throws {
         let identityService = WindowIdentityService()
-        let windowService = WindowService()
+        let windowService = WindowManagementService()
         
         // Try to find any window
         let windows = try await windowService.listWindows(

@@ -520,6 +520,8 @@ PEEKABOO_AI_PROVIDERS="ollama/llama" ./scripts/peekaboo-wait.sh agent "your task
 
 - **Always use AXorcist APIs** rather than raw accessibility APIs
 - **We can modify AXorcist** - Enhance the library directly when needed
+- **You are encouraged to improve AXorcist** - When you encounter missing functionality (like `element.label()` not being available), add it to AXorcist rather than working around it
+- **Move generic functionality to AXorcist** - If you have functionality in PeekabooCore that is generic enough to be useful for any accessibility automation, move it to AXorcist
 - Use `Element` wrapper, typed attributes, and enum-based actions
 - All Element methods are `@MainActor`
 

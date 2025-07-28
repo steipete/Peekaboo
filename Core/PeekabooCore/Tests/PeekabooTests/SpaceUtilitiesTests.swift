@@ -14,13 +14,17 @@ struct SpaceUtilitiesTests {
             id: 12345,
             type: .user,
             isActive: true,
-            displayID: 1
+            displayID: 1,
+            name: "Desktop 1",
+            ownerPIDs: [1234, 5678]
         )
         
         #expect(spaceInfo.id == 12345)
         #expect(spaceInfo.type == .user)
         #expect(spaceInfo.isActive == true)
         #expect(spaceInfo.displayID == 1)
+        #expect(spaceInfo.name == "Desktop 1")
+        #expect(spaceInfo.ownerPIDs == [1234, 5678])
     }
     
     @Test("SpaceInfo.SpaceType values")
@@ -38,9 +42,9 @@ struct SpaceUtilitiesTests {
     @Test("SpaceManagementService initialization")
     @MainActor
     func spaceServiceInit() {
-        let service = SpaceManagementService()
+        let _ = SpaceManagementService()
         // Should initialize without crashing
-        #expect(service != nil)
+        // Service is non-optional, so it will always be created
     }
     
     @Test("getAllSpaces returns at least one Space")
@@ -55,7 +59,7 @@ struct SpaceUtilitiesTests {
         // Check that returned spaces have valid IDs
         for space in spaces {
             #expect(space.id > 0)
-            #expect(space.type != nil)
+            #expect(space.type != .unknown)
         }
     }
     
@@ -68,7 +72,7 @@ struct SpaceUtilitiesTests {
         if let space = currentSpace {
             #expect(space.id > 0)
             #expect(space.isActive == true)
-            #expect(space.type != nil)
+            #expect(space.type != .unknown)
         } else {
             // In some test environments, this might return nil
             // but in normal macOS environment it should return a Space
@@ -91,9 +95,9 @@ struct SpaceUtilitiesTests {
         let service = SpaceManagementService()
         
         // Try to find a Finder window
-        let windowService = WindowService()
+        let windowService = WindowManagementService()
         let windows = try await windowService.listWindows(
-            target: .application(ApplicationTarget(identifier: "Finder"))
+            target: .application("Finder")
         )
         
         if let firstWindow = windows.first,

@@ -126,6 +126,12 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
     /// Window index within the application (0 = frontmost)
     public let index: Int
     
+    /// Space (virtual desktop) ID this window belongs to
+    public let spaceID: UInt64?
+    
+    /// Human-readable name of the Space (if available)
+    public let spaceName: String?
+    
     public init(
         windowID: Int,
         title: String,
@@ -134,7 +140,9 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
         isMainWindow: Bool = false,
         windowLevel: Int = 0,
         alpha: CGFloat = 1.0,
-        index: Int = 0
+        index: Int = 0,
+        spaceID: UInt64? = nil,
+        spaceName: String? = nil
     ) {
         self.windowID = windowID
         self.title = title
@@ -144,5 +152,7 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
         self.windowLevel = windowLevel
         self.alpha = alpha
         self.index = index
+        self.spaceID = spaceID
+        self.spaceName = spaceName
     }
 }

@@ -51,7 +51,7 @@ public func extractTextFromElementNonRecursive(_ element: Element) -> String? {
     if let description = element.descriptionText(), !description.isEmpty { return description }
 
     // Fallback to a broader set if primary ones fail
-    // if let placeholder = element.placeholderValue(), !placeholder.isEmpty { return placeholder }
+    if let placeholder = element.placeholderValue(), !placeholder.isEmpty { return placeholder }
     if let help = element.help(), !help.isEmpty { return help }
 
     // Consider role description as a last resort if it's textual and meaningful
@@ -83,9 +83,9 @@ func getElementTextualContent(
         textPieces.append(value)
     }
     if let description: String = element.attribute(Attribute<String>.description) { textPieces.append(description) }
-    // if let placeholder: String = element.attribute(Attribute<String>.placeholderValue) {
-    //     textPieces.append(placeholder)
-    // }
+    if let placeholder: String = element.attribute(Attribute<String>.placeholderValue) {
+        textPieces.append(placeholder)
+    }
     // Less common but potentially useful
     // if let help: String = element.attribute(Attribute.help) { textPieces.append(help) }
     // if let selectedText: String = element.attribute(Attribute.selectedText) { textPieces.append(selectedText) }

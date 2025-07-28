@@ -54,9 +54,9 @@ struct FocusUtilitiesTests {
     @Test("FocusManagementService initialization")
     @MainActor
     func focusServiceInit() {
-        let service = FocusManagementService()
+        let _ = FocusManagementService()
         // Should initialize without crashing
-        #expect(service != nil)
+        // Service is non-optional, so it will always be created
     }
     
     @Test("FocusOptions struct initialization")
@@ -150,16 +150,9 @@ struct FocusSessionIntegrationTests {
     @Test("Session stores window ID")
     func sessionWindowID() {
         var session = UIAutomationSession(
-            id: "test-123",
-            createdAt: Date(),
             version: UIAutomationSession.currentVersion,
-            application: ApplicationInfo(
-                bundleIdentifier: "com.test.app",
-                name: "TestApp",
-                processIdentifier: 1234
-            ),
-            screenshot: Data(),
-            elements: []
+            applicationName: "TestApp",
+            windowTitle: "Test Window"
         )
         
         #expect(session.windowID == nil)
@@ -181,16 +174,10 @@ struct FocusSessionIntegrationTests {
     @Test("Session encoding with window info")
     func sessionEncodingWithWindow() throws {
         let session = UIAutomationSession(
-            id: "test-456",
-            createdAt: Date(),
             version: UIAutomationSession.currentVersion,
-            application: ApplicationInfo(
-                bundleIdentifier: "com.test.app",
-                name: "TestApp",
-                processIdentifier: 5678
-            ),
-            screenshot: Data(),
-            elements: [],
+            applicationName: "TestApp",
+            windowTitle: "Test Window",
+            windowBounds: CGRect(x: 100, y: 100, width: 800, height: 600),
             windowID: 99999,
             windowAXIdentifier: "window-ax-id",
             lastFocusTime: Date()

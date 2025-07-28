@@ -521,6 +521,9 @@ struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
     
+    @Flag(name: .long, help: "Group windows by Space (virtual desktop)")
+    var groupBySpace = false
+    
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
         
@@ -559,13 +562,55 @@ struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
             
             output(data) {
                 print("\(data.target_application_info.app_name) has \(data.windows.count) window(s):")
-                for window in data.windows {
-                    let index = window.window_index ?? 0
-                    let status = (window.is_on_screen == false) ? " [minimized]" : ""
-                    print("  [\(index)] \"\(window.window_title)\"\(status)")
-                    if let bounds = window.bounds {
-                        print("       Position: (\(bounds.x), \(bounds.y))")
-                        print("       Size: \(bounds.width)x\(bounds.height)")
+                
+                if self.groupBySpace {
+                    // Group windows by space
+                    var windowsBySpace: [UInt64?: [(window: ServiceWindowInfo, index: Int)]] = [:]
+                    
+                    for (index, window) in windows.enumerated() {
+                        let spaceID = window.spaceID
+                        if windowsBySpace[spaceID] == nil {
+                            windowsBySpace[spaceID] = []
+                        }
+                        windowsBySpace[spaceID]?.append((window, index))
+                    }
+                    
+                    // Sort spaces by ID (nil first for windows not on any space)
+                    let sortedSpaces = windowsBySpace.keys.sorted { (a, b) in
+                        switch (a, b) {
+                        case (nil, nil): return false
+                        case (nil, _): return true
+                        case (_, nil): return false
+                        case let (a?, b?): return a < b
+                        }
+                    }
+                    
+                    // Print grouped windows
+                    for spaceID in sortedSpaces {
+                        if let spaceID = spaceID {
+                            let spaceName = windowsBySpace[spaceID]?.first?.window.spaceName ?? "Space \(spaceID)"
+                            print("\n  Space: \(spaceName) [ID: \(spaceID)]")
+                        } else {
+                            print("\n  No Space:")
+                        }
+                        
+                        for (window, index) in windowsBySpace[spaceID] ?? [] {
+                            let status = window.isMinimized ? " [minimized]" : ""
+                            print("    [\(index)] \"\(window.title)\"\(status)")
+                            print("         Position: (\(Int(window.bounds.origin.x)), \(Int(window.bounds.origin.y)))")
+                            print("         Size: \(Int(window.bounds.size.width))x\(Int(window.bounds.size.height))")
+                        }
+                    }
+                } else {
+                    // Original flat list
+                    for window in data.windows {
+                        let index = window.window_index ?? 0
+                        let status = (window.is_on_screen == false) ? " [minimized]" : ""
+                        print("  [\(index)] \"\(window.window_title)\"\(status)")
+                        if let bounds = window.bounds {
+                            print("       Position: (\(bounds.x), \(bounds.y))")
+                            print("       Size: \(bounds.width)x\(bounds.height)")
+                        }
                     }
                 }
             }

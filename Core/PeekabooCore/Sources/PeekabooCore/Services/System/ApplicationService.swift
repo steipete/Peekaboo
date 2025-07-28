@@ -88,27 +88,29 @@ public final class ApplicationService: ApplicationServiceProtocol {
         throw NotFoundError.application(identifier)
     }
     
+    @MainActor
     public func listWindows(for appIdentifier: String) async throws -> [ServiceWindowInfo] {
         logger.info("Listing windows for application: \(appIdentifier)")
         let app = try await findApplication(identifier: appIdentifier)
         
-        return await MainActor.run {
-            // Get AX element for the application
-            let axApp = AXUIElementCreateApplication(app.processIdentifier)
-            let appElement = Element(axApp)
-            
-            // Get windows
-            guard let axWindows = appElement.windows() else {
-                return []
-            }
-            
-            let windows = axWindows.enumerated().compactMap { index, window in
-                self.createWindowInfo(from: window, index: index)
-            }
-            
-            self.logger.debug("Found \(windows.count) windows for \(app.name)")
-            return windows
+        // Get AX element for the application
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        
+        // Get windows
+        guard let axWindows = appElement.windows() else {
+            return []
         }
+        
+        var windows: [ServiceWindowInfo] = []
+        for (index, window) in axWindows.enumerated() {
+            if let windowInfo = await createWindowInfo(from: window, index: index) {
+                windows.append(windowInfo)
+            }
+        }
+        
+        logger.debug("Found \(windows.count) windows for \(app.name)")
+        return windows
     }
     
     public func getFrontmostApplication() async throws -> ServiceApplicationInfo {
@@ -341,7 +343,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
     }
     
     @MainActor
-    private func createWindowInfo(from window: Element, index: Int) -> ServiceWindowInfo? {
+    private func createWindowInfo(from window: Element, index: Int) async -> ServiceWindowInfo? {
         guard let title = window.title() else { return nil }
         
         let position = window.position() ?? .zero
@@ -355,14 +357,32 @@ public final class ApplicationService: ApplicationServiceProtocol {
         let windowIdentityService = WindowIdentityService()
         let windowID = windowIdentityService.getWindowID(from: window) ?? CGWindowID(index)
         
+        // Get space information for the window
+        let (spaceID, spaceName) = getSpaceInfo(for: windowID)
+        
         return ServiceWindowInfo(
             windowID: Int(windowID), // Convert CGWindowID to Int
             title: title,
             bounds: bounds,
             isMinimized: isMinimized,
             isMainWindow: isMain,
-            index: index
+            index: index,
+            spaceID: spaceID,
+            spaceName: spaceName
         )
+    }
+    
+    @MainActor
+    private func getSpaceInfo(for windowID: CGWindowID) -> (spaceID: UInt64?, spaceName: String?) {
+        let spaceService = SpaceManagementService()
+        let spaces = spaceService.getSpacesForWindow(windowID: windowID)
+        
+        // Return the first space the window is on (windows can technically be on multiple spaces)
+        if let firstSpace = spaces.first {
+            return (firstSpace.id, firstSpace.name)
+        }
+        
+        return (nil, nil)
     }
     
     private func getWindowCount(for app: NSRunningApplication) -> Int {
