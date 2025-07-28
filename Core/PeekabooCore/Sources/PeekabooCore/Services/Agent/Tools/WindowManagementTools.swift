@@ -23,21 +23,54 @@ extension PeekabooAgentService {
             handler: { params, context in
                 let appFilter = params.string("app", default: nil)
                 
-                // Get all windows from all applications
-                let apps = try await context.applications.listApplications()
                 var windows: [ServiceWindowInfo] = []
-                for app in apps {
-                    let appWindows = try await context.windows.listWindows(target: .application(app.name))
-                    windows.append(contentsOf: appWindows)
-                }
                 
-                // Apply app filter if specified
                 if let appFilter = appFilter {
-                    // Filter by getting windows from specific app only
-                    windows = []
+                    // If app filter is specified, only get windows from that app
+                    let apps = try await context.applications.listApplications()
                     if let targetApp = apps.first(where: { $0.name.lowercased().contains(appFilter.lowercased()) }) {
-                        let appWindows = try await context.windows.listWindows(target: .application(targetApp.name))
-                        windows = appWindows
+                        windows = try await context.windows.listWindows(target: .application(targetApp.name))
+                    }
+                } else {
+                    // For all windows, use a more efficient approach
+                    // Get only visible apps (those with windows)
+                    let apps = try await context.applications.listApplications()
+                    
+                    // Use concurrent processing with a timeout for each app
+                    await withTaskGroup(of: [ServiceWindowInfo]?.self) { group in
+                        for app in apps {
+                            group.addTask {
+                                do {
+                                    // Add a short timeout per app to prevent hanging
+                                    return try await withThrowingTaskGroup(of: [ServiceWindowInfo].self) { timeoutGroup in
+                                        timeoutGroup.addTask {
+                                            try await context.windows.listWindows(target: .application(app.name))
+                                        }
+                                        timeoutGroup.addTask {
+                                            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 second timeout per app
+                                            return []
+                                        }
+                                        
+                                        // Return first result
+                                        if let result = try await timeoutGroup.next() {
+                                            timeoutGroup.cancelAll()
+                                            return result
+                                        }
+                                        return []
+                                    }
+                                } catch {
+                                    // If an app fails, skip it
+                                    return nil
+                                }
+                            }
+                        }
+                        
+                        // Collect results
+                        for await appWindows in group {
+                            if let appWindows = appWindows {
+                                windows.append(contentsOf: appWindows)
+                            }
+                        }
                     }
                 }
                 
@@ -108,12 +141,51 @@ extension PeekabooAgentService {
                     }
                 }
                 
-                // Get all windows from all applications
-                let apps = try await context.applications.listApplications()
+                // Get windows more efficiently based on search criteria
                 var windows: [ServiceWindowInfo] = []
-                for app in apps {
-                    let appWindows = try await context.windows.listWindows(target: .application(app.name))
-                    windows.append(contentsOf: appWindows)
+                
+                if let appName = appName {
+                    // If app is specified, only search that app
+                    windows = try await context.windows.listWindows(target: .application(appName))
+                } else if let title = title {
+                    // If only title is specified, use title-based search
+                    windows = try await context.windows.listWindows(target: .title(title))
+                } else {
+                    // Only window ID specified - need to search all apps
+                    let apps = try await context.applications.listApplications()
+                    
+                    // Use concurrent search with timeout
+                    await withTaskGroup(of: [ServiceWindowInfo]?.self) { group in
+                        for app in apps {
+                            group.addTask {
+                                do {
+                                    return try await withThrowingTaskGroup(of: [ServiceWindowInfo].self) { timeoutGroup in
+                                        timeoutGroup.addTask {
+                                            try await context.windows.listWindows(target: .application(app.name))
+                                        }
+                                        timeoutGroup.addTask {
+                                            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second timeout
+                                            return []
+                                        }
+                                        
+                                        if let result = try await timeoutGroup.next() {
+                                            timeoutGroup.cancelAll()
+                                            return result
+                                        }
+                                        return []
+                                    }
+                                } catch {
+                                    return nil
+                                }
+                            }
+                        }
+                        
+                        for await appWindows in group {
+                            if let appWindows = appWindows {
+                                windows.append(contentsOf: appWindows)
+                            }
+                        }
+                    }
                 }
                 
                 // Find the target window
@@ -185,13 +257,50 @@ extension PeekabooAgentService {
                     throw PeekabooError.invalidInput("Either 'title' or 'app' must be provided")
                 }
                 
-                // Find the window
-                // Get all windows from all applications
-                let apps = try await context.applications.listApplications()
+                // Find the window efficiently
                 var windows: [ServiceWindowInfo] = []
-                for app in apps {
-                    let appWindows = try await context.windows.listWindows(target: .application(app.name))
-                    windows.append(contentsOf: appWindows)
+                
+                if let appName = appName {
+                    // If app is specified, only search that app
+                    windows = try await context.windows.listWindows(target: .application(appName))
+                } else if let title = title {
+                    // If only title is specified, use title-based search
+                    windows = try await context.windows.listWindows(target: .title(title))
+                } else {
+                    // Need to search all apps - use concurrent search with timeout
+                    let apps = try await context.applications.listApplications()
+                    
+                    await withTaskGroup(of: [ServiceWindowInfo]?.self) { group in
+                        for app in apps {
+                            group.addTask {
+                                do {
+                                    return try await withThrowingTaskGroup(of: [ServiceWindowInfo].self) { timeoutGroup in
+                                        timeoutGroup.addTask {
+                                            try await context.windows.listWindows(target: .application(app.name))
+                                        }
+                                        timeoutGroup.addTask {
+                                            try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second timeout
+                                            return []
+                                        }
+                                        
+                                        if let result = try await timeoutGroup.next() {
+                                            timeoutGroup.cancelAll()
+                                            return result
+                                        }
+                                        return []
+                                    }
+                                } catch {
+                                    return nil
+                                }
+                            }
+                        }
+                        
+                        for await appWindows in group {
+                            if let appWindows = appWindows {
+                                windows.append(contentsOf: appWindows)
+                            }
+                        }
+                    }
                 }
                 guard let window = windows.first(where: { window in
                     var matches = true
