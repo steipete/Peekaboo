@@ -39,12 +39,12 @@ struct ClickServiceTests {
         let mockElement = DetectedElement(
             id: "test-button",
             type: .button,
-            bounds: CGRect(x: 50, y: 50, width: 100, height: 50),
             label: "Test Button",
             value: nil,
-            level: 0,
+            bounds: CGRect(x: 50, y: 50, width: 100, height: 50),
             isEnabled: true,
-            keyboardShortcut: nil
+            isSelected: nil,
+            attributes: [:]
         )
         
         let detectedElements = DetectedElements(
@@ -126,12 +126,12 @@ struct ClickServiceTests {
         let mockElement = DetectedElement(
             id: "submit-btn",
             type: .button,
-            bounds: CGRect(x: 100, y: 100, width: 80, height: 40),
             label: "Submit Form",
             value: nil,
-            level: 0,
+            bounds: CGRect(x: 100, y: 100, width: 80, height: 40),
             isEnabled: true,
-            keyboardShortcut: nil
+            isSelected: nil,
+            attributes: [:]
         )
         
         let detectedElements = DetectedElements(
@@ -198,5 +198,31 @@ private final class MockSessionManager: SessionManagerProtocol {
     
     func cleanAllSessions() async throws -> Int {
         return 0
+    }
+    
+    nonisolated func getSessionStoragePath() -> String {
+        return "/tmp/test-sessions"
+    }
+    
+    func storeScreenshot(
+        sessionId: String,
+        screenshotPath: String,
+        applicationName: String?,
+        windowTitle: String?,
+        windowBounds: CGRect?
+    ) async throws {
+        // No-op for tests
+    }
+    
+    func getElement(sessionId: String, elementId: String) async throws -> UIElement? {
+        return nil
+    }
+    
+    func findElements(sessionId: String, matching query: String) async throws -> [UIElement] {
+        return []
+    }
+    
+    func getUIAutomationSession(sessionId: String) async throws -> UIAutomationSession? {
+        return nil
     }
 }

@@ -18,14 +18,14 @@ struct HotkeyServiceTests {
         let service = HotkeyService()
         
         // Test common single-modifier hotkeys
-        try await service.pressHotkey(key: .a, modifiers: [.command])  // Cmd+A
-        try await service.pressHotkey(key: .c, modifiers: [.command])  // Cmd+C
-        try await service.pressHotkey(key: .v, modifiers: [.command])  // Cmd+V
-        try await service.pressHotkey(key: .z, modifiers: [.command])  // Cmd+Z
-        try await service.pressHotkey(key: .s, modifiers: [.command])  // Cmd+S
+        try await service.hotkey(keys: "cmd+a", holdDuration: 100)  // Cmd+A
+        try await service.hotkey(keys: "cmd+c", holdDuration: 100)  // Cmd+C
+        try await service.hotkey(keys: "cmd+v", holdDuration: 100)  // Cmd+V
+        try await service.hotkey(keys: "cmd+z", holdDuration: 100)  // Cmd+Z
+        try await service.hotkey(keys: "cmd+s", holdDuration: 100)  // Cmd+S
         
-        try await service.pressHotkey(key: .a, modifiers: [.control])  // Ctrl+A
-        try await service.pressHotkey(key: .tab, modifiers: [.option]) // Option+Tab
+        try await service.hotkey(keys: "ctrl+a", holdDuration: 100)  // Ctrl+A
+        try await service.hotkey(keys: "opt+tab", holdDuration: 100) // Option+Tab
     }
     
     @Test("Press multiple modifier hotkeys")
@@ -33,13 +33,13 @@ struct HotkeyServiceTests {
         let service = HotkeyService()
         
         // Test multiple modifier combinations
-        try await service.pressHotkey(key: .z, modifiers: [.command, .shift])      // Cmd+Shift+Z (Redo)
-        try await service.pressHotkey(key: .s, modifiers: [.command, .option])     // Cmd+Option+S
-        try await service.pressHotkey(key: .i, modifiers: [.command, .option])     // Cmd+Option+I (Dev Tools)
-        try await service.pressHotkey(key: .f, modifiers: [.control, .command])    // Ctrl+Cmd+F (Fullscreen)
+        try await service.hotkey(keys: "cmd+shift+z", holdDuration: 100)      // Cmd+Shift+Z (Redo)
+        try await service.hotkey(keys: "cmd+opt+s", holdDuration: 100)        // Cmd+Option+S
+        try await service.hotkey(keys: "cmd+opt+i", holdDuration: 100)        // Cmd+Option+I (Dev Tools)
+        try await service.hotkey(keys: "ctrl+cmd+f", holdDuration: 100)       // Ctrl+Cmd+F (Fullscreen)
         
         // Test triple modifier
-        try await service.pressHotkey(key: .delete, modifiers: [.command, .option, .shift])
+        try await service.hotkey(keys: "cmd+opt+shift+delete", holdDuration: 100)
     }
     
     @Test("Press function keys")
@@ -47,14 +47,14 @@ struct HotkeyServiceTests {
         let service = HotkeyService()
         
         // Test function keys
-        try await service.pressHotkey(key: .f1, modifiers: [])
-        try await service.pressHotkey(key: .f2, modifiers: [])
-        try await service.pressHotkey(key: .f3, modifiers: [])
-        try await service.pressHotkey(key: .f12, modifiers: [])
+        try await service.hotkey(keys: "f1", holdDuration: 100)
+        try await service.hotkey(keys: "f2", holdDuration: 100)
+        try await service.hotkey(keys: "f3", holdDuration: 100)
+        try await service.hotkey(keys: "f12", holdDuration: 100)
         
         // Function keys with modifiers
-        try await service.pressHotkey(key: .f11, modifiers: [.command])  // Show Desktop
-        try await service.pressHotkey(key: .f3, modifiers: [.control])   // Mission Control
+        try await service.hotkey(keys: "cmd+f11", holdDuration: 100)  // Show Desktop
+        try await service.hotkey(keys: "ctrl+f3", holdDuration: 100)  // Mission Control
     }
     
     @Test("Press navigation keys")
@@ -62,14 +62,14 @@ struct HotkeyServiceTests {
         let service = HotkeyService()
         
         // Test arrow keys with modifiers
-        try await service.pressHotkey(key: .rightArrow, modifiers: [.command])  // End of line
-        try await service.pressHotkey(key: .leftArrow, modifiers: [.command])   // Beginning of line
-        try await service.pressHotkey(key: .upArrow, modifiers: [.command])     // Top of document
-        try await service.pressHotkey(key: .downArrow, modifiers: [.command])   // Bottom of document
+        try await service.hotkey(keys: "cmd+right", holdDuration: 100)  // End of line
+        try await service.hotkey(keys: "cmd+left", holdDuration: 100)   // Beginning of line
+        try await service.hotkey(keys: "cmd+up", holdDuration: 100)     // Top of document
+        try await service.hotkey(keys: "cmd+down", holdDuration: 100)   // Bottom of document
         
         // Word navigation
-        try await service.pressHotkey(key: .rightArrow, modifiers: [.option])
-        try await service.pressHotkey(key: .leftArrow, modifiers: [.option])
+        try await service.hotkey(keys: "opt+right", holdDuration: 100)
+        try await service.hotkey(keys: "opt+left", holdDuration: 100)
     }
     
     @Test("Press special keys")
@@ -77,17 +77,16 @@ struct HotkeyServiceTests {
         let service = HotkeyService()
         
         // Test special keys
-        try await service.pressHotkey(key: .return, modifiers: [])
-        try await service.pressHotkey(key: .space, modifiers: [])
-        try await service.pressHotkey(key: .tab, modifiers: [])
-        try await service.pressHotkey(key: .escape, modifiers: [])
-        try await service.pressHotkey(key: .delete, modifiers: [])
-        try await service.pressHotkey(key: .forwardDelete, modifiers: [])
+        try await service.hotkey(keys: "return", holdDuration: 100)
+        try await service.hotkey(keys: "space", holdDuration: 100)
+        try await service.hotkey(keys: "tab", holdDuration: 100)
+        try await service.hotkey(keys: "escape", holdDuration: 100)
+        try await service.hotkey(keys: "delete", holdDuration: 100)
         
         // Special keys with modifiers
-        try await service.pressHotkey(key: .return, modifiers: [.command])      // Send (in messaging apps)
-        try await service.pressHotkey(key: .space, modifiers: [.command])       // Spotlight
-        try await service.pressHotkey(key: .tab, modifiers: [.command])         // App switcher
+        try await service.hotkey(keys: "cmd+return", holdDuration: 100)    // Send (in messaging apps)
+        try await service.hotkey(keys: "cmd+space", holdDuration: 100)     // Spotlight
+        try await service.hotkey(keys: "cmd+tab", holdDuration: 100)       // App switcher
     }
     
     @Test("Common application hotkeys")
@@ -95,14 +94,14 @@ struct HotkeyServiceTests {
         let service = HotkeyService()
         
         // Test common application hotkeys
-        try await service.pressHotkey(key: .n, modifiers: [.command])           // New
-        try await service.pressHotkey(key: .o, modifiers: [.command])           // Open
-        try await service.pressHotkey(key: .w, modifiers: [.command])           // Close
-        try await service.pressHotkey(key: .q, modifiers: [.command])           // Quit
-        try await service.pressHotkey(key: .f, modifiers: [.command])           // Find
-        try await service.pressHotkey(key: .g, modifiers: [.command])           // Find Next
-        try await service.pressHotkey(key: .comma, modifiers: [.command])       // Preferences
-        try await service.pressHotkey(key: .slash, modifiers: [.command])       // Help
+        try await service.hotkey(keys: "cmd+n", holdDuration: 100)         // New
+        try await service.hotkey(keys: "cmd+o", holdDuration: 100)         // Open
+        try await service.hotkey(keys: "cmd+w", holdDuration: 100)         // Close
+        try await service.hotkey(keys: "cmd+q", holdDuration: 100)         // Quit
+        try await service.hotkey(keys: "cmd+f", holdDuration: 100)         // Find
+        try await service.hotkey(keys: "cmd+g", holdDuration: 100)         // Find Next
+        try await service.hotkey(keys: "cmd+comma", holdDuration: 100)     // Preferences
+        try await service.hotkey(keys: "cmd+slash", holdDuration: 100)     // Help
     }
     
     @Test("System hotkeys")
@@ -110,19 +109,25 @@ struct HotkeyServiceTests {
         let service = HotkeyService()
         
         // Test system-level hotkeys (be careful with these in tests)
-        try await service.pressHotkey(key: .h, modifiers: [.command])           // Hide
-        try await service.pressHotkey(key: .m, modifiers: [.command])           // Minimize
-        try await service.pressHotkey(key: .space, modifiers: [.control])       // Switch input source
+        try await service.hotkey(keys: "cmd+h", holdDuration: 100)         // Hide
+        try await service.hotkey(keys: "cmd+m", holdDuration: 100)         // Minimize
+        try await service.hotkey(keys: "ctrl+space", holdDuration: 100)    // Switch input source
     }
     
-    @Test("Empty modifiers")
-    func noModifiers() async throws {
+    @Test("Fast key press")
+    func fastKeyPress() async throws {
         let service = HotkeyService()
         
-        // Test keys without any modifiers
-        try await service.pressHotkey(key: .a, modifiers: [])
-        try await service.pressHotkey(key: .space, modifiers: [])
-        try await service.pressHotkey(key: .return, modifiers: [])
+        // Test with minimal hold duration
+        try await service.hotkey(keys: "cmd+a", holdDuration: 10)
+    }
+    
+    @Test("Long key hold")
+    func longKeyHold() async throws {
+        let service = HotkeyService()
+        
+        // Test with longer hold duration
+        try await service.hotkey(keys: "cmd+a", holdDuration: 500)
     }
     
     @Test("All modifiers")
@@ -130,9 +135,20 @@ struct HotkeyServiceTests {
         let service = HotkeyService()
         
         // Test with all modifiers
-        try await service.pressHotkey(
-            key: .a,
-            modifiers: [.command, .option, .control, .shift]
+        try await service.hotkey(
+            keys: "cmd+opt+ctrl+shift+a",
+            holdDuration: 100
         )
+    }
+    
+    @Test("Alternative modifier names")
+    func alternativeModifierNames() async throws {
+        let service = HotkeyService()
+        
+        // Test alternative modifier names
+        try await service.hotkey(keys: "command+a", holdDuration: 100)
+        try await service.hotkey(keys: "option+b", holdDuration: 100)
+        try await service.hotkey(keys: "control+c", holdDuration: 100)
+        try await service.hotkey(keys: "alt+d", holdDuration: 100)
     }
 }

@@ -21,6 +21,8 @@ struct TypeServiceTests {
         try await service.type(
             text: "Hello World",
             target: nil,
+            clearExisting: false,
+            typingDelay: 50,
             sessionId: nil
         )
     }
@@ -34,6 +36,8 @@ struct TypeServiceTests {
         try await service.type(
             text: specialText,
             target: nil,
+            clearExisting: false,
+            typingDelay: 50,
             sessionId: nil
         )
     }
@@ -48,7 +52,9 @@ struct TypeServiceTests {
         do {
             try await service.type(
                 text: "test@example.com",
-                target: .query("email"),
+                target: "email",
+                clearExisting: false,
+                typingDelay: 50,
                 sessionId: nil
             )
         } catch is NotFoundError {
@@ -61,46 +67,65 @@ struct TypeServiceTests {
         let service = TypeService()
         
         // Test clearing before typing
-        try await service.clearAndType(
+        try await service.type(
             text: "New text",
             target: nil,
+            clearExisting: true,
+            typingDelay: 50,
             sessionId: nil
         )
     }
     
-    @Test("Press key")
-    func pressSpecialKey() async throws {
+    @Test("Type actions")
+    func typeActions() async throws {
         let service = TypeService()
         
-        // Test pressing special keys
-        try await service.pressKey(.return)
-        try await service.pressKey(.tab)
-        try await service.pressKey(.escape)
-        try await service.pressKey(.delete)
+        // Test type actions
+        let actions: [TypeAction] = [
+            .text("Hello"),
+            .key(.space),
+            .text("World"),
+            .key(.return),
+            .clear,
+            .text("New line")
+        ]
+        
+        let result = try await service.typeActions(
+            actions,
+            typingDelay: 50,
+            sessionId: nil
+        )
+        
+        #expect(result.totalCharacters > 0)
+        #expect(result.keyPresses > 0)
     }
     
-    @Test("Key combinations")
-    func keyCombinations() async throws {
+    @Test("Type with fast speed")
+    func typeWithFastSpeed() async throws {
         let service = TypeService()
         
-        // Test various key combinations
-        try await service.pressKey(.a, modifiers: [.command])  // Cmd+A
-        try await service.pressKey(.c, modifiers: [.command])  // Cmd+C
-        try await service.pressKey(.v, modifiers: [.command])  // Cmd+V
-        try await service.pressKey(.z, modifiers: [.command, .shift])  // Cmd+Shift+Z
+        // Test typing with no delay
+        try await service.type(
+            text: "Fast typing",
+            target: nil,
+            clearExisting: false,
+            typingDelay: 0,
+            sessionId: nil
+        )
     }
     
-    @Test("Type with delays")
-    func typeWithDelays() async throws {
+    @Test("Type with slow speed")
+    func typeWithSlowSpeed() async throws {
         let service = TypeService()
         
-        // Test typing with character delay
+        // Test typing with delay
         let startTime = Date()
         try await service.type(
             text: "Slow",
             target: nil,
-            sessionId: nil,
-            characterDelay: 100  // 100ms between characters
+            clearExisting: false,
+            typingDelay: 100,  // 100ms between characters
+            sessionId: nil
         )
         let duration = Date().timeIntervalSince(startTime)
         
@@ -116,6 +141,8 @@ struct TypeServiceTests {
         try await service.type(
             text: "",
             target: nil,
+            clearExisting: false,
+            typingDelay: 50,
             sessionId: nil
         )
     }
@@ -138,8 +165,35 @@ struct TypeServiceTests {
             try await service.type(
                 text: text,
                 target: nil,
+                clearExisting: false,
+                typingDelay: 50,
                 sessionId: nil
             )
         }
+    }
+    
+    @Test("Special key actions")
+    func specialKeyActions() async throws {
+        let service = TypeService()
+        
+        // Test special key actions
+        let actions: [TypeAction] = [
+            .key(.tab),
+            .key(.return),
+            .key(.escape),
+            .key(.space),
+            .key(.upArrow),
+            .key(.downArrow),
+            .key(.leftArrow),
+            .key(.rightArrow)
+        ]
+        
+        let result = try await service.typeActions(
+            actions,
+            typingDelay: 50,
+            sessionId: nil
+        )
+        
+        #expect(result.keyPresses == actions.count)
     }
 }
