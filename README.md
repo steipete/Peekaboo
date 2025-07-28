@@ -332,30 +332,35 @@ Add to your Cursor settings:
 
 ### MCP Tools Available
 
-#### Core Tools (v2)
+#### Core Tools
 1. **`image`** - Capture screenshots (with optional AI analysis via question parameter)
-2. **`list`** - List applications, windows, or check status
+2. **`list`** - List applications, windows, or check server status
 3. **`analyze`** - Analyze existing images with AI vision models (MCP-only tool, use `peekaboo image --analyze` in CLI)
 
-#### GUI Automation Tools (v3) 🎉
+#### UI Automation Tools
 4. **`see`** - Capture screen and identify UI elements
 5. **`click`** - Click on UI elements or coordinates
 6. **`type`** - Type text into UI elements
 7. **`scroll`** - Scroll content in any direction
 8. **`hotkey`** - Press keyboard shortcuts
 9. **`swipe`** - Perform swipe/drag gestures
-10. **`run`** - Execute automation scripts
-11. **`sleep`** - Pause execution
-12. **`clean`** - Clean up session cache
-13. **`window`** - Manipulate application windows (close, minimize, maximize, move, resize, focus)
+10. **`move`** - Move mouse cursor to specific position or element
+11. **`drag`** - Perform drag and drop operations
+
+#### Application & Window Management
+12. **`app`** - Launch, quit, focus, hide, and manage applications
+13. **`window`** - Manipulate windows (close, minimize, maximize, move, resize, focus)
 14. **`menu`** - Interact with application menus and system menu extras
-15. **`shell`** - Execute shell commands from the agent
+15. **`dock`** - Launch apps from dock and manage dock items
 16. **`dialog`** - Handle dialog windows (click buttons, input text)
-17. **`dock`** - Launch apps from dock and manage dock items
-18. **`app`** - Launch and manage applications
-19. **`find_element`** - Advanced element search with accessibility attributes
-20. **`list_elements`** - List all UI elements in the current context
-21. **`focused`** - Get information about the currently focused element
+17. **`space`** - Manage macOS Spaces (virtual desktops)
+
+#### Utility Tools
+18. **`run`** - Execute automation scripts from .peekaboo.json files
+19. **`sleep`** - Pause execution for specified duration
+20. **`clean`** - Clean up session cache and temporary files
+21. **`permissions`** - Check system permissions (screen recording, accessibility)
+22. **`agent`** - Execute complex automation tasks using AI
 
 ## 🚀 GUI Automation with Peekaboo v3
 
@@ -516,6 +521,55 @@ await swipe({ from: "50,50", to: "200,200", duration: 2000 })
 
 // Precise movement with more steps
 await swipe({ from: "0,0", to: "100,100", steps: 50 })
+```
+
+### 🖱️ The `move` Tool
+
+Move the mouse cursor to specific positions or UI elements:
+
+```typescript
+// Move to absolute coordinates
+await move({ coordinates: "500,300" })
+
+// Move to center of screen
+await move({ center: true })
+
+// Move to a specific UI element
+await move({ id: "B1" })
+
+// Smooth movement with animation
+await move({ coordinates: "100,200", smooth: true, duration: 1000 })
+```
+
+### 🎯 The `drag` Tool
+
+Perform drag and drop operations between UI elements or coordinates:
+
+```typescript
+// Drag from one element to another
+await drag({ from: "B1", to: "T1" })
+
+// Drag using coordinates
+await drag({ from_coords: "100,100", to_coords: "500,500" })
+
+// Drag with modifiers (e.g., holding shift)
+await drag({ from: "I1", to: "G2", modifiers: "shift" })
+
+// Cross-application drag
+await drag({ from: "T1", to_app: "Finder", to_coords: "300,400" })
+```
+
+### 🔐 The `permissions` Tool
+
+Check macOS system permissions required for automation:
+
+```typescript
+// Check all permissions
+await permissions({})
+
+// Returns permission status for:
+// - Screen Recording (required for screenshots)
+// - Accessibility (required for UI automation)
 ```
 
 ### 📝 The `run` Tool - Automation Scripts
@@ -943,6 +997,68 @@ await menu({ action: "click-extra", title: "WiFi" })
 - **Full Hierarchy** - Discovers all submenus and nested items
 - **Keyboard Shortcuts** - Shows all available keyboard shortcuts
 - **Smart Discovery** - AI agents can use list to discover available options
+
+### 🚀 The `app` Tool
+
+Control applications - launch, quit, focus, hide, and switch between apps:
+
+```typescript
+// Launch an application
+await app({ action: "launch", name: "Safari" })
+
+// Quit an application
+await app({ action: "quit", name: "TextEdit" })
+
+// Force quit
+await app({ action: "quit", name: "Notes", force: true })
+
+// Focus/switch to app
+await app({ action: "focus", name: "Google Chrome" })
+
+// Hide/unhide apps
+await app({ action: "hide", name: "Finder" })
+await app({ action: "unhide", name: "Finder" })
+```
+
+### 🎯 The `dock` Tool
+
+Interact with the macOS Dock:
+
+```typescript
+// List all dock items
+await dock({ action: "list" })
+
+// Launch app from dock
+await dock({ action: "launch", app: "Safari" })
+
+// Right-click on dock item
+await dock({ action: "right-click", app: "Finder" })
+
+// Show/hide dock
+await dock({ action: "hide" })
+await dock({ action: "show" })
+```
+
+### 💬 The `dialog` Tool
+
+Handle system dialogs and alerts:
+
+```typescript
+// List open dialogs
+await dialog({ action: "list" })
+
+// Click dialog button
+await dialog({ action: "click", button: "OK" })
+
+// Input text in dialog field
+await dialog({ action: "input", text: "filename.txt" })
+
+// Select file in open/save dialog
+await dialog({ action: "file", path: "/Users/me/Documents/file.pdf" })
+
+// Dismiss dialog
+await dialog({ action: "dismiss" })
+```
 
 ### 🧹 The `clean` Tool
 
