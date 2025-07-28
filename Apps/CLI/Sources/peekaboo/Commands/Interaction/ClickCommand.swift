@@ -55,6 +55,8 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
+    
+    @OptionGroup var focusOptions: FocusOptions
 
     mutating func run() async throws {
         let startTime = Date()
@@ -91,6 +93,12 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     throw PeekabooError.sessionNotFound("No session found")
                 }
                 activeSessionId = foundSessionId
+                
+                // Ensure window is focused before clicking (if auto-focus is enabled)
+                try await self.ensureFocused(
+                    sessionId: activeSessionId,
+                    options: focusOptions
+                )
                 
                 if let elementId = on {
                     // Click by element ID with auto-wait

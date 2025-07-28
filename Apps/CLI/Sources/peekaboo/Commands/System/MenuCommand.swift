@@ -58,6 +58,8 @@ struct MenuCommand: AsyncParsableCommand {
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
+        
+        @OptionGroup var focusOptions: FocusOptions
 
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
@@ -72,25 +74,37 @@ struct MenuCommand: AsyncParsableCommand {
             }
 
             do {
-                // Construct the menu path
-                let menuPath = self.path ?? self.item!
-
-                // Click the menu item using the service
-                try await PeekabooServices.shared.menu.clickMenuItem(app: self.app, itemPath: menuPath)
+                // Ensure application is focused before menu interaction
+                try await self.ensureFocused(
+                    applicationName: self.app,
+                    options: focusOptions
+                )
+                
+                // If using --item, search recursively; if using --path, use exact path
+                if let itemName = self.item {
+                    // Use recursive search for --item parameter
+                    try await PeekabooServices.shared.menu.clickMenuItemByName(app: self.app, itemName: itemName)
+                } else if let path = self.path {
+                    // Use exact path for --path parameter
+                    try await PeekabooServices.shared.menu.clickMenuItem(app: self.app, itemPath: path)
+                }
 
                 // Get app info for response
                 let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: self.app)
 
+                // Determine what was clicked for output
+                let clickedPath = self.path ?? self.item!
+                
                 // Output result
                 if self.jsonOutput {
                     let data = MenuClickResult(
                         action: "menu_click",
                         app: appInfo.name,
-                        menu_path: menuPath,
-                        clicked_item: menuPath)
+                        menu_path: clickedPath,
+                        clicked_item: clickedPath)
                     outputSuccessCodable(data: data)
                 } else {
-                    print("✓ Clicked menu item: \(menuPath)")
+                    print("✓ Clicked menu item: \(clickedPath)")
                 }
 
             } catch let error as MenuError {

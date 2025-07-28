@@ -18,6 +18,12 @@ public protocol MenuServiceProtocol: Sendable {
     ///   - itemPath: Menu item path (e.g., "File > New" or just "New Window")
     func clickMenuItem(app: String, itemPath: String) async throws
     
+    /// Click a menu item by searching for it recursively in the menu hierarchy
+    /// - Parameters:
+    ///   - app: Application name or bundle ID
+    ///   - itemName: The name of the menu item to click (searches recursively)
+    func clickMenuItemByName(app: String, itemName: String) async throws
+    
     /// Click a system menu extra (status bar item)
     /// - Parameter title: Title of the menu extra
     func clickMenuExtra(title: String) async throws

@@ -61,12 +61,29 @@ public final class SessionManager: SessionManagerProtocol {
         }
         sessionData.uiMap = uiMap
         
-        // Extract metadata
-        if let appName = result.metadata.warnings.first(where: { $0.hasPrefix("app:") })?.dropFirst(4) {
-            sessionData.applicationName = String(appName)
-        }
-        if let windowTitle = result.metadata.warnings.first(where: { $0.hasPrefix("window:") })?.dropFirst(7) {
-            sessionData.windowTitle = String(windowTitle)
+        // Extract metadata from warnings
+        for warning in result.metadata.warnings {
+            if warning.hasPrefix("app:") {
+                sessionData.applicationName = String(warning.dropFirst(4))
+            } else if warning.hasPrefix("window:") {
+                sessionData.windowTitle = String(warning.dropFirst(7))
+            } else if warning.hasPrefix("APP:") {
+                sessionData.applicationName = String(warning.dropFirst(4))
+            } else if warning.hasPrefix("WINDOW:") {
+                sessionData.windowTitle = String(warning.dropFirst(7))
+            } else if warning.hasPrefix("BOUNDS:") {
+                // Parse bounds if needed
+                if let boundsData = String(warning.dropFirst(7)).data(using: .utf8),
+                   let bounds = try? JSONDecoder().decode(CGRect.self, from: boundsData) {
+                    sessionData.windowBounds = bounds
+                }
+            } else if warning.hasPrefix("WINDOW_ID:") {
+                if let windowID = CGWindowID(String(warning.dropFirst(10))) {
+                    sessionData.windowID = windowID
+                }
+            } else if warning.hasPrefix("AX_IDENTIFIER:") {
+                sessionData.windowAXIdentifier = String(warning.dropFirst(14))
+            }
         }
         
         // Save updated session
@@ -272,6 +289,11 @@ public final class SessionManager: SessionManagerProtocol {
         }
     }
     
+    public func getUIAutomationSession(sessionId: String) async throws -> UIAutomationSession? {
+        let sessionPath = getSessionPath(for: sessionId)
+        return await sessionActor.loadSession(sessionId: sessionId, from: sessionPath)
+    }
+    
     // MARK: - Private Helpers
     
     private func getSessionStorageURL() -> URL {
@@ -397,10 +419,21 @@ public final class SessionManager: SessionManagerProtocol {
     private func buildWarnings(from sessionData: UIAutomationSession) -> [String] {
         var warnings: [String] = []
         if let appName = sessionData.applicationName {
-            warnings.append("app:\(appName)")
+            warnings.append("APP:\(appName)")
         }
         if let windowTitle = sessionData.windowTitle {
-            warnings.append("window:\(windowTitle)")
+            warnings.append("WINDOW:\(windowTitle)")
+        }
+        if let windowBounds = sessionData.windowBounds,
+           let boundsData = try? JSONEncoder().encode(windowBounds),
+           let boundsString = String(data: boundsData, encoding: .utf8) {
+            warnings.append("BOUNDS:\(boundsString)")
+        }
+        if let windowID = sessionData.windowID {
+            warnings.append("WINDOW_ID:\(windowID)")
+        }
+        if let axIdentifier = sessionData.windowAXIdentifier {
+            warnings.append("AX_IDENTIFIER:\(axIdentifier)")
         }
         return warnings
     }

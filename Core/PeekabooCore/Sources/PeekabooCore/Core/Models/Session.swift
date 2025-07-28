@@ -3,7 +3,7 @@ import CoreGraphics
 
 /// UI automation session data for storing screen state and element information
 public struct UIAutomationSession: Codable, Sendable {
-    public static let currentVersion = 5
+    public static let currentVersion = 6
     
     public let version: Int
     public var screenshotPath: String?
@@ -14,6 +14,9 @@ public struct UIAutomationSession: Codable, Sendable {
     public var windowTitle: String?
     public var windowBounds: CGRect?
     public var menuBar: MenuBarData?
+    public var windowID: CGWindowID?
+    public var windowAXIdentifier: String?
+    public var lastFocusTime: Date?
     
     public init(
         version: Int = UIAutomationSession.currentVersion,
@@ -24,7 +27,10 @@ public struct UIAutomationSession: Codable, Sendable {
         applicationName: String? = nil,
         windowTitle: String? = nil,
         windowBounds: CGRect? = nil,
-        menuBar: MenuBarData? = nil
+        menuBar: MenuBarData? = nil,
+        windowID: CGWindowID? = nil,
+        windowAXIdentifier: String? = nil,
+        lastFocusTime: Date? = nil
     ) {
         self.version = version
         self.screenshotPath = screenshotPath
@@ -35,6 +41,9 @@ public struct UIAutomationSession: Codable, Sendable {
         self.windowTitle = windowTitle
         self.windowBounds = windowBounds
         self.menuBar = menuBar
+        self.windowID = windowID
+        self.windowAXIdentifier = windowAXIdentifier
+        self.lastFocusTime = lastFocusTime
     }
 }
 

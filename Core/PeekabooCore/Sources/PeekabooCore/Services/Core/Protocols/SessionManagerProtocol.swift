@@ -70,6 +70,11 @@ public protocol SessionManagerProtocol: Sendable {
     ///   - query: Search query
     /// - Returns: Array of matching elements
     func findElements(sessionId: String, matching query: String) async throws -> [UIElement]
+    
+    /// Get the full UI automation session data
+    /// - Parameter sessionId: Session identifier
+    /// - Returns: UI automation session if found
+    func getUIAutomationSession(sessionId: String) async throws -> UIAutomationSession?
 }
 
 /// Information about a session

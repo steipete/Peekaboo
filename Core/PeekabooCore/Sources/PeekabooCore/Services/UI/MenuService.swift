@@ -141,6 +141,54 @@ public final class MenuService: MenuServiceProtocol {
         }
     }
     
+    /// Click a menu item by searching for it recursively in the menu hierarchy
+    public func clickMenuItemByName(app: String, itemName: String) async throws {
+        let appInfo = try await applicationService.findApplication(identifier: app)
+        
+        // First, get the menu structure to find the full path
+        let menuStructure = try await listMenus(for: app)
+        
+        // Search for the item recursively
+        var foundPath: String? = nil
+        for menu in menuStructure.menus {
+            if let path = findItemPath(itemName: itemName, in: menu.items, currentPath: menu.title) {
+                foundPath = path
+                break
+            }
+        }
+        
+        guard let itemPath = foundPath else {
+            var context = ErrorContext()
+            context.add("application", appInfo.name)
+            context.add("item", itemName)
+            throw NotFoundError(
+                code: .menuNotFound,
+                userMessage: "Menu item '\(itemName)' not found in application '\(appInfo.name)'",
+                context: context.build()
+            )
+        }
+        
+        // Now click using the full path
+        try await clickMenuItem(app: app, itemPath: itemPath)
+    }
+    
+    /// Recursively find the full path to a menu item by name
+    private func findItemPath(itemName: String, in items: [MenuItem], currentPath: String) -> String? {
+        for item in items {
+            if item.title == itemName && !item.isSeparator {
+                return "\(currentPath) > \(item.title)"
+            }
+            
+            // Search in submenu
+            if !item.submenu.isEmpty {
+                if let path = findItemPath(itemName: itemName, in: item.submenu, currentPath: "\(currentPath) > \(item.title)") {
+                    return path
+                }
+            }
+        }
+        return nil
+    }
+    
     public func clickMenuExtra(title: String) async throws {
         try await MainActor.run {
             // Get system-wide element

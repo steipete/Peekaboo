@@ -31,23 +31,33 @@ public extension UIAutomationService {
             .path
         try imageData.write(to: URL(fileURLWithPath: tempPath))
         
-        // Build UI map using AXorcist
-        let detectedElements = try await buildUIMap(
+        // Build UI map using AXorcist and capture window information
+        let (detectedElements, windowInfo) = try await buildUIMap(
             applicationName: applicationName,
             windowTitle: windowTitle,
             windowBounds: windowBounds
         )
         
-        // Create metadata with enhanced information
+        // Create metadata with enhanced information including windowID
+        var warnings = buildMetadataWarnings(
+            applicationName: applicationName,
+            windowTitle: windowTitle,
+            windowBounds: windowBounds
+        )
+        
+        // Add window ID to warnings (temporary until metadata structure is enhanced)
+        if let windowID = windowInfo?.windowID {
+            warnings.append("WINDOW_ID:\(windowID)")
+        }
+        if let axIdentifier = windowInfo?.axIdentifier {
+            warnings.append("AX_IDENTIFIER:\(axIdentifier)")
+        }
+        
         let metadata = DetectionMetadata(
             detectionTime: Date().timeIntervalSince(startTime),
             elementCount: detectedElements.all.count,
             method: "AXorcist",
-            warnings: buildMetadataWarnings(
-                applicationName: applicationName,
-                windowTitle: windowTitle,
-                windowBounds: windowBounds
-            )
+            warnings: warnings
         )
         
         return ElementDetectionResult(
@@ -64,7 +74,7 @@ public extension UIAutomationService {
         applicationName: String?,
         windowTitle: String?,
         windowBounds: CGRect?
-    ) async throws -> DetectedElements {
+    ) async throws -> (DetectedElements, WindowInfo?) {
         var buttons: [DetectedElement] = []
         var textFields: [DetectedElement] = []
         var links: [DetectedElement] = []
@@ -90,7 +100,7 @@ public extension UIAutomationService {
         
         guard let app = targetApp else {
             // Return empty elements if no app found
-            return DetectedElements()
+            return (DetectedElements(), nil)
         }
         
         // Create AXUIElement for the application
@@ -114,6 +124,21 @@ public extension UIAutomationService {
             }
         }
         
+        // Capture window information for the first window
+        var windowInfo: WindowInfo?
+        if let firstWindow = windows.first {
+            // Get CGWindowID using WindowIdentityService
+            let windowIdentityService = WindowIdentityService()
+            let windowID = windowIdentityService.getWindowID(from: firstWindow)
+            
+            windowInfo = WindowInfo(
+                windowID: windowID,
+                axIdentifier: firstWindow.identifier(),
+                title: firstWindow.title(),
+                bounds: windowBounds
+            )
+        }
+        
         // Process each window
         for window in windows {
             await processElement(
@@ -132,7 +157,7 @@ public extension UIAutomationService {
             )
         }
         
-        return DetectedElements(
+        let elements = DetectedElements(
             buttons: buttons,
             textFields: textFields,
             links: links,
@@ -143,6 +168,16 @@ public extension UIAutomationService {
             menus: menus,
             other: other
         )
+        
+        return (elements, windowInfo)
+    }
+    
+    // Window information structure
+    private struct WindowInfo {
+        let windowID: CGWindowID?
+        let axIdentifier: String?
+        let title: String?
+        let bounds: CGRect?
     }
     
     /// Recursively process an element and its children

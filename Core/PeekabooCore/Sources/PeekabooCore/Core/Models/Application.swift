@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 // MARK: - Application & Window Models
 
@@ -143,3 +144,4 @@ public enum WindowDetailOption: String, CaseIterable, Codable, Sendable {
     case bounds
     case ids
 }
+

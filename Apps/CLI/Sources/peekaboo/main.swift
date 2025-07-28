@@ -107,6 +107,7 @@ struct Peekaboo: AsyncParsableCommand {
             AppCommand.self,
             DockCommand.self,
             DialogCommand.self,
+            // SpaceCommand.self, // Temporarily disabled - CGS APIs causing crashes
             // Agent commands
             AgentCommand.self,
         ]
@@ -138,7 +139,7 @@ struct Main {
                 "image", "list", "config", "permissions",
                 "see", "click", "type", "scroll", "hotkey", "swipe",
                 "drag", "move", "run", "sleep", "clean", "window",
-                "menu", "app", "dock", "dialog", "agent",
+                "menu", "app", "dock", "dialog", /* "space", */ "agent",
                 "help", "--help", "-h", "--version"
             ]
             

@@ -60,6 +60,8 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
+    
+    @OptionGroup var focusOptions: FocusOptions
 
     mutating func run() async throws {
         let startTime = Date()
@@ -98,6 +100,21 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
             // Validate we have something to do
             guard !actions.isEmpty else {
                 throw ArgumentParser.ValidationError("No input specified. Provide text or key flags.")
+            }
+            
+            // Get session if available
+            let sessionId: String? = if let providedSession = session {
+                providedSession
+            } else {
+                await PeekabooServices.shared.sessions.getMostRecentSession()
+            }
+            
+            // Ensure window is focused before typing (if we have a session and auto-focus is enabled)
+            if let sessionId = sessionId {
+                try await self.ensureFocused(
+                    sessionId: sessionId,
+                    options: focusOptions
+                )
             }
 
             // Execute type actions using the service

@@ -351,8 +351,12 @@ public final class ApplicationService: ApplicationServiceProtocol {
         let isMinimized = window.isMinimized() ?? false
         let isMain = window.isMain() ?? false
         
+        // Try to get the actual CGWindowID
+        let windowIdentityService = WindowIdentityService()
+        let windowID = windowIdentityService.getWindowID(from: window) ?? CGWindowID(index)
+        
         return ServiceWindowInfo(
-            windowID: index, // We don't have a real window ID from AX
+            windowID: Int(windowID), // Convert CGWindowID to Int
             title: title,
             bounds: bounds,
             isMinimized: isMinimized,

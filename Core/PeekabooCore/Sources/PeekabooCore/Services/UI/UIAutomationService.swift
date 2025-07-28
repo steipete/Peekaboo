@@ -46,16 +46,41 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                 try await performClick(at: point, clickType: clickType)
                 
             case .query(let query):
-                // Find element by text/label and click
-                let elementInfo = await MainActor.run { () -> (found: Bool, frame: CGRect?) in
-                    if let element = findElementByQuery(query) {
-                        return (true, element.frame())
+                // First try to find in session data if available (much faster)
+                var found = false
+                var clickFrame: CGRect?
+                
+                if let sessionId = sessionId,
+                   let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId) {
+                    // Search through session elements
+                    let queryLower = query.lowercased()
+                    for element in detectionResult.elements.all {
+                        let matches = element.label?.lowercased().contains(queryLower) ?? false ||
+                                     element.value?.lowercased().contains(queryLower) ?? false ||
+                                     element.type.rawValue.lowercased().contains(queryLower)
+                        
+                        if matches && element.isEnabled {
+                            found = true
+                            clickFrame = element.bounds
+                            break
+                        }
                     }
-                    return (false, nil)
                 }
                 
-                if elementInfo.found {
-                    if let frame = elementInfo.frame {
+                // Fall back to searching through all applications if not found in session
+                if !found {
+                    let elementInfo = await MainActor.run { () -> (found: Bool, frame: CGRect?) in
+                        if let element = findElementByQuery(query) {
+                            return (true, element.frame())
+                        }
+                        return (false, nil)
+                    }
+                    found = elementInfo.found
+                    clickFrame = elementInfo.frame
+                }
+                
+                if found {
+                    if let frame = clickFrame {
                         let center = CGPoint(x: frame.midX, y: frame.midY)
                         try await performClick(at: center, clickType: clickType)
                     } else {
@@ -547,6 +572,27 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                     }
                     
                 case .query(let query):
+                    // First try to find in session data if available (much faster)
+                    if let sessionId = sessionId,
+                       let detectionResult = try? await sessionManager.getDetectionResult(sessionId: sessionId) {
+                        // Search through session elements
+                        let queryLower = query.lowercased()
+                        for element in detectionResult.elements.all {
+                            let matches = element.label?.lowercased().contains(queryLower) ?? false ||
+                                         element.value?.lowercased().contains(queryLower) ?? false ||
+                                         element.type.rawValue.lowercased().contains(queryLower)
+                            
+                            if matches && element.isEnabled {
+                                return WaitForElementResult(
+                                    found: true,
+                                    element: element,
+                                    waitTime: Date().timeIntervalSince(startTime)
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Fall back to searching through all applications (slower)
                     let elementInfo = await MainActor.run { () -> (element: Element, frame: CGRect, label: String?)? in
                         if let element = findElementByQuery(query) {
                             let frame = element.frame() ?? .zero
