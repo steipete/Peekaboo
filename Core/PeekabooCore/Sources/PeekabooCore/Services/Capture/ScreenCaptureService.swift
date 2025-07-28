@@ -32,69 +32,85 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             throw PermissionError.screenRecording()
         }
         
-        // Get available displays
-        logger.debug("Fetching shareable content", correlationId: correlationId)
-        let content = try await SCShareableContent.current
-        let displays = content.displays
-        
-        logger.debug("Found displays", metadata: ["count": displays.count], correlationId: correlationId)
-        guard !displays.isEmpty else {
-            logger.error("No displays found", correlationId: correlationId)
-            throw OperationError.captureFailed(reason: "No displays available for capture")
-        }
-        
-        // Select display
-        let targetDisplay: SCDisplay
-        if let index = displayIndex {
-            guard index >= 0 && index < displays.count else {
-                throw PeekabooError.invalidInput(
-                    "displayIndex: Index \(index) is out of range. Available displays: 0-\(displays.count-1)"
+        // Try modern API first if enabled
+        if USE_MODERN_SCREENCAPTURE_API {
+            do {
+                // Get available displays
+                logger.debug("Fetching shareable content", correlationId: correlationId)
+                let content = try await SCShareableContent.current
+                let displays = content.displays
+                
+                logger.debug("Found displays", metadata: ["count": displays.count], correlationId: correlationId)
+                guard !displays.isEmpty else {
+                    logger.error("No displays found", correlationId: correlationId)
+                    throw OperationError.captureFailed(reason: "No displays available for capture")
+                }
+                
+                // Select display
+                let targetDisplay: SCDisplay
+                if let index = displayIndex {
+                    guard index >= 0 && index < displays.count else {
+                        throw PeekabooError.invalidInput(
+                            "displayIndex: Index \(index) is out of range. Available displays: 0-\(displays.count-1)"
+                        )
+                    }
+                    targetDisplay = displays[index]
+                } else {
+                    // Use main display
+                    targetDisplay = displays.first!
+                }
+                
+                // Create screenshot with retry logic
+                logger.debug("Creating screenshot of display", metadata: ["displayID": targetDisplay.displayID], correlationId: correlationId)
+                
+                let image = try await RetryHandler.withRetry(
+                    policy: .standard,
+                    operation: {
+                        try await self.createScreenshot(of: targetDisplay)
+                    }
                 )
+                
+                let imageData: Data
+                do {
+                    imageData = try image.pngData()
+                } catch {
+                    throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
+                }
+                
+                logger.debug("Screenshot created", metadata: [
+                    "imageSize": "\(image.width)x\(image.height)",
+                    "dataSize": imageData.count
+                ], correlationId: correlationId)
+                
+                // Create metadata
+                let metadata = CaptureMetadata(
+                    size: CGSize(width: image.width, height: image.height),
+                    mode: .screen,
+                    displayInfo: DisplayInfo(
+                        index: displayIndex ?? 0,
+                        name: targetDisplay.displayID.description,
+                        bounds: targetDisplay.frame,
+                        scaleFactor: 2.0  // Default for Retina displays
+                    )
+                )
+                
+                return CaptureResult(
+                    imageData: imageData,
+                    metadata: metadata
+                )
+            } catch {
+                // If modern API fails with timeout, try legacy API as fallback
+                if case OperationError.timeout = error {
+                    logger.warning("Modern screen capture timed out, falling back to legacy API", metadata: ["error": String(describing: error)], correlationId: correlationId)
+                    return try await captureScreenLegacy(displayIndex: displayIndex, correlationId: correlationId)
+                } else {
+                    throw error
+                }
             }
-            targetDisplay = displays[index]
         } else {
-            // Use main display
-            targetDisplay = displays.first!
+            // Use legacy API directly
+            return try await captureScreenLegacy(displayIndex: displayIndex, correlationId: correlationId)
         }
-        
-        // Create screenshot with retry logic
-        logger.debug("Creating screenshot of display", metadata: ["displayID": targetDisplay.displayID], correlationId: correlationId)
-        
-        let image = try await RetryHandler.withRetry(
-            policy: .standard,
-            operation: {
-                try await self.createScreenshot(of: targetDisplay)
-            }
-        )
-        
-        let imageData: Data
-        do {
-            imageData = try image.pngData()
-        } catch {
-            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
-        }
-        
-        logger.debug("Screenshot created", metadata: [
-            "imageSize": "\(image.width)x\(image.height)",
-            "dataSize": imageData.count
-        ], correlationId: correlationId)
-        
-        // Create metadata
-        let metadata = CaptureMetadata(
-            size: CGSize(width: image.width, height: image.height),
-            mode: .screen,
-            displayInfo: DisplayInfo(
-                index: displayIndex ?? 0,
-                name: targetDisplay.displayID.description,
-                bounds: targetDisplay.frame,
-                scaleFactor: 2.0  // Default for Retina displays
-            )
-        )
-        
-        return CaptureResult(
-            imageData: imageData,
-            metadata: metadata
-        )
     }
     
     public func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
@@ -131,7 +147,17 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         // Get windows for the application
         if USE_MODERN_SCREENCAPTURE_API {
             logger.debug("Using modern ScreenCaptureKit API", correlationId: correlationId)
-            return try await captureWindowModernImpl(app: app, windowIndex: windowIndex, correlationId: correlationId)
+            do {
+                return try await captureWindowModernImpl(app: app, windowIndex: windowIndex, correlationId: correlationId)
+            } catch {
+                // If modern API fails with timeout, try legacy API as fallback
+                if case OperationError.timeout = error {
+                    logger.warning("Modern capture timed out, falling back to legacy API", metadata: ["error": String(describing: error)], correlationId: correlationId)
+                    return try await captureWindowLegacy(app: app, windowIndex: windowIndex, correlationId: correlationId)
+                } else {
+                    throw error
+                }
+            }
         } else {
             logger.debug("Using legacy CGWindowList API", correlationId: correlationId)
             return try await captureWindowLegacy(app: app, windowIndex: windowIndex, correlationId: correlationId)
@@ -599,6 +625,74 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             metadata: metadata
         )
     }
+    
+    // MARK: - Legacy Screen Capture
+    
+    private func captureScreenLegacy(displayIndex: Int?, correlationId: String) async throws -> CaptureResult {
+        logger.debug("Using legacy CGWindowList API for screen capture", correlationId: correlationId)
+        
+        // Get screen bounds
+        let screens = NSScreen.screens
+        guard !screens.isEmpty else {
+            throw OperationError.captureFailed(reason: "No displays available")
+        }
+        
+        let targetScreen: NSScreen
+        if let index = displayIndex {
+            guard index >= 0 && index < screens.count else {
+                throw PeekabooError.invalidInput(
+                    "displayIndex: Index \(index) is out of range. Available displays: 0-\(screens.count-1)"
+                )
+            }
+            targetScreen = screens[index]
+        } else {
+            // Use main screen
+            targetScreen = screens.first!
+        }
+        
+        let screenBounds = targetScreen.frame
+        
+        // Capture using legacy API
+        #if compiler(>=5.9)
+        @available(macOS, deprecated: 14.0)
+        #endif
+        let captureImage = { () -> CGImage? in
+            CGWindowListCreateImage(screenBounds, .optionOnScreenBelowWindow, kCGNullWindowID, .nominalResolution)
+        }
+        
+        guard let image = captureImage() else {
+            throw OperationError.captureFailed(reason: "Failed to create screen image using legacy API")
+        }
+        
+        let imageData: Data
+        do {
+            imageData = try image.pngData()
+        } catch {
+            throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
+        }
+        
+        logger.debug("Legacy screenshot created", metadata: [
+            "imageSize": "\(image.width)x\(image.height)",
+            "dataSize": imageData.count
+        ], correlationId: correlationId)
+        
+        // Create metadata
+        let metadata = CaptureMetadata(
+            size: CGSize(width: image.width, height: image.height),
+            mode: .screen,
+            displayInfo: DisplayInfo(
+                index: displayIndex ?? 0,
+                name: "Display \(displayIndex ?? 0)",
+                bounds: screenBounds,
+                scaleFactor: targetScreen.backingScaleFactor
+            )
+        )
+        
+        return CaptureResult(
+            imageData: imageData,
+            metadata: metadata
+        )
+    }
 }
 
 // MARK: - Stream Delegate
@@ -630,10 +724,11 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
             self.continuation = continuation
             
             // Add a timeout to ensure the continuation is always resumed
+            // Reduced from 10 seconds to 3 seconds for faster failure detection
             self.timeoutTask = Task {
-                try? await Task.sleep(nanoseconds: 10_000_000_000) // 10 seconds
+                try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
                 if let cont = self.continuation {
-                    cont.resume(throwing: OperationError.timeout(operation: "CaptureOutput.waitForImage", duration: 10.0))
+                    cont.resume(throwing: OperationError.timeout(operation: "CaptureOutput.waitForImage", duration: 3.0))
                     self.continuation = nil
                 }
             }
