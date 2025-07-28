@@ -74,8 +74,10 @@ struct AgentShellCommandTests {
         
         let error = json["error"] as? [String: Any]
         #expect(error != nil)
-        #expect(error?["code"] as? String == "SHELL_COMMAND_FAILED")
-        #expect((error?["message"] as? String)?.contains("exited with code") == true)
+        let errorCode = error?["code"] as? String
+        #expect(errorCode == "SHELL_COMMAND_FAILED")
+        let errorMessage = error?["message"] as? String
+        #expect(errorMessage?.contains("exited with code") == true)
     }
     
     @Test("Shell command respects timeout")
@@ -99,8 +101,10 @@ struct AgentShellCommandTests {
         #expect(json["success"] as? Bool == false)
         
         let error = json["error"] as? [String: Any]
-        #expect(error?["code"] as? String == "COMMAND_FAILED")
-        #expect((error?["message"] as? String)?.contains("timed out") == true)
+        let errorCode = error?["code"] as? String
+        #expect(errorCode == "COMMAND_FAILED")
+        let errorMessage = error?["message"] as? String
+        #expect(errorMessage?.contains("timed out") == true)
     }
     
     @Test("Shell command uses zsh")
@@ -175,7 +179,9 @@ struct AgentShellCommandTests {
         #expect(json["success"] as? Bool == false)
         
         let error = json["error"] as? [String: Any]
-        #expect(error?["code"] as? String == "INVALID_ARGUMENTS")
-        #expect((error?["message"] as? String)?.contains("Shell command requires") == true)
+        let errorCode = error?["code"] as? String
+        #expect(errorCode == "INVALID_ARGUMENTS")
+        let errorMessage = error?["message"] as? String
+        #expect(errorMessage?.contains("Shell command requires") == true)
     }
 }
