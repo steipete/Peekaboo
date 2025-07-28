@@ -568,8 +568,7 @@ struct AgentCommand: AsyncParsableCommand {
             // Quiet mode - only show final result
             print(result.content)
         } else {
-            // Compact/verbose mode - show completion message
-            print("\n\(TerminalColor.green)\(TerminalColor.bold)✅ Task completed\(TerminalColor.reset)")
+            // Don't print here - let the event handler show the enhanced summary
             if !result.content.isEmpty {
                 print(result.content)
             }
@@ -691,11 +690,283 @@ final class CompactEventDelegate: AgentEventDelegate {
     private let task: String
     private var toolStartTimes: [String: Date] = [:]
     private let startTime = Date()
+    private var toolCallCount = 0
+    private var totalTokens = 0
     
     init(outputMode: OutputMode, jsonOutput: Bool, task: String) {
         self.outputMode = outputMode
         self.jsonOutput = jsonOutput
         self.task = task
+    }
+    
+    // Extract meaningful summary from tool results
+    private func getToolResultSummary(_ toolName: String, _ result: [String: Any]) -> String {
+        // Handle wrapped results {"type": "object", "value": {...}}
+        let actualResult: [String: Any]
+        if result["type"] as? String == "object", let value = result["value"] as? [String: Any] {
+            actualResult = value
+        } else {
+            actualResult = result
+        }
+        
+        switch toolName {
+        case "list_dock":
+            // Check for count value first (tool result format)
+            if let countValue = actualResult["count"] as? [String: Any],
+               let count = countValue["value"] as? String {
+                return "\(count) items"
+            }
+            // Fallback to items array
+            else if let items = actualResult["items"] as? [[String: Any]] {
+                return "\(items.count) items"
+            }
+            
+        case "list_apps":
+            // Check for count value first (tool result format)
+            if let countValue = actualResult["count"] as? [String: Any],
+               let count = countValue["value"] as? String {
+                return "\(count) apps"
+            }
+            // Check nested structure
+            else if let data = actualResult["data"] as? [String: Any],
+               let apps = data["applications"] as? [[String: Any]] {
+                return "\(apps.count) apps"
+            }
+            // Fallback to direct structure
+            else if let apps = actualResult["apps"] as? [[String: Any]] {
+                return "\(apps.count) apps"
+            }
+            // Try applications key directly
+            else if let apps = actualResult["applications"] as? [[String: Any]] {
+                return "\(apps.count) apps"
+            }
+            
+        case "list_windows":
+            if let windows = actualResult["windows"] as? [[String: Any]] {
+                return "\(windows.count) windows"
+            }
+            
+        case "list_elements":
+            if let elements = actualResult["elements"] as? [[String: Any]] {
+                return "\(elements.count) elements"
+            }
+            
+        case "list_spaces":
+            if let spaces = actualResult["spaces"] as? [[String: Any]] {
+                return "\(spaces.count) spaces"
+            }
+            
+        case "list_menus":
+            if let menus = actualResult["menus"] as? [[String: Any]] {
+                return "\(menus.count) menus"
+            }
+            
+        case "see":
+            var parts: [String] = []
+            if let app = actualResult["app"] as? String, app != "entire screen" {
+                parts.append(app + ":")
+            } else {
+                parts.append("Screen:")
+            }
+            
+            if let resultText = actualResult["result"] as? String {
+                // Extract button and text counts from the result string
+                if let buttonMatch = resultText.range(of: #"(\d+) button"#, options: .regularExpression) {
+                    let count = String(resultText[buttonMatch])
+                    parts.append(count)
+                }
+                if let textMatch = resultText.range(of: #"(\d+) text"#, options: .regularExpression) {
+                    let count = String(resultText[textMatch])
+                    parts.append(count)
+                }
+            }
+            return parts.joined(separator: " ")
+            
+        case "screenshot", "window_capture":
+            if let path = actualResult["path"] as? String {
+                return "Saved \(URL(fileURLWithPath: path).lastPathComponent)"
+            }
+            return "Saved screenshot"
+            
+        case "click":
+            var parts: [String] = []
+            parts.append("Clicked")
+            
+            // Add what was clicked
+            if let element = actualResult["clickedElement"] as? String {
+                parts.append("'\(element)'")
+            } else if let target = actualResult["target"] as? String {
+                parts.append("'\(target)'")
+            }
+            
+            // Add actual app that received the click
+            if let app = actualResult["frontmostApp"] as? String {
+                parts.append("in \(app)")
+            } else if let app = actualResult["app"] as? String {
+                parts.append("in \(app)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "type":
+            var parts: [String] = []
+            parts.append("Typed")
+            
+            if let text = actualResult["text"] as? String {
+                let truncated = text.count > 15 ? String(text.prefix(15)) + "..." : text
+                parts.append("'\(truncated)'")
+            }
+            
+            // Add actual app that received the text
+            if let app = actualResult["frontmostApp"] as? String {
+                parts.append("in \(app)")
+            } else if let app = actualResult["app"] as? String {
+                parts.append("in \(app)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "hotkey":
+            var parts: [String] = []
+            parts.append("Pressed")
+            
+            if let keys = actualResult["keys"] as? String {
+                parts.append(keys)
+            }
+            
+            // Add actual app that received the hotkey
+            if let app = actualResult["frontmostApp"] as? String {
+                parts.append("in \(app)")
+            } else if let app = actualResult["app"] as? String {
+                parts.append("in \(app)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "scroll":
+            var parts: [String] = []
+            parts.append("Scrolled")
+            
+            if let direction = actualResult["direction"] as? String {
+                parts.append(direction)
+                if let amount = actualResult["amount"] as? Int {
+                    parts.append("\(amount)")
+                }
+            }
+            
+            // Add actual app
+            if let app = actualResult["frontmostApp"] as? String {
+                parts.append("in \(app)")
+            } else if let app = actualResult["app"] as? String {
+                parts.append("in \(app)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "focus_window":
+            if let app = actualResult["app"] as? String {
+                return "Focused \(app)"
+            }
+            return "Focused window"
+            
+        case "launch_app":
+            if let app = actualResult["app"] as? String {
+                return "Launched \(app)"
+            }
+            return "Launched app"
+            
+        case "resize_window":
+            var parts: [String] = []
+            parts.append("Resized")
+            
+            if let app = actualResult["app"] as? String {
+                parts.append(app)
+            }
+            
+            if let width = actualResult["width"] as? Int, let height = actualResult["height"] as? Int {
+                parts.append("to \(width)x\(height)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "menu_click":
+            var parts: [String] = []
+            
+            if let app = actualResult["app"] as? String {
+                parts.append(app)
+            }
+            
+            if let path = actualResult["menuPath"] as? String {
+                parts.append("> \(path)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "dialog_click":
+            var parts: [String] = []
+            parts.append("Clicked")
+            
+            if let button = actualResult["button"] as? String {
+                parts.append("'\(button)'")
+            }
+            
+            if let dialog = actualResult["dialogType"] as? String {
+                parts.append("in \(dialog)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "find_element":
+            if let found = actualResult["found"] as? Bool {
+                if found, let element = actualResult["element"] as? String {
+                    if let app = actualResult["app"] as? String {
+                        return "Found '\(element)' in \(app)"
+                    }
+                    return "Found '\(element)'"
+                } else {
+                    if let app = actualResult["app"] as? String {
+                        return "Not found in \(app)"
+                    }
+                    return "Not found"
+                }
+            }
+            
+        case "focused":
+            if let label = actualResult["label"] as? String {
+                if let app = actualResult["app"] as? String {
+                    return "'\(label)' field in \(app)"
+                }
+                return "'\(label)' field"
+            } else if let elementType = actualResult["type"] as? String {
+                if let app = actualResult["app"] as? String {
+                    return "\(elementType) in \(app)"
+                }
+                return elementType
+            }
+            
+        case "shell":
+            if let command = actualResult["command"] as? String {
+                let truncatedCmd = command.count > 20 ? String(command.prefix(20)) + "..." : command
+                if let exitCode = actualResult["exitCode"] as? Int {
+                    if exitCode == 0 {
+                        return "'\(truncatedCmd)' succeeded"
+                    } else {
+                        return "'\(truncatedCmd)' failed (code \(exitCode))"
+                    }
+                }
+                return "'\(truncatedCmd)'"
+            }
+            
+        default:
+            break
+        }
+        
+        // Default: just show success/failure
+        if let success = actualResult["success"] as? Bool {
+            return success ? "" : "Failed"
+        }
+        
+        return ""
     }
     
     func agentDidEmitEvent(_ event: AgentEvent) {
@@ -713,6 +984,7 @@ final class CompactEventDelegate: AgentEventDelegate {
         case .toolCallStarted(let name, let arguments):
             currentTool = name
             toolStartTimes[name] = Date()
+            toolCallCount += 1
             
             // Update terminal title for current tool
             let toolSummary = getToolSummaryForTitle(name, arguments)
@@ -767,20 +1039,39 @@ final class CompactEventDelegate: AgentEventDelegate {
                 if let data = result.data(using: .utf8),
                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     
+                    // Get result summary for compact mode
+                    let resultSummary = getToolResultSummary(name, json)
+                    
+                    // Debug logging
+                    if outputMode == .verbose {
+                        print("\nDEBUG: Tool \(name) result keys: \(json.keys.sorted())")
+                        if let data = json["data"] as? [String: Any] {
+                            print("DEBUG: data keys: \(data.keys.sorted())")
+                        }
+                        print("DEBUG: Result summary for \(name): '\(resultSummary)'")
+                    }
+                    
                     // Special handling for task_completed tool
                     if name == "task_completed" {
-                        print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
-                        
-                        // Show total execution time
-                        let totalElapsed = Date().timeIntervalSince(startTime)
-                        print("\n\(TerminalColor.bold)\(TerminalColor.green)✅ Task Completed\(TerminalColor.reset) \(TerminalColor.gray)(Total: \(formatDuration(totalElapsed)))\(TerminalColor.reset)")
-                        
-                        if let summary = json["summary"] as? String {
-                            print("\(TerminalColor.gray)Summary: \(summary)\(TerminalColor.reset)")
+                        // Don't show the tool line in compact mode
+                        if outputMode == .verbose {
+                            print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
                         }
                         
-                        if let nextSteps = json["next_steps"] as? String {
-                            print("\(TerminalColor.cyan)Next Steps: \(nextSteps)\(TerminalColor.reset)")
+                        // Show enhanced completion summary
+                        let totalElapsed = Date().timeIntervalSince(startTime)
+                        let tokenInfo = totalTokens > 0 ? ", \(totalTokens) tokens" : ""
+                        let toolsText = toolCallCount == 1 ? "1 tool" : "\(toolCallCount) tools"
+                        print("\n\(TerminalColor.bold)\(TerminalColor.green)✅ Task completed\(TerminalColor.reset) \(TerminalColor.gray)(Total: \(formatDuration(totalElapsed)), \(toolsText)\(tokenInfo))\(TerminalColor.reset)")
+                        
+                        if outputMode == .verbose {
+                            if let summary = json["summary"] as? String {
+                                print("\(TerminalColor.gray)Summary: \(summary)\(TerminalColor.reset)")
+                            }
+                            
+                            if let nextSteps = json["next_steps"] as? String {
+                                print("\(TerminalColor.cyan)Next Steps: \(nextSteps)\(TerminalColor.reset)")
+                            }
                         }
                     }
                     // Special handling for need_more_information tool
@@ -799,7 +1090,11 @@ final class CompactEventDelegate: AgentEventDelegate {
                     // Regular tool handling
                     else if let success = json["success"] as? Bool {
                         if success {
-                            print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                            if !resultSummary.isEmpty {
+                                print(" \(TerminalColor.green)✓\(TerminalColor.reset) \(resultSummary)\(duration)")
+                            } else {
+                                print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                            }
                         } else {
                             print(" \(TerminalColor.red)✗\(TerminalColor.reset)\(duration)")
                             
@@ -807,7 +1102,12 @@ final class CompactEventDelegate: AgentEventDelegate {
                             displayEnhancedError(tool: name, json: json)
                         }
                     } else {
-                        print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                        // Tools that don't have explicit success field
+                        if !resultSummary.isEmpty {
+                            print(" \(TerminalColor.green)✓\(TerminalColor.reset) \(resultSummary)\(duration)")
+                        } else {
+                            print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                        }
                     }
                 } else {
                     print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
