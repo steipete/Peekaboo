@@ -119,7 +119,7 @@ struct LogViewerWindow: View {
                 HStack(spacing: 15) {
                     ForEach(ActionCategory.allCases, id: \.self) { category in
                         let count = actionLogger.entries.filter { $0.category == category }.count
-                        if count > 0 {
+                        if count > 0 { // swiftlint:disable:this empty_count
                             HStack(spacing: 4) {
                                 Circle()
                                     .fill(category.color)

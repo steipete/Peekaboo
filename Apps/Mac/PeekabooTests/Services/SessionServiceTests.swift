@@ -59,7 +59,7 @@ struct SessionStoreTests {
         let updatedSession2 = sessions.first { $0.id == session2.id }
 
         #expect(updatedSession1?.messages.count == 1)
-        #expect(updatedSession2?.messages.count == 0)
+        #expect(updatedSession2?.messages.isEmpty == true)
     }
 
     @Test("Sessions are sorted by start time (newest first)")

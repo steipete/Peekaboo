@@ -111,7 +111,7 @@ struct ErrorRecoveryTests {
 
         // Should either have no sessions or have recovered somehow
         // The important thing is it doesn't crash
-        #expect(service2.sessions.count >= 0)
+        #expect(service2.sessions.isEmpty || !service2.sessions.isEmpty)
     }
 }
 

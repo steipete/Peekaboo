@@ -186,7 +186,7 @@ struct AgentResumeCLITests {
         for session in testSessions {
             #expect(!session.id.isEmpty)
             #expect(!session.task.isEmpty)
-            #expect(session.steps.count >= 0)
+            // steps array exists (count is always >= 0)
             // lastQuestion can be nil, that's valid
             #expect(session.createdAt <= Date())
             #expect(session.lastActivityAt <= Date())
@@ -194,7 +194,7 @@ struct AgentResumeCLITests {
         
         // Verify specific session characteristics
         let simpleSession = testSessions.first { $0.id == sessionId1 }
-        #expect(simpleSession?.steps.count == 0)
+        #expect(simpleSession?.steps.isEmpty == true)
         #expect(simpleSession?.lastQuestion == nil)
         
         let complexSession = testSessions.first { $0.id == sessionId2 }
@@ -202,7 +202,7 @@ struct AgentResumeCLITests {
         #expect(complexSession?.lastQuestion == nil)
         
         let questionSession = testSessions.first { $0.id == sessionId3 }
-        #expect(questionSession?.steps.count == 0)
+        #expect(questionSession?.steps.isEmpty == true)
         #expect(questionSession?.lastQuestion == "What should I do next?")
         
         // Clean up

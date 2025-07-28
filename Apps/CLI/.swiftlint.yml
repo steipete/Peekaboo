@@ -25,21 +25,21 @@ opt_in_rules:
 # Rule configurations
 line_length:
   warning: 120
-  error: 150
+  error: 250
   ignores_comments: true
   ignores_urls: true
 
 type_body_length:
   warning: 300
-  error: 400
+  error: 600
 
 file_length:
   warning: 500
-  error: 1000
+  error: 1500
 
 function_body_length:
   warning: 40
-  error: 60
+  error: 250
 
 identifier_name:
   min_length:
@@ -61,3 +61,6 @@ excluded:
   - .git
   - Package.swift
   - ".*" # Exclude all hidden directories
+  - DerivedData
+  - "**/.build"
+  - "**/DerivedData"

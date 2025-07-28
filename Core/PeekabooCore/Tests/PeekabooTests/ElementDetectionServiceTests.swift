@@ -62,7 +62,7 @@ struct ElementDetectionServiceTests {
         
         // We can't directly test the private method, but we can verify
         // the service handles these types correctly
-        #expect(roleMappings.count > 0)
+        #expect(!roleMappings.isEmpty)
     }
     
     @Test("Find element by ID")

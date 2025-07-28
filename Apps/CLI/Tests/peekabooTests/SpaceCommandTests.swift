@@ -82,7 +82,7 @@ struct SpaceCommandTests {
         #expect(data.data != nil)
         
         if let spaceData = data.data {
-            #expect(spaceData.spaces.count > 0)
+            #expect(!spaceData.spaces.isEmpty)
             
             // Check first Space has required fields
             if let firstSpace = spaceData.spaces.first {

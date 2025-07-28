@@ -45,6 +45,18 @@ import {
   windowToolSchema,
   menuToolHandler,
   menuToolSchema,
+  permissionsToolHandler,
+  permissionsToolSchema,
+  moveToolHandler,
+  moveToolSchema,
+  dragToolHandler,
+  dragToolSchema,
+  dockToolHandler,
+  dockToolSchema,
+  dialogToolHandler,
+  dialogToolSchema,
+  spaceToolHandler,
+  spaceToolSchema,
 } from "./tools/index.js";
 import { generateServerStatusString } from "./utils/server-status.js";
 import { initializeSwiftCliPath } from "./utils/peekaboo-cli.js";
@@ -391,6 +403,66 @@ Requires OPENAI_API_KEY environment variable to be set.` +
           statusSuffix,
         inputSchema: zodToJsonSchema(agentToolSchema),
       },
+      {
+        name: "permissions",
+        title: "Check System Permissions",
+        description:
+`Check macOS system permissions required for automation.
+Verifies both Screen Recording and Accessibility permissions.
+Returns the current permission status for each required permission.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(permissionsToolSchema),
+      },
+      {
+        name: "move",
+        title: "Move Mouse Cursor",
+        description:
+`Move the mouse cursor to a specific position or UI element.
+Supports absolute coordinates, UI element targeting, or centering on screen.
+Can animate movement smoothly over a specified duration.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(moveToolSchema),
+      },
+      {
+        name: "drag",
+        title: "Drag and Drop",
+        description:
+`Perform drag and drop operations between UI elements or coordinates.
+Supports element queries, specific IDs, or raw coordinates for both start and end points.
+Includes focus options for handling windows in different spaces.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(dragToolSchema),
+      },
+      {
+        name: "dock",
+        title: "Dock Interaction",
+        description:
+`Interact with the macOS Dock - launch apps, show context menus, hide/show dock.
+Actions: launch, right-click (with menu selection), hide, show, list
+Can list all dock items including persistent and running applications.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(dockToolSchema),
+      },
+      {
+        name: "dialog",
+        title: "System Dialog Interaction",
+        description:
+`Interact with system dialogs and alerts.
+Actions: click buttons, input text, select files, dismiss dialogs, list open dialogs.
+Handles save/open dialogs, alerts, and other system prompts.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(dialogToolSchema),
+      },
+      {
+        name: "space",
+        title: "macOS Spaces Management",
+        description:
+`Manage macOS Spaces (virtual desktops).
+Actions: list spaces, switch to a specific space, move windows between spaces.
+Supports moving windows with optional follow behavior to switch along with the window.` +
+          statusSuffix,
+        inputSchema: zodToJsonSchema(spaceToolSchema),
+      },
     ],
   };
 });
@@ -495,6 +567,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "menu": {
         const validatedArgs = menuToolSchema.parse(args || {});
         response = await menuToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "permissions": {
+        const validatedArgs = permissionsToolSchema.parse(args || {});
+        response = await permissionsToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "move": {
+        const validatedArgs = moveToolSchema.parse(args || {});
+        response = await moveToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "drag": {
+        const validatedArgs = dragToolSchema.parse(args || {});
+        response = await dragToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "dock": {
+        const validatedArgs = dockToolSchema.parse(args || {});
+        response = await dockToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "dialog": {
+        const validatedArgs = dialogToolSchema.parse(args || {});
+        response = await dialogToolHandler(validatedArgs, toolContext);
+        break;
+      }
+      case "space": {
+        const validatedArgs = spaceToolSchema.parse(args || {});
+        response = await spaceToolHandler(validatedArgs, toolContext);
         break;
       }
       default:

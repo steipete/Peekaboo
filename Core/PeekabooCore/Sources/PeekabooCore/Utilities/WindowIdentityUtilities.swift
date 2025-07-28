@@ -45,6 +45,15 @@ import AppKit
 import AXorcist
 import Foundation
 
+// MARK: - NSArray Extension for Swift compatibility
+
+extension NSArray {
+    /// Provides Swift's isEmpty property for NSArray
+    var isEmpty: Bool {
+        return count == 0
+    }
+}
+
 // MARK: - Private API Declaration
 
 /// Private API to extract CGWindowID from an AXUIElement
@@ -205,7 +214,7 @@ public final class WindowIdentityService {
         // and will return info only for that specific window
         let options: CGWindowListOption = [.optionIncludingWindow]
         if let windowList = CGWindowListCopyWindowInfo(options, windowID) as NSArray?,
-           windowList.count > 0 {
+           !windowList.isEmpty {
             return true
         }
         

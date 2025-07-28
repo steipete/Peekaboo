@@ -60,7 +60,7 @@ struct PeekabooAppTests {
         let settings = app.settings
         
         // Check default values are reasonable
-        #expect(settings.apiKey.isEmpty || settings.apiKey.count > 0)
+        #expect(settings.apiKey.isEmpty || !settings.apiKey.isEmpty)
         #expect(settings.model.isEmpty == false)
     }
     

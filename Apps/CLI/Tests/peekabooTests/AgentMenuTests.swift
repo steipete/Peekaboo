@@ -120,7 +120,7 @@ struct AgentMenuTests {
                 return false
             }
 
-            #expect(hasMenuClick || steps.count > 0, "Should perform menu click or have steps")
+            #expect(hasMenuClick || !steps.isEmpty, "Should perform menu click or have steps")
         }
         #endif
     }
@@ -173,7 +173,7 @@ struct AgentMenuTests {
                 }
             }
 
-            #expect(foundDiscovery || steps.count > 0, "Should discover menus or have steps")
+            #expect(foundDiscovery || !steps.isEmpty, "Should discover menus or have steps")
         }
         #endif
     }

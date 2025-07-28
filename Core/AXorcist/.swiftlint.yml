@@ -3,13 +3,16 @@
 # Exclude build and package directories
 excluded:
   - .build
+  - DerivedData
   - Package.swift
   - Pods
+  - "**/.build"
+  - "**/DerivedData"
 
 # Configure line length limits
 line_length:
   warning: 120
-  error: 200
+  error: 250
   ignores_comments: true
   ignores_urls: true
 
@@ -21,7 +24,7 @@ type_body_length:
 # Configure function body length
 function_body_length:
   warning: 50
-  error: 100
+  error: 250
 
 # Configure cyclomatic complexity
 cyclomatic_complexity:

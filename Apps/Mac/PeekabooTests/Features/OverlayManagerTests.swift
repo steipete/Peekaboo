@@ -123,7 +123,7 @@ struct OverlayManagerTests {
         
         // Should have at least some system apps (Finder, etc.)
         // Note: This might be empty in test environment
-        #expect(manager.applications.isEmpty || manager.applications.count > 0)
+        #expect(manager.applications.isEmpty || !manager.applications.isEmpty)
     }
     
     @Test("Overlay window management")
