@@ -213,3 +213,5 @@ test-fixes-summary.md
 
 # AppleScript at root
 /peekaboo.scpt
+/peekaboo-x86_64
+/peekaboo-arm64

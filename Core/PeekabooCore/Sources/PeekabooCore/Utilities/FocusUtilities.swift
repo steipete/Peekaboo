@@ -94,6 +94,7 @@ public struct FocusOptions: ParsableArguments, FocusOptionsProtocol, Sendable {
 
 public extension AsyncParsableCommand {
     /// Ensure the target window is focused before executing a command
+    @MainActor
     func ensureFocused(
         sessionId: String? = nil,
         windowID: CGWindowID? = nil,
@@ -254,7 +255,7 @@ public final class FocusManagementService {
         
         // Activate the application
         if !app.isActive {
-            app.activate(options: [.activateIgnoringOtherApps])
+            app.activate()
             
             // Wait for activation
             try await waitForCondition(

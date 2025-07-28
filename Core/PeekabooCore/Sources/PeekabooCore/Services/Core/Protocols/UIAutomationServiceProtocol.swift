@@ -1,6 +1,5 @@
 import Foundation
 import CoreGraphics
-import Testing
 
 /// Protocol defining UI automation operations
 public protocol UIAutomationServiceProtocol: Sendable {
@@ -94,7 +93,7 @@ public protocol UIAutomationServiceProtocol: Sendable {
 }
 
 /// Result of element detection
-public struct ElementDetectionResult: Sendable, CustomTestStringConvertible {
+public struct ElementDetectionResult: Sendable {
     /// Unique session identifier
     public let sessionId: String
     
@@ -120,21 +119,9 @@ public struct ElementDetectionResult: Sendable, CustomTestStringConvertible {
     }
 }
 
-// MARK: - CustomTestStringConvertible
-
-extension ElementDetectionResult {
-    public var testDescription: String {
-        var parts = ["ElementDetectionResult("]
-        parts.append("sessionId: \"\(sessionId)\"")
-        parts.append("screenshot: \"\(screenshotPath)\"")
-        parts.append("elementCount: \(elements.all.count)")
-        parts.append("detectionTime: \(String(format: "%.2fs", metadata.detectionTime))")
-        return parts.joined(separator: ", ") + ")"
-    }
-}
 
 /// Container for detected UI elements by type
-public struct DetectedElements: Sendable, CustomTestStringConvertible {
+public struct DetectedElements: Sendable {
     public let buttons: [DetectedElement]
     public let textFields: [DetectedElement]
     public let links: [DetectedElement]
@@ -178,28 +165,9 @@ public struct DetectedElements: Sendable, CustomTestStringConvertible {
     }
 }
 
-// MARK: - CustomTestStringConvertible
-
-extension DetectedElements {
-    public var testDescription: String {
-        var counts: [String] = []
-        if !buttons.isEmpty { counts.append("\(buttons.count) buttons") }
-        if !textFields.isEmpty { counts.append("\(textFields.count) textFields") }
-        if !links.isEmpty { counts.append("\(links.count) links") }
-        if !images.isEmpty { counts.append("\(images.count) images") }
-        if !groups.isEmpty { counts.append("\(groups.count) groups") }
-        if !sliders.isEmpty { counts.append("\(sliders.count) sliders") }
-        if !checkboxes.isEmpty { counts.append("\(checkboxes.count) checkboxes") }
-        if !menus.isEmpty { counts.append("\(menus.count) menus") }
-        if !other.isEmpty { counts.append("\(other.count) other") }
-        
-        let summary = counts.isEmpty ? "no elements" : counts.joined(separator: ", ")
-        return "DetectedElements(\(summary))"
-    }
-}
 
 /// A detected UI element
-public struct DetectedElement: Sendable, Codable, CustomTestStringConvertible {
+public struct DetectedElement: Sendable, Codable {
     /// Unique identifier (e.g., "B1", "T2")
     public let id: String
     
@@ -245,26 +213,6 @@ public struct DetectedElement: Sendable, Codable, CustomTestStringConvertible {
     }
 }
 
-// MARK: - CustomTestStringConvertible
-
-extension DetectedElement {
-    public var testDescription: String {
-        var parts = ["DetectedElement(id: \"\(id)\""]
-        parts.append("type: .\(type.rawValue)")
-        if let label = label {
-            parts.append("label: \"\(label)\"")
-        }
-        if let value = value {
-            parts.append("value: \"\(value)\"")
-        }
-        parts.append("bounds: \(bounds)")
-        parts.append("enabled: \(isEnabled)")
-        if let isSelected = isSelected {
-            parts.append("selected: \(isSelected)")
-        }
-        return parts.joined(separator: ", ") + ")"
-    }
-}
 
 /// Type of UI element
 public enum ElementType: String, Sendable, Codable {

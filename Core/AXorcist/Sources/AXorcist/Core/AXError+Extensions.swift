@@ -8,8 +8,6 @@
 import ApplicationServices
 import Foundation
 
-extension AXError: @retroactive Error {}
-
 // Create a custom error type that wraps AXError
 public struct AccessibilitySystemError: Error, LocalizedError {
     public let axError: AXError

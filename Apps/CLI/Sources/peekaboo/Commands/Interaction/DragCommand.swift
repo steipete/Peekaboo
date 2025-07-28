@@ -64,6 +64,7 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
     
     @OptionGroup var focusOptions: FocusOptions
 
+    @MainActor
     mutating func run() async throws {
         let startTime = Date()
         Logger.shared.setJsonOutputMode(self.jsonOutput)

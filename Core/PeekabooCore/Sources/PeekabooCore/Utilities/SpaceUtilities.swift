@@ -305,7 +305,7 @@ public final class SpaceManagementService {
             
             // Get display identifier
             var displayID: CGDirectDisplayID = 0
-            if let displayUUID = displayDict["Display Identifier"] as? String {
+            if displayDict["Display Identifier"] as? String != nil {
                 // Try to map UUID to display ID
                 let displays = NSScreen.screens.compactMap { screen -> CGDirectDisplayID? in
                     // Get the display ID from the screen's device description
