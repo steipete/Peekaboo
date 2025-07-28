@@ -463,6 +463,12 @@ Uses OpenAI Chat Completions API to break down and execute complex automation ta
   - Session resumption support
   - Multiple output modes (verbose, quiet)
   - Model selection support
+- ⚠️ GPT-4.1 Testing (2025-01-28):
+  - ✅ Basic text responses work: `PEEKABOO_AI_PROVIDERS="openai/gpt-4.1" ./scripts/peekaboo-wait.sh agent --quiet "Say hello"`
+  - ⚠️ UI automation tasks appear to hang or execute very slowly with verbose mode
+  - ⚠️ The agent starts thinking but gets stuck on tool execution (e.g., list_windows)
+  - **Workaround**: Use Claude models (default) for complex UI automation tasks
+  - **Note**: Model configuration warning appears when PEEKABOO_AI_PROVIDERS differs from config.json
 
 **Key Features**:
 - Resume sessions with --resume or --resume-session
@@ -476,7 +482,7 @@ Uses OpenAI Chat Completions API to break down and execute complex automation ta
 
 ### Commands Tested: 21/21 ✅
 
-**Last Updated**: 2025-01-28 22:15
+**Last Updated**: 2025-01-28 22:50
 
 **✅ All Commands Working (21 commands):**
 - `image` - Screenshot capture works perfectly
@@ -593,3 +599,11 @@ The Playground app is an excellent test harness with:
 ## Conclusion
 
 All 21 Peekaboo CLI commands have been tested and are working correctly. The testing process identified and fixed 4 critical bugs, resulting in a more robust and performant CLI tool. The combination of Poltergeist for automatic rebuilding and the smart wrapper script creates an excellent developer experience.
+
+### Model-Specific Testing Notes
+
+**GPT-4.1 Testing** (2025-01-28):
+- Basic agent functionality works (simple text responses)
+- Complex UI automation tasks may hang or execute very slowly
+- Recommend using Claude models (default) for UI automation tasks
+- GPT-4.1 works well for non-UI commands like `list`, `config`, etc.

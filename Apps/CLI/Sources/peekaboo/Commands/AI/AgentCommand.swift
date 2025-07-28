@@ -486,7 +486,7 @@ struct AgentCommand: AsyncParsableCommand {
             let result = try await peekabooAgent.executeTask(
                 task,
                 sessionId: sessionId,
-                modelName: model ?? "claude-opus-4",  // Use default if not specified
+                modelName: actualModelName,  // Use the actual model name from config/env
                 eventDelegate: eventDelegate
             )
             
@@ -689,6 +689,8 @@ final class CompactEventDelegate: AgentEventDelegate {
     private var hasReceivedContent = false
     private var isThinking = true
     private let task: String
+    private var toolStartTimes: [String: Date] = [:]
+    private let startTime = Date()
     
     init(outputMode: OutputMode, jsonOutput: Bool, task: String) {
         self.outputMode = outputMode
@@ -710,6 +712,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             
         case .toolCallStarted(let name, let arguments):
             currentTool = name
+            toolStartTimes[name] = Date()
             
             // Update terminal title for current tool
             let toolSummary = getToolSummaryForTitle(name, arguments)
@@ -750,14 +753,27 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             
         case .toolCallCompleted(let name, let result):
+            // Calculate duration
+            let duration: String
+            if let startTime = toolStartTimes[name] {
+                let elapsed = Date().timeIntervalSince(startTime)
+                duration = " \(TerminalColor.gray)(\(formatDuration(elapsed)))\(TerminalColor.reset)"
+                toolStartTimes.removeValue(forKey: name)
+            } else {
+                duration = ""
+            }
+            
             if outputMode != .quiet {
                 if let data = result.data(using: .utf8),
                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     
                     // Special handling for task_completed tool
                     if name == "task_completed" {
-                        print(" \(TerminalColor.green)✓\(TerminalColor.reset)")
-                        print("\n\(TerminalColor.bold)\(TerminalColor.green)✅ Task Completed\(TerminalColor.reset)")
+                        print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                        
+                        // Show total execution time
+                        let totalElapsed = Date().timeIntervalSince(startTime)
+                        print("\n\(TerminalColor.bold)\(TerminalColor.green)✅ Task Completed\(TerminalColor.reset) \(TerminalColor.gray)(Total: \(formatDuration(totalElapsed)))\(TerminalColor.reset)")
                         
                         if let summary = json["summary"] as? String {
                             print("\(TerminalColor.gray)Summary: \(summary)\(TerminalColor.reset)")
@@ -769,7 +785,7 @@ final class CompactEventDelegate: AgentEventDelegate {
                     }
                     // Special handling for need_more_information tool
                     else if name == "need_more_information" {
-                        print(" \(TerminalColor.yellow)?\(TerminalColor.reset)")
+                        print(" \(TerminalColor.yellow)?\(TerminalColor.reset)\(duration)")
                         print("\n\(TerminalColor.bold)\(TerminalColor.yellow)❓ Need More Information\(TerminalColor.reset)")
                         
                         if let question = json["question"] as? String {
@@ -783,18 +799,18 @@ final class CompactEventDelegate: AgentEventDelegate {
                     // Regular tool handling
                     else if let success = json["success"] as? Bool {
                         if success {
-                            print(" \(TerminalColor.green)✓\(TerminalColor.reset)")
+                            print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
                         } else {
-                            print(" \(TerminalColor.red)✗\(TerminalColor.reset)")
+                            print(" \(TerminalColor.red)✗\(TerminalColor.reset)\(duration)")
                             
                             // Display enhanced error information
                             displayEnhancedError(tool: name, json: json)
                         }
                     } else {
-                        print(" \(TerminalColor.green)✓\(TerminalColor.reset)")
+                        print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
                     }
                 } else {
-                    print(" \(TerminalColor.green)✓\(TerminalColor.reset)")
+                    print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
                 }
             }
             currentTool = nil
