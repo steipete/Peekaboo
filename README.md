@@ -7,6 +7,8 @@
 [![macOS](https://img.shields.io/badge/macOS-14.0%2B-blue.svg)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org/)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
+[![Download for macOS](https://img.shields.io/badge/Download-macOS-black?logo=apple)](https://github.com/steipete/peekaboo/releases/latest)
+[![Homebrew](https://img.shields.io/badge/Homebrew-steipete%2Ftap-tan?logo=homebrew)](https://github.com/steipete/homebrew-tap)
 <a href="https://deepwiki.com/steipete/peekaboo"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 
 > 🎉 **NEW in v3**: Complete GUI automation framework with AI Agent! Click, type, scroll, and automate any macOS application using natural language. Plus comprehensive menu bar extraction without clicking! See the [GUI Automation section](#-gui-automation-with-peekaboo-v3) and [AI Agent section](#-ai-agent-automation) for details.
@@ -270,17 +272,18 @@ For AI assistants like Claude Desktop and Cursor, Peekaboo provides a Model Cont
 
 ### For Claude Desktop
 
-Edit your Claude Desktop configuration:
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+1. Open Claude Desktop Settings (from the **menubar**, not the in-app settings)
+2. Navigate to Developer → Edit Config
+3. Add the Peekaboo MCP server configuration:
 
 ```json
 {
   "mcpServers": {
     "peekaboo": {
       "command": "npx",
-      "args": ["-y", "@steipete/peekaboo-mcp"],
+      "args": ["-y", "@steipete/peekaboo-mcp@beta"],
       "env": {
-        "PEEKABOO_AI_PROVIDERS": "openai/gpt-4.1,ollama/llava:latest",
+        "PEEKABOO_AI_PROVIDERS": "anthropic/claude-opus-4,openai/gpt-4.1,ollama/llava:latest",
         "OPENAI_API_KEY": "your-openai-api-key-here"
       }
     }
@@ -288,28 +291,46 @@ Edit your Claude Desktop configuration:
 }
 ```
 
+4. Save and restart Claude Desktop
+
 ### For Claude Code
 
 Run the following command:
 
 ```bash
 claude mcp add-json peekaboo '{
+  "type": "stdio",
   "command": "npx",
-  "args": [
-      "-y",
-      "@steipete/peekaboo-mcp"
-    ],
-    "env": {
-      "PEEKABOO_AI_PROVIDERS": "openai/gpt-4o,ollama/llava:latest",
-      "OPENAI_API_KEY": "your-openai-api-key-here"
-    }
+  "args": ["-y", "@steipete/peekaboo-mcp@beta"],
+  "env": {
+    "PEEKABOO_AI_PROVIDERS": "anthropic/claude-opus-4,openai/gpt-4.1,ollama/llava:latest",
+    "OPENAI_API_KEY": "your-openai-api-key-here"
+  }
 }'
 ```
 
-Alternatively, if you've already installed the server via Claude desktop, you can run:
+Alternatively, if you've already installed the server via Claude Desktop, you can import it:
 
 ```bash
 claude mcp add-from-claude-desktop
+```
+
+### Local Development
+
+For local development, use the built MCP server directly:
+
+```json
+{
+  "mcpServers": {
+    "peekaboo": {
+      "command": "node",
+      "args": ["/path/to/peekaboo/Server/dist/index.js"],
+      "env": {
+        "PEEKABOO_AI_PROVIDERS": "anthropic/claude-opus-4"
+      }
+    }
+  }
+}
 ```
 
 ### For Cursor IDE
