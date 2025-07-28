@@ -40,7 +40,7 @@ enum Version {
     static let buildDate = "$BUILD_DATE"
     
     static var fullVersion: String {
-        return "\(current) (\(gitBranch)/\(gitCommit), \(gitCommitDate))"
+        return "\(current) (\(gitBranch)/\(gitCommit), built: \(buildDate))"
     }
 }
 EOF
