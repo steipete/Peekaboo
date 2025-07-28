@@ -78,7 +78,8 @@ extension PeekabooAgentService {
                 // Detect elements in the screenshot
                 detectionResult = try await context.automation.detectElements(
                     in: captureResult.imageData,
-                    sessionId: nil
+                    sessionId: nil,
+                    windowContext: nil
                 )
                 
                 // Format the element list based on type filter

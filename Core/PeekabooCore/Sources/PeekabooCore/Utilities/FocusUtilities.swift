@@ -48,7 +48,7 @@ import Foundation
 
 // MARK: - Focus Options Protocol
 
-public protocol FocusOptionsProtocol {
+public protocol FocusOptionsProtocol: Sendable {
     var autoFocus: Bool { get }
     var focusTimeout: TimeInterval? { get }
     var focusRetryCount: Int? { get }
@@ -58,7 +58,7 @@ public protocol FocusOptionsProtocol {
 
 // MARK: - Default Focus Options
 
-public struct DefaultFocusOptions: FocusOptionsProtocol {
+public struct DefaultFocusOptions: FocusOptionsProtocol, Sendable {
     public let autoFocus: Bool = true
     public let focusTimeout: TimeInterval? = 5.0
     public let focusRetryCount: Int? = 3
@@ -70,7 +70,7 @@ public struct DefaultFocusOptions: FocusOptionsProtocol {
 
 // MARK: - Focus Options for ArgumentParser
 
-public struct FocusOptions: ParsableArguments, FocusOptionsProtocol {
+public struct FocusOptions: ParsableArguments, FocusOptionsProtocol, Sendable {
     public init() {}
     @Flag(name: .long, help: "Disable automatic focus before interaction (not recommended)")
     public var noAutoFocus = false

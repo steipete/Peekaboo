@@ -122,14 +122,17 @@ struct SeeCommandAnnotationIntegrationTests {
         
         // Test with explicit window bounds
         let windowBounds = CGRect(x: 100, y: 50, width: 1024, height: 768)
+        let windowContext = WindowContext(
+            applicationName: "TestApp",
+            windowTitle: "Test Window",
+            windowBounds: windowBounds
+        )
         
         if let uiService = services.automation as? UIAutomationService {
-            let result = try await uiService.detectElementsEnhanced(
+            let result = try await uiService.detectElements(
                 in: imageData,
                 sessionId: nil,
-                applicationName: "TestApp",
-                windowTitle: "Test Window",
-                windowBounds: windowBounds
+                windowContext: windowContext
             )
             
             // All element bounds should be window-relative

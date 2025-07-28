@@ -250,7 +250,8 @@ public actor ProcessService: ProcessServiceProtocol {
         if annotate {
             let detectionResult = try await uiAutomationService.detectElements(
                 in: captureResult.imageData,
-                sessionId: newSessionId
+                sessionId: newSessionId,
+                windowContext: nil
             )
             
             // Store detection result in session

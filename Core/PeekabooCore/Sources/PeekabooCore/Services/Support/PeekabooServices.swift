@@ -398,9 +398,15 @@ extension PeekabooServices {
         
         // Detect elements
         logger.debug("Detecting UI elements")
+        let windowContext = WindowContext(
+            applicationName: captureResult.metadata.applicationInfo?.name,
+            windowTitle: captureResult.metadata.windowInfo?.title,
+            windowBounds: captureResult.metadata.windowInfo?.bounds
+        )
         let detectionResult = try await automation.detectElements(
             in: captureResult.imageData,
-            sessionId: sessionId
+            sessionId: sessionId,
+            windowContext: windowContext
         )
         logger.info("Detected \(detectionResult.elements.all.count) elements")
         

@@ -50,7 +50,8 @@ extension PeekabooAgentService {
                 // Detect elements in the screenshot
                 let detectionResult = try await context.automation.detectElements(
                     in: captureResult.imageData,
-                    sessionId: nil
+                    sessionId: nil,
+                    windowContext: nil
                 )
                 
                 // Filter elements if requested
@@ -214,7 +215,8 @@ extension PeekabooAgentService {
                 // Detect elements
                 let detectionResult = try await context.automation.detectElements(
                     in: captureResult.imageData,
-                    sessionId: nil
+                    sessionId: nil,
+                    windowContext: nil
                 )
                 
                 // Save if path provided

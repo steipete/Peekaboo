@@ -61,7 +61,7 @@ public final class ElementDetectionService: Sendable {
         
         guard let window = targetWindow else {
             logger.error("No window found")
-            throw PeekabooError.windowNotFound
+            throw PeekabooError.windowNotFound()
         }
         
         logger.debug("Found window: \(window.title() ?? "Untitled")")
