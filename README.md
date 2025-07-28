@@ -89,16 +89,16 @@ peekaboo image --mode screen --screen-index 0
 peekaboo list apps
 peekaboo list windows --app "Visual Studio Code"
 
-# Analyze images with AI
-peekaboo analyze screenshot.png "What error is shown?"
-peekaboo analyze ui.png "Find all buttons" --provider ollama
-peekaboo analyze page.png "Describe this UI" --provider grok
+# Analyze images with AI (use image command with --analyze)
+peekaboo image --analyze "What error is shown?" --path screenshot.png
+peekaboo image --analyze "Find all buttons" --app Safari
+peekaboo see --analyze "Describe this UI" --app Chrome
 
 # GUI Automation (v3)
 peekaboo see --app Safari               # Identify UI elements
 peekaboo click "Submit"                 # Click button by text
 peekaboo type "Hello world"             # Type at current focus
-peekaboo scroll down --amount 5         # Scroll down 5 ticks
+peekaboo scroll --direction down --amount 5  # Scroll down 5 ticks
 
 # AI Agent - Natural language automation
 peekaboo "Open Safari and search for weather"
@@ -119,9 +119,8 @@ peekaboo window focus --app "Visual Studio Code"
 
 # Space (Virtual Desktop) Management
 peekaboo space list                      # List all Spaces
-peekaboo space switch 2                  # Switch to Space 2
+peekaboo space switch --to 2             # Switch to Space 2
 peekaboo space move-window --app Safari --to 3  # Move Safari to Space 3
-peekaboo space current                   # Show current Space info
 
 # Menu Bar Interaction (v3)
 peekaboo menu list --app Calculator     # List all menus and items
@@ -232,8 +231,7 @@ X_AI_API_KEY=xai-...
 
 ```bash
 # Capture and analyze in one command
-peekaboo image --app Safari --path /tmp/page.png && \
-  peekaboo analyze /tmp/page.png "What's on this page?"
+peekaboo image --app Safari --analyze "What's on this page?" --path /tmp/page.png
 
 # Monitor active window changes
 while true; do
@@ -243,7 +241,7 @@ done
 
 # Batch analyze screenshots
 for img in ~/Screenshots/*.png; do
-  peekaboo analyze "$img" "Summarize this screenshot"
+  peekaboo image --analyze "Summarize this screenshot" --path "$img"
 done
 
 # Automated login workflow (v3 with automatic session resolution)
@@ -335,9 +333,9 @@ Add to your Cursor settings:
 ### MCP Tools Available
 
 #### Core Tools (v2)
-1. **`image`** - Capture screenshots
+1. **`image`** - Capture screenshots (with optional AI analysis via question parameter)
 2. **`list`** - List applications, windows, or check status
-3. **`analyze`** - Analyze images with AI vision models
+3. **`analyze`** - Analyze existing images with AI vision models (MCP-only tool, use `peekaboo image --analyze` in CLI)
 
 #### GUI Automation Tools (v3) 🎉
 4. **`see`** - Capture screen and identify UI elements
@@ -529,7 +527,7 @@ Execute complex automation workflows from JSON script files:
 await run({ script_path: "/path/to/login.peekaboo.json" })
 
 // Continue on error
-await run({ script_path: "test.peekaboo.json", stop_on_error: false })
+await run({ script_path: "test.peekaboo.json", no_fail_fast: true })
 ```
 
 #### Script Format (.peekaboo.json)
@@ -620,8 +618,8 @@ peekaboo space switch --to 2
 # Move windows between Spaces
 peekaboo space move-window --app Safari --to 3
 
-# Find which Space contains a window
-peekaboo space where-is --app "Visual Studio Code"
+# Use list to see which Space contains windows
+peekaboo space list  # Shows all Spaces and their windows
 ```
 
 #### Window Focus Command
@@ -632,11 +630,11 @@ For explicit window focus control:
 # Focus a window (switches Space if needed)
 peekaboo window focus --app Safari
 
-# Focus without switching Spaces
-peekaboo window focus --app Terminal --space-switch never
+# Focus without switching Spaces (space-switch is a flag, not an option with value)
+peekaboo window focus --app Terminal  # Default is to not switch spaces unless needed
 
 # Move window to current Space and focus
-peekaboo window focus --app "VS Code" --move-here
+peekaboo window focus --app "VS Code" --bring-to-current-space
 ```
 
 #### Focus Behavior
@@ -829,11 +827,9 @@ peekaboo agent --resume "Continue where we left off"
 peekaboo agent --resume session_abc123 "Add a conclusion section"
 
 # List available sessions
-peekaboo agent list-sessions
+peekaboo agent --list-sessions
 
-# See session details
-peekaboo agent show-session --latest
-peekaboo agent show-session session_abc123
+# Note: There is no show-session command, use list-sessions to see all sessions
 ```
 
 #### How Resume Works
@@ -880,28 +876,28 @@ Comprehensive window manipulation for any application:
 
 ```typescript
 // Close window
-await window({ action: "close", app_target: "Safari" })
-await window({ action: "close", window_title: "Downloads" })
+await window({ action: "close", app: "Safari" })
+await window({ action: "close", app: "Safari", title: "Downloads" })
 
 // Minimize/Maximize
-await window({ action: "minimize", app_target: "Finder" })
-await window({ action: "maximize", app_target: "Terminal" })
+await window({ action: "minimize", app: "Finder" })
+await window({ action: "maximize", app: "Terminal" })
 
 // Move window
-await window({ action: "move", app_target: "TextEdit", x: 100, y: 100 })
+await window({ action: "move", app: "TextEdit", x: 100, y: 100 })
 
 // Resize window
-await window({ action: "resize", app_target: "Notes", width: 800, height: 600 })
+await window({ action: "resize", app: "Notes", width: 800, height: 600 })
 
 // Set exact bounds (move + resize)
-await window({ action: "set_bounds", app_target: "Safari", x: 50, y: 50, width: 1200, height: 800 })
+await window({ action: "set-bounds", app: "Safari", x: 50, y: 50, width: 1200, height: 800 })
 
 // Focus window
-await window({ action: "focus", app_target: "Visual Studio Code" })
-await window({ action: "focus", window_index: 0 })  // Focus first window
+await window({ action: "focus", app: "Visual Studio Code" })
+await window({ action: "focus", app: "Safari", index: 0 })  // Focus first window
 
-// List all windows
-await window({ action: "list", app_target: "Finder" })
+// List all windows (Note: window tool doesn't have a list action)
+// Use the list tool instead: await list({ item_type: "application_windows", app: "Finder" })
 ```
 
 #### Window Actions
@@ -910,14 +906,13 @@ await window({ action: "list", app_target: "Finder" })
 - **maximize** - Maximize/zoom window
 - **move** - Move to specific coordinates
 - **resize** - Change window dimensions
-- **set_bounds** - Set position and size in one operation
+- **set-bounds** - Set position and size in one operation
 - **focus** - Bring window to front and focus
-- **list** - Get information about all windows
 
 #### Targeting Options
-- **app_target** - Target by application name (fuzzy matching supported)
-- **window_title** - Target by window title (substring matching)
-- **window_index** - Target by index (0-based, front to back order)
+- **app** - Target by application name (fuzzy matching supported)
+- **title** - Target by window title (substring matching)
+- **index** - Target by index (0-based, front to back order)
 
 ### 📋 The `menu` Tool
 
@@ -925,16 +920,16 @@ Interact with application menu bars and system menu extras:
 
 ```typescript
 // List all menus and items for an app
-await menu({ app_target: "Calculator", subcommand: "list" })
+await menu({ action: "list", app: "Calculator" })
 
 // Click a simple menu item
-await menu({ app_target: "Safari", item: "New Window" })
+await menu({ action: "click", app: "Safari", item: "New Window" })
 
 // Navigate nested menus with path
-await menu({ app_target: "TextEdit", path: "Format > Font > Bold" })
+await menu({ action: "click", app: "TextEdit", path: "Format > Font > Bold" })
 
 // Click system menu extras (WiFi, Bluetooth, etc.)
-await menu({ subcommand: "click-extra", title: "WiFi" })
+await menu({ action: "click-extra", title: "WiFi" })
 ```
 
 #### Menu Subcommands
@@ -957,11 +952,11 @@ Clean up session cache and temporary files:
 // Clean all sessions
 await clean({})
 
-// Clean sessions older than 7 days
-await clean({ older_than_days: 7 })
+// Clean sessions older than 7 hours
+await clean({ older_than: 7 })
 
 // Clean specific session
-await clean({ session_id: "session_123" })
+await clean({ session: "session_123" })
 
 // Dry run to see what would be cleaned
 await clean({ dry_run: true })
@@ -1158,7 +1153,7 @@ Environment variables can be set in multiple ways:
 
 ```bash
 # For a single command
-PEEKABOO_AI_PROVIDERS="ollama/llava:latest" peekaboo analyze image.png "What is this?"
+PEEKABOO_AI_PROVIDERS="ollama/llava:latest" peekaboo image --analyze "What is this?" --path image.png
 
 # Export for the current session
 export OPENAI_API_KEY="sk-..."
@@ -1355,7 +1350,7 @@ swift test --verbose
 # Test CLI directly
 peekaboo list server_status
 peekaboo image --mode screen --path test.png
-peekaboo analyze test.png "What is shown?"
+peekaboo image --analyze "What is shown?" --path test.png
 
 # Test MCP server
 npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp
