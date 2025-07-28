@@ -216,6 +216,7 @@ struct AgentCommand: AsyncParsableCommand {
         return quiet ? .quiet : (verbose ? .verbose : .compact)
     }
 
+    @MainActor
     mutating func run() async throws {
         do {
             try await runInternal()
@@ -234,6 +235,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
     }
     
+    @MainActor
     private mutating func runInternal() async throws {
         // Initialize services
         let services = PeekabooServices.shared

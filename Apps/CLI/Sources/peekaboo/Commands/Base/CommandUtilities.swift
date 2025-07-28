@@ -172,6 +172,7 @@ func requireScreenRecordingPermission() async throws {
 }
 
 /// Check and require accessibility permission
+@MainActor
 func requireAccessibilityPermission() throws {
     if !PeekabooServices.shared.permissions.checkAccessibilityPermission() {
         throw CaptureError.accessibilityPermissionDenied

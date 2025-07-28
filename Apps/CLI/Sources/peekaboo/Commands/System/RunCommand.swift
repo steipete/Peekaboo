@@ -44,6 +44,7 @@ struct RunCommand: AsyncParsableCommand {
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
 
+    @MainActor
     mutating func run() async throws {
         let startTime = Date()
 

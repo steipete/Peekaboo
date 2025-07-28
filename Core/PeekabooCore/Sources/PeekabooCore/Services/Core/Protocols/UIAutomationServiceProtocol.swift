@@ -8,8 +8,9 @@ public protocol UIAutomationServiceProtocol: Sendable {
     /// - Parameters:
     ///   - imageData: The screenshot image data
     ///   - sessionId: Optional session ID to use for caching
+    ///   - windowContext: Optional window context for coordinate mapping
     /// - Returns: Detection result with identified elements
-    func detectElements(in imageData: Data, sessionId: String?) async throws -> ElementDetectionResult
+    func detectElements(in imageData: Data, sessionId: String?, windowContext: WindowContext?) async throws -> ElementDetectionResult
     
     /// Click at a specific point or element
     /// - Parameters:
@@ -278,6 +279,28 @@ public enum ElementType: String, Sendable, Codable {
     case other = "other"
 }
 
+/// Window context information for element detection
+public struct WindowContext: Sendable {
+    /// Application name
+    public let applicationName: String?
+    
+    /// Window title
+    public let windowTitle: String?
+    
+    /// Window bounds in screen coordinates
+    public let windowBounds: CGRect?
+    
+    public init(
+        applicationName: String? = nil,
+        windowTitle: String? = nil,
+        windowBounds: CGRect? = nil
+    ) {
+        self.applicationName = applicationName
+        self.windowTitle = windowTitle
+        self.windowBounds = windowBounds
+    }
+}
+
 /// Metadata about element detection
 public struct DetectionMetadata: Sendable {
     /// Time taken for detection
@@ -292,16 +315,21 @@ public struct DetectionMetadata: Sendable {
     /// Any warnings during detection
     public let warnings: [String]
     
+    /// Window context information (if available)
+    public let windowContext: WindowContext?
+    
     public init(
         detectionTime: TimeInterval,
         elementCount: Int,
         method: String,
-        warnings: [String] = []
+        warnings: [String] = [],
+        windowContext: WindowContext? = nil
     ) {
         self.detectionTime = detectionTime
         self.elementCount = elementCount
         self.method = method
         self.warnings = warnings
+        self.windowContext = windowContext
     }
 }
 

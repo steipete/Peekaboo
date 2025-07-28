@@ -35,9 +35,9 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     
     // MARK: - Element Detection
     
-    public func detectElements(in imageData: Data, sessionId: String?) async throws -> ElementDetectionResult {
+    public func detectElements(in imageData: Data, sessionId: String?, windowContext: WindowContext?) async throws -> ElementDetectionResult {
         logger.debug("Delegating element detection to ElementDetectionService")
-        return try await elementDetectionService.detectElements(in: imageData, sessionId: sessionId)
+        return try await elementDetectionService.detectElements(in: imageData, sessionId: sessionId, windowContext: windowContext)
     }
     
     // MARK: - Click Operations

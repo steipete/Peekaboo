@@ -58,6 +58,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
         case frontmost
     }
 
+    @MainActor
     mutating func run() async throws {
         let startTime = Date()
         configureVerboseLogging()
@@ -212,49 +213,35 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
         // Save screenshot
         let outputPath = try saveScreenshot(captureResult.imageData)
 
-        // Detect UI elements with proper window context
-        let uiAutomationService = PeekabooServices.shared.automation as? UIAutomationService
-        let detectionResult: ElementDetectionResult
-        if let service = uiAutomationService {
-            // Use enhanced detection with window context
-            detectionResult = try await service.detectElementsEnhanced(
-                in: captureResult.imageData,
-                sessionId: nil,
-                applicationName: captureResult.metadata.applicationInfo?.name,
-                windowTitle: captureResult.metadata.windowInfo?.title,
-                windowBounds: captureResult.metadata.windowInfo?.bounds
-            )
-        } else {
-            // Fallback to regular detection
-            detectionResult = try await PeekabooServices.shared.automation.detectElements(
-                in: captureResult.imageData,
-                sessionId: nil)
-        }
+        // Create window context from capture metadata
+        let windowContext = WindowContext(
+            applicationName: captureResult.metadata.applicationInfo?.name,
+            windowTitle: captureResult.metadata.windowInfo?.title,
+            windowBounds: captureResult.metadata.windowInfo?.bounds)
 
-        // Store enhanced detection result with window metadata
-        let enhancedResult = ElementDetectionResult(
+        // Detect UI elements with window context
+        let detectionResult = try await PeekabooServices.shared.automation.detectElements(
+            in: captureResult.imageData,
+            sessionId: nil,
+            windowContext: windowContext)
+
+        // Update the result with the correct screenshot path
+        let resultWithPath = ElementDetectionResult(
             sessionId: detectionResult.sessionId,
             screenshotPath: outputPath,
             elements: detectionResult.elements,
-            metadata: DetectionMetadata(
-                detectionTime: detectionResult.metadata.detectionTime,
-                elementCount: detectionResult.metadata.elementCount,
-                method: detectionResult.metadata.method,
-                warnings: detectionResult.metadata.warnings,
-                applicationName: captureResult.metadata.applicationInfo?.name,
-                windowTitle: captureResult.metadata.windowInfo?.title,
-                windowBounds: captureResult.metadata.windowInfo?.bounds))
+            metadata: detectionResult.metadata)
 
-        // Store the enhanced result in session
+        // Store the result in session
         try await PeekabooServices.shared.sessions.storeDetectionResult(
             sessionId: detectionResult.sessionId,
-            result: enhancedResult)
+            result: resultWithPath)
 
         return CaptureAndDetectionResult(
             sessionId: detectionResult.sessionId,
             screenshotPath: outputPath,
             elements: detectionResult.elements,
-            metadata: enhancedResult.metadata)
+            metadata: detectionResult.metadata)
     }
 
     private func saveScreenshot(_ imageData: Data) throws -> String {
@@ -460,8 +447,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             screenshot_raw: sessionPaths.raw,
             screenshot_annotated: sessionPaths.annotated,
             ui_map: sessionPaths.map,
-            application_name: metadata.applicationName,
-            window_title: metadata.windowTitle,
+            application_name: metadata.windowContext?.applicationName,
+            window_title: metadata.windowContext?.windowTitle,
             element_count: metadata.elementCount,
             interactable_count: elements.all.count(where: { $0.isEnabled }),
             capture_mode: self.determineMode().rawValue,
@@ -532,10 +519,10 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
         print("🗺️  UI map: \(sessionPaths.map)")
         print("🔍 Found \(metadata.elementCount) UI elements (\(interactableCount) interactive)")
 
-        if let app = metadata.applicationName {
+        if let app = metadata.windowContext?.applicationName {
             print("📱 Application: \(app)")
         }
-        if let window = metadata.windowTitle {
+        if let window = metadata.windowContext?.windowTitle {
             print("🪟 Window: \(window)")
         }
         
@@ -581,60 +568,6 @@ private struct SessionPaths {
     let raw: String
     let annotated: String
     let map: String
-}
-
-// MARK: - Extended Detection Metadata
-
-extension DetectionMetadata {
-    fileprivate var applicationName: String? {
-        warnings.first { $0.hasPrefix("APP:") }?.replacingOccurrences(of: "APP:", with: "")
-    }
-
-    fileprivate var windowTitle: String? {
-        warnings.first { $0.hasPrefix("WINDOW:") }?.replacingOccurrences(of: "WINDOW:", with: "")
-    }
-
-    fileprivate var windowBounds: CGRect? {
-        if let boundsString = warnings.first(where: { $0.hasPrefix("BOUNDS:") })?
-            .replacingOccurrences(of: "BOUNDS:", with: ""),
-            let data = boundsString.data(using: .utf8),
-            let rect = try? JSONDecoder().decode(CGRect.self, from: data)
-        {
-            return rect
-        }
-        return nil
-    }
-
-    fileprivate init(
-        detectionTime: TimeInterval,
-        elementCount: Int,
-        method: String,
-        warnings: [String] = [],
-        applicationName: String? = nil,
-        windowTitle: String? = nil,
-        windowBounds: CGRect? = nil)
-    {
-        var allWarnings = warnings
-
-        // Store metadata in warnings array (temporary until service layer is enhanced)
-        if let app = applicationName {
-            allWarnings.append("APP:\(app)")
-        }
-        if let window = windowTitle {
-            allWarnings.append("WINDOW:\(window)")
-        }
-        if let bounds = windowBounds, let boundsData = try? JSONEncoder().encode(bounds),
-           let boundsString = String(data: boundsData, encoding: .utf8)
-        {
-            allWarnings.append("BOUNDS:\(boundsString)")
-        }
-
-        self.init(
-            detectionTime: detectionTime,
-            elementCount: elementCount,
-            method: method,
-            warnings: allWarnings)
-    }
 }
 
 // MARK: - JSON Output Structure (matching original)

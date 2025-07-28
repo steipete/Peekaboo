@@ -47,6 +47,7 @@ struct DockCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        @MainActor
         private var services: PeekabooServices { PeekabooServices.shared }
 
         @MainActor
@@ -102,6 +103,7 @@ struct DockCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        @MainActor
         private var services: PeekabooServices { PeekabooServices.shared }
 
         @MainActor
@@ -157,6 +159,7 @@ struct DockCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        @MainActor
         private var services: PeekabooServices { PeekabooServices.shared }
 
         func run() async throws {
@@ -197,6 +200,7 @@ struct DockCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        @MainActor
         private var services: PeekabooServices { PeekabooServices.shared }
 
         func run() async throws {
@@ -240,6 +244,7 @@ struct DockCommand: AsyncParsableCommand {
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
 
+        @MainActor
         private var services: PeekabooServices { PeekabooServices.shared }
 
         @MainActor

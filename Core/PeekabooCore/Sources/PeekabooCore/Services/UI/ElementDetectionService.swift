@@ -16,30 +16,12 @@ public final class ElementDetectionService: Sendable {
     }
     
     /// Detect UI elements in a screenshot
-    public func detectElements(in imageData: Data, sessionId: String?) async throws -> ElementDetectionResult {
-        // Use the enhanced implementation
-        return try await detectElementsEnhanced(
-            in: imageData,
-            sessionId: sessionId,
-            applicationName: nil,
-            windowTitle: nil,
-            windowBounds: nil
-        )
-    }
-    
-    /// Enhanced element detection with window context
-    public func detectElementsEnhanced(
-        in imageData: Data,
-        sessionId: String?,
-        applicationName: String?,
-        windowTitle: String?,
-        windowBounds: CGRect?
-    ) async throws -> ElementDetectionResult {
-        logger.info("Starting enhanced element detection")
+    public func detectElements(in imageData: Data, sessionId: String?, windowContext: WindowContext?) async throws -> ElementDetectionResult {
+        logger.info("Starting element detection")
         
         // Get the frontmost application or specified one
         let targetApp: NSRunningApplication
-        if let appName = applicationName {
+        if let appName = windowContext?.applicationName {
             logger.debug("Looking for application: \(appName)")
             let apps = NSWorkspace.shared.runningApplications.filter { app in
                 app.localizedName?.localizedCaseInsensitiveContains(appName) == true ||
@@ -67,7 +49,7 @@ public final class ElementDetectionService: Sendable {
         
         // Find the target window
         let targetWindow: Element?
-        if let windowTitle = windowTitle {
+        if let windowTitle = windowContext?.windowTitle {
             logger.debug("Looking for window with title: \(windowTitle)")
             targetWindow = appElement.windows()?.first { window in
                 window.title()?.localizedCaseInsensitiveContains(windowTitle) == true
@@ -78,25 +60,18 @@ public final class ElementDetectionService: Sendable {
         }
         
         guard let window = targetWindow else {
-            logger.error("No suitable window found")
-            throw PeekabooError.windowNotFound()
+            logger.error("No window found")
+            throw PeekabooError.windowNotFound
         }
         
         logger.debug("Found window: \(window.title() ?? "Untitled")")
         
-        // Get window bounds if not provided
-        let actualWindowBounds = windowBounds ?? CGRect(
-            origin: window.position() ?? .zero,
-            size: window.size() ?? .zero
-        )
-        
-        // Collect all elements
+        // Detect elements in window
         var detectedElements: [DetectedElement] = []
         var elementIdMap: [String: DetectedElement] = [:]
         
-        // Helper to process an element and its children
+        // Process UI elements recursively
         func processElement(_ element: Element, parentId: String? = nil, depth: Int = 0) {
-            // Skip if depth is too deep (prevent infinite recursion)
             guard depth < 20 else { return }
             
             // Get element properties
@@ -193,7 +168,8 @@ public final class ElementDetectionService: Sendable {
             detectionTime: 0.0, // Would need to track actual time
             elementCount: detectedElements.count,
             method: "AXorcist",
-            warnings: []
+            warnings: [],
+            windowContext: windowContext
         )
         
         let result = ElementDetectionResult(
