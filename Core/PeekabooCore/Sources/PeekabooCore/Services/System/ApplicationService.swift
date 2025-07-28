@@ -360,12 +360,17 @@ public final class ApplicationService: ApplicationServiceProtocol {
         // Get space information for the window
         let (spaceID, spaceName) = getSpaceInfo(for: windowID)
         
+        // Get window level (z-order) from CGS
+        let spaceService = SpaceManagementService()
+        let windowLevel = spaceService.getWindowLevel(windowID: windowID).map { Int($0) } ?? 0
+        
         return ServiceWindowInfo(
             windowID: Int(windowID), // Convert CGWindowID to Int
             title: title,
             bounds: bounds,
             isMinimized: isMinimized,
             isMainWindow: isMain,
+            windowLevel: windowLevel,
             index: index,
             spaceID: spaceID,
             spaceName: spaceName

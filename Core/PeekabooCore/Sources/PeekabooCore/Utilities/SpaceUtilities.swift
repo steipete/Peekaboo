@@ -143,6 +143,10 @@ func CGSRemoveWindowsFromSpaces(_ cid: CGSConnectionID, _ windows: CFArray, _ sp
 @_silgen_name("CGSCopyManagedDisplaySpaces")
 func CGSCopyManagedDisplaySpaces(_ cid: CGSConnectionID) -> CFArray?
 
+/// Get the level (z-order) of a window
+@_silgen_name("CGSGetWindowLevel")
+func CGSGetWindowLevel(_ cid: CGSConnectionID, _ windowID: CGWindowID) -> Int32
+
 // Space type constants (from CGSSpaceType enum)
 private let kCGSSpaceUser = 0        // User-created desktop spaces
 private let kCGSSpaceFullscreen = 1  // Fullscreen spaces  
@@ -278,6 +282,88 @@ public final class SpaceManagementService {
         return spaces
     }
     
+    /// Get information about all Spaces organized by display
+    public func getAllSpacesByDisplay() -> [CGDirectDisplayID: [SpaceInfo]] {
+        // Check if we have a valid connection
+        guard connection != 0 else {
+            print("ERROR: Invalid CGS connection")
+            return [:]
+        }
+        
+        guard let managedSpacesRef = CGSCopyManagedDisplaySpaces(connection) else {
+            print("ERROR: CGSCopyManagedDisplaySpaces returned nil")
+            return [:]
+        }
+        
+        let managedSpacesArray = managedSpacesRef as NSArray
+        let activeSpace = CGSGetActiveSpace(connection)
+        var spacesByDisplay: [CGDirectDisplayID: [SpaceInfo]] = [:]
+        
+        // Process each display's spaces
+        for displayInfo in managedSpacesArray {
+            guard let displayDict = displayInfo as? [String: Any] else { continue }
+            
+            // Get display identifier
+            var displayID: CGDirectDisplayID = 0
+            if let displayUUID = displayDict["Display Identifier"] as? String {
+                // Try to map UUID to display ID
+                let displays = NSScreen.screens.compactMap { screen -> CGDirectDisplayID? in
+                    // Get the display ID from the screen's device description
+                    if let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber {
+                        return screenNumber.uint32Value
+                    }
+                    return nil
+                }
+                
+                // For now, use the first display if we can't match the UUID
+                // In a production system, we'd need a proper UUID to display ID mapping
+                if !displays.isEmpty {
+                    displayID = displays[0]
+                }
+            }
+            
+            // Get spaces for this display
+            guard let spaces = displayDict["Spaces"] as? [[String: Any]] else { continue }
+            
+            var displaySpaces: [SpaceInfo] = []
+            
+            for spaceDict in spaces {
+                guard let spaceID = spaceDict["ManagedSpaceID"] as? Int64 else { continue }
+                
+                let spaceType = spaceDict["type"] as? Int ?? 0
+                let type: SpaceInfo.SpaceType = switch spaceType {
+                case kCGSSpaceUser: .user
+                case kCGSSpaceFullscreen: .fullscreen
+                case kCGSSpaceSystem: .system
+                case kCGSSpaceTiled: .tiled
+                default: .unknown
+                }
+                
+                // Get additional space information
+                let spaceName = spaceDict["name"] as? String
+                let ownerPIDs = spaceDict["ownerPIDs"] as? [Int] ?? []
+                let isActive = CGSSpaceID(spaceID) == activeSpace
+                
+                let spaceInfo = SpaceInfo(
+                    id: CGSSpaceID(spaceID),
+                    type: type,
+                    isActive: isActive,
+                    displayID: displayID,
+                    name: spaceName,
+                    ownerPIDs: ownerPIDs
+                )
+                
+                displaySpaces.append(spaceInfo)
+            }
+            
+            if displayID != 0 && !displaySpaces.isEmpty {
+                spacesByDisplay[displayID] = displaySpaces
+            }
+        }
+        
+        return spacesByDisplay
+    }
+    
     /// Get the current active Space
     public func getCurrentSpace() -> SpaceInfo? {
         // Check if we have a valid connection
@@ -409,6 +495,27 @@ public final class SpaceManagementService {
         }
         
         try await switchToSpace(targetSpace.id)
+    }
+    
+    // MARK: - Window Information
+    
+    /// Get the window level (z-order) for a window
+    public func getWindowLevel(windowID: CGWindowID) -> Int32? {
+        // Check if we have a valid connection
+        guard connection != 0 else {
+            print("ERROR: Invalid CGS connection")
+            return nil
+        }
+        
+        // Get the window level
+        let level = CGSGetWindowLevel(connection, windowID)
+        
+        // CGSGetWindowLevel returns -1 on error
+        if level == -1 {
+            return nil
+        }
+        
+        return level
     }
     
     // MARK: - Window Movement

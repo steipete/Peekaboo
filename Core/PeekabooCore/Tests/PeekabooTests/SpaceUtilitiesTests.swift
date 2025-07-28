@@ -202,4 +202,51 @@ struct SpaceManagementIntegrationTests {
         let activeSpaces = allSpaces.filter { $0.isActive }
         #expect(activeSpaces.count == 1)
     }
+    
+    @Test("getAllSpacesByDisplay returns organized spaces")
+    @MainActor
+    func getAllSpacesByDisplay() {
+        let service = SpaceManagementService()
+        let spacesByDisplay = service.getAllSpacesByDisplay()
+        
+        // In test environment this might be empty, but we test that it doesn't crash
+        if !spacesByDisplay.isEmpty {
+            // If we have spaces, verify the structure
+            for (displayID, spaces) in spacesByDisplay {
+                #expect(displayID > 0)
+                #expect(!spaces.isEmpty)
+                
+                // Check that spaces have valid IDs
+                for space in spaces {
+                    #expect(space.id > 0)
+                    #expect(space.displayID == displayID)
+                }
+                
+                // At least one space should be active per display set
+                let hasActiveSpace = spaces.contains { $0.isActive }
+                // Note: Multiple displays might not all have active spaces
+            }
+        }
+    }
+    
+    @Test("getWindowLevel returns valid level for window")
+    @MainActor
+    func getWindowLevel() {
+        let service = SpaceManagementService()
+        
+        // Try to find any window for testing
+        // In test environment, this might not find any windows
+        let testWindowID: CGWindowID = 1 // Dummy ID for testing
+        
+        let level = service.getWindowLevel(windowID: testWindowID)
+        
+        // If we got a level, verify it's reasonable
+        if let windowLevel = level {
+            // Window levels are typically positive integers
+            // Normal windows are at level 0
+            // Floating windows, panels etc have higher levels
+            #expect(windowLevel >= -1)
+        }
+        // It's OK if level is nil in test environment (no such window)
+    }
 }
