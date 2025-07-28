@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("SessionCache Tests", .serialized)
@@ -77,7 +78,7 @@ struct SessionCacheTests {
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [
-                "B1": SessionCache.UIAutomationSession.UIElement(
+                "B1": UIElement(
                     id: "B1",
                     elementId: "element_1",
                     role: "AXButton",
@@ -126,7 +127,7 @@ struct SessionCacheTests {
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [
-                "B1": SessionCache.UIAutomationSession.UIElement(
+                "B1": UIElement(
                     id: "B1",
                     elementId: "element_1",
                     role: "AXButton",
@@ -136,7 +137,7 @@ struct SessionCacheTests {
                     frame: CGRect(x: 100, y: 100, width: 80, height: 30),
                     isActionable: true
                 ),
-                "B2": SessionCache.UIAutomationSession.UIElement(
+                "B2": UIElement(
                     id: "B2",
                     elementId: "element_2",
                     role: "AXButton",
@@ -146,7 +147,7 @@ struct SessionCacheTests {
                     frame: CGRect(x: 200, y: 100, width: 80, height: 30),
                     isActionable: true
                 ),
-                "T1": SessionCache.UIAutomationSession.UIElement(
+                "T1": UIElement(
                     id: "T1",
                     elementId: "element_3",
                     role: "AXTextField",
@@ -156,7 +157,7 @@ struct SessionCacheTests {
                     frame: CGRect(x: 100, y: 150, width: 200, height: 30),
                     isActionable: true
                 ),
-                "G1": SessionCache.UIAutomationSession.UIElement(
+                "G1": UIElement(
                     id: "G1",
                     elementId: "element_4",
                     role: "AXGroup",
@@ -211,7 +212,7 @@ struct SessionCacheTests {
             screenshotPath: "/tmp/test.png",
             annotatedPath: nil,
             uiMap: [
-                "B1": SessionCache.UIAutomationSession.UIElement(
+                "B1": UIElement(
                     id: "B1",
                     elementId: "element_1",
                     role: "AXButton",

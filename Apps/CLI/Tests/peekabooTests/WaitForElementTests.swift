@@ -1,6 +1,7 @@
 import AppKit
 import AXorcist
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("Wait For Element Tests", .serialized)
@@ -27,7 +28,7 @@ struct WaitForElementTests {
         // Test retrieving elements from session cache
         let sessionCache = try SessionCache(sessionId: "test-retrieval")
 
-        let element = SessionCache.UIAutomationSession.UIElement(
+        let element = UIElement(
             id: "B1",
             elementId: "button1",
             role: "AXButton",
@@ -86,8 +87,8 @@ struct WaitForElementTests {
         // Test searching elements by query string
         let sessionCache = try SessionCache(sessionId: "test-search")
 
-        let elements: [String: SessionCache.UIAutomationSession.UIElement] = [
-            "B1": SessionCache.UIAutomationSession.UIElement(
+        let elements: [String: UIElement] = [
+            "B1": UIElement(
                 id: "B1",
                 elementId: "save_btn",
                 role: "AXButton",
@@ -97,7 +98,7 @@ struct WaitForElementTests {
                 frame: CGRect(x: 100, y: 100, width: 100, height: 30),
                 isActionable: true
             ),
-            "B2": SessionCache.UIAutomationSession.UIElement(
+            "B2": UIElement(
                 id: "B2",
                 elementId: "cancel_btn",
                 role: "AXButton",
@@ -107,7 +108,7 @@ struct WaitForElementTests {
                 frame: CGRect(x: 220, y: 100, width: 80, height: 30),
                 isActionable: true
             ),
-            "T1": SessionCache.UIAutomationSession.UIElement(
+            "T1": UIElement(
                 id: "T1",
                 elementId: "name_field",
                 role: "AXTextField",
@@ -168,7 +169,7 @@ struct WaitForElementTests {
         // Create a session with test element
         let sessionCache = try SessionCache(sessionId: "test-wait-timeout")
 
-        let testElement = SessionCache.UIAutomationSession.UIElement(
+        let testElement = UIElement(
             id: "B1",
             elementId: "button1",
             role: "AXButton",
@@ -202,8 +203,8 @@ struct WaitForElementTests {
         let sessionCache = try SessionCache(sessionId: "test-wait-query")
 
         // Create multiple elements
-        let elements: [String: SessionCache.UIAutomationSession.UIElement] = [
-            "B1": SessionCache.UIAutomationSession.UIElement(
+        let elements: [String: UIElement] = [
+            "B1": UIElement(
                 id: "B1",
                 elementId: "button1",
                 role: "AXButton",
@@ -213,7 +214,7 @@ struct WaitForElementTests {
                 frame: CGRect(x: 100, y: 100, width: 80, height: 30),
                 isActionable: false // Not actionable
             ),
-            "B2": SessionCache.UIAutomationSession.UIElement(
+            "B2": UIElement(
                 id: "B2",
                 elementId: "button2",
                 role: "AXButton",
