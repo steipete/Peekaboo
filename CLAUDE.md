@@ -230,6 +230,32 @@ npm run build:all
 
 **Note**: Swift builds can take 3-5 minutes on first build or clean builds due to dependency compilation. Subsequent incremental builds are much faster (10-30 seconds).
 
+### Running Tests
+
+```bash
+# Run all tests
+swift test
+
+# Run tests with filter (Swift Testing)
+swift test --filter "ClickServiceTests"
+swift test --filter "SpaceAware"
+
+# Run tests for a specific package (from package directory)
+cd Core/PeekabooCore
+swift test
+
+# Run tests with verbose output
+swift test --verbose
+
+# Run tests in parallel (default)
+swift test --parallel
+
+# Run tests with specific configuration
+swift test -c release
+```
+
+**Important**: Tests use Swift Testing framework (not XCTest). The `--filter` option matches test suite or test names.
+
 ### Using the Swift CLI
 
 **ALWAYS use the smart wrapper to avoid build staleness issues:**

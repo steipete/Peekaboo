@@ -73,11 +73,7 @@ public extension Element {
     
     // MARK: - Window Types
     
-    /// Check if element is a window
-    @MainActor
-    func isWindow() -> Bool {
-        role() == Roles.window
-    }
+    // Note: isWindow is already defined as a computed property in Element+WindowOperations.swift
     
     /// Check if element is a dialog window
     @MainActor
@@ -249,11 +245,7 @@ public extension Element {
     
     // MARK: - Application Types
     
-    /// Check if element is an application
-    @MainActor
-    func isApplication() -> Bool {
-        role() == Roles.application
-    }
+    // Note: isApplication is already defined as a computed property in Element+WindowOperations.swift
     
     // MARK: - Dock Item Types
     

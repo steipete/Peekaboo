@@ -18,6 +18,7 @@ public final class TypeService: Sendable {
     }
     
     /// Type text with optional target and settings
+    @MainActor
     public func type(text: String, target: String?, clearExisting: Bool, typingDelay: Int, sessionId: String?) async throws {
         logger.debug("Type requested - text: '\(text)', target: \(target ?? "current focus"), clear: \(clearExisting)")
         
@@ -97,6 +98,7 @@ public final class TypeService: Sendable {
     
     // MARK: - Private Methods
     
+    @MainActor
     private func findAndClickElement(query: String, sessionId: String?) async throws -> (found: Bool, frame: CGRect?) {
         // Search in session first
         if let sessionId = sessionId,
@@ -122,6 +124,7 @@ public final class TypeService: Sendable {
         return (false, nil)
     }
     
+    @MainActor
     private func findTextFieldByQuery(_ query: String) -> Element? {
         guard let frontApp = NSWorkspace.shared.frontmostApplication else {
             return nil
@@ -133,6 +136,7 @@ public final class TypeService: Sendable {
         return searchTextFields(in: appElement, matching: query.lowercased())
     }
     
+    @MainActor
     private func searchTextFields(in element: Element, matching query: String) -> Element? {
         let role = element.role()?.lowercased() ?? ""
         

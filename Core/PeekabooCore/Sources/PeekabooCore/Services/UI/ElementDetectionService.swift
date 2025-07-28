@@ -5,7 +5,6 @@ import AppKit
 import os.log
 
 /// Service for detecting UI elements in screenshots and applications
-@MainActor
 public final class ElementDetectionService: Sendable {
     
     private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "ElementDetectionService")
@@ -270,6 +269,7 @@ public final class ElementDetectionService: Sendable {
         return actionableRoles.contains(role.lowercased())
     }
     
+    @MainActor
     private func extractKeyboardShortcut(_ element: Element) -> String? {
         // Try to get keyboard shortcut from various attributes
         if let shortcut = element.value(for: Attribute<String>("AXKeyboardShortcut")) {
@@ -337,6 +337,7 @@ public final class ElementDetectionService: Sendable {
         }
     }
     
+    @MainActor
     private func processMenuItems(_ items: [Element], parentId: String, elements: inout [DetectedElement], elementIdMap: inout [String: DetectedElement]) {
         for item in items {
             let itemId = "menuitem_\(elements.count)"
@@ -365,6 +366,7 @@ public final class ElementDetectionService: Sendable {
         }
     }
     
+    @MainActor
     private func createMenuItemAttributes(_ item: Element) -> [String: String] {
         var attributes: [String: String] = ["role": "AXMenuItem"]
         

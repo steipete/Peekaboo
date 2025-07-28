@@ -5,7 +5,6 @@ import AppKit
 import os.log
 
 /// Service for handling scroll operations
-@MainActor
 public final class ScrollService: Sendable {
     
     private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "ScrollService")
@@ -19,6 +18,7 @@ public final class ScrollService: Sendable {
     }
     
     /// Perform scroll operation
+    @MainActor
     public func scroll(
         direction: ScrollDirection,
         amount: Int,
@@ -125,6 +125,7 @@ public final class ScrollService: Sendable {
         }
     }
     
+    @MainActor
     private func findElementFrame(query: String, sessionId: String?) async throws -> CGRect? {
         // Search in session first
         if let sessionId = sessionId,
@@ -149,6 +150,7 @@ public final class ScrollService: Sendable {
         return nil
     }
     
+    @MainActor
     private func findScrollableElement(matching query: String) -> Element? {
         guard let frontApp = NSWorkspace.shared.frontmostApplication else {
             return nil
@@ -160,6 +162,7 @@ public final class ScrollService: Sendable {
         return searchScrollableElement(in: appElement, matching: query.lowercased())
     }
     
+    @MainActor
     private func searchScrollableElement(in element: Element, matching query: String) -> Element? {
         // Check current element
         let title = element.title()?.lowercased() ?? ""

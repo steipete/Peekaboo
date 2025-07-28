@@ -5,7 +5,6 @@ import AppKit
 import os.log
 
 /// Service for handling click operations
-@MainActor
 public final class ClickService: Sendable {
     
     private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "ClickService")
@@ -16,6 +15,7 @@ public final class ClickService: Sendable {
     }
     
     /// Perform a click operation
+    @MainActor
     public func click(target: ClickTarget, clickType: ClickType, sessionId: String?) async throws {
         logger.debug("Click requested - target: \(String(describing: target)), type: \(clickType)")
         
@@ -52,6 +52,7 @@ public final class ClickService: Sendable {
         }
     }
     
+    @MainActor
     private func clickElementByQuery(query: String, clickType: ClickType, sessionId: String?) async throws {
         // First try to find in session data if available (much faster)
         var found = false
@@ -96,6 +97,7 @@ public final class ClickService: Sendable {
     }
     
     /// Find element by query string
+    @MainActor
     private func findElementByQuery(_ query: String) -> Element? {
         let queryLower = query.lowercased()
         
@@ -111,11 +113,12 @@ public final class ClickService: Sendable {
         return searchElement(in: appElement, matching: queryLower)
     }
     
+    @MainActor
     private func searchElement(in element: Element, matching query: String) -> Element? {
         // Check current element
         let title = element.title()?.lowercased() ?? ""
         let label = element.label()?.lowercased() ?? ""
-        let value = (element.value() ?? "").lowercased()
+        let value = element.stringValue()?.lowercased() ?? ""
         let roleDescription = element.roleDescription()?.lowercased() ?? ""
         
         if title.contains(query) || label.contains(query) || 

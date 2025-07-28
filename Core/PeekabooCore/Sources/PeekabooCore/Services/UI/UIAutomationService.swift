@@ -118,7 +118,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     }
     
     @MainActor
-    public func getFocusedElement() -> FocusInfo? {
+    public func getFocusedElement() -> UIFocusInfo? {
         logger.debug("Getting focused element")
         
         // Get the system-wide focused element
@@ -154,7 +154,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         let appName = app?.localizedName ?? "Unknown"
         let bundleId = app?.bundleIdentifier ?? "Unknown"
         
-        return FocusInfo(
+        return UIFocusInfo(
             role: role,
             title: title,
             value: value,
@@ -290,8 +290,8 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
 
 // MARK: - Supporting Types
 
-/// Information about a focused UI element
-public struct FocusInfo: Sendable {
+/// Information about a focused UI element for automation
+public struct UIFocusInfo: Sendable {
     public let role: String
     public let title: String?
     public let value: String?
