@@ -571,7 +571,7 @@ struct AppCommand: AsyncParsableCommand {
                 let quitSuccess = force ? runningApp.forceTerminate() : runningApp.terminate()
                 
                 if !quitSuccess {
-                    throw ServiceError("Failed to quit \(appInfo.name) (PID: \(originalPID)). The app may have unsaved changes.")
+                    throw PeekabooError.commandFailed("Failed to quit \(appInfo.name) (PID: \(originalPID)). The app may have unsaved changes.")
                 }
                 
                 // Wait for the app to actually terminate
@@ -582,7 +582,7 @@ struct AppCommand: AsyncParsableCommand {
                 }
                 
                 if !runningApp.isTerminated {
-                    throw ServiceError("App \(appInfo.name) did not terminate within 5 seconds")
+                    throw PeekabooError.timeout("App \(appInfo.name) did not terminate within 5 seconds")
                 }
                 
                 // Step 2: Wait the specified duration
@@ -600,7 +600,7 @@ struct AppCommand: AsyncParsableCommand {
                     if let url = workspace.urlForApplication(withBundleIdentifier: bundleId) {
                         newApp = try await workspace.openApplication(at: url, configuration: config)
                     } else {
-                        throw ServiceError("Could not find application URL for bundle ID: \(bundleId)")
+                        throw NotFoundError.application("Could not find application URL for bundle ID: \(bundleId)")
                     }
                 } else if let bundlePath = appInfo.bundlePath {
                     let url = URL(fileURLWithPath: bundlePath)
@@ -608,11 +608,11 @@ struct AppCommand: AsyncParsableCommand {
                     config.activates = true
                     newApp = try await workspace.openApplication(at: url, configuration: config)
                 } else {
-                    throw ServiceError("No bundle ID or path available to relaunch \(appInfo.name)")
+                    throw PeekabooError.commandFailed("No bundle ID or path available to relaunch \(appInfo.name)")
                 }
                 
                 guard let launchedApp = newApp else {
-                    throw ServiceError("Failed to launch application")
+                    throw PeekabooError.commandFailed("Failed to launch application")
                 }
                 
                 // Wait until ready if requested
