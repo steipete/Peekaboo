@@ -27,8 +27,12 @@ export async function resolveImagePath(
   if (needsTempDir) {
     // Create a temporary directory
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "peekaboo-img-"));
-    logger.debug({ tempPath: tempDir }, "Created temporary directory for capture");
-    return { effectivePath: tempDir, tempDirUsed: tempDir };
+    // Generate a full file path with appropriate extension
+    const format = input.format === "data" ? "png" : (input.format || "png");
+    const extension = format === "jpg" ? ".jpg" : ".png";
+    const tempFilePath = path.join(tempDir, `capture${extension}`);
+    logger.debug({ tempPath: tempFilePath }, "Created temporary file path for capture");
+    return { effectivePath: tempFilePath, tempDirUsed: tempDir };
   }
 
   // Check for PEEKABOO_DEFAULT_SAVE_PATH environment variable
@@ -37,11 +41,14 @@ export async function resolveImagePath(
     return { effectivePath: defaultSavePath, tempDirUsed: undefined };
   }
 
-  // Final fallback: create a temporary directory
+  // Final fallback: create a temporary directory with full file path
   // This happens when: no path, no question, no explicit 'data' format, no env var
   const fallbackTempDir = await fs.mkdtemp(path.join(os.tmpdir(), "peekaboo-img-"));
-  logger.debug({ tempPath: fallbackTempDir }, "Created fallback temporary directory for capture");
-  return { effectivePath: fallbackTempDir, tempDirUsed: fallbackTempDir };
+  const format = input.format || "png";
+  const extension = format === "jpg" ? ".jpg" : ".png";
+  const fallbackFilePath = path.join(fallbackTempDir, `capture${extension}`);
+  logger.debug({ tempPath: fallbackFilePath }, "Created fallback temporary file path for capture");
+  return { effectivePath: fallbackFilePath, tempDirUsed: fallbackTempDir };
 }
 
 export function buildSwiftCliArgs(
