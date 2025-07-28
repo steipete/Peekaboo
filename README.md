@@ -117,6 +117,12 @@ peekaboo window move --app TextEdit --x 100 --y 100
 peekaboo window resize --app Terminal --width 800 --height 600
 peekaboo window focus --app "Visual Studio Code"
 
+# Space (Virtual Desktop) Management
+peekaboo space list                      # List all Spaces
+peekaboo space switch 2                  # Switch to Space 2
+peekaboo space move-window --app Safari --to 3  # Move Safari to Space 3
+peekaboo space current                   # Show current Space info
+
 # Menu Bar Interaction (v3)
 peekaboo menu list --app Calculator     # List all menus and items
 peekaboo menu list-all                  # List menus for frontmost app

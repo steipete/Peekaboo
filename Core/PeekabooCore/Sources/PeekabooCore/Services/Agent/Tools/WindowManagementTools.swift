@@ -292,4 +292,146 @@ extension PeekabooAgentService {
             }
         )
     }
+    
+    /// Create the list spaces tool
+    func createListSpacesTool() -> Tool<PeekabooServices> {
+        createTool(
+            name: "list_spaces",
+            description: "List all macOS Spaces (virtual desktops)",
+            parameters: .object(
+                properties: [:],
+                required: []
+            ),
+            handler: { _, context in
+                let spaces = await MainActor.run {
+                    let spaceService = SpaceManagementService()
+                    return spaceService.getAllSpaces()
+                }
+                
+                if spaces.isEmpty {
+                    return .success("No Spaces found")
+                }
+                
+                var output = "Found \(spaces.count) Space(s):\n\n"
+                
+                for (index, space) in spaces.enumerated() {
+                    output += "Space \(index + 1):\n"
+                    output += "  • ID: \(space.id)\n"
+                    output += "  • Type: \(space.type.rawValue)\n"
+                    output += "  • Active: \(space.isActive ? "Yes" : "No")\n"
+                    if let displayID = space.displayID {
+                        output += "  • Display: \(displayID)\n"
+                    }
+                    output += "\n"
+                }
+                
+                return .success(
+                    output.trimmingCharacters(in: .whitespacesAndNewlines),
+                    metadata: ["count": String(spaces.count)]
+                )
+            }
+        )
+    }
+    
+    /// Create the switch space tool
+    func createSwitchSpaceTool() -> Tool<PeekabooServices> {
+        createTool(
+            name: "switch_space",
+            description: "Switch to a different macOS Space (virtual desktop)",
+            parameters: .object(
+                properties: [
+                    "space_number": ParameterSchema.integer(description: "Space number to switch to (1-based)")
+                ],
+                required: ["space_number"]
+            ),
+            handler: { params, context in
+                guard let spaceNumber = params.int("space_number", default: nil) else {
+                    throw PeekabooError.invalidInput("space_number is required")
+                }
+                
+                // Get space info on MainActor
+                let (spaceId, spaceCount) = await MainActor.run {
+                    let spaceService = SpaceManagementService()
+                    let spaces = spaceService.getAllSpaces()
+                    
+                    guard spaceNumber > 0 && spaceNumber <= spaces.count else {
+                        return (nil as CGSSpaceID?, spaces.count)
+                    }
+                    
+                    let targetSpace = spaces[spaceNumber - 1]
+                    return (targetSpace.id, spaces.count)
+                }
+                
+                guard let spaceId = spaceId else {
+                    throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaceCount)")
+                }
+                
+                // Switch to space
+                await MainActor.run {
+                    let spaceService = SpaceManagementService()
+                    _ = Task {
+                        try await spaceService.switchToSpace(spaceId)
+                    }
+                }
+                
+                // Give it time to switch
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                
+                return .success(
+                    "Switched to Space \(spaceNumber)",
+                    metadata: ["space_id": String(spaceId)]
+                )
+            }
+        )
+    }
+    
+    /// Create the move window to space tool
+    func createMoveWindowToSpaceTool() -> Tool<PeekabooServices> {
+        createTool(
+            name: "move_window_to_space",
+            description: "Move a window to a different macOS Space (virtual desktop)",
+            parameters: .object(
+                properties: [
+                    "window_id": ParameterSchema.integer(description: "Window ID to move"),
+                    "space_number": ParameterSchema.integer(description: "Target space number (1-based)"),
+                    "bring_to_current": ParameterSchema.boolean(description: "Move window to current space instead")
+                ],
+                required: []
+            ),
+            handler: { params, context in
+                let windowId = params.int("window_id", default: nil)
+                let spaceNumber = params.int("space_number", default: nil)
+                let bringToCurrent = params.bool("bring_to_current", default: false)
+                
+                guard let windowId = windowId else {
+                    throw PeekabooError.invalidInput("window_id is required")
+                }
+                
+                if bringToCurrent {
+                    try await MainActor.run {
+                        let spaceService = SpaceManagementService()
+                        try spaceService.moveWindowToCurrentSpace(windowID: CGWindowID(windowId))
+                    }
+                    return .success("Moved window to current Space")
+                } else {
+                    guard let spaceNumber = spaceNumber else {
+                        throw PeekabooError.invalidInput("Either space_number or bring_to_current must be specified")
+                    }
+                    
+                    try await MainActor.run {
+                        let spaceService = SpaceManagementService()
+                        let spaces = spaceService.getAllSpaces()
+                        guard spaceNumber > 0 && spaceNumber <= spaces.count else {
+                            throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
+                        }
+                        
+                        let targetSpace = spaces[spaceNumber - 1]
+                        try spaceService.moveWindowToSpace(windowID: CGWindowID(windowId), spaceID: targetSpace.id)
+                    }
+                    
+                    return .success("Moved window to Space \(spaceNumber)")
+                }
+            }
+        )
+    }
 }

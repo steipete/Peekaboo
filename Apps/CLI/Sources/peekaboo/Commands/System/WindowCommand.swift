@@ -278,18 +278,10 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
         """)
     
     @OptionGroup var windowOptions: WindowIdentificationOptions
+    @OptionGroup var focusOptions: FocusOptions
     
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
-    @Flag(name: .long, help: "Switch to window's Space if on different Space (default: true)")
-    var spaceSwitch = true
-    
-    @Flag(name: .long, inversion: .prefixedNo, help: "Disable Space switching")
-    var disableSpaceSwitch = false
-    
-    @Flag(name: .long, help: "Move window to current Space instead of switching")
-    var moveHere = false
     
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
@@ -303,8 +295,18 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
             
-            // Use regular focus for now - enhanced focus disabled due to AX element lookup issues
-            try await PeekabooServices.shared.windows.focusWindow(target: target)
+            // Use enhanced focus with space support
+            if let windowID = windowInfo?.windowID {
+                try await ensureFocused(
+                    windowID: CGWindowID(windowID),
+                    applicationName: self.windowOptions.app,
+                    windowTitle: self.windowOptions.windowTitle,
+                    options: self.focusOptions
+                )
+            } else {
+                // Fallback to regular focus if no window ID
+                try await PeekabooServices.shared.windows.focusWindow(target: target)
+            }
             
             let data = createWindowActionResult(
                 action: "focus",
@@ -314,7 +316,7 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
             
             output(data) {
                 var message = "Successfully focused window '\(windowInfo?.title ?? "Untitled")' of \(appName)"
-                if self.moveHere {
+                if self.focusOptions.bringToCurrentSpace {
                     message += " (moved to current Space)"
                 }
                 print(message)

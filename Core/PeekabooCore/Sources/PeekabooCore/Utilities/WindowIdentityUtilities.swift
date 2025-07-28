@@ -1,14 +1,60 @@
+/// Window Identity Utilities
+///
+/// This file provides utilities for managing window identities and bridging between
+/// different window identification systems in macOS:
+///
+/// - **CGWindowID**: CoreGraphics window identifier (stable for window lifetime)
+/// - **AXUIElement**: Accessibility API window reference
+/// - **Window Information**: Comprehensive window metadata
+///
+/// ## Key Features
+///
+/// 1. **Window ID Extraction**: Convert AXUIElement to CGWindowID using private API
+/// 2. **Window Lookup**: Find AXUIElement by CGWindowID across applications
+/// 3. **Window Information**: Get comprehensive window metadata from CGWindowID
+/// 4. **State Verification**: Check if windows exist and are on screen
+///
+/// ## Usage Examples
+///
+/// ```swift
+/// let service = WindowIdentityService()
+///
+/// // Extract CGWindowID from AXUIElement
+/// if let windowID = service.getWindowID(from: axElement) {
+///     print("Window ID: \(windowID)")
+/// }
+///
+/// // Find AXUIElement by CGWindowID
+/// if let (window, app) = service.findWindow(byID: windowID) {
+///     window.focusWindow()
+/// }
+///
+/// // Get window information
+/// if let info = service.getWindowInfo(windowID: windowID) {
+///     print("Window '\(info.title ?? "Untitled")' at \(info.bounds)")
+/// }
+/// ```
+///
+/// ## Implementation Notes
+///
+/// - Uses private `_AXUIElementGetWindow` API for ID extraction (may change between macOS versions)
+/// - Window IDs are stable for the window's lifetime but not across app restarts
+/// - CGWindowID 0 is a valid window ID (despite common misconceptions)
+
 import AppKit
 import AXorcist
 import Foundation
 
 // MARK: - Private API Declaration
 
+/// Private API to extract CGWindowID from an AXUIElement
+/// - Warning: This is a private API that may change between macOS versions
 @_silgen_name("_AXUIElementGetWindow")
 func _AXUIElementGetWindow(_ element: AXUIElement, _ windowID: inout CGWindowID) -> AXError
 
 // MARK: - Window Identity Service
 
+/// Service for managing window identities and bridging between CGWindowID and AXUIElement
 @MainActor
 public final class WindowIdentityService {
     

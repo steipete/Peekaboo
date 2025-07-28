@@ -1,52 +1,164 @@
+/// Space (Virtual Desktop) Management Utilities
+///
+/// This file provides utilities for managing macOS Spaces (virtual desktops) using
+/// private CoreGraphics APIs. These APIs enable advanced window management features
+/// that are not available through public frameworks.
+///
+/// ## ⚠️ Important Warning
+///
+/// This implementation relies on private CGS (CoreGraphics Services) APIs that:
+/// - Are undocumented and unsupported by Apple
+/// - May change or break between macOS versions
+/// - Could cause crashes if used incorrectly
+/// - May require special entitlements in the future
+///
+/// ## Key Features
+///
+/// 1. **Space Information**: List all Spaces and their properties
+/// 2. **Space Navigation**: Switch between Spaces programmatically
+/// 3. **Window Movement**: Move windows between Spaces
+/// 4. **Space Detection**: Find which Space contains a window
+///
+/// ## Requirements (macOS 15 Sequoia+)
+///
+/// - Screen Recording permission (for CGSCopySpacesForWindows)
+/// - Accessibility permission (for window manipulation)
+/// - Must be called from main thread
+/// - NSApplication must be initialized
+///
+/// ## Usage Examples
+///
+/// ```swift
+/// let service = SpaceManagementService()
+///
+/// // List all Spaces
+/// let spaces = service.getAllSpaces()
+/// for space in spaces {
+///     print("Space \(space.id): \(space.type) - Active: \(space.isActive)")
+/// }
+///
+/// // Switch to a Space
+/// try await service.switchToSpace(spaceNumber: 2)
+///
+/// // Move window to current Space
+/// try service.moveWindowToCurrentSpace(windowID: 1234)
+/// ```
+///
+/// ## References
+///
+/// - Based on reverse-engineered CGS APIs
+/// - Similar implementations: yabai, Amethyst, Rectangle
+/// - No official documentation available
+
 import AppKit
+@preconcurrency import CoreFoundation
 import Foundation
 
 // MARK: - CGSSpace Private API Declarations
 
+/// Connection identifier for communicating with WindowServer
 public typealias CGSConnectionID = UInt32
-public typealias CGSSpaceID = UInt64
+
+/// Unique identifier for a Space (virtual desktop)
+public typealias CGSSpaceID = UInt64  // size_t in C
+
+/// Managed display identifier
 public typealias CGSManagedDisplay = UInt32
 
-@_silgen_name("CGSMainConnectionID")
-func CGSMainConnectionID() -> CGSConnectionID
+/// Use _CGSDefaultConnection instead of CGSMainConnectionID for better reliability
+@_silgen_name("_CGSDefaultConnection")
+func _CGSDefaultConnection() -> CGSConnectionID
 
+/// Returns an array of all space IDs matching the given mask
+/// The result is a CFArray that may contain space IDs as NSNumbers
 @_silgen_name("CGSCopySpaces")
-func CGSCopySpaces(_ connection: CGSConnectionID, _ mask: Int) -> CFArray?
+func CGSCopySpaces(_ cid: CGSConnectionID, _ mask: Int) -> CFArray?
 
+/// Given an array of window numbers, returns the IDs of the spaces those windows lie on
+/// The windowIDs parameter should be a CFArray of CGWindowID values
 @_silgen_name("CGSCopySpacesForWindows")
-func CGSCopySpacesForWindows(_ connection: CGSConnectionID, _ mask: Int, _ windowNumbers: CFArray) -> CFArray?
+func CGSCopySpacesForWindows(_ cid: CGSConnectionID, _ mask: Int, _ windowIDs: CFArray) -> CFArray?
 
+/// Gets the type of a space (user, fullscreen, system)
 @_silgen_name("CGSSpaceGetType")
-func CGSSpaceGetType(_ connection: CGSConnectionID, _ space: CGSSpaceID) -> Int
+func CGSSpaceGetType(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> Int
 
+/// Gets the ID of the space currently visible to the user
 @_silgen_name("CGSGetActiveSpace")
-func CGSGetActiveSpace(_ connection: CGSConnectionID) -> CGSSpaceID
+func CGSGetActiveSpace(_ cid: CGSConnectionID) -> CGSSpaceID
 
-@_silgen_name("CGSManagedDisplayGetCurrentSpace")
-func CGSManagedDisplayGetCurrentSpace(_ connection: CGSConnectionID, _ display: CGSManagedDisplay) -> CGSSpaceID
+/// Creates a new space with the given options dictionary
+/// Valid keys are: "type": CFNumberRef, "uuid": CFStringRef
+@_silgen_name("CGSSpaceCreate")
+func CGSSpaceCreate(_ cid: CGSConnectionID, _ null: UnsafeRawPointer?, _ options: CFDictionary) -> CGSSpaceID
 
+/// Removes and destroys the space corresponding to the given space ID
+@_silgen_name("CGSSpaceDestroy")
+func CGSSpaceDestroy(_ cid: CGSConnectionID, _ sid: CGSSpaceID)
+
+/// Get and set the human-readable name of a space
+@_silgen_name("CGSSpaceCopyName")
+func CGSSpaceCopyName(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> CFString?
+
+@_silgen_name("CGSSpaceSetName")
+func CGSSpaceSetName(_ cid: CGSConnectionID, _ sid: CGSSpaceID, _ name: CFString) -> CGError
+
+/// Returns an array of PIDs of applications that have ownership of a given space
+@_silgen_name("CGSSpaceCopyOwners")
+func CGSSpaceCopyOwners(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> CFArray?
+
+/// Connection-local data in a given space
+@_silgen_name("CGSSpaceCopyValues")
+func CGSSpaceCopyValues(_ cid: CGSConnectionID, _ space: CGSSpaceID) -> CFDictionary?
+
+@_silgen_name("CGSSpaceSetValues")
+func CGSSpaceSetValues(_ cid: CGSConnectionID, _ sid: CGSSpaceID, _ values: CFDictionary) -> CGError
+
+/// Changes the active space for a given display
+/// Takes a CFString display identifier
 @_silgen_name("CGSManagedDisplaySetCurrentSpace")
-func CGSManagedDisplaySetCurrentSpace(_ connection: CGSConnectionID, _ display: CGSManagedDisplay, _ space: CGSSpaceID)
+func CGSManagedDisplaySetCurrentSpace(_ cid: CGSConnectionID, _ display: CFString, _ space: CGSSpaceID)
 
+/// Given an array of space IDs, each space is shown to the user
+@_silgen_name("CGSShowSpaces")
+func CGSShowSpaces(_ cid: CGSConnectionID, _ spaces: CFArray)
+
+/// Given an array of space IDs, each space is hidden from the user
+@_silgen_name("CGSHideSpaces")
+func CGSHideSpaces(_ cid: CGSConnectionID, _ spaces: CFArray)
+
+/// Main display identifier constant
+@_silgen_name("kCGSPackagesMainDisplayIdentifier")
+let kCGSPackagesMainDisplayIdentifier: CFString
+
+/// Given an array of window numbers and an array of space IDs, adds each window to each space
 @_silgen_name("CGSAddWindowsToSpaces")
-func CGSAddWindowsToSpaces(_ connection: CGSConnectionID, _ windows: CFArray, _ spaces: CFArray)
+func CGSAddWindowsToSpaces(_ cid: CGSConnectionID, _ windows: CFArray, _ spaces: CFArray)
 
+/// Given an array of window numbers and an array of space IDs, removes each window from each space
 @_silgen_name("CGSRemoveWindowsFromSpaces")
-func CGSRemoveWindowsFromSpaces(_ connection: CGSConnectionID, _ windows: CFArray, _ spaces: CFArray)
+func CGSRemoveWindowsFromSpaces(_ cid: CGSConnectionID, _ windows: CFArray, _ spaces: CFArray)
 
+/// Returns information about managed display spaces
 @_silgen_name("CGSCopyManagedDisplaySpaces")
-func CGSCopyManagedDisplaySpaces(_ connection: CGSConnectionID) -> CFArray?
+func CGSCopyManagedDisplaySpaces(_ cid: CGSConnectionID) -> CFArray?
 
-// Space type constants
-private let kCGSSpaceUser = 0
-private let kCGSSpaceFullscreen = 4
-private let kCGSSpaceSystem = 2
-private let kCGSSpaceTiled = 5
+// Space type constants (from CGSSpaceType enum)
+private let kCGSSpaceUser = 0        // User-created desktop spaces
+private let kCGSSpaceFullscreen = 1  // Fullscreen spaces  
+private let kCGSSpaceSystem = 2      // System spaces e.g. Dashboard
+private let kCGSSpaceTiled = 5       // Tiled spaces (newer macOS)
 
-// Space mask constants
-private let kCGSAllSpacesMask = 0xFFFF
-private let kCGSCurrentSpaceMask = 0x0001
-private let kCGSVisibleSpacesMask = 0x0005
+// Space mask constants (from CGSSpaceMask enum)
+private let kCGSSpaceIncludesCurrent = 1 << 0
+private let kCGSSpaceIncludesOthers = 1 << 1
+private let kCGSSpaceIncludesUser = 1 << 2
+private let kCGSSpaceVisible = 1 << 16
+
+private let kCGSCurrentSpaceMask = kCGSSpaceIncludesUser | kCGSSpaceIncludesCurrent
+private let kCGSOtherSpacesMask = kCGSSpaceIncludesOthers | kCGSSpaceIncludesCurrent
+private let kCGSAllSpacesMask = kCGSSpaceIncludesUser | kCGSSpaceIncludesOthers | kCGSSpaceIncludesCurrent
+private let kCGSAllVisibleSpacesMask = kCGSSpaceVisible | kCGSAllSpacesMask
 
 // MARK: - Space Information
 
@@ -55,6 +167,8 @@ public struct SpaceInfo: Sendable {
     public let type: SpaceType
     public let isActive: Bool
     public let displayID: CGDirectDisplayID?
+    public let name: String?
+    public let ownerPIDs: [Int]
     
     public enum SpaceType: String, Sendable {
         case user = "user"
@@ -70,10 +184,25 @@ public struct SpaceInfo: Sendable {
 @MainActor
 public final class SpaceManagementService {
     private var _connection: CGSConnectionID?
+    private let connectionLock = NSLock()
     
     private var connection: CGSConnectionID {
+        connectionLock.lock()
+        defer { connectionLock.unlock() }
+        
         if _connection == nil {
-            _connection = CGSMainConnectionID()
+            // Ensure we're on main thread
+            // SpaceManagementService is marked @MainActor, so we're guaranteed to be on main thread
+            
+            // Initialize NSApplication if needed
+            _ = NSApplication.shared
+            
+            _connection = _CGSDefaultConnection()
+            
+            // Verify we got a valid connection
+            if _connection == 0 {
+                print("WARNING: Failed to get CGS connection")
+            }
         }
         return _connection!
     }
@@ -86,15 +215,44 @@ public final class SpaceManagementService {
     
     /// Get information about all Spaces
     public func getAllSpaces() -> [SpaceInfo] {
-        guard let spacesArray = CGSCopySpaces(connection, kCGSAllSpacesMask) as? [CGSSpaceID] else {
-            // Failed to get all Spaces
+        // Check if we have a valid connection
+        guard connection != 0 else {
+            print("ERROR: Invalid CGS connection")
             return []
         }
         
+        guard let spacesRef = CGSCopySpaces(connection, kCGSAllSpacesMask) else {
+            print("ERROR: CGSCopySpaces returned nil")
+            return []
+        }
+        
+        // Try to interpret the result as an array
+        let spacesArray = spacesRef as NSArray
         let activeSpace = CGSGetActiveSpace(connection)
         
-        return spacesArray.compactMap { spaceID in
-            let spaceType = CGSSpaceGetType(connection, spaceID)
+        var spaces: [SpaceInfo] = []
+        
+        // Handle both array of IDs and array of dictionaries
+        for element in spacesArray {
+            var spaceID: CGSSpaceID?
+            
+            if let id = element as? Int {
+                // Direct space ID
+                spaceID = CGSSpaceID(id)
+            } else if let dict = element as? [String: Any] {
+                // Dictionary with space info - try different keys
+                if let id = dict["ManagedSpaceID"] as? Int {
+                    spaceID = CGSSpaceID(id)
+                } else if let id = dict["id64"] as? Int {
+                    spaceID = CGSSpaceID(id)
+                } else if let id = dict["id"] as? Int {
+                    spaceID = CGSSpaceID(id)
+                }
+            }
+            
+            guard let validSpaceID = spaceID else { continue }
+            
+            let spaceType = CGSSpaceGetType(connection, validSpaceID)
             let type: SpaceInfo.SpaceType = switch spaceType {
             case kCGSSpaceUser: .user
             case kCGSSpaceFullscreen: .fullscreen
@@ -103,20 +261,31 @@ public final class SpaceManagementService {
             default: .unknown
             }
             
-            // Try to determine which display this Space belongs to
-            let displayID = getDisplayForSpace(spaceID)
+            // Get additional space information
+            let spaceName = CGSSpaceCopyName(connection, validSpaceID) as String?
+            let ownerPIDsArray = CGSSpaceCopyOwners(connection, validSpaceID) as? [Int] ?? []
             
-            return SpaceInfo(
-                id: spaceID,
+            spaces.append(SpaceInfo(
+                id: validSpaceID,
                 type: type,
-                isActive: spaceID == activeSpace,
-                displayID: displayID
-            )
+                isActive: validSpaceID == activeSpace,
+                displayID: nil,
+                name: spaceName,
+                ownerPIDs: ownerPIDsArray
+            ))
         }
+        
+        return spaces
     }
     
     /// Get the current active Space
     public func getCurrentSpace() -> SpaceInfo? {
+        // Check if we have a valid connection
+        guard connection != 0 else {
+            print("ERROR: Invalid CGS connection")
+            return nil
+        }
+        
         let activeSpaceID = CGSGetActiveSpace(connection)
         guard activeSpaceID != 0 else {
             // Failed to get active Space
@@ -132,29 +301,63 @@ public final class SpaceManagementService {
         default: .unknown
         }
         
-        let displayID = getDisplayForSpace(activeSpaceID)
+        // Get additional space information
+        let spaceName = CGSSpaceCopyName(connection, activeSpaceID) as String?
+        let ownerPIDsArray = CGSSpaceCopyOwners(connection, activeSpaceID) as? [Int] ?? []
+        let displayID: CGDirectDisplayID? = nil // Simplified for now
         
         return SpaceInfo(
             id: activeSpaceID,
             type: type,
             isActive: true,
-            displayID: displayID
+            displayID: displayID,
+            name: spaceName,
+            ownerPIDs: ownerPIDsArray
         )
     }
     
     /// Get Spaces that contain a specific window
     public func getSpacesForWindow(windowID: CGWindowID) -> [SpaceInfo] {
+        // Check if we have a valid connection
+        guard connection != 0 else {
+            print("ERROR: Invalid CGS connection")
+            return []
+        }
+        
         let windowArray = [windowID] as CFArray
         
-        guard let spacesArray = CGSCopySpacesForWindows(connection, kCGSAllSpacesMask, windowArray) as? [CGSSpaceID] else {
+        guard let spacesRef = CGSCopySpacesForWindows(connection, kCGSAllSpacesMask, windowArray) else {
             // Failed to get Spaces for window
             return []
         }
         
+        // Try to interpret the result as an array
+        let spacesArray = spacesRef as NSArray
         let activeSpace = CGSGetActiveSpace(connection)
         
-        return spacesArray.compactMap { spaceID in
-            let spaceType = CGSSpaceGetType(connection, spaceID)
+        var spaces: [SpaceInfo] = []
+        
+        // Handle both array of IDs and array of dictionaries
+        for element in spacesArray {
+            var spaceID: CGSSpaceID?
+            
+            if let id = element as? Int {
+                // Direct space ID
+                spaceID = CGSSpaceID(id)
+            } else if let dict = element as? [String: Any] {
+                // Dictionary with space info - try different keys
+                if let id = dict["ManagedSpaceID"] as? Int {
+                    spaceID = CGSSpaceID(id)
+                } else if let id = dict["id64"] as? Int {
+                    spaceID = CGSSpaceID(id)
+                } else if let id = dict["id"] as? Int {
+                    spaceID = CGSSpaceID(id)
+                }
+            }
+            
+            guard let validSpaceID = spaceID else { continue }
+            
+            let spaceType = CGSSpaceGetType(connection, validSpaceID)
             let type: SpaceInfo.SpaceType = switch spaceType {
             case kCGSSpaceUser: .user
             case kCGSSpaceFullscreen: .fullscreen
@@ -163,33 +366,29 @@ public final class SpaceManagementService {
             default: .unknown
             }
             
-            let displayID = getDisplayForSpace(spaceID)
+            // Get additional space information
+            let spaceName = CGSSpaceCopyName(connection, validSpaceID) as String?
+            let ownerPIDsArray = CGSSpaceCopyOwners(connection, validSpaceID) as? [Int] ?? []
             
-            return SpaceInfo(
-                id: spaceID,
+            spaces.append(SpaceInfo(
+                id: validSpaceID,
                 type: type,
-                isActive: spaceID == activeSpace,
-                displayID: displayID
-            )
+                isActive: validSpaceID == activeSpace,
+                displayID: nil,
+                name: spaceName,
+                ownerPIDs: ownerPIDsArray
+            ))
         }
+        
+        return spaces
     }
     
     // MARK: - Space Switching
     
     /// Switch to a specific Space
     public func switchToSpace(_ spaceID: CGSSpaceID) async throws {
-        // Find which display this Space belongs to
-        guard let displayID = getDisplayForSpace(spaceID) else {
-            throw SpaceError.spaceNotFound(spaceID)
-        }
-        
-        // Convert CGDirectDisplayID to CGSManagedDisplay (they're typically the same value)
-        let managedDisplay = CGSManagedDisplay(displayID)
-        
-        // Switching to Space
-        
-        // Switch to the Space
-        CGSManagedDisplaySetCurrentSpace(connection, managedDisplay, spaceID)
+        // Use kCGSPackagesMainDisplayIdentifier for the main display
+        CGSManagedDisplaySetCurrentSpace(connection, kCGSPackagesMainDisplayIdentifier, spaceID)
         
         // Give the system time to perform the switch
         try? await Task.sleep(nanoseconds: 300_000_000) // 0.3s
@@ -246,45 +445,18 @@ public final class SpaceManagementService {
     // MARK: - Private Helpers
     
     private func getDisplayForSpace(_ spaceID: CGSSpaceID) -> CGDirectDisplayID? {
-        // Get all displays
-        var displayCount: UInt32 = 0
-        var onlineDisplays = [CGDirectDisplayID](repeating: 0, count: 16)
-        
-        CGGetOnlineDisplayList(16, &onlineDisplays, &displayCount)
-        
-        // Check each display to see if it contains this Space
-        for i in 0..<Int(displayCount) {
-            let display = onlineDisplays[i]
-            let managedDisplay = CGSManagedDisplay(display)
-            let displaySpace = CGSManagedDisplayGetCurrentSpace(connection, managedDisplay)
-            
-            if displaySpace == spaceID {
-                return display
-            }
-        }
-        
-        // If not the current Space on any display, check managed display Spaces
-        // This requires iterating through all Spaces for each display
-        guard let managedSpacesArray = CGSCopyManagedDisplaySpaces(connection) as? [[String: Any]] else {
-            return nil
-        }
-        
-        for spaceDict in managedSpacesArray {
-            if let currentSpaceID = spaceDict["Current Space"] as? CGSSpaceID,
-               currentSpaceID == spaceID,
-               let _ = spaceDict["Display Identifier"] as? String {
-                // Convert display identifier to CGDirectDisplayID
-                // The identifier is typically a UUID string
-                for i in 0..<Int(displayCount) {
-                    let display = onlineDisplays[i]
-                    // Note: This is a simplified approach. In production, you'd need
-                    // to properly match the display identifier
-                    return display
-                }
-            }
-        }
-        
-        return nil
+        // Simplified implementation that avoids the problematic CGSManagedDisplayGetCurrentSpace
+        // For now, just return the main display ID
+        return CGMainDisplayID()
+    }
+}
+
+// MARK: - NSScreen Extension
+
+extension NSScreen {
+    /// Get the display ID for this screen
+    var displayID: CGDirectDisplayID {
+        return deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID ?? 0
     }
 }
 
