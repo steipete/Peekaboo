@@ -4,6 +4,7 @@ import Foundation
 import CoreGraphics
 
 @Suite("GestureService Tests", .tags(.ui))
+@MainActor
 struct GestureServiceTests {
     
     @Test("Initialize GestureService")

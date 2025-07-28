@@ -12,9 +12,8 @@ private let USE_MODERN_SCREENCAPTURE_API = ProcessInfo.processInfo.environment["
 public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     private let logger: CategoryLogger
     
-    public init(loggingService: LoggingServiceProtocol? = nil) {
-        let logging = loggingService ?? PeekabooServices.shared.logging
-        self.logger = logging.logger(category: LoggingService.Category.screenCapture)
+    public init(loggingService: LoggingServiceProtocol) {
+        self.logger = loggingService.logger(category: LoggingService.Category.screenCapture)
     }
     
     public func captureScreen(displayIndex: Int?) async throws -> CaptureResult {

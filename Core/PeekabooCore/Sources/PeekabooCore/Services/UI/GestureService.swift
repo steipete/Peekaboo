@@ -4,6 +4,7 @@ import AppKit
 import os.log
 
 /// Service for handling gesture operations (swipe, drag, mouse movement)
+@MainActor
 public final class GestureService: Sendable {
     
     private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "GestureService")

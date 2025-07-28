@@ -6,6 +6,7 @@ import ApplicationServices
 import os.log
 
 /// Default implementation of UI automation operations using specialized services
+@MainActor
 public final class UIAutomationService: UIAutomationServiceProtocol {
     
     private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "UIAutomationService")

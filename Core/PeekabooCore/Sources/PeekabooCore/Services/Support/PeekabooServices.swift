@@ -5,6 +5,7 @@ import os.log
 /// Provides a unified interface for screen capture, automation, and management operations
 public final class PeekabooServices: @unchecked Sendable {
     /// Shared instance for convenience
+    @MainActor
     public static let shared = PeekabooServices.createShared()
     
     /// Logger for service initialization and operations
@@ -56,6 +57,7 @@ public final class PeekabooServices: @unchecked Sendable {
     private let agentLock = NSLock()
     
     /// Initialize with default service implementations
+    @MainActor
     public init() {
         logger.info("🚀 Initializing PeekabooServices with default implementations")
         
@@ -192,6 +194,7 @@ public final class PeekabooServices: @unchecked Sendable {
     }
     
     /// Create the shared instance with proper initialization order
+    @MainActor
     private static func createShared() -> PeekabooServices {
         let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "Services")
         logger.info("🚀 Creating shared PeekabooServices instance")

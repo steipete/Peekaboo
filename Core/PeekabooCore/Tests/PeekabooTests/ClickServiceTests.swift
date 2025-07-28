@@ -4,19 +4,20 @@ import Foundation
 import CoreGraphics
 
 @Suite("ClickService Tests", .tags(.ui))
+@MainActor
 struct ClickServiceTests {
     
     @Test("Initialize ClickService")
     func initializeService() async throws {
         let sessionManager = MockSessionManager()
-        let service = await ClickService(sessionManager: sessionManager)
+        let service = ClickService(sessionManager: sessionManager)
         #expect(service != nil)
     }
     
     @Test("Click with coordinates")
     func clickAtCoordinates() async throws {
         let sessionManager = MockSessionManager()
-        let service = await ClickService(sessionManager: sessionManager)
+        let service = ClickService(sessionManager: sessionManager)
         
         let point = CGPoint(x: 100, y: 100)
         
@@ -46,22 +47,24 @@ struct ClickServiceTests {
             keyboardShortcut: nil
         )
         
+        let detectedElements = DetectedElements(
+            buttons: [mockElement]
+        )
+        
         let detectionResult = ElementDetectionResult(
             sessionId: "test-session",
-            screenshot: ScreenshotMetadata(
-                path: "/tmp/test.png",
-                width: 1920,
-                height: 1080,
-                scaleFactor: 2.0,
-                colorSpace: "sRGB"
-            ),
-            elements: ElementCollection(all: [mockElement]),
-            timestamp: Date()
+            screenshotPath: "/tmp/test.png",
+            elements: detectedElements,
+            metadata: DetectionMetadata(
+                detectionTime: 0.1,
+                elementCount: 1,
+                method: "AXorcist"
+            )
         )
         
         sessionManager.mockDetectionResult = detectionResult
         
-        let service = await ClickService(sessionManager: sessionManager)
+        let service = ClickService(sessionManager: sessionManager)
         
         // Should find element in session and click at its center
         try await service.click(
@@ -74,7 +77,7 @@ struct ClickServiceTests {
     @Test("Click element by ID not found")
     func clickElementByIdNotFound() async throws {
         let sessionManager = MockSessionManager()
-        let service = await ClickService(sessionManager: sessionManager)
+        let service = ClickService(sessionManager: sessionManager)
         
         // Should throw NotFoundError when element doesn't exist
         await #expect(throws: NotFoundError.self) {
@@ -89,7 +92,7 @@ struct ClickServiceTests {
     @Test("Click types")
     func differentClickTypes() async throws {
         let sessionManager = MockSessionManager()
-        let service = await ClickService(sessionManager: sessionManager)
+        let service = ClickService(sessionManager: sessionManager)
         
         let point = CGPoint(x: 100, y: 100)
         
@@ -131,22 +134,24 @@ struct ClickServiceTests {
             keyboardShortcut: nil
         )
         
+        let detectedElements = DetectedElements(
+            buttons: [mockElement]
+        )
+        
         let detectionResult = ElementDetectionResult(
             sessionId: "test-session",
-            screenshot: ScreenshotMetadata(
-                path: "/tmp/test.png",
-                width: 1920,
-                height: 1080,
-                scaleFactor: 2.0,
-                colorSpace: "sRGB"
-            ),
-            elements: ElementCollection(all: [mockElement]),
-            timestamp: Date()
+            screenshotPath: "/tmp/test.png",
+            elements: detectedElements,
+            metadata: DetectionMetadata(
+                detectionTime: 0.1,
+                elementCount: 1,
+                method: "AXorcist"
+            )
         )
         
         sessionManager.mockDetectionResult = detectionResult
         
-        let service = await ClickService(sessionManager: sessionManager)
+        let service = ClickService(sessionManager: sessionManager)
         
         // Should find element by query and click it
         try await service.click(
@@ -159,28 +164,12 @@ struct ClickServiceTests {
 
 // MARK: - Mock Session Manager
 
-private actor MockSessionManager: SessionManagerProtocol {
+@MainActor
+private final class MockSessionManager: SessionManagerProtocol {
     var mockDetectionResult: ElementDetectionResult?
     
-    func createSession(sessionId: String) async throws {
-        // No-op for tests
-    }
-    
-    func getSession(sessionId: String) async throws -> PeekabooSession {
-        PeekabooSession(
-            sessionId: sessionId,
-            createdAt: Date(),
-            lastAccessedAt: Date(),
-            screenshotCount: 1
-        )
-    }
-    
-    func updateLastAccessed(sessionId: String) async throws {
-        // No-op for tests
-    }
-    
-    func storeScreenshot(sessionId: String, path: String, metadata: ScreenshotMetadata) async throws {
-        // No-op for tests
+    func createSession() async throws -> String {
+        return "test-session-\(UUID().uuidString)"
     }
     
     func storeDetectionResult(sessionId: String, result: ElementDetectionResult) async throws {
@@ -191,11 +180,23 @@ private actor MockSessionManager: SessionManagerProtocol {
         return mockDetectionResult
     }
     
-    func cleanupOldSessions(olderThan: TimeInterval) async throws {
+    func getMostRecentSession() async -> String? {
+        return nil
+    }
+    
+    func listSessions() async throws -> [SessionInfo] {
+        return []
+    }
+    
+    func cleanSession(sessionId: String) async throws {
         // No-op for tests
     }
     
-    func getAllSessions() async throws -> [PeekabooSession] {
-        return []
+    func cleanSessionsOlderThan(days: Int) async throws -> Int {
+        return 0
+    }
+    
+    func cleanAllSessions() async throws -> Int {
+        return 0
     }
 }

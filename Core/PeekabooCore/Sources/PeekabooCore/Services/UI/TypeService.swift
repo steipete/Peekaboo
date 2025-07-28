@@ -5,6 +5,7 @@ import AppKit
 import os.log
 
 /// Service for handling typing and text input operations
+@MainActor
 public final class TypeService: Sendable {
     
     private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "TypeService")
@@ -143,8 +144,8 @@ public final class TypeService: Sendable {
         // Check if this is a text field
         if role.contains("textfield") || role.contains("textarea") || role.contains("searchfield") {
             let title = element.title()?.lowercased() ?? ""
-            let label = (element.value(for: Attribute<String>("AXLabel")) ?? "").lowercased()
-            let placeholder = (element.value(for: Attribute<String>("AXPlaceholderValue")) ?? "").lowercased()
+            let label = element.label()?.lowercased() ?? ""
+            let placeholder = element.placeholderValue()?.lowercased() ?? ""
             
             if title.contains(query) || label.contains(query) || placeholder.contains(query) {
                 return element

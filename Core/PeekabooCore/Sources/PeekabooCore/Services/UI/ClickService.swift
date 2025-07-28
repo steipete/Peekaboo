@@ -5,6 +5,7 @@ import AppKit
 import os.log
 
 /// Service for handling click operations
+@MainActor
 public final class ClickService: Sendable {
     
     private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "ClickService")

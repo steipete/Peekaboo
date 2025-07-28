@@ -1,5 +1,6 @@
 import ApplicationServices
 import Foundation
+import CoreGraphics
 
 // MARK: - Text and Label Attributes
 
@@ -121,5 +122,43 @@ public extension Element {
             return children.first?.role() == "AXMenuItem"
         }
         return false
+    }
+    
+    /// Get keyboard shortcut for the element (primarily for menu items)
+    /// Returns a formatted string like "⌘S" or nil if no shortcut
+    @MainActor
+    func keyboardShortcut() -> String? {
+        // First check if there's a direct keyboard shortcut attribute (non-standard but sometimes used)
+        if let shortcut = attribute(Attribute<String>("AXKeyboardShortcut")) {
+            return shortcut
+        }
+        
+        // For menu items, construct from command character and modifiers
+        if role() == "AXMenuItem", let cmdChar = menuItemCmdChar() {
+            var shortcut = ""
+            
+            // Get modifiers and convert to CGEventFlags
+            if let modifiers = menuItemCmdModifiers() {
+                let flags = CGEventFlags(rawValue: UInt64(modifiers))
+                
+                if flags.contains(.maskControl) {
+                    shortcut += "⌃"
+                }
+                if flags.contains(.maskAlternate) {
+                    shortcut += "⌥"
+                }
+                if flags.contains(.maskShift) {
+                    shortcut += "⇧"
+                }
+                if flags.contains(.maskCommand) {
+                    shortcut += "⌘"
+                }
+            }
+            
+            shortcut += cmdChar.uppercased()
+            return shortcut.isEmpty ? nil : shortcut
+        }
+        
+        return nil
     }
 }

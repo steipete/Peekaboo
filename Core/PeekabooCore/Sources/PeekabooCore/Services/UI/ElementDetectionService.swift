@@ -5,6 +5,7 @@ import AppKit
 import os.log
 
 /// Service for detecting UI elements in screenshots and applications
+@MainActor
 public final class ElementDetectionService: Sendable {
     
     private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "ElementDetectionService")
@@ -53,7 +54,7 @@ public final class ElementDetectionService: Sendable {
         } else {
             guard let app = NSWorkspace.shared.frontmostApplication else {
                 logger.error("No frontmost application")
-                throw PeekabooError.noFrontmostApp
+                throw PeekabooError.operationError(message: "No frontmost application")
             }
             targetApp = app
         }
@@ -78,7 +79,7 @@ public final class ElementDetectionService: Sendable {
         
         guard let window = targetWindow else {
             logger.error("No suitable window found")
-            throw PeekabooError.windowNotFound
+            throw PeekabooError.windowNotFound()
         }
         
         logger.debug("Found window: \(window.title() ?? "Untitled")")
@@ -255,7 +256,7 @@ public final class ElementDetectionService: Sendable {
     
     private func isElementActionable(_ element: Element, role: String) -> Bool {
         // Check if element has press action
-        if element.isActionSupported(.press) {
+        if let actions = element.supportedActions(), actions.contains("AXPress") {
             return true
         }
         
@@ -271,12 +272,12 @@ public final class ElementDetectionService: Sendable {
     
     @MainActor
     private func extractKeyboardShortcut(_ element: Element) -> String? {
-        // Try to get keyboard shortcut from various attributes
-        if let shortcut = element.value(for: Attribute<String>("AXKeyboardShortcut")) {
+        // Use the new keyboardShortcut() method from AXorcist
+        if let shortcut = element.keyboardShortcut() {
             return shortcut
         }
         
-        // For menu items, check description
+        // Fallback: For some elements, check description which may contain shortcuts
         if let description = element.descriptionText(),
            description.contains("⌘") || description.contains("⌥") || description.contains("⌃") {
             return description

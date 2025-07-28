@@ -15,4 +15,5 @@ extension Tag {
     @Tag static var automation: Self
     @Tag static var agent: Self
     @Tag static var session: Self
+    @Tag static var ui: Self
 }

@@ -540,6 +540,27 @@ PEEKABOO_AI_PROVIDERS="ollama/llama" ./scripts/peekaboo-wait.sh agent "your task
 - Credentials: `~/.peekaboo/credentials` (key=value, chmod 600)
 - Precedence: CLI args > env vars > credentials > config > defaults
 
+### Threading and MainActor
+
+**IMPORTANT: Almost everything in Peekaboo runs on the main thread.** This is by design because:
+
+- **UI Operations**: All UI automation must run on the main thread
+- **Accessibility APIs**: All AX (accessibility) operations are main thread only
+- **AppleScript**: Requires main thread execution
+- **Core Graphics Events**: Mouse/keyboard event simulation is main thread only
+- **Screen Capture**: Most screen capture APIs (except the very newest ones) are synchronous and main thread only
+
+This means:
+- **Be liberal with @MainActor annotations** - When in doubt, mark it @MainActor
+- **Don't worry about blocking the main thread** - These APIs are inherently synchronous anyway
+- **Avoid unnecessary async/await for UI operations** - They're going to run on main thread regardless
+- **Performance comes from efficient API usage**, not from threading
+
+The only operations that might benefit from background threads are:
+- Network requests to AI providers
+- File I/O for large files
+- Image processing after capture
+
 
 
 ## AXorcist Integration

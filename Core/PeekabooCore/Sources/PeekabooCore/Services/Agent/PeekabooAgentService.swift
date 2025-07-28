@@ -15,7 +15,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     public var defaultModel: String { defaultModelName }
     
     public init(
-        services: PeekabooServices = .shared,
+        services: PeekabooServices,
         defaultModelName: String = "claude-opus-4-20250514"
     ) {
         self.services = services

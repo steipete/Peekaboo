@@ -5,6 +5,7 @@ import AppKit
 import os.log
 
 /// Service for handling scroll operations
+@MainActor
 public final class ScrollService: Sendable {
     
     private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "ScrollService")

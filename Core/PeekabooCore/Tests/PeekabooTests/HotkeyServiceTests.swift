@@ -4,6 +4,7 @@ import Foundation
 import CoreGraphics
 
 @Suite("HotkeyService Tests", .tags(.ui))
+@MainActor
 struct HotkeyServiceTests {
     
     @Test("Initialize HotkeyService")

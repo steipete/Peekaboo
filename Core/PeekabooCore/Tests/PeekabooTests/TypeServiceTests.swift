@@ -4,17 +4,18 @@ import Foundation
 import CoreGraphics
 
 @Suite("TypeService Tests", .tags(.ui))
+@MainActor
 struct TypeServiceTests {
     
     @Test("Initialize TypeService")
     func initializeService() async throws {
-        let service = await TypeService()
+        let service = TypeService()
         #expect(service != nil)
     }
     
     @Test("Type text")
     func typeBasicText() async throws {
-        let service = await TypeService()
+        let service = TypeService()
         
         // Test basic text typing
         try await service.type(
@@ -26,7 +27,7 @@ struct TypeServiceTests {
     
     @Test("Type with special characters")
     func typeSpecialCharacters() async throws {
-        let service = await TypeService()
+        let service = TypeService()
         
         // Test typing with special characters
         let specialText = "Hello! @#$% 123 🎉"
@@ -39,7 +40,7 @@ struct TypeServiceTests {
     
     @Test("Type in specific element")
     func typeInElement() async throws {
-        let service = await TypeService()
+        let service = TypeService()
         
         // Test typing in a specific element (by query)
         // In test environment, this will attempt to find an element
@@ -57,7 +58,7 @@ struct TypeServiceTests {
     
     @Test("Clear and type")
     func clearAndType() async throws {
-        let service = await TypeService()
+        let service = TypeService()
         
         // Test clearing before typing
         try await service.clearAndType(
@@ -69,7 +70,7 @@ struct TypeServiceTests {
     
     @Test("Press key")
     func pressSpecialKey() async throws {
-        let service = await TypeService()
+        let service = TypeService()
         
         // Test pressing special keys
         try await service.pressKey(.return)
@@ -80,7 +81,7 @@ struct TypeServiceTests {
     
     @Test("Key combinations")
     func keyCombinations() async throws {
-        let service = await TypeService()
+        let service = TypeService()
         
         // Test various key combinations
         try await service.pressKey(.a, modifiers: [.command])  // Cmd+A
@@ -91,7 +92,7 @@ struct TypeServiceTests {
     
     @Test("Type with delays")
     func typeWithDelays() async throws {
-        let service = await TypeService()
+        let service = TypeService()
         
         // Test typing with character delay
         let startTime = Date()
@@ -109,7 +110,7 @@ struct TypeServiceTests {
     
     @Test("Empty text handling")
     func typeEmptyText() async throws {
-        let service = await TypeService()
+        let service = TypeService()
         
         // Should handle empty text gracefully
         try await service.type(
@@ -121,7 +122,7 @@ struct TypeServiceTests {
     
     @Test("Unicode text")
     func typeUnicodeText() async throws {
-        let service = await TypeService()
+        let service = TypeService()
         
         // Test various Unicode characters
         let unicodeTexts = [

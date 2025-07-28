@@ -4,6 +4,7 @@ import AppKit
 import os.log
 
 /// Service for handling keyboard shortcuts and hotkeys
+@MainActor
 public final class HotkeyService: Sendable {
     
     private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "HotkeyService")
