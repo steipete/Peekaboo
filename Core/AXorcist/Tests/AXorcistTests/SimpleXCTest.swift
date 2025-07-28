@@ -1,11 +1,14 @@
-import XCTest
+import Testing
 
-class SimpleXCTest: XCTestCase {
-    func testExample() throws {
-        XCTAssertEqual(1, 1, "Simple assertion should pass")
+@Suite("Simple Swift Testing Example")
+struct SimpleSwiftTests {
+    @Test("Basic equality check")
+    func equalityCheck() throws {
+        #expect(1 == 1)
     }
 
-    func testAnotherExample() {
-        XCTAssertTrue(true, "Another simple assertion")
+    @Test("Boolean assertion")
+    func booleanAssertion() {
+        #expect(true)
     }
 }

@@ -1,49 +1,59 @@
-import XCTest
+import Testing
 @testable import peekaboo
 
 // NOTE: These tests are temporarily disabled as they reference old AI provider architecture
 // that has been replaced by PeekabooCore's model providers.
 // TODO: Update or remove these tests based on new architecture
 
-final class OllamaProviderTests: XCTestCase {
-    override func setUp() {
-        super.setUp()
-        // MockURLProtocol.reset() - no longer exists
+@Suite("Ollama Provider Tests", .disabled("Old AI provider architecture has been replaced"), .bug("PEEK-001: Migrate to new AI provider architecture"))
+struct OllamaProviderTests {
+    
+    @Test("Ollama provider initialization")
+    func providerInitialization() {
+        // Test disabled - OllamaProvider is now in PeekabooCore
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
 
-    override func tearDown() {
-        super.tearDown()
-        // MockURLProtocol.reset() - no longer exists
-    }
-
-    func testOllamaProviderInitialization() {
+    @Test("Check availability with running Ollama server")
+    func checkAvailabilityWithRunningServer() async {
         // Test disabled - OllamaProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
-    }
-
-    func testCheckAvailabilityWithRunningServer() async {
-        // Test disabled - OllamaProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
     
-    func testCheckAvailabilityWithStoppedServer() async {
+    @Test("Check availability with stopped Ollama server")
+    func checkAvailabilityWithStoppedServer() async {
         // Test disabled - OllamaProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
     
-    func testSendPromptSuccess() async {
+    @Test("Send prompt to Ollama successfully")
+    func sendPromptSuccess() async {
         // Test disabled - OllamaProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
     
-    func testSendPromptWithImage() async {
+    @Test("Send prompt with image to Ollama")
+    func sendPromptWithImage() async {
         // Test disabled - OllamaProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
     
-    func testSendPromptError() async {
+    @Test("Handle Ollama send prompt error")
+    func sendPromptError() async {
         // Test disabled - OllamaProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
 }
 

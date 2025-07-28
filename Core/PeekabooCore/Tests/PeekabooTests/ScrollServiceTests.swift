@@ -7,13 +7,13 @@ import CoreGraphics
 @MainActor
 struct ScrollServiceTests {
     
-    @Test("Initialize ScrollService")
+    @Test("ScrollService initializes successfully with default configuration")
     func initializeService() async throws {
         let service = ScrollService()
         #expect(service != nil)
     }
     
-    @Test("Scroll directions")
+    @Test("Scroll executes in all four cardinal directions without errors")
     func scrollInAllDirections() async throws {
         let service = ScrollService()
         

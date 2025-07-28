@@ -7,15 +7,20 @@ import CoreGraphics
 @MainActor
 struct ClickServiceTests {
     
-    @Test("Initialize ClickService")
-    func initializeService() async throws {
-        let sessionManager = MockSessionManager()
-        let service = ClickService(sessionManager: sessionManager)
-        #expect(service != nil)
+    @Suite("Initialization")
+    struct InitializationTests {
+        @Test("ClickService initializes with session manager dependency")
+        func initializeService() async throws {
+            let sessionManager = MockSessionManager()
+            let service = ClickService(sessionManager: sessionManager)
+            #expect(service != nil)
+        }
     }
     
-    @Test("Click with coordinates")
-    func clickAtCoordinates() async throws {
+    @Suite("Coordinate Clicking")
+    struct CoordinateClickingTests {
+        @Test("Click performs at specified screen coordinates without errors")
+        func clickAtCoordinates() async throws {
         let sessionManager = MockSessionManager()
         let service = ClickService(sessionManager: sessionManager)
         
@@ -31,8 +36,12 @@ struct ClickServiceTests {
         )
     }
     
-    @Test("Click element by ID with session")
-    func clickElementById() async throws {
+    }
+    
+    @Suite("Element Clicking")
+    struct ElementClickingTests {
+        @Test("Click finds and clicks element by ID using session detection results")
+        func clickElementById() async throws {
         let sessionManager = MockSessionManager()
         
         // Create mock detection result
@@ -74,23 +83,36 @@ struct ClickServiceTests {
         )
     }
     
-    @Test("Click element by ID not found")
+    @Test("Click element by ID not found throws specific error")
     func clickElementByIdNotFound() async throws {
         let sessionManager = MockSessionManager()
         let service = ClickService(sessionManager: sessionManager)
+        let nonExistentId = "non-existent-button"
         
-        // Should throw NotFoundError when element doesn't exist
+        // Should throw NotFoundError with specific element ID
         await #expect(throws: NotFoundError.self) {
             try await service.click(
-                target: .elementId("non-existent"),
+                target: .elementId(nonExistentId),
                 clickType: .single,
                 sessionId: nil
             )
+        } catch: { error in
+            // Verify the error contains the expected element ID
+            guard case let notFoundError = error as NotFoundError else {
+                Issue.record("Expected NotFoundError but got \(type(of: error))")
+                return
+            }
+            // NotFoundError is a struct, not an enum, so we check its description
+            #expect(notFoundError.localizedDescription.contains(nonExistentId))
         }
     }
     
-    @Test("Click types")
-    func differentClickTypes() async throws {
+    }
+    
+    @Suite("Click Types")
+    struct ClickTypeTests {
+        @Test("Click supports single, double, and right-click types")
+        func differentClickTypes() async throws {
         let sessionManager = MockSessionManager()
         let service = ClickService(sessionManager: sessionManager)
         
@@ -116,9 +138,10 @@ struct ClickServiceTests {
             clickType: .double,
             sessionId: nil
         )
+        }
     }
-    
-    @Test("Click element by query")
+        
+    @Test("Click element by query matches partial text")
     func clickElementByQuery() async throws {
         let sessionManager = MockSessionManager()
         
@@ -159,6 +182,7 @@ struct ClickServiceTests {
             clickType: .single,
             sessionId: "test-session"
         )
+        }
     }
 }
 

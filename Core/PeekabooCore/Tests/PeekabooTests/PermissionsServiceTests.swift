@@ -73,7 +73,7 @@ struct PermissionsServiceTests {
     
     // MARK: - Require Permission Tests
     
-    @Test("Require screen recording permission throws when denied", .tags(.fast))
+    @Test("Require screen recording permission throws CaptureError when denied", .tags(.fast))
     func requireScreenRecordingPermission() {
         let hasPermission = permissionsService.checkScreenRecordingPermission()
         
@@ -83,14 +83,21 @@ struct PermissionsServiceTests {
                 try permissionsService.requireScreenRecordingPermission()
             }
         } else {
-            // Should throw specific error when permission is denied
-            #expect(throws: (any Error).self) {
+            // Should throw specific CaptureError when permission is denied
+            #expect(throws: CaptureError.self) {
                 try permissionsService.requireScreenRecordingPermission()
+            } catch: { error in
+                guard case .screenRecordingPermissionDenied = error else {
+                    Issue.record("Expected screenRecordingPermissionDenied but got \(error)")
+                    return
+                }
+                // Verify error message is helpful
+                #expect(error.localizedDescription.contains("Screen recording permission"))
             }
         }
     }
     
-    @Test("Require accessibility permission throws when denied", .tags(.fast))
+    @Test("Require accessibility permission throws CaptureError when denied", .tags(.fast))
     func requireAccessibilityPermission() {
         let hasPermission = permissionsService.checkAccessibilityPermission()
         
@@ -100,9 +107,16 @@ struct PermissionsServiceTests {
                 try permissionsService.requireAccessibilityPermission()
             }
         } else {
-            // Should throw specific error when permission is denied
-            #expect(throws: (any Error).self) {
+            // Should throw specific CaptureError when permission is denied
+            #expect(throws: CaptureError.self) {
                 try permissionsService.requireAccessibilityPermission()
+            } catch: { error in
+                guard case .accessibilityPermissionDenied = error else {
+                    Issue.record("Expected accessibilityPermissionDenied but got \(error)")
+                    return
+                }
+                // Verify error message is helpful
+                #expect(error.localizedDescription.contains("Accessibility permission"))
             }
         }
     }

@@ -6,7 +6,7 @@ import Foundation
 import Testing
 @testable import peekaboo
 
-@Suite("PID Targeting Tests", .serialized)
+@Suite("PID Targeting Tests", .serialized, .bug("PEEK-002: Rewrite to use ApplicationService from PeekabooCore"))
 struct PIDTargetingTests {
     @Test("Find application by valid PID", .enabled(if: ProcessInfo.processInfo.environment["CI"] == nil))
     func findByValidPID() throws {

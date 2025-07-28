@@ -60,19 +60,12 @@ struct SleepCommandTests {
         }
     }
 
-    @Test("Duration formatting for display")
-    func durationFormatting() {
-        let testCases: [(ms: Int, expectedSeconds: Double)] = [
-            (100, 0.1),
-            (500, 0.5),
-            (1000, 1.0),
-            (1500, 1.5),
-            (10000, 10.0),
-        ]
-
-        for testCase in testCases {
-            let seconds = Double(testCase.ms) / 1000.0
-            #expect(abs(seconds - testCase.expectedSeconds) < 0.001)
-        }
+    @Test("Duration formatting converts milliseconds to seconds accurately", arguments: zip(
+        [100, 500, 1000, 1500, 10000],  // milliseconds
+        [0.1, 0.5, 1.0, 1.5, 10.0]      // expected seconds
+    ))
+    func durationFormatting(milliseconds: Int, expectedSeconds: Double) {
+        let seconds = Double(milliseconds) / 1000.0
+        #expect(abs(seconds - expectedSeconds) < 0.001)
     }
 }

@@ -66,36 +66,23 @@ struct FileHandlingTests {
             try FileManager.default.createDirectory(at: self.tempDir, withIntermediateDirectories: true)
         }
 
-        @Test("Saves PNG image")
-        func savePNGImage() throws {
+        @Test("Saves images in different formats with correct magic numbers", arguments: [
+            (format: ImageFormat.png, filename: "test.png", magicNumbers: Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]), magicLength: 8),
+            (format: ImageFormat.jpg, filename: "test.jpg", magicNumbers: Data([0xFF, 0xD8, 0xFF]), magicLength: 3)
+        ])
+        func saveImageFormats(format: ImageFormat, filename: String, magicNumbers: Data, magicLength: Int) throws {
             let image = self.createTestImage()
-            let outputPath = self.tempDir.appendingPathComponent("test.png").path
+            let outputPath = self.tempDir.appendingPathComponent(filename).path
 
-            try ImageSaver.saveImage(image, to: outputPath, format: .png)
+            try ImageSaver.saveImage(image, to: outputPath, format: format)
 
             #expect(FileManager.default.fileExists(atPath: outputPath))
 
             let data = try Data(contentsOf: URL(fileURLWithPath: outputPath))
             #expect(!data.isEmpty)
 
-            // PNG magic number
-            #expect(data.prefix(8) == Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
-        }
-
-        @Test("Saves JPEG image")
-        func saveJPEGImage() throws {
-            let image = self.createTestImage()
-            let outputPath = self.tempDir.appendingPathComponent("test.jpg").path
-
-            try ImageSaver.saveImage(image, to: outputPath, format: .jpg)
-
-            #expect(FileManager.default.fileExists(atPath: outputPath))
-
-            let data = try Data(contentsOf: URL(fileURLWithPath: outputPath))
-            #expect(!data.isEmpty)
-
-            // JPEG magic number
-            #expect(data.prefix(3) == Data([0xFF, 0xD8, 0xFF]))
+            // Check format-specific magic number
+            #expect(data.prefix(magicLength) == magicNumbers)
         }
 
         @Test("Creates parent directories if needed")

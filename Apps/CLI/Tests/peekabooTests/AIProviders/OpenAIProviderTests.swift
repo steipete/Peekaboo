@@ -1,54 +1,67 @@
-import XCTest
+import Testing
 @testable import peekaboo
 
 // NOTE: These tests are temporarily disabled as they reference old AI provider architecture
 // that has been replaced by PeekabooCore's model providers.
 // TODO: Update or remove these tests based on new architecture
 
-final class OpenAIProviderTests: XCTestCase {
-    override func setUp() {
-        super.setUp()
-        // MockURLProtocol.reset() - no longer exists
+@Suite("OpenAI Provider Tests", .disabled("Old AI provider architecture has been replaced"), .bug("PEEK-001: Migrate to new AI provider architecture"))
+struct OpenAIProviderTests {
+    
+    @Test("OpenAI provider initialization")
+    func providerInitialization() {
+        // Test disabled - OpenAIProvider is now in PeekabooCore
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
 
-    override func tearDown() {
-        super.tearDown()
-        // MockURLProtocol.reset() - no longer exists
-    }
-
-    func testOpenAIProviderInitialization() {
+    @Test("Check availability with valid API key")
+    func checkAvailabilityWithValidAPIKey() async {
         // Test disabled - OpenAIProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
-    }
-
-    func testCheckAvailabilityWithValidAPIKey() async {
-        // Test disabled - OpenAIProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
     
-    func testCheckAvailabilityWithInvalidAPIKey() async {
+    @Test("Check availability with invalid API key")
+    func checkAvailabilityWithInvalidAPIKey() async {
         // Test disabled - OpenAIProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
     
-    func testSendPromptSuccess() async {
+    @Test("Send prompt successfully")
+    func sendPromptSuccess() async {
         // Test disabled - OpenAIProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
     
-    func testSendPromptWithImage() async {
+    @Test("Send prompt with image attachment")
+    func sendPromptWithImage() async {
         // Test disabled - OpenAIProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
     
-    func testSendPromptError() async {
+    @Test("Handle send prompt error")
+    func sendPromptError() async {
         // Test disabled - OpenAIProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
     
-    func testNoAPIKeyError() async {
+    @Test("Handle missing API key error")
+    func noAPIKeyError() async {
         // Test disabled - OpenAIProvider is now in PeekabooCore
-        XCTSkip("Test disabled - old AI provider architecture has been replaced")
+        withKnownIssue("Old AI provider architecture has been replaced") {
+            #expect(false)
+        }
     }
 }
 
