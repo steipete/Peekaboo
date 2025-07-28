@@ -75,14 +75,14 @@ if security find-identity -p codesigning -v | grep -q "Developer ID Application"
     SIGNING_IDENTITY=$(security find-identity -p codesigning -v | grep "Developer ID Application" | head -1 | awk '{print $2}')
     codesign --force --sign "$SIGNING_IDENTITY" \
         --options runtime \
-        --identifier "com.steipete.peekaboo" \
+        --identifier "boo.peekaboo" \
         --timestamp \
         "$FINAL_BINARY_PATH.tmp"
     echo "✅ Signed with Developer ID: $SIGNING_IDENTITY"
 else
     # Fall back to ad-hoc signing for local builds
     codesign --force --sign - \
-        --identifier "com.steipete.peekaboo" \
+        --identifier "boo.peekaboo" \
         "$FINAL_BINARY_PATH.tmp"
     echo "⚠️  Ad-hoc signed (no Developer ID found)"
 fi

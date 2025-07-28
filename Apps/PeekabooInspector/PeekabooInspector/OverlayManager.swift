@@ -5,7 +5,7 @@ import SwiftUI
 
 @MainActor
 class OverlayManager: ObservableObject {
-    private let logger = Logger(subsystem: "com.steipete.PeekabooInspector", category: "OverlayManager")
+    private let logger = Logger(subsystem: "boo.peekaboo.inspector", category: "OverlayManager")
 
     @Published var hoveredElement: UIElement?
     @Published var selectedElement: UIElement?

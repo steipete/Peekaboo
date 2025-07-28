@@ -9,7 +9,7 @@ import os.log
 @MainActor
 public final class UIAutomationService: UIAutomationServiceProtocol {
     
-    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "UIAutomationService")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "UIAutomationService")
     private let sessionManager: SessionManagerProtocol
     
     // Specialized services

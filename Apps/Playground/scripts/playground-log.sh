@@ -143,7 +143,7 @@ if [[ "$SHOW_ALL_CATEGORIES" == true ]]; then
 fi
 
 # Build predicate - using PeekabooPlayground's subsystem
-PREDICATE="subsystem == \"com.steipete.PeekabooPlayground\""
+PREDICATE="subsystem == \"boo.peekaboo.playground\""
 
 if [[ -n "$CATEGORY" ]]; then
     PREDICATE="$PREDICATE AND category == \"$CATEGORY\""
@@ -214,7 +214,7 @@ format_output() {
 # Show header unless outputting to file or JSON
 if [[ -z "$OUTPUT" && "$JSON" != true ]]; then
     echo -e "${BLUE}Peekaboo Playground Log Viewer${NC}"
-    echo "Subsystem: com.steipete.PeekabooPlayground"
+    echo "Subsystem: boo.peekaboo.playground"
     if [[ -n "$CATEGORY" ]]; then
         echo "Category: $CATEGORY"
     fi

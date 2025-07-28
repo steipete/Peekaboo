@@ -7,7 +7,7 @@ import os.log
 @MainActor
 public final class GestureService: Sendable {
     
-    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "GestureService")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "GestureService")
     
     public init() {}
     

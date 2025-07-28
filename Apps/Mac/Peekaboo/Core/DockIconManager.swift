@@ -15,7 +15,7 @@ final class DockIconManager: NSObject {
     static let shared = DockIconManager()
     
     private var windowsObservation: NSKeyValueObservation?
-    private let logger = Logger(subsystem: "com.steipete.peekaboo", category: "DockIconManager")
+    private let logger = Logger(subsystem: "boo.peekaboo", category: "DockIconManager")
     private var settings: PeekabooSettings?
     
     override private init() {

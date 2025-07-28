@@ -8,7 +8,7 @@ import os.log
 @MainActor
 public final class TypeService: Sendable {
     
-    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "TypeService")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "TypeService")
     private let sessionManager: SessionManagerProtocol
     private let clickService: ClickService
     

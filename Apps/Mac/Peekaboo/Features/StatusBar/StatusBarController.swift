@@ -41,7 +41,7 @@ import PeekabooCore
 /// The controller maintains references to key app components for coordinated functionality.
 @MainActor
 final class StatusBarController: NSObject {
-    private let logger = Logger(subsystem: "com.steipete.Peekaboo", category: "StatusBar")
+    private let logger = Logger(subsystem: "boo.peekaboo.app", category: "StatusBar")
     private let statusItem: NSStatusItem
     private let popover = NSPopover()
 

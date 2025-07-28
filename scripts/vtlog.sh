@@ -12,6 +12,7 @@ FOLLOW=false
 ERRORS_ONLY=false
 NO_TAIL=false
 JSON=false
+SUBSYSTEM=""
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -58,6 +59,10 @@ while [[ $# -gt 0 ]]; do
             JSON=true
             shift
             ;;
+        --subsystem)
+            SUBSYSTEM="$2"
+            shift 2
+            ;;
         -h|--help)
             echo "Usage: vtlog.sh [options]"
             echo ""
@@ -72,7 +77,15 @@ while [[ $# -gt 0 ]]; do
             echo "  -e, --errors         Show only errors"
             echo "  --all                Show all logs without tail limit"
             echo "  --json               Output in JSON format"
+            echo "  --subsystem NAME     Filter by subsystem (default: all Peekaboo subsystems)"
             echo "  -h, --help           Show this help"
+            echo ""
+            echo "Peekaboo subsystems:"
+            echo "  boo.peekaboo.core       - Core services"
+            echo "  boo.peekaboo.inspector  - Inspector app"
+            echo "  boo.peekaboo.playground - Playground app"
+            echo "  boo.peekaboo.app        - Mac app"
+            echo "  boo.peekaboo            - Mac app components"
             exit 0
             ;;
         *)
@@ -82,8 +95,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Build predicate - using PeekabooInspector's subsystem
-PREDICATE="subsystem == \"com.steipete.PeekabooInspector\""
+# Build predicate - either specific subsystem or all Peekaboo subsystems
+if [[ -n "$SUBSYSTEM" ]]; then
+    PREDICATE="subsystem == \"$SUBSYSTEM\""
+else
+    # Match all Peekaboo-related subsystems
+    PREDICATE="(subsystem == \"boo.peekaboo.core\" OR subsystem == \"boo.peekaboo.inspector\" OR subsystem == \"boo.peekaboo.playground\" OR subsystem == \"boo.peekaboo.app\" OR subsystem == \"boo.peekaboo\")"
+fi
 
 if [[ -n "$CATEGORY" ]]; then
     PREDICATE="$PREDICATE AND category == \"$CATEGORY\""

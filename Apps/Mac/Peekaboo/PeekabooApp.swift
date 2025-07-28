@@ -112,7 +112,7 @@ struct PeekabooApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let logger = Logger(subsystem: "com.steipete.Peekaboo", category: "App")
+    private let logger = Logger(subsystem: "boo.peekaboo.app", category: "App")
     private var statusBarController: StatusBarController?
     var windowOpener: ((String) -> Void)?
 

@@ -7,7 +7,7 @@ import os.log
 /// Service for checking and managing macOS system permissions
 public final class PermissionsService: Sendable {
     
-    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "PermissionsService")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "PermissionsService")
     
     public init() {}
     

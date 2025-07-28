@@ -8,7 +8,7 @@ import os.log
 @MainActor
 public final class ElementDetectionService: Sendable {
     
-    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "ElementDetectionService")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ElementDetectionService")
     private let sessionManager: SessionManagerProtocol
     
     public init(sessionManager: SessionManagerProtocol? = nil) {

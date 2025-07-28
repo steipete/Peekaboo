@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.steipete.peekaboo</string>
+    <string>boo.peekaboo.peekaboo</string>
     <key>CFBundleName</key>
     <string>Peekaboo</string>
     <key>CFBundleVersion</key>

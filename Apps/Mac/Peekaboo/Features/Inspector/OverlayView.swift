@@ -13,7 +13,7 @@ struct OverlayView: View {
 }
 
 struct ElementOverlay: View {
-    private static let logger = Logger(subsystem: "boo.pekaboo.inspector", category: "ElementOverlay")
+    private static let logger = Logger(subsystem: "boo.peekaboo.app", category: "ElementOverlay")
 
     let element: OverlayManager.UIElement
     let isHovered: Bool

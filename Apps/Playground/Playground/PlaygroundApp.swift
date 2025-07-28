@@ -2,8 +2,8 @@ import SwiftUI
 import OSLog
 import AppKit
 
-private let logger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "App")
-private let clickLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Click")
+private let logger = Logger(subsystem: "boo.peekaboo.playground", category: "App")
+private let clickLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Click")
 
 @main
 struct PlaygroundApp: App {

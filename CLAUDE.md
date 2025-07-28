@@ -606,6 +606,8 @@ The only operations that might benefit from background threads are:
 
 ## Debugging with vtlog
 
+vtlog monitors logs from ALL Peekaboo apps and services:
+
 ```bash
 # Show recent logs (default: last 50 lines from past 5 minutes)
 ./scripts/vtlog.sh
@@ -616,11 +618,19 @@ The only operations that might benefit from background threads are:
 # Show only errors
 ./scripts/vtlog.sh -e
 
-# Debug overlay issues
-./scripts/vtlog.sh -c OverlayManager -n 100
+# Debug element detection issues
+./scripts/vtlog.sh -c ElementDetectionService -d
+
+# Monitor specific subsystem
+./scripts/vtlog.sh --subsystem boo.peekaboo.core
+
+# Search for specific text
+./scripts/vtlog.sh -s "Dialog" -n 100
 ```
 
-Also available: `./scripts/playground-log.sh` for Playground app logs.
+See `./scripts/README-vtlog.md` for full documentation.
+
+Also available: `./scripts/playground-log.sh` for quick Playground-only logs.
 
 ## Agent System and Tool Prompts
 

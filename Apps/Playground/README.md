@@ -71,7 +71,7 @@ Peekaboo Playground is a macOS app designed to test and demonstrate all automati
 
 ## Logging
 
-All actions are logged using Apple's OSLog framework with the subsystem `com.steipete.PeekabooPlayground`. The app provides:
+All actions are logged using Apple's OSLog framework with the subsystem `boo.peekaboo.playground`. The app provides:
 
 - Real-time action logging
 - Categorized logs (Click, Text, Menu, etc.)
@@ -145,10 +145,10 @@ This app is designed to work with Peekaboo's automation features. Each UI elemen
 ### Using vtlog (if available)
 ```bash
 # Stream logs
-log stream --predicate 'subsystem == "com.steipete.PeekabooPlayground"' --level info
+log stream --predicate 'subsystem == "boo.peekaboo.playground"' --level info
 
 # Show recent logs
-log show --predicate 'subsystem == "com.steipete.PeekabooPlayground"' --info --last 30m
+log show --predicate 'subsystem == "boo.peekaboo.playground"' --info --last 30m
 ```
 
 ### Log Categories

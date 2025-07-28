@@ -3,7 +3,7 @@ import os.log
 import PeekabooCore
 
 struct MenuBarStatusView: View {
-    private let logger = Logger(subsystem: "com.steipete.Peekaboo", category: "MenuBarStatus")
+    private let logger = Logger(subsystem: "boo.peekaboo.app", category: "MenuBarStatus")
     
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore

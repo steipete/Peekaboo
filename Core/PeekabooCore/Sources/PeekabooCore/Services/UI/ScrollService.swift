@@ -8,7 +8,7 @@ import os.log
 @MainActor
 public final class ScrollService: Sendable {
     
-    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "ScrollService")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ScrollService")
     private let sessionManager: SessionManagerProtocol
     private let clickService: ClickService
     

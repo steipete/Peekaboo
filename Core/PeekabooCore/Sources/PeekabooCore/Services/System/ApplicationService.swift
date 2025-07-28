@@ -6,7 +6,7 @@ import os.log
 /// Default implementation of application management operations
 public final class ApplicationService: ApplicationServiceProtocol {
     
-    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "ApplicationService")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ApplicationService")
     
     public init() {}
     

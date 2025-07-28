@@ -644,6 +644,7 @@ async function main() {
     await server.connect(transport);
 
     logger.info("Peekaboo MCP Server started successfully");
+    logger.info("🔥 Hot-reload test: Server restarted at " + new Date().toISOString());
   } catch (error) {
     logger.error({ error }, "Failed to start server");
     process.exit(1);

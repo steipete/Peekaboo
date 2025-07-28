@@ -9,7 +9,7 @@ public final class PeekabooServices: @unchecked Sendable {
     public static let shared = PeekabooServices.createShared()
     
     /// Logger for service initialization and operations
-    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "Services")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "Services")
     
     /// Unified logging service
     public let logging: LoggingServiceProtocol
@@ -196,7 +196,7 @@ public final class PeekabooServices: @unchecked Sendable {
     /// Create the shared instance with proper initialization order
     @MainActor
     private static func createShared() -> PeekabooServices {
-        let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "Services")
+        let logger = Logger(subsystem: "boo.peekaboo.core", category: "Services")
         logger.info("🚀 Creating shared PeekabooServices instance")
         
         let logging = LoggingService()

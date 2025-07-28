@@ -68,16 +68,16 @@ class ActionLogger: ObservableObject {
     @Published var lastAction: String = "Ready"
     @Published var showingLogViewer = false
     
-    private let clickLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Click")
-    private let textLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Text")
-    private let menuLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Menu")
-    private let windowLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Window")
-    private let scrollLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Scroll")
-    private let dragLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Drag")
-    private let keyboardLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Keyboard")
-    private let focusLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Focus")
-    private let gestureLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Gesture")
-    private let controlLogger = Logger(subsystem: "com.steipete.PeekabooPlayground", category: "Control")
+    private let clickLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Click")
+    private let textLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Text")
+    private let menuLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Menu")
+    private let windowLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Window")
+    private let scrollLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Scroll")
+    private let dragLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Drag")
+    private let keyboardLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Keyboard")
+    private let focusLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Focus")
+    private let gestureLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Gesture")
+    private let controlLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Control")
     
     private init() {}
     

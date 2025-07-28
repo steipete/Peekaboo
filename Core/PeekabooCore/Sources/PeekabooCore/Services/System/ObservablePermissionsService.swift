@@ -25,7 +25,7 @@ public final class ObservablePermissionsService {
     /// Whether monitoring is active
     public private(set) var isMonitoring = false
     
-    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "ObservablePermissions")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ObservablePermissions")
     
     // MARK: - Permission State
     

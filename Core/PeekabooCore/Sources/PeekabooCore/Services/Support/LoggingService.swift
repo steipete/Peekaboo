@@ -5,7 +5,7 @@ import os
 public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
     private let subsystem: String
     private var loggers: [String: Logger]
-    private let queue = DispatchQueue(label: "com.steipete.peekaboo.logging", attributes: .concurrent)
+    private let queue = DispatchQueue(label: "boo.peekaboo.logging", attributes: .concurrent)
     private var performanceMeasurements = [String: (startTime: Date, operation: String, correlationId: String?)]()
     
     public var minimumLogLevel: LogLevel = .info {
@@ -17,7 +17,7 @@ public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
     }
     
     /// Initialize with subsystem identifier
-    public init(subsystem: String = "com.steipete.PeekabooCore") {
+    public init(subsystem: String = "boo.peekaboo.core") {
         self.subsystem = subsystem
         self.loggers = [:]
         

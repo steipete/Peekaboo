@@ -46,7 +46,7 @@ import SwiftUI
 /// - ``refreshApplications()``
 @MainActor
 class OverlayManager: ObservableObject {
-    private let logger = Logger(subsystem: "boo.pekaboo.inspector", category: "OverlayManager")
+    private let logger = Logger(subsystem: "boo.peekaboo.app", category: "OverlayManager")
 
     @Published var hoveredElement: UIElement?
     @Published var selectedElement: UIElement?

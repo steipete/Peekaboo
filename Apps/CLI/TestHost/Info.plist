@@ -5,7 +5,7 @@
     <key>CFBundleExecutable</key>
     <string>PeekabooTestHost</string>
     <key>CFBundleIdentifier</key>
-    <string>com.steipete.peekaboo.testhost</string>
+    <string>boo.peekaboo.peekaboo.testhost</string>
     <key>CFBundleName</key>
     <string>PeekabooTestHost</string>
     <key>CFBundlePackageType</key>

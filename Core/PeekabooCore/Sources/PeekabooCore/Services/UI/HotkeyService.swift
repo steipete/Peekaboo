@@ -7,7 +7,7 @@ import os.log
 @MainActor
 public final class HotkeyService: Sendable {
     
-    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "HotkeyService")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "HotkeyService")
     
     public init() {}
     

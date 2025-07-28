@@ -19,7 +19,7 @@ public enum DialogError: Error {
 /// Default implementation of dialog management operations
 @MainActor
 public final class DialogService: DialogServiceProtocol {
-    private let logger = Logger(subsystem: "com.steipete.PeekabooCore", category: "DialogService")
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "DialogService")
     
     public init() {
         logger.debug("DialogService initialized")
