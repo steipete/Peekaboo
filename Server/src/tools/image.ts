@@ -10,6 +10,7 @@ import { performAutomaticAnalysis } from "../utils/image-analysis.js";
 import { buildImageSummary } from "../utils/image-summary.js";
 import { buildSwiftCliArgs, resolveImagePath } from "../utils/image-cli-args.js";
 import { parseAIProviders } from "../utils/ai-providers.js";
+import { getAIProvidersConfig } from "../utils/config-loader.js";
 import * as path from "path";
 
 export { imageToolSchema } from "../types/index.js";
@@ -183,8 +184,9 @@ export async function imageToolHandler(
         return savedFile.item_label || "Unknown";
       };
 
+      const aiProvidersConfig = await getAIProvidersConfig(logger);
       const configuredProviders = parseAIProviders(
-        process.env.PEEKABOO_AI_PROVIDERS || "",
+        aiProvidersConfig || "",
       );
       if (!configuredProviders.length) {
         analysisText =
@@ -204,7 +206,7 @@ export async function imageToolHandler(
               imageBase64,
               input.question,
               logger,
-              process.env.PEEKABOO_AI_PROVIDERS || "",
+              aiProvidersConfig || "",
             );
 
             if (analysisResult.error) {

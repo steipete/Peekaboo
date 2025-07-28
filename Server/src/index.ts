@@ -61,6 +61,7 @@ import {
 import { generateServerStatusString } from "./utils/server-status.js";
 import { initializeSwiftCliPath } from "./utils/peekaboo-cli.js";
 import { zodToJsonSchema } from "./utils/zod-to-json-schema.js";
+import { setupEnvironmentFromCredentials, getAIProvidersConfig } from "./utils/config-loader.js";
 import { ToolResponse, ImageInput } from "./types/index.js";
 import { z } from "zod";
 
@@ -639,6 +640,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 async function main() {
   try {
+    // Load credentials and config before starting the server
+    await setupEnvironmentFromCredentials(logger);
+    
+    // Set up AI providers from config if not already in environment
+    const aiProviders = await getAIProvidersConfig(logger);
+    if (aiProviders && !process.env.PEEKABOO_AI_PROVIDERS) {
+      process.env.PEEKABOO_AI_PROVIDERS = aiProviders;
+      logger.info({ providers: aiProviders }, "Loaded AI providers from config file");
+    }
+    
     // Create transport and connect
     const transport = new StdioServerTransport();
     await server.connect(transport);

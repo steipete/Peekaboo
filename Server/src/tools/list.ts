@@ -10,6 +10,7 @@ import {
   ToolResponse,
 } from "../types/index.js";
 import { parseAIProviders, getProviderStatus } from "../utils/ai-providers.js";
+import { getAIProvidersConfig } from "../utils/config-loader.js";
 import { executeSwiftCli, execPeekaboo } from "../utils/peekaboo-cli.js";
 import { generateServerStatusString } from "../utils/server-status.js";
 import fs from "fs/promises";
@@ -327,10 +328,10 @@ async function handleServerStatus(
   // 4. AI Provider Status
   statusSections.push("\n## AI Provider Status");
 
-  const aiProvidersEnv = process.env.PEEKABOO_AI_PROVIDERS;
+  const aiProvidersEnv = await getAIProvidersConfig(logger);
   if (!aiProvidersEnv || !aiProvidersEnv.trim()) {
     statusSections.push("❌ No AI providers configured");
-    statusSections.push("Configure PEEKABOO_AI_PROVIDERS environment variable to enable image analysis");
+    statusSections.push("Configure PEEKABOO_AI_PROVIDERS environment variable or ~/.peekaboo/config.json to enable image analysis");
   } else {
     const providers = parseAIProviders(aiProvidersEnv);
     if (providers.length === 0) {
@@ -398,7 +399,7 @@ async function handleServerStatus(
   const logFile = process.env.PEEKABOO_LOG_FILE || path.join(os.homedir(), "Library/Logs/peekaboo-mcp.log");
   const logLevel = process.env.PEEKABOO_LOG_LEVEL || "info";
   const consoleLogging = process.env.PEEKABOO_CONSOLE_LOGGING === "true";
-  const aiProviders = process.env.PEEKABOO_AI_PROVIDERS || "None configured";
+  const aiProviders = aiProvidersEnv || "None configured";
   const customCliPath = process.env.PEEKABOO_CLI_PATH;
   const defaultSavePath = process.env.PEEKABOO_DEFAULT_SAVE_PATH || "Not set";
 

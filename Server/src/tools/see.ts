@@ -7,6 +7,7 @@ import { executeSwiftCli } from "../utils/peekaboo-cli.js";
 import { readImageAsBase64 } from "../utils/peekaboo-cli.js";
 import * as path from "path";
 import * as os from "os";
+import * as fs from "fs/promises";
 
 export const seeToolSchema = z.object({
   app_target: z.string().optional().describe(
@@ -103,6 +104,9 @@ export async function seeToolHandler(
       args.push("--annotate");
     }
 
+    // Add JSON output flag to get structured data
+    args.push("--json-output");
+
     // Execute the command
     const result = await executeSwiftCli(args, logger);
 
@@ -119,7 +123,47 @@ export async function seeToolHandler(
       };
     }
 
-    const seeData = result.data as SeeResult;
+    // The CLI returns data in a different format than expected
+    const cliData = result.data as any;
+    
+    // Read the UI map from the file
+    let uiElements: Array<any> = [];
+    if (cliData.ui_map && typeof cliData.ui_map === 'string') {
+      try {
+        const mapFileContent = await fs.readFile(cliData.ui_map, 'utf-8');
+        const mapData = JSON.parse(mapFileContent);
+        
+        // Transform the UI map to the expected format
+        if (mapData.uiMap) {
+          uiElements = Object.entries(mapData.uiMap).map(([key, elem]: [string, any]) => ({
+            id: elem.id || key,
+            role: elem.role || 'unknown',
+            title: elem.title,
+            label: elem.label,
+            value: elem.value,
+            bounds: elem.frame ? {
+              x: elem.frame[0][0],
+              y: elem.frame[0][1],
+              width: elem.frame[1][0],
+              height: elem.frame[1][1]
+            } : { x: 0, y: 0, width: 0, height: 0 },
+            is_actionable: elem.isActionable || false
+          }));
+        }
+      } catch (err) {
+        logger.warn({ error: err }, "Failed to read UI map file");
+      }
+    }
+    
+    // Build the SeeResult in the expected format
+    const seeData: SeeResult = {
+      screenshot_path: cliData.screenshot_annotated || cliData.screenshot_raw || outputPath,
+      session_id: cliData.session_id || 'unknown',
+      ui_elements: uiElements,
+      application: cliData.application_name,
+      window: cliData.window_title,
+      timestamp: new Date().toISOString()
+    };
 
     // Build response
     const responseContent: Array<{ type: "text" | "image"; text?: string; data?: string; mimeType?: string }> = [];

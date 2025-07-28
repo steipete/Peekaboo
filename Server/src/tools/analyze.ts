@@ -7,6 +7,7 @@ import {
   analyzeImageWithProvider,
   determineProviderAndModel,
 } from "../utils/ai-providers.js";
+import { getAIProvidersConfig } from "../utils/config-loader.js";
 
 export const analyzeToolSchema = z.object({
   image_path: z
@@ -84,14 +85,14 @@ export async function analyzeToolHandler(
     }
 
     // Check AI providers configuration
-    const aiProvidersEnv = process.env.PEEKABOO_AI_PROVIDERS;
+    const aiProvidersEnv = await getAIProvidersConfig(logger);
     if (!aiProvidersEnv || !aiProvidersEnv.trim()) {
-      logger.error("PEEKABOO_AI_PROVIDERS environment variable not configured");
+      logger.error("PEEKABOO_AI_PROVIDERS not configured in environment or config file");
       return {
         content: [
           {
             type: "text" as const,
-            text: "AI analysis not configured on this server. Set the PEEKABOO_AI_PROVIDERS environment variable.",
+            text: "AI analysis not configured on this server. Set the PEEKABOO_AI_PROVIDERS environment variable or configure it in ~/.peekaboo/config.json",
           },
         ],
         isError: true,
