@@ -4,6 +4,7 @@ import AppKit
 import AXorcist
 
 /// Default implementation of menu interaction operations
+@MainActor
 public final class MenuService: MenuServiceProtocol {
     
     private let applicationService: ApplicationServiceProtocol

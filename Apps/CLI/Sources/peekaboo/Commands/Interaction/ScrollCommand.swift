@@ -50,6 +50,8 @@ struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
+    
+    @OptionGroup var focusOptions: FocusOptions
 
     mutating func run() async throws {
         let startTime = Date()
@@ -70,6 +72,14 @@ struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
                 }
             } else {
                 nil
+            }
+            
+            // Ensure window is focused before scrolling (if we have a session and auto-focus is enabled)
+            if let sessionId = sessionId {
+                try await self.ensureFocused(
+                    sessionId: sessionId,
+                    options: focusOptions
+                )
             }
 
             // Perform scroll using the service

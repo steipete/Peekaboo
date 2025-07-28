@@ -7,7 +7,7 @@ import PeekabooCore
 
 /// Perform drag and drop operations using intelligent element finding
 @available(macOS 14.0, *)
-struct DragCommand: AsyncParsableCommand {
+struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "drag",
         abstract: "Perform drag and drop operations",
@@ -61,6 +61,8 @@ struct DragCommand: AsyncParsableCommand {
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
+    
+    @OptionGroup var focusOptions: FocusOptions
 
     mutating func run() async throws {
         let startTime = Date()
@@ -81,6 +83,14 @@ struct DragCommand: AsyncParsableCommand {
                 providedSession
             } else {
                 await PeekabooServices.shared.sessions.getMostRecentSession()
+            }
+            
+            // Ensure window is focused before dragging (if we have a session and auto-focus is enabled)
+            if let sessionId = sessionId {
+                try await self.ensureFocused(
+                    sessionId: sessionId,
+                    options: focusOptions
+                )
             }
 
             // Resolve starting point
@@ -116,17 +126,16 @@ struct DragCommand: AsyncParsableCommand {
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
 
             // Output results
-            if self.jsonOutput {
-                let result = DragResult(
-                    success: true,
-                    from: ["x": Int(startPoint.x), "y": Int(startPoint.y)],
-                    to: ["x": Int(endPoint.x), "y": Int(endPoint.y)],
-                    duration: self.duration,
-                    steps: self.steps,
-                    modifiers: self.modifiers ?? "none",
-                    executionTime: Date().timeIntervalSince(startTime))
-                outputSuccessCodable(data: result)
-            } else {
+            let result = DragResult(
+                success: true,
+                from: ["x": Int(startPoint.x), "y": Int(startPoint.y)],
+                to: ["x": Int(endPoint.x), "y": Int(endPoint.y)],
+                duration: self.duration,
+                steps: self.steps,
+                modifiers: self.modifiers ?? "none",
+                executionTime: Date().timeIntervalSince(startTime))
+                
+            output(result) {
                 print("✅ Drag successful")
                 print("📍 From: (\(Int(startPoint.x)), \(Int(startPoint.y)))")
                 print("📍 To: (\(Int(endPoint.x)), \(Int(endPoint.y)))")
@@ -261,49 +270,7 @@ struct DragCommand: AsyncParsableCommand {
         return Element(AXUIElementCreateApplication(dockApp.processIdentifier))
     }
 
-    private func handleError(_ error: Error) {
-        if self.jsonOutput {
-            let errorCode: ErrorCode
-            let message: String
-
-            if let peekabooError = error as? PeekabooError {
-                switch peekabooError {
-                case .sessionNotFound:
-                    errorCode = .SESSION_NOT_FOUND
-                    message = "Session not found"
-                case .elementNotFound:
-                    errorCode = .ELEMENT_NOT_FOUND
-                    message = "Element not found"
-                case let .appNotFound(app):
-                    errorCode = .APP_NOT_FOUND
-                    message = "Application not found: \(app)"
-                case .windowNotFound(let criteria):
-                    errorCode = .WINDOW_NOT_FOUND
-                    message = criteria ?? "Window not found"
-                case let .clickFailed(msg):
-                    errorCode = .INTERACTION_FAILED
-                    message = msg
-                case let .typeFailed(msg):
-                    errorCode = .INTERACTION_FAILED
-                    message = msg
-                default:
-                    errorCode = .INTERNAL_SWIFT_ERROR
-                    message = error.localizedDescription
-                }
-            } else if error is ArgumentParser.ValidationError {
-                errorCode = .INVALID_INPUT
-                message = error.localizedDescription
-            } else {
-                errorCode = .INTERNAL_SWIFT_ERROR
-                message = error.localizedDescription
-            }
-
-            outputError(message: message, code: errorCode)
-        } else {
-            var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
-            print("❌ Error: \(error.localizedDescription)", to: &localStandardErrorStream)
-        }
-    }
+    // Error handling is provided by ErrorHandlingCommand protocol
 }
 
 // MARK: - JSON Output Structure

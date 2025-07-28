@@ -574,6 +574,81 @@ await run({ script_path: "test.peekaboo.json", stop_on_error: false })
 }
 ```
 
+### 🎯 Automatic Window Focus Management
+
+Peekaboo v3 includes intelligent window focus management that ensures your automation commands target the correct window, even across different macOS Spaces (virtual desktops).
+
+#### How Focus Management Works
+
+All interaction commands (`click`, `type`, `scroll`, `menu`, `hotkey`, `drag`) automatically:
+1. **Track window identity** - Using stable window IDs that persist across interactions
+2. **Detect window location** - Find which Space contains the target window
+3. **Switch Spaces if needed** - Automatically switch to the window's Space
+4. **Focus the window** - Ensure the window is frontmost before interaction
+5. **Verify focus** - Confirm the window is ready before proceeding
+
+#### Focus Options
+
+All interaction commands support these focus-related flags:
+
+```bash
+# Disable automatic focus (not recommended)
+peekaboo click "Submit" --no-auto-focus
+
+# Set custom focus timeout (default: 5 seconds)
+peekaboo type "Hello" --focus-timeout 10
+
+# Set retry count for focus operations (default: 3)
+peekaboo menu click --app Safari --item "New Tab" --focus-retry-count 5
+
+# Control Space switching behavior
+peekaboo click "Login" --space-switch          # Force Space switch
+peekaboo type "text" --bring-to-current-space  # Move window to current Space
+```
+
+#### Space Management Commands
+
+Peekaboo provides dedicated commands for managing macOS Spaces:
+
+```bash
+# List all Spaces
+peekaboo space list
+
+# Switch to a specific Space
+peekaboo space switch --to 2
+
+# Move windows between Spaces
+peekaboo space move-window --app Safari --to 3
+
+# Find which Space contains a window
+peekaboo space where-is --app "Visual Studio Code"
+```
+
+#### Window Focus Command
+
+For explicit window focus control:
+
+```bash
+# Focus a window (switches Space if needed)
+peekaboo window focus --app Safari
+
+# Focus without switching Spaces
+peekaboo window focus --app Terminal --space-switch never
+
+# Move window to current Space and focus
+peekaboo window focus --app "VS Code" --move-here
+```
+
+#### Focus Behavior
+
+By default, Peekaboo:
+- **Automatically focuses windows** before any interaction
+- **Switches Spaces** when the target window is on a different desktop
+- **Waits for focus** to ensure the window is ready
+- **Retries if needed** with exponential backoff
+
+This ensures reliable automation across complex multi-window, multi-Space workflows without manual window management.
+
 ## 🤖 AI Agent Automation
 
 Peekaboo v3 introduces an AI-powered agent that can understand and execute complex automation tasks using natural language. The agent uses OpenAI's Chat Completions API with streaming support to break down your instructions into specific Peekaboo commands.

@@ -17,7 +17,7 @@ func logError(_ message: String) {
 struct Peekaboo: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "peekaboo",
-        abstract: "Lightning-fast macOS screenshots and AI vision analysis",
+        abstract: "Lightning-fast macOS screenshots, AI vision analysis, and GUI automation with intelligent focus management",
         discussion: """
         VERSION: \(Version.fullVersion)
         
@@ -35,6 +35,12 @@ struct Peekaboo: AsyncParsableCommand {
 
           peekaboo agent "Open TextEdit and write Hello"  # AI agent automation
           peekaboo "Click the login button and sign in"   # Direct agent invocation
+          
+          peekaboo see --app Safari                      # Identify UI elements
+          peekaboo click "Submit" --space-switch         # Click with auto-focus & Space switching
+          peekaboo type "Hello" --bring-to-current-space # Type with window movement
+          peekaboo window focus --app Terminal           # Explicit focus management
+          peekaboo space list                           # List all Spaces
 
         COMMON WORKFLOWS:
           # Capture and automate with AI agent
@@ -45,6 +51,11 @@ struct Peekaboo: AsyncParsableCommand {
           for app in Safari Chrome "Visual Studio Code"; do
             peekaboo image --app "$app" --mode multi --path ~/Screenshots/
           done
+          
+          # Cross-Space automation workflow
+          peekaboo see --app "TextEdit"                  # Find UI elements
+          peekaboo click --on T1 --space-switch          # Auto-switch Space & click
+          peekaboo type "Hello from Space 2!"            # Type with auto-focus
 
         PERMISSIONS:
           Peekaboo requires system permissions to function properly:

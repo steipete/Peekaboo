@@ -4,6 +4,7 @@ import AXorcist
 import AppKit
 
 /// Default implementation of window management operations using AXorcist
+@MainActor
 public final class WindowManagementService: WindowManagementServiceProtocol {
     
     private let applicationService: ApplicationServiceProtocol

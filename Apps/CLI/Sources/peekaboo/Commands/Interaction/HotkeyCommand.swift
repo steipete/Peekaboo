@@ -4,7 +4,7 @@ import PeekabooCore
 
 /// Presses key combinations like Cmd+C, Ctrl+A, etc. using the UIAutomationService.
 @available(macOS 14.0, *)
-struct HotkeyCommand: AsyncParsableCommand {
+struct HotkeyCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "hotkey",
         abstract: "Press keyboard shortcuts and key combinations",
@@ -41,6 +41,8 @@ struct HotkeyCommand: AsyncParsableCommand {
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
+    
+    @OptionGroup var focusOptions: FocusOptions
 
     mutating func run() async throws {
         let startTime = Date()
@@ -62,6 +64,21 @@ struct HotkeyCommand: AsyncParsableCommand {
 
             // Convert key names to comma-separated format for the service
             let keysString = keyNames.joined(separator: ",")
+            
+            // Get session if available
+            let sessionId: String? = if let providedSession = session {
+                providedSession
+            } else {
+                await PeekabooServices.shared.sessions.getMostRecentSession()
+            }
+            
+            // Ensure window is focused before pressing hotkey (if we have a session and auto-focus is enabled)
+            if let sessionId = sessionId {
+                try await self.ensureFocused(
+                    sessionId: sessionId,
+                    options: focusOptions
+                )
+            }
 
             // Perform hotkey using the automation service
             try await PeekabooServices.shared.automation.hotkey(
@@ -69,14 +86,13 @@ struct HotkeyCommand: AsyncParsableCommand {
                 holdDuration: self.holdDuration)
 
             // Output results
-            if self.jsonOutput {
-                let output = HotkeyResult(
-                    success: true,
-                    keys: keyNames,
-                    keyCount: keyNames.count,
-                    executionTime: Date().timeIntervalSince(startTime))
-                outputSuccessCodable(data: output)
-            } else {
+            let result = HotkeyResult(
+                success: true,
+                keys: keyNames,
+                keyCount: keyNames.count,
+                executionTime: Date().timeIntervalSince(startTime))
+                
+            output(result) {
                 print("✅ Hotkey pressed")
                 print("🎹 Keys: \(keyNames.joined(separator: " + "))")
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
@@ -88,31 +104,7 @@ struct HotkeyCommand: AsyncParsableCommand {
         }
     }
 
-    private func handleError(_ error: Error) {
-        if self.jsonOutput {
-            let errorCode: ErrorCode = if error is PeekabooError {
-                switch error as? PeekabooError {
-                case .clickFailed, .typeFailed:
-                    .INTERACTION_FAILED
-                case .permissionDeniedAccessibility:
-                    .PERMISSION_ERROR_ACCESSIBILITY
-                default:
-                    .INTERNAL_SWIFT_ERROR
-                }
-            } else if error is ArgumentParser.ValidationError {
-                .INVALID_ARGUMENT
-            } else {
-                .INTERNAL_SWIFT_ERROR
-            }
-
-            outputError(
-                message: error.localizedDescription,
-                code: errorCode)
-        } else {
-            var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
-            print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
-        }
-    }
+    // Error handling is provided by ErrorHandlingCommand protocol
 }
 
 // MARK: - JSON Output Structure

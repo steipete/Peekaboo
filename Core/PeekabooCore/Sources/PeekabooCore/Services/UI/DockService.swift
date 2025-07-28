@@ -16,6 +16,7 @@ public enum DockError: Error {
 }
 
 /// Default implementation of Dock interaction operations using AXorcist
+@MainActor
 public final class DockService: DockServiceProtocol {
     
     public init() {}

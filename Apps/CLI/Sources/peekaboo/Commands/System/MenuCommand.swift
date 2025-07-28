@@ -181,6 +181,8 @@ struct MenuCommand: AsyncParsableCommand {
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
+        
+        @OptionGroup var focusOptions: FocusOptions
 
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
@@ -279,11 +281,19 @@ struct MenuCommand: AsyncParsableCommand {
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
+        
+        @OptionGroup var focusOptions: FocusOptions
 
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
+                // Ensure application is focused before listing menus
+                try await self.ensureFocused(
+                    applicationName: self.app,
+                    options: focusOptions
+                )
+                
                 // Get menu structure from service
                 let menuStructure = try await PeekabooServices.shared.menu.listMenus(for: self.app)
 
@@ -464,6 +474,8 @@ struct MenuCommand: AsyncParsableCommand {
 
         @Flag(help: "Include item frames (pixel positions)")
         var includeFrames = false
+        
+        @OptionGroup var focusOptions: FocusOptions
 
         mutating func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
