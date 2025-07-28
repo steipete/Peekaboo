@@ -182,7 +182,6 @@ struct ClickServiceTests {
             clickType: .single,
             sessionId: "test-session"
         )
-        }
     }
 }
 
