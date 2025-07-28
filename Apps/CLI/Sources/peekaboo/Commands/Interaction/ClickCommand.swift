@@ -40,6 +40,9 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
 
     @Option(help: "Element ID to click (e.g., B1, T2)")
     var on: String?
+    
+    @Option(help: "Application name to focus before clicking")
+    var app: String?
 
     @Option(help: "Click at coordinates (x,y)")
     var coords: String?
@@ -93,6 +96,14 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     throw PeekabooError.sessionNotFound("No session found")
                 }
                 activeSessionId = foundSessionId
+                
+                // If app is specified, focus it first
+                if let appName = app {
+                    // Focus the specified app
+                    try await PeekabooServices.shared.windows.focusWindow(target: .application(appName))
+                    // Brief delay to ensure focus is complete
+                    try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                }
                 
                 // Ensure window is focused before clicking (if auto-focus is enabled)
                 try await self.ensureFocused(
@@ -151,6 +162,10 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
             // Brief delay to ensure click is processed
             try await Task.sleep(nanoseconds: 20_000_000) // 0.02 seconds
 
+            // Get the frontmost app after clicking
+            let frontmostApp = NSWorkspace.shared.frontmostApplication
+            let appName = frontmostApp?.localizedName ?? "Unknown"
+            
             // Prepare result
             let clickLocation: CGPoint
             let clickedElement: String?
@@ -187,12 +202,14 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                 clickedElement: clickedElement,
                 clickLocation: clickLocation,
                 waitTime: waitResult.waitTime,
-                executionTime: Date().timeIntervalSince(startTime))
+                executionTime: Date().timeIntervalSince(startTime),
+                targetApp: appName)
             
             output(result) {
                 print("✅ Click successful")
+                print("🎯 App: \(appName)")
                 if let info = clickedElement {
-                    print("🎯 Clicked: \(info)")
+                    print("📱 Clicked: \(info)")
                 }
                 print("📍 Location: (\(Int(clickLocation.x)), \(Int(clickLocation.y)))")
                 if waitResult.waitTime > 0 {
@@ -224,19 +241,22 @@ struct ClickResult: Codable {
     let clickLocation: [String: Double]
     let waitTime: Double
     let executionTime: TimeInterval
+    let targetApp: String
 
     init(
         success: Bool,
         clickedElement: String?,
         clickLocation: CGPoint,
         waitTime: Double,
-        executionTime: TimeInterval)
+        executionTime: TimeInterval,
+        targetApp: String)
     {
         self.success = success
         self.clickedElement = clickedElement
         self.clickLocation = ["x": clickLocation.x, "y": clickLocation.y]
         self.waitTime = waitTime
         self.executionTime = executionTime
+        self.targetApp = targetApp
     }
 }
 

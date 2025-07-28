@@ -266,18 +266,23 @@ public struct DetectionMetadata: Sendable {
     /// Window context information (if available)
     public let windowContext: WindowContext?
     
+    /// Whether a dialog was captured instead of a regular window
+    public let isDialog: Bool
+    
     public init(
         detectionTime: TimeInterval,
         elementCount: Int,
         method: String,
         warnings: [String] = [],
-        windowContext: WindowContext? = nil
+        windowContext: WindowContext? = nil,
+        isDialog: Bool = false
     ) {
         self.detectionTime = detectionTime
         self.elementCount = elementCount
         self.method = method
         self.warnings = warnings
         self.windowContext = windowContext
+        self.isDialog = isDialog
     }
 }
 

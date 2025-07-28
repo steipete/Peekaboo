@@ -449,6 +449,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             ui_map: sessionPaths.map,
             application_name: metadata.windowContext?.applicationName,
             window_title: metadata.windowContext?.windowTitle,
+            is_dialog: metadata.isDialog,
             element_count: metadata.elementCount,
             interactable_count: elements.all.count(where: { $0.isEnabled }),
             capture_mode: self.determineMode().rawValue,
@@ -523,7 +524,9 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             print("📱 Application: \(app)")
         }
         if let window = metadata.windowContext?.windowTitle {
-            print("🪟 Window: \(window)")
+            let windowType = metadata.isDialog ? "Dialog" : "Window"
+            let icon = metadata.isDialog ? "🗨️" : "🪟"
+            print("\(icon) \(windowType): \(window)")
         }
         
         // Show menu bar items
@@ -579,6 +582,7 @@ struct SeeResult: Codable {
     let ui_map: String
     let application_name: String?
     let window_title: String?
+    let is_dialog: Bool
     let element_count: Int
     let interactable_count: Int
     let capture_mode: String

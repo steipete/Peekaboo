@@ -19,6 +19,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 To test this project interactive we can use:
 `PEEKABOO_AI_PROVIDERS="ollama/llava:latest" npx @modelcontextprotocol/inspector npx -y @steipete/peekaboo-mcp@beta`
 
+## Binary Location and Version Checking
+
+**CRITICAL: Always verify you're using the correct binary!**
+
+1. **Check the build timestamp**: Every Peekaboo execution shows when it was compiled:
+   ```
+   Peekaboo 3.0.0-beta.1 (main/bdbaf32-dirty, 2025-07-28 17:13:41 +0200)
+   ```
+   If the timestamp is older than your recent changes, the binary is stale!
+
+2. **Expected binary location**: `/Users/steipete/Projects/Peekaboo/peekaboo` (project root)
+   - This is where Poltergeist puts the binary
+   - This is what the wrapper script should use
+   - If you see binaries in other locations, they might be outdated
+
+3. **Verify before testing**:
+   ```bash
+   # Check version and timestamp
+   ./peekaboo --version
+   # Or with wrapper
+   ./scripts/peekaboo-wait.sh --version
+   ```
+
 ## Quick Build Commands
 
 **IMPORTANT: AI AGENTS SHOULD NEVER MANUALLY BUILD**
@@ -128,6 +151,8 @@ With Poltergeist running and using the wrapper script, you NEVER need to:
 - Call `sleep` before using `peekaboo-wait.sh` (the wrapper waits automatically)
 
 Just use `./scripts/peekaboo-wait.sh` for all CLI commands and let Poltergeist handle the rest!
+
+**BUT ALWAYS**: Check the build timestamp in the CLI output to ensure you're running the latest version!
 
 ### Build Failure Recovery
 

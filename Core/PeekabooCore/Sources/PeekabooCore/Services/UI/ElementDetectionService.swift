@@ -48,23 +48,86 @@ public final class ElementDetectionService: Sendable {
         let appElement = Element(axApp)
         
         // Find the target window
-        let targetWindow: Element?
+        let allWindows = appElement.windows() ?? []
+        logger.debug("Found \(allWindows.count) windows for \(targetApp.localizedName ?? "app")")
+        
+        // Check for dialogs if no regular windows
+        var targetWindow: Element?
+        var isDialog = false
+        
+        // First, look for the specific window if a title is provided
         if let windowTitle = windowContext?.windowTitle {
             logger.debug("Looking for window with title: \(windowTitle)")
-            targetWindow = appElement.windows()?.first { window in
+            targetWindow = allWindows.first { window in
                 window.title()?.localizedCaseInsensitiveContains(windowTitle) == true
             }
-        } else {
-            // Use frontmost window
-            targetWindow = appElement.windows()?.first { $0.isMain() == true } ?? appElement.windows()?.first
+        }
+        
+        // Always check all windows to detect dialogs
+        logger.debug("Checking \(allWindows.count) windows for dialog characteristics")
+        
+        for window in allWindows {
+            let title = window.title() ?? ""
+            let subrole = window.subrole() ?? ""
+            let isMain = window.isMain() ?? false
+            
+            logger.debug("Window: '\(title)', subrole: '\(subrole)', isMain: \(isMain)")
+            
+            // Check if this is a file dialog based on title and characteristics
+            let isFileDialog = title == "Open" || 
+                             title == "Save" || 
+                             title.hasPrefix("Save As") ||
+                             title == "Export" ||
+                             title == "Import"
+            
+            // Also check for traditional dialog subroles
+            let isDialogSubrole = subrole == "AXDialog" || 
+                                subrole == "AXSystemDialog" || 
+                                subrole == "AXSheet"
+            
+            if isFileDialog || isDialogSubrole {
+                // If we already have a target window and it matches this dialog, mark it as dialog
+                if let target = targetWindow, target.title() == window.title() {
+                    isDialog = true
+                    logger.info("🗨️ Target window is a dialog: '\(title)' (subrole: \(subrole), isFileDialog: \(isFileDialog))")
+                }
+                // If we don't have a target window yet, use this dialog
+                else if targetWindow == nil {
+                    targetWindow = window
+                    isDialog = true
+                    logger.info("🗨️ Using dialog window: '\(title)' (subrole: \(subrole), isFileDialog: \(isFileDialog))")
+                }
+            }
+        }
+        
+        // If no window found yet, try to find main window
+        if targetWindow == nil {
+            targetWindow = allWindows.first { $0.isMain() == true }
+        }
+        
+        // Fall back to any window
+        if targetWindow == nil {
+            targetWindow = allWindows.first
         }
         
         guard let window = targetWindow else {
-            logger.error("No window found")
-            throw PeekabooError.windowNotFound()
+            // Provide detailed error message
+            let appName = targetApp.localizedName ?? "Unknown app"
+            
+            if !targetApp.isActive {
+                logger.error("App '\(appName)' is not active")
+                throw PeekabooError.windowNotFound(criteria: "App '\(appName)' is running but not active")
+            } else if allWindows.isEmpty {
+                logger.error("App '\(appName)' has no windows")
+                throw PeekabooError.windowNotFound(criteria: "App '\(appName)' is running but has no windows or dialogs")
+            } else {
+                logger.error("No suitable window found for app '\(appName)'")
+                throw PeekabooError.windowNotFound(criteria: "No accessible window found for '\(appName)'")
+            }
         }
         
-        logger.debug("Found window: \(window.title() ?? "Untitled")")
+        let windowType = isDialog ? "dialog" : "window"
+        logger.debug("Found \(windowType): \(window.title() ?? "Untitled")")
         
         // Detect elements in window
         var detectedElements: [DetectedElement] = []
@@ -169,7 +232,8 @@ public final class ElementDetectionService: Sendable {
             elementCount: detectedElements.count,
             method: "AXorcist",
             warnings: [],
-            windowContext: windowContext
+            windowContext: windowContext,
+            isDialog: isDialog
         )
         
         let result = ElementDetectionResult(
