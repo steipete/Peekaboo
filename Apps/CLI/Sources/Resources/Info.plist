@@ -12,5 +12,15 @@
     <string>2.0.2</string>
     <key>NSScreenCaptureUsageDescription</key>
     <string>Peekaboo needs screen recording permission to capture screenshots and analyze window content.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Peekaboo needs to send Apple events to control applications and automate tasks.</string>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>Peekaboo needs accessibility permission to interact with user interface elements.</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2025 Peter Steinberger. All rights reserved.</string>
 </dict>
 </plist>

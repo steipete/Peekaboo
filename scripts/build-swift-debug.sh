@@ -53,4 +53,22 @@ fi
 
 (cd "$SWIFT_PROJECT_PATH" && swift build)
 
+echo "🔏 Code signing the debug binary..."
+PROJECT_NAME="peekaboo"
+DEBUG_BINARY_PATH="$SWIFT_PROJECT_PATH/.build/debug/$PROJECT_NAME"
+ENTITLEMENTS_PATH="$SWIFT_PROJECT_PATH/Sources/Resources/peekaboo.entitlements"
+
+if [[ -f "$ENTITLEMENTS_PATH" ]]; then
+    codesign --force --sign - \
+        --identifier "boo.peekaboo" \
+        --entitlements "$ENTITLEMENTS_PATH" \
+        "$DEBUG_BINARY_PATH"
+    echo "✅ Debug binary signed with entitlements"
+else
+    echo "⚠️  Entitlements file not found, signing without entitlements"
+    codesign --force --sign - \
+        --identifier "boo.peekaboo" \
+        "$DEBUG_BINARY_PATH"
+fi
+
 echo "✅ Debug build complete"
