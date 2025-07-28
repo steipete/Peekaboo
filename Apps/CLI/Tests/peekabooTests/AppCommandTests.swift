@@ -103,14 +103,19 @@ struct AppCommandIntegrationTests {
             "--json-output",
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
-        #expect(data.success == true)
-
-        if let appData = data.data?.value as? [String: Any] {
-            #expect(appData["action"] as? String == "launch")
-            #expect(appData["app"] as? String == "TextEdit")
-            #expect(appData["pid"] != nil)
+        struct LaunchResult: Codable {
+            let action: String
+            let app_name: String
+            let bundle_id: String
+            let pid: Int32
+            let is_ready: Bool
         }
+        
+        let response = try JSONDecoder().decode(CodableJSONResponse<LaunchResult>.self, from: output.data(using: .utf8)!)
+        #expect(response.success == true)
+        #expect(response.data.action == "launch")
+        #expect(response.data.app_name == "TextEdit")
+        #expect(response.data.pid > 0)
     }
 
     @Test("Hide and show application")
@@ -168,14 +173,23 @@ struct AppCommandIntegrationTests {
             "--json-output",
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
+        struct AppQuitInfo: Codable {
+            let app_name: String
+            let bundle_id: String
+            let pid: Int32
+            let terminated: Bool
+        }
+        
+        struct QuitResult: Codable {
+            let action: String
+            let force: Bool
+            let results: [AppQuitInfo]
+        }
+        
+        let response = try JSONDecoder().decode(CodableJSONResponse<QuitResult>.self, from: output.data(using: .utf8)!)
         // App might not be running
-        if data.success {
-            if let quitData = data.data?.value as? [String: Any],
-               let results = quitData["quit_apps"] as? [[String: Any]]
-            {
-                #expect(!results.isEmpty)
-            }
+        if response.success {
+            #expect(!response.data.results.isEmpty)
         }
     }
 
@@ -188,11 +202,9 @@ struct AppCommandIntegrationTests {
             "--json-output",
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
-        if data.success {
-            if let hideData = data.data?.value as? [String: Any] {
-                #expect(hideData["action"] as? String == "hide_others")
-            }
+        let response = try JSONDecoder().decode(CodableJSONResponse<[String: String]>.self, from: output.data(using: .utf8)!)
+        if response.success {
+            #expect(response.data["action"] == "hide")
         }
     }
 }

@@ -50,8 +50,8 @@ struct GrokModelTests {
         
         let request = ModelRequest(
             messages: [
-                SystemMessageItem(content: "Test system message"),
-                UserMessageItem(content: .text("Test user message"))
+                Message.system(content: "Test system message"),
+                Message.user(content: .text("Test user message"))
             ],
             tools: nil,
             settings: settings
@@ -98,7 +98,7 @@ struct GrokModelTests {
         
         let request = ModelRequest(
             messages: [
-                UserMessageItem(content: .text("Use the test tool"))
+                Message.user(content: .text("Use the test tool"))
             ],
             tools: [tool],
             settings: ModelSettings(modelName: "grok-4")
@@ -119,11 +119,11 @@ struct GrokModelTests {
         let model = GrokModel(apiKey: "test-key")
         
         // Test various message types
-        let messages: [any MessageItem] = [
-            SystemMessageItem(content: "System prompt"),
-            UserMessageItem(content: .text("User text")),
-            AssistantMessageItem(content: [.outputText("Assistant response")]),
-            ToolMessageItem(
+        let messages: [Message] = [
+            Message.system(content: "System prompt"),
+            Message.user(content: .text("User text")),
+            Message.assistant(content: [.outputText("Assistant response")]),
+            Message.tool(
                 toolCallId: "tool-123",
                 content: "Tool result"
             )
@@ -154,7 +154,7 @@ struct GrokModelTests {
         
         let request = ModelRequest(
             messages: [
-                UserMessageItem(content: .multimodal([
+                Message.user(content: .multimodal([
                     MessageContentPart(type: "text", text: "What is in this image?"),
                     MessageContentPart(type: "image", imageUrl: ImageContent(base64: imageData.base64EncodedString()))
                 ]))
@@ -179,7 +179,7 @@ struct GrokModelTests {
         
         let request = ModelRequest(
             messages: [
-                UserMessageItem(content: .text("Stream this response"))
+                Message.user(content: .text("Stream this response"))
             ],
             tools: nil,
             settings: ModelSettings(modelName: "grok-4")
@@ -209,7 +209,7 @@ struct GrokModelTests {
         
         let request = ModelRequest(
             messages: [
-                UserMessageItem(content: .text("Test"))
+                Message.user(content: .text("Test"))
             ],
             tools: nil,
             settings: ModelSettings(modelName: "grok-4")

@@ -62,7 +62,7 @@ class ApplicationQueryTests: XCTestCase {
         }
 
         // Define a proper response type that includes data
-        struct ApplicationQueryResponse: Codable {
+        struct ApplicationQueryResponse: Decodable {
             let success: Bool
             let data: [String: [[String: Any]]]
             

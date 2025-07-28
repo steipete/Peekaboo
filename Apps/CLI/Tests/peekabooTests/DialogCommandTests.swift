@@ -109,15 +109,30 @@ struct DialogCommandIntegrationTests {
             "--json-output",
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
-        // May or may not have active dialogs
-        if data.success {
-            if let dialogData = data.data?.value as? [String: Any] {
-                #expect(dialogData["title"] != nil)
-                #expect(dialogData["buttons"] != nil)
+        struct TextField: Codable {
+            let title: String
+            let value: String
+            let placeholder: String
+        }
+        
+        struct DialogListResult: Codable {
+            let title: String
+            let role: String
+            let buttons: [String]
+            let textFields: [TextField]
+            let textElements: [String]
+        }
+        
+        // Try to decode as success response first
+        if let response = try? JSONDecoder().decode(CodableJSONResponse<DialogListResult>.self, from: output.data(using: .utf8)!) {
+            if response.success {
+                #expect(!response.data.title.isEmpty)
+                #expect(!response.data.buttons.isEmpty)
             }
         } else {
-            #expect(data.error?.code == "NO_ACTIVE_DIALOG")
+            // Otherwise it's an error response
+            let errorResponse = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
+            #expect(errorResponse.error?.code == "NO_ACTIVE_DIALOG")
         }
     }
 
@@ -161,10 +176,15 @@ struct DialogCommandIntegrationTests {
             "--json-output",
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
-        if data.success {
-            if let dismissData = data.data?.value as? [String: Any] {
-                #expect(dismissData["method"] as? String == "escape")
+        struct DialogDismissResult: Codable {
+            let action: String
+            let method: String
+            let button: String?
+        }
+        
+        if let response = try? JSONDecoder().decode(CodableJSONResponse<DialogDismissResult>.self, from: output.data(using: .utf8)!) {
+            if response.success {
+                #expect(response.data.method == "escape")
             }
         }
     }
@@ -179,16 +199,24 @@ struct DialogCommandIntegrationTests {
             "--json-output",
         ])
 
-        let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
-        if !data.success {
-            // Expected if no file dialog is open
-            #expect(data.error?.code == "NO_ACTIVE_DIALOG" || data.error?.code == "NO_FILE_DIALOG")
-        } else {
-            if let fileData = data.data?.value as? [String: Any] {
-                #expect(fileData["action"] as? String == "file_dialog")
-                #expect(fileData["path"] as? String == "/tmp")
-                #expect(fileData["name"] as? String == "test.txt")
+        struct FileDialogResult: Codable {
+            let action: String
+            let path: String?
+            let name: String?
+            let buttonClicked: String
+        }
+        
+        // Try to decode as success response first
+        if let response = try? JSONDecoder().decode(CodableJSONResponse<FileDialogResult>.self, from: output.data(using: .utf8)!) {
+            if response.success {
+                #expect(response.data.action == "file_dialog")
+                #expect(response.data.path == "/tmp")
+                #expect(response.data.name == "test.txt")
             }
+        } else {
+            // Otherwise it's an error response
+            let errorResponse = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
+            #expect(errorResponse.error?.code == "NO_ACTIVE_DIALOG" || errorResponse.error?.code == "NO_FILE_DIALOG")
         }
     }
 }

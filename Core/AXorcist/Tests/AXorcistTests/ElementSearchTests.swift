@@ -50,7 +50,7 @@ class ElementSearchTests: XCTestCase {
 
         if let data = response.data, let attributes = data.attributes {
             // For a query response, we should find button elements
-            if let role = attributes["AXRole"]?.value as? String {
+            if let role = attributes["AXRole"]?.anyValue as? String {
                 XCTAssertEqual(role, "AXButton", "Should find button elements")
             }
         }
@@ -103,7 +103,7 @@ class ElementSearchTests: XCTestCase {
 
         // Check hierarchy
         if let data = response.data, let attributes = data.attributes {
-            if let role = attributes["AXRole"]?.value as? String {
+            if let role = attributes["AXRole"]?.anyValue as? String {
                 XCTAssertEqual(role, "AXApplication", "Should find application element")
             }
         }
@@ -171,7 +171,7 @@ class ElementSearchTests: XCTestCase {
         XCTAssertEqual(response.success, true)
 
         if let data = response.data, let attributes = data.attributes {
-            if let value = attributes["AXValue"]?.value as? String {
+            if let value = attributes["AXValue"]?.anyValue as? String {
                 XCTAssertTrue(value.contains("Hello from AXorcist tests!"), "Should find the text we set")
             }
         }
@@ -239,10 +239,10 @@ class ElementSearchTests: XCTestCase {
 
         if let data = response.data, let attributes = data.attributes {
             // For extract text commands, check for extracted text in attributes
-            if let extractedText = attributes["extractedText"]?.value as? String {
+            if let extractedText = attributes["extractedText"]?.anyValue as? String {
                 XCTAssertTrue(extractedText.contains("This is test content"), "Should extract the test content")
                 XCTAssertTrue(extractedText.contains("multiple lines"), "Should extract multiple lines")
-            } else if let value = attributes["AXValue"]?.value as? String {
+            } else if let value = attributes["AXValue"]?.anyValue as? String {
                 XCTAssertTrue(value.contains("This is test content"), "Should extract the test content")
                 XCTAssertTrue(value.contains("multiple lines"), "Should extract multiple lines")
             }

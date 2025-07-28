@@ -12,9 +12,9 @@ struct AnthropicModelTests {
         // Create a simple request
         let request = ModelRequest(
             messages: [
-                UserMessageItem(content: .text("Hello, Claude!")),
-                AssistantMessageItem(content: [.outputText("Hello! How can I help you?")]),
-                UserMessageItem(content: .text("What's 2+2?"))
+                Message.user(content: .text("Hello, Claude!")),
+                Message.assistant(content: [.outputText("Hello! How can I help you?")]),
+                Message.user(content: .text("What's 2+2?"))
             ],
             tools: nil,
             settings: ModelSettings(
@@ -36,8 +36,8 @@ struct AnthropicModelTests {
         
         let request = ModelRequest(
             messages: [
-                SystemMessageItem(content: "You are a helpful assistant."),
-                UserMessageItem(content: .text("Hello!"))
+                Message.system(content: "You are a helpful assistant."),
+                Message.user(content: .text("Hello!"))
             ],
             tools: nil,
             settings: ModelSettings(modelName: "claude-3-opus-20240229")
@@ -64,7 +64,7 @@ struct AnthropicModelTests {
         
         let request = ModelRequest(
             messages: [
-                UserMessageItem(content: .text("What's the weather?"))
+                Message.user(content: .text("What's the weather?"))
             ],
             tools: [toolDef],
             settings: ModelSettings(modelName: "claude-3-opus-20240229")
@@ -82,7 +82,7 @@ struct AnthropicModelTests {
         
         let request = ModelRequest(
             messages: [
-                UserMessageItem(content: .multimodal([
+                Message.user(content: .multimodal([
                     MessageContentPart(type: "text", text: "What's in this image?"),
                     MessageContentPart(type: "image", imageUrl: ImageContent(base64: imageData))
                 ]))
@@ -91,8 +91,8 @@ struct AnthropicModelTests {
             settings: ModelSettings(modelName: "claude-3-opus-20240229")
         )
         
-        if let userMessage = request.messages.first as? UserMessageItem,
-           case .multimodal(let parts) = userMessage.content {
+        if case .user(_, let content) = request.messages.first,
+           case .multimodal(let parts) = content {
             #expect(parts.count == 2)
         } else {
             Issue.record("Expected multimodal content")
@@ -101,14 +101,14 @@ struct AnthropicModelTests {
         // Test that URL images are supported
         let urlRequest = ModelRequest(
             messages: [
-                UserMessageItem(content: .image(ImageContent(url: "https://example.com/image.jpg")))
+                Message.user(content: .image(ImageContent(url: "https://example.com/image.jpg")))
             ],
             tools: nil,
             settings: ModelSettings(modelName: "claude-3-opus-20240229")
         )
         
-        if let userMessage = urlRequest.messages.first as? UserMessageItem,
-           case .image = userMessage.content {
+        if case .user(_, let content) = urlRequest.messages.first,
+           case .image = content {
             // Expected image content
         } else {
             Issue.record("Expected image content")
@@ -118,7 +118,7 @@ struct AnthropicModelTests {
     @Test("Model registration in provider")
     func testModelRegistration() async throws {
         // Test that Anthropic models are registered
-        let provider = ModelProvider.shared
+        _ = ModelProvider.shared
         
         // Test model names
         let modelNames = [

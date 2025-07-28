@@ -59,7 +59,7 @@ class QueryIntegrationTests: XCTestCase {
         }
 
         let expectedRole = ApplicationServices.kAXTextAreaRole as String
-        let actualRole = elementData.attributes?[ApplicationServices.kAXRoleAttribute as String]?.value as? String
+        let actualRole = elementData.attributes?[ApplicationServices.kAXRoleAttribute as String]?.anyValue as? String
         let attributeKeys = elementData.attributes?.keys.map { Array($0) } ?? []
         XCTAssertEqual(
             actualRole, expectedRole,
@@ -124,20 +124,20 @@ class QueryIntegrationTests: XCTestCase {
 
         let attributes = queryResponse.data?.attributes
         XCTAssertEqual(
-            attributes?["AXRole"]?.value.stringValue, "AXApplication",
-            "Application role should be AXApplication. Got: \(String(describing: attributes?["AXRole"]?.value))"
+            attributes?["AXRole"]?.stringValue, "AXApplication",
+            "Application role should be AXApplication. Got: \(String(describing: attributes?["AXRole"]))"
         )
         XCTAssertEqual(
-            attributes?["AXTitle"]?.value.stringValue, "TextEdit",
-            "Application title should be TextEdit. Got: \(String(describing: attributes?["AXTitle"]?.value))"
+            attributes?["AXTitle"]?.stringValue, "TextEdit",
+            "Application title should be TextEdit. Got: \(String(describing: attributes?["AXTitle"]))"
         )
 
         if let windowsAttr = attributes?["AXWindows"] {
             XCTAssertTrue(
-                windowsAttr.value.arrayValue != nil,
-                "AXWindows should be an array. Type: \(type(of: windowsAttr.value))"
+                windowsAttr.arrayValue != nil,
+                "AXWindows should be an array. Type: \(type(of: windowsAttr))"
             )
-            if let windowsArray = windowsAttr.value.arrayValue {
+            if let windowsArray = windowsAttr.arrayValue {
                 XCTAssertTrue(!windowsArray.isEmpty, "AXWindows array should not be empty if TextEdit has windows.")
             }
         } else {
@@ -202,12 +202,12 @@ class QueryIntegrationTests: XCTestCase {
 
         let attributes = queryResponse.data?.attributes
         XCTAssertEqual(
-            attributes?["AXRole"]?.value as? String, textAreaRole,
-            "Element role should be \(textAreaRole). Got: \(String(describing: attributes?["AXRole"]?.value))"
+            attributes?["AXRole"]?.anyValue as? String, textAreaRole,
+            "Element role should be \(textAreaRole). Got: \(String(describing: attributes?["AXRole"]))"
         )
 
-        XCTAssertTrue(attributes?["AXValue"]?.value is String, "AXValue should exist and be a string.")
-        XCTAssertTrue(attributes?["AXNumberOfCharacters"]?.value is Int, "AXNumberOfCharacters should exist and be an Int.")
+        XCTAssertTrue(attributes?["AXValue"]?.anyValue is String, "AXValue should exist and be a string.")
+        XCTAssertTrue(attributes?["AXNumberOfCharacters"]?.anyValue is Int, "AXNumberOfCharacters should exist and be an Int.")
 
         XCTAssertNotEqual(queryResponse.debugLogs, nil, "Debug logs should be present.")
         XCTAssertTrue(
@@ -264,14 +264,14 @@ class QueryIntegrationTests: XCTestCase {
         }
 
         XCTAssertEqual(
-            attributes["AXRole"]?.value as? String, textAreaRole,
-            "Element role should be \(textAreaRole). Got: \(String(describing: attributes["AXRole"]?.value))"
+            attributes["AXRole"]?.anyValue as? String, textAreaRole,
+            "Element role should be \(textAreaRole). Got: \(String(describing: attributes["AXRole"]))"
         )
 
-        XCTAssertTrue(attributes["AXRoleDescription"]?.value is String, "AXRoleDescription should exist.")
-        XCTAssertTrue(attributes["AXEnabled"]?.value is Bool, "AXEnabled should exist.")
-        XCTAssertNotNil(attributes["AXPosition"]?.value, "AXPosition should exist.")
-        XCTAssertNotNil(attributes["AXSize"]?.value, "AXSize should exist.")
+        XCTAssertTrue(attributes["AXRoleDescription"]?.anyValue is String, "AXRoleDescription should exist.")
+        XCTAssertTrue(attributes["AXEnabled"]?.anyValue is Bool, "AXEnabled should exist.")
+        XCTAssertNotNil(attributes["AXPosition"], "AXPosition should exist.")
+        XCTAssertNotNil(attributes["AXSize"], "AXSize should exist.")
         XCTAssertTrue(
             attributes.count > 10,
             "Expected describeElement to return many attributes (e.g., > 10). Got \(attributes.count)"

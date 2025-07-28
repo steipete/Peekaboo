@@ -139,7 +139,7 @@ describe("AI Providers Utility", () => {
       expect(result).toBe(false);
     });
 
-    it.skip("should return true for available OpenAI (API key set) - SKIPPED: OpenAI mocking doesn't work despite proper setup", async () => {
+    it.skip("should return true for available OpenAI (API key set) - SKIPPED: OpenAI module is notoriously difficult to mock in Vitest due to its ESM structure and internal module loading. Further investigation or a different mocking strategy (e.g., a dedicated mock server) would be required to enable this test.", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
       // Mock would go here if OpenAI mocking worked in vitest
@@ -274,7 +274,7 @@ describe("AI Providers Utility", () => {
       ).rejects.toThrow("Ollama API error: 500 - Internal Server Error");
     });
 
-    it.skip("should call analyzeWithOpenAI for openai provider - SKIPPED: OpenAI mocking doesn't work despite proper setup", async () => {
+    it.skip("should call analyzeWithOpenAI for openai provider - SKIPPED: OpenAI module is notoriously difficult to mock in Vitest due to its ESM structure and internal module loading. Further investigation or a different mocking strategy (e.g., a dedicated mock server) would be required to enable this test.", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
       // mockCreate.mockResolvedValue({
@@ -321,7 +321,7 @@ describe("AI Providers Utility", () => {
       ).rejects.toThrow("OpenAI API key not configured");
     });
 
-    it.skip("should return default message if OpenAI provides no response content - SKIPPED: OpenAI mocking doesn't work despite proper setup", async () => {
+    it.skip("should return default message if OpenAI provides no response content - SKIPPED: OpenAI module is notoriously difficult to mock in Vitest due to its ESM structure and internal module loading. Further investigation or a different mocking strategy (e.g., a dedicated mock server) would be required to enable this test.", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
       // mockCreate.mockResolvedValue({
@@ -371,7 +371,7 @@ describe("AI Providers Utility", () => {
       expect(body.prompt).toBe("Please describe what you see in this image.");
     });
 
-    it.skip("should use default prompt for whitespace-only question with OpenAI - SKIPPED: OpenAI mocking doesn't work despite proper setup", async () => {
+    it.skip("should use default prompt for whitespace-only question with OpenAI - SKIPPED: OpenAI module is notoriously difficult to mock in Vitest due to its ESM structure and internal module loading. Further investigation or a different mocking strategy (e.g., a dedicated mock server) would be required to enable this test.", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
       // mockCreate.mockResolvedValue({
@@ -445,7 +445,7 @@ describe("AI Providers Utility", () => {
       ];
     });
 
-    it.skip("should select a specifically requested and available provider - SKIPPED: OpenAI mocking doesn't work despite proper setup", async () => {
+    it.skip("should select a specifically requested and available provider - SKIPPED: OpenAI module is notoriously difficult to mock in Vitest due to its ESM structure and internal module loading. Further investigation or a different mocking strategy (e.g., a dedicated mock server) would be required to enable this test.", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
       // Mock would go here if OpenAI mocking worked in vitest
@@ -462,7 +462,7 @@ describe("AI Providers Utility", () => {
       expect(result.model).toBe("gpt-4o-mini");
     });
 
-    it.skip("should use a requested model over the configured default - SKIPPED: OpenAI mocking doesn't work despite proper setup", async () => {
+    it.skip("should use a requested model over the configured default - SKIPPED: OpenAI module is notoriously difficult to mock in Vitest due to its ESM structure and internal module loading. Further investigation or a different mocking strategy (e.g., a dedicated mock server) would be required to enable this test.", async () => {
       process.env.OPENAI_API_KEY = "test-key";
       
       // Mock would go here if OpenAI mocking worked in vitest
@@ -534,7 +534,7 @@ describe("AI Providers Utility", () => {
       expect(result.model).toBe("llava:custom");
     });
 
-    it.skip("should fall back to the next available provider in auto mode - SKIPPED: OpenAI mocking doesn't work despite proper setup", async () => {
+    it.skip("should fall back to the next available provider in auto mode - SKIPPED: OpenAI module is notoriously difficult to mock in Vitest due to its ESM structure and internal module loading. Further investigation or a different mocking strategy (e.g., a dedicated mock server) would be required to enable this test.", async () => {
       // Mock Ollama as NOT available
       (global.fetch as vi.Mock).mockResolvedValue({ 
         ok: false,

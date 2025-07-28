@@ -126,7 +126,7 @@ class BatchIntegrationTests: XCTestCase {
         XCTAssertEqual(result1.success, true, "GetFocusedElement should succeed")
         XCTAssertEqual(result1.command, CommandType.getFocusedElement.rawValue)
         XCTAssertNotNil(result1.data)
-        XCTAssertEqual(result1.data?.attributes?["AXRole"]?.value as? String, textAreaRole)
+        XCTAssertEqual(result1.data?.attributes?["AXRole"]?.anyValue as? String, textAreaRole)
 
         // Verify second sub-command
         let result2 = batchResponse.results[1]

@@ -126,7 +126,7 @@ class ActionIntegrationTests: XCTestCase {
             throw TestError.generic("Attributes nil in query (verify) response.")
         }
 
-        let retrievedValue = attributes["AXValue"]?.value as? String
+        let retrievedValue = attributes["AXValue"]?.anyValue as? String
         XCTAssertEqual(
             retrievedValue, expectedText,
             "AXValue did not match. Expected: '\(expectedText)'. Got: '\(retrievedValue ?? "nil")'"
@@ -162,7 +162,7 @@ class ActionIntegrationTests: XCTestCase {
             throw TestError.generic("Attributes nil in extractText response.")
         }
 
-        let extractedValue = attributes["AXValue"]?.value as? String
+        let extractedValue = attributes["AXValue"]?.anyValue as? String
         XCTAssertEqual(
             extractedValue, expectedText,
             "Extracted text did not match. Expected: '\(expectedText)'. Got: '\(extractedValue ?? "nil")'"
