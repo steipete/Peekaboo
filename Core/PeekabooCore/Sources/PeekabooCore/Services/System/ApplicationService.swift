@@ -43,7 +43,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
     }
     
     public func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
-        logger.info("Finding application with identifier: \(identifier)")
+        logger.info("Finding application with identifier: \(identifier, privacy: .public)")
         let runningApps = NSWorkspace.shared.runningApplications
         
         // Try exact bundle ID match
@@ -52,13 +52,34 @@ public final class ApplicationService: ApplicationServiceProtocol {
             return createApplicationInfo(from: app)
         }
         
-        // Try exact name match (case-insensitive)
+        // Try exact name match (case-insensitive), but prefer GUI apps
         let lowercaseIdentifier = identifier.lowercased()
-        if let app = runningApps.first(where: { 
+        let exactMatches = runningApps.filter { 
             $0.localizedName?.lowercased() == lowercaseIdentifier 
-        }) {
-            logger.debug("Found app by name match: \(app.localizedName ?? "Unknown")")
-            return createApplicationInfo(from: app)
+        }
+        
+        if exactMatches.count == 1 {
+            logger.debug("Found app by exact name match: \(exactMatches[0].localizedName ?? "Unknown", privacy: .public)")
+            return createApplicationInfo(from: exactMatches[0])
+        } else if exactMatches.count > 1 {
+            // Multiple exact matches - prefer GUI apps
+            let sortedExactMatches = exactMatches.sorted { app1, app2 in
+                // GUI apps come first
+                let app1IsGUI = app1.activationPolicy != .prohibited
+                let app2IsGUI = app2.activationPolicy != .prohibited
+                if app1IsGUI != app2IsGUI {
+                    return app1IsGUI
+                }
+                // Then apps with bundle IDs
+                let app1HasBundle = app1.bundleIdentifier != nil
+                let app2HasBundle = app2.bundleIdentifier != nil
+                if app1HasBundle != app2HasBundle {
+                    return app1HasBundle
+                }
+                return false
+            }
+            logger.debug("Multiple exact matches for '\(identifier, privacy: .public)', selected: \(sortedExactMatches[0].localizedName ?? "Unknown", privacy: .public) (PID: \(sortedExactMatches[0].processIdentifier, privacy: .public))")
+            return createApplicationInfo(from: sortedExactMatches[0])
         }
         
         // Try fuzzy match
@@ -72,16 +93,37 @@ public final class ApplicationService: ApplicationServiceProtocol {
             logger.debug("Found single fuzzy match: \(matches[0].localizedName ?? "Unknown")")
             return createApplicationInfo(from: matches[0])
         } else if matches.count > 1 {
-            // If multiple matches, prefer the active one
-            if let activeApp = matches.first(where: { $0.isActive }) {
-                logger.debug("Multiple matches found, using active app: \(activeApp.localizedName ?? "Unknown")")
-                return createApplicationInfo(from: activeApp)
+            // Sort matches by priority:
+            // 1. GUI apps (regular or accessory) over prohibited (background/CLI)
+            // 2. Apps with bundle identifiers over those without
+            // 3. Active apps over inactive
+            let sortedMatches = matches.sorted { app1, app2 in
+                // First priority: GUI apps
+                let app1IsGUI = app1.activationPolicy != .prohibited
+                let app2IsGUI = app2.activationPolicy != .prohibited
+                if app1IsGUI != app2IsGUI {
+                    return app1IsGUI // GUI apps come first
+                }
+                
+                // Second priority: Has bundle identifier
+                let app1HasBundle = app1.bundleIdentifier != nil
+                let app2HasBundle = app2.bundleIdentifier != nil
+                if app1HasBundle != app2HasBundle {
+                    return app1HasBundle
+                }
+                
+                // Third priority: Active state
+                if app1.isActive != app2.isActive {
+                    return app1.isActive
+                }
+                
+                return false // Keep original order if all else equal
             }
             
-            // Otherwise throw ambiguous error
-            let names = matches.compactMap { $0.localizedName }
-            logger.error("Ambiguous identifier '\(identifier)' matches: \(names.joined(separator: ", "))")
-            throw PeekabooError.ambiguousAppIdentifier(identifier, matches: names)
+            logger.debug("Multiple matches found for '\(identifier, privacy: .public)': \(matches.compactMap { $0.localizedName }, privacy: .public)")
+            logger.debug("Selected: \(sortedMatches[0].localizedName ?? "Unknown", privacy: .public) (PID: \(sortedMatches[0].processIdentifier, privacy: .public), Bundle: \(sortedMatches[0].bundleIdentifier ?? "none", privacy: .public), Policy: \(sortedMatches[0].activationPolicy.rawValue, privacy: .public))")
+            
+            return createApplicationInfo(from: sortedMatches[0])
         }
         
         logger.error("Application not found: \(identifier)")

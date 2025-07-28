@@ -27,10 +27,15 @@ struct AppCommand: AsyncParsableCommand {
           # Switch between applications
           peekaboo app switch --to Terminal
           peekaboo app switch --cycle  # Cmd+Tab equivalent
+          
+          # Relaunch applications
+          peekaboo app relaunch Safari
+          peekaboo app relaunch "Visual Studio Code" --wait 3 --wait-until-ready
         """,
         subcommands: [
             LaunchSubcommand.self,
             QuitSubcommand.self,
+            RelaunchSubcommand.self,
             HideSubcommand.self,
             UnhideSubcommand.self,
             SwitchSubcommand.self,
@@ -229,6 +234,16 @@ struct AppCommand: AsyncParsableCommand {
                         pid: runningApp.processIdentifier,
                         success: success
                     ))
+                    
+                    // Log additional debug info when quit fails
+                    if !success && !jsonOutput {
+                        // Check if app might be in a modal state or have unsaved changes
+                        if !force {
+                            Logger.shared.debug("Quit failed for \(name) (PID: \(runningApp.processIdentifier)). The app may have unsaved changes or be showing a dialog. Try --force to force quit.")
+                        } else {
+                            Logger.shared.debug("Force quit failed for \(name) (PID: \(runningApp.processIdentifier)). The app may be unresponsive or protected.")
+                        }
+                    }
                 }
 
                 struct QuitResult: Codable {
@@ -248,7 +263,10 @@ struct AppCommand: AsyncParsableCommand {
                         if result.success {
                             print("✓ Quit \(result.app_name)")
                         } else {
-                            print("✗ Failed to quit \(result.app_name)")
+                            print("✗ Failed to quit \(result.app_name) (PID: \(result.pid))")
+                            if !force {
+                                print("  💡 Tip: The app may have unsaved changes or be showing a dialog. Try --force to force quit.")
+                            }
                         }
                     }
                 }
@@ -507,6 +525,135 @@ struct AppCommand: AsyncParsableCommand {
                     }
                 }
 
+            } catch {
+                handleError(error)
+                throw ExitCode(1)
+            }
+        }
+    }
+    
+    // MARK: - Relaunch Application
+    
+    struct RelaunchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+        static let configuration = CommandConfiguration(
+            commandName: "relaunch",
+            abstract: "Quit and relaunch an application")
+        
+        @Argument(help: "Application name, bundle ID, or 'PID:12345' for process ID")
+        var app: String
+        
+        @Option(help: "Wait time in seconds between quit and launch (default: 2)")
+        var wait: TimeInterval = 2.0
+        
+        @Flag(help: "Force quit (doesn't save changes)")
+        var force = false
+        
+        @Flag(help: "Wait until the app is ready after launch")
+        var waitUntilReady = false
+        
+        @Flag(help: "Output in JSON format")
+        var jsonOutput = false
+        
+        func run() async throws {
+            Logger.shared.setJsonOutputMode(self.jsonOutput)
+            
+            do {
+                // Find the application first
+                let appInfo = try await resolveApplication(app)
+                let originalPID = appInfo.processIdentifier
+                
+                // Step 1: Quit the app
+                let runningApps = NSWorkspace.shared.runningApplications
+                guard let runningApp = runningApps.first(where: { $0.processIdentifier == originalPID }) else {
+                    throw NotFoundError.application(app)
+                }
+                
+                let quitSuccess = force ? runningApp.forceTerminate() : runningApp.terminate()
+                
+                if !quitSuccess {
+                    throw ServiceError("Failed to quit \(appInfo.name) (PID: \(originalPID)). The app may have unsaved changes.")
+                }
+                
+                // Wait for the app to actually terminate
+                var terminateWaitTime = 0.0
+                while runningApp.isTerminated == false && terminateWaitTime < 5.0 {
+                    try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                    terminateWaitTime += 0.1
+                }
+                
+                if !runningApp.isTerminated {
+                    throw ServiceError("App \(appInfo.name) did not terminate within 5 seconds")
+                }
+                
+                // Step 2: Wait the specified duration
+                if wait > 0 {
+                    try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+                }
+                
+                // Step 3: Launch the app
+                let workspace = NSWorkspace.shared
+                let newApp: NSRunningApplication?
+                
+                if let bundleId = appInfo.bundleIdentifier {
+                    let config = NSWorkspace.OpenConfiguration()
+                    config.activates = true
+                    if let url = workspace.urlForApplication(withBundleIdentifier: bundleId) {
+                        newApp = try await workspace.openApplication(at: url, configuration: config)
+                    } else {
+                        throw ServiceError("Could not find application URL for bundle ID: \(bundleId)")
+                    }
+                } else if let bundlePath = appInfo.bundlePath {
+                    let url = URL(fileURLWithPath: bundlePath)
+                    let config = NSWorkspace.OpenConfiguration()
+                    config.activates = true
+                    newApp = try await workspace.openApplication(at: url, configuration: config)
+                } else {
+                    throw ServiceError("No bundle ID or path available to relaunch \(appInfo.name)")
+                }
+                
+                guard let launchedApp = newApp else {
+                    throw ServiceError("Failed to launch application")
+                }
+                
+                // Wait until ready if requested
+                if waitUntilReady {
+                    var readyWaitTime = 0.0
+                    while !launchedApp.isFinishedLaunching && readyWaitTime < 10.0 {
+                        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                        readyWaitTime += 0.1
+                    }
+                }
+                
+                struct RelaunchResult: Codable {
+                    let action: String
+                    let app_name: String
+                    let old_pid: Int32
+                    let new_pid: Int32
+                    let bundle_id: String?
+                    let quit_forced: Bool
+                    let wait_time: TimeInterval
+                    let launch_success: Bool
+                }
+                
+                let data = RelaunchResult(
+                    action: "relaunch",
+                    app_name: appInfo.name,
+                    old_pid: originalPID,
+                    new_pid: launchedApp.processIdentifier,
+                    bundle_id: appInfo.bundleIdentifier,
+                    quit_forced: force,
+                    wait_time: wait,
+                    launch_success: launchedApp.isFinishedLaunching || !waitUntilReady
+                )
+                
+                output(data) {
+                    print("✓ Relaunched \(appInfo.name)")
+                    print("  Old PID: \(originalPID) → New PID: \(launchedApp.processIdentifier)")
+                    if waitUntilReady {
+                        print("  Status: \(launchedApp.isFinishedLaunching ? "Ready" : "Launching...")")
+                    }
+                }
+                
             } catch {
                 handleError(error)
                 throw ExitCode(1)

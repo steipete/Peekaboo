@@ -857,6 +857,10 @@ peekaboo agent --verbose "Create a new document in Pages with the title 'Meeting
 # 6. peekaboo hotkey cmd+b                 # Make text bold
 # 7. peekaboo hotkey return                # New line
 # 8. peekaboo type "Date: $(date)"         # Add current date
+
+# Relaunch an application (useful for applying settings or fixing issues)
+peekaboo app relaunch Safari              # Quit and restart Safari
+peekaboo app relaunch "Visual Studio Code" --wait 3 --wait-until-ready
 ```
 
 ### Debugging Agent Actions

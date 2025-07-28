@@ -309,11 +309,12 @@ Use this to free up disk space and remove orphaned session data.` +
         name: "app",
         title: "Application Control",
         description:
-`Control applications - launch, quit, focus, hide, unhide, and switch between apps.
+`Control applications - launch, quit, relaunch, focus, hide, unhide, and switch between apps.
 
 Actions:
 - launch: Start an application
 - quit: Quit an application (with optional force flag)
+- relaunch: Quit and restart an application (with configurable wait time)
 - focus/switch: Bring an application to the foreground
 - hide: Hide an application
 - unhide: Show a hidden application
@@ -324,7 +325,8 @@ or process ID (e.g., "PID:663"). Fuzzy matching is supported for application nam
 Examples:
 - Launch Safari: { "action": "launch", "name": "Safari" }
 - Quit TextEdit: { "action": "quit", "name": "TextEdit" }
-- Focus Chrome: { "action": "focus", "name": "Google Chrome" }` +
+- Relaunch Chrome: { "action": "relaunch", "name": "Google Chrome", "wait": 3 }
+- Focus Terminal: { "action": "focus", "name": "Terminal" }` +
           statusSuffix,
         inputSchema: zodToJsonSchema(appToolSchema),
       },
