@@ -7,7 +7,7 @@ import PeekabooCore
 
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
-struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable {
+struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "see",
         abstract: "Capture screen and map UI elements",
@@ -18,6 +18,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             EXAMPLES:
               peekaboo see                           # Capture frontmost window
               peekaboo see --app Safari              # Capture Safari window
+              peekaboo see --pid 12345                # Capture by process ID
               peekaboo see --mode screen             # Capture entire screen
               peekaboo see --window-title "GitHub"   # Capture specific window
               peekaboo see --annotate                # Generate annotated screenshot
@@ -30,6 +31,9 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
 
     @Option(help: "Application name to capture")
     var app: String?
+    
+    @Option(name: .long, help: "Target application by process ID")
+    var pid: Int32?
 
     @Option(help: "Specific window title to capture")
     var windowTitle: String?
@@ -164,9 +168,10 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             Logger.shared.stopTimer("screen_capture")
 
         case .window:
-            if let appName = app {
+            if app != nil || pid != nil {
+                let appIdentifier = try self.resolveApplicationIdentifier()
                 Logger.shared.verbose("Initiating window capture", category: "Capture", metadata: [
-                    "app": appName,
+                    "app": appIdentifier,
                     "windowTitle": self.windowTitle ?? "any",
                 ])
 
@@ -176,7 +181,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                         "Searching for window with title",
                         category: "WindowSearch",
                         metadata: ["title": title])
-                    let windows = try await PeekabooServices.shared.applications.listWindows(for: appName)
+                    let windows = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
                     Logger.shared.verbose("Found windows", category: "WindowSearch", metadata: ["count": windows.count])
 
                     if let windowIndex = windows.firstIndex(where: { $0.title.contains(title) }) {
@@ -186,7 +191,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                             metadata: ["index": windowIndex])
                         Logger.shared.startTimer("window_capture")
                         captureResult = try await PeekabooServices.shared.screenCapture.captureWindow(
-                            appIdentifier: appName,
+                            appIdentifier: appIdentifier,
                             windowIndex: windowIndex)
                         Logger.shared.stopTimer("window_capture")
                     } else {
@@ -198,11 +203,11 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                     }
                 } else {
                     captureResult = try await PeekabooServices.shared.screenCapture.captureWindow(
-                        appIdentifier: appName,
+                        appIdentifier: appIdentifier,
                         windowIndex: nil)
                 }
             } else {
-                throw ValidationError("--app is required for window mode")
+                throw ValidationError("--app or --pid is required for window mode")
             }
 
         case .frontmost:

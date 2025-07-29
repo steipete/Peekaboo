@@ -148,13 +148,16 @@ struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
 
 // MARK: - Move Window to Space
 
-struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "move-window",
         abstract: "Move a window to a different Space")
     
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
+    
+    @Option(name: .long, help: "Target application by process ID")
+    var pid: Int32?
     
     @Option(name: .long, help: "Target window by title (partial match supported)")
     var windowTitle: String?
@@ -179,9 +182,7 @@ struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
         
         do {
             // Validate inputs
-            guard self.app != nil else {
-                throw ValidationError("--app must be specified")
-            }
+            let appIdentifier = try self.resolveApplicationIdentifier()
             
             guard self.to != nil || self.toCurrent else {
                 throw ValidationError("Must specify either --to or --to-current")
@@ -193,7 +194,7 @@ struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
             
             // Create window identification options
             var windowOptions = WindowIdentificationOptions()
-            windowOptions.app = self.app
+            windowOptions.app = appIdentifier
             windowOptions.windowTitle = self.windowTitle
             windowOptions.windowIndex = self.windowIndex
             
@@ -203,7 +204,7 @@ struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
             let windowInfo = windowOptions.selectWindow(from: windows)
             
             guard let info = windowInfo else {
-                throw NotFoundError.window(app: self.app ?? "")
+                throw NotFoundError.window(app: appIdentifier)
             }
             
             let windowID = CGWindowID(info.windowID)

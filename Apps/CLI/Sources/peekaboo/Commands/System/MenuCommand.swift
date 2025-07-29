@@ -42,13 +42,16 @@ struct MenuCommand: AsyncParsableCommand {
 
     // MARK: - Click Menu Item
 
-    struct ClickSubcommand: AsyncParsableCommand {
+    struct ClickSubcommand: AsyncParsableCommand, ApplicationResolvablePositional {
         static let configuration = CommandConfiguration(
             commandName: "click",
             abstract: "Click a menu item")
 
         @Option(help: "Target application by name, bundle ID, or 'PID:12345'")
         var app: String
+        
+        @Option(name: .long, help: "Target application by process ID")
+        var pid: Int32?
 
         @Option(help: "Menu item to click (for simple, non-nested items)")
         var item: String?
@@ -74,23 +77,25 @@ struct MenuCommand: AsyncParsableCommand {
             }
 
             do {
+                let appIdentifier = try self.resolveApplicationIdentifier()
+                
                 // Ensure application is focused before menu interaction
                 try await self.ensureFocused(
-                    applicationName: self.app,
+                    applicationName: appIdentifier,
                     options: focusOptions
                 )
                 
                 // If using --item, search recursively; if using --path, use exact path
                 if let itemName = self.item {
                     // Use recursive search for --item parameter
-                    try await PeekabooServices.shared.menu.clickMenuItemByName(app: self.app, itemName: itemName)
+                    try await PeekabooServices.shared.menu.clickMenuItemByName(app: appIdentifier, itemName: itemName)
                 } else if let path = self.path {
                     // Use exact path for --path parameter
-                    try await PeekabooServices.shared.menu.clickMenuItem(app: self.app, itemPath: path)
+                    try await PeekabooServices.shared.menu.clickMenuItem(app: appIdentifier, itemPath: path)
                 }
 
                 // Get app info for response
-                let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: self.app)
+                let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: appIdentifier)
 
                 // Determine what was clicked for output
                 let clickedPath = self.path ?? self.item!
@@ -268,13 +273,16 @@ struct MenuCommand: AsyncParsableCommand {
 
     // MARK: - List Menu Items
 
-    struct ListSubcommand: AsyncParsableCommand {
+    struct ListSubcommand: AsyncParsableCommand, ApplicationResolvablePositional {
         static let configuration = CommandConfiguration(
             commandName: "list",
             abstract: "List all menu items for an application")
 
         @Option(help: "Target application by name, bundle ID, or 'PID:12345'")
         var app: String
+        
+        @Option(name: .long, help: "Target application by process ID")
+        var pid: Int32?
 
         @Flag(help: "Include disabled menu items")
         var includeDisabled = false
@@ -288,14 +296,16 @@ struct MenuCommand: AsyncParsableCommand {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
+                let appIdentifier = try self.resolveApplicationIdentifier()
+                
                 // Ensure application is focused before listing menus
                 try await self.ensureFocused(
-                    applicationName: self.app,
+                    applicationName: appIdentifier,
                     options: focusOptions
                 )
                 
                 // Get menu structure from service
-                let menuStructure = try await PeekabooServices.shared.menu.listMenus(for: self.app)
+                let menuStructure = try await PeekabooServices.shared.menu.listMenus(for: appIdentifier)
 
                 // Filter out disabled items if requested
                 let filteredMenus = self.includeDisabled ? menuStructure.menus : self

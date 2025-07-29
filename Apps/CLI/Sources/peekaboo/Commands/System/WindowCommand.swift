@@ -3,10 +3,9 @@ import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
-import os.log
 
 // Logger for window command debugging
-private let logger = Logger(subsystem: "boo.peekaboo.cli", category: "WindowCommand")
+private let logger = Logger.shared
 
 /// Manipulate application windows with various actions
 struct WindowCommand: AsyncParsableCommand {
@@ -70,9 +69,12 @@ struct WindowCommand: AsyncParsableCommand {
 
 // MARK: - Common Options
 
-struct WindowIdentificationOptions: ParsableArguments {
+struct WindowIdentificationOptions: ParsableArguments, ApplicationResolvable {
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
+    
+    @Option(name: .long, help: "Target application by process ID")
+    var pid: Int32?
 
     @Option(name: .long, help: "Target window by title (partial match supported)")
     var windowTitle: String?
@@ -82,27 +84,24 @@ struct WindowIdentificationOptions: ParsableArguments {
 
     func validate() throws {
         // Ensure we have some way to identify the window
-        if self.app == nil {
-            throw ValidationError("--app must be specified")
+        if self.app == nil && self.pid == nil {
+            throw ValidationError("Either --app or --pid must be specified")
         }
     }
 
     /// Convert to WindowTarget for service layer
-    func toWindowTarget() -> WindowTarget {
-        if let app {
-            if let index = windowIndex {
-                .index(app: app, index: index)
-            } else if self.windowTitle != nil {
-                // For title matching, we still need the app context
-                // The service will handle finding the right window
-                .application(app)
-            } else {
-                // Default to app's frontmost window
-                .application(app)
-            }
+    func toWindowTarget() throws -> WindowTarget {
+        let appIdentifier = try self.resolveApplicationIdentifier()
+        
+        if let index = windowIndex {
+            return .index(app: appIdentifier, index: index)
+        } else if self.windowTitle != nil {
+            // For title matching, we still need the app context
+            // The service will handle finding the right window
+            return .application(appIdentifier)
         } else {
-            // Should not reach here due to validation
-            .frontmost
+            // Default to app's frontmost window
+            return .application(appIdentifier)
         }
     }
 }
@@ -154,7 +153,7 @@ struct CloseSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
             let target = self.windowOptions.createTarget()
             
             // Get window info before action
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
             
@@ -196,7 +195,7 @@ struct MinimizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFor
             let target = self.windowOptions.createTarget()
             
             // Get window info before action
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
             
@@ -238,7 +237,7 @@ struct MaximizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFor
             let target = self.windowOptions.createTarget()
             
             // Get window info before action
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
             
@@ -299,7 +298,7 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
             logger.debug("Target created: \(target)")
             
             // Get window info before action
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
             logger.debug("Found \(windows.count) windows")
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
@@ -369,7 +368,7 @@ struct MoveSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
             let target = self.windowOptions.createTarget()
             
             // Get window info
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
             
@@ -434,7 +433,7 @@ struct ResizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
             let target = self.windowOptions.createTarget()
             
             // Get window info
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
             
@@ -494,7 +493,7 @@ struct SetBoundsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFo
             let target = self.windowOptions.createTarget()
             
             // Get window info
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
             
@@ -524,13 +523,16 @@ struct SetBoundsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFo
 
 // MARK: - List Command
 
-struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "list",
         abstract: "List windows for an application")
     
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
-    var app: String
+    var app: String?
+    
+    @Option(name: .long, help: "Target application by process ID")
+    var pid: Int32?
     
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
@@ -542,10 +544,11 @@ struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
         Logger.shared.setJsonOutputMode(self.jsonOutput)
         
         do {
+            let appIdentifier = try self.resolveApplicationIdentifier()
             // First find the application to get its info
-            let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: app)
+            let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: appIdentifier)
             
-            let target = WindowTarget.application(app)
+            let target = WindowTarget.application(appIdentifier)
             let windows = try await PeekabooServices.shared.windows.listWindows(target: target)
             
             // Convert ServiceWindowInfo to WindowInfo for consistency

@@ -23,7 +23,7 @@ struct ImageAnalysisData: Codable {
     let text: String
 }
 
-struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable {
+struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "image",
         abstract: "Capture screenshots",
@@ -32,6 +32,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
         
         EXAMPLES:
           peekaboo image --app Safari                    # Capture Safari window
+          peekaboo image --pid 12345                     # Capture by process ID
           peekaboo image --mode frontmost                # Capture active window
           peekaboo image --mode screen                   # Capture entire screen
           peekaboo image --app Finder --window-index 0   # Capture specific window
@@ -44,6 +45,9 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
 
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345' for process ID")
     var app: String?
+    
+    @Option(name: .long, help: "Target application by process ID")
+    var pid: Int32?
 
     @Option(name: .long, help: "Output path for saved image (e.g., ~/Desktop/screenshot.png)")
     var path: String?
@@ -113,13 +117,12 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
         case .screen:
             results = try await self.captureScreens()
         case .window:
-            guard let app else {
-                throw CaptureError.appNotFound("No application specified for window capture")
-            }
-            results = try await self.captureApplicationWindow(app)
+            let appIdentifier = try self.resolveApplicationIdentifier()
+            results = try await self.captureApplicationWindow(appIdentifier)
         case .multi:
-            if let app {
-                results = try await self.captureAllApplicationWindows(app)
+            if app != nil || pid != nil {
+                let appIdentifier = try self.resolveApplicationIdentifier()
+                results = try await self.captureAllApplicationWindows(appIdentifier)
             } else {
                 results = try await self.captureScreens()
             }
@@ -273,7 +276,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
     private func determineMode() -> CaptureMode {
         if let mode = self.mode {
             mode
-        } else if self.app != nil {
+        } else if self.app != nil || self.pid != nil {
             .window
         } else {
             .screen

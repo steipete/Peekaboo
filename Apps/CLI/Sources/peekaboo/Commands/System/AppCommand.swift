@@ -173,6 +173,9 @@ struct AppCommand: AsyncParsableCommand {
 
         @Option(help: "Application to quit")
         var app: String?
+        
+        @Option(name: .long, help: "Target application by process ID")
+        var pid: Int32?
 
         @Flag(help: "Quit all applications")
         var all = false
@@ -280,13 +283,16 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Hide Application
 
-    struct HideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+    struct HideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional {
         static let configuration = CommandConfiguration(
             commandName: "hide",
             abstract: "Hide an application")
 
         @Option(help: "Application to hide")
         var app: String
+        
+        @Option(name: .long, help: "Target application by process ID")
+        var pid: Int32?
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
@@ -295,7 +301,8 @@ struct AppCommand: AsyncParsableCommand {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
-                let appInfo = try await resolveApplication(app)
+                let appIdentifier = try self.resolveApplicationIdentifier()
+                let appInfo = try await resolveApplication(appIdentifier)
                 
                 await MainActor.run {
                     let element = Element(AXUIElementCreateApplication(appInfo.processIdentifier))
@@ -321,13 +328,16 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Unhide Application
 
-    struct UnhideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+    struct UnhideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional {
         static let configuration = CommandConfiguration(
             commandName: "unhide",
             abstract: "Show a hidden application")
 
         @Option(help: "Application to unhide")
         var app: String
+        
+        @Option(name: .long, help: "Target application by process ID")
+        var pid: Int32?
 
         @Flag(help: "Bring to front after unhiding")
         var activate = false
@@ -339,7 +349,8 @@ struct AppCommand: AsyncParsableCommand {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
-                let appInfo = try await resolveApplication(app)
+                let appIdentifier = try self.resolveApplicationIdentifier()
+                let appInfo = try await resolveApplication(appIdentifier)
                 
                 await MainActor.run {
                     let element = Element(AXUIElementCreateApplication(appInfo.processIdentifier))
@@ -534,13 +545,16 @@ struct AppCommand: AsyncParsableCommand {
     
     // MARK: - Relaunch Application
     
-    struct RelaunchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+    struct RelaunchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional {
         static let configuration = CommandConfiguration(
             commandName: "relaunch",
             abstract: "Quit and relaunch an application")
         
         @Argument(help: "Application name, bundle ID, or 'PID:12345' for process ID")
         var app: String
+        
+        @Option(name: .long, help: "Target application by process ID")
+        var pid: Int32?
         
         @Option(help: "Wait time in seconds between quit and launch (default: 2)")
         var wait: TimeInterval = 2.0
@@ -559,7 +573,8 @@ struct AppCommand: AsyncParsableCommand {
             
             do {
                 // Find the application first
-                let appInfo = try await resolveApplication(app)
+                let appIdentifier = try self.resolveApplicationIdentifier()
+                let appInfo = try await resolveApplication(appIdentifier)
                 let originalPID = appInfo.processIdentifier
                 
                 // Step 1: Quit the app

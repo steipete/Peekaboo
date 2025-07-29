@@ -113,7 +113,7 @@ struct AppsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
 }
 
 /// Subcommand for listing windows of a specific application using PeekabooServices.shared.
-struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional {
     static let configuration = CommandConfiguration(
         commandName: "windows",
         abstract: "List all windows for a specific application",
@@ -124,6 +124,9 @@ struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
 
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String
+    
+    @Option(name: .long, help: "Target application by process ID")
+    var pid: Int32?
 
     @Option(name: .long, help: "Additional details (comma-separated: off_screen,bounds,ids)")
     var includeDetails: String?
@@ -138,14 +141,17 @@ struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
             // Check permissions
             try await requireScreenRecordingPermission()
 
+            // Resolve application identifier
+            let appIdentifier = try self.resolveApplicationIdentifier()
+            
             // Find the target application using the service
-            let targetApp = try await PeekabooServices.shared.applications.findApplication(identifier: self.app)
+            let targetApp = try await PeekabooServices.shared.applications.findApplication(identifier: appIdentifier)
 
             // Parse include details options
             let detailOptions = self.parseIncludeDetails()
 
             // Get windows for the app using the service
-            let serviceWindows = try await PeekabooServices.shared.applications.listWindows(for: self.app)
+            let serviceWindows = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
 
             // Convert to CLI model format with requested details
             let windows = serviceWindows.enumerated().map { _, window in
