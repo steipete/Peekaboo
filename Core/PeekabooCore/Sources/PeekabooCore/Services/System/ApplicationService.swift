@@ -45,6 +45,19 @@ public final class ApplicationService: ApplicationServiceProtocol {
         logger.info("Finding application with identifier: \(identifier, privacy: .public)")
         let runningApps = NSWorkspace.shared.runningApplications
         
+        // Check for PID format first
+        if identifier.hasPrefix("PID:") {
+            let pidString = String(identifier.dropFirst(4))
+            if let pid = Int32(pidString),
+               let app = NSRunningApplication(processIdentifier: pid),
+               !app.isTerminated {
+                logger.debug("Found app by PID: \(pid)")
+                return createApplicationInfo(from: app)
+            } else {
+                throw PeekabooError.appNotFound("Process with PID \(pidString) not found or terminated")
+            }
+        }
+        
         // Try exact bundle ID match
         if let app = runningApps.first(where: { $0.bundleIdentifier == identifier }) {
             logger.debug("Found app by bundle ID match: \(app.localizedName ?? "Unknown")")
