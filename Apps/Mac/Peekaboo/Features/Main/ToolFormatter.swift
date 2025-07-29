@@ -174,9 +174,13 @@ struct ToolFormatter {
             
         case "find_element":
             if let text = args["text"] as? String {
-                return "Find '\(text)'"
+                let truncated = text.count > 30 ? String(text.prefix(30)) + "..." : text
+                return "Find '\(truncated)'"
             } else if let elementId = args["elementId"] as? String {
                 return "Find element \(elementId)"
+            } else if let query = args["query"] as? String {
+                let truncated = query.count > 30 ? String(query.prefix(30)) + "..." : query
+                return "Find '\(truncated)'"
             }
             return "Find UI element"
             
@@ -195,29 +199,74 @@ struct ToolFormatter {
         case "list_menus":
             if let app = args["app"] as? String {
                 return "List menus for \(app)"
+            } else if let appName = args["appName"] as? String {
+                return "List menus for \(appName)"
             }
             return "List menu structure"
             
-        case "dock_launch":
-            if let app = args["appName"] as? String {
-                return "Launch \(app) from dock"
-            }
-            return "Launch dock item"
             
         case "list_dock":
             return "List dock items"
             
         case "dialog_click":
+            var parts: [String] = ["Click"]
             if let button = args["button"] as? String {
-                return "Click dialog button '\(button)'"
+                parts.append("'\(button)'")
+            } else {
+                parts.append("dialog button")
             }
-            return "Click dialog button"
+            if let window = args["window"] as? String {
+                parts.append("in \(window)")
+            }
+            return parts.joined(separator: " ")
             
         case "dialog_input":
+            var parts: [String] = []
             if let text = args["text"] as? String {
-                return "Enter '\(text)' in dialog"
+                let truncated = text.count > 20 ? String(text.prefix(20)) + "..." : text
+                parts.append("Enter '\(truncated)'")
+            } else {
+                parts.append("Enter text")
             }
-            return "Enter text in dialog"
+            if let field = args["field"] as? String {
+                parts.append("in '\(field)'")
+            }
+            return parts.joined(separator: " ")
+            
+        case "list_spaces":
+            return "List Mission Control spaces"
+            
+        case "switch_space":
+            if let to = args["to"] as? Int {
+                return "Switch to space \(to)"
+            }
+            return "Switch space"
+            
+        case "move_window_to_space":
+            var parts: [String] = ["Move"]
+            if let app = args["app"] as? String {
+                parts.append(app)
+            }
+            if let to = args["to"] as? Int {
+                parts.append("to space \(to)")
+            }
+            return parts.joined(separator: " ")
+            
+        case "wait":
+            if let seconds = args["seconds"] as? Double {
+                return "Wait \(seconds)s"
+            } else if let seconds = args["seconds"] as? Int {
+                return "Wait \(seconds)s"
+            }
+            return "Wait 1s"
+            
+        case "dock_launch":
+            if let app = args["appName"] as? String {
+                return "Launch \(app) from dock"
+            } else if let app = args["app"] as? String {
+                return "Launch \(app) from dock"
+            }
+            return "Launch dock item"
             
         default:
             return toolName.replacingOccurrences(of: "_", with: " ").capitalized
@@ -447,6 +496,215 @@ struct ToolFormatter {
                 parts.append("in \(app)")
             }
             
+            return parts.joined(separator: " ")
+            
+        case "dialog_click":
+            var parts: [String] = ["Clicked"]
+            
+            if let button = actualResult["button"] as? String {
+                parts.append("'\(button)'")
+            }
+            
+            if let window = actualResult["window"] as? String {
+                parts.append("in \(window)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "dialog_input":
+            var parts: [String] = ["Entered"]
+            
+            if let text = actualResult["text"] as? String {
+                let truncated = text.count > 30 ? String(text.prefix(30)) + "..." : text
+                parts.append("'\(truncated)'")
+            }
+            
+            if let field = actualResult["field"] as? String {
+                parts.append("in \(field)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "find_element":
+            var parts: [String] = []
+            
+            // Check if found
+            var found = false
+            if let f = actualResult["found"] as? Bool {
+                found = f
+            } else if let foundWrapper = actualResult["found"] as? [String: Any],
+                      let foundValue = foundWrapper["value"] as? Bool {
+                found = foundValue
+            }
+            
+            if found {
+                parts.append("Found")
+                
+                // Get element details
+                if let element = actualResult["element"] as? String {
+                    parts.append("'\(element)'")
+                } else if let elementWrapper = actualResult["element"] as? [String: Any],
+                          let elementValue = elementWrapper["value"] as? String {
+                    parts.append("'\(elementValue)'")
+                } else if let text = actualResult["text"] as? String {
+                    parts.append("'\(text)'")
+                }
+                
+                // Add element type if available
+                if let type = actualResult["type"] as? String {
+                    parts.append("(\(type))")
+                }
+                
+                // Add location if available
+                if let elementId = actualResult["elementId"] as? String {
+                    parts.append("as \(elementId)")
+                }
+            } else {
+                parts.append("Not found")
+                
+                // Add what was searched for
+                if let query = actualResult["query"] as? String {
+                    parts.append("'\(query)'")
+                } else if let text = actualResult["text"] as? String {
+                    parts.append("'\(text)'")
+                }
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "focused":
+            if let label = actualResult["label"] as? String {
+                if let app = actualResult["app"] as? String {
+                    return "'\(label)' field in \(app)"
+                }
+                return "'\(label)' field"
+            } else if let elementType = actualResult["type"] as? String {
+                if let app = actualResult["app"] as? String {
+                    return "\(elementType) in \(app)"
+                }
+                return elementType
+            }
+            return "Focused element"
+            
+        case "resize_window":
+            var parts: [String] = ["Resized"]
+            
+            if let app = actualResult["app"] as? String {
+                parts.append(app)
+            }
+            
+            if let width = actualResult["width"], let height = actualResult["height"] {
+                parts.append("to \(width)×\(height)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "focus_window":
+            var parts: [String] = ["Focused"]
+            
+            if let app = actualResult["app"] as? String {
+                parts.append(app)
+            } else if let appName = actualResult["appName"] as? String {
+                parts.append(appName)
+            }
+            
+            if let title = actualResult["windowTitle"] as? String {
+                parts.append("- \(title)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "list_windows":
+            // Check for count
+            if let count = actualResult["count"] as? Int {
+                if let app = actualResult["app"] as? String {
+                    return "Found \(count) windows for \(app)"
+                }
+                return "Found \(count) windows"
+            } else if let windows = actualResult["windows"] as? [[String: Any]] {
+                if let app = actualResult["app"] as? String {
+                    return "Found \(windows.count) windows for \(app)"
+                }
+                return "Found \(windows.count) windows"
+            }
+            return "Listed windows"
+            
+        case "list_elements":
+            if let count = actualResult["count"] as? Int {
+                if let type = actualResult["type"] as? String {
+                    return "Found \(count) \(type) elements"
+                }
+                return "Found \(count) elements"
+            } else if let elements = actualResult["elements"] as? [[String: Any]] {
+                if let type = actualResult["type"] as? String {
+                    return "Found \(elements.count) \(type) elements"
+                }
+                return "Found \(elements.count) elements"
+            }
+            return "Listed elements"
+            
+        case "list_menus":
+            if let app = actualResult["app"] as? String {
+                if let menuCount = actualResult["menuCount"] as? Int {
+                    return "Found \(menuCount) menus for \(app)"
+                }
+                return "Listed menus for \(app)"
+            }
+            return "Listed menus"
+            
+        case "list_spaces":
+            if let spaces = actualResult["spaces"] as? [[String: Any]] {
+                return "Found \(spaces.count) spaces"
+            } else if let count = actualResult["count"] as? Int {
+                return "Found \(count) spaces"
+            }
+            return "Listed spaces"
+            
+        case "switch_space":
+            if let to = actualResult["to"] as? Int {
+                return "Switched to space \(to)"
+            } else if let space = actualResult["space"] as? Int {
+                return "Switched to space \(space)"
+            }
+            return "Switched space"
+            
+        case "move_window_to_space":
+            var parts: [String] = ["Moved"]
+            
+            if let app = actualResult["app"] as? String {
+                parts.append(app)
+            }
+            
+            if let to = actualResult["to"] as? Int {
+                parts.append("to space \(to)")
+            } else if let space = actualResult["space"] as? Int {
+                parts.append("to space \(space)")
+            }
+            
+            if let followed = actualResult["followed"] as? Bool, followed {
+                parts.append("(followed)")
+            }
+            
+            return parts.joined(separator: " ")
+            
+        case "wait":
+            if let seconds = actualResult["seconds"] as? Double {
+                return "Waited \(seconds)s"
+            } else if let seconds = actualResult["seconds"] as? Int {
+                return "Waited \(seconds)s"
+            }
+            return "Waited"
+            
+        case "dock_launch":
+            var parts: [String] = ["Launched"]
+            
+            if let app = actualResult["app"] as? String {
+                parts.append(app)
+            } else if let appName = actualResult["appName"] as? String {
+                parts.append(appName)
+            }
+            
+            parts.append("from dock")
             return parts.joined(separator: " ")
             
         default:
