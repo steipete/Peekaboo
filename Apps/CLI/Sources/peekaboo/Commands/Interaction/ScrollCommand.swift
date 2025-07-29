@@ -51,6 +51,9 @@ struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
     
+    @Option(name: .long, help: "Target application to focus before scrolling")
+    var app: String?
+    
     @OptionGroup var focusOptions: FocusOptions
 
     mutating func run() async throws {
@@ -74,13 +77,12 @@ struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
                 nil
             }
             
-            // Ensure window is focused before scrolling (if we have a session and auto-focus is enabled)
-            if let sessionId = sessionId {
-                try await self.ensureFocused(
-                    sessionId: sessionId,
-                    options: focusOptions
-                )
-            }
+            // Ensure window is focused before scrolling
+            try await self.ensureFocused(
+                sessionId: sessionId,
+                applicationName: app,
+                options: focusOptions
+            )
 
             // Perform scroll using the service
             try await PeekabooServices.shared.automation.scroll(

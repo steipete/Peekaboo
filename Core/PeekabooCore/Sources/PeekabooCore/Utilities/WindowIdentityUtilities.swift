@@ -44,6 +44,10 @@
 import AppKit
 import AXorcist
 import Foundation
+import os.log
+
+// Logger for window identity utilities
+private let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowIdentity")
 
 // MARK: - NSArray Extension for Swift compatibility
 
@@ -76,6 +80,7 @@ public final class WindowIdentityService {
         
         guard result == .success else {
             // Failed to get CGWindowID from AXUIElement
+            logger.error("Failed to get window ID from AXUIElement, error: \(result.rawValue)")
             return nil
         }
         
@@ -100,6 +105,9 @@ public final class WindowIdentityService {
         if let role = element.role(), role == "AXWindow" {
             return getWindowID(from: axElement)
         }
+        
+        // Log the failure for debugging
+        logger.error("Failed to get window ID, error: \(result), role: \(element.role() ?? "nil")")
         
         return nil
     }

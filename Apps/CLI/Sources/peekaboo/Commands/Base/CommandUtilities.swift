@@ -18,7 +18,20 @@ extension ErrorHandlingCommand {
             let errorCode = customCode ?? mapErrorToCode(error)
             outputError(message: error.localizedDescription, code: errorCode)
         } else {
-            fputs("Error: \(error.localizedDescription)\n", stderr)
+            // Get a more descriptive error message
+            let errorMessage: String
+            if let peekabooError = error as? PeekabooError {
+                errorMessage = peekabooError.errorDescription ?? String(describing: error)
+            } else if let captureError = error as? CaptureError {
+                errorMessage = captureError.errorDescription ?? String(describing: error)
+            } else if error.localizedDescription == "The operation couldn't be completed. (PeekabooCore.PeekabooError error 0.)" ||
+                      error.localizedDescription == "Error" {
+                // For generic errors, try to get more info
+                errorMessage = String(describing: error)
+            } else {
+                errorMessage = error.localizedDescription
+            }
+            fputs("Error: \(errorMessage)\n", stderr)
         }
     }
     

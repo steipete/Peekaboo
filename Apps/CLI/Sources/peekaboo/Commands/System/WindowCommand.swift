@@ -3,6 +3,10 @@ import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import os.log
+
+// Logger for window command debugging
+private let logger = Logger(subsystem: "boo.peekaboo.cli", category: "WindowCommand")
 
 /// Manipulate application windows with various actions
 struct WindowCommand: AsyncParsableCommand {
@@ -284,16 +288,26 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
     var jsonOutput = false
     
     func run() async throws {
+        logger.debug("FocusSubcommand.run() called")
         Logger.shared.setJsonOutputMode(self.jsonOutput)
         
         do {
+            logger.debug("About to validate window options")
             try self.windowOptions.validate()
+            logger.debug("Window options validated")
             let target = self.windowOptions.createTarget()
+            logger.debug("Target created: \(target)")
             
             // Get window info before action
             let windows = try await PeekabooServices.shared.windows.listWindows(target: self.windowOptions.toWindowTarget())
+            logger.debug("Found \(windows.count) windows")
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
+            
+            // Check if we found any windows
+            guard !windows.isEmpty else {
+                throw PeekabooError.windowNotFound(criteria: "No windows found for \(appName)")
+            }
             
             // Use enhanced focus with space support
             if let windowID = windowInfo?.windowID {

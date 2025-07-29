@@ -53,6 +53,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
         
         // Try exact name match (case-insensitive), but prefer GUI apps
         let lowercaseIdentifier = identifier.lowercased()
+        
         let exactMatches = runningApps.filter { 
             $0.localizedName?.lowercased() == lowercaseIdentifier 
         }
@@ -180,9 +181,12 @@ public final class ApplicationService: ApplicationServiceProtocol {
         logger.info("Launching application: \(identifier)")
         
         // First check if already running
-        if let existingApp = try? await findApplication(identifier: identifier) {
+        do {
+            let existingApp = try await findApplication(identifier: identifier)
             logger.debug("Application already running: \(existingApp.name)")
             return existingApp
+        } catch {
+            logger.debug("Application not currently running: \(identifier), will try to launch")
         }
         
         // Try to launch by bundle ID
@@ -386,7 +390,49 @@ public final class ApplicationService: ApplicationServiceProtocol {
         
         // Try to get the actual CGWindowID
         let windowIdentityService = WindowIdentityService()
-        let windowID = windowIdentityService.getWindowID(from: window) ?? CGWindowID(index)
+        var actualWindowID = windowIdentityService.getWindowID(from: window)
+        
+        // If private API fails, try to find window by matching title and bounds
+        if actualWindowID == nil, let pid = window.pid() {
+            // Use CGWindowListCopyWindowInfo to find windows for this PID
+            let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
+            if let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] {
+                for windowInfo in windowList {
+                    // Match by PID, title, and bounds
+                    if let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
+                       ownerPID == pid,
+                       let windowTitle = windowInfo[kCGWindowName as String] as? String,
+                       windowTitle == title,
+                       let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
+                       let x = boundsDict["X"] as? CGFloat,
+                       let y = boundsDict["Y"] as? CGFloat,
+                       let width = boundsDict["Width"] as? CGFloat,
+                       let height = boundsDict["Height"] as? CGFloat {
+                        
+                        let cgBounds = CGRect(x: x, y: y, width: width, height: height)
+                        // Allow small differences due to coordinate system conversions
+                        if abs(cgBounds.origin.x - bounds.origin.x) < 5 &&
+                           abs(cgBounds.origin.y - bounds.origin.y) < 5 &&
+                           abs(cgBounds.size.width - bounds.size.width) < 5 &&
+                           abs(cgBounds.size.height - bounds.size.height) < 5 {
+                            if let windowNumber = windowInfo[kCGWindowNumber as String] as? Int {
+                                actualWindowID = CGWindowID(windowNumber)
+                                logger.debug("Found window ID \(windowNumber) via CGWindowList for '\(title)'")
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Use actual window ID if available, otherwise use index
+        let windowID = actualWindowID ?? CGWindowID(index)
+        
+        // Debug logging
+        if actualWindowID == nil {
+            logger.warning("Failed to get actual window ID for window '\(title)', using index \(index) as fallback")
+        }
         
         // Get space information for the window
         let (spaceID, spaceName) = getSpaceInfo(for: windowID)
@@ -430,7 +476,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
         logger.debug("Searching for application by name: \(name)")
         let workspace = NSWorkspace.shared
         
-        // Common application directories
+        // First, try exact name in common directories
         let searchPaths = [
             "/Applications",
             "/System/Applications",
@@ -450,13 +496,115 @@ public final class ApplicationService: ApplicationServiceProtocol {
             }
         }
         
-        // Try Spotlight as last resort
+        // Try NSWorkspace API with bundle ID
         if let url = workspace.urlForApplication(withBundleIdentifier: name) {
+            logger.debug("Found app via bundle identifier: \(url.path)")
+            return url
+        }
+        
+        // Use Spotlight search for more flexible app discovery
+        if let url = searchApplicationWithSpotlight(name) {
             logger.debug("Found app via Spotlight: \(url.path)")
             return url
         }
         
         logger.debug("Application not found by name: \(name)")
         return nil
+    }
+    
+    private func searchApplicationWithSpotlight(_ name: String) -> URL? {
+        logger.debug("Using Spotlight to search for: \(name)")
+        
+        // Create metadata query for applications
+        let query = NSMetadataQuery()
+        query.predicate = NSPredicate(
+            format: "(kMDItemContentType == 'com.apple.application-bundle' || kMDItemContentType == 'com.apple.application') && (kMDItemDisplayName CONTAINS[cd] %@ || kMDItemFSName CONTAINS[cd] %@)",
+            name, name
+        )
+        query.searchScopes = [
+            NSMetadataQueryIndexedLocalComputerScope,
+            NSMetadataQueryIndexedNetworkScope
+        ]
+        
+        // Start query synchronously
+        query.start()
+        
+        // Wait for results (with timeout)
+        let startTime = Date()
+        while query.isGathering && Date().timeIntervalSince(startTime) < 2.0 {
+            RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.1))
+        }
+        
+        query.stop()
+        
+        logger.debug("Spotlight query completed with \(query.resultCount) results")
+        
+        // Process results
+        var bestMatch: URL?
+        var bestScore = 0
+        
+        for i in 0..<query.resultCount {
+            guard let item = query.result(at: i) as? NSMetadataItem,
+                  let path = item.value(forAttribute: NSMetadataItemPathKey) as? String else {
+                continue
+            }
+            
+            let appURL = URL(fileURLWithPath: path)
+            let displayName = (item.value(forAttribute: NSMetadataItemDisplayNameKey) as? String) ?? ""
+            let fsName = appURL.lastPathComponent
+            
+            logger.debug("Spotlight found: \(path), displayName: '\(displayName)', fsName: '\(fsName)'")
+            
+            // Score based on match quality
+            var score = 0
+            
+            // Remove .app extension for comparison
+            let fsNameNoExt = fsName.hasSuffix(".app") ? String(fsName.dropLast(4)) : fsName
+            
+            // Exact match (case insensitive)
+            if displayName.lowercased() == name.lowercased() ||
+               fsNameNoExt.lowercased() == name.lowercased() ||
+               fsName.lowercased() == "\(name.lowercased()).app" {
+                score = 100
+            }
+            // Starts with search term
+            else if displayName.lowercased().hasPrefix(name.lowercased()) ||
+                    fsNameNoExt.lowercased().hasPrefix(name.lowercased()) {
+                score = 80
+            }
+            // Contains search term
+            else if displayName.lowercased().contains(name.lowercased()) ||
+                    fsNameNoExt.lowercased().contains(name.lowercased()) {
+                score = 50
+            }
+            
+            // Prefer apps in standard locations
+            if path.hasPrefix("/Applications/") {
+                score += 10
+            } else if path.hasPrefix("/System/Applications/") {
+                score += 5
+            }
+            
+            // Prefer apps in DerivedData for debug builds
+            if path.contains("/DerivedData/") && path.contains("/Debug/") {
+                score += 15  // Higher priority for debug builds when explicitly searching
+            }
+            
+            if score > bestScore {
+                bestScore = score
+                bestMatch = appURL
+            }
+            
+            // If we found an exact match, we can stop
+            if score >= 100 {
+                break
+            }
+        }
+        
+        if let match = bestMatch {
+            logger.debug("Spotlight found app: \(match.path) (score: \(bestScore))")
+        }
+        
+        return bestMatch
     }
 }

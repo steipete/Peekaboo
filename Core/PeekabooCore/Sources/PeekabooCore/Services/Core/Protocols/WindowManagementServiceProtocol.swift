@@ -53,7 +53,7 @@ public protocol WindowManagementServiceProtocol: Sendable {
 }
 
 /// Options for targeting a window
-public enum WindowTarget: Sendable {
+public enum WindowTarget: Sendable, CustomStringConvertible {
     /// Target by application name or bundle ID
     case application(String)
     
@@ -68,6 +68,21 @@ public enum WindowTarget: Sendable {
     
     /// Target a specific window ID
     case windowId(Int)
+    
+    public var description: String {
+        switch self {
+        case .application(let app):
+            return "application(\(app))"
+        case .title(let title):
+            return "title(\(title))"
+        case .index(let app, let index):
+            return "index(app: \(app), index: \(index))"
+        case .frontmost:
+            return "frontmost"
+        case .windowId(let id):
+            return "windowId(\(id))"
+        }
+    }
 }
 
 /// Result of a window operation

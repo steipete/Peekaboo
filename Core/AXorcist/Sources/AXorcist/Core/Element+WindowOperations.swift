@@ -1,5 +1,9 @@
 import AppKit
 import ApplicationServices
+import os.log
+
+// Create a logger for window operations
+private let windowLogger = Logger(subsystem: "boo.peekaboo.axorcist", category: "WindowOperations")
 
 /// Window-specific accessibility operations
 public extension Element {
@@ -164,7 +168,7 @@ public extension Element {
             try performAction(.raise)
             return true
         } catch {
-            axWarningLog("Failed to raise window: \(error)")
+            windowLogger.error("Failed to raise window: \(error)")
             return false
         }
     }
@@ -191,17 +195,67 @@ public extension Element {
     
     /// Focus a window (activate app and raise window)
     @MainActor func focusWindow() -> Bool {
-        guard isWindow else { return false }
-        
-        // First activate the application
-        if let pid = pid() {
-            let axApp = AXUIElementCreateApplication(pid)
-            let appElement = Element(axApp)
-            _ = appElement.activateApplication()
+        windowLogger.debug("AXorcist focusWindow() called")
+        guard isWindow else { 
+            windowLogger.error("focusWindow called on non-window element")
+            windowLogger.debug("Not a window element")
+            return false 
         }
         
-        // Then raise the window
-        return raiseWindow()
+        // First activate the application
+        guard let pid = pid() else {
+            windowLogger.error("Could not get PID for window")
+            windowLogger.debug("Could not get PID")
+            return false
+        }
+        
+        windowLogger.info("Focusing window with PID: \(pid)")
+        
+        // Use NSRunningApplication for activation
+        guard let app = NSRunningApplication(processIdentifier: pid) else {
+            windowLogger.error("Could not find running application for PID: \(pid)")
+            return false
+        }
+        
+        windowLogger.debug("Activating application: \(app.localizedName ?? "Unknown")")
+        
+        // Activate the application first
+        let activated = app.activate(options: [.activateIgnoringOtherApps])
+        if !activated {
+            windowLogger.warning("Application activation returned false, continuing anyway")
+            // Continue anyway - sometimes activation reports false but works
+        }
+        
+        // Small delay to ensure activation completes
+        Thread.sleep(forTimeInterval: 0.1)
+        
+        windowLogger.debug("Performing raise action on window")
+        
+        // Use the reliable performAction method that's already using AXUIElementPerformAction
+        do {
+            windowLogger.debug("About to perform raise action")
+            try performAction(.raise)
+            windowLogger.info("Window focus completed successfully")
+            return true
+        } catch {
+            windowLogger.error("Failed to raise window: \(error)")
+            
+            // Try setting as main window as fallback
+            windowLogger.debug("Trying to set window as main window as fallback")
+            let mainResult = AXUIElementSetAttributeValue(
+                underlyingElement,
+                kAXMainAttribute as CFString,
+                kCFBooleanTrue
+            )
+            
+            if mainResult == .success {
+                windowLogger.info("Window focus completed via main window fallback")
+                return true
+            } else {
+                windowLogger.error("Failed to set window as main, error code: \(mainResult.rawValue)")
+                return false
+            }
+        }
     }
     
     // MARK: - Window Geometry

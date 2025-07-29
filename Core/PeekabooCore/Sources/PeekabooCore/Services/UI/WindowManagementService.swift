@@ -2,12 +2,14 @@ import Foundation
 import CoreGraphics
 import AXorcist
 import AppKit
+import os.log
 
 /// Default implementation of window management operations using AXorcist
 @MainActor
 public final class WindowManagementService: WindowManagementServiceProtocol {
     
     private let applicationService: ApplicationServiceProtocol
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowManagementService")
     
     public init(applicationService: ApplicationServiceProtocol? = nil) {
         self.applicationService = applicationService ?? ApplicationService()
@@ -92,14 +94,41 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func focusWindow(target: WindowTarget) async throws {
+        // Add logging to debug focus issues
+        logger.info("Attempting to focus window with target: \(target)")
+        logger.debug("WindowManagementService.focusWindow called with target: \(target)")
+        
         let success = try await performWindowOperation(target: target) { window in
-            window.focusWindow()
+            logger.debug("About to call window.focusWindow()")
+            let result = window.focusWindow()
+            logger.debug("window.focusWindow() returned: \(result)")
+            if !result {
+                self.logger.error("focusWindow() returned false for window")
+            }
+            return result
         }
         
         if !success {
+            // Get more context about the window for better error messages
+            let windowInfo: String
+            switch target {
+            case .frontmost:
+                windowInfo = "frontmost window"
+            case .application(let app):
+                windowInfo = "window for app '\(app)'"
+            case .title(let title):
+                windowInfo = "window with title containing '\(title)'"
+            case .index(let app, let index):
+                windowInfo = "window at index \(index) for app '\(app)'"
+            case .windowId(let id):
+                windowInfo = "window with ID \(id)"
+            }
+            
+            logger.error("Focus window failed for: \(windowInfo)")
+            
             throw OperationError.interactionFailed(
                 action: "focus window",
-                reason: "Window focus operation failed"
+                reason: "Failed to focus \(windowInfo). The window may be minimized, on another Space, or the app may not be responding to focus requests."
             )
         }
     }

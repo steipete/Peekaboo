@@ -129,6 +129,8 @@ func outputJSONCodable(_ response: some Codable) {
     do {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
+        // Note: JSONEncoder by default omits nil values from optionals
+        // This is standard behavior and generally desirable for cleaner output
         let data = try encoder.encode(response)
         if let jsonString = String(data: data, encoding: .utf8) {
             print(jsonString)
