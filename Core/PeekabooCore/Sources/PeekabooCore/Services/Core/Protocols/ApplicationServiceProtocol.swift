@@ -79,7 +79,7 @@ public struct ServiceApplicationInfo: Sendable, Codable, Equatable {
     public let isHidden: Bool
     
     /// Number of windows
-    public let windowCount: Int
+    public var windowCount: Int
     
     public init(
         processIdentifier: Int32,
