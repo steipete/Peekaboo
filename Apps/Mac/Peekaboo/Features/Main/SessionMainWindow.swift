@@ -146,6 +146,12 @@ struct SessionSidebar: View {
                 }
             }
             .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .safeAreaInset(edge: .top) {
+                // Add padding at the top of the list content
+                Color.clear
+                    .frame(height: 8)
+            }
             .onDeleteCommand {
                 // Delete the currently selected session
                 if let selectedId = selectedSessionId,
@@ -167,9 +173,7 @@ struct SessionSidebar: View {
         guard session.id != agent.currentSession?.id else { return }
         
         sessionStore.sessions.removeAll { $0.id == session.id }
-        Task {
-            try? await sessionStore.saveSessions()
-        }
+        sessionStore.saveSessions()
         
         if selectedSessionId == session.id {
             selectedSessionId = nil
@@ -182,9 +186,7 @@ struct SessionSidebar: View {
         newSession.summary = session.summary
         
         sessionStore.sessions.insert(newSession, at: 0)
-        Task {
-            try? await sessionStore.saveSessions()
-        }
+        sessionStore.saveSessions()
         
         selectedSessionId = newSession.id
     }
@@ -350,13 +352,6 @@ struct SessionChatView: View {
                         ForEach(session.messages) { message in
                             DetailedMessageRow(message: message)
                                 .id(message.id)
-                        }
-                        
-                        // Show tool execution history for active session
-                        if isCurrentSession && !agent.toolExecutionHistory.isEmpty {
-                            ToolExecutionHistoryView()
-                                .id("tool-history")
-                                .padding(.top, 8)
                         }
                         
                         // Show progress indicator for active session
@@ -796,41 +791,78 @@ struct DetailedMessageRow: View {
                             .fixedSize(horizontal: false, vertical: true)
                     } else if isToolMessage {
                         HStack(spacing: 8) {
-                            // Show dynamic status based on tool execution state
-                            if let toolCall = message.toolCalls.first {
-                                let isRunning = toolCall.result == "Running..."
-                                let statusIcon = isRunning ? "🔧" : (toolCall.result.contains("error") || toolCall.result.contains("failed") ? "❌" : "✅")
-                                let statusText = isRunning ? message.content : message.content.replacingOccurrences(of: "🔧", with: statusIcon)
-                                
-                                Text(statusText)
-                                    .font(.system(.body, design: .monospaced))
-                                    .foregroundColor(.primary)
-                                
-                                if isRunning {
-                                    ProgressView()
-                                        .progressViewStyle(.circular)
-                                        .scaleEffect(0.7)
-                                }
-                            } else {
-                                Text(message.content)
-                                    .font(.system(.body, design: .monospaced))
-                                    .foregroundColor(.primary)
+                            // Extract tool name from message content (format: "🔧 toolname: args")
+                            let toolName = extractToolName(from: message.content)
+                            
+                            // Show animated icon for the tool
+                            if !toolName.isEmpty {
+                                ToolIcon(
+                                    toolName: toolName,
+                                    isRunning: message.toolCalls.first?.result == "Running..."
+                                )
                             }
                             
-                            Spacer()
+                            // Show tool execution details
+                            if let toolCall = message.toolCalls.first {
+                                let isRunning = toolCall.result == "Running..."
+                                let content = message.content
+                                    .replacingOccurrences(of: "🔧 ", with: "")
+                                    .replacingOccurrences(of: "✅ ", with: "")
+                                    .replacingOccurrences(of: "❌ ", with: "")
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(content)
+                                        .font(.system(.body, design: .rounded))
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.primary)
+                                    
+                                    if !isRunning && toolCall.result != "Running..." {
+                                        // Show result summary if available
+                                        if let resultSummary = ToolFormatter.toolResultSummary(
+                                            toolName: toolName,
+                                            result: toolCall.result
+                                        ) {
+                                            Text(resultSummary)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                if isRunning {
+                                    TimeIntervalText(startTime: message.timestamp)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            } else {
+                                Text(message.content.replacingOccurrences(of: "🔧 ", with: ""))
+                                    .font(.system(.body, design: .rounded))
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
+                                
+                                Spacer()
+                            }
                         }
                         .textSelection(.enabled)
                     } else if message.role == .assistant {
                         // Render assistant messages as Markdown
-                        Text(try! AttributedString(
+                        if let attributedString = try? AttributedString(
                             markdown: message.content,
                             options: AttributedString.MarkdownParsingOptions(
                                 allowsExtendedAttributes: true,
                                 interpretedSyntax: .inlineOnlyPreservingWhitespace
                             )
-                        ))
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
+                        ) {
+                            Text(attributedString)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            Text(message.content)
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     } else {
                         Text(message.content)
                             .textSelection(.enabled)
@@ -936,6 +968,19 @@ struct DetailedMessageRow: View {
         case .assistant: return "Assistant"
         case .system: return "System"
         }
+    }
+    
+    private func extractToolName(from content: String) -> String {
+        // Format is "🔧 toolname: args" or "✅ toolname: args" or "❌ toolname: args"
+        let cleaned = content
+            .replacingOccurrences(of: "🔧 ", with: "")
+            .replacingOccurrences(of: "✅ ", with: "")
+            .replacingOccurrences(of: "❌ ", with: "")
+        
+        if let colonIndex = cleaned.firstIndex(of: ":") {
+            return String(cleaned[..<colonIndex]).trimmingCharacters(in: .whitespaces)
+        }
+        return ""
     }
 }
 

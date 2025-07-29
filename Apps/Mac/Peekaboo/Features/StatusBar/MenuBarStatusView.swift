@@ -54,25 +54,40 @@ struct MenuBarStatusView: View {
                 .symbolEffect(.pulse, options: .repeating, isActive: agent.isProcessing)
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(agent.isProcessing ? "Agent Active" : "Agent Idle")
-                    .font(.headline)
-                
-                if agent.isProcessing {
-                    if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
-                        HStack(spacing: 4) {
-                            AnimatedToolIcon(toolName: currentTool.toolName, isRunning: true)
-                                .frame(width: 14, height: 14)
-                            Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
+                if let currentSession = sessionStore.currentSession {
+                    Text(currentSession.title)
+                        .font(.headline)
+                        .lineLimit(1)
+                    
+                    if agent.isProcessing {
+                        if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
+                            HStack(spacing: 4) {
+                                AnimatedToolIcon(toolName: currentTool.toolName, isRunning: true)
+                                    .frame(width: 14, height: 14)
+                                Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                        } else {
+                            Text("Processing...")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
                         }
                     } else {
-                        Text("Processing...")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
+                        // Show session duration when idle
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock")
+                                .font(.caption2)
+                            Text(formatSessionDuration(currentSession))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
+                } else {
+                    Text(agent.isProcessing ? "Agent Active" : "Agent Idle")
+                        .font(.headline)
                 }
             }
             
@@ -286,6 +301,15 @@ struct MenuBarStatusView: View {
     
     private var idleView: some View {
         VStack(spacing: 16) {
+            // Show current session if there is one (even when idle)
+            if let currentSession = sessionStore.currentSession {
+                currentSessionPreview(currentSession)
+                    .padding(.horizontal)
+                    .padding(.top)
+                
+                Divider()
+            }
+            
             // Show voice input UI when in voice mode
             if isVoiceMode {
                 voiceInputView
@@ -623,9 +647,13 @@ struct SessionRowCompact: View {
                     .font(.caption)
                     .lineLimit(1)
                 
-                Text(session.startTime, style: .relative)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.caption2)
+                    Text(formatSessionDuration(session))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
             }
             
             Spacer()
@@ -653,4 +681,131 @@ struct SessionRowCompact: View {
             isHovering = hovering
         }
     }
+}
+
+// MARK: - MenuBarStatusView Extensions
+
+extension MenuBarStatusView {
+    private func currentSessionPreview(_ session: ConversationSession) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Session header
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Current Session")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(session.title)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                }
+                
+                Spacer()
+                
+                // Open button
+                Button(action: openMainWindow) {
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.body)
+                }
+                .buttonStyle(.plain)
+                .help("Open in main window")
+            }
+            
+            // Show last few messages
+            if !session.messages.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(session.messages.suffix(3)) { message in
+                        HStack(alignment: .top, spacing: 6) {
+                            Image(systemName: iconForRole(message.role))
+                                .font(.caption2)
+                                .foregroundColor(colorForRole(message.role))
+                                .frame(width: 12)
+                            
+                            Text(truncatedContent(message.content))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                            
+                            Spacer()
+                        }
+                    }
+                }
+                .padding(8)
+                .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
+                .cornerRadius(6)
+            }
+            
+            // Session stats
+            HStack(spacing: 12) {
+                Label("\(session.messages.count)", systemImage: "message")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                if agent.tokenUsage != nil {
+                    Label("\(agent.tokenUsage?.totalTokens ?? 0)", systemImage: "circle.hexagongrid.circle")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Text(formatSessionDuration(session))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(12)
+        .background(.regularMaterial)
+        .cornerRadius(8)
+    }
+    
+    private func iconForRole(_ role: MessageRole) -> String {
+        switch role {
+        case .user: return "person.circle"
+        case .assistant: return "brain"
+        case .system: return "gear"
+        }
+    }
+    
+    private func colorForRole(_ role: MessageRole) -> Color {
+        switch role {
+        case .user: return .blue
+        case .assistant: return .green
+        case .system: return .orange
+        }
+    }
+    
+    private func truncatedContent(_ content: String) -> String {
+        let cleaned = content
+            .replacingOccurrences(of: "🤔 ", with: "")
+            .replacingOccurrences(of: "🔧 ", with: "")
+            .replacingOccurrences(of: "✅ ", with: "")
+            .replacingOccurrences(of: "❌ ", with: "")
+            .replacingOccurrences(of: "⚠️ ", with: "")
+            .components(separatedBy: .newlines)
+            .first ?? content
+        
+        return String(cleaned.prefix(50)) + (cleaned.count > 50 ? "..." : "")
+    }
+}
+
+// MARK: - Helper Functions
+
+private func formatSessionDuration(_ session: ConversationSession) -> String {
+    let duration: TimeInterval
+    
+    // If there's a last message, calculate duration from start to last message
+    if let lastMessage = session.messages.last {
+        duration = lastMessage.timestamp.timeIntervalSince(session.startTime)
+    } else {
+        // Otherwise just show time since start
+        duration = Date().timeIntervalSince(session.startTime)
+    }
+    
+    let formatter = DateComponentsFormatter()
+    formatter.allowedUnits = [.hour, .minute, .second]
+    formatter.unitsStyle = .abbreviated
+    formatter.maximumUnitCount = 2
+    
+    return formatter.string(from: duration) ?? "0s"
 }
