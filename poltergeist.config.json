@@ -26,6 +26,11 @@
       "Core/AXorcist/**/*.swift"
     ]
   },
+  "notifications": {
+    "enabled": true,
+    "successSound": "Glass",
+    "failureSound": "Basso"
+  },
   "logging": {
     "file": ".poltergeist.log",
     "level": "info"

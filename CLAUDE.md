@@ -80,7 +80,7 @@ npm run poltergeist:haunt
 - Only for CLI builds (use Xcode for Mac app)
 - Exit code 42 = build failed, fix immediately
 - Always use wrapper: `./scripts/peekaboo-wait.sh`
-- See `docs/poltergeist.md` for full details
+- See [Poltergeist repository](https://github.com/steipete/poltergeist) for full details
 
 ### CRITICAL INSTRUCTIONS FOR AI AGENTS
 

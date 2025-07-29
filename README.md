@@ -1563,7 +1563,7 @@ npm run poltergeist:rest
 - Watches all Swift source files automatically
 - Smart wrapper script (`./scripts/peekaboo-wait.sh`) handles build coordination
 - Exit code 42 indicates build failure - fix immediately
-- See [docs/poltergeist.md](docs/poltergeist.md) for full documentation
+- See [Poltergeist repository](https://github.com/steipete/poltergeist) for full documentation
 
 ### Building from Source
 
