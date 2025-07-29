@@ -39,32 +39,16 @@ extension PeekabooAgentService {
                     // AX elements are not thread-safe and must be accessed from main thread
                     let apps = try await context.applications.listApplications()
                     
-                    // Process each app sequentially with individual timeouts
+                    // Process each app sequentially without any concurrent operations
+                    // This ensures all AX operations stay on the main thread
                     for app in apps {
                         do {
-                            // Create a task with timeout for this specific app
-                            let appWindows = try await withThrowingTaskGroup(of: [ServiceWindowInfo].self) { group in
-                                group.addTask {
-                                    try await context.windows.listWindows(target: .application(app.name))
-                                }
-                                group.addTask {
-                                    try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second timeout per app
-                                    throw CancellationError()
-                                }
-                                
-                                // Get the first result (either windows or timeout)
-                                if let result = try await group.next() {
-                                    group.cancelAll()
-                                    return result
-                                }
-                                return []
-                            }
+                            // For now, skip timeout mechanism to ensure thread safety
+                            // TODO: Implement a main-thread-safe timeout mechanism
+                            let appWindows = try await context.windows.listWindows(target: .application(app.name))
                             windows.append(contentsOf: appWindows)
-                        } catch is CancellationError {
-                            // Timeout - skip this app
-                            Self.logger.debug("Timeout getting windows for \(app.name)")
                         } catch {
-                            // Other error - skip this app
+                            // Skip apps that fail
                             Self.logger.debug("Error getting windows for \(app.name): \(error)")
                         }
                     }
@@ -153,30 +137,14 @@ extension PeekabooAgentService {
                     // Only window ID specified - need to search all apps
                     let apps = try await context.applications.listApplications()
                     
-                    // Process each app sequentially to avoid AX race conditions
+                    // Process each app sequentially without any concurrent operations
+                    // This ensures all AX operations stay on the main thread
                     for app in apps {
                         do {
-                            let appWindows = try await withThrowingTaskGroup(of: [ServiceWindowInfo].self) { group in
-                                group.addTask {
-                                    try await context.windows.listWindows(target: .application(app.name))
-                                }
-                                group.addTask {
-                                    try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second timeout
-                                    throw CancellationError()
-                                }
-                                
-                                if let result = try await group.next() {
-                                    group.cancelAll()
-                                    return result
-                                }
-                                return []
-                            }
+                            let appWindows = try await context.windows.listWindows(target: .application(app.name))
                             windows.append(contentsOf: appWindows)
-                        } catch is CancellationError {
-                            // Timeout - skip this app
-                            Self.logger.debug("Timeout getting windows for \(app.name)")
                         } catch {
-                            // Other error - skip this app
+                            // Skip apps that fail
                             Self.logger.debug("Error getting windows for \(app.name): \(error)")
                         }
                     }
@@ -266,27 +234,10 @@ extension PeekabooAgentService {
                     
                     for app in apps {
                         do {
-                            let appWindows = try await withThrowingTaskGroup(of: [ServiceWindowInfo].self) { group in
-                                group.addTask {
-                                    try await context.windows.listWindows(target: .application(app.name))
-                                }
-                                group.addTask {
-                                    try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second timeout
-                                    throw CancellationError()
-                                }
-                                
-                                if let result = try await group.next() {
-                                    group.cancelAll()
-                                    return result
-                                }
-                                return []
-                            }
+                            let appWindows = try await context.windows.listWindows(target: .application(app.name))
                             windows.append(contentsOf: appWindows)
-                        } catch is CancellationError {
-                            // Timeout - skip this app
-                            Self.logger.debug("Timeout getting windows for \(app.name)")
                         } catch {
-                            // Other error - skip this app
+                            // Skip apps that fail
                             Self.logger.debug("Error getting windows for \(app.name): \(error)")
                         }
                     }
