@@ -39,7 +39,14 @@ export function initializeSwiftCliPath(packageRootDir: string): void {
     // Allow determineSwiftCliPath to handle this, and the error will be caught by getInitializedSwiftCliPath
   }
   resolvedCliPath = determineSwiftCliPath(packageRootDir);
-  // No direct logging here; issues will be caught by getInitializedSwiftCliPath
+  
+  // Log the resolved path for debugging
+  if (resolvedCliPath && resolvedCliPath !== INVALID_PATH_SENTINEL) {
+    const binaryExists = existsSync(resolvedCliPath);
+    if (!binaryExists) {
+      console.error(`[Peekaboo MCP] Warning: Binary not found at ${resolvedCliPath}`);
+    }
+  }
 }
 
 function getInitializedSwiftCliPath(logger: Logger): string {
@@ -52,6 +59,16 @@ function getInitializedSwiftCliPath(logger: Logger): string {
     // Throw an error to prevent attempting to use an invalid path
     throw new Error(errorMessage);
   }
+  
+  // Check if the binary actually exists at the resolved path
+  if (!existsSync(resolvedCliPath)) {
+    const errorMessage = `Peekaboo Swift CLI binary not found at expected path: ${resolvedCliPath}\n` +
+      `The peekaboo binary should be located in the package root directory.\n` +
+      `You can override this by setting the PEEKABOO_CLI_PATH environment variable.`;
+    logger.error({ binaryPath: resolvedCliPath }, errorMessage);
+    throw new Error(errorMessage);
+  }
+  
   return resolvedCliPath;
 }
 

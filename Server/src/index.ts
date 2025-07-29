@@ -68,14 +68,14 @@ import { z } from "zod";
 // Get package version and determine package root
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename); // This will be dist/
-const projectRootDir = path.resolve(__dirname, "..", ".."); // Moves from dist/ to project root (not Server root)
 const packageRootDir = path.resolve(__dirname, ".."); // Server root for package.json
 const packageJsonPath = path.join(packageRootDir, "package.json");
 const packageJson = JSON.parse(await fs.readFile(packageJsonPath, "utf-8"));
 const SERVER_VERSION = packageJson.version;
 
 // Initialize the Swift CLI Path once
-initializeSwiftCliPath(projectRootDir);
+// When installed via npm, the peekaboo binary is in the package root (Server/)
+initializeSwiftCliPath(packageRootDir);
 
 // No longer need to track initial status display
 
