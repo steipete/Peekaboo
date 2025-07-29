@@ -225,7 +225,7 @@ struct MenuBarStatusView: View {
         // Add user message to current session
         if let session = sessionStore.currentSession {
             sessionStore.addMessage(
-                SessionMessage(role: .user, content: text),
+                ConversationMessage(role: .user, content: text),
                 to: session
             )
         }
@@ -480,7 +480,7 @@ struct ThinkingIndicator: View {
 
 // Compact message row for menu bar
 struct MessageRowCompact: View {
-    let message: SessionMessage
+    let message: ConversationMessage
     
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -578,7 +578,7 @@ struct MessageRowCompact: View {
 
 // Compact session row for menu bar
 struct SessionRowCompact: View {
-    let session: Session
+    let session: ConversationSession
     let isActive: Bool
     let onDelete: () -> Void
     @State private var isHovering = false

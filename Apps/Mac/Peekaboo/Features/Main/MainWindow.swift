@@ -340,7 +340,7 @@ struct MainWindow: View {
 // MARK: - Message Row
 
 struct MessageRow: View {
-    let message: SessionMessage
+    let message: ConversationMessage
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -452,7 +452,7 @@ struct SessionListPopover: View {
 // MARK: - Tool Call View
 
 struct ToolCallView: View {
-    let toolCall: ToolCall
+    let toolCall: ConversationToolCall
 
     var body: some View {
         HStack(spacing: 4) {

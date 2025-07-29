@@ -29,6 +29,7 @@ struct PeekabooApp: App {
         .windowResizability(.contentSize)
         .defaultSize(width: 1, height: 1)
         .windowStyle(.hiddenTitleBar)
+        .commandsRemoved() // Remove from File menu
 
         // Main window - Powerful debugging and development interface
         WindowGroup("Peekaboo Sessions", id: "main") {

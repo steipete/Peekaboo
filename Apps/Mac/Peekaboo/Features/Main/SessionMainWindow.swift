@@ -36,13 +36,6 @@ struct SessionMainWindow: View {
             }
         }
         .navigationTitle("Peekaboo Sessions")
-        .toolbar {
-            ToolbarItemGroup(placement: .navigation) {
-                Button(action: toggleSidebar) {
-                    Image(systemName: "sidebar.left")
-                }
-            }
-        }
         .onAppear {
             // Select current session by default
             if selectedSessionId == nil {
@@ -56,11 +49,6 @@ struct SessionMainWindow: View {
             }
         }
         // Removed sheet - creating sessions directly
-    }
-    
-    private func toggleSidebar() {
-        NSApp.keyWindow?.firstResponder?
-            .tryToPerform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
     }
     
     private func createNewSession() {
@@ -79,7 +67,7 @@ struct SessionSidebar: View {
     @Binding var searchText: String
     var onCreateNewSession: () -> Void
     
-    private var filteredSessions: [Session] {
+    private var filteredSessions: [ConversationSession] {
         if searchText.isEmpty {
             return sessionStore.sessions
         } else {
@@ -174,7 +162,7 @@ struct SessionSidebar: View {
         }
     }
     
-    private func deleteSession(_ session: Session) {
+    private func deleteSession(_ session: ConversationSession) {
         // Don't delete active session
         guard session.id != agent.currentSession?.id else { return }
         
@@ -188,8 +176,8 @@ struct SessionSidebar: View {
         }
     }
     
-    private func duplicateSession(_ session: Session) {
-        var newSession = Session(title: "\(session.title) (Copy)")
+    private func duplicateSession(_ session: ConversationSession) {
+        var newSession = ConversationSession(title: "\(session.title) (Copy)")
         newSession.messages = session.messages
         newSession.summary = session.summary
         
@@ -201,7 +189,7 @@ struct SessionSidebar: View {
         selectedSessionId = newSession.id
     }
     
-    private func exportSession(_ session: Session) {
+    private func exportSession(_ session: ConversationSession) {
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [.json]
         savePanel.nameFieldStringValue = "\(session.title).json"
@@ -230,7 +218,7 @@ struct SessionSidebar: View {
 // MARK: - Session Row
 
 struct SessionRow: View {
-    let session: Session
+    let session: ConversationSession
     let isActive: Bool
     let onDelete: () -> Void
     @State private var isHovering = false
@@ -330,7 +318,7 @@ struct SessionChatView: View {
     @Environment(SessionStore.self) private var sessionStore
     @Environment(SpeechRecognizer.self) private var speechRecognizer
     
-    let session: Session
+    let session: ConversationSession
     @State private var inputText = ""
     @State private var isProcessing = false
     @State private var inputMode: InputMode = .text
@@ -533,7 +521,7 @@ struct SessionChatView: View {
         if agent.isProcessing && isCurrentSession {
             // During execution, just add as a follow-up message
             sessionStore.addMessage(
-                SessionMessage(role: .user, content: trimmedInput),
+                ConversationMessage(role: .user, content: trimmedInput),
                 to: session
             )
             
@@ -598,7 +586,7 @@ struct SessionChatView: View {
 // MARK: - Session Detail Header
 
 struct SessionChatHeader: View {
-    let session: Session
+    let session: ConversationSession
     let isActive: Bool
     
     @Environment(PeekabooAgent.self) private var agent
@@ -644,10 +632,7 @@ struct SessionChatHeader: View {
                                         .lineLimit(1)
                                 }
                             } else if agent.isThinking {
-                                Text("💭 Thinking...")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .opacity(0.8)
+                                AnimatedThinkingIndicator()
                             } else if !agent.currentTask.isEmpty {
                                 Text(agent.currentTask)
                                     .font(.caption)
@@ -727,7 +712,7 @@ struct EmptySessionView: View {
 // MARK: - Detailed Message Row for Main Window
 
 struct DetailedMessageRow: View {
-    let message: SessionMessage
+    let message: ConversationMessage
     @State private var isExpanded = false
     @State private var showingImageInspector = false
     @State private var selectedImage: NSImage?
@@ -945,7 +930,7 @@ struct DetailedMessageRow: View {
 // MARK: - Detailed Tool Call View
 
 struct DetailedToolCallView: View {
-    let toolCall: ToolCall
+    let toolCall: ConversationToolCall
     let onImageTap: (NSImage) -> Void
     @State private var isExpanded = false
     
@@ -1053,7 +1038,7 @@ struct DetailedToolCallView: View {
 // MARK: - Session Debug Info
 
 struct SessionDebugInfo: View {
-    let session: Session
+    let session: ConversationSession
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1183,6 +1168,40 @@ struct ImageInspectorView: View {
     }
 }
 
+// MARK: - Animated Thinking Components
+
+struct AnimatedThinkingDots: View {
+    var body: some View {
+        Image(systemName: "ellipsis")
+            .foregroundStyle(.secondary)
+            .font(.title3.bold())
+            .symbolEffect(
+                .variableColor
+                    .iterative
+                    .hideInactiveLayers
+            )
+    }
+}
+
+struct AnimatedThinkingIndicator: View {
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("Thinking")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Image(systemName: "ellipsis")
+                .foregroundStyle(.blue)
+                .font(.caption.bold())
+                .symbolEffect(
+                    .variableColor
+                        .iterative
+                        .hideInactiveLayers
+                )
+        }
+    }
+}
+
 // MARK: - Progress Indicator View
 
 struct ProgressIndicatorView: View {
@@ -1202,10 +1221,7 @@ struct ProgressIndicatorView: View {
                     .scaleEffect(1 + sin(animationPhase) * 0.1)
                     .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: animationPhase)
             } else if agent.isThinking {
-                Text("💭")
-                    .font(.title2)
-                    .opacity(0.6 + sin(animationPhase) * 0.4)
-                    .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: animationPhase)
+                AnimatedThinkingDots()
             } else {
                 ProgressView()
                     .progressViewStyle(.circular)
@@ -1231,10 +1247,8 @@ struct ProgressIndicatorView: View {
                         }
                     }
                 } else if agent.isThinking {
-                    Text("Thinking...")
+                    AnimatedThinkingIndicator()
                         .font(.system(.body, design: .rounded))
-                        .foregroundColor(.secondary)
-                        .italic()
                 } else {
                     Text("Processing...")
                         .font(.system(.body))
