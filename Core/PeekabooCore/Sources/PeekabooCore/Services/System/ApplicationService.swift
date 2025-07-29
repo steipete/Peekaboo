@@ -4,6 +4,7 @@ import AXorcist
 import os.log
 
 /// Default implementation of application management operations
+@MainActor
 public final class ApplicationService: ApplicationServiceProtocol {
     
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ApplicationService")
@@ -16,24 +17,22 @@ public final class ApplicationService: ApplicationServiceProtocol {
         
         logger.debug("Found \(runningApps.count) running processes")
         
-        let filteredApps: [ServiceApplicationInfo] = runningApps.compactMap { app -> ServiceApplicationInfo? in
+        // Filter apps first
+        let appsToProcess = runningApps.filter { app in
             // Skip apps without a localized name
-            guard let name = app.localizedName else { return nil }
+            guard app.localizedName != nil else { return false }
             
-            // Skip system/background apps unless they have windows
+            // Skip system/background apps
             if app.activationPolicy == .prohibited {
-                return nil
+                return false
             }
             
-            return ServiceApplicationInfo(
-                processIdentifier: app.processIdentifier,
-                bundleIdentifier: app.bundleIdentifier,
-                name: name,
-                bundlePath: app.bundleURL?.path,
-                isActive: app.isActive,
-                isHidden: app.isHidden,
-                windowCount: 0  // Will be updated separately
-            )
+            return true
+        }
+        
+        // Now create app info with window counts
+        let filteredApps = appsToProcess.map { app in
+            createApplicationInfo(from: app)
         }.sorted { (app1, app2) -> Bool in
             return app1.name < app2.name
         }
@@ -130,7 +129,6 @@ public final class ApplicationService: ApplicationServiceProtocol {
         throw NotFoundError.application(identifier)
     }
     
-    @MainActor
     public func listWindows(for appIdentifier: String) async throws -> [ServiceWindowInfo] {
         logger.info("Listing windows for application: \(appIdentifier)")
         let app = try await findApplication(identifier: appIdentifier)
@@ -267,22 +265,20 @@ public final class ApplicationService: ApplicationServiceProtocol {
         logger.info("Hiding application: \(identifier)")
         let app = try await findApplication(identifier: identifier)
         
-        await MainActor.run {
-            let axApp = AXUIElementCreateApplication(app.processIdentifier)
-            let appElement = Element(axApp)
-            
-            do {
-                try appElement.performAction(Attribute<String>("AXHide"))
-                self.logger.debug("Hidden via AX action: \(app.name)")
-            } catch {
-                // Log the error but use fallback
-                _ = error.asPeekabooError(context: "AX hide action failed for \(app.name)")
-                // Fallback to NSRunningApplication method
-                self.logger.debug("Using NSRunningApplication fallback")
-                if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
-                    runningApp.hide()
-                    self.logger.debug("Hidden via NSRunningApplication: \(app.name)")
-                }
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        
+        do {
+            try appElement.performAction(Attribute<String>("AXHide"))
+            logger.debug("Hidden via AX action: \(app.name)")
+        } catch {
+            // Log the error but use fallback
+            _ = error.asPeekabooError(context: "AX hide action failed for \(app.name)")
+            // Fallback to NSRunningApplication method
+            logger.debug("Using NSRunningApplication fallback")
+            if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
+                runningApp.hide()
+                logger.debug("Hidden via NSRunningApplication: \(app.name)")
             }
         }
     }
@@ -291,22 +287,20 @@ public final class ApplicationService: ApplicationServiceProtocol {
         logger.info("Unhiding application: \(identifier)")
         let app = try await findApplication(identifier: identifier)
         
-        await MainActor.run {
-            let axApp = AXUIElementCreateApplication(app.processIdentifier)
-            let appElement = Element(axApp)
-            
-            do {
-                try appElement.performAction(Attribute<String>("AXUnhide"))
-                self.logger.debug("Unhidden via AX action: \(app.name)")
-            } catch {
-                // Log the error but use fallback
-                _ = error.asPeekabooError(context: "AX unhide action failed for \(app.name)")
-                // Fallback to activating the app if unhide fails
-                self.logger.debug("Using activate fallback")
-                if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
-                    runningApp.activate()
-                    self.logger.debug("Activated as fallback: \(app.name)")
-                }
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        
+        do {
+            try appElement.performAction(Attribute<String>("AXUnhide"))
+            logger.debug("Unhidden via AX action: \(app.name)")
+        } catch {
+            // Log the error but use fallback
+            _ = error.asPeekabooError(context: "AX unhide action failed for \(app.name)")
+            // Fallback to activating the app if unhide fails
+            logger.debug("Using activate fallback")
+            if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
+                runningApp.activate()
+                logger.debug("Activated as fallback: \(app.name)")
             }
         }
     }
@@ -315,58 +309,54 @@ public final class ApplicationService: ApplicationServiceProtocol {
         logger.info("Hiding other applications except: \(identifier)")
         let app = try await findApplication(identifier: identifier)
         
-        await MainActor.run {
-            let axApp = AXUIElementCreateApplication(app.processIdentifier)
-            let appElement = Element(axApp)
-            
-            do {
-                // Use custom attribute for hide others action
-                try appElement.performAction(Attribute<String>("AXHideOthers"))
-                self.logger.debug("Hidden others via AX action")
-            } catch {
-                // Log the error but use fallback
-                _ = error.asPeekabooError(context: "AX hide others action failed")
-                // Fallback: hide each app individually
-                self.logger.debug("Hiding apps individually")
-                let workspace = NSWorkspace.shared
-                var hiddenCount = 0
-                for runningApp in workspace.runningApplications {
-                    if runningApp.processIdentifier != app.processIdentifier &&
-                       runningApp.activationPolicy == .regular &&
-                       runningApp.bundleIdentifier != "com.apple.finder" {
-                        runningApp.hide()
-                        hiddenCount += 1
-                    }
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        
+        do {
+            // Use custom attribute for hide others action
+            try appElement.performAction(Attribute<String>("AXHideOthers"))
+            logger.debug("Hidden others via AX action")
+        } catch {
+            // Log the error but use fallback
+            _ = error.asPeekabooError(context: "AX hide others action failed")
+            // Fallback: hide each app individually
+            logger.debug("Hiding apps individually")
+            let workspace = NSWorkspace.shared
+            var hiddenCount = 0
+            for runningApp in workspace.runningApplications {
+                if runningApp.processIdentifier != app.processIdentifier &&
+                   runningApp.activationPolicy == .regular &&
+                   runningApp.bundleIdentifier != "com.apple.finder" {
+                    runningApp.hide()
+                    hiddenCount += 1
                 }
-                self.logger.debug("Hidden \(hiddenCount) other applications")
             }
+            logger.debug("Hidden \(hiddenCount) other applications")
         }
     }
     
     public func showAllApplications() async throws {
         logger.info("Showing all applications")
-        await MainActor.run {
-            let systemWide = Element.systemWide()
-            
-            do {
-                // Use custom attribute for show all action
-                try systemWide.performAction(Attribute<String>("AXShowAll"))
-                self.logger.debug("Shown all via AX action")
-            } catch {
-                // Log the error but use fallback
-                _ = error.asPeekabooError(context: "AX show all action failed")
-                // Fallback: unhide each hidden app
-                self.logger.debug("Unhiding apps individually")
-                let workspace = NSWorkspace.shared
-                var unhiddenCount = 0
-                for runningApp in workspace.runningApplications {
-                    if runningApp.isHidden && runningApp.activationPolicy == .regular {
-                        runningApp.unhide()
-                        unhiddenCount += 1
-                    }
+        let systemWide = Element.systemWide()
+        
+        do {
+            // Use custom attribute for show all action
+            try systemWide.performAction(Attribute<String>("AXShowAll"))
+            logger.debug("Shown all via AX action")
+        } catch {
+            // Log the error but use fallback
+            _ = error.asPeekabooError(context: "AX show all action failed")
+            // Fallback: unhide each hidden app
+            logger.debug("Unhiding apps individually")
+            let workspace = NSWorkspace.shared
+            var unhiddenCount = 0
+            for runningApp in workspace.runningApplications {
+                if runningApp.isHidden && runningApp.activationPolicy == .regular {
+                    runningApp.unhide()
+                    unhiddenCount += 1
                 }
-                self.logger.debug("Unhidden \(unhiddenCount) applications")
             }
+            logger.debug("Unhidden \(unhiddenCount) applications")
         }
     }
     
@@ -384,7 +374,6 @@ public final class ApplicationService: ApplicationServiceProtocol {
         )
     }
     
-    @MainActor
     private func createWindowInfo(from window: Element, index: Int) async -> ServiceWindowInfo? {
         guard let title = window.title() else { return nil }
         
@@ -419,7 +408,6 @@ public final class ApplicationService: ApplicationServiceProtocol {
         )
     }
     
-    @MainActor
     private func getSpaceInfo(for windowID: CGWindowID) -> (spaceID: UInt64?, spaceName: String?) {
         let spaceService = SpaceManagementService()
         let spaces = spaceService.getSpacesForWindow(windowID: windowID)
@@ -433,9 +421,9 @@ public final class ApplicationService: ApplicationServiceProtocol {
     }
     
     private func getWindowCount(for app: NSRunningApplication) -> Int {
-        // For now, return 0 - getting accurate window count requires MainActor
-        // This will be populated when windows are actually queried
-        return 0
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        return appElement.windows()?.count ?? 0
     }
     
     private func findApplicationByName(_ name: String) -> URL? {
