@@ -8,6 +8,8 @@
       "outputPath": "./peekaboo",
       "statusFile": "/tmp/peekaboo-cli-build-status.json",
       "lockFile": "/tmp/peekaboo-cli-build.lock",
+      "settlingDelay": 1000,
+      "debounceInterval": 5000,
       "watchPaths": [
         "Core/PeekabooCore/**/*.swift",
         "Core/AXorcist/**/*.swift", 
@@ -24,6 +26,8 @@
       "statusFile": "/tmp/peekaboo-mac-build-status.json",
       "lockFile": "/tmp/peekaboo-mac-build.lock",
       "autoRelaunch": true,
+      "settlingDelay": 1000,
+      "debounceInterval": 5000,
       "watchPaths": [
         "Apps/Mac/Peekaboo/**/*.swift",
         "Apps/Mac/Peekaboo/**/*.storyboard",
@@ -39,7 +43,8 @@
     "failureSound": "Basso",
     "buildStart": true,
     "buildFailed": true,
-    "buildSuccess": true
+    "buildSuccess": true,
+    "minInterval": 10000
   },
   "logging": {
     "file": ".poltergeist.log",
