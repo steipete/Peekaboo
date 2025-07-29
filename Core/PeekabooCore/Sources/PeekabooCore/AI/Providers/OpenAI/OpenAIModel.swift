@@ -219,9 +219,22 @@ public final class OpenAIModel: ModelInterface {
                                                 }
                                             }
                                             
+                                            // Extract usage if available
+                                            var usage: Usage? = nil
+                                            if let usageData = responseData.usage {
+                                                aiDebugPrint("DEBUG: Found usage in response.completed: input=\(usageData.inputTokens ?? 0), output=\(usageData.outputTokens ?? 0), total=\(usageData.totalTokens ?? 0)")
+                                                usage = Usage(
+                                                    promptTokens: usageData.inputTokens ?? 0,
+                                                    completionTokens: usageData.outputTokens ?? 0,
+                                                    totalTokens: usageData.totalTokens ?? 0,
+                                                    promptTokensDetails: nil,
+                                                    completionTokensDetails: nil
+                                                )
+                                            }
+                                            
                                             let event = StreamEvent.responseCompleted(StreamResponseCompleted(
                                                 id: id,
-                                                usage: nil,
+                                                usage: usage,
                                                 finishReason: nil
                                             ))
                                             continuation.yield(event)
@@ -746,10 +759,38 @@ public final class OpenAIModel: ModelInterface {
         case "response.completed":
             // Handle response completion
             if let response = chunk.response {
-                // Emit completion event
+                aiDebugPrint("DEBUG: response.completed - has response, checking usage...")
+                aiDebugPrint("DEBUG: response.usage = \(response.usage != nil ? "present" : "nil")")
+                
+                // Extract usage if available
+                var usage: Usage? = nil
+                if let responseUsage = response.usage {
+                    aiDebugPrint("DEBUG: Found usage in response: input=\(responseUsage.promptTokens), output=\(responseUsage.completionTokens), total=\(responseUsage.totalTokens)")
+                    usage = Usage(
+                        promptTokens: responseUsage.promptTokens,
+                        completionTokens: responseUsage.completionTokens,
+                        totalTokens: responseUsage.totalTokens,
+                        promptTokensDetails: responseUsage.promptTokensDetails.map { details in
+                            TokenDetails(
+                                cachedTokens: details.cachedTokens,
+                                audioTokens: details.audioTokens,
+                                reasoningTokens: details.reasoningTokens
+                            )
+                        },
+                        completionTokensDetails: responseUsage.completionTokensDetails.map { details in
+                            TokenDetails(
+                                cachedTokens: details.cachedTokens,
+                                audioTokens: details.audioTokens,
+                                reasoningTokens: details.reasoningTokens
+                            )
+                        }
+                    )
+                }
+                
+                // Emit completion event with usage
                 events.append(.responseCompleted(StreamResponseCompleted(
                     id: response.id,
-                    usage: nil,
+                    usage: usage,
                     finishReason: nil
                 )))
             }

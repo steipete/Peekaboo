@@ -746,6 +746,7 @@ public struct OpenAIResponsesEventResponse: Codable, Sendable {
     public let status: String
     public let model: String?
     public let output: [OpenAIResponsesEventItem]?
+    public let usage: OpenAIUsage?
 }
 
 /// Item in responses streaming

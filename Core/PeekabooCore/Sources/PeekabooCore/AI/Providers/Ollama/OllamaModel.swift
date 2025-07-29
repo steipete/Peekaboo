@@ -329,11 +329,33 @@ public final class OllamaModel: ModelInterface {
                                     }
                                     
                                     if chunk.done {
-                                        // Send completion event
+                                        // Extract usage if available
+                                        var usage: Usage? = nil
+                                        if let evalCount = chunk.evalCount,
+                                           let promptEvalCount = chunk.promptEvalCount {
+                                            usage = Usage(
+                                                promptTokens: promptEvalCount,
+                                                completionTokens: evalCount,
+                                                totalTokens: promptEvalCount + evalCount,
+                                                promptTokensDetails: nil,
+                                                completionTokensDetails: nil
+                                            )
+                                        } else if let evalCount = chunk.evalCount {
+                                            // Sometimes only eval_count is provided
+                                            usage = Usage(
+                                                promptTokens: 0,
+                                                completionTokens: evalCount,
+                                                totalTokens: evalCount,
+                                                promptTokensDetails: nil,
+                                                completionTokensDetails: nil
+                                            )
+                                        }
+                                        
+                                        // Send completion event with usage
                                         continuation.yield(StreamEvent.responseCompleted(
                                             StreamResponseCompleted(
                                                 id: UUID().uuidString,
-                                                usage: nil,
+                                                usage: usage,
                                                 finishReason: .stop
                                             )
                                         ))
@@ -747,11 +769,24 @@ private struct OllamaStreamChunk: Decodable {
     let createdAt: String?
     let message: OllamaMessage?
     let done: Bool
+    // Additional fields sent when done is true
+    let evalCount: Int?
+    let promptEvalCount: Int?
+    let totalDuration: Int?
+    let loadDuration: Int?
+    let promptEvalDuration: Int?
+    let evalDuration: Int?
     
     enum CodingKeys: String, CodingKey {
         case model
         case createdAt = "created_at"
         case message
         case done
+        case evalCount = "eval_count"
+        case promptEvalCount = "prompt_eval_count"
+        case totalDuration = "total_duration"
+        case loadDuration = "load_duration"
+        case promptEvalDuration = "prompt_eval_duration"
+        case evalDuration = "eval_duration"
     }
 }
