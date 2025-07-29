@@ -8,6 +8,7 @@ struct MenuBarStatusView: View {
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
     @Environment(SpeechRecognizer.self) private var speechRecognizer
+    @Environment(\.openWindow) private var openWindow
     @State private var isHovering = false
     @State private var hasAppeared = false
     @State private var isVoiceMode = false
@@ -19,7 +20,7 @@ struct MenuBarStatusView: View {
             headerView
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(Color(NSColor.controlBackgroundColor))
+                .background(.regularMaterial)
             
             Divider()
             
@@ -35,7 +36,7 @@ struct MenuBarStatusView: View {
         }
         .frame(width: 400)
         .frame(minHeight: 300)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(.ultraThinMaterial)
         .onAppear {
             hasAppeared = true
             // Force a UI update in case environment values weren't ready
@@ -242,7 +243,7 @@ struct MenuBarStatusView: View {
                             .disabled(inputText.isEmpty)
                         }
                         .padding(10)
-                        .background(Color(NSColor.controlBackgroundColor))
+                        .background(.regularMaterial)
                     }
                 }
             } else {
@@ -326,11 +327,7 @@ struct MenuBarStatusView: View {
                         )
                         .onTapGesture {
                             sessionStore.selectSession(session)
-                            // Show dock icon temporarily
-                            DockIconManager.shared.temporarilyShowDock()
-                            // Open main window
-                            NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
-                            NSApp.activate(ignoringOtherApps: true)
+                            openMainWindow()
                         }
                     }
                 }
@@ -342,53 +339,43 @@ struct MenuBarStatusView: View {
     @ViewBuilder
     private var quickActionsView: some View {
         VStack(spacing: 8) {
-            Button(action: {
-                logger.info("Open Main Window button clicked")
-                // Show dock icon temporarily
-                DockIconManager.shared.temporarilyShowDock()
-                // Activate the app
-                NSApp.activate(ignoringOtherApps: true)
-                // Post notification to open main window
-                logger.info("Posting OpenWindow.main notification")
-                NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
-            }) {
+            Button(action: openMainWindow) {
                 Label("Open Main Window", systemImage: "rectangle.stack")
                     .frame(maxWidth: .infinity)
             }
             .controlSize(.large)
+            .buttonStyle(.bordered)
             
-            Button(action: {
-                logger.info("New Session button clicked")
-                // Show dock icon temporarily
-                DockIconManager.shared.temporarilyShowDock()
-                // Activate the app
-                NSApp.activate(ignoringOtherApps: true)
-                
-                // Open main window first
-                if let appDelegate = NSApp.delegate as? AppDelegate {
-                    logger.info("Found AppDelegate, opening main window for new session")
-                    appDelegate.showMainWindow()
-                    
-                    // Create new session after a short delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        logger.info("Creating new session")
-                        _ = sessionStore.createSession(title: "New Session")
-                    }
-                } else {
-                    logger.error("Could not find AppDelegate! Falling back to notifications")
-                    // Fallback to notifications
-                    NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        NotificationCenter.default.post(name: Notification.Name("StartNewSession"), object: nil)
-                    }
-                }
-            }) {
+            Button(action: createNewSession) {
                 Label("New Session", systemImage: "plus.circle")
                     .frame(maxWidth: .infinity)
             }
             .controlSize(.large)
             .buttonStyle(.borderedProminent)
         }
+    }
+    
+    private func openMainWindow() {
+        logger.info("Opening main window")
+        
+        // Show dock icon temporarily
+        DockIconManager.shared.temporarilyShowDock()
+        
+        // Activate the app
+        NSApp.activate(ignoringOtherApps: true)
+        
+        // Use SwiftUI's openWindow directly
+        openWindow(id: "main")
+    }
+    
+    private func createNewSession() {
+        logger.info("Creating new session")
+        
+        // Create a new session first
+        _ = sessionStore.createSession(title: "New Session")
+        
+        // Then open the main window
+        openMainWindow()
     }
     
     private var voiceInputView: some View {
@@ -584,7 +571,7 @@ struct MessageRowCompact: View {
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.secondary.opacity(0.1))
+                    .background(.thinMaterial)
                     .cornerRadius(4)
                 }
             }
@@ -659,7 +646,7 @@ struct SessionRowCompact: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(.regularMaterial)
         .cornerRadius(6)
         .padding(.horizontal)
         .onHover { hovering in
@@ -667,4 +654,3 @@ struct SessionRowCompact: View {
         }
     }
 }
-
