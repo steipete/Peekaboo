@@ -166,7 +166,7 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Quit Application
 
-    struct QuitSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+    struct QuitSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "quit",
             abstract: "Quit one or more applications")
@@ -283,7 +283,7 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Hide Application
 
-    struct HideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional {
+    struct HideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "hide",
             abstract: "Hide an application")
@@ -328,7 +328,7 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Unhide Application
 
-    struct UnhideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional {
+    struct UnhideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "unhide",
             abstract: "Show a hidden application")
@@ -392,7 +392,7 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Switch Application
 
-    struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+    struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "switch",
             abstract: "Switch to another application")
@@ -545,7 +545,7 @@ struct AppCommand: AsyncParsableCommand {
     
     // MARK: - Relaunch Application
     
-    struct RelaunchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional {
+    struct RelaunchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "relaunch",
             abstract: "Quit and relaunch an application")

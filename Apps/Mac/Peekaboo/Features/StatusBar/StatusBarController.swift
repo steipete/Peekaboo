@@ -5,40 +5,7 @@ import PeekabooCore
 
 /// Controls the Peekaboo status bar item and popover interface.
 ///
-/// `StatusBarController` manages the macOS status bar integration, providing quick access
-/// to Peekaboo's features through a menu bar icon. It handles the popover UI, icon animations,
-/// and coordinates with other app components like the agent and session store.
-///
-/// ## Overview
-///
-/// The status bar controller provides:
-/// - A persistent menu bar icon with animated states
-/// - Quick access popover with main app functionality
-/// - Visual feedback for agent execution states
-/// - Integration with system appearance changes
-///
-/// ## Topics
-///
-/// ### Initialization
-///
-/// - ``init(agent:sessionStore:permissions:speechRecognizer:settings:)``
-///
-/// ### Icon Management
-///
-/// - ``IconState``
-/// - ``updateIcon()``
-/// - ``startAnimatingIcon()``
-/// - ``stopAnimatingIcon()``
-///
-/// ### Popover Control
-///
-/// - ``togglePopover()``
-/// - ``showPopover()``
-/// - ``closePopover()``
-///
-/// ### App Integration
-///
-/// The controller maintains references to key app components for coordinated functionality.
+/// Manages the macOS status bar integration with animated icon states and popover UI.
 @MainActor
 final class StatusBarController: NSObject {
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "StatusBar")
@@ -53,22 +20,7 @@ final class StatusBarController: NSObject {
     private let settings: PeekabooSettings
 
     // Icon animation
-    private var animationTimer: Timer?
-    private var currentIconState = IconState.idle
-
-    enum IconState: String, CaseIterable {
-        case idle
-        case peek1
-        case peek2
-        case peek3
-
-        var next: IconState {
-            let all = IconState.allCases
-            guard let currentIndex = all.firstIndex(of: self) else { return .idle }
-            let nextIndex = (currentIndex + 1) % all.count
-            return all[nextIndex]
-        }
-    }
+    private let animationController = MenuBarAnimationController()
 
     init(
         agent: PeekabooAgent,
@@ -90,6 +42,7 @@ final class StatusBarController: NSObject {
 
         self.setupStatusItem()
         self.setupPopover()
+        self.setupAnimationController()
         self.observeAgentState()
     }
 
@@ -103,6 +56,19 @@ final class StatusBarController: NSObject {
         button.action = #selector(self.statusItemClicked)
         button.target = self
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+    }
+    
+    private func setupAnimationController() {
+        // Pass agent reference to animation controller
+        animationController.setAgent(agent)
+        
+        // Set up callback to update icon when animation renders new frame
+        animationController.onIconUpdateNeeded = { [weak self] icon in
+            self?.statusItem.button?.image = icon
+        }
+        
+        // Force initial render
+        animationController.forceRender()
     }
 
     private func setupPopover() {
@@ -285,15 +251,14 @@ final class StatusBarController: NSObject {
             self.agent.isProcessing
         } onChange: {
             Task { @MainActor in
-                if self.agent.isProcessing {
-                    self.startAnimating()
-                    // If popover is shown, refresh its content
-                    if self.popover.isShown {
-                        self.refreshPopoverContent()
-                    }
-                } else {
-                    self.stopAnimating()
+                // Update animation state based on agent processing
+                self.animationController.updateAnimationState()
+                
+                // If popover is shown and agent state changed, refresh its content
+                if self.popover.isShown {
+                    self.refreshPopoverContent()
                 }
+                
                 self.observeAgentState() // Continue observing
             }
         }
@@ -306,30 +271,6 @@ final class StatusBarController: NSObject {
             .environment(self.speechRecognizer)
         
         self.popover.contentViewController = NSHostingController(rootView: contentView)
-    }
-
-    private func startAnimating() {
-        self.stopAnimating()
-
-        self.animationTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                self.currentIconState = self.currentIconState.next
-                self.updateIcon()
-            }
-        }
-    }
-
-    private func stopAnimating() {
-        self.animationTimer?.invalidate()
-        self.animationTimer = nil
-        self.currentIconState = .idle
-        self.updateIcon()
-    }
-
-    private func updateIcon() {
-        self.statusItem.button?.image = NSImage(named: "ghost.\(self.currentIconState.rawValue)")
-        self.statusItem.button?.image?.isTemplate = true
     }
 }
 

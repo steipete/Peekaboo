@@ -5,41 +5,8 @@ import PeekabooCore
 
 /// Application settings and preferences manager.
 ///
-/// `PeekabooSettings` manages all user-configurable settings for the Peekaboo application,
-/// including API configuration, UI preferences, and behavior options. Settings are automatically
-/// persisted to UserDefaults and synchronized across app launches.
-///
-/// ## Overview
-///
-/// The settings manager handles:
-/// - OpenAI API configuration for agent functionality
-/// - Model selection and generation parameters
-/// - UI preferences like window behavior and shortcuts
-/// - Application behavior settings
-///
-/// All properties are observable and automatically save changes to UserDefaults.
-///
-/// ## Topics
-///
-/// ### API Configuration
-///
-/// - ``openAIAPIKey``
-/// - ``selectedModel``
-/// - ``temperature``
-/// - ``maxTokens``
-/// - ``hasValidAPIKey``
-///
-/// ### UI Preferences
-///
-/// - ``alwaysOnTop``
-/// - ``showInDock``
-/// - ``launchAtLogin``
-/// - ``globalShortcut``
-///
-/// ### Persistence
-///
-/// - ``load()``
-/// - ``save()``
+/// Settings are automatically persisted to UserDefaults and synchronized across app launches.
+/// This class uses the modern @Observable pattern for SwiftUI integration.
 @Observable
 final class PeekabooSettings {
     // Reference to ConfigurationManager

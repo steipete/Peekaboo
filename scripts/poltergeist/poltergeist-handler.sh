@@ -5,11 +5,13 @@
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_FILE="$PROJECT_ROOT/.poltergeist.log"
 BUILD_LOCK="/tmp/peekaboo-swift-build.lock"
+BUILD_STATUS="/tmp/peekaboo-build-status.json"
 CANCEL_FLAG="/tmp/peekaboo-build-cancel"
+RECOVERY_SIGNAL="/tmp/peekaboo-build-recovery"
 MIN_BUILD_TIME=5  # Minimum seconds before allowing cancellation
 SPM_ERROR_RETRY_COUNT=0
 MAX_SPM_RETRIES=2
-NOTIFICATIONS_ENABLED="${POLTERGEIST_NOTIFICATIONS:-true}"  # Can disable with POLTERGEIST_NOTIFICATIONS=false
+BACKOFF_FILE="/tmp/peekaboo-build-backoff"
 
 # Ensure log file exists
 touch "$LOG_FILE"
@@ -17,6 +19,72 @@ touch "$LOG_FILE"
 # Function to log with timestamp
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+}
+
+# Function to write build status
+write_build_status() {
+    local status="$1"
+    local error_summary="$2"
+    local git_hash=$(cd "$PROJECT_ROOT" && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    
+    cat > "$BUILD_STATUS" <<EOF
+{
+    "status": "$status",
+    "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+    "git_hash": "$git_hash",
+    "error_summary": "$error_summary",
+    "builder": "poltergeist"
+}
+EOF
+}
+
+# Function to check for recovery signal
+check_recovery_signal() {
+    if [ -f "$RECOVERY_SIGNAL" ]; then
+        local signal_time=$(stat -f "%m" "$RECOVERY_SIGNAL" 2>/dev/null || stat -c "%Y" "$RECOVERY_SIGNAL" 2>/dev/null || echo "0")
+        local current_time=$(date +%s)
+        local age=$((current_time - signal_time))
+        
+        # If recovery signal is less than 5 minutes old, honor it
+        if [ $age -lt 300 ]; then
+            log "🔄 Recovery signal detected, resetting backoff"
+            rm -f "$BACKOFF_FILE"
+            rm -f "$RECOVERY_SIGNAL"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Function to get backoff time
+get_backoff_time() {
+    if [ ! -f "$BACKOFF_FILE" ]; then
+        echo "0"
+        return
+    fi
+    
+    local last_failure=$(cat "$BACKOFF_FILE" 2>/dev/null | grep "last_failure" | cut -d: -f2 || echo "0")
+    local failure_count=$(cat "$BACKOFF_FILE" 2>/dev/null | grep "count" | cut -d: -f2 || echo "0")
+    local current_time=$(date +%s)
+    local time_since_failure=$((current_time - last_failure))
+    
+    # Backoff times: 60s, 120s, 300s (1min, 2min, 5min)
+    case $failure_count in
+        1) echo "60" ;;
+        2) echo "120" ;;
+        *) echo "300" ;;
+    esac
+}
+
+# Function to update backoff
+update_backoff() {
+    local current_count=$(cat "$BACKOFF_FILE" 2>/dev/null | grep "count" | cut -d: -f2 || echo "0")
+    local new_count=$((current_count + 1))
+    
+    cat > "$BACKOFF_FILE" <<EOF
+count:$new_count
+last_failure:$(date +%s)
+EOF
 }
 
 # Function to kill a process tree
@@ -111,8 +179,28 @@ cleanup() {
 # Set up cleanup trap
 trap cleanup EXIT
 
+# Check for recovery signal first
+check_recovery_signal
+
+# Check backoff
+if [ -f "$BACKOFF_FILE" ]; then
+    backoff_time=$(get_backoff_time)
+    last_failure=$(cat "$BACKOFF_FILE" 2>/dev/null | grep "last_failure" | cut -d: -f2 || echo "0")
+    current_time=$(date +%s)
+    time_since_failure=$((current_time - last_failure))
+    
+    if [ $time_since_failure -lt $backoff_time ]; then
+        remaining=$((backoff_time - time_since_failure))
+        log "⏳ In backoff period, waiting ${remaining}s before next build attempt"
+        exit 0
+    fi
+fi
+
 # Log the trigger
 log "👻 Swift files changed, Poltergeist is rebuilding CLI..."
+
+# Write initial build status
+write_build_status "building" ""
 
 # Change to project root
 cd "$PROJECT_ROOT"
@@ -121,11 +209,6 @@ cd "$PROJECT_ROOT"
 START_TIME=$(date +%s)
 BUILD_START=$START_TIME
 
-# Send build start notification - DISABLED
-# if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
-#     GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-#     osascript -e "display notification \"Building CLI - $GIT_HASH\" with title \"👻 Poltergeist\" subtitle \"Build Started\""
-# fi
 
 # Function to run build with retry logic
 run_build() {
@@ -163,6 +246,7 @@ run_build() {
         return 2  # Special code for SPM error
     fi
     
+    # Always clean up build output file
     rm -f "$build_output_file"
     return $exit_code
 }
@@ -202,11 +286,15 @@ if [ $BUILD_EXIT_CODE -eq 0 ]; then
     
     if [ $SPM_ERROR_RETRY_COUNT -gt 0 ]; then
         log "✅ Swift CLI build completed successfully after $SPM_ERROR_RETRY_COUNT retries (${BUILD_TIME}s) - git: $GIT_HASH"
-        NOTIFICATION_MESSAGE="Build completed after $SPM_ERROR_RETRY_COUNT retries (${BUILD_TIME}s) - $GIT_HASH"
     else
         log "✅ Swift CLI build completed successfully (${BUILD_TIME}s) - git: $GIT_HASH"
-        NOTIFICATION_MESSAGE="Build completed (${BUILD_TIME}s) - $GIT_HASH"
     fi
+    
+    # Write success status
+    write_build_status "success" ""
+    
+    # Clear backoff on success
+    rm -f "$BACKOFF_FILE"
     
     # Copy to root for easy access
     if cp -f Apps/CLI/.build/debug/peekaboo ./peekaboo 2>>"$LOG_FILE"; then
@@ -215,25 +303,23 @@ if [ $BUILD_EXIT_CODE -eq 0 ]; then
         log "❌ Failed to copy binary to project root"
     fi
     
-    # Send success notification
-    if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
-        osascript -e "display notification \"$NOTIFICATION_MESSAGE\" with title \"👻 Poltergeist\" subtitle \"Build Succeeded\" sound name \"Glass\""
-    fi
 else
     # Get current Git hash for failure notifications too
     GIT_HASH=$(cd "$PROJECT_ROOT" && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
     
+    # Extract first few lines of error from log
+    error_summary=$(tail -100 "$LOG_FILE" 2>/dev/null | grep -E "error:|Error:|fatal:" | head -3 | tr '\n' ' ' || echo "Build failed")
+    
     if [ $BUILD_EXIT_CODE -eq 2 ]; then
         log "❌ Swift CLI build failed due to persistent SPM errors after $MAX_SPM_RETRIES retries - git: $GIT_HASH"
-        NOTIFICATION_MESSAGE="Build failed: SPM errors after $MAX_SPM_RETRIES retries - $GIT_HASH"
+        write_build_status "failed" "SPM initialization error after $MAX_SPM_RETRIES retries"
     else
         log "❌ Swift CLI build failed (exit code: $BUILD_EXIT_CODE) - git: $GIT_HASH"
-        NOTIFICATION_MESSAGE="Build failed (exit $BUILD_EXIT_CODE) - $GIT_HASH"
+        write_build_status "failed" "$error_summary"
     fi
     log "💡 Run 'poltergeist logs' to see the full error"
     
-    # Send failure notification - DISABLED
-    # if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
-    #     osascript -e "display notification \"$NOTIFICATION_MESSAGE\" with title \"👻 Poltergeist\" subtitle \"Build Failed\" sound name \"Basso\""
-    # fi
+    # Update backoff
+    update_backoff
+    
 fi

@@ -70,7 +70,7 @@ function start_watcher() {
             ],
             ["not", ["match", "**/Version.swift", "wholename"]]
         ],
-        "command": ["$PROJECT_ROOT/scripts/poltergeist-handler.sh"],
+        "command": ["$PROJECT_ROOT/scripts/poltergeist/poltergeist-handler.sh"],
         "append_files": false,
         "stdin": ["name", "exists", "new", "size", "mode"],
         "settling_delay": 1000

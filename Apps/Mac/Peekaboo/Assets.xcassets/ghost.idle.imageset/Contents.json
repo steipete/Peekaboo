@@ -6,7 +6,7 @@
       "scale" : "1x"
     },
     {
-      "filename" : "menubar_36 1.png",
+      "filename" : "menubar-large-transparent.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
@@ -18,8 +18,5 @@
   "info" : {
     "author" : "xcode",
     "version" : 1
-  },
-  "properties" : {
-    "template-rendering-intent" : "template"
   }
 }

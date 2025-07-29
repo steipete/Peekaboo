@@ -13,7 +13,11 @@ public final class ApplicationService: ApplicationServiceProtocol {
     
     public func listApplications() async throws -> [ServiceApplicationInfo] {
         logger.info("Listing all running applications")
-        let runningApps = NSWorkspace.shared.runningApplications
+        
+        // Ensure NSWorkspace call happens on main thread
+        let runningApps = await MainActor.run {
+            NSWorkspace.shared.runningApplications
+        }
         
         logger.debug("Found \(runningApps.count) running processes")
         
@@ -43,7 +47,11 @@ public final class ApplicationService: ApplicationServiceProtocol {
     
     public func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
         logger.info("Finding application with identifier: \(identifier, privacy: .public)")
-        let runningApps = NSWorkspace.shared.runningApplications
+        
+        // Ensure NSWorkspace call happens on main thread
+        let runningApps = await MainActor.run {
+            NSWorkspace.shared.runningApplications
+        }
         
         // Check for PID format first
         if identifier.hasPrefix("PID:") {
@@ -169,7 +177,11 @@ public final class ApplicationService: ApplicationServiceProtocol {
     
     public func getFrontmostApplication() async throws -> ServiceApplicationInfo {
         logger.info("Getting frontmost application")
-        guard let frontmostApp = NSWorkspace.shared.frontmostApplication else {
+        
+        // Ensure NSWorkspace call happens on main thread
+        guard let frontmostApp = await MainActor.run(body: {
+            NSWorkspace.shared.frontmostApplication
+        }) else {
             logger.error("No frontmost application found")
             throw PeekabooError.appNotFound("frontmost")
         }
@@ -203,11 +215,11 @@ public final class ApplicationService: ApplicationServiceProtocol {
         }
         
         // Try to launch by bundle ID
-        let workspace = NSWorkspace.shared
-        
         // Find the app URL
         let appURL: URL
-        if let url = workspace.urlForApplication(withBundleIdentifier: identifier) {
+        if let url = await MainActor.run(body: {
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier)
+        }) {
             logger.debug("Found app by bundle ID at: \(url.path)")
             appURL = url
         } else if let url = findApplicationByName(identifier) {
@@ -223,7 +235,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
         config.activates = true
         
         logger.debug("Launching app from URL: \(appURL.path)")
-        let runningApp = try await workspace.openApplication(at: appURL, configuration: config)
+        let runningApp = try await NSWorkspace.shared.openApplication(at: appURL, configuration: config)
         
         // Wait a bit for the app to fully launch
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
@@ -338,15 +350,18 @@ public final class ApplicationService: ApplicationServiceProtocol {
             _ = error.asPeekabooError(context: "AX hide others action failed")
             // Fallback: hide each app individually
             logger.debug("Hiding apps individually")
-            let workspace = NSWorkspace.shared
-            var hiddenCount = 0
-            for runningApp in workspace.runningApplications {
-                if runningApp.processIdentifier != app.processIdentifier &&
-                   runningApp.activationPolicy == .regular &&
-                   runningApp.bundleIdentifier != "com.apple.finder" {
-                    runningApp.hide()
-                    hiddenCount += 1
+            let (_, hiddenCount) = await MainActor.run {
+                let apps = NSWorkspace.shared.runningApplications
+                var count = 0
+                for runningApp in apps {
+                    if runningApp.processIdentifier != app.processIdentifier &&
+                       runningApp.activationPolicy == .regular &&
+                       runningApp.bundleIdentifier != "com.apple.finder" {
+                        runningApp.hide()
+                        count += 1
+                    }
                 }
+                return (apps, count)
             }
             logger.debug("Hidden \(hiddenCount) other applications")
         }
@@ -365,13 +380,16 @@ public final class ApplicationService: ApplicationServiceProtocol {
             _ = error.asPeekabooError(context: "AX show all action failed")
             // Fallback: unhide each hidden app
             logger.debug("Unhiding apps individually")
-            let workspace = NSWorkspace.shared
-            var unhiddenCount = 0
-            for runningApp in workspace.runningApplications {
-                if runningApp.isHidden && runningApp.activationPolicy == .regular {
-                    runningApp.unhide()
-                    unhiddenCount += 1
+            let unhiddenCount = await MainActor.run {
+                let apps = NSWorkspace.shared.runningApplications
+                var count = 0
+                for runningApp in apps {
+                    if runningApp.isHidden && runningApp.activationPolicy == .regular {
+                        runningApp.unhide()
+                        count += 1
+                    }
                 }
+                return count
             }
             logger.debug("Unhidden \(unhiddenCount) applications")
         }
@@ -379,6 +397,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
     
     // MARK: - Private Helpers
     
+    @MainActor
     private func createApplicationInfo(from app: NSRunningApplication) -> ServiceApplicationInfo {
         return ServiceApplicationInfo(
             processIdentifier: app.processIdentifier,
@@ -479,15 +498,16 @@ public final class ApplicationService: ApplicationServiceProtocol {
         return (nil, nil)
     }
     
+    @MainActor
     private func getWindowCount(for app: NSRunningApplication) -> Int {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         let appElement = Element(axApp)
         return appElement.windows()?.count ?? 0
     }
     
+    @MainActor
     private func findApplicationByName(_ name: String) -> URL? {
         logger.debug("Searching for application by name: \(name)")
-        let workspace = NSWorkspace.shared
         
         // First, try exact name in common directories
         let searchPaths = [
@@ -510,7 +530,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
         }
         
         // Try NSWorkspace API with bundle ID
-        if let url = workspace.urlForApplication(withBundleIdentifier: name) {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: name) {
             logger.debug("Found app via bundle identifier: \(url.path)")
             return url
         }
@@ -525,6 +545,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
         return nil
     }
     
+    @MainActor
     private func searchApplicationWithSpotlight(_ name: String) -> URL? {
         logger.debug("Using Spotlight to search for: \(name)")
         

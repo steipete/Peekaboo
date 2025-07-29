@@ -6,7 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BINARY_PATH="$PROJECT_ROOT/peekaboo"
 BUILD_LOCK="/tmp/peekaboo-swift-build.lock"
-POLTERGEIST_LOG="$PROJECT_ROOT/.poltergeist.log"
+BUILD_STATUS="/tmp/peekaboo-build-status.json"
+RECOVERY_SIGNAL="/tmp/peekaboo-build-recovery"
 MAX_WAIT=180  # Maximum seconds to wait for build (3 minutes)
 DEBUG="${PEEKABOO_WAIT_DEBUG:-false}"
 
@@ -74,25 +75,62 @@ is_build_running() {
     return 1
 }
 
-# Function to check if Poltergeist is active
-is_poltergeist_active() {
-    # Check if there's recent activity in the log (within last 5 seconds)
-    if [ -f "$POLTERGEIST_LOG" ]; then
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            LOG_TIME=$(stat -f "%m" "$POLTERGEIST_LOG" 2>/dev/null)
-            CURRENT_TIME=$(date +%s)
-        else
-            LOG_TIME=$(stat -c "%Y" "$POLTERGEIST_LOG" 2>/dev/null)
-            CURRENT_TIME=$(date +%s)
-        fi
+
+# Function to check build status from status file
+check_build_status_file() {
+    if [ ! -f "$BUILD_STATUS" ]; then
+        debug_log "No build status file found"
+        return 2  # Unknown status
+    fi
+    
+    # Read status file
+    local status=$(grep '"status"' "$BUILD_STATUS" 2>/dev/null | cut -d'"' -f4)
+    local timestamp=$(grep '"timestamp"' "$BUILD_STATUS" 2>/dev/null | cut -d'"' -f4)
+    local error_summary=$(grep '"error_summary"' "$BUILD_STATUS" 2>/dev/null | cut -d'"' -f4)
+    
+    # Check age of status
+    if [ -n "$timestamp" ]; then
+        # Convert ISO timestamp to epoch
+        local status_epoch=$(date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$timestamp" "+%s" 2>/dev/null || date -u -d "$timestamp" "+%s" 2>/dev/null || echo "0")
+        local current_epoch=$(date +%s)
+        local age=$((current_epoch - status_epoch))
         
-        TIME_DIFF=$((CURRENT_TIME - LOG_TIME))
-        if [ "$TIME_DIFF" -le 5 ]; then
-            debug_log "Poltergeist is actively working (log updated ${TIME_DIFF}s ago)"
-            return 0
+        # If status is older than 5 minutes, consider it stale
+        if [ $age -gt 300 ]; then
+            debug_log "Build status is stale (${age}s old)"
+            return 2  # Unknown/stale status
         fi
     fi
-    return 1
+    
+    case "$status" in
+        "building")
+            debug_log "Build status: currently building"
+            return 3  # Building
+            ;;
+        "success")
+            debug_log "Build status: success"
+            return 0  # Success
+            ;;
+        "failed")
+            debug_log "Build status: failed - $error_summary"
+            echo "❌ POLTERGEIST BUILD FAILED" >&2
+            echo "" >&2
+            if [ -n "$error_summary" ]; then
+                echo "Error: $error_summary" >&2
+            else
+                echo "Build failed. Check 'npm run poltergeist:logs' for details." >&2
+            fi
+            echo "" >&2
+            echo "🔧 TO FIX: Run 'npm run build:swift' to see and fix the compilation errors." >&2
+            echo "   After fixing, the wrapper will automatically use the new binary." >&2
+            echo "" >&2
+            return 1  # Failed
+            ;;
+        *)
+            debug_log "Build status: unknown ($status)"
+            return 2  # Unknown
+            ;;
+    esac
 }
 
 # Main logic
@@ -106,17 +144,32 @@ if is_binary_fresh; then
     exec "$BINARY_PATH" "$@"
 fi
 
-# Binary is stale, wait for any ongoing build
-debug_log "Binary is stale, checking for ongoing builds"
+# Binary is stale, check build status first
+debug_log "Binary is stale, checking build status"
 
-# Always check build lock, even if no lock exists
+# Check if there's a recent build failure
+check_build_status_file
+status_result=$?
+
+if [ $status_result -eq 1 ]; then
+    # Build failed - exit with special code to trigger manual rebuild
+    exit 42  # Special exit code for build failure
+fi
+
+# Check for ongoing build
 if ! is_build_running; then
-    # No build running, but binary is stale - Poltergeist should pick it up
-    echo "⏳ Binary is stale. Waiting for Poltergeist to detect changes and rebuild..." >&2
-    echo "   If this takes too long, check: npm run poltergeist:status" >&2
-    
-    # Give Poltergeist a moment to detect the stale binary
-    sleep 2
+    # No build running, but binary is stale
+    if [ $status_result -eq 0 ]; then
+        # Status says success but binary is stale - might be a race condition
+        debug_log "Status shows success but binary is stale, proceeding anyway"
+    else
+        # Unknown status or stale - Poltergeist should pick it up
+        echo "⏳ Binary is stale. Waiting for Poltergeist to detect changes and rebuild..." >&2
+        echo "   If this takes too long, check: npm run poltergeist:status" >&2
+        
+        # Give Poltergeist a moment to detect the stale binary
+        sleep 2
+    fi
 fi
 
 wait_count=0
@@ -132,65 +185,33 @@ while is_build_running && [ $wait_count -lt $MAX_WAIT ]; do
         remaining=$((MAX_WAIT - wait_count))
         echo "   Still building... (${wait_count}s elapsed, max ${remaining}s remaining)" >&2
         
-        # Check if build has failed already
-        if [ -f "$POLTERGEIST_LOG" ]; then
-            recent_error=$(tail -5 "$POLTERGEIST_LOG" 2>/dev/null | grep -E "❌" | tail -1)
-            if [ -n "$recent_error" ]; then
-                echo "   ⚠️  Build appears to have failed. Waiting for completion..." >&2
-            fi
-        fi
     fi
 done
 
 if [ $wait_count -ge $MAX_WAIT ]; then
-    echo "⚠️  Build timeout reached (${MAX_WAIT}s). Running with potentially stale binary..." >&2
-    echo "   Consider checking 'npm run poltergeist:logs' for build issues." >&2
+    echo "⚠️  Build timeout reached (${MAX_WAIT}s)." >&2
+    echo "   Check build status with: npm run poltergeist:status" >&2
 fi
 
-# If Poltergeist is actively working, give it a moment more
-if is_poltergeist_active; then
-    debug_log "Poltergeist is active, waiting 2 more seconds"
-    sleep 2
-fi
 
-# Check if Poltergeist reported a build failure
-check_build_status() {
-    if [ -f "$POLTERGEIST_LOG" ]; then
-        # Check last few lines for build status
-        local last_status=$(tail -20 "$POLTERGEIST_LOG" 2>/dev/null | grep -E "✅|❌" | tail -1)
-        
-        if echo "$last_status" | grep -q "❌"; then
-            # Build failed!
-            local error_details=$(echo "$last_status" | sed 's/.*❌ //')
-            echo "❌ POLTERGEIST BUILD FAILED: $error_details" >&2
-            echo "" >&2
-            echo "📋 Recent build log:" >&2
-            tail -30 "$POLTERGEIST_LOG" | grep -v "^\[" | head -20 >&2
-            echo "" >&2
-            echo "🤖 Claude should investigate and fix this build error." >&2
-            echo "   Run: npm run poltergeist:logs" >&2
-            echo "" >&2
-            return 1
-        fi
-    fi
-    return 0
-}
+
+# Final checks after waiting
+debug_log "Performing final checks after wait"
+
+# Check build status file again
+check_build_status_file
+final_status=$?
+
+if [ $final_status -eq 1 ]; then
+    # Build failed - exit with special code
+    exit 42  # Special exit code for build failure
+fi
 
 # Final freshness check
 if is_binary_fresh; then
     debug_log "Binary is now fresh after waiting"
-    # But still check if the build failed
-    if ! check_build_status; then
-        echo "⚠️  Binary exists but last build failed. Claude needs to fix the build error." >&2
-        exit 1
-    fi
 else
     debug_log "Binary might still be stale, but proceeding"
-    # Check if build failed
-    if ! check_build_status; then
-        echo "⚠️  Build failed and binary is stale. Claude needs to fix the build error." >&2
-        exit 1
-    fi
     # If the binary exists but is stale, Poltergeist should pick it up
     # We'll run it anyway to avoid blocking
 fi

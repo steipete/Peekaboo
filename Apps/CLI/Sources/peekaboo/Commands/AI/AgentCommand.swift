@@ -1252,7 +1252,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             ghostAnimator.stop() // Stop animation on error
             print("\n\(TerminalColor.red)❌ Error: \(message)\(TerminalColor.reset)")
             
-        case .completed(_):
+        case .completed(_, _):
             ghostAnimator.stop() // Ensure animation is stopped
             // Final summary is handled by the main execution flow
             break

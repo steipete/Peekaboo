@@ -199,7 +199,7 @@ struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
             windowOptions.windowIndex = self.windowIndex
             
             // Get window info
-            let target = windowOptions.toWindowTarget()
+            let target = try windowOptions.toWindowTarget()
             let windows = try await PeekabooServices.shared.windows.listWindows(target: target)
             let windowInfo = windowOptions.selectWindow(from: windows)
             

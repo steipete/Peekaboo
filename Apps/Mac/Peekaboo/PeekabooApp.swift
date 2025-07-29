@@ -7,13 +7,13 @@ struct PeekabooApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
 
-    // Core state
+    // Core state - initialized together for proper dependencies
     @State private var settings = PeekabooSettings()
     @State private var sessionStore = SessionStore()
     @State private var permissions = Permissions()
+    
+    // Dependencies that need the core state
     @State private var speechRecognizer: SpeechRecognizer?
-
-    // Derived state - created after core state is ready
     @State private var agent: PeekabooAgent?
 
     var body: some Scene {
@@ -22,8 +22,31 @@ struct PeekabooApp: App {
         WindowGroup("HiddenWindow") {
             HiddenWindowView()
                 .task {
-                    // Initialize agent and connect app delegate
-                    self.setupApp()
+                    // Initialize dependencies if needed
+                    if speechRecognizer == nil {
+                        speechRecognizer = SpeechRecognizer(settings: settings)
+                    }
+                    if agent == nil {
+                        agent = PeekabooAgent(settings: settings, sessionStore: sessionStore)
+                    }
+                    
+                    // Set up window opening handler
+                    appDelegate.windowOpener = { windowId in
+                        Task { @MainActor in
+                            openWindow(id: windowId)
+                        }
+                    }
+                    
+                    // Connect app delegate to state
+                    appDelegate.connectToState(
+                        settings: settings,
+                        sessionStore: sessionStore,
+                        permissions: permissions,
+                        speechRecognizer: speechRecognizer!,
+                        agent: agent!)
+                    
+                    // Check permissions
+                    await permissions.check()
                 }
         }
         .windowResizability(.contentSize)
@@ -34,11 +57,11 @@ struct PeekabooApp: App {
         // Main window - Powerful debugging and development interface
         WindowGroup("Peekaboo Sessions", id: "main") {
             SessionMainWindow()
-                .environment(self.settings)
-                .environment(self.sessionStore)
-                .environment(self.permissions)
-                .environment(self.speechRecognizer ?? SpeechRecognizer(settings: self.settings))
-                .environment(self.agent ?? PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore))
+                .environment(settings)
+                .environment(sessionStore)
+                .environment(permissions)
+                .environment(speechRecognizer ?? SpeechRecognizer(settings: settings))
+                .environment(agent ?? PeekabooAgent(settings: settings, sessionStore: sessionStore))
                 .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenWindow.main"))) { _ in
                     // Window will automatically open when this notification is received
                     DispatchQueue.main.async {
@@ -76,37 +99,6 @@ struct PeekabooApp: App {
         }
     }
 
-    private func setupApp() {
-        // Initialize speech recognizer with settings
-        if self.speechRecognizer == nil {
-            self.speechRecognizer = SpeechRecognizer(settings: self.settings)
-        }
-        
-        // Initialize agent
-        if self.agent == nil {
-            self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
-        }
-
-        // Set up window opening handler BEFORE connecting to state
-        self.appDelegate.windowOpener = { windowId in
-            Task { @MainActor in
-                self.openWindow(id: windowId)
-            }
-        }
-
-        // Connect app delegate to state
-        self.appDelegate.connectToState(
-            settings: self.settings,
-            sessionStore: self.sessionStore,
-            permissions: self.permissions,
-            speechRecognizer: self.speechRecognizer!,
-            agent: self.agent!)
-
-        // Check permissions
-        Task {
-            await self.permissions.check()
-        }
-    }
 }
 
 // MARK: - App Delegate

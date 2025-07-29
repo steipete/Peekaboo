@@ -14,46 +14,42 @@ struct SessionMainWindow: View {
     
     var body: some View {
         NavigationSplitView {
-            // Sidebar with session list
             SessionSidebar(
                 selectedSessionId: $selectedSessionId,
-                searchText: $searchText,
-                onCreateNewSession: createNewSession
+                searchText: $searchText
             )
             .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
         } detail: {
-            // Detail view
-            if let sessionId = selectedSessionId,
-               let session = sessionStore.sessions.first(where: { $0.id == sessionId }) {
-                SessionChatView(session: session)
-                    .toolbar(removing: .sidebarToggle)
-            } else if let currentSession = sessionStore.currentSession {
-                SessionChatView(session: currentSession)
-                    .toolbar(removing: .sidebarToggle)
-            } else {
-                EmptySessionView(onCreateNewSession: createNewSession)
-                    .toolbar(removing: .sidebarToggle)
-            }
+            SessionDetailContainer(selectedSessionId: selectedSessionId)
+                .toolbar(removing: .sidebarToggle)
         }
         .navigationTitle("Peekaboo Sessions")
         .onAppear {
-            // Select current session by default
-            if selectedSessionId == nil {
-                selectedSessionId = sessionStore.currentSession?.id
-            }
+            selectedSessionId = sessionStore.currentSession?.id
         }
         .onChange(of: sessionStore.currentSession?.id) { _, newId in
-            // Auto-select new current session
-            if let newId = newId {
-                selectedSessionId = newId
-            }
+            selectedSessionId = newId
         }
-        // Removed sheet - creating sessions directly
     }
+}
+
+// MARK: - Session Detail Container
+
+struct SessionDetailContainer: View {
+    @Environment(SessionStore.self) private var sessionStore
+    @Environment(PeekabooAgent.self) private var agent
     
-    private func createNewSession() {
-        let newSession = sessionStore.createSession(title: "New Session")
-        selectedSessionId = newSession.id
+    let selectedSessionId: String?
+    
+    var body: some View {
+        if let sessionId = selectedSessionId,
+           let session = sessionStore.sessions.first(where: { $0.id == sessionId }) {
+            SessionChatView(session: session)
+        } else if let currentSession = sessionStore.currentSession {
+            SessionChatView(session: currentSession)
+        } else {
+            EmptySessionView()
+        }
     }
 }
 
@@ -65,7 +61,6 @@ struct SessionSidebar: View {
     
     @Binding var selectedSessionId: String?
     @Binding var searchText: String
-    var onCreateNewSession: () -> Void
     
     private var filteredSessions: [ConversationSession] {
         if searchText.isEmpty {
@@ -90,7 +85,7 @@ struct SessionSidebar: View {
                 
                 Spacer()
                 
-                Button(action: onCreateNewSession) {
+                Button(action: createNewSession) {
                     Image(systemName: "plus")
                 }
                 .buttonStyle(.plain)
@@ -160,6 +155,11 @@ struct SessionSidebar: View {
                 }
             }
         }
+    }
+    
+    private func createNewSession() {
+        let newSession = sessionStore.createSession(title: "New Session")
+        selectedSessionId = newSession.id
     }
     
     private func deleteSession(_ session: ConversationSession) {
@@ -525,18 +525,12 @@ struct SessionChatView: View {
                 to: session
             )
             
-            // If agent is executing, queue the message for later
-            if agent.isProcessing {
-                // Queue the message
-                agent.queueMessage(trimmedInput)
-            } else {
-                // Start a new execution with the follow-up
-                Task {
-                    do {
-                        try await agent.executeTask(trimmedInput)
-                    } catch {
-                        print("Failed to execute follow-up: \(error)")
-                    }
+            // Start a new execution with the follow-up
+            Task {
+                do {
+                    try await agent.executeTask(trimmedInput)
+                } catch {
+                    print("Failed to execute follow-up: \(error)")
                 }
             }
         } else {
@@ -681,7 +675,7 @@ struct SessionChatHeader: View {
 // MARK: - Empty Session View
 
 struct EmptySessionView: View {
-    var onCreateNewSession: () -> Void
+    @Environment(SessionStore.self) private var sessionStore
     
     var body: some View {
         VStack(spacing: 20) {
@@ -699,7 +693,7 @@ struct EmptySessionView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             
-            Button(action: onCreateNewSession) {
+            Button(action: { _ = sessionStore.createSession(title: "New Session") }) {
                 Label("New Session", systemImage: "plus.circle")
             }
             .buttonStyle(.borderedProminent)

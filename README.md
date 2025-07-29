@@ -1542,6 +1542,42 @@ For step-by-step debugging, use the verbose flag:
 peekaboo image --app Safari --verbose 2>&1 | less
 ```
 
+## 🛠️ Development
+
+### Poltergeist - Automatic CLI Builder
+
+Peekaboo includes **Poltergeist**, an automatic build system that watches Swift source files and rebuilds the CLI in the background. This ensures your CLI binary is always up-to-date during development.
+
+```bash
+# Start Poltergeist (runs in background)
+npm run poltergeist:haunt
+
+# Check status
+npm run poltergeist:status
+
+# Stop Poltergeist
+npm run poltergeist:rest
+```
+
+**Key features:**
+- Watches all Swift source files automatically
+- Smart wrapper script (`./scripts/peekaboo-wait.sh`) handles build coordination
+- Exit code 42 indicates build failure - fix immediately
+- See [docs/poltergeist.md](docs/poltergeist.md) for full documentation
+
+### Building from Source
+
+```bash
+# Build everything
+npm run build:all
+
+# Build CLI only
+npm run build:swift
+
+# Build TypeScript server
+npm run build
+```
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please:

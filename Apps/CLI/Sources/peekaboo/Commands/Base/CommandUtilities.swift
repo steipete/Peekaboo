@@ -283,11 +283,11 @@ struct WindowCommandBase: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
 // MARK: - Application Resolution
 
 /// Protocol for commands that need to resolve applications
-protocol ApplicationResolvable {
+protocol ApplicationResolver {
     func resolveApplication(_ identifier: String) async throws -> ServiceApplicationInfo
 }
 
-extension ApplicationResolvable {
+extension ApplicationResolver {
     func resolveApplication(_ identifier: String) async throws -> ServiceApplicationInfo {
         do {
             return try await PeekabooServices.shared.applications.findApplication(identifier: identifier)

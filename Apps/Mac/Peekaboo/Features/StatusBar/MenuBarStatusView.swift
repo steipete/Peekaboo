@@ -232,18 +232,12 @@ struct MenuBarStatusView: View {
         
         inputText = ""
         
-        // Send follow-up to agent if one is active
-        if agent.isProcessing {
-            // Queue the message for later processing
-            agent.queueMessage(text)
-        } else {
-            // Start a new execution with the follow-up
-            Task {
-                do {
-                    try await agent.executeTask(text)
-                } catch {
-                    print("Failed to execute task: \(error)")
-                }
+        // Execute the task
+        Task {
+            do {
+                try await agent.executeTask(text)
+            } catch {
+                print("Failed to execute task: \(error)")
             }
         }
     }
@@ -284,7 +278,7 @@ struct MenuBarStatusView: View {
                                 withAnimation {
                                     sessionStore.sessions.removeAll { $0.id == session.id }
                                     Task {
-                                        try? await sessionStore.saveSessions()
+                                        sessionStore.saveSessions()
                                     }
                                 }
                             }

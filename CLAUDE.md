@@ -74,12 +74,13 @@ npm run poltergeist:haunt
 
 ## Poltergeist - Automatic CLI Rebuilding
 
-**IMPORTANT: Poltergeist is ONLY for CLI builds, NOT for the Mac app!**
-- For Mac app builds, always use Xcode or `xcodebuild`
-- Poltergeist only watches and rebuilds the CLI binary at `./peekaboo`
+**Poltergeist** is our automatic Swift CLI builder that watches source files and rebuilds when they change. It runs in the background and ensures the CLI binary is always up-to-date.
 
-**What is Poltergeist?** 
-Poltergeist is a file watcher that automatically rebuilds the Swift CLI whenever source files change. It's like a helpful ghost that ensures the CLI binary is always up-to-date without manual intervention.
+**Key Points:**
+- Only for CLI builds (use Xcode for Mac app)
+- Exit code 42 = build failed, fix immediately
+- Always use wrapper: `./scripts/peekaboo-wait.sh`
+- See `docs/poltergeist.md` for full details
 
 ### CRITICAL INSTRUCTIONS FOR AI AGENTS
 
@@ -156,15 +157,35 @@ Just use `./scripts/peekaboo-wait.sh` for all CLI commands and let Poltergeist h
 
 **BUT ALWAYS**: Check the build timestamp in the CLI output to ensure you're running the latest version!
 
-### Build Failure Recovery
+### Build Failure Recovery - Enhanced Protocol
 
-**IMPORTANT**: When you detect a build failure via `poltergeist:status`:
-- **DON'T** call `poltergeist:logs` to investigate
-- **DO** build it yourself immediately with `npm run build:swift`
-- Fix any compilation errors you encounter
-- Then continue with your original task
+**NEW: Smart Build Failure Detection (as of 2025-01-29)**
 
-This approach is faster and more efficient than analyzing logs.
+The wrapper script (`peekaboo-wait.sh`) now automatically detects Poltergeist build failures and exits with code 42. When you see this:
+
+```
+❌ POLTERGEIST BUILD FAILED
+
+Error: [specific error summary]
+
+🔧 TO FIX: Run 'npm run build:swift' to see and fix the compilation errors.
+   After fixing, the wrapper will automatically use the new binary.
+```
+
+**Your response should be:**
+1. **Immediately run `npm run build:swift`** - don't check logs or status
+2. **Fix the compilation errors** shown in the output
+3. **Signal recovery**: After successful build, run `./scripts/poltergeist/poltergeist-signal-recovery.sh`
+4. **Continue with your task** - the wrapper will now work correctly
+
+**Why this works:**
+- Exit code 42 specifically indicates Poltergeist build failure
+- Build status is tracked in `/tmp/peekaboo-build-status.json`
+- Poltergeist uses exponential backoff after failures (1min, 2min, 5min)
+- Recovery signal resets the backoff, allowing Poltergeist to resume normal operation
+
+**Old method (still works but less efficient):**
+If you detect a build failure via `poltergeist:status`, build it yourself with `npm run build:swift`.
 
 ### Troubleshooting Swift Package Manager Issues
 
@@ -194,6 +215,8 @@ This issue typically occurs when:
 - Build cache becomes inconsistent
 
 ## Recent Updates
+
+- **Enhanced Build Failure Recovery** (2025-01-29): Implemented smart build failure detection in Poltergeist. The wrapper script now exits with code 42 when detecting build failures, providing clear error messages and recovery instructions. Added build status tracking (`/tmp/peekaboo-build-status.json`), exponential backoff for repeated failures, and recovery signal mechanism to reset Poltergeist after manual fixes.
 
 - **Grok (xAI) support** (2025-01-27): Added full support for xAI's Grok models including grok-4-0709 (256K context), grok-3 series, and grok-2-vision. Uses OpenAI-compatible Chat Completions API at `https://api.x.ai/v1`. Supports X_AI_API_KEY or XAI_API_KEY environment variables. Parameter filtering for Grok 4 models (no frequencyPenalty, presencePenalty, or stop parameters). Default model shortcut: `grok` → `grok-4-0709`.
 
