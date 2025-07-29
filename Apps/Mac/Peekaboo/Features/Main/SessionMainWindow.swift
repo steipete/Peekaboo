@@ -394,8 +394,7 @@ struct SessionChatView: View {
                             hasConnectionError = false
                             
                             // Retry the last failed task if available
-                            if !agent.currentTask.isEmpty {
-                                let lastTask = agent.currentTask
+                            if let lastTask = agent.lastTask {
                                 Task {
                                     isProcessing = true
                                     defer { isProcessing = false }
@@ -406,6 +405,7 @@ struct SessionChatView: View {
                                         hasConnectionError = false
                                     } catch {
                                         // Error persists
+                                        hasConnectionError = true
                                     }
                                 }
                             }
@@ -712,6 +712,8 @@ struct DetailedMessageRow: View {
     @State private var isExpanded = false
     @State private var showingImageInspector = false
     @State private var selectedImage: NSImage?
+    @Environment(PeekabooAgent.self) private var agent
+    @Environment(SessionStore.self) private var sessionStore
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -762,6 +764,21 @@ struct DetailedMessageRow: View {
                             .foregroundColor(.secondary)
                         
                         Spacer()
+                        
+                        // Retry button for error messages
+                        if isErrorMessage && !agent.isProcessing {
+                            Button(action: retryLastTask) {
+                                Label("Retry", systemImage: "arrow.clockwise")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.blue)
+                                    .cornerRadius(4)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Retry the failed task")
+                        }
                         
                         if !message.toolCalls.isEmpty {
                             Button(action: { isExpanded.toggle() }) {
@@ -981,6 +998,38 @@ struct DetailedMessageRow: View {
             return String(cleaned[..<colonIndex]).trimmingCharacters(in: .whitespaces)
         }
         return ""
+    }
+    
+    private func retryLastTask() {
+        // Find the session containing this message
+        guard let session = sessionStore.sessions.first(where: { session in
+            session.messages.contains(where: { $0.id == message.id })
+        }) else { return }
+        
+        // Find the error message index
+        guard let errorIndex = session.messages.firstIndex(where: { $0.id == message.id }),
+              errorIndex > 0 else { return }
+        
+        // Look backwards for the last user message
+        for i in stride(from: errorIndex - 1, through: 0, by: -1) {
+            let msg = session.messages[i]
+            if msg.role == .user {
+                // Make this the current session if it isn't already
+                if sessionStore.currentSession?.id != session.id {
+                    sessionStore.selectSession(session)
+                }
+                
+                // Re-execute the last user task
+                Task {
+                    do {
+                        try await agent.executeTask(msg.content)
+                    } catch {
+                        print("Retry failed: \(error)")
+                    }
+                }
+                break
+            }
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 {
   "targets": [
     {
-      "name": "peekaboo-cli",
+      "name": "Peekaboo CLI",
       "type": "executable",
       "enabled": true,
       "buildCommand": "./scripts/build-swift-debug.sh",
@@ -15,7 +15,7 @@
       ]
     },
     {
-      "name": "peekaboo-mac",
+      "name": "Peekaboo macOS",
       "type": "app-bundle",
       "platform": "macos",
       "enabled": true,
@@ -36,10 +36,13 @@
   "notifications": {
     "enabled": true,
     "successSound": "Glass",
-    "failureSound": "Basso"
+    "failureSound": "Basso",
+    "buildStart": true,
+    "buildFailed": true,
+    "buildSuccess": true
   },
   "logging": {
     "file": ".poltergeist.log",
-    "level": "info"
+    "level": "debug"
   }
 }
