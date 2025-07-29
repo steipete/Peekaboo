@@ -4,7 +4,7 @@ import SwiftUI
 
 @main
 struct PeekabooApp: App {
-    // Test comment for Poltergeist Mac build v8 - Testing auto-relaunch!
+    // Test comment for Poltergeist Mac build v10 - Now testing Mac app build!
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
 
@@ -118,9 +118,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var agent: PeekabooAgent?
 
     func applicationDidFinishLaunching(_: Notification) {
-        self.logger.info("Peekaboo launching...")
+        self.logger.info("Peekaboo launching... (Poltergeist test)")
         
-        // Initialize dock icon manager (it will set the activation policy based on settings)
+        // Initialize dock icon manager (it will set the activation policy based on settings) - Test!
         // Don't set activation policy here - let DockIconManager handle it
         
         // Status bar will be created after state is connected

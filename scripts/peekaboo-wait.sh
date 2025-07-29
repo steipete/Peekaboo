@@ -34,28 +34,29 @@ is_binary_fresh() {
     
     debug_log "Binary modification time: $BINARY_TIME"
     
-    # Find newest Swift file modification time
-    NEWEST_SWIFT=0
+    # Find newest source file modification time
+    NEWEST_SOURCE=0
+    NEWEST_FILE=""
     while IFS= read -r -d '' file; do
         if [[ "$OSTYPE" == "darwin"* ]]; then
             FILE_TIME=$(stat -f "%m" "$file" 2>/dev/null)
         else
             FILE_TIME=$(stat -c "%Y" "$file" 2>/dev/null)
         fi
-        if [ "$FILE_TIME" -gt "$NEWEST_SWIFT" ]; then
-            NEWEST_SWIFT=$FILE_TIME
+        if [ "$FILE_TIME" -gt "$NEWEST_SOURCE" ]; then
+            NEWEST_SOURCE=$FILE_TIME
             NEWEST_FILE="$file"
         fi
     done < <(find "$PROJECT_ROOT/Core/PeekabooCore/Sources" "$PROJECT_ROOT/Core/AXorcist/Sources" "$PROJECT_ROOT/Apps/CLI/Sources" -name "*.swift" -type f -print0 2>/dev/null)
     
-    debug_log "Newest Swift file: $NEWEST_FILE (time: $NEWEST_SWIFT)"
+    debug_log "Newest source file: $NEWEST_FILE (time: $NEWEST_SOURCE)"
     
-    # Binary is fresh if it's newer than all Swift files
-    if [ "$BINARY_TIME" -ge "$NEWEST_SWIFT" ]; then
+    # Binary is fresh if it's newer than all source files
+    if [ "$BINARY_TIME" -ge "$NEWEST_SOURCE" ]; then
         debug_log "Binary is fresh"
         return 0
     else
-        debug_log "Binary is stale (older than Swift sources)"
+        debug_log "Binary is stale (older than source files)"
         return 1
     fi
 }
