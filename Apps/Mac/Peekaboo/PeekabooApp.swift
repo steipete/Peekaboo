@@ -4,6 +4,7 @@ import SwiftUI
 
 @main
 struct PeekabooApp: App {
+    // Test comment for Poltergeist Mac build v8 - Testing auto-relaunch!
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
 

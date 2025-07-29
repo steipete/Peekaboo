@@ -352,6 +352,13 @@ struct SessionChatView: View {
                                 .id(message.id)
                         }
                         
+                        // Show tool execution history for active session
+                        if isCurrentSession && !agent.toolExecutionHistory.isEmpty {
+                            ToolExecutionHistoryView()
+                                .id("tool-history")
+                                .padding(.top, 8)
+                        }
+                        
                         // Show progress indicator for active session
                         if isCurrentSession && agent.isProcessing {
                             ProgressIndicatorView(agent: agent)
@@ -813,6 +820,17 @@ struct DetailedMessageRow: View {
                             Spacer()
                         }
                         .textSelection(.enabled)
+                    } else if message.role == .assistant {
+                        // Render assistant messages as Markdown
+                        Text(try! AttributedString(
+                            markdown: message.content,
+                            options: AttributedString.MarkdownParsingOptions(
+                                allowsExtendedAttributes: true,
+                                interpretedSyntax: .inlineOnlyPreservingWhitespace
+                            )
+                        ))
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
                     } else {
                         Text(message.content)
                             .textSelection(.enabled)

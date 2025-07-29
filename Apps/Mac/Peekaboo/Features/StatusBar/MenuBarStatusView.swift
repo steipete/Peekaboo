@@ -57,14 +57,37 @@ struct MenuBarStatusView: View {
                     .font(.headline)
                 
                 if agent.isProcessing {
-                    Text("Processing...")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                    if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
+                        HStack(spacing: 4) {
+                            AnimatedToolIcon(toolName: currentTool.toolName, isRunning: true)
+                                .frame(width: 14, height: 14)
+                            Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                    } else {
+                        Text("Processing...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
                 }
             }
             
             Spacer()
+            
+            // Show token count if available
+            if let usage = agent.tokenUsage {
+                HStack(spacing: 2) {
+                    Image(systemName: "circle.hexagongrid.circle")
+                        .font(.caption)
+                    Text("\(usage.totalTokens)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .help("Tokens: \(usage.promptTokens) in, \(usage.completionTokens) out")
+            }
             
             // Voice mode toggle button
             if !agent.isProcessing {
@@ -99,14 +122,32 @@ struct MenuBarStatusView: View {
                     // Active task indicator
                     if agent.isProcessing {
                         HStack(spacing: 8) {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                                .progressViewStyle(CircularProgressViewStyle())
-                            
-                            Text("Processing...")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .lineLimit(1)
+                            if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
+                                AnimatedToolIcon(toolName: currentTool.toolName, isRunning: true)
+                                    .frame(width: 16, height: 16)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
+                                        .font(.caption)
+                                        .foregroundColor(.primary)
+                                        .lineLimit(1)
+                                    
+                                    if let duration = currentTool.duration {
+                                        Text(ToolFormatter.formatDuration(duration))
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            } else {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .progressViewStyle(CircularProgressViewStyle())
+                                
+                                Text("Initializing...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
                             
                             Spacer()
                             
@@ -501,6 +542,17 @@ struct MessageRowCompact: View {
                     Text(message.content)
                         .font(.caption)
                         .foregroundColor(.orange)
+                } else if message.role == .assistant {
+                    // Render assistant messages as Markdown
+                    Text(try! AttributedString(
+                        markdown: message.content,
+                        options: AttributedString.MarkdownParsingOptions(
+                            allowsExtendedAttributes: true,
+                            interpretedSyntax: .inlineOnlyPreservingWhitespace
+                        )
+                    ))
+                    .font(.caption)
+                    .lineLimit(2)
                 } else {
                     Text(message.content)
                         .font(.caption)

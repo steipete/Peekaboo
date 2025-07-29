@@ -5,9 +5,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BINARY_PATH="$PROJECT_ROOT/peekaboo"
-BUILD_LOCK="/tmp/peekaboo-swift-build.lock"
-BUILD_STATUS="/tmp/peekaboo-build-status.json"
-RECOVERY_SIGNAL="/tmp/peekaboo-build-recovery"
+BUILD_LOCK="/tmp/peekaboo-cli-build.lock"
+BUILD_STATUS="/tmp/peekaboo-cli-build-status.json"
+RECOVERY_SIGNAL="/tmp/peekaboo-cli-build-recovery"
 MAX_WAIT=180  # Maximum seconds to wait for build (3 minutes)
 DEBUG="${PEEKABOO_WAIT_DEBUG:-false}"
 

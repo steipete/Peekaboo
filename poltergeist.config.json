@@ -1,0 +1,29 @@
+{
+  "cli": {
+    "enabled": true,
+    "buildCommand": "./scripts/build-swift-debug.sh",
+    "outputPath": "./peekaboo",
+    "statusFile": "/tmp/peekaboo-cli-build-status.json",
+    "lockFile": "/tmp/peekaboo-cli-build.lock",
+    "watchPaths": [
+      "Core/PeekabooCore/**/*.swift",
+      "Core/AXorcist/**/*.swift", 
+      "Apps/CLI/**/*.swift"
+    ]
+  },
+  "macApp": {
+    "enabled": true,
+    "buildCommand": "./scripts/build-mac-debug.sh",
+    "bundleId": "boo.peekaboo",
+    "statusFile": "/tmp/peekaboo-mac-build-status.json",
+    "lockFile": "/tmp/peekaboo-mac-build.lock",
+    "autoRelaunch": true,
+    "watchPaths": [
+      "Apps/Mac/Peekaboo/**/*.swift",
+      "Apps/Mac/Peekaboo/**/*.storyboard",
+      "Apps/Mac/Peekaboo/**/*.xib",
+      "Core/PeekabooCore/**/*.swift",
+      "Core/AXorcist/**/*.swift"
+    ]
+  }
+}
