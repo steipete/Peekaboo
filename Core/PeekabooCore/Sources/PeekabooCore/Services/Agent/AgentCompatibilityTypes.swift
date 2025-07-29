@@ -10,7 +10,7 @@ public enum AgentEvent: Sendable {
     case toolCallStarted(name: String, arguments: String)
     case toolCallCompleted(name: String, result: String)
     case error(message: String)
-    case completed(summary: String)
+    case completed(summary: String, usage: Usage?)
 }
 
 /// Protocol for receiving agent events

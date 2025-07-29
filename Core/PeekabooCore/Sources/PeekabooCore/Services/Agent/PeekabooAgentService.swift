@@ -105,8 +105,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 }
             )
             
-            // Send completion event
-            await eventHandler.send(.completed(summary: result.content))
+            // Send completion event with usage information
+            await eventHandler.send(.completed(summary: result.content, usage: result.usage))
             
             return result
         } else {
@@ -214,8 +214,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 }
             )
             
-            // Send completion event
-            await eventHandler.send(.completed(summary: result.content))
+            // Send completion event with usage information
+            await eventHandler.send(.completed(summary: result.content, usage: result.usage))
             
             return result
         } else {
@@ -420,8 +420,8 @@ extension PeekabooAgentService {
                 }
             )
             
-            // Send completion event
-            await eventHandler.send(.completed(summary: result.content))
+            // Send completion event with usage information
+            await eventHandler.send(.completed(summary: result.content, usage: result.usage))
             
             return result
         } else {

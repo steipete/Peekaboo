@@ -64,6 +64,14 @@
                         <true/>
                     </dict>
                 </dict>
+                <key>boo.peekaboo.cli</key>
+                <dict>
+                    <key>DEFAULT-OPTIONS</key>
+                    <dict>
+                        <key>Enable-Private-Data</key>
+                        <true/>
+                    </dict>
+                </dict>
             </dict>
         </dict>
     </array>

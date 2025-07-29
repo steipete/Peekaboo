@@ -130,6 +130,14 @@ The profile sets `Enable-Private-Data` to `true` for:
 
 This tells macOS to capture the actual values when logs are written, instead of replacing them with `<private>`.
 
+The profile includes all Peekaboo subsystems:
+- `boo.peekaboo.core` - Core services and libraries
+- `boo.peekaboo.cli` - CLI tool specific logging
+- `boo.peekaboo.app` - Mac app
+- `boo.peekaboo.playground` - Playground test app
+- `boo.peekaboo.inspector` - Inspector app
+- `boo.peekaboo` - General Mac app components
+
 ### Solution 2: Code-Level Fix (Production Safe)
 
 For production use, mark specific non-sensitive values as public in Swift:

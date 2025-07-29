@@ -107,7 +107,7 @@ public final class WindowIdentityService {
         }
         
         // Log the failure for debugging
-        logger.error("Failed to get window ID, error: \(result), role: \(element.role() ?? "nil")")
+        logger.error("Failed to get window ID, error: \(result.rawValue), role: \(element.role() ?? "nil")")
         
         return nil
     }

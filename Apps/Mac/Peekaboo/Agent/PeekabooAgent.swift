@@ -46,8 +46,16 @@ public final class PeekabooAgent {
     /// Tool execution history for current task
     public private(set) var toolExecutionHistory: [ToolExecution] = []
     
+    /// Task execution start time
+    @ObservationIgnored
+    private var taskStartTime: Date?
+    
+    /// Token usage from last execution
+    @ObservationIgnored
+    private var lastTokenUsage: Usage?
+    
     /// Current session
-    public var currentSession: Session? {
+    public var currentSession: ConversationSession? {
         sessionStore.currentSession
     }
     
@@ -98,6 +106,8 @@ public final class PeekabooAgent {
             currentTool = nil
             currentToolArgs = nil
             toolExecutionHistory = [] // Clear history for new task
+            taskStartTime = Date() // Track start time
+            lastTokenUsage = nil // Clear previous token usage
             defer { 
                 isProcessing = false
                 currentTask = ""
@@ -125,7 +135,7 @@ public final class PeekabooAgent {
                 
                 // Add user message at the very beginning
                 if let currentSession = sessionStore.currentSession {
-                    let userMessage = SessionMessage(role: .user, content: task)
+                    let userMessage = ConversationMessage(role: .user, content: task)
                     sessionStore.addMessage(userMessage, to: currentSession)
                 }
                 
@@ -157,7 +167,7 @@ public final class PeekabooAgent {
                        let index = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }) {
                         sessionStore.sessions[index].modelName = settings.selectedModel
                         Task {
-                            try? await sessionStore.saveSessions()
+                            sessionStore.saveSessions()
                         }
                     }
                 }
@@ -165,12 +175,40 @@ public final class PeekabooAgent {
                 // Add assistant response to current session
                 if let currentSession = sessionStore.currentSession {
                     // Add assistant message WITHOUT tool calls (they're tracked separately)
-                    let assistantMessage = SessionMessage(
+                    let assistantMessage = ConversationMessage(
                         role: .assistant, 
                         content: result.content,
                         toolCalls: []  // Tool calls are now separate system messages
                     )
                     sessionStore.addMessage(assistantMessage, to: currentSession)
+                    
+                    // Add execution summary with timing and token usage
+                    if let startTime = taskStartTime {
+                        let totalDuration = Date().timeIntervalSince(startTime)
+                        let durationText = String(format: "%.2fs", totalDuration)
+                        
+                        // Count total tool calls
+                        let toolCount = toolExecutionHistory.count
+                        
+                        var summaryContent = "✅ Task completed in \(durationText)"
+                        if toolCount > 0 {
+                            summaryContent += " with \(toolCount) tool call\(toolCount == 1 ? "" : "s")"
+                        }
+                        
+                        // Add token usage if available
+                        if let usage = lastTokenUsage {
+                            summaryContent += " • 🤖 \(usage.totalTokens) tokens"
+                            if usage.promptTokens > 0 && usage.completionTokens > 0 {
+                                summaryContent += " (\(usage.promptTokens) in, \(usage.completionTokens) out)"
+                            }
+                        }
+                        
+                        let summaryMessage = ConversationMessage(
+                            role: .system,
+                            content: summaryContent
+                        )
+                        sessionStore.addMessage(summaryMessage, to: currentSession)
+                    }
                     
                     // Update summary if needed
                     if !result.content.isEmpty {
@@ -185,7 +223,7 @@ public final class PeekabooAgent {
                     
                     // Add cancellation message to session
                     if let currentSession = sessionStore.currentSession {
-                        let cancelMessage = SessionMessage(
+                        let cancelMessage = ConversationMessage(
                             role: .system,
                             content: "⚠️ Task was cancelled by user"
                         )
@@ -205,7 +243,7 @@ public final class PeekabooAgent {
                             errorContent += "\n🔄 Retrying... (Attempt \(currentRetryAttempt + 1)/\(maxRetryAttempts))"
                         }
                         
-                        let errorMessage = SessionMessage(
+                        let errorMessage = ConversationMessage(
                             role: .system,
                             content: errorContent
                         )
@@ -277,7 +315,7 @@ public final class PeekabooAgent {
         
         // Add cancellation notification to UI
         if let currentSession = sessionStore.currentSession {
-            let cancelMessage = SessionMessage(
+            let cancelMessage = ConversationMessage(
                 role: .system,
                 content: "⚠️ Cancelling current task..."
             )
@@ -293,7 +331,7 @@ public final class PeekabooAgent {
         
         // Add queue notification to session
         if let currentSession = sessionStore.currentSession {
-            let queuedMessage = SessionMessage(
+            let queuedMessage = ConversationMessage(
                 role: .system,
                 content: "📋 Message queued. It will be processed after the current task completes."
             )
@@ -312,7 +350,7 @@ public final class PeekabooAgent {
         
         // Add retry message to session
         if let currentSession = sessionStore.currentSession {
-            let retryMessage = SessionMessage(
+            let retryMessage = ConversationMessage(
                 role: .system,
                 content: "🔄 Retrying last failed task..."
             )
@@ -389,11 +427,27 @@ public final class PeekabooAgent {
             }
             
         case .assistantMessage(let content):
-            // When we get assistant messages, agent is thinking
+            // Assistant's final message - don't add it here as it's added after execution completes
+            if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                isThinking = false
+                currentTool = nil
+                currentToolArgs = nil
+            }
+            
+        case .thinkingMessage(let content):
+            // Add thinking/planning message to session
             if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 isThinking = true
                 currentTool = nil
                 currentToolArgs = nil
+                
+                if let currentSession = sessionStore.currentSession {
+                    let thinkingMessage = ConversationMessage(
+                        role: .assistant,
+                        content: content
+                    )
+                    sessionStore.addMessage(thinkingMessage, to: currentSession)
+                }
             }
             
         case .toolCallStarted(let name, let arguments):
@@ -409,10 +463,10 @@ public final class PeekabooAgent {
             
             // Add tool execution message to session
             if let currentSession = sessionStore.currentSession {
-                let toolMessage = SessionMessage(
+                let toolMessage = ConversationMessage(
                     role: .system,
                     content: "🔧 \(name): \(currentToolArgs ?? arguments)",
-                    toolCalls: [ToolCall(name: name, arguments: arguments, result: "Running...")]
+                    toolCalls: [ConversationToolCall(name: name, arguments: arguments, result: "Running...")]
                 )
                 sessionStore.addMessage(toolMessage, to: currentSession)
             }
@@ -438,22 +492,54 @@ public final class PeekabooAgent {
                     if let toolCallIndex = sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls.firstIndex(where: { $0.name == name }) {
                         sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls[toolCallIndex].result = result
                         Task {
-                            try? await sessionStore.saveSessions()
+                            sessionStore.saveSessions()
                         }
                     }
                 }
                 
             }
             
-            // Update tool execution history
+            // Update tool execution history with duration
             if let index = toolExecutionHistory.lastIndex(where: { $0.toolName == name && $0.status == .running }) {
+                let startTime = toolExecutionHistory[index].timestamp
+                let duration = Date().timeIntervalSince(startTime)
                 toolExecutionHistory[index].status = .completed
                 toolExecutionHistory[index].result = result
+                toolExecutionHistory[index].duration = duration
+                
+                // Add timing info as a separate update
+                if let currentSession = sessionStore.currentSession {
+                    let durationText = String(format: "%.2fs", duration)
+                    
+                    // Find the tool message and create an updated version
+                    if let sessionIndex = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }),
+                       let toolMessageIndex = sessionStore.sessions[sessionIndex].messages.lastIndex(where: { message in
+                        message.role == .system && 
+                        message.content.contains("🔧 \(name):")
+                    }) {
+                        let originalMessage = sessionStore.sessions[sessionIndex].messages[toolMessageIndex]
+                        let updatedContent = originalMessage.content + " ⏱ \(durationText)"
+                        
+                        // Create a new message with updated content
+                        let updatedMessage = ConversationMessage(
+                            role: originalMessage.role,
+                            content: updatedContent,
+                            toolCalls: originalMessage.toolCalls
+                        )
+                        
+                        // Replace the message
+                        sessionStore.sessions[sessionIndex].messages[toolMessageIndex] = updatedMessage
+                    }
+                }
             }
             
             currentTool = nil
             currentToolArgs = nil
             isThinking = true
+            
+        case .completed(let summary, let usage):
+            // Store token usage for the final summary
+            lastTokenUsage = usage
             
         default:
             break

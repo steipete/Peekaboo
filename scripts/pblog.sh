@@ -88,6 +88,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Peekaboo subsystems:"
             echo "  boo.peekaboo.core       - Core services"
+            echo "  boo.peekaboo.cli        - CLI tool"
             echo "  boo.peekaboo.inspector  - Inspector app"
             echo "  boo.peekaboo.playground - Playground app"
             echo "  boo.peekaboo.app        - Mac app"
@@ -106,7 +107,7 @@ if [[ -n "$SUBSYSTEM" ]]; then
     PREDICATE="subsystem == \"$SUBSYSTEM\""
 else
     # Match all Peekaboo-related subsystems
-    PREDICATE="(subsystem == \"boo.peekaboo.core\" OR subsystem == \"boo.peekaboo.inspector\" OR subsystem == \"boo.peekaboo.playground\" OR subsystem == \"boo.peekaboo.app\" OR subsystem == \"boo.peekaboo\" OR subsystem == \"boo.peekaboo.axorcist\")"
+    PREDICATE="(subsystem == \"boo.peekaboo.core\" OR subsystem == \"boo.peekaboo.inspector\" OR subsystem == \"boo.peekaboo.playground\" OR subsystem == \"boo.peekaboo.app\" OR subsystem == \"boo.peekaboo\" OR subsystem == \"boo.peekaboo.axorcist\" OR subsystem == \"boo.peekaboo.cli\")"
 fi
 
 if [[ -n "$CATEGORY" ]]; then

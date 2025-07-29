@@ -94,9 +94,24 @@ export function buildSwiftCliArgs(
     log.debug("Using frontmost mode - will attempt to capture frontmost window");
     args.push("--mode", "frontmost");
   } else if (input.app_target.includes(":")) {
-    // 'AppName:WINDOW_TITLE:Title' or 'AppName:WINDOW_INDEX:Index'
+    // Check for PID reference first
     const parts = input.app_target.split(":");
-    if (parts.length >= 3) {
+    if (parts[0].toUpperCase() === "PID" && parts.length >= 2) {
+      // 'PID:12345': Target process by PID
+      const pid = parts[1].trim();
+      if (!pid || isNaN(Number(pid))) {
+        log.warn(
+          { pid: parts[1] },
+          "Invalid PID value, must be a number",
+        );
+        args.push("--mode", "screen");
+      } else {
+        log.debug({ pid }, "Targeting process by PID");
+        args.push("--app", `PID:${pid}`);
+        args.push("--mode", "multi");
+      }
+    } else if (parts.length >= 3) {
+      // 'AppName:WINDOW_TITLE:Title' or 'AppName:WINDOW_INDEX:Index'
       const appName = parts[0].trim();
       const specifierType = parts[1].trim();
       const specifierValue = parts.slice(2).join(":"); // Handle colons in window titles

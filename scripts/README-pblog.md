@@ -24,6 +24,7 @@ A unified log viewer for all Peekaboo applications and services.
 ## Supported Subsystems
 
 - `boo.peekaboo.core` - Core services (ClickService, ElementDetectionService, etc.)
+- `boo.peekaboo.cli` - CLI tool
 - `boo.peekaboo.inspector` - Inspector app
 - `boo.peekaboo.playground` - Playground test app
 - `boo.peekaboo.app` - Main Mac app

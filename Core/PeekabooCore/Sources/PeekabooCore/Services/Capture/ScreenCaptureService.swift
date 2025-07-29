@@ -368,70 +368,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     }
     
     private func findApplication(matching identifier: String) async throws -> ServiceApplicationInfo {
-        let runningApps = NSWorkspace.shared.runningApplications
-        logger.trace("Searching for application", metadata: [
-            "identifier": identifier,
-            "runningAppsCount": runningApps.count
-        ])
-        
-        // Try exact bundle ID match first
-        if let app = runningApps.first(where: { $0.bundleIdentifier == identifier }) {
-            logger.trace("Found app by exact bundle ID match", metadata: ["bundleId": identifier])
-            return ServiceApplicationInfo(
-                processIdentifier: app.processIdentifier,
-                bundleIdentifier: app.bundleIdentifier,
-                name: app.localizedName ?? "Unknown",
-                bundlePath: app.bundleURL?.path,
-                isActive: app.isActive,
-                isHidden: app.isHidden
-            )
-        }
-        
-        // Try name match (case-insensitive)
-        let lowercaseIdentifier = identifier.lowercased()
-        if let app = runningApps.first(where: { 
-            $0.localizedName?.lowercased() == lowercaseIdentifier 
-        }) {
-            logger.trace("Found app by name match", metadata: ["name": app.localizedName ?? "unknown"])
-            return ServiceApplicationInfo(
-                processIdentifier: app.processIdentifier,
-                bundleIdentifier: app.bundleIdentifier,
-                name: app.localizedName ?? "Unknown",
-                bundlePath: app.bundleURL?.path,
-                isActive: app.isActive,
-                isHidden: app.isHidden
-            )
-        }
-        
-        // Try fuzzy match
-        let matches = runningApps.filter { app in
-            guard let name = app.localizedName else { return false }
-            return name.lowercased().contains(lowercaseIdentifier) ||
-                   (app.bundleIdentifier?.lowercased().contains(lowercaseIdentifier) ?? false)
-        }
-        
-        if matches.count == 1 {
-            let app = matches[0]
-            return ServiceApplicationInfo(
-                processIdentifier: app.processIdentifier,
-                bundleIdentifier: app.bundleIdentifier,
-                name: app.localizedName ?? "Unknown",
-                bundlePath: app.bundleURL?.path,
-                isActive: app.isActive,
-                isHidden: app.isHidden
-            )
-        } else if matches.count > 1 {
-            let names = matches.compactMap { $0.localizedName }
-            logger.warning("Ambiguous app identifier", metadata: [
-                "identifier": identifier,
-                "candidates": names.joined(separator: ", "),
-                "count": matches.count
-            ])
-            throw PeekabooError.ambiguousAppIdentifier(identifier, matches: names)
-        }
-        
-        logger.warning("Application not found", metadata: ["identifier": identifier])
-        throw NotFoundError.application(identifier)
+        // Delegate to ApplicationService for consistent app resolution
+        return try await PeekabooServices.shared.applications.findApplication(identifier: identifier)
     }
     
     // MARK: - Modern API Implementation
