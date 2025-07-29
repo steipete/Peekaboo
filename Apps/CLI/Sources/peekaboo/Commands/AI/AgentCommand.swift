@@ -128,24 +128,27 @@ final class GhostAnimator {
 
 /// Get icon for tool name in compact mode
 func iconForTool(_ toolName: String) -> String {
-    switch toolName {
-    case "see", "screenshot", "window_capture": return "👁"
-    case "click", "dialog_click": return "🖱"
-    case "type", "dialog_input": return "⌨️"
-    case "list_apps", "launch_app", "dock_launch": return "📱"
-    case "list_windows", "focus_window", "resize_window": return "🪟"
-    case "hotkey": return "⌨️"
-    case "wait": return "⏱"
-    case "scroll": return "📜"
-    case "find_element", "list_elements", "focused": return "🔍"
-    case "shell": return "💻"
-    case "menu", "menu_click", "list_menus": return "📋"
-    case "dialog": return "💬"
-    case "analyze_screenshot": return "🤖"
-    case "list", "list_dock": return "📋"
-    case "task_completed": return "✅"
-    case "need_more_information": return "❓"
-    default: return "⚙️"
+    guard let tool = PeekabooTool(from: toolName) else {
+        return "⚙️"
+    }
+    
+    switch tool {
+    case .see, .screenshot, .windowCapture: return "👁"
+    case .click, .dialogClick: return "🖱"
+    case .type, .dialogInput: return "⌨️"
+    case .listApps, .launchApp, .dockLaunch: return "📱"
+    case .listWindows, .focusWindow, .resizeWindow: return "🪟"
+    case .hotkey: return "⌨️"
+    case .wait: return "⏱"
+    case .scroll: return "📜"
+    case .findElement, .listElements, .focused: return "🔍"
+    case .shell: return "💻"
+    case .menuClick, .listMenus: return "📋"
+    case .listDock: return "📋"
+    case .taskCompleted: return "✅"
+    case .needMoreInformation: return "❓"
+    case .listSpaces, .switchSpace, .moveWindowToSpace: return "🪟"
+    case .drag, .swipe: return "👆"
     }
 }
 
@@ -749,6 +752,14 @@ final class CompactEventDelegate: AgentEventDelegate {
     
     // Extract meaningful summary from tool results
     private func getToolResultSummary(_ toolName: String, _ result: [String: Any]) -> String {
+        guard let tool = PeekabooTool(from: toolName) else {
+            // Fallback for unknown tools
+            if let success = result["success"] as? Bool {
+                return success ? "Success" : "Failed"
+            }
+            return ""
+        }
+        
         // Handle wrapped results {"type": "object", "value": {...}}
         let actualResult: [String: Any]
         if result["type"] as? String == "object", let value = result["value"] as? [String: Any] {
@@ -757,8 +768,8 @@ final class CompactEventDelegate: AgentEventDelegate {
             actualResult = result
         }
         
-        switch toolName {
-        case "list_dock":
+        switch tool {
+        case .listDock:
             // Check for totalCount directly in result
             if let totalCount = actualResult["totalCount"] as? String {
                 return "\(totalCount) items"
@@ -783,7 +794,7 @@ final class CompactEventDelegate: AgentEventDelegate {
                 return "\(items.count) items"
             }
             
-        case "list_apps":
+        case .listApps:
             // Check for count value first (tool result format)
             if let countValue = actualResult["count"] as? [String: Any],
                let count = countValue["value"] as? String {
@@ -803,7 +814,7 @@ final class CompactEventDelegate: AgentEventDelegate {
                 return "\(apps.count) apps"
             }
             
-        case "list_windows":
+        case .listWindows:
             var parts: [String] = []
             
             // Get window count
@@ -833,33 +844,30 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "list_elements":
+        case .listElements:
             if let elements = actualResult["elements"] as? [[String: Any]] {
                 return "\(elements.count) elements"
             }
             
-        case "list_spaces":
+        case .listSpaces:
             if let spaces = actualResult["spaces"] as? [[String: Any]] {
                 return "\(spaces.count) spaces"
             }
             
-        case "list_menus":
+        case .listMenus:
             if let menus = actualResult["menus"] as? [[String: Any]] {
                 return "\(menus.count) menus"
             }
             
-        case "see":
+        case .see:
             var parts: [String] = []
             parts.append("Captured")
             
             // Get app/mode context
-            var appName: String? = nil
             if let app = actualResult["app"] as? String, app != "entire screen" {
-                appName = app
                 parts.append(app)
             } else if let appWrapper = actualResult["app"] as? [String: Any],
                       let appValue = appWrapper["value"] as? String, appValue != "entire screen" {
-                appName = appValue
                 parts.append(appValue)
             } else if let mode = actualResult["mode"] as? String {
                 if mode == "window" {
@@ -913,13 +921,13 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "screenshot", "window_capture":
+        case .screenshot, .windowCapture:
             if let path = actualResult["path"] as? String {
                 return "Saved \(URL(fileURLWithPath: path).lastPathComponent)"
             }
             return "Saved screenshot"
             
-        case "click":
+        case .click:
             var parts: [String] = []
             
             // Get click type
@@ -985,7 +993,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "type":
+        case .type:
             var parts: [String] = []
             parts.append("Typed")
             
@@ -1013,7 +1021,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "hotkey":
+        case .hotkey:
             var parts: [String] = []
             parts.append("Pressed")
             
@@ -1049,7 +1057,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "scroll":
+        case .scroll:
             var parts: [String] = []
             parts.append("Scrolled")
             
@@ -1080,13 +1088,13 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "focus_window":
+        case .focusWindow:
             if let app = actualResult["app"] as? String {
                 return "Focused \(app)"
             }
             return "Focused window"
             
-        case "launch_app":
+        case .launchApp:
             var parts: [String] = []
             parts.append("Launched")
             
@@ -1105,7 +1113,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "resize_window":
+        case .resizeWindow:
             var parts: [String] = []
             parts.append("Resized")
             
@@ -1119,7 +1127,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "menu_click":
+        case .menuClick:
             var parts: [String] = []
             parts.append("Clicked")
             
@@ -1152,7 +1160,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "dialog_click":
+        case .dialogClick:
             var parts: [String] = []
             parts.append("Clicked")
             
@@ -1166,7 +1174,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "find_element":
+        case .findElement:
             var parts: [String] = []
             
             // Check if found
@@ -1213,7 +1221,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "focused":
+        case .focused:
             if let label = actualResult["label"] as? String {
                 if let app = actualResult["app"] as? String {
                     return "'\(label)' field in \(app)"
@@ -1226,7 +1234,7 @@ final class CompactEventDelegate: AgentEventDelegate {
                 return elementType
             }
             
-        case "shell":
+        case .shell:
             var parts: [String] = []
             
             // Get command
@@ -1542,8 +1550,12 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
         } else {
             // Fallback to old error display for tools not yet updated
-            switch tool {
-            case "shell":
+            guard let toolEnum = PeekabooTool(from: tool) else {
+                return
+            }
+            
+            switch toolEnum {
+            case .shell:
                 // Show command output if present
                 if let output = json["output"] as? String, !output.isEmpty {
                     print("   \(TerminalColor.gray)Output: \(output.trimmingCharacters(in: .whitespacesAndNewlines))\(TerminalColor.reset)")
@@ -1559,8 +1571,12 @@ final class CompactEventDelegate: AgentEventDelegate {
     }
     
     private func compactToolSummary(_ toolName: String, _ args: [String: Any]) -> String {
-        switch toolName {
-        case "see":
+        guard let tool = PeekabooTool(from: toolName) else {
+            return toolName.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+        
+        switch tool {
+        case .see:
             var parts: [String] = []
             if let mode = args["mode"] as? String {
                 parts.append(mode == "window" ? "active window" : mode)
@@ -1574,7 +1590,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return parts.joined(separator: " ")
             
-        case "screenshot":
+        case .screenshot:
             if let mode = args["mode"] as? String {
                 return mode == "window" ? "active window" : mode
             } else if let app = args["app"] as? String {
@@ -1582,13 +1598,13 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "full screen"
             
-        case "window_capture":
+        case .windowCapture:
             if let app = args["appName"] as? String {
                 return app
             }
             return "active window"
             
-        case "click":
+        case .click:
             if let target = args["target"] as? String {
                 // Check if it's an element ID (like B7, O6, etc.) or text
                 if target.count <= 3 && target.range(of: "^[A-Z]\\d+$", options: .regularExpression) != nil {
@@ -1606,14 +1622,14 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return ""
             
-        case "type":
+        case .type:
             if let text = args["text"] as? String {
                 // Show full text in compact mode, even if it's long
                 return "'\(text)'"
             }
             return ""
             
-        case "scroll":
+        case .scroll:
             if let direction = args["direction"] as? String {
                 if let amount = args["amount"] as? Int {
                     return "\(direction) \(amount)px"
@@ -1622,13 +1638,13 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "down"
             
-        case "focus_window":
+        case .focusWindow:
             if let app = args["appName"] as? String {
                 return app
             }
             return "active window"
             
-        case "resize_window":
+        case .resizeWindow:
             var parts: [String] = []
             if let app = args["appName"] as? String {
                 parts.append(app)
@@ -1638,7 +1654,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return parts.isEmpty ? "active window" : parts.joined(separator: " ")
             
-        case "launch_app":
+        case .launchApp:
             if let app = args["appName"] as? String {
                 return app
             } else if let name = args["name"] as? String {
@@ -1646,7 +1662,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "application"
             
-        case "hotkey":
+        case .hotkey:
             // Check for the complete keys string first (includes modifiers and key)
             if let keys = args["keys"] as? String {
                 // Format keyboard shortcuts with proper symbols
@@ -1680,7 +1696,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "keyboard shortcut"
             
-        case "shell":
+        case .shell:
             var parts: [String] = []
             if let command = args["command"] as? String {
                 // Show full command in compact mode
@@ -1696,7 +1712,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             
             return parts.joined(separator: " ")
             
-        case "list":
+        case .listApps, .listWindows, .listElements, .listMenus, .listDock, .listSpaces:
             if let target = args["target"] as? String {
                 switch target {
                 case "apps": return "running applications"
@@ -1715,16 +1731,8 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return ""
             
-        case "menu":
-            if let action = args["action"] as? String {
-                if action == "click", let menuPath = args["menuPath"] as? [String] {
-                    return menuPath.joined(separator: " → ")
-                }
-                return action
-            }
-            return "menu action"
             
-        case "menu_click":
+        case .menuClick:
             var parts: [String] = []
             if let app = args["app"] as? String {
                 parts.append(app)
@@ -1736,15 +1744,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return parts.isEmpty ? "menu item" : parts.joined(separator: " ")
             
-        case "list_windows":
-            if let app = args["appName"] as? String {
-                return "for \(app)"
-            } else if let app = args["app"] as? String {
-                return "for \(app)"
-            }
-            return "all windows"
-            
-        case "find_element":
+        case .findElement:
             if let text = args["text"] as? String {
                 return "'\(text)'"
             } else if let elementId = args["elementId"] as? String {
@@ -1752,43 +1752,22 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "UI element"
             
-        case "list_apps":
-            return "running applications"
-            
-        case "list_elements":
-            if let type = args["type"] as? String {
-                return "\(type) elements"
-            }
-            return "UI elements"
-            
-        case "focused":
+        case .focused:
             return "current element"
             
-        case "list_menus":
-            if let app = args["app"] as? String {
-                return "for \(app)"
-            }
-            return "menu structure"
-            
-        case "dock_launch":
+        case .dockLaunch:
             if let app = args["appName"] as? String {
                 return app
             }
             return "dock item"
             
-        case "list_dock":
-            return "dock items"
-            
-        case "list_spaces":
-            return "Mission Control spaces"
-            
-        case "switch_space":
+        case .switchSpace:
             if let to = args["to"] as? Int {
                 return "to space \(to)"
             }
             return "space"
             
-        case "move_window_to_space":
+        case .moveWindowToSpace:
             var parts: [String] = []
             if let app = args["app"] as? String {
                 parts.append(app)
@@ -1798,7 +1777,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return parts.isEmpty ? "window to space" : parts.joined(separator: " ")
             
-        case "wait":
+        case .wait:
             if let seconds = args["seconds"] as? Double {
                 return "\(seconds)s"
             } else if let seconds = args["seconds"] as? Int {
@@ -1806,7 +1785,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "1s"
             
-        case "dialog_click":
+        case .dialogClick:
             var parts: [String] = []
             if let button = args["button"] as? String {
                 parts.append("'\(button)'")
@@ -1816,7 +1795,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return parts.isEmpty ? "dialog button" : parts.joined(separator: " ")
             
-        case "dialog_input":
+        case .dialogInput:
             var parts: [String] = []
             if let text = args["text"] as? String {
                 let truncated = text.count > 20 ? String(text.prefix(20)) + "..." : text
@@ -1839,8 +1818,12 @@ final class CompactEventDelegate: AgentEventDelegate {
             return ""
         }
         
-        switch toolName {
-        case "see", "screenshot":
+        guard let tool = PeekabooTool(from: toolName) else {
+            return ""
+        }
+        
+        switch tool {
+        case .see, .screenshot:
             if let app = args["app"] as? String {
                 return app
             } else if let mode = args["mode"] as? String {
@@ -1848,7 +1831,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "screen"
             
-        case "click":
+        case .click:
             if let target = args["target"] as? String {
                 return String(target.prefix(20))
             } else if let element = args["element"] as? String {
@@ -1856,19 +1839,19 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "element"
             
-        case "type":
+        case .type:
             if let text = args["text"] as? String {
                 return "'\(String(text.prefix(15)))...'"
             }
             return "text"
             
-        case "launch_app":
+        case .launchApp:
             if let app = args["appName"] as? String {
                 return app
             }
             return "app"
             
-        case "shell":
+        case .shell:
             if let cmd = args["command"] as? String {
                 return String(cmd.prefix(20))
             }
