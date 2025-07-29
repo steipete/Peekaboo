@@ -8,7 +8,7 @@ BINARY_PATH="$PROJECT_ROOT/peekaboo"
 BUILD_LOCK="/tmp/peekaboo-cli-build.lock"
 BUILD_STATUS="/tmp/peekaboo-cli-build-status.json"
 RECOVERY_SIGNAL="/tmp/peekaboo-cli-build-recovery"
-MAX_WAIT=180  # Maximum seconds to wait for build (3 minutes)
+MAX_WAIT=300  # Maximum seconds to wait for build (5 minutes)
 DEBUG="${PEEKABOO_WAIT_DEBUG:-false}"
 
 # Debug logging
@@ -190,7 +190,7 @@ while is_build_running && [ $wait_count -lt $MAX_WAIT ]; do
 done
 
 if [ $wait_count -ge $MAX_WAIT ]; then
-    echo "⚠️  Build timeout reached (${MAX_WAIT}s)." >&2
+    echo "⚠️  Build timeout reached (${MAX_WAIT}s / 5 minutes)." >&2
     echo "   Check build status with: npm run poltergeist:status" >&2
 fi
 

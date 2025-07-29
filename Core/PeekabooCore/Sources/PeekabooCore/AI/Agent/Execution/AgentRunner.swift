@@ -713,6 +713,7 @@ private actor AgentRunnerImpl<Context> where Context: Sendable {
         return (updatedMessages, toolCalls)
     }
     
+    @MainActor
     private func executeTools(_ toolCalls: [ToolCallItem], eventHandler: (@Sendable (ToolExecutionEvent) async -> Void)? = nil) async throws -> [String] {
         var results: [String] = []
         
