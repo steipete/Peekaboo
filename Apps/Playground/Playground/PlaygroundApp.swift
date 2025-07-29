@@ -30,10 +30,48 @@ struct PlaygroundApp: App {
                 )
                 
                 let clickType = event.type == .leftMouseDown ? "Left" : "Right"
-                let logMessage = "\(clickType) click at window: (\(Int(locationInWindow.x)), \(Int(locationInWindow.y))), screen: (\(Int(screenLocation.x)), \(Int(screenLocation.y)))"
                 
-                clickLogger.info("\(logMessage)")
-                ActionLogger.shared.log(.click, logMessage)
+                // Try to identify what was clicked
+                if let contentView = window.contentView,
+                   let hitView = contentView.hitTest(locationInWindow) {
+                    
+                    // Try to get element description from the hit view
+                    var elementDesc = "unknown element"
+                    
+                    // Check if it's a button
+                    if let button = hitView as? NSButton {
+                        elementDesc = button.title.isEmpty ? "button" : "'\(button.title)' button"
+                    }
+                    // Check accessibility label
+                    else if let accessibilityLabel = hitView.accessibilityLabel(), !accessibilityLabel.isEmpty {
+                        elementDesc = accessibilityLabel
+                    }
+                    // Check accessibility identifier
+                    else if !hitView.accessibilityIdentifier().isEmpty {
+                        let accessibilityId = hitView.accessibilityIdentifier()
+                        // Clean up identifier for display
+                        let cleaned = accessibilityId
+                            .replacingOccurrences(of: "-button", with: "")
+                            .replacingOccurrences(of: "-", with: " ")
+                        elementDesc = cleaned + " element"
+                    }
+                    // Fall back to view class name
+                    else {
+                        let className = String(describing: type(of: hitView))
+                            .replacingOccurrences(of: "SwiftUI.", with: "")
+                            .replacingOccurrences(of: "AppKit.", with: "")
+                        elementDesc = className
+                    }
+                    
+                    let logMessage = "\(clickType) click on \(elementDesc) at window: (\(Int(locationInWindow.x)), \(Int(locationInWindow.y))), screen: (\(Int(screenLocation.x)), \(Int(screenLocation.y)))"
+                    clickLogger.info("\(logMessage)")
+                    
+                    // Don't duplicate log in ActionLogger - let the button handlers do their specific logging
+                    // This is just for system-level logging
+                } else {
+                    let logMessage = "\(clickType) click at window: (\(Int(locationInWindow.x)), \(Int(locationInWindow.y))), screen: (\(Int(screenLocation.x)), \(Int(screenLocation.y)))"
+                    clickLogger.info("\(logMessage)")
+                }
             }
             return event
         }

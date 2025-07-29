@@ -147,6 +147,11 @@ public final class ElementDetectionService: Sendable {
             let help = element.help()
             let roleDescription = element.roleDescription()
             let identifier = element.identifier()
+            
+            // Debug logging for button label issues
+            if role.lowercased() == "axbutton" {
+                logger.debug("🔍 Button debug - title: '\(title ?? "nil")', label: '\(label ?? "nil")', value: '\(value ?? "nil")', roleDescription: '\(roleDescription ?? "nil")', description: '\(description ?? "nil")', identifier: '\(identifier ?? "nil")'")
+            }
             let isEnabled = element.isEnabled() ?? false
             
             // Skip elements outside window bounds or too small
@@ -164,11 +169,32 @@ public final class ElementDetectionService: Sendable {
             // Extract keyboard shortcut if available
             let keyboardShortcut = extractKeyboardShortcut(element)
             
+            // Enhanced label extraction for SwiftUI compatibility
+            var effectiveLabel = label ?? title ?? value ?? roleDescription
+            
+            // Special handling for SwiftUI buttons
+            if role.lowercased() == "axbutton" && effectiveLabel == "button" {
+                // Try description as it might contain the actual button text
+                if let desc = description, !desc.isEmpty && desc != "button" {
+                    effectiveLabel = desc
+                }
+                // Try identifier which might be set via .accessibilityIdentifier()
+                else if let id = identifier, !id.isEmpty {
+                    // Convert identifier like "minimize-button" to "Minimize"
+                    let cleaned = id.replacingOccurrences(of: "-button", with: "")
+                        .replacingOccurrences(of: "-", with: " ")
+                        .split(separator: " ")
+                        .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
+                        .joined(separator: " ")
+                    effectiveLabel = cleaned
+                }
+            }
+            
             // Create detected element
             let detectedElement = DetectedElement(
                 id: elementId,
                 type: elementType,
-                label: label ?? title ?? value ?? roleDescription,
+                label: effectiveLabel,
                 value: value,
                 bounds: frame,
                 isEnabled: isEnabled,
