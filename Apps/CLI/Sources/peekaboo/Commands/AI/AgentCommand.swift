@@ -459,11 +459,12 @@ struct AgentCommand: AsyncParsableCommand {
         if outputMode != .quiet && !jsonOutput {
             switch outputMode {
             case .verbose:
-                print("\n═══════════════════════════════════════════════════════════════")
-                print(" PEEKABOO AGENT")
-                print("═══════════════════════════════════════════════════════════════\n")
-                print("Task: \"\(task)\"")
-                print("Model: \(displayModelName)")
+                print("\n╭─────────────────────────────────────────────────────────────╮")
+                print("│ \(TerminalColor.bold)\(TerminalColor.cyan)PEEKABOO AGENT\(TerminalColor.reset)                                              │")
+                print("├─────────────────────────────────────────────────────────────┤")
+                print("│ \(TerminalColor.gray)Task:\(TerminalColor.reset) \(task.truncated(to: 50).padding(toLength: 50, withPad: " ", startingAt: 0))│")
+                print("│ \(TerminalColor.gray)Model:\(TerminalColor.reset) \(displayModelName.padding(toLength: 49, withPad: " ", startingAt: 0))│")
+                print("╰─────────────────────────────────────────────────────────────╯")
                 if let sessionId = sessionId {
                     print("Session: \(sessionId.prefix(8))... (resumed)")
                 }
@@ -1071,7 +1072,15 @@ final class CompactEventDelegate: AgentEventDelegate {
                 print("\(TerminalColor.blue)\(icon) \(name)\(TerminalColor.reset)", terminator: "")
                 
                 if outputMode == .verbose {
-                    print("\n   Arguments: \(arguments)")
+                    // Show formatted arguments in verbose mode
+                    if arguments.isEmpty || arguments == "{}" {
+                        print("\n\(TerminalColor.gray)Arguments: (none)\(TerminalColor.reset)")
+                    } else if let formatted = formatJSON(arguments) {
+                        print("\n\(TerminalColor.gray)Arguments:\(TerminalColor.reset)")
+                        print(formatted)
+                    } else {
+                        print("\n\(TerminalColor.gray)Arguments: \(arguments)\(TerminalColor.reset)")
+                    }
                 } else {
                     // Show compact summary based on tool and args
                     if let data = arguments.data(using: .utf8),
@@ -1103,8 +1112,8 @@ final class CompactEventDelegate: AgentEventDelegate {
                     // Get result summary for compact mode
                     let resultSummary = getToolResultSummary(name, json)
                     
-                    // Debug logging
-                    if outputMode == .verbose {
+                    // Debug logging only with debug log level
+                    if isDebugLoggingEnabled {
                         print("\nDEBUG: Tool \(name) result keys: \(json.keys.sorted())")
                         if let data = json["data"] as? [String: Any] {
                             print("DEBUG: data keys: \(data.keys.sorted())")
@@ -1130,11 +1139,19 @@ final class CompactEventDelegate: AgentEventDelegate {
                         
                         if outputMode == .verbose {
                             if let summary = json["summary"] as? String {
-                                print("\(TerminalColor.gray)Summary: \(summary)\(TerminalColor.reset)")
+                                print("\n\(TerminalColor.gray)Summary:\(TerminalColor.reset)")
+                                print("   \(summary)")
                             }
                             
                             if let nextSteps = json["next_steps"] as? String {
-                                print("\(TerminalColor.cyan)Next Steps: \(nextSteps)\(TerminalColor.reset)")
+                                print("\n\(TerminalColor.cyan)Next Steps:\(TerminalColor.reset)")
+                                print("   \(nextSteps)")
+                            }
+                            
+                            // Show full result in verbose mode
+                            if let formatted = formatJSON(result) {
+                                print("\n\(TerminalColor.gray)Full Result:\(TerminalColor.reset)")
+                                print(formatted)
                             }
                         }
                     }
@@ -1159,6 +1176,14 @@ final class CompactEventDelegate: AgentEventDelegate {
                             } else {
                                 print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
                             }
+                            
+                            // Show formatted result in verbose mode
+                            if outputMode == .verbose {
+                                if let formatted = formatJSON(result) {
+                                    print("\(TerminalColor.gray)Result:\(TerminalColor.reset)")
+                                    print(formatted)
+                                }
+                            }
                         } else {
                             print(" \(TerminalColor.red)✗\(TerminalColor.reset)\(duration)")
                             
@@ -1171,6 +1196,14 @@ final class CompactEventDelegate: AgentEventDelegate {
                             print(" \(TerminalColor.green)✓\(TerminalColor.reset) \(resultSummary)\(duration)")
                         } else {
                             print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                        }
+                        
+                        // Show formatted result in verbose mode
+                        if outputMode == .verbose {
+                            if let formatted = formatJSON(result) {
+                                print("\(TerminalColor.gray)Result:\(TerminalColor.reset)")
+                                print(formatted)
+                            }
                         }
                     }
                 } else {
