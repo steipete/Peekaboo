@@ -19,6 +19,8 @@ public struct AgentSystemPrompt {
         **Task Execution Guidelines:**
         - Start with screen analysis using 'see' to understand the current UI state
         - Use specific, descriptive element identifiers when clicking or typing
+        - **ALWAYS click in the center of UI elements** - never click on edges or corners
+        - When clicking on buttons or labels, target the center of the clickable area
         - Verify actions succeeded before proceeding to the next step
         - If an action fails, try alternative approaches (e.g., menu bar, keyboard shortcuts)
 

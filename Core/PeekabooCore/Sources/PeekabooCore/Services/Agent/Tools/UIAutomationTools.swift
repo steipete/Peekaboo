@@ -12,11 +12,11 @@ extension PeekabooAgentService {
     func createClickTool() -> Tool<PeekabooServices> {
         createTool(
             name: "click",
-            description: "Click on a UI element or specific coordinates",
+            description: "Click on a UI element (always targets the center) or specific coordinates",
             parameters: .object(
                 properties: [
                     "target": ParameterSchema.string(
-                        description: "Element to click - can be button text, element label, or 'x,y' coordinates"
+                        description: "Element to click - can be button text, element label (clicks center), or 'x,y' coordinates"
                     ),
                     "app": ParameterSchema.string(
                         description: "Optional: Application name to search within"
