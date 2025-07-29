@@ -188,7 +188,7 @@ public struct SpaceInfo: Sendable {
 @MainActor
 public final class SpaceManagementService {
     private var _connection: CGSConnectionID?
-    private let connectionLock = NSLock()
+    private lazy var connectionLock = NSLock()
     
     private var connection: CGSConnectionID {
         connectionLock.lock()

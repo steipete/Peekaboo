@@ -20,6 +20,8 @@ struct PermissionStatusData: Codable {
 /// Standalone command for checking system permissions using PeekabooCore services.
 ///
 /// Provides a direct way to check permissions without going through the list subcommand.
+/// This is a test comment to verify Poltergeist auto-rebuild functionality.
+/// Edit 2: Testing incremental rebuild detection.
 struct PermissionsCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "permissions",

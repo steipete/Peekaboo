@@ -406,7 +406,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
             bundlePath: app.bundleURL?.path,
             isActive: app.isActive,
             isHidden: app.isHidden,
-            windowCount: getWindowCount(for: app)
+            windowCount: 0  // Don't query window count by default for performance
         )
     }
     
@@ -503,6 +503,20 @@ public final class ApplicationService: ApplicationServiceProtocol {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         let appElement = Element(axApp)
         return appElement.windows()?.count ?? 0
+    }
+    
+    public func getApplicationWithWindowCount(identifier: String) async throws -> ServiceApplicationInfo {
+        logger.info("Getting application with window count: \(identifier)")
+        var appInfo = try await findApplication(identifier: identifier)
+        
+        // Now query window count only for this specific app
+        let windowCount = await MainActor.run {
+            let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier)
+            return runningApp.map { getWindowCount(for: $0) } ?? 0
+        }
+        
+        appInfo.windowCount = windowCount
+        return appInfo
     }
     
     @MainActor

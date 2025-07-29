@@ -25,5 +25,9 @@
       "Core/PeekabooCore/**/*.swift",
       "Core/AXorcist/**/*.swift"
     ]
+  },
+  "logging": {
+    "file": ".poltergeist.log",
+    "level": "info"
   }
 }
