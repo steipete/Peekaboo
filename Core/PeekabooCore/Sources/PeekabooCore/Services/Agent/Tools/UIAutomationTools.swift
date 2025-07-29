@@ -47,12 +47,16 @@ extension PeekabooAgentService {
                         sessionId: nil
                     )
                     
+                    // Get the frontmost app for better feedback
+                    let frontmostApp = try? await context.applications.getFrontmostApplication()
+                    
                     return .success(
                         "Clicked at coordinates (\(Int(coordinates.x)), \(Int(coordinates.y)))",
                         metadata: [
                             "x": String(Int(coordinates.x)),
                             "y": String(Int(coordinates.y)),
-                            "type": rightClick ? "right_click" : (doubleClick ? "double_click" : "click")
+                            "type": rightClick ? "right_click" : (doubleClick ? "double_click" : "click"),
+                            "app": frontmostApp?.name ?? appName ?? "unknown"
                         ]
                     )
                 }
@@ -66,12 +70,15 @@ extension PeekabooAgentService {
                     sessionId: nil
                 )
                 
+                // Get the frontmost app for better feedback
+                let frontmostApp = try? await context.applications.getFrontmostApplication()
+                
                 return .success(
                     "Clicked on '\(target)'",
                     metadata: [
                         "element": target,
                         "type": rightClick ? "right_click" : (doubleClick ? "double_click" : "click"),
-                        "app": appName ?? "any"
+                        "app": frontmostApp?.name ?? appName ?? "unknown"
                     ]
                 )
             }
@@ -128,6 +135,9 @@ extension PeekabooAgentService {
                     sessionId: nil
                 )
                 
+                // Get the frontmost app for better feedback
+                let frontmostApp = try? await context.applications.getFrontmostApplication()
+                
                 var output = "Typed: \"\(text)\""
                 if let fieldLabel = fieldLabel {
                     output += " into field '\(fieldLabel)'"
@@ -138,7 +148,8 @@ extension PeekabooAgentService {
                     metadata: [
                         "text": text,
                         "field": fieldLabel ?? "current focus",
-                        "cleared": String(clearFirst)
+                        "cleared": String(clearFirst),
+                        "app": frontmostApp?.name ?? "unknown"
                     ]
                 )
             }
@@ -268,6 +279,9 @@ extension PeekabooAgentService {
                 
                 try await context.automation.hotkey(keys: keysString, holdDuration: 0)
                 
+                // Get the frontmost app for better feedback
+                let frontmostApp = try? await context.applications.getFrontmostApplication()
+                
                 var output = "Pressed"
                 if !modifierStrs.isEmpty {
                     output += " \(modifierStrs.joined(separator: "+"))+"
@@ -278,7 +292,9 @@ extension PeekabooAgentService {
                     output,
                     metadata: [
                         "key": keyStr,
-                        "modifiers": modifierStrs.joined(separator: ",")
+                        "modifiers": modifierStrs.joined(separator: ","),
+                        "keys": keysString,
+                        "app": frontmostApp?.name ?? "unknown"
                     ]
                 )
             }

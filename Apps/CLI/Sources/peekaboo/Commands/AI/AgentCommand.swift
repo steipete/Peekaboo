@@ -804,9 +804,34 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             
         case "list_windows":
+            var parts: [String] = []
+            
+            // Get window count
+            var windowCount = 0
             if let windows = actualResult["windows"] as? [[String: Any]] {
-                return "\(windows.count) windows"
+                windowCount = windows.count
+            } else if let countWrapper = actualResult["count"] as? [String: Any],
+                      let count = countWrapper["value"] as? Int {
+                windowCount = count
             }
+            
+            if windowCount == 0 {
+                parts.append("No windows")
+            } else if windowCount == 1 {
+                parts.append("1 window")
+            } else {
+                parts.append("\(windowCount) windows")
+            }
+            
+            // Get app name if specified
+            if let app = actualResult["app"] as? String {
+                parts.append("for \(app)")
+            } else if let appWrapper = actualResult["app"] as? [String: Any],
+                      let appValue = appWrapper["value"] as? String {
+                parts.append("for \(appValue)")
+            }
+            
+            return parts.joined(separator: " ")
             
         case "list_elements":
             if let elements = actualResult["elements"] as? [[String: Any]] {
@@ -825,23 +850,67 @@ final class CompactEventDelegate: AgentEventDelegate {
             
         case "see":
             var parts: [String] = []
+            parts.append("Captured")
+            
+            // Get app/mode context
+            var appName: String? = nil
             if let app = actualResult["app"] as? String, app != "entire screen" {
-                parts.append(app + ":")
+                appName = app
+                parts.append(app)
+            } else if let appWrapper = actualResult["app"] as? [String: Any],
+                      let appValue = appWrapper["value"] as? String, appValue != "entire screen" {
+                appName = appValue
+                parts.append(appValue)
+            } else if let mode = actualResult["mode"] as? String {
+                if mode == "window" {
+                    // Try to get the actual window/app name
+                    if let windowTitle = actualResult["windowTitle"] as? String {
+                        parts.append(windowTitle)
+                    } else {
+                        parts.append("active window")
+                    }
+                } else {
+                    parts.append(mode)
+                }
             } else {
-                parts.append("Screen:")
+                parts.append("screen")
             }
             
-            if let resultText = actualResult["result"] as? String {
-                // Extract button and text counts from the result string
-                if let buttonMatch = resultText.range(of: #"(\d+) button"#, options: .regularExpression) {
-                    let count = String(resultText[buttonMatch])
-                    parts.append(count)
-                }
-                if let textMatch = resultText.range(of: #"(\d+) text"#, options: .regularExpression) {
-                    let count = String(resultText[textMatch])
-                    parts.append(count)
+            // Add element counts if available
+            var elementCounts: [String] = []
+            
+            // Check for dialog detection
+            if let dialogDetected = actualResult["dialogDetected"] as? Bool, dialogDetected {
+                elementCounts.append("dialog detected")
+            }
+            
+            if let elementCount = actualResult["elementCount"] as? Int {
+                elementCounts.append("\(elementCount) elements")
+            } else if let resultText = actualResult["result"] as? String {
+                // Extract counts from result text
+                let patterns = [
+                    (#"(\d+) button"#, "buttons"),
+                    (#"(\d+) text"#, "text fields"),
+                    (#"(\d+) link"#, "links"),
+                    (#"(\d+) image"#, "images"),
+                    (#"(\d+) static text"#, "labels")
+                ]
+                
+                for (pattern, label) in patterns {
+                    if let range = resultText.range(of: pattern, options: .regularExpression) {
+                        let match = String(resultText[range])
+                        if let numberRange = match.range(of: #"\d+"#, options: .regularExpression) {
+                            let count = String(match[numberRange])
+                            elementCounts.append("\(count) \(label)")
+                        }
+                    }
                 }
             }
+            
+            if !elementCounts.isEmpty {
+                parts.append("(\(elementCounts.joined(separator: ", ")))")
+            }
+            
             return parts.joined(separator: " ")
             
         case "screenshot", "window_capture":
@@ -852,20 +921,66 @@ final class CompactEventDelegate: AgentEventDelegate {
             
         case "click":
             var parts: [String] = []
-            parts.append("Clicked")
             
-            // Add what was clicked
-            if let element = actualResult["clickedElement"] as? String {
-                parts.append("'\(element)'")
-            } else if let target = actualResult["target"] as? String {
-                parts.append("'\(target)'")
+            // Get click type
+            var clickType = "Clicked"
+            if let type = actualResult["type"] as? String {
+                if type == "right_click" {
+                    clickType = "Right-clicked"
+                } else if type == "double_click" {
+                    clickType = "Double-clicked"
+                }
+            } else if let typeWrapper = actualResult["type"] as? [String: Any],
+                      let typeValue = typeWrapper["value"] as? String {
+                if typeValue == "right_click" {
+                    clickType = "Right-clicked"
+                } else if typeValue == "double_click" {
+                    clickType = "Double-clicked"
+                }
+            }
+            parts.append(clickType)
+            
+            // Add what was clicked (element or coordinates)
+            if let element = actualResult["element"] as? String {
+                // Handle element IDs like B7, T2
+                if element.count <= 3 && element.range(of: "^[A-Z]\\d+$", options: .regularExpression) != nil {
+                    parts.append("element \(element)")
+                } else {
+                    parts.append("'\(element)'")
+                }
+            } else if let elementWrapper = actualResult["element"] as? [String: Any],
+                      let elementValue = elementWrapper["value"] as? String {
+                if elementValue.count <= 3 && elementValue.range(of: "^[A-Z]\\d+$", options: .regularExpression) != nil {
+                    parts.append("element \(elementValue)")
+                } else {
+                    parts.append("'\(elementValue)'")
+                }
+            } else if let x = actualResult["x"], let y = actualResult["y"] {
+                // Handle wrapped coordinate values
+                var xCoord: String = ""
+                var yCoord: String = ""
+                
+                if let xDict = x as? [String: Any], let xValue = xDict["value"] {
+                    xCoord = String(describing: xValue)
+                } else {
+                    xCoord = String(describing: x)
+                }
+                
+                if let yDict = y as? [String: Any], let yValue = yDict["value"] {
+                    yCoord = String(describing: yValue)
+                } else {
+                    yCoord = String(describing: y)
+                }
+                
+                parts.append("at (\(xCoord), \(yCoord))")
             }
             
-            // Add actual app that received the click
-            if let app = actualResult["frontmostApp"] as? String {
+            // Add app context
+            if let app = actualResult["app"] as? String, app != "any" {
                 parts.append("in \(app)")
-            } else if let app = actualResult["app"] as? String {
-                parts.append("in \(app)")
+            } else if let appWrapper = actualResult["app"] as? [String: Any],
+                      let appValue = appWrapper["value"] as? String, appValue != "any" {
+                parts.append("in \(appValue)")
             }
             
             return parts.joined(separator: " ")
@@ -874,16 +989,26 @@ final class CompactEventDelegate: AgentEventDelegate {
             var parts: [String] = []
             parts.append("Typed")
             
-            if let text = actualResult["text"] as? String {
-                let truncated = text.count > 15 ? String(text.prefix(15)) + "..." : text
-                parts.append("'\(truncated)'")
+            // Get field info first
+            var hasField = false
+            if let field = actualResult["field"] as? String, field != "current focus" {
+                parts.append("in '\(field)'")
+                hasField = true
+            } else if let fieldWrapper = actualResult["field"] as? [String: Any],
+                      let fieldValue = fieldWrapper["value"] as? String,
+                      fieldValue != "current focus" {
+                parts.append("in '\(fieldValue)'")
+                hasField = true
             }
             
-            // Add actual app that received the text
-            if let app = actualResult["frontmostApp"] as? String {
-                parts.append("in \(app)")
-            } else if let app = actualResult["app"] as? String {
-                parts.append("in \(app)")
+            // If no specific field, try to get app context
+            if !hasField {
+                if let app = actualResult["app"] as? String {
+                    parts.append("in \(app)")
+                } else if let appWrapper = actualResult["app"] as? [String: Any],
+                          let appValue = appWrapper["value"] as? String {
+                    parts.append("in \(appValue)")
+                }
             }
             
             return parts.joined(separator: " ")
@@ -892,15 +1017,34 @@ final class CompactEventDelegate: AgentEventDelegate {
             var parts: [String] = []
             parts.append("Pressed")
             
-            if let keys = actualResult["keys"] as? String {
-                parts.append(keys)
+            // Get keys (handle wrapped format)
+            var keys: String? = nil
+            if let k = actualResult["keys"] as? String {
+                keys = k
+            } else if let keysWrapper = actualResult["keys"] as? [String: Any],
+                      let keysValue = keysWrapper["value"] as? String {
+                keys = keysValue
             }
             
-            // Add actual app that received the hotkey
-            if let app = actualResult["frontmostApp"] as? String {
+            if let k = keys {
+                // Format keys with proper symbols
+                let formatted = k.replacingOccurrences(of: "cmd", with: "⌘")
+                    .replacingOccurrences(of: "command", with: "⌘")
+                    .replacingOccurrences(of: "shift", with: "⇧")
+                    .replacingOccurrences(of: "option", with: "⌥")
+                    .replacingOccurrences(of: "alt", with: "⌥")
+                    .replacingOccurrences(of: "control", with: "⌃")
+                    .replacingOccurrences(of: "ctrl", with: "⌃")
+                    .replacingOccurrences(of: ",", with: "")
+                parts.append(formatted)
+            }
+            
+            // Add app context
+            if let app = actualResult["app"] as? String {
                 parts.append("in \(app)")
-            } else if let app = actualResult["app"] as? String {
-                parts.append("in \(app)")
+            } else if let appWrapper = actualResult["app"] as? [String: Any],
+                      let appValue = appWrapper["value"] as? String {
+                parts.append("in \(appValue)")
             }
             
             return parts.joined(separator: " ")
@@ -909,18 +1053,29 @@ final class CompactEventDelegate: AgentEventDelegate {
             var parts: [String] = []
             parts.append("Scrolled")
             
-            if let direction = actualResult["direction"] as? String {
-                parts.append(direction)
-                if let amount = actualResult["amount"] as? Int {
-                    parts.append("\(amount)")
-                }
+            // Get direction (handle wrapped format)
+            var direction: String? = nil
+            if let dir = actualResult["direction"] as? String {
+                direction = dir
+            } else if let dirWrapper = actualResult["direction"] as? [String: Any],
+                      let dirValue = dirWrapper["value"] as? String {
+                direction = dirValue
             }
             
-            // Add actual app
-            if let app = actualResult["frontmostApp"] as? String {
-                parts.append("in \(app)")
-            } else if let app = actualResult["app"] as? String {
-                parts.append("in \(app)")
+            // Get amount
+            var amount: Int? = nil
+            if let amt = actualResult["amount"] as? Int {
+                amount = amt
+            } else if let amtWrapper = actualResult["amount"] as? [String: Any],
+                      let amtValue = amtWrapper["value"] as? Int {
+                amount = amtValue
+            }
+            
+            if let dir = direction {
+                parts.append(dir)
+                if let amt = amount {
+                    parts.append("(\(amt) lines)")
+                }
             }
             
             return parts.joined(separator: " ")
@@ -932,10 +1087,23 @@ final class CompactEventDelegate: AgentEventDelegate {
             return "Focused window"
             
         case "launch_app":
+            var parts: [String] = []
+            parts.append("Launched")
+            
+            // Check for app name in various possible locations
             if let app = actualResult["app"] as? String {
-                return "Launched \(app)"
+                parts.append(app)
+            } else if let appWrapper = actualResult["app"] as? [String: Any],
+                      let appValue = appWrapper["value"] as? String {
+                parts.append(appValue)
             }
-            return "Launched app"
+            
+            // Add status if it was already running
+            if let wasRunning = actualResult["wasRunning"] as? String, wasRunning == "true" {
+                parts.append("(was already running)")
+            }
+            
+            return parts.joined(separator: " ")
             
         case "resize_window":
             var parts: [String] = []
@@ -953,13 +1121,33 @@ final class CompactEventDelegate: AgentEventDelegate {
             
         case "menu_click":
             var parts: [String] = []
+            parts.append("Clicked")
             
-            if let app = actualResult["app"] as? String {
-                parts.append(app)
+            // Get the menu path (could be in menuPath or path)
+            var menuPath: String? = nil
+            if let path = actualResult["menuPath"] as? String {
+                menuPath = path
+            } else if let pathWrapper = actualResult["menuPath"] as? [String: Any],
+                      let pathValue = pathWrapper["value"] as? String {
+                menuPath = pathValue
             }
             
-            if let path = actualResult["menuPath"] as? String {
-                parts.append("> \(path)")
+            // Get the app name
+            var appName: String? = nil
+            if let app = actualResult["app"] as? String {
+                appName = app
+            } else if let appWrapper = actualResult["app"] as? [String: Any],
+                      let appValue = appWrapper["value"] as? String {
+                appName = appValue
+            }
+            
+            // Format the output
+            if let path = menuPath {
+                parts.append("'\(path)'")
+            }
+            
+            if let app = appName, app != "frontmost app" {
+                parts.append("in \(app)")
             }
             
             return parts.joined(separator: " ")
@@ -979,19 +1167,51 @@ final class CompactEventDelegate: AgentEventDelegate {
             return parts.joined(separator: " ")
             
         case "find_element":
-            if let found = actualResult["found"] as? Bool {
-                if found, let element = actualResult["element"] as? String {
-                    if let app = actualResult["app"] as? String {
-                        return "Found '\(element)' in \(app)"
-                    }
-                    return "Found '\(element)'"
-                } else {
-                    if let app = actualResult["app"] as? String {
-                        return "Not found in \(app)"
-                    }
-                    return "Not found"
+            var parts: [String] = []
+            
+            // Check if found
+            var found = false
+            if let f = actualResult["found"] as? Bool {
+                found = f
+            } else if let foundWrapper = actualResult["found"] as? [String: Any],
+                      let foundValue = foundWrapper["value"] as? Bool {
+                found = foundValue
+            }
+            
+            if found {
+                parts.append("Found")
+                
+                // Get element details
+                if let element = actualResult["element"] as? String {
+                    parts.append("'\(element)'")
+                } else if let elementWrapper = actualResult["element"] as? [String: Any],
+                          let elementValue = elementWrapper["value"] as? String {
+                    parts.append("'\(elementValue)'")
+                } else if let text = actualResult["text"] as? String {
+                    parts.append("'\(text)'")
+                }
+                
+                // Add element type if available
+                if let type = actualResult["type"] as? String {
+                    parts.append("(\(type))")
+                }
+                
+                // Add location if available
+                if let elementId = actualResult["elementId"] as? String {
+                    parts.append("as \(elementId)")
+                }
+            } else {
+                parts.append("Not found")
+                
+                // Add what was searched for
+                if let query = actualResult["query"] as? String {
+                    parts.append("'\(query)'")
+                } else if let text = actualResult["text"] as? String {
+                    parts.append("'\(text)'")
                 }
             }
+            
+            return parts.joined(separator: " ")
             
         case "focused":
             if let label = actualResult["label"] as? String {
@@ -1007,17 +1227,46 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             
         case "shell":
-            if let command = actualResult["command"] as? String {
-                let truncatedCmd = command.count > 20 ? String(command.prefix(20)) + "..." : command
-                if let exitCode = actualResult["exitCode"] as? Int {
-                    if exitCode == 0 {
-                        return "'\(truncatedCmd)' succeeded"
+            var parts: [String] = []
+            
+            // Get command
+            var command: String? = nil
+            if let cmd = actualResult["command"] as? String {
+                command = cmd
+            } else if let cmdWrapper = actualResult["command"] as? [String: Any],
+                      let cmdValue = cmdWrapper["value"] as? String {
+                command = cmdValue
+            }
+            
+            if let cmd = command {
+                // Show more of the command in compact mode
+                let truncatedCmd = cmd.count > 40 ? String(cmd.prefix(40)) + "..." : cmd
+                parts.append("'\(truncatedCmd)'")
+                
+                // Get exit code
+                var exitCode: Int? = nil
+                if let code = actualResult["exitCode"] as? Int {
+                    exitCode = code
+                } else if let codeWrapper = actualResult["exitCode"] as? [String: Any],
+                          let codeValue = codeWrapper["value"] as? Int {
+                    exitCode = codeValue
+                }
+                
+                if let code = exitCode {
+                    if code == 0 {
+                        parts.append("✓")
                     } else {
-                        return "'\(truncatedCmd)' failed (code \(exitCode))"
+                        parts.append("✗ (exit \(code))")
                     }
                 }
-                return "'\(truncatedCmd)'"
+                
+                // Add execution time if available
+                if let duration = actualResult["duration"] as? Double {
+                    parts.append("(\(String(format: "%.1fs", duration)))")
+                }
             }
+            
+            return parts.joined(separator: " ")
             
         default:
             break
@@ -1057,14 +1306,9 @@ final class CompactEventDelegate: AgentEventDelegate {
                 ghostAnimator.stop()
                 isThinking = false
                 
-                // Only print newline if we haven't received content yet
-                if !hasReceivedContent {
-                    // No assistant message was shown, just the ghost animation
-                    // No need for extra newline
-                } else {
-                    // Assistant message was shown, add newline before tool output
-                    print()
-                }
+                // Always add a newline before tool output for better formatting
+                // This ensures consistent spacing between thinking/content and tools
+                print()
                 
                 hasReceivedContent = false  // Reset for next thinking phase
                 
@@ -1397,10 +1641,13 @@ final class CompactEventDelegate: AgentEventDelegate {
         case "launch_app":
             if let app = args["appName"] as? String {
                 return app
+            } else if let name = args["name"] as? String {
+                return name
             }
             return "application"
             
         case "hotkey":
+            // Check for the complete keys string first (includes modifiers and key)
             if let keys = args["keys"] as? String {
                 // Format keyboard shortcuts with proper symbols
                 let formatted = keys.replacingOccurrences(of: "cmd", with: "⌘")
@@ -1414,6 +1661,22 @@ final class CompactEventDelegate: AgentEventDelegate {
                     .replacingOccurrences(of: ",", with: "")
                     .replacingOccurrences(of: "+", with: "")
                 return formatted
+            } else if let key = args["key"] as? String {
+                // Fallback to key + modifiers format
+                var parts: [String] = []
+                if let modifiers = args["modifiers"] as? [String], !modifiers.isEmpty {
+                    for mod in modifiers {
+                        switch mod.lowercased() {
+                        case "command": parts.append("⌘")
+                        case "shift": parts.append("⇧")
+                        case "option": parts.append("⌥")
+                        case "control": parts.append("⌃")
+                        default: parts.append(mod)
+                        }
+                    }
+                }
+                parts.append(key)
+                return parts.joined(separator: "")
             }
             return "keyboard shortcut"
             
@@ -1462,13 +1725,21 @@ final class CompactEventDelegate: AgentEventDelegate {
             return "menu action"
             
         case "menu_click":
-            if let menuPath = args["menuPath"] as? String {
-                return "'\(menuPath)'"
+            var parts: [String] = []
+            if let app = args["app"] as? String {
+                parts.append(app)
             }
-            return "menu item"
+            if let menuPath = args["menuPath"] as? String {
+                parts.append("→ \(menuPath)")
+            } else if let path = args["path"] as? String {
+                parts.append("→ \(path)")
+            }
+            return parts.isEmpty ? "menu item" : parts.joined(separator: " ")
             
         case "list_windows":
             if let app = args["appName"] as? String {
+                return "for \(app)"
+            } else if let app = args["app"] as? String {
                 return "for \(app)"
             }
             return "all windows"
@@ -1508,17 +1779,53 @@ final class CompactEventDelegate: AgentEventDelegate {
         case "list_dock":
             return "dock items"
             
-        case "dialog_click":
-            if let button = args["button"] as? String {
-                return "'\(button)'"
+        case "list_spaces":
+            return "Mission Control spaces"
+            
+        case "switch_space":
+            if let to = args["to"] as? Int {
+                return "to space \(to)"
             }
-            return "dialog button"
+            return "space"
+            
+        case "move_window_to_space":
+            var parts: [String] = []
+            if let app = args["app"] as? String {
+                parts.append(app)
+            }
+            if let to = args["to"] as? Int {
+                parts.append("to space \(to)")
+            }
+            return parts.isEmpty ? "window to space" : parts.joined(separator: " ")
+            
+        case "wait":
+            if let seconds = args["seconds"] as? Double {
+                return "\(seconds)s"
+            } else if let seconds = args["seconds"] as? Int {
+                return "\(seconds)s"
+            }
+            return "1s"
+            
+        case "dialog_click":
+            var parts: [String] = []
+            if let button = args["button"] as? String {
+                parts.append("'\(button)'")
+            }
+            if let window = args["window"] as? String {
+                parts.append("in \(window)")
+            }
+            return parts.isEmpty ? "dialog button" : parts.joined(separator: " ")
             
         case "dialog_input":
+            var parts: [String] = []
             if let text = args["text"] as? String {
-                return "'\(text)'"
+                let truncated = text.count > 20 ? String(text.prefix(20)) + "..." : text
+                parts.append("'\(truncated)'")
             }
-            return "text input"
+            if let field = args["field"] as? String {
+                parts.append("in '\(field)'")
+            }
+            return parts.isEmpty ? "text input" : parts.joined(separator: " ")
             
         default:
             return ""

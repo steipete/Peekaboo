@@ -99,7 +99,10 @@ extension PeekabooAgentService {
                 
                 return .success(
                     output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: ["count": String(windows.count)]
+                    metadata: [
+                        "count": String(windows.count),
+                        "app": appFilter ?? "all"
+                    ]
                 )
             }
         )
