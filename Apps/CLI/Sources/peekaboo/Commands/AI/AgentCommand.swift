@@ -490,8 +490,22 @@ struct AgentCommand: AsyncParsableCommand {
                 eventDelegate: eventDelegate
             )
             
+            // Update token count in delegate if available
+            if let usage = result.usage {
+                await MainActor.run {
+                    eventDelegate.updateTokenCount(usage.totalTokens)
+                }
+            }
+            
             // Handle result display
             displayResult(result)
+            
+            // Show final summary if not already shown
+            if !jsonOutput && outputMode != .quiet {
+                await MainActor.run {
+                    eventDelegate.showFinalSummaryIfNeeded(result)
+                }
+            }
             
             // Show API key info in verbose mode
             if outputMode == .verbose, let apiKey = result.metadata.maskedApiKey {
@@ -692,11 +706,44 @@ final class CompactEventDelegate: AgentEventDelegate {
     private let startTime = Date()
     private var toolCallCount = 0
     private var totalTokens = 0
+    private var hasShownFinalSummary = false
     
     init(outputMode: OutputMode, jsonOutput: Bool, task: String) {
         self.outputMode = outputMode
         self.jsonOutput = jsonOutput
         self.task = task
+    }
+    
+    func updateTokenCount(_ tokens: Int) {
+        self.totalTokens = tokens
+    }
+    
+    func showFinalSummaryIfNeeded(_ result: AgentExecutionResult) {
+        // Don't show summary if task_completed already handled it
+        guard !hasShownFinalSummary else { return }
+        
+        // Show a simple completion summary
+        let totalElapsed = result.metadata.duration
+        let tokenInfo = totalTokens > 0 ? ", \(totalTokens) tokens" : ""
+        let toolsText = result.metadata.toolCallCount == 1 ? "1 tool" : "\(result.metadata.toolCallCount) tools"
+        
+        if outputMode == .compact {
+            print("\n\(TerminalColor.bold)\(TerminalColor.green)✅ Task completed\(TerminalColor.reset) \(TerminalColor.gray)(Total: \(formatDuration(totalElapsed)), \(toolsText)\(tokenInfo))\(TerminalColor.reset)")
+        }
+    }
+    
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        if seconds < 0.001 {
+            return String(format: "%.0fµs", seconds * 1_000_000)
+        } else if seconds < 1.0 {
+            return String(format: "%.0fms", seconds * 1000)
+        } else if seconds < 60.0 {
+            return String(format: "%.1fs", seconds)
+        } else {
+            let minutes = Int(seconds / 60)
+            let remainingSeconds = Int(seconds.truncatingRemainder(dividingBy: 60))
+            return String(format: "%dmin %ds", minutes, remainingSeconds)
+        }
     }
     
     // Extract meaningful summary from tool results
@@ -711,8 +758,22 @@ final class CompactEventDelegate: AgentEventDelegate {
         
         switch toolName {
         case "list_dock":
-            // Check for count value first (tool result format)
-            if let countValue = actualResult["count"] as? [String: Any],
+            // Check for totalCount directly in result
+            if let totalCount = actualResult["totalCount"] as? String {
+                return "\(totalCount) items"
+            }
+            // Check for wrapped totalCount
+            else if let totalCountWrapper = actualResult["totalCount"] as? [String: Any],
+                    let value = totalCountWrapper["value"] {
+                return "\(value) items"
+            }
+            // Check for metadata.totalCount
+            else if let metadata = actualResult["metadata"] as? [String: Any],
+               let totalCount = metadata["totalCount"] as? String {
+                return "\(totalCount) items"
+            }
+            // Check for count value (tool result format)
+            else if let countValue = actualResult["count"] as? [String: Any],
                let count = countValue["value"] as? String {
                 return "\(count) items"
             }
@@ -1051,6 +1112,7 @@ final class CompactEventDelegate: AgentEventDelegate {
                         print("DEBUG: Result summary for \(name): '\(resultSummary)'")
                     }
                     
+                    
                     // Special handling for task_completed tool
                     if name == "task_completed" {
                         // Don't show the tool line in compact mode
@@ -1063,6 +1125,8 @@ final class CompactEventDelegate: AgentEventDelegate {
                         let tokenInfo = totalTokens > 0 ? ", \(totalTokens) tokens" : ""
                         let toolsText = toolCallCount == 1 ? "1 tool" : "\(toolCallCount) tools"
                         print("\n\(TerminalColor.bold)\(TerminalColor.green)✅ Task completed\(TerminalColor.reset) \(TerminalColor.gray)(Total: \(formatDuration(totalElapsed)), \(toolsText)\(tokenInfo))\(TerminalColor.reset)")
+                        
+                        hasShownFinalSummary = true
                         
                         if outputMode == .verbose {
                             if let summary = json["summary"] as? String {
