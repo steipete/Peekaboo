@@ -719,26 +719,32 @@ struct DetailedMessageRow: View {
         VStack(alignment: .leading, spacing: 12) {
             // Message header
             HStack(alignment: .top, spacing: 12) {
-                // Avatar
-                ZStack {
-                    Image(systemName: iconName)
-                        .font(.title3)
-                        .foregroundColor(iconColor)
+                // Avatar or Tool Icon
+                if isToolMessage {
+                    // For tool messages, show empty space to align with other messages
+                    Color.clear
                         .frame(width: 32, height: 32)
-                        .background(iconColor.opacity(0.1))
-                        .clipShape(Circle())
-                    
-                    // Animated thinking indicator
-                    if isThinkingMessage {
-                        Circle()
-                            .stroke(Color.purple, lineWidth: 2)
-                            .frame(width: 36, height: 36)
-                            .rotationEffect(.degrees(360))
-                            .animation(
-                                Animation.linear(duration: 2)
-                                    .repeatForever(autoreverses: false),
-                                value: true
-                            )
+                } else {
+                    ZStack {
+                        Image(systemName: iconName)
+                            .font(.title3)
+                            .foregroundColor(iconColor)
+                            .frame(width: 32, height: 32)
+                            .background(iconColor.opacity(0.1))
+                            .clipShape(Circle())
+                        
+                        // Animated thinking indicator
+                        if isThinkingMessage {
+                            Circle()
+                                .stroke(Color.purple, lineWidth: 2)
+                                .frame(width: 36, height: 36)
+                                .rotationEffect(.degrees(360))
+                                .animation(
+                                    Animation.linear(duration: 2)
+                                        .repeatForever(autoreverses: false),
+                                    value: true
+                                )
+                        }
                     }
                 }
                 
@@ -813,9 +819,9 @@ struct DetailedMessageRow: View {
                             
                             // Show animated icon for the tool
                             if !toolName.isEmpty {
-                                ToolIcon(
+                                EnhancedToolIcon(
                                     toolName: toolName,
-                                    isRunning: message.toolCalls.first?.result == "Running..."
+                                    status: determineToolStatus(from: message)
                                 )
                             }
                             
@@ -958,9 +964,6 @@ struct DetailedMessageRow: View {
     }
     
     private var iconName: String {
-        if isToolMessage {
-            return "wrench.and.screwdriver.fill"
-        }
         switch message.role {
         case .user: return "person.fill"
         case .assistant: return "sparkles"
@@ -998,6 +1001,29 @@ struct DetailedMessageRow: View {
             return String(cleaned[..<colonIndex]).trimmingCharacters(in: .whitespaces)
         }
         return ""
+    }
+    
+    private func determineToolStatus(from message: ConversationMessage) -> ToolExecutionStatus {
+        if let toolCall = message.toolCalls.first {
+            if toolCall.result == "Running..." {
+                return .running
+            } else if message.content.contains("✅") {
+                return .completed
+            } else if message.content.contains("❌") {
+                return .failed
+            }
+        }
+        
+        // Check message content for status indicators
+        if message.content.contains("✅") {
+            return .completed
+        } else if message.content.contains("❌") {
+            return .failed
+        } else if message.content.contains("⚠️") {
+            return .cancelled
+        }
+        
+        return .running
     }
     
     private func retryLastTask() {
@@ -1044,9 +1070,10 @@ struct DetailedToolCallView: View {
         VStack(alignment: .leading, spacing: 8) {
             // Tool header
             HStack {
-                Image(systemName: "wrench.and.screwdriver.fill")
-                    .font(.caption)
-                    .foregroundColor(.purple)
+                AnimatedToolIcon(
+                    toolName: toolCall.name,
+                    isRunning: false
+                )
                 
                 Text(toolCall.name)
                     .font(.subheadline)

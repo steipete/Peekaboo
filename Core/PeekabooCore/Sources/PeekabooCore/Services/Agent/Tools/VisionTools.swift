@@ -1,8 +1,11 @@
 import Foundation
 import CoreGraphics
 import AXorcist
+import OSLog
 
 // MARK: - Vision Tools
+
+private let logger = Logger(subsystem: "boo.peekaboo.core", category: "VisionTools")
 
 /// Vision-related tools for screen capture and analysis
 @available(macOS 14.0, *)
