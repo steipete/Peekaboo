@@ -128,6 +128,7 @@ public final class AnthropicModel: ModelInterface {
                     // var responseModel: String? // Not used in Anthropic API
                     var accumulatedText = ""
                     var currentContentIndex = 0
+                    var pendingUsage: Usage? = nil
                     
                     for try await line in bytes.lines {
                         // Skip empty lines
@@ -141,8 +142,10 @@ public final class AnthropicModel: ModelInterface {
                             
                             // Parse the event
                             if let eventData = data.data(using: .utf8) {
+                                aiDebugPrint("DEBUG: Processing event data: \(data)")
                                 do {
                                     let event = try JSONCoding.decoder.decode(AnthropicStreamEvent.self, from: eventData)
+                                    aiDebugPrint("DEBUG: Successfully parsed event type: \(event.type)")
                                     
                                     switch event.type {
                                     case "message_start":
@@ -197,6 +200,7 @@ public final class AnthropicModel: ModelInterface {
                                         }
                                         
                                     case "content_block_stop":
+                                        aiDebugPrint("DEBUG: content_block_stop event at index \(event.index ?? -1)")
                                         // Complete any tool calls at this index
                                         for (id, toolCall) in currentToolCalls {
                                             if toolCall.index == currentContentIndex {
@@ -208,21 +212,25 @@ public final class AnthropicModel: ModelInterface {
                                             }
                                         }
                                         
+                                        // Check if this is the final content block
+                                        aiDebugPrint("DEBUG: Checking for stop reason in content_block_stop")
+                                        
                                     case "message_delta":
-                                        // Handle stop reason and usage
-                                        if let stopReason = event.stopReason {
-                                            let finishReason = self.convertStopReason(stopReason)
-                                            if let id = responseId {
-                                                continuation.yield(.responseCompleted(StreamResponseCompleted(
-                                                    id: id,
-                                                    usage: nil,
-                                                    finishReason: finishReason
-                                                )))
-                                            }
-                                        }
+                                        // Skip regular parsing - will handle in catch block for usage data
+                                        aiDebugPrint("DEBUG: Skipping message_delta parsing")
+                                        break
                                         
                                     case "message_stop":
-                                        // Final completion
+                                        // Final completion - emit responseCompleted with usage if available
+                                        aiDebugPrint("DEBUG: message_stop event")
+                                        if let id = responseId {
+                                            aiDebugPrint("DEBUG: Emitting responseCompleted from message_stop with usage: \(pendingUsage?.totalTokens ?? 0)")
+                                            continuation.yield(.responseCompleted(StreamResponseCompleted(
+                                                id: id,
+                                                usage: pendingUsage,
+                                                finishReason: .stop
+                                            )))
+                                        }
                                         continuation.finish()
                                         return
                                         
@@ -243,6 +251,47 @@ public final class AnthropicModel: ModelInterface {
                                     let peekabooError = error.asPeekabooError(context: "Failed to parse Anthropic stream event")
                                     aiDebugPrint("DEBUG: Failed to parse event: \(peekabooError)")
                                     aiDebugPrint("DEBUG: Event data: \(data)")
+                                    
+                                    // Special handling for message_delta events with usage
+                                    if let jsonData = data.data(using: .utf8) {
+                                        do {
+                                            if let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                                                aiDebugPrint("DEBUG: Parsed JSON type: \(json["type"] ?? "nil")")
+                                                
+                                                if json["type"] as? String == "message_delta" {
+                                                    aiDebugPrint("DEBUG: Found message_delta event")
+                                                    
+                                                    if let usage = json["usage"] as? [String: Any] {
+                                                        aiDebugPrint("DEBUG: Found usage: \(usage)")
+                                                        
+                                                        if let outputTokens = usage["output_tokens"] as? Int {
+                                                            aiDebugPrint("DEBUG: Manually parsing message_delta with usage")
+                                                            
+                                                            // Extract input tokens if available
+                                                            let inputTokens = usage["input_tokens"] as? Int ?? 0
+                                                            
+                                                            // Create Usage object
+                                                            let tokenUsage = Usage(
+                                                                promptTokens: inputTokens,
+                                                                completionTokens: outputTokens,
+                                                                totalTokens: inputTokens + outputTokens,
+                                                                promptTokensDetails: nil,
+                                                                completionTokensDetails: nil
+                                                            )
+                                                            
+                                                            aiDebugPrint("DEBUG: Got usage data - output: \(outputTokens), input: \(inputTokens), total: \(outputTokens + inputTokens)")
+                                                            
+                                                            // Don't emit responseCompleted here - we'll update the one from message_stop
+                                                            // Store the usage for later
+                                                            pendingUsage = tokenUsage
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } catch {
+                                            aiDebugPrint("DEBUG: Failed to parse JSON: \(error)")
+                                        }
+                                    }
                                 }
                             }
                         }

@@ -395,12 +395,19 @@ public struct AnthropicDelta: Codable, Sendable {
     // Text delta
     public let text: String?
     
+    // Message delta fields
+    public let stopReason: String?
+    public let stopSequence: String?
+    
     // Tool use delta
     public let type: String?
     public let partialJson: String?
     
     enum CodingKeys: String, CodingKey {
-        case text, type
+        case text
+        case stopReason = "stop_reason"
+        case stopSequence = "stop_sequence"
+        case type
         case partialJson = "partial_json"
     }
 }
