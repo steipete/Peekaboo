@@ -1195,6 +1195,24 @@ await click({ query: "Submit" })
 4. **Session errors** - Run `clean` tool to clear corrupted sessions
 5. **Permissions denied** - Grant Accessibility permission in System Settings
 
+### Debugging with Logs
+
+Peekaboo uses macOS's unified logging system. Use `pblog` to monitor logs:
+
+```bash
+# View recent logs
+./scripts/pblog.sh
+
+# Stream logs continuously
+./scripts/pblog.sh -f
+
+# Debug specific issues
+./scripts/pblog.sh -c ClickService -d
+```
+
+**Note**: macOS redacts log values by default, showing `<private>`. 
+See [docs/pblog-guide.md](docs/pblog-guide.md) and [docs/logging-profiles/README.md](docs/logging-profiles/README.md) for solutions.
+
 ## 🔧 Configuration
 
 ### Configuration Precedence

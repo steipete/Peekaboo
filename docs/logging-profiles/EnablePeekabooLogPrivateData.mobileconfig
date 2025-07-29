@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>PayloadDisplayName</key>
+            <string>ManagedClient logging</string>
+            <key>PayloadEnabled</key>
+            <true/>
+            <key>PayloadIdentifier</key>
+            <string>com.peekaboo.logging.EnablePrivateData</string>
+            <key>PayloadType</key>
+            <string>com.apple.system.logging</string>
+            <key>PayloadUUID</key>
+            <string>C4E7F5C8-9A3B-4D2E-B1A7-8F5C9D4E3B2A</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>System</key>
+            <dict>
+                <key>Enable-Private-Data</key>
+                <true/>
+            </dict>
+            <key>Subsystems</key>
+            <dict>
+                <key>boo.peekaboo.core</key>
+                <dict>
+                    <key>DEFAULT-OPTIONS</key>
+                    <dict>
+                        <key>Enable-Private-Data</key>
+                        <true/>
+                    </dict>
+                </dict>
+                <key>boo.peekaboo.app</key>
+                <dict>
+                    <key>DEFAULT-OPTIONS</key>
+                    <dict>
+                        <key>Enable-Private-Data</key>
+                        <true/>
+                    </dict>
+                </dict>
+                <key>boo.peekaboo.playground</key>
+                <dict>
+                    <key>DEFAULT-OPTIONS</key>
+                    <dict>
+                        <key>Enable-Private-Data</key>
+                        <true/>
+                    </dict>
+                </dict>
+                <key>boo.peekaboo.inspector</key>
+                <dict>
+                    <key>DEFAULT-OPTIONS</key>
+                    <dict>
+                        <key>Enable-Private-Data</key>
+                        <true/>
+                    </dict>
+                </dict>
+                <key>boo.peekaboo</key>
+                <dict>
+                    <key>DEFAULT-OPTIONS</key>
+                    <dict>
+                        <key>Enable-Private-Data</key>
+                        <true/>
+                    </dict>
+                </dict>
+            </dict>
+        </dict>
+    </array>
+    <key>PayloadDescription</key>
+    <string>This profile enables logging of private data for Peekaboo debugging. IMPORTANT: Only install temporarily while debugging, then remove immediately.</string>
+    <key>PayloadDisplayName</key>
+    <string>Peekaboo Private Data Logging</string>
+    <key>PayloadIdentifier</key>
+    <string>com.peekaboo.PrivateDataLogging</string>
+    <key>PayloadOrganization</key>
+    <string>Peekaboo</string>
+    <key>PayloadRemovalDisallowed</key>
+    <false/>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadUUID</key>
+    <string>A9F7D3E2-8B5C-4A1D-9E7F-3C5B8D4A2E1F</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>

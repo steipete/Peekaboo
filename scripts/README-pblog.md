@@ -1,4 +1,4 @@
-# vtlog - Peekaboo Log Viewer
+# pblog - Peekaboo Log Viewer
 
 A unified log viewer for all Peekaboo applications and services.
 
@@ -6,19 +6,19 @@ A unified log viewer for all Peekaboo applications and services.
 
 ```bash
 # Show recent logs from all Peekaboo subsystems
-./scripts/vtlog.sh
+./scripts/pblog.sh
 
 # Stream logs continuously
-./scripts/vtlog.sh -f
+./scripts/pblog.sh -f
 
 # Show only errors
-./scripts/vtlog.sh -e
+./scripts/pblog.sh -e
 
 # Show logs from a specific service
-./scripts/vtlog.sh -c ElementDetectionService
+./scripts/pblog.sh -c ElementDetectionService
 
 # Show logs from a specific subsystem
-./scripts/vtlog.sh --subsystem boo.peekaboo.core
+./scripts/pblog.sh --subsystem boo.peekaboo.core
 ```
 
 ## Supported Subsystems
@@ -45,17 +45,17 @@ A unified log viewer for all Peekaboo applications and services.
 
 ```bash
 # Debug element detection issues
-./scripts/vtlog.sh -c ElementDetectionService -d
+./scripts/pblog.sh -c ElementDetectionService -d
 
 # Monitor click operations
-./scripts/vtlog.sh -c ClickService -f
+./scripts/pblog.sh -c ClickService -f
 
 # Check recent errors
-./scripts/vtlog.sh -e -l 30m
+./scripts/pblog.sh -e -l 30m
 
 # Search for specific text
-./scripts/vtlog.sh -s "Dialog" -n 100
+./scripts/pblog.sh -s "Dialog" -n 100
 
 # Monitor Playground app logs
-./scripts/vtlog.sh --subsystem boo.peekaboo.playground -f
+./scripts/pblog.sh --subsystem boo.peekaboo.playground -f
 ```

@@ -142,7 +142,7 @@ This app is designed to work with Peekaboo's automation features. Each UI elemen
 ../scripts/playground-log.sh -s "button"
 ```
 
-### Using vtlog (if available)
+### Using pblog (if available)
 ```bash
 # Stream logs
 log stream --predicate 'subsystem == "boo.peekaboo.playground"' --level info

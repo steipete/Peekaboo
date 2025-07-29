@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Peekaboo Playground Log Viewer
-# A vtlog-inspired utility for viewing Playground app logs
+# A pblog-inspired utility for viewing Playground app logs
 
 # Default values
 LINES=50

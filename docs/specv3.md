@@ -1186,25 +1186,25 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 #### **9. Logging & Debugging**
 
-##### **9.1. vtlog Utility**
+##### **9.1. pblog Utility**
 
 Peekaboo includes a powerful log viewing utility for the Mac app:
 
 ```bash
 # Show recent logs (last 50 lines from past 5 minutes)
-./scripts/vtlog.sh
+./scripts/pblog.sh
 
 # Stream logs continuously
-./scripts/vtlog.sh -f
+./scripts/pblog.sh -f
 
 # Show only errors
-./scripts/vtlog.sh -e
+./scripts/pblog.sh -e
 
 # Filter by category
-./scripts/vtlog.sh -c OverlayManager
+./scripts/pblog.sh -c OverlayManager
 
 # Search for specific text
-./scripts/vtlog.sh -s "element selected"
+./scripts/pblog.sh -s "element selected"
 ```
 
 ##### **9.2. Logging Categories**
@@ -1344,7 +1344,7 @@ The native macOS application includes:
    - Secure credential storage
    - Environment variable expansion
 
-5. **vtlog Debugging**
+5. **pblog Debugging**
    - Powerful log viewing for Mac app
    - Category-based filtering
    - Real-time streaming

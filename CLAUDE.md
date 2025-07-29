@@ -606,31 +606,31 @@ The only operations that might benefit from background threads are:
 - Use `@Test` attribute and `#expect()` macros
 - See `/docs/swift-testing-playbook.md` for migration guide
 
-## Debugging with vtlog
+## Debugging with pblog
 
-vtlog monitors logs from ALL Peekaboo apps and services:
+pblog monitors logs from ALL Peekaboo apps and services:
 
 ```bash
 # Show recent logs (default: last 50 lines from past 5 minutes)
-./scripts/vtlog.sh
+./scripts/pblog.sh
 
 # Stream logs continuously
-./scripts/vtlog.sh -f
+./scripts/pblog.sh -f
 
 # Show only errors
-./scripts/vtlog.sh -e
+./scripts/pblog.sh -e
 
 # Debug element detection issues
-./scripts/vtlog.sh -c ElementDetectionService -d
+./scripts/pblog.sh -c ElementDetectionService -d
 
 # Monitor specific subsystem
-./scripts/vtlog.sh --subsystem boo.peekaboo.core
+./scripts/pblog.sh --subsystem boo.peekaboo.core
 
 # Search for specific text
-./scripts/vtlog.sh -s "Dialog" -n 100
+./scripts/pblog.sh -s "Dialog" -n 100
 ```
 
-See `./scripts/README-vtlog.md` for full documentation.
+See `./scripts/README-pblog.md` for full documentation.
 
 Also available: `./scripts/playground-log.sh` for quick Playground-only logs.
 

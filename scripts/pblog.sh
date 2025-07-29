@@ -13,6 +13,7 @@ ERRORS_ONLY=false
 NO_TAIL=false
 JSON=false
 SUBSYSTEM=""
+PRIVATE=false
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -51,6 +52,10 @@ while [[ $# -gt 0 ]]; do
             LEVEL="error"
             shift
             ;;
+        -p|--private)
+            PRIVATE=true
+            shift
+            ;;
         --all)
             NO_TAIL=true
             shift
@@ -64,7 +69,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         -h|--help)
-            echo "Usage: vtlog.sh [options]"
+            echo "Usage: pblog.sh [options]"
             echo ""
             echo "Options:"
             echo "  -n, --lines NUM      Number of lines to show (default: 50)"
@@ -75,6 +80,7 @@ while [[ $# -gt 0 ]]; do
             echo "  -d, --debug          Show debug level logs"
             echo "  -f, --follow         Stream logs continuously"
             echo "  -e, --errors         Show only errors"
+            echo "  -p, --private        Show private data (requires passwordless sudo)"
             echo "  --all                Show all logs without tail limit"
             echo "  --json               Output in JSON format"
             echo "  --subsystem NAME     Filter by subsystem (default: all Peekaboo subsystems)"
@@ -100,7 +106,7 @@ if [[ -n "$SUBSYSTEM" ]]; then
     PREDICATE="subsystem == \"$SUBSYSTEM\""
 else
     # Match all Peekaboo-related subsystems
-    PREDICATE="(subsystem == \"boo.peekaboo.core\" OR subsystem == \"boo.peekaboo.inspector\" OR subsystem == \"boo.peekaboo.playground\" OR subsystem == \"boo.peekaboo.app\" OR subsystem == \"boo.peekaboo\")"
+    PREDICATE="(subsystem == \"boo.peekaboo.core\" OR subsystem == \"boo.peekaboo.inspector\" OR subsystem == \"boo.peekaboo.playground\" OR subsystem == \"boo.peekaboo.app\" OR subsystem == \"boo.peekaboo\" OR subsystem == \"boo.peekaboo.axorcist\")"
 fi
 
 if [[ -n "$CATEGORY" ]]; then
@@ -112,21 +118,27 @@ if [[ -n "$SEARCH" ]]; then
 fi
 
 # Build command
+# Add sudo prefix if private flag is set
+SUDO_PREFIX=""
+if [[ "$PRIVATE" == true ]]; then
+    SUDO_PREFIX="sudo -n "
+fi
+
 if [[ "$FOLLOW" == true ]]; then
-    CMD="log stream --predicate '$PREDICATE' --level $LEVEL"
+    CMD="${SUDO_PREFIX}log stream --predicate '$PREDICATE' --level $LEVEL"
 else
     # log show uses different flags for log levels
     case $LEVEL in
         debug)
-            CMD="log show --predicate '$PREDICATE' --debug --last $TIME"
+            CMD="${SUDO_PREFIX}log show --predicate '$PREDICATE' --debug --last $TIME"
             ;;
         error)
             # For errors, we need to filter by eventType in the predicate
             PREDICATE="$PREDICATE AND eventType == \"error\""
-            CMD="log show --predicate '$PREDICATE' --info --debug --last $TIME"
+            CMD="${SUDO_PREFIX}log show --predicate '$PREDICATE' --info --debug --last $TIME"
             ;;
         *)
-            CMD="log show --predicate '$PREDICATE' --info --last $TIME"
+            CMD="${SUDO_PREFIX}log show --predicate '$PREDICATE' --info --last $TIME"
             ;;
     esac
 fi
