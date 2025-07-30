@@ -133,32 +133,7 @@ extension PeekabooAgentService {
         return try await operation(app)
     }
     
-    // TODO: This function needs to be updated once UIAutomationServiceProtocol supports findElement
-    /*
-    /// Common pattern for element finding with retry
-    func findElementWithRetry(
-        criteria: UIElementSearchCriteria,
-        in appName: String?,
-        context: PeekabooServices,
-        maxAttempts: Int = 3
-    ) async throws -> Element {
-        for attempt in 1...maxAttempts {
-            do {
-                return try await context.uiAutomation.findElement(
-                    matching: criteria,
-                    in: appName
-                )
-            } catch {
-                if attempt < maxAttempts {
-                    // Wait before retry
-                    try await Task.sleep(nanoseconds: TimeInterval.shortDelay.nanoseconds)
-                } else {
-                    throw error
-                }
-            }
-        }
-        
-        throw PeekabooError.elementNotFound(type: "element", in: appName ?? "screen")
-    }
-    */
+    // Note: Element finding is implemented in ElementTools.swift using detectElements
+    // The findElement approach was removed in favor of detecting all elements
+    // and searching through them, which provides more flexibility and information
 }
