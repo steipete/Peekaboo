@@ -75,9 +75,7 @@ struct MainWindow: View {
 
     private var headerView: some View {
         HStack {
-            Image("ghost.idle")
-                .resizable()
-                .frame(width: 24, height: 24)
+            GhostImageView(state: .idle, size: CGSize(width: 24, height: 24))
 
             Text("Peekaboo")
                 .font(.headline)
@@ -184,10 +182,7 @@ struct MainWindow: View {
 
     private var emptyStateView: some View {
         VStack(spacing: 16) {
-            Image("ghost.peek1")
-                .resizable()
-                .frame(width: 64, height: 64)
-                .foregroundColor(.secondary)
+            GhostImageView(state: .peek1, size: CGSize(width: 64, height: 64))
 
             Text("Hi! I'm Peekaboo")
                 .font(.title2)
@@ -484,7 +479,7 @@ struct MessageRow: View {
                 if !self.message.toolCalls.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(self.message.toolCalls) { toolCall in
-                            ToolCallView(toolCall: toolCall)
+                            MainWindowToolCallView(toolCall: toolCall)
                         }
                     }
                     .padding(.top, 4)
@@ -582,7 +577,7 @@ struct SessionListPopover: View {
 
 // MARK: - Tool Call View
 
-struct ToolCallView: View {
+struct MainWindowToolCallView: View {
     let toolCall: ConversationToolCall
     @State private var appeared = false
 

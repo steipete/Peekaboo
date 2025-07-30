@@ -271,6 +271,13 @@ final class PeekabooSettings {
             self.updateConfigFile()
         }
     }
+    
+    var annotatedScreenshotEnabled: Bool = true {
+        didSet {
+            self.save()
+            self.updateConfigFile()
+        }
+    }
 
     // Computed Properties
     var hasValidAPIKey: Bool {

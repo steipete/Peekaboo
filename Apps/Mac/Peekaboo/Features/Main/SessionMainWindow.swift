@@ -729,9 +729,7 @@ struct EmptySessionView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Image("ghost.idle")
-                .resizable()
-                .frame(width: 80, height: 80)
+            GhostImageView(state: .idle, size: CGSize(width: 80, height: 80))
                 .opacity(0.5)
 
             Text("No Session Selected")
@@ -1509,7 +1507,7 @@ struct ImageInspectorView: View {
 
 // MARK: - Animated Thinking Components
 
-struct AnimatedThinkingDots: View {
+struct SessionAnimatedThinkingDots: View {
     var body: some View {
         Image(systemName: "ellipsis")
             .foregroundStyle(.secondary)
@@ -1558,7 +1556,7 @@ struct ProgressIndicatorView: View {
                     .scaleEffect(1 + sin(self.animationPhase) * 0.1)
                     .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: self.animationPhase)
             } else if self.agent.isThinking {
-                AnimatedThinkingDots()
+                SessionAnimatedThinkingDots()
             } else {
                 ProgressView()
                     .progressViewStyle(.circular)

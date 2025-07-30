@@ -20,9 +20,7 @@ struct OnboardingView: View {
             Spacer()
 
             // Ghost mascot
-            Image("ghost.idle")
-                .resizable()
-                .frame(width: 80, height: 80)
+            GhostImageView(state: .idle, size: CGSize(width: 80, height: 80))
 
             // Welcome text
             VStack(spacing: 8) {
@@ -177,9 +175,7 @@ struct PermissionsView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image("ghost.peek2")
-                .resizable()
-                .frame(width: 80, height: 80)
+            GhostImageView(state: .peek2, size: CGSize(width: 80, height: 80))
 
             VStack(spacing: 8) {
                 Text("Permissions Required")
