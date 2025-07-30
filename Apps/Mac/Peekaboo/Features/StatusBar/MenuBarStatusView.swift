@@ -24,18 +24,28 @@ struct MenuBarStatusView: View {
             
             Divider()
             
-            // Main content area
-            Group {
-                if agent.isProcessing {
-                    activeSessionView
-                } else {
-                    idleView
-                }
+            // Main content area - always show current session if available
+            if let currentSession = sessionStore.currentSession {
+                currentSessionView(currentSession)
+                    .frame(maxHeight: 350)
+            } else if agent.isProcessing {
+                // Fallback when agent is processing but no session yet
+                activeSessionView
+                    .frame(maxHeight: 350)
+            } else {
+                // Empty state when no session
+                emptyStateView
+                    .frame(minHeight: 150)
             }
-            .frame(minHeight: 200)
+            
+            Divider()
+            
+            // Bottom action buttons
+            actionButtonsView
+                .padding()
+                .background(.regularMaterial)
         }
-        .frame(width: 400)
-        .frame(minHeight: 300)
+        .frame(width: 380)
         .background(.ultraThinMaterial)
         .onAppear {
             hasAppeared = true
@@ -127,6 +137,134 @@ struct MenuBarStatusView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Cancel current task")
+            }
+        }
+    }
+    
+    private func currentSessionView(_ session: ConversationSession) -> some View {
+        VStack(spacing: 0) {
+            // Live task status bar if processing
+            if agent.isProcessing {
+                if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
+                    HStack(spacing: 8) {
+                        AnimatedToolIcon(toolName: currentTool.toolName, isRunning: true)
+                            .frame(width: 16, height: 16)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                            
+                            if let duration = currentTool.duration {
+                                Text(ToolFormatter.formatDuration(duration))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        Button(action: { agent.cancelCurrentTask() }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.red)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Cancel current task")
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(Color.orange.opacity(0.1))
+                }
+            }
+            
+            Divider()
+            
+            // Messages scroll view
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(session.messages) { message in
+                            MessageRowCompact(message: message)
+                                .id(message.id)
+                        }
+                        
+                        // Show thinking indicator if needed
+                        if let lastMessage = session.messages.last,
+                           lastMessage.role == .system,
+                           lastMessage.content.contains("🤔") {
+                            ThinkingIndicator()
+                                .padding(.horizontal)
+                        }
+                    }
+                    .padding()
+                    .onChange(of: session.messages.count) { _, _ in
+                        // Auto-scroll to bottom on new messages
+                        if let lastMessage = session.messages.last {
+                            withAnimation {
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Input area (shown when idle or processing)
+            Divider()
+            
+            HStack(spacing: 8) {
+                if isVoiceMode {
+                    Image(systemName: "mic.fill")
+                        .foregroundColor(.red)
+                        .font(.caption)
+                }
+                
+                TextField(agent.isProcessing ? "Ask a follow-up..." : "Ask Peekaboo...", text: $inputText)
+                    .textFieldStyle(.plain)
+                    .font(.body)
+                    .onSubmit {
+                        submitInput()
+                    }
+                
+                Button(action: submitInput) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.title2)
+                }
+                .buttonStyle(.plain)
+                .disabled(inputText.isEmpty)
+            }
+            .padding(10)
+            .background(.regularMaterial)
+        }
+    }
+    
+    private func submitInput() {
+        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        
+        // Add user message to current session (or create new if needed)
+        if let session = sessionStore.currentSession {
+            sessionStore.addMessage(
+                ConversationMessage(role: .user, content: text),
+                to: session
+            )
+        } else {
+            // Create new session if needed
+            let newSession = sessionStore.createSession(title: text)
+            sessionStore.addMessage(
+                ConversationMessage(role: .user, content: text),
+                to: newSession
+            )
+        }
+        
+        inputText = ""
+        
+        // Execute the task
+        Task {
+            do {
+                try await agent.executeTask(text)
+            } catch {
+                print("Failed to execute task: \(error)")
             }
         }
     }
@@ -357,6 +495,47 @@ struct MenuBarStatusView: View {
                 }
             }
             .frame(maxHeight: 200)
+        }
+    }
+    
+    @ViewBuilder
+    private var emptyStateView: some View {
+        VStack(spacing: 16) {
+            // Empty state icon
+            Image(systemName: "moon.stars")
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
+                .symbolEffect(.pulse.byLayer, options: .repeating.speed(0.5))
+            
+            Text("No active session")
+                .font(.headline)
+                .foregroundColor(.secondary)
+            
+            Text("Start a new session or open the main window")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+        }
+        .padding()
+    }
+    
+    @ViewBuilder
+    private var actionButtonsView: some View {
+        HStack(spacing: 12) {
+            Button(action: openMainWindow) {
+                Label("Open Window", systemImage: "rectangle.stack")
+                    .frame(maxWidth: .infinity)
+            }
+            .controlSize(.regular)
+            .buttonStyle(.bordered)
+            
+            Button(action: createNewSession) {
+                Label("New Session", systemImage: "plus.circle")
+                    .frame(maxWidth: .infinity)
+            }
+            .controlSize(.regular)
+            .buttonStyle(.borderedProminent)
         }
     }
     

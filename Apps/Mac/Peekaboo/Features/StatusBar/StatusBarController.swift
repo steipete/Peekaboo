@@ -51,7 +51,8 @@ final class StatusBarController: NSObject {
     private func setupStatusItem() {
         guard let button = statusItem.button else { return }
 
-        button.image = NSImage(named: "ghost.idle")
+        // Use our custom ghost icon
+        button.image = GhostMenuIcon.createIcon()
         button.image?.isTemplate = true
         button.action = #selector(self.statusItemClicked)
         button.target = self
