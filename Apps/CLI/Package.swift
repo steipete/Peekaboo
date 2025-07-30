@@ -23,7 +23,6 @@ let package = Package(
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
             ],
             swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency"),
                 .unsafeFlags(["-parse-as-library"]),
             ],
             linkerSettings: [
@@ -39,7 +38,6 @@ let package = Package(
         .testTarget(
             name: "peekabooTests",
             dependencies: ["peekaboo"],
-            swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency"),
-            ]),
-    ])
+            swiftSettings: []),
+    ],
+    swiftLanguageModes: [.v6])

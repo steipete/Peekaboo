@@ -52,5 +52,6 @@ let package = Package(
             path: "Tests/AXorcistTests" // Explicit path
             // Sources will be inferred by SPM
         ),
-    ]
+    ],
+    swiftLanguageModes: [.v6]
 )

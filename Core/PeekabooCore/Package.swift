@@ -33,4 +33,5 @@ let package = Package(
         .testTarget(
             name: "PeekabooTests",
             dependencies: ["PeekabooCore"]),
-    ])
+    ],
+    swiftLanguageModes: [.v6])

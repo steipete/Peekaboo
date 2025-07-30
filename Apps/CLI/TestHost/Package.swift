@@ -17,9 +17,8 @@ let package = Package(
             name: "PeekabooTestHost",
             path: ".",
             sources: ["TestHostApp.swift", "ContentView.swift"],
-            swiftSettings: [
-                .swiftLanguageMode(.v6),
-            ]
+            swiftSettings: []
         ),
-    ]
+    ],
+    swiftLanguageModes: [.v6]
 )

@@ -32,4 +32,5 @@ let package = Package(
             dependencies: ["Peekaboo"],
             path: "PeekabooTests",
             exclude: ["README.md"]),
-    ])
+    ],
+    swiftLanguageModes: [.v6])
