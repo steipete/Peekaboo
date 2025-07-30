@@ -15,21 +15,35 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
             It supports intelligent element finding, actionability checks, and
             automatic waiting for elements to become available.
 
+            FEATURES:
+              • Fuzzy matching - Partial text and case-insensitive search
+              • Smart waiting - Automatically waits for elements to appear
+              • Helpful errors - Clear guidance when elements aren't found
+              • Menu bar support - Works with menu bar items
+
             EXAMPLES:
               peekaboo click "Sign In"              # Click button with text
+              peekaboo click "sign"                 # Partial match (fuzzy)
               peekaboo click --id element_42        # Click specific element ID
               peekaboo click --coords 100,200       # Click at coordinates
-              peekaboo click "Submit" --wait 5      # Wait up to 5s for element
+              peekaboo click "Submit" --wait-for 5000  # Wait up to 5s for element
               peekaboo click "Menu" --double        # Double-click
               peekaboo click "File" --right         # Right-click
 
             ELEMENT MATCHING:
               Elements are matched by searching text in:
-              - Title/Label content
-              - Value text
+              - Title/Label content (case-insensitive)
+              - Value text (partial matching)
               - Role descriptions
 
               Use --id for precise element targeting from 'see' output.
+              
+            TROUBLESHOOTING:
+              If elements aren't found:
+              - Run 'peekaboo see' first to capture the UI
+              - Use 'peekaboo menubar list' for menu bar items
+              - Try partial text matching
+              - Increase --wait-for timeout
         """
     )
 
@@ -131,7 +145,12 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     )
 
                     if !waitResult.found {
-                        throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
+                        var message = "Element with ID '\(elementId)' not found"
+                        message += "\n\n💡 Hints:"
+                        message += "\n  • Run 'peekaboo see' first to capture UI elements"
+                        message += "\n  • Check that the element ID is correct (e.g., B1, T2)"
+                        message += "\n  • Element may have disappeared or changed"
+                        throw PeekabooError.elementNotFound(message)
                     }
 
                 } else if let searchQuery = query {
@@ -144,13 +163,18 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     )
 
                     if !waitResult.found {
-                        throw PeekabooError.elementNotFound(
-                            "No actionable element found matching '\(searchQuery)' after \(self.waitFor)ms"
-                        )
+                        var message = "No actionable element found matching '\(searchQuery)' after \(self.waitFor)ms"
+                        message += "\n\n💡 Hints:"
+                        message += "\n  • Menu bar items often require clicking on their icon coordinates"
+                        message += "\n  • Try 'peekaboo see' first to get element IDs"
+                        message += "\n  • Use partial text matching (case-insensitive)"
+                        message += "\n  • Element might be disabled or not visible"
+                        message += "\n  • Try increasing --wait-for timeout"
+                        throw PeekabooError.elementNotFound(message)
                     }
 
                 } else {
-                    throw ArgumentParser.ValidationError("Specify an element query, --on/--id, or --coords")
+                    throw ArgumentParser.ValidationError("Specify an element query, --on/--id, or --coords. Did you mean to pass the query as a positional argument? Usage: `peekaboo click \"button text\"`")
                 }
             }
 

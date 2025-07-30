@@ -16,9 +16,15 @@ ApplicationResolvable {
             The 'see' command captures a screenshot and analyzes the UI hierarchy,
             creating an interactive map that subsequent commands can use.
 
+            SPECIAL APP VALUES:
+              • menubar   - Capture just the menu bar area (24px height)
+              • frontmost - Capture the currently active window
+
             EXAMPLES:
               peekaboo see                           # Capture frontmost window
               peekaboo see --app Safari              # Capture Safari window
+              peekaboo see --app menubar             # Capture menu bar only
+              peekaboo see --app frontmost           # Capture active window
               peekaboo see --pid 12345                # Capture by process ID
               peekaboo see --mode screen             # Capture entire screen
               peekaboo see --window-title "GitHub"   # Capture specific window
@@ -31,7 +37,7 @@ ApplicationResolvable {
         """
     )
 
-    @Option(help: "Application name to capture")
+    @Option(help: "Application name to capture, or special values: 'menubar', 'frontmost'")
     var app: String?
 
     @Option(name: .long, help: "Target application by process ID")
@@ -157,6 +163,66 @@ ApplicationResolvable {
     }
 
     private func performCaptureWithDetection() async throws -> CaptureAndDetectionResult {
+        // Handle special app cases
+        let captureResult: CaptureResult
+        
+        if let appName = self.app?.lowercased() {
+            switch appName {
+            case "menubar":
+                Logger.shared.verbose("Capturing menu bar area", category: "Capture")
+                captureResult = try await self.captureMenuBar()
+            case "frontmost":
+                Logger.shared.verbose("Capturing frontmost window (via --app frontmost)", category: "Capture")
+                captureResult = try await PeekabooServices.shared.screenCapture.captureFrontmost()
+            default:
+                // Use normal capture logic
+                captureResult = try await self.performStandardCapture()
+            }
+        } else {
+            // Use normal capture logic
+            captureResult = try await self.performStandardCapture()
+        }
+
+        // Save screenshot
+        let outputPath = try saveScreenshot(captureResult.imageData)
+
+        // Create window context from capture metadata
+        let windowContext = WindowContext(
+            applicationName: captureResult.metadata.applicationInfo?.name,
+            windowTitle: captureResult.metadata.windowInfo?.title,
+            windowBounds: captureResult.metadata.windowInfo?.bounds
+        )
+
+        // Detect UI elements with window context
+        let detectionResult = try await PeekabooServices.shared.automation.detectElements(
+            in: captureResult.imageData,
+            sessionId: nil,
+            windowContext: windowContext
+        )
+
+        // Update the result with the correct screenshot path
+        let resultWithPath = ElementDetectionResult(
+            sessionId: detectionResult.sessionId,
+            screenshotPath: outputPath,
+            elements: detectionResult.elements,
+            metadata: detectionResult.metadata
+        )
+
+        // Store the result in session
+        try await PeekabooServices.shared.sessions.storeDetectionResult(
+            sessionId: detectionResult.sessionId,
+            result: resultWithPath
+        )
+
+        return CaptureAndDetectionResult(
+            sessionId: detectionResult.sessionId,
+            screenshotPath: outputPath,
+            elements: detectionResult.elements,
+            metadata: detectionResult.metadata
+        )
+    }
+    
+    private func performStandardCapture() async throws -> CaptureResult {
         let effectiveMode = self.determineMode()
         Logger.shared.verbose(
             "Determined capture mode",
@@ -230,46 +296,29 @@ ApplicationResolvable {
             Logger.shared.verbose("Capturing frontmost window")
             captureResult = try await PeekabooServices.shared.screenCapture.captureFrontmost()
         }
-
-        // Save screenshot
-        let outputPath = try saveScreenshot(captureResult.imageData)
-
-        // Create window context from capture metadata
-        let windowContext = WindowContext(
-            applicationName: captureResult.metadata.applicationInfo?.name,
-            windowTitle: captureResult.metadata.windowInfo?.title,
-            windowBounds: captureResult.metadata.windowInfo?.bounds
-        )
-
-        // Detect UI elements with window context
-        let detectionResult = try await PeekabooServices.shared.automation.detectElements(
-            in: captureResult.imageData,
-            sessionId: nil,
-            windowContext: windowContext
-        )
-
-        // Update the result with the correct screenshot path
-        let resultWithPath = ElementDetectionResult(
-            sessionId: detectionResult.sessionId,
-            screenshotPath: outputPath,
-            elements: detectionResult.elements,
-            metadata: detectionResult.metadata
-        )
-
-        // Store the result in session
-        try await PeekabooServices.shared.sessions.storeDetectionResult(
-            sessionId: detectionResult.sessionId,
-            result: resultWithPath
-        )
-
-        return CaptureAndDetectionResult(
-            sessionId: detectionResult.sessionId,
-            screenshotPath: outputPath,
-            elements: detectionResult.elements,
-            metadata: detectionResult.metadata
-        )
+        
+        return captureResult
     }
 
+    private func captureMenuBar() async throws -> CaptureResult {
+        // Get the main screen bounds
+        guard let mainScreen = NSScreen.main else {
+            throw PeekabooError.captureFailed("No main screen found")
+        }
+        
+        // Menu bar is at the top of the screen
+        let menuBarHeight: CGFloat = 24.0 // Standard macOS menu bar height
+        let menuBarRect = CGRect(
+            x: mainScreen.frame.origin.x,
+            y: mainScreen.frame.origin.y + mainScreen.frame.height - menuBarHeight,
+            width: mainScreen.frame.width,
+            height: menuBarHeight
+        )
+        
+        // Capture the menu bar area
+        return try await PeekabooServices.shared.screenCapture.captureArea(menuBarRect)
+    }
+    
     private func saveScreenshot(_ imageData: Data) throws -> String {
         let outputPath: String
 

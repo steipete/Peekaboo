@@ -35,6 +35,7 @@ struct Peekaboo: AsyncParsableCommand {
 
           peekaboo agent "Open TextEdit and write Hello"  # AI agent automation
           peekaboo "Click the login button and sign in"   # Direct agent invocation
+          peekaboo learn                                  # Load complete usage guide for AI
 
           peekaboo see --app Safari                      # Identify UI elements
           peekaboo click "Submit" --space-switch         # Click with auto-focus & Space switching
@@ -88,6 +89,15 @@ struct Peekaboo: AsyncParsableCommand {
           For detailed configuration options and environment variables,
           see: https://github.com/steipete/peekaboo#configuration
 
+        LEARNING PEEKABOO:
+          For AI agents and automation scripts, use the learn command to load
+          all Peekaboo documentation in one go:
+          
+          peekaboo learn              # Complete usage guide with all tools
+          
+          This outputs comprehensive documentation including system instructions,
+          all available tools with parameters and examples, and best practices.
+
         SEE ALSO:
           Website: https://peekaboo.boo
           GitHub: https://github.com/steipete/peekaboo
@@ -100,6 +110,7 @@ struct Peekaboo: AsyncParsableCommand {
             ListCommand.self,
             ConfigCommand.self,
             PermissionsCommand.self,
+            LearnCommand.self,
             // Interaction commands
             SeeCommand.self,
             ClickCommand.self,
@@ -115,6 +126,7 @@ struct Peekaboo: AsyncParsableCommand {
             CleanCommand.self,
             WindowCommand.self,
             MenuCommand.self,
+            MenuBarCommand.self,
             AppCommand.self,
             DockCommand.self,
             DialogCommand.self,
@@ -147,10 +159,10 @@ struct Main {
         if !args.isEmpty {
             // Check if the first argument is NOT a known subcommand
             let knownSubcommands = [
-                "image", "list", "config", "permissions",
+                "image", "list", "config", "permissions", "learn",
                 "see", "click", "type", "scroll", "hotkey", "swipe",
                 "drag", "move", "run", "sleep", "clean", "window",
-                "menu", "app", "dock", "dialog", "space", "agent",
+                "menu", "menubar", "app", "dock", "dialog", "space", "agent",
                 "help", "--help", "-h", "--version"
             ]
 

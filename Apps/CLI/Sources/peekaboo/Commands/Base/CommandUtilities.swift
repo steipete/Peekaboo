@@ -294,6 +294,14 @@ extension ApplicationResolver {
             return try await PeekabooServices.shared.applications.findApplication(identifier: identifier)
         } catch {
             // Provide more specific error messages if needed
+            if identifier.lowercased() == "frontmost" {
+                var message = "Application 'frontmost' not found"
+                message += "\n\n💡 Note: 'frontmost' is not a valid app name. To work with the currently active app:"
+                message += "\n  • Use `see` without arguments to capture current screen"
+                message += "\n  • Use `app focus` with a specific app name"
+                message += "\n  • Use `--app frontmost` with image/see commands to capture the active window"
+                throw PeekabooError.appNotFound(identifier)
+            }
             throw error
         }
     }

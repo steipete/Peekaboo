@@ -1,6 +1,17 @@
 import CoreGraphics
 import Foundation
 
+/// Result of a click operation
+public struct ClickResult: Sendable {
+    public let elementDescription: String
+    public let location: CGPoint?
+    
+    public init(elementDescription: String, location: CGPoint?) {
+        self.elementDescription = elementDescription
+        self.location = location
+    }
+}
+
 /// Protocol defining menu interaction operations
 @MainActor
 public protocol MenuServiceProtocol: Sendable {
@@ -32,6 +43,20 @@ public protocol MenuServiceProtocol: Sendable {
     /// List all system menu extras
     /// - Returns: Array of menu extra information
     func listMenuExtras() async throws -> [MenuExtraInfo]
+    
+    /// List all menu bar items (status items) - compatibility method
+    /// - Returns: Array of menu bar item information
+    func listMenuBarItems() async throws -> [MenuBarItemInfo]
+    
+    /// Click a menu bar item by name - compatibility method
+    /// - Parameter name: Name of the menu bar item
+    /// - Returns: Click result
+    func clickMenuBarItem(named name: String) async throws -> ClickResult
+    
+    /// Click a menu bar item by index - compatibility method
+    /// - Parameter index: Index of the menu bar item
+    /// - Returns: Click result
+    func clickMenuBarItem(at index: Int) async throws -> ClickResult
 }
 
 /// Structure representing an application's menu bar
@@ -138,6 +163,28 @@ public struct KeyboardShortcut: Sendable {
         self.modifiers = modifiers
         self.key = key
         self.displayString = displayString
+    }
+}
+
+/// Information about a menu bar item (status bar item)
+public struct MenuBarItemInfo: Sendable {
+    /// Title of the menu bar item
+    public let title: String?
+    
+    /// Index in the menu bar
+    public let index: Int
+    
+    /// Whether it's currently visible
+    public let isVisible: Bool
+    
+    /// Optional description
+    public let description: String?
+    
+    public init(title: String?, index: Int, isVisible: Bool = true, description: String? = nil) {
+        self.title = title
+        self.index = index
+        self.isVisible = isVisible
+        self.description = description
     }
 }
 

@@ -697,31 +697,42 @@ private final class StreamDelegate: NSObject, SCStreamDelegate, @unchecked Senda
 private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable {
     private var continuation: CheckedContinuation<CGImage, Error>?
     private var timeoutTask: Task<Void, Never>?
+    private let queue = DispatchQueue(label: "com.peekaboo.captureOutput", attributes: .concurrent)
 
     deinit {
-        // Ensure continuation is resumed if object is deallocated
-        if let continuation {
-            continuation
-                .resume(throwing: OperationError
-                    .captureFailed(reason: "CaptureOutput deallocated before frame captured"))
-            self.continuation = nil
-        }
+        // Cancel timeout task first to prevent race condition
         timeoutTask?.cancel()
+        
+        // Ensure continuation is resumed if object is deallocated
+        queue.sync(flags: .barrier) {
+            if let continuation = self.continuation {
+                continuation
+                    .resume(throwing: OperationError
+                        .captureFailed(reason: "CaptureOutput deallocated before frame captured"))
+                self.continuation = nil
+            }
+        }
     }
 
     func waitForImage() async throws -> CGImage {
         try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
+            queue.async(flags: .barrier) {
+                self.continuation = continuation
+            }
 
             // Add a timeout to ensure the continuation is always resumed
             // Reduced from 10 seconds to 3 seconds for faster failure detection
-            self.timeoutTask = Task {
+            self.timeoutTask = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-                if let cont = self.continuation {
-                    cont.resume(throwing: OperationError.timeout(
-                        operation: "CaptureOutput.waitForImage",
-                        duration: 3.0))
-                    self.continuation = nil
+                guard let self else { return }
+                
+                self.queue.async(flags: .barrier) {
+                    if let cont = self.continuation {
+                        cont.resume(throwing: OperationError.timeout(
+                            operation: "CaptureOutput.waitForImage",
+                            duration: 3.0))
+                        self.continuation = nil
+                    }
                 }
             }
         }
@@ -735,8 +746,12 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
         self.timeoutTask = nil
 
         guard let imageBuffer = sampleBuffer.imageBuffer else {
-            self.continuation?.resume(throwing: OperationError.captureFailed(reason: "No image buffer in sample"))
-            self.continuation = nil
+            queue.async(flags: .barrier) {
+                if let continuation = self.continuation {
+                    continuation.resume(throwing: OperationError.captureFailed(reason: "No image buffer in sample"))
+                    self.continuation = nil
+                }
+            }
             return
         }
 
@@ -744,14 +759,22 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
         let context = CIContext()
 
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-            self.continuation?
-                .resume(throwing: OperationError.captureFailed(reason: "Failed to create CGImage from buffer"))
-            self.continuation = nil
+            queue.async(flags: .barrier) {
+                if let continuation = self.continuation {
+                    continuation
+                        .resume(throwing: OperationError.captureFailed(reason: "Failed to create CGImage from buffer"))
+                    self.continuation = nil
+                }
+            }
             return
         }
 
-        self.continuation?.resume(returning: cgImage)
-        self.continuation = nil
+        queue.async(flags: .barrier) {
+            if let continuation = self.continuation {
+                continuation.resume(returning: cgImage)
+                self.continuation = nil
+            }
+        }
     }
 }
 
