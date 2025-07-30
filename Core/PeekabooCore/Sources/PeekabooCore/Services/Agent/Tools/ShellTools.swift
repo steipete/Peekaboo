@@ -1,6 +1,71 @@
 import CoreGraphics
 import Foundation
 
+// MARK: - Tool Definitions
+
+@available(macOS 14.0, *)
+public struct ShellToolDefinitions {
+    public static let shell = UnifiedToolDefinition(
+        name: "shell",
+        commandName: "shell",
+        abstract: "Execute a shell command",
+        discussion: """
+            Executes a shell command using bash and captures the output.
+            Commands run with a configurable timeout and safety checks.
+            
+            EXAMPLES:
+              peekaboo shell "ls -la"
+              peekaboo shell "git status" --working-directory ~/Projects
+              peekaboo shell "find . -name '*.swift'" --timeout 60
+        """,
+        category: .system,
+        parameters: [
+            ParameterDefinition(
+                name: "command",
+                type: .string,
+                description: "Shell command to execute",
+                required: true,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .argument)
+            ),
+            ParameterDefinition(
+                name: "working-directory",
+                type: .string,
+                description: "Working directory for the command",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option, longName: "working-directory")
+            ),
+            ParameterDefinition(
+                name: "timeout",
+                type: .integer,
+                description: "Command timeout in seconds (default: 30)",
+                required: false,
+                defaultValue: "30",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            )
+        ],
+        examples: [
+            #"{"command": "ls -la"}"#,
+            #"{"command": "git status", "working_directory": "~/Projects"}"#,
+            #"{"command": "python3 script.py", "timeout": 60}"#
+        ],
+        agentGuidance: """
+            AGENT TIPS:
+            - Commands run in bash with -c flag
+            - Output is truncated to 5000 characters
+            - Default timeout is 30 seconds
+            - Some dangerous commands are blocked for safety
+            - Shows exit code and execution time
+            - Working directory defaults to current directory
+            - Use quotes for complex commands with pipes
+        """
+    )
+}
+
 // MARK: - Shell Tools
 
 /// Shell command execution tool
@@ -8,19 +73,12 @@ import Foundation
 extension PeekabooAgentService {
     /// Create the shell tool
     func createShellTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "shell",
-            description: "Execute a shell command",
-            parameters: .object(
-                properties: [
-                    "command": ParameterSchema.string(
-                        description: "Shell command to execute"),
-                    "working_directory": ParameterSchema.string(
-                        description: "Optional: Working directory for the command"),
-                    "timeout": ParameterSchema.integer(
-                        description: "Command timeout in seconds (default: 30)"),
-                ],
-                required: ["command"]),
+        let definition = ShellToolDefinitions.shell
+        
+        return createTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentParameters(),
             handler: { params, _ in
                 let command = try params.string("command")
                 let workingDirectory = params.string("working_directory", default: nil)

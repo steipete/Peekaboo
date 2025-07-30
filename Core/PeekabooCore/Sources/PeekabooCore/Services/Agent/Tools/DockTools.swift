@@ -2,6 +2,90 @@ import AXorcist
 import CoreGraphics
 import Foundation
 
+// MARK: - Tool Definitions
+
+@available(macOS 14.0, *)
+public struct DockToolDefinitions {
+    public static let dockLaunch = UnifiedToolDefinition(
+        name: "dock_launch",
+        commandName: "dock-launch",
+        abstract: "Launch an application from the Dock",
+        discussion: """
+            Clicks on an application in the Dock to launch or activate it.
+            If the app is already running, it will be brought to the front.
+            
+            EXAMPLES:
+              peekaboo dock-launch Safari
+              peekaboo dock-launch "Google Chrome"
+              peekaboo dock-launch Terminal
+        """,
+        category: .app,
+        parameters: [
+            ParameterDefinition(
+                name: "name",
+                type: .string,
+                description: "Application name as it appears in the Dock",
+                required: true,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .argument)
+            )
+        ],
+        examples: [
+            #"{"name": "Safari"}"#,
+            #"{"name": "Google Chrome"}"#
+        ],
+        agentGuidance: """
+            AGENT TIPS:
+            - Use exact names as they appear in the Dock
+            - Shows window count after launch/activation
+            - If app was already running, it just activates it
+            - Some apps may take time to fully launch
+            - Use 'list_dock' to see available apps
+        """
+    )
+    
+    public static let listDock = UnifiedToolDefinition(
+        name: "list_dock",
+        commandName: "list-dock",
+        abstract: "List all items in the Dock",
+        discussion: """
+            Lists all items in the macOS Dock, including applications, folders,
+            and recent items. Shows which apps are currently running.
+            
+            EXAMPLES:
+              peekaboo list-dock
+              peekaboo list-dock --section apps
+              peekaboo list-dock --section recent
+        """,
+        category: .app,
+        parameters: [
+            ParameterDefinition(
+                name: "section",
+                type: .enumeration,
+                description: "Dock section to list",
+                required: false,
+                defaultValue: "all",
+                options: ["apps", "recent", "all"],
+                cliOptions: CLIOptions(argumentType: .option)
+            )
+        ],
+        examples: [
+            #"{}"#,
+            #"{"section": "apps"}"#,
+            #"{"section": "recent"}"#
+        ],
+        agentGuidance: """
+            AGENT TIPS:
+            - Shows (running) indicator for active apps
+            - 'recent' section shows recently used documents/folders
+            - Use this to find exact app names for dock_launch
+            - Dock items are listed in their visual order
+            - Some items may be separators or special folders
+        """
+    )
+}
+
 // MARK: - Dock Tools
 
 /// Dock interaction tools for launching apps and listing dock items
@@ -9,14 +93,12 @@ import Foundation
 extension PeekabooAgentService {
     /// Create the dock launch tool
     func createDockLaunchTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "dock_launch",
-            description: "Launch an application from the Dock",
-            parameters: .object(
-                properties: [
-                    "name": ParameterSchema.string(description: "Application name as it appears in the Dock"),
-                ],
-                required: ["name"]),
+        let definition = DockToolDefinitions.dockLaunch
+        
+        return createTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentParameters(),
             handler: { params, context in
                 let appName = try params.string("name")
 
@@ -86,16 +168,12 @@ extension PeekabooAgentService {
 
     /// Create the list dock tool
     func createListDockTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "list_dock",
-            description: "List all items in the Dock",
-            parameters: .object(
-                properties: [
-                    "section": ParameterSchema.enumeration(
-                        ["apps", "recent", "all"],
-                        description: "Dock section to list (default: all)"),
-                ],
-                required: []),
+        let definition = DockToolDefinitions.listDock
+        
+        return createTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentParameters(),
             handler: { params, context in
                 let section = params.string("section", default: "all") ?? "all"
 

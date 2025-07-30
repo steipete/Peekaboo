@@ -2,6 +2,107 @@ import AXorcist
 import CoreGraphics
 import Foundation
 
+// MARK: - Tool Definitions
+
+@available(macOS 14.0, *)
+public struct MenuToolDefinitions {
+    public static let menuClick = UnifiedToolDefinition(
+        name: "menu_click",
+        commandName: "menu-click",
+        abstract: "Click a menu item in the menu bar",
+        discussion: """
+            Clicks a menu item in an application's menu bar using the menu path.
+            Menu paths use ">" to separate menu levels.
+            
+            EXAMPLES:
+              peekaboo menu-click "File > New"
+              peekaboo menu-click "Edit > Copy" --app Safari
+              peekaboo menu-click "Window > Minimize"
+        """,
+        category: .menu,
+        parameters: [
+            ParameterDefinition(
+                name: "path",
+                type: .string,
+                description: "Menu path (e.g., 'File > New' or 'Edit > Copy')",
+                required: true,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .argument)
+            ),
+            ParameterDefinition(
+                name: "app",
+                type: .string,
+                description: "Application name (defaults to frontmost app)",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            )
+        ],
+        examples: [
+            #"{"path": "File > New"}"#,
+            #"{"path": "Edit > Copy", "app": "Safari"}"#
+        ],
+        agentGuidance: """
+            AGENT TIPS:
+            - Use plain ellipsis "..." instead of Unicode "…"
+            - If app not specified, uses frontmost application
+            - Menu paths are case-sensitive
+            - Use 'list_menus' first to discover available menu items
+            - Some menu items may be disabled depending on context
+        """
+    )
+    
+    public static let listMenus = UnifiedToolDefinition(
+        name: "list_menus",
+        commandName: "list-menus",
+        abstract: "List available menu items",
+        discussion: """
+            Lists all available menu items for an application, showing the
+            complete menu structure including submenus and keyboard shortcuts.
+            
+            EXAMPLES:
+              peekaboo list-menus                    # List menus for frontmost app
+              peekaboo list-menus --app Safari        # List Safari menus
+              peekaboo list-menus --menu File         # Show only File menu
+        """,
+        category: .menu,
+        parameters: [
+            ParameterDefinition(
+                name: "app",
+                type: .string,
+                description: "Application name (defaults to frontmost app)",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "menu",
+                type: .string,
+                description: "Specific menu to expand (e.g., 'File', 'Edit')",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            )
+        ],
+        examples: [
+            #"{}"#,
+            #"{"app": "Safari"}"#,
+            #"{"app": "TextEdit", "menu": "File"}"#
+        ],
+        agentGuidance: """
+            AGENT TIPS:
+            - Shows keyboard shortcuts when available
+            - Disabled items are marked in the output
+            - Use this before menu_click to find exact menu paths
+            - Menu structure may change based on app state
+        """
+    )
+}
+
 // MARK: - Menu Tools
 
 /// Menu interaction tools for clicking menu items and listing menus
@@ -9,17 +110,12 @@ import Foundation
 extension PeekabooAgentService {
     /// Create the menu click tool
     func createMenuClickTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "menu_click",
-            description: "Click a menu item in the menu bar",
-            parameters: .object(
-                properties: [
-                    "path": ParameterSchema.string(
-                        description: "Menu path (e.g., 'File > New' or 'Edit > Copy')"),
-                    "app": ParameterSchema.string(
-                        description: "Optional: Application name (defaults to frontmost app)"),
-                ],
-                required: ["path"]),
+        let definition = MenuToolDefinitions.menuClick
+        
+        return createTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentParameters(),
             handler: { params, context in
                 let menuPath = try params.string("path")
                 let appName = params.string("app", default: nil)
@@ -75,17 +171,12 @@ extension PeekabooAgentService {
 
     /// Create the list menus tool
     func createListMenusTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "list_menus",
-            description: "List all available menu items for an application",
-            parameters: .object(
-                properties: [
-                    "app": ParameterSchema.string(
-                        description: "Optional: Application name (defaults to frontmost app)"),
-                    "menu": ParameterSchema.string(
-                        description: "Optional: Specific menu to expand (e.g., 'File', 'Edit')"),
-                ],
-                required: []),
+        let definition = MenuToolDefinitions.listMenus
+        
+        return createTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentParameters(),
             handler: { params, context in
                 let appName = params.string("app", default: nil)
                 let specificMenu = params.string("menu", default: nil)

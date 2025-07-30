@@ -4,26 +4,350 @@ import Foundation
 
 // MARK: - UI Automation Tools
 
+// MARK: - Tool Definitions
+
+@available(macOS 14.0, *)
+public struct UIAutomationToolDefinitions {
+    public static let click = UnifiedToolDefinition(
+        name: "click",
+        commandName: nil,
+        abstract: "Click on UI elements or coordinates",
+        discussion: """
+            The 'click' command interacts with UI elements captured by 'see'.
+            It supports intelligent element finding, actionability checks, and
+            automatic waiting for elements to become available.
+
+            FEATURES:
+              • Fuzzy matching - Partial text and case-insensitive search
+              • Smart waiting - Automatically waits for elements to appear
+              • Helpful errors - Clear guidance when elements aren't found
+              • Menu bar support - Works with menu bar items
+
+            EXAMPLES:
+              peekaboo click "Sign In"              # Click button with text
+              peekaboo click "sign"                 # Partial match (fuzzy)
+              peekaboo click --id element_42        # Click specific element ID
+              peekaboo click --coords 100,200       # Click at coordinates
+              peekaboo click "Submit" --wait-for 5000  # Wait up to 5s for element
+              peekaboo click "Menu" --double        # Double-click
+              peekaboo click "File" --right         # Right-click
+
+            ELEMENT MATCHING:
+              Elements are matched by searching text in:
+              - Title/Label content (case-insensitive)
+              - Value text (partial matching)
+              - Role descriptions
+
+              Use --id for precise element targeting from 'see' output.
+              
+            TROUBLESHOOTING:
+              If elements aren't found:
+              - Run 'peekaboo see' first to capture the UI
+              - Use 'peekaboo menubar list' for menu bar items
+              - Try partial text matching
+              - Increase --wait-for timeout
+        """,
+        category: .automation,
+        parameters: [
+            ParameterDefinition(
+                name: "query",
+                type: .string,
+                description: "Element text or query to click",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .argument)
+            ),
+            ParameterDefinition(
+                name: "session",
+                type: .string,
+                description: "Session ID (uses latest if not specified)",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "on",
+                type: .string,
+                description: "Element ID to click (e.g., B1, T2)",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "id",
+                type: .string,
+                description: "Element ID to click (alias for --on)",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "app",
+                type: .string,
+                description: "Application name to focus before clicking",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "coords",
+                type: .string,
+                description: "Click at coordinates (x,y)",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "wait-for",
+                type: .integer,
+                description: "Maximum milliseconds to wait for element",
+                required: false,
+                defaultValue: "5000",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "double",
+                type: .boolean,
+                description: "Double-click instead of single click",
+                required: false,
+                defaultValue: "false",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .flag)
+            ),
+            ParameterDefinition(
+                name: "right",
+                type: .boolean,
+                description: "Right-click (secondary click)",
+                required: false,
+                defaultValue: "false",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .flag)
+            ),
+            ParameterDefinition(
+                name: "button",
+                type: .enumeration,
+                description: "Mouse button to use",
+                required: false,
+                defaultValue: "left",
+                options: ["left", "right", "middle"],
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "modifier_keys",
+                type: .array,
+                description: "Modifier keys to hold during click",
+                required: false,
+                defaultValue: nil,
+                options: ["cmd", "shift", "option", "control"],
+                cliOptions: CLIOptions(argumentType: .option)
+            )
+        ],
+        examples: [
+            #"{"x": 100, "y": 200}"#,
+            #"{"description": "Submit button"}"#,
+            #"{"x": 50, "y": 50, "button": "right"}"#
+        ],
+        agentGuidance: """
+            AGENT TIPS:
+            - Always run 'see' first to capture UI elements
+            - Use partial text matching for flexibility
+            - Menu bar items may need coordinate clicks
+            - Wait for elements that load dynamically
+            - Check element IDs from 'see' output for precision
+        """
+    )
+    
+    public static let type = UnifiedToolDefinition(
+        name: "type",
+        commandName: nil,
+        abstract: "Type text into the currently focused element",
+        discussion: """
+            Types text into the currently focused UI element with customizable
+            typing speed and optional return key press.
+
+            EXAMPLES:
+              peekaboo type "Hello World"
+              peekaboo type "username@example.com" --press-return
+              peekaboo type "Slow typing" --delay 100
+              peekaboo type "Clear and type" --clear
+        """,
+        category: .automation,
+        parameters: [
+            ParameterDefinition(
+                name: "text",
+                type: .string,
+                description: "Text to type",
+                required: true,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .argument)
+            ),
+            ParameterDefinition(
+                name: "delay",
+                type: .integer,
+                description: "Delay between keystrokes in milliseconds",
+                required: false,
+                defaultValue: "50",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "press-return",
+                type: .boolean,
+                description: "Press return after typing",
+                required: false,
+                defaultValue: "false",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .flag)
+            ),
+            ParameterDefinition(
+                name: "clear",
+                type: .boolean,
+                description: "Clear the field before typing",
+                required: false,
+                defaultValue: "false",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .flag)
+            )
+        ],
+        examples: [
+            #"{"text": "Hello, World!"}"#,
+            #"{"text": "username@example.com", "press_return": true}"#
+        ]
+    )
+    
+    public static let scroll = UnifiedToolDefinition(
+        name: "scroll",
+        commandName: nil,
+        abstract: "Scroll the view in a specified direction",
+        discussion: """
+            Scrolls the current view or a specific element in any direction.
+
+            EXAMPLES:
+              peekaboo scroll down
+              peekaboo scroll up --amount 10
+              peekaboo scroll left --smooth
+              peekaboo scroll down --on T1
+        """,
+        category: .automation,
+        parameters: [
+            ParameterDefinition(
+                name: "direction",
+                type: .enumeration,
+                description: "Scroll direction",
+                required: true,
+                defaultValue: nil,
+                options: ["up", "down", "left", "right"],
+                cliOptions: CLIOptions(argumentType: .argument)
+            ),
+            ParameterDefinition(
+                name: "amount",
+                type: .integer,
+                description: "Number of scroll units",
+                required: false,
+                defaultValue: "5",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "smooth",
+                type: .boolean,
+                description: "Use smooth scrolling",
+                required: false,
+                defaultValue: "false",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .flag)
+            ),
+            ParameterDefinition(
+                name: "on",
+                type: .string,
+                description: "Element ID to scroll on",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            )
+        ],
+        examples: [
+            #"{"direction": "down", "amount": 10}"#,
+            #"{"direction": "up", "x": 500, "y": 300}"#
+        ]
+    )
+    
+    public static let hotkey = UnifiedToolDefinition(
+        name: "hotkey",
+        commandName: nil,
+        abstract: "Press keyboard shortcuts",
+        discussion: """
+            Presses keyboard shortcuts by simulating key combinations.
+
+            EXAMPLES:
+              peekaboo hotkey cmd,c              # Copy
+              peekaboo hotkey cmd,shift,t        # Reopen tab
+              peekaboo hotkey cmd,space          # Spotlight
+              peekaboo hotkey cmd,w --repeat 3   # Close 3 tabs
+        """,
+        category: .automation,
+        parameters: [
+            ParameterDefinition(
+                name: "keys",
+                type: .string,
+                description: "Comma-separated list of keys to press",
+                required: true,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .argument)
+            ),
+            ParameterDefinition(
+                name: "repeat",
+                type: .integer,
+                description: "Number of times to repeat",
+                required: false,
+                defaultValue: "1",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            )
+        ],
+        examples: [
+            #"{"keys": ["cmd", "c"]}"#,
+            #"{"keys": ["cmd", "shift", "t"]}"#,
+            #"{"keys": ["cmd", "w"], "repeat": 3}"#
+        ]
+    )
+}
+
 /// UI automation tools for clicking, typing, and interacting with elements
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
     /// Create the click tool
     func createClickTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "click",
-            description: "Click on a UI element (always targets the center) or specific coordinates",
-            parameters: .object(
-                properties: [
-                    "target": ParameterSchema.string(
-                        description: "Element to click - can be button text, element label (clicks center), or 'x,y' coordinates"),
-                    "app": ParameterSchema.string(
-                        description: "Optional: Application name to search within"),
-                    "double_click": ParameterSchema.boolean(
-                        description: "Whether to double-click (default: false)"),
-                    "right_click": ParameterSchema.boolean(
-                        description: "Whether to right-click (default: false)"),
-                ],
-                required: ["target"]),
+        let definition = UIAutomationToolDefinitions.click
+        
+        // Custom parameter mapping for agent tool
+        let parameters = ToolParameters.object(
+            properties: [
+                "target": ParameterSchema.string(
+                    description: "Element to click - can be button text, element label (clicks center), or 'x,y' coordinates"),
+                "app": ParameterSchema.string(
+                    description: "Optional: Application name to search within"),
+                "double_click": ParameterSchema.boolean(
+                    description: "Whether to double-click (default: false)"),
+                "right_click": ParameterSchema.boolean(
+                    description: "Whether to right-click (default: false)"),
+            ],
+            required: ["target"])
+        
+        return createTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: parameters,
             handler: { params, context in
                 let target = try params.string("target")
                 let appName = params.string("app", default: nil)
@@ -91,10 +415,10 @@ extension PeekabooAgentService {
 
     /// Create the type tool
     func createTypeTool() -> Tool<PeekabooServices> {
-        createTool(
+        return createTool(
             name: "type",
             description: "Type text at the current cursor position or into a specific field",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [
                     "text": ParameterSchema.string(
                         description: "Text to type"),
@@ -173,10 +497,10 @@ extension PeekabooAgentService {
 
     /// Create the scroll tool
     func createScrollTool() -> Tool<PeekabooServices> {
-        createTool(
+        return createTool(
             name: "scroll",
             description: "Scroll in a window or element",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [
                     "direction": ParameterSchema.enumeration(
                         ["up", "down", "left", "right"],
@@ -242,10 +566,10 @@ extension PeekabooAgentService {
 
     /// Create the hotkey tool
     func createHotkeyTool() -> Tool<PeekabooServices> {
-        createTool(
+        return createTool(
             name: "hotkey",
             description: "Press a keyboard shortcut or key combination",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [
                     "key": ParameterSchema.string(
                         description: "Main key to press (e.g., 'a', 'space', 'return', 'escape', 'tab', 'delete', 'arrow_up')"),

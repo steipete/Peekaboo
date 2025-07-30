@@ -3,6 +3,79 @@ import AXorcist
 import CoreGraphics
 import Foundation
 
+// MARK: - Tool Definitions
+
+@available(macOS 14.0, *)
+public struct ApplicationToolDefinitions {
+    public static let listApps = UnifiedToolDefinition(
+        name: "list_apps",
+        commandName: "list-apps",
+        abstract: "List all running applications",
+        discussion: """
+            Lists all currently running applications with their process IDs
+            and active status.
+            
+            EXAMPLES:
+              peekaboo list-apps
+        """,
+        category: .app,
+        parameters: [],
+        examples: [],
+        agentGuidance: """
+            AGENT TIPS:
+            - Shows all running apps including background processes
+            - Active app is marked with (active)
+            - Use app names from this list for other commands
+        """
+    )
+    
+    public static let launchApp = UnifiedToolDefinition(
+        name: "launch_app",
+        commandName: "launch-app",
+        abstract: "Launch an application",
+        discussion: """
+            Launches an application by name. If the app is already running,
+            it will be brought to the front instead.
+            
+            EXAMPLES:
+              peekaboo launch-app Safari
+              peekaboo launch-app "Google Chrome" --no-wait
+        """,
+        category: .app,
+        parameters: [
+            ParameterDefinition(
+                name: "name",
+                type: .string,
+                description: "Application name (e.g., 'Safari', 'TextEdit')",
+                required: true,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .argument)
+            ),
+            ParameterDefinition(
+                name: "no-wait",
+                type: .boolean,
+                description: "Don't wait for the app to finish launching",
+                required: false,
+                defaultValue: "false",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .flag, longName: "no-wait")
+            )
+        ],
+        examples: [
+            #"{"name": "Safari"}"#,
+            #"{"name": "TextEdit", "wait_for_launch": false}"#
+        ],
+        agentGuidance: """
+            AGENT TIPS:
+            - If app is already running, it will just be activated
+            - Shows window count after launch
+            - Use exact app names from 'list_apps' for best results
+            - Some apps may take time to show windows after launch
+        """
+    )
+}
+
 // MARK: - Application Tools
 
 /// Application management tools for listing and launching apps
@@ -10,9 +83,11 @@ import Foundation
 extension PeekabooAgentService {
     /// Create the list apps tool
     func createListAppsTool() -> Tool<PeekabooServices> {
-        createSimpleTool(
-            name: "list_apps",
-            description: "List all running applications",
+        let definition = ApplicationToolDefinitions.listApps
+        
+        return createSimpleTool(
+            name: definition.name,
+            description: definition.agentDescription,
             handler: { context in
                 let appsOutput = try await context.applications.listApplications()
 
@@ -38,16 +113,12 @@ extension PeekabooAgentService {
 
     /// Create the launch app tool
     func createLaunchAppTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "launch_app",
-            description: "Launch an application by name",
-            parameters: .object(
-                properties: [
-                    "name": ParameterSchema.string(description: "Application name (e.g., 'Safari', 'TextEdit')"),
-                    "wait_for_launch": ParameterSchema
-                        .boolean(description: "Wait for the app to finish launching (default: true)"),
-                ],
-                required: ["name"]),
+        let definition = ApplicationToolDefinitions.launchApp
+        
+        return createTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentParameters(),
             handler: { params, context in
                 let appName = try params.string("name")
                 let waitForLaunch = params.bool("wait_for_launch", default: true)

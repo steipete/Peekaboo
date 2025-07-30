@@ -7,26 +7,209 @@ import OSLog
 
 private let logger = Logger(subsystem: "boo.peekaboo.core", category: "VisionTools")
 
+// MARK: - Tool Definitions
+
+@available(macOS 14.0, *)
+public struct VisionToolDefinitions {
+    public static let see = UnifiedToolDefinition(
+        name: "see",
+        commandName: nil,
+        abstract: "Capture screen and map UI elements",
+        discussion: """
+            The 'see' command captures a screenshot and analyzes the UI hierarchy,
+            creating an interactive map that subsequent commands can use.
+
+            SPECIAL APP VALUES:
+              • menubar   - Capture just the menu bar area (24px height)
+              • frontmost - Capture the currently active window
+
+            EXAMPLES:
+              peekaboo see                           # Capture frontmost window
+              peekaboo see --app Safari              # Capture Safari window
+              peekaboo see --app menubar             # Capture menu bar only
+              peekaboo see --app frontmost           # Capture active window
+              peekaboo see --pid 12345                # Capture by process ID
+              peekaboo see --mode screen             # Capture entire screen
+              peekaboo see --window-title "GitHub"   # Capture specific window
+              peekaboo see --annotate                # Generate annotated screenshot
+              peekaboo see --analyze "Find login"    # Capture and analyze
+
+            OUTPUT:
+              Returns a session ID that can be used with click, type, and other
+              interaction commands. Also outputs the screenshot path and UI analysis.
+        """,
+        category: .vision,
+        parameters: [
+            ParameterDefinition(
+                name: "app",
+                type: .string,
+                description: "Application name to capture, or special values: 'menubar', 'frontmost'",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "pid",
+                type: .integer,
+                description: "Target application by process ID",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option, longName: "pid")
+            ),
+            ParameterDefinition(
+                name: "window-title",
+                type: .string,
+                description: "Specific window title to capture",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "mode",
+                type: .enumeration,
+                description: "Capture mode (screen, window, frontmost)",
+                required: false,
+                defaultValue: nil,
+                options: ["screen", "window", "frontmost"],
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "path",
+                type: .string,
+                description: "Output path for screenshot",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "screen-index",
+                type: .integer,
+                description: "Specific screen index to capture (0-based). If not specified, captures all screens when in screen mode",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option, longName: "screen-index")
+            ),
+            ParameterDefinition(
+                name: "annotate",
+                type: .boolean,
+                description: "Generate annotated screenshot with interaction markers",
+                required: false,
+                defaultValue: "false",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .flag)
+            ),
+            ParameterDefinition(
+                name: "analyze",
+                type: .string,
+                description: "Analyze captured content with AI",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "format",
+                type: .enumeration,
+                description: "Output format - 'full' (default) for detailed element list with coordinates, or 'brief' for a summary",
+                required: false,
+                defaultValue: "full",
+                options: ["full", "brief"],
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "filter",
+                type: .enumeration,
+                description: "Filter elements by type",
+                required: false,
+                defaultValue: nil,
+                options: ["button", "text_field", "image", "link", "menu", "static_text"],
+                cliOptions: CLIOptions(argumentType: .option)
+            )
+        ],
+        examples: [
+            #"{"app": "Safari"}"#,
+            #"{"format": "brief"}"#,
+            #"{"app": "Finder", "filter": "button"}"#
+        ],
+        agentGuidance: """
+            AGENT TIPS:
+            - Always use 'see' before any UI interaction to understand current state
+            - For menu bar items, capture with --app menubar
+            - Element detection is disabled for full screen captures (too expensive)
+            - Use app-specific capture for better performance
+            - Annotated screenshots help verify element detection accuracy
+            - **Background capture**: 'see' can capture apps in the background - no need to focus first!
+            - **Focus + capture**: You can combine operations: 'see --app Safari' will both focus AND capture
+            - This means you don't need separate focus_window + see commands in most cases
+        """
+    )
+    
+    public static let screenshot = UnifiedToolDefinition(
+        name: "screenshot",
+        commandName: nil,
+        abstract: "Take a screenshot and save it to a file",
+        discussion: """
+            Captures a screenshot of the entire screen or a specific application
+            and saves it to the specified file path.
+
+            EXAMPLES:
+              peekaboo screenshot ~/Desktop/screen.png
+              peekaboo screenshot --app Safari ~/Documents/safari.png
+              peekaboo screenshot --window-title "GitHub" /tmp/github.png
+        """,
+        category: .vision,
+        parameters: [
+            ParameterDefinition(
+                name: "path",
+                type: .string,
+                description: "Path to save the screenshot (e.g., ~/Desktop/screenshot.png)",
+                required: true,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .argument)
+            ),
+            ParameterDefinition(
+                name: "app",
+                type: .string,
+                description: "Application name to capture. If not specified, captures entire screen",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "window-title",
+                type: .string,
+                description: "Specific window title to capture",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            )
+        ],
+        examples: [
+            #"{"path": "~/Desktop/screenshot.png"}"#,
+            #"{"path": "/tmp/safari.png", "app": "Safari"}"#
+        ]
+    )
+}
+
 /// Vision-related tools for screen capture and analysis
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
     /// Create the primary 'see' tool for capturing and analyzing UI
     func createSeeTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "see",
-            description: "Capture and analyze the screen or a specific application window. This is your primary tool for understanding the current UI state.",
-            parameters: .object(
-                properties: [
-                    "app": ParameterSchema.string(
-                        description: "Optional: Application name to capture (e.g., 'Safari', 'Finder'). If not specified, captures the entire screen."),
-                    "format": ParameterSchema.enumeration(
-                        ["full", "brief"],
-                        description: "Output format - 'full' (default) for detailed element list with coordinates, or 'brief' for a summary"),
-                    "filter": ParameterSchema.enumeration(
-                        ["button", "text_field", "image", "link", "menu", "static_text"],
-                        description: "Optional: Filter elements by type"),
-                ],
-                required: []),
+        let definition = VisionToolDefinitions.see
+        
+        return createTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentParameters(),
             handler: { params, context in
                 let appName = params.string("app", default: nil)
                 let format = params.string("format", default: "full") ?? "full"
@@ -58,6 +241,17 @@ extension PeekabooAgentService {
                         sessionId: nil,
                         windowContext: WindowContext(applicationName: appName, windowTitle: nil))
                     skipElementDetection = false
+                    
+                    // Show annotated screenshot visualization for agents
+                    if let windowBounds = captureResult.metadata.windowInfo?.bounds {
+                        logger.info("🎯 VisionTools: Showing annotated screenshot visualization")
+                        _ = await VisualizationClient.shared.showAnnotatedScreenshot(
+                            imageData: captureResult.imageData,
+                            elements: detectionResult.elements.all,
+                            windowBounds: windowBounds,
+                            duration: 3.0
+                        )
+                    }
                 } else {
                     // Capture entire screen
                     captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
@@ -192,18 +386,12 @@ extension PeekabooAgentService {
 
     /// Create the screenshot tool for saving screen captures
     func createScreenshotTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "screenshot",
-            description: "Take a screenshot and save it to a file",
-            parameters: .object(
-                properties: [
-                    "path": ParameterSchema
-                        .string(description: "Path to save the screenshot (e.g., ~/Desktop/screenshot.png)"),
-                    "app": ParameterSchema
-                        .string(
-                            description: "Optional: Application name to capture. If not specified, captures entire screen"),
-                ],
-                required: ["path"]),
+        let definition = VisionToolDefinitions.screenshot
+        
+        return createTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentParameters(),
             handler: { params, context in
                 let path = try params.string("path")
                 let expandedPath = path.expandedPath
@@ -256,10 +444,10 @@ extension PeekabooAgentService {
 
     /// Create the window capture tool
     func createWindowCaptureTool() -> Tool<PeekabooServices> {
-        createTool(
+        return createTool(
             name: "window_capture",
             description: "Capture a specific window by title or window ID",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [
                     "title": ParameterSchema
                         .string(description: "Window title to search for (partial match supported)"),

@@ -18,6 +18,7 @@ public struct AgentSystemPrompt {
 
         **Task Execution Guidelines:**
         - Start with screen analysis using 'see' to understand the current UI state
+        - **No focus needed**: 'see --app AppName' works on background apps AND auto-focuses them
         - Use specific, descriptive element identifiers when clicking or typing
         - **ALWAYS click in the center of UI elements** - never click on edges or corners
         - When clicking on buttons or labels, target the center of the clickable area
@@ -36,8 +37,9 @@ public struct AgentSystemPrompt {
         2. If the target window isn't visible, check if the app is running with 'list_apps'
         3. Launch the app if needed using 'launch_app'
         4. After launching, use 'list_windows' again to verify the window exists
-        5. Use 'focus_window' to bring windows to the front before operations
-        6. Ensure windows are ready before attempting resize/move operations
+        5. **Background capture works**: 'see --app Safari' captures Safari even if it's in the background
+        6. **Auto-focus**: 'see --app AppName' will both focus AND capture the app - no separate focus needed!
+        7. Only use explicit 'focus_window' when you need to bring a window forward without capturing
 
         **Window Resizing and Positioning:**
         - To resize the current/active window: Use 'resize_window' with 'frontmost: true'

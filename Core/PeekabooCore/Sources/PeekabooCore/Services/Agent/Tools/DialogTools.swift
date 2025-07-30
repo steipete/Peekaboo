@@ -2,6 +2,127 @@ import AXorcist
 import CoreGraphics
 import Foundation
 
+// MARK: - Tool Definitions
+
+@available(macOS 14.0, *)
+public struct DialogToolDefinitions {
+    public static let dialogClick = UnifiedToolDefinition(
+        name: "dialog_click",
+        commandName: "dialog-click",
+        abstract: "Click a button in a dialog, sheet, or alert",
+        discussion: """
+            Clicks a button in any open dialog, sheet, or alert window by matching
+            the button label text.
+            
+            EXAMPLES:
+              peekaboo dialog-click OK
+              peekaboo dialog-click Save --app TextEdit
+              peekaboo dialog-click "Don't Save"
+        """,
+        category: .menu,
+        parameters: [
+            ParameterDefinition(
+                name: "button",
+                type: .string,
+                description: "Button label to click (e.g., 'OK', 'Cancel', 'Save')",
+                required: true,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .argument)
+            ),
+            ParameterDefinition(
+                name: "app",
+                type: .string,
+                description: "Application name (defaults to frontmost app)",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            )
+        ],
+        examples: [
+            #"{"button": "OK"}"#,
+            #"{"button": "Save", "app": "TextEdit"}"#,
+            #"{"button": "Don't Save"}"#
+        ],
+        agentGuidance: """
+            AGENT TIPS:
+            - Button labels are case-sensitive
+            - Common buttons: OK, Cancel, Save, Don't Save, Continue
+            - Works with alerts, sheets, and modal dialogs
+            - If multiple dialogs are open, clicks in the frontmost one
+            - Some buttons may have keyboard shortcuts (shown in parentheses)
+        """
+    )
+    
+    public static let dialogInput = UnifiedToolDefinition(
+        name: "dialog_input",
+        commandName: "dialog-input",
+        abstract: "Enter text into a field in a dialog or sheet",
+        discussion: """
+            Types text into the currently focused text field in a dialog,
+            sheet, or form. Can optionally clear the field first.
+            
+            EXAMPLES:
+              peekaboo dialog-input "My Document Name"
+              peekaboo dialog-input "password123" --no-clear
+              peekaboo dialog-input "new-file.txt" --app Finder
+        """,
+        category: .menu,
+        parameters: [
+            ParameterDefinition(
+                name: "text",
+                type: .string,
+                description: "Text to enter",
+                required: true,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .argument)
+            ),
+            ParameterDefinition(
+                name: "field",
+                type: .string,
+                description: "Field label or placeholder text (not yet implemented)",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "app",
+                type: .string,
+                description: "Application name (defaults to frontmost app)",
+                required: false,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "no-clear",
+                type: .boolean,
+                description: "Don't clear the field before typing",
+                required: false,
+                defaultValue: "false",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .flag, longName: "no-clear")
+            )
+        ],
+        examples: [
+            #"{"text": "My Document"}"#,
+            #"{"text": "password123", "clear_first": false}"#,
+            #"{"text": "report.pdf", "app": "Preview"}"#
+        ],
+        agentGuidance: """
+            AGENT TIPS:
+            - By default, clears the field first (Cmd+A, Delete)
+            - Use clear_first: false to append to existing text
+            - Field must be focused before using this command
+            - For password fields, the text won't be visible
+            - Tab between fields or click to focus specific fields first
+        """
+    )
+}
+
 // MARK: - Dialog Tools
 
 /// Dialog interaction tools for clicking buttons and entering text in dialogs
@@ -9,16 +130,12 @@ import Foundation
 extension PeekabooAgentService {
     /// Create the dialog click tool
     func createDialogClickTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "dialog_click",
-            description: "Click a button in a dialog, sheet, or alert",
-            parameters: .object(
-                properties: [
-                    "button": ParameterSchema
-                        .string(description: "Button label to click (e.g., 'OK', 'Cancel', 'Save')"),
-                    "app": ParameterSchema.string(description: "Optional: Application name"),
-                ],
-                required: ["button"]),
+        let definition = DialogToolDefinitions.dialogClick
+        
+        return createTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentParameters(),
             handler: { params, context in
                 let buttonLabel = try params.string("button")
                 let appName = params.string("app", default: nil)
@@ -50,18 +167,12 @@ extension PeekabooAgentService {
 
     /// Create the dialog input tool
     func createDialogInputTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "dialog_input",
-            description: "Enter text into a field in a dialog or sheet",
-            parameters: .object(
-                properties: [
-                    "text": ParameterSchema.string(description: "Text to enter"),
-                    "field": ParameterSchema.string(description: "Optional: Field label or placeholder text"),
-                    "app": ParameterSchema.string(description: "Optional: Application name"),
-                    "clear_first": ParameterSchema
-                        .boolean(description: "Clear the field before typing (default: true)"),
-                ],
-                required: ["text"]),
+        let definition = DialogToolDefinitions.dialogInput
+        
+        return createTool(
+            name: definition.name,
+            description: definition.agentDescription,
+            parameters: definition.toAgentParameters(),
             handler: { params, context in
                 let text = try params.string("text")
                 let fieldLabel = params.string("field", default: nil)
