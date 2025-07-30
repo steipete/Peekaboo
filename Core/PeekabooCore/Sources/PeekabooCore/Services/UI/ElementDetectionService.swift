@@ -121,10 +121,7 @@ public final class ElementDetectionService {
             // Provide detailed error message
             let appName = targetApp.localizedName ?? "Unknown app"
 
-            if !targetApp.isActive {
-                self.logger.error("App '\(appName)' is not active")
-                throw PeekabooError.windowNotFound(criteria: "App '\(appName)' is running but not active")
-            } else if allWindows.isEmpty {
+            if allWindows.isEmpty {
                 self.logger.error("App '\(appName)' has no windows")
                 throw PeekabooError
                     .windowNotFound(criteria: "App '\(appName)' is running but has no windows or dialogs")
