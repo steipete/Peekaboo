@@ -249,7 +249,10 @@ final class StatusBarController: NSObject {
 
     private func observeAgentState() {
         _ = withObservationTracking {
-            self.agent.isProcessing
+            // Observe multiple properties to ensure we catch all changes
+            _ = self.agent.isProcessing
+            _ = self.agent.toolExecutionHistory.count
+            _ = self.sessionStore.currentSession?.messages.count ?? 0
         } onChange: {
             Task { @MainActor in
                 // Update animation state based on agent processing
@@ -257,7 +260,10 @@ final class StatusBarController: NSObject {
                 
                 // If popover is shown and agent state changed, refresh its content
                 if self.popover.isShown {
-                    self.refreshPopoverContent()
+                    // Delay slightly to ensure all state updates are propagated
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.refreshPopoverContent()
+                    }
                 }
                 
                 self.observeAgentState() // Continue observing

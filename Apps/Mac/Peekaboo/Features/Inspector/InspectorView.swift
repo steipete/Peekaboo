@@ -26,6 +26,8 @@ struct InspectorView: View {
                 await permissions.check()
             }
             permissions.startMonitoring()
+            // Populate applications list on startup
+            overlayManager.refreshAllApplications()
             self.openOverlayWindow()
         }
         .onDisappear {

@@ -13,6 +13,7 @@ struct MenuBarStatusView: View {
     @State private var hasAppeared = false
     @State private var isVoiceMode = false
     @State private var inputText = ""
+    @State private var refreshTrigger = UUID()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -52,7 +53,17 @@ struct MenuBarStatusView: View {
             // Force a UI update in case environment values weren't ready
             DispatchQueue.main.async {
                 self.hasAppeared = true
+                self.refreshTrigger = UUID()
             }
+        }
+        .onChange(of: agent.isProcessing) { _, _ in
+            refreshTrigger = UUID()
+        }
+        .onChange(of: sessionStore.currentSession?.messages.count ?? 0) { _, _ in
+            refreshTrigger = UUID()
+        }
+        .onChange(of: agent.toolExecutionHistory.count) { _, _ in
+            refreshTrigger = UUID()
         }
     }
     
@@ -143,39 +154,75 @@ struct MenuBarStatusView: View {
     
     private func currentSessionView(_ session: ConversationSession) -> some View {
         VStack(spacing: 0) {
-            // Live task status bar if processing
-            if agent.isProcessing {
-                if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
-                    HStack(spacing: 8) {
-                        AnimatedToolIcon(toolName: currentTool.toolName, isRunning: true)
-                            .frame(width: 16, height: 16)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
-                                .font(.caption)
-                                .foregroundColor(.primary)
-                                .lineLimit(1)
+            // Tool execution history (showing recent tools)
+            if !agent.toolExecutionHistory.isEmpty {
+                VStack(spacing: 4) {
+                    // Show current running tool prominently
+                    if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
+                        HStack(spacing: 8) {
+                            AnimatedToolIcon(toolName: currentTool.toolName, isRunning: true)
+                                .frame(width: 16, height: 16)
                             
-                            if let duration = currentTool.duration {
-                                Text(ToolFormatter.formatDuration(duration))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                                
+                                if let duration = currentTool.duration {
+                                    Text(ToolFormatter.formatDuration(duration))
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: { agent.cancelCurrentTask() }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.red)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Cancel current task")
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        .background(Color.orange.opacity(0.1))
+                    }
+                    
+                    // Show recent completed tools
+                    ForEach(agent.toolExecutionHistory.suffix(3).reversed()) { tool in
+                        if tool.status != .running {
+                            HStack(spacing: 6) {
+                                AnimatedToolIcon(toolName: tool.toolName, isRunning: false)
+                                    .frame(width: 12, height: 12)
+                                
+                                Text(ToolFormatter.compactToolSummary(toolName: tool.toolName, arguments: tool.arguments))
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                
+                                Spacer()
+                                
+                                if tool.status == .completed {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.caption2)
+                                        .foregroundColor(.green)
+                                } else if tool.status == .failed {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption2)
+                                        .foregroundColor(.red)
+                                }
                             }
+                            .padding(.horizontal)
+                            .padding(.vertical, 2)
+                            .opacity(0.7)
                         }
-                        
-                        Spacer()
-                        
-                        Button(action: { agent.cancelCurrentTask() }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.red)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Cancel current task")
                     }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(Color.orange.opacity(0.1))
                 }
+                .background(Color.secondary.opacity(0.05))
+                
+                Divider()
             }
             
             Divider()
@@ -184,6 +231,7 @@ struct MenuBarStatusView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
+                        // Show all messages including system messages
                         ForEach(session.messages) { message in
                             MessageRowCompact(message: message)
                                 .id(message.id)
@@ -196,12 +244,42 @@ struct MenuBarStatusView: View {
                             ThinkingIndicator()
                                 .padding(.horizontal)
                         }
+                        
+                        // Show processing indicator if actively processing but no thinking message
+                        if agent.isProcessing && !agent.isThinking {
+                            if let lastMessage = session.messages.last,
+                               lastMessage.role != .system || !lastMessage.content.contains("🤔") {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                        .scaleEffect(0.6)
+                                        .progressViewStyle(CircularProgressViewStyle())
+                                    
+                                    Text("Processing...")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .italic()
+                                }
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 8)
+                                .id("processing")
+                            }
+                        }
                     }
                     .padding()
                     .onChange(of: session.messages.count) { _, _ in
                         // Auto-scroll to bottom on new messages
-                        if let lastMessage = session.messages.last {
-                            withAnimation {
+                        withAnimation {
+                            if let lastMessage = session.messages.last {
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: agent.isProcessing) { _, _ in
+                        // Auto-scroll when processing state changes
+                        withAnimation {
+                            if agent.isProcessing {
+                                proxy.scrollTo("processing", anchor: .bottom)
+                            } else if let lastMessage = session.messages.last {
                                 proxy.scrollTo(lastMessage.id, anchor: .bottom)
                             }
                         }
@@ -732,6 +810,18 @@ struct MessageRowCompact: View {
                     Text(message.content)
                         .font(.caption)
                         .foregroundColor(.orange)
+                } else if message.role == .system && message.content.contains("🔧") {
+                    // Tool execution messages
+                    Text(message.content)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                } else if message.role == .system && message.content.contains("✅") {
+                    // Success messages
+                    Text(message.content)
+                        .font(.caption)
+                        .foregroundColor(.green)
+                        .lineLimit(2)
                 } else if message.role == .assistant {
                     // Render assistant messages as Markdown
                     Text(try! AttributedString(
