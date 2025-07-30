@@ -1,5 +1,5 @@
 /**
- * Global test setup for platform-specific test skipping
+ * Global test setup for platform-specific test skipping and test categorization
  * This file is loaded before all tests run
  */
 
@@ -7,6 +7,8 @@
 declare global {
   var isSwiftBinaryAvailable: boolean;
   var shouldSkipSwiftTests: boolean;
+  var testMode: 'safe' | 'full';
+  var shouldSkipFullTests: boolean;
 }
 
 // Helper function to determine if Swift binary is available
@@ -29,10 +31,29 @@ const shouldSkipSwiftTests = () => {
   );
 };
 
+// Determine test mode from environment
+const getTestMode = (): 'safe' | 'full' => {
+  const mode = process.env.PEEKABOO_TEST_MODE?.toLowerCase();
+  return mode === 'full' ? 'full' : 'safe';
+};
+
+// Helper to determine if full tests should be skipped
+const shouldSkipFullTests = () => {
+  return getTestMode() !== 'full';
+};
+
 // Make these available globally
 globalThis.isSwiftBinaryAvailable = isSwiftBinaryAvailable();
 globalThis.shouldSkipSwiftTests = shouldSkipSwiftTests();
+globalThis.testMode = getTestMode();
+globalThis.shouldSkipFullTests = shouldSkipFullTests();
 
-// Log platform information for debugging
+// Log platform and test mode information
 console.log(`Test setup: Platform=${process.platform}, Swift available=${globalThis.isSwiftBinaryAvailable}, Skip Swift tests=${globalThis.shouldSkipSwiftTests}`);
+console.log(`Test mode: ${globalThis.testMode} (set PEEKABOO_TEST_MODE=full to run all tests)`);
+
+if (globalThis.shouldSkipFullTests) {
+  console.log('⚠️  Running in SAFE mode - interactive/system-modifying tests will be skipped');
+  console.log('   To run full test suite: npm run test:full');
+}
 
