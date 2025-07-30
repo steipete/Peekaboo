@@ -3,6 +3,7 @@ import Foundation
 import PeekabooCore
 
 // Temporary session info struct until PeekabooAgentService implements session management
+// Notification test: Terminal-notifier is now installed
 struct AgentSessionInfo: Codable {
     let id: String
     let task: String
@@ -333,6 +334,7 @@ struct AgentCommand: AsyncParsableCommand {
     
     // MARK: - Task Execution
     
+    @MainActor
     private func getActualModelName(_ agentService: PeekabooAgentService) async -> String {
         // If model is explicitly provided via CLI, use that
         if let providedModel = model {

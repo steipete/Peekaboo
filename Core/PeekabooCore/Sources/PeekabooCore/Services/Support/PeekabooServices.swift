@@ -125,6 +125,7 @@ public final class PeekabooServices: @unchecked Sendable {
     }
     
     /// Initialize with custom service implementations (for testing)
+    @MainActor
     public init(
         logging: LoggingServiceProtocol? = nil,
         screenCapture: ScreenCaptureServiceProtocol,
@@ -324,6 +325,7 @@ public final class PeekabooServices: @unchecked Sendable {
     }
     
     /// Refresh the agent service when API keys change
+    @MainActor
     public func refreshAgentService() {
         logger.info("🔄 Refreshing agent service with updated configuration")
         

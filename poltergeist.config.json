@@ -1,7 +1,7 @@
 {
   "targets": [
     {
-      "name": "Peekaboo CLI",
+      "name": "peekaboo-cli",
       "type": "executable",
       "enabled": true,
       "buildCommand": "./scripts/build-swift-debug.sh",
@@ -17,7 +17,7 @@
       ]
     },
     {
-      "name": "Peekaboo macOS",
+      "name": "peekaboo-mac",
       "type": "app-bundle",
       "platform": "macos",
       "enabled": true,

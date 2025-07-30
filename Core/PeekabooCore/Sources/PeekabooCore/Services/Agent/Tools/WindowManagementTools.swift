@@ -39,9 +39,35 @@ extension PeekabooAgentService {
                     // AX elements are not thread-safe and must be accessed from main thread
                     let apps = try await context.applications.listApplications()
                     
+                    // Filter to only regular applications (not background services)
+                    var regularApps: [ServiceApplicationInfo] = []
+                    for app in apps {
+                        // Skip apps without bundle ID (system processes)
+                        guard app.bundleIdentifier != nil else { continue }
+                        
+                        // Skip known problematic or background-only apps
+                        let skipList = [
+                            "com.apple.WebKit.WebContent",
+                            "com.apple.WebKit.GPU",
+                            "com.apple.WebKit.Networking",
+                            "com.apple.SafariServices.SafariServicesApp",
+                            "com.apple.appkit.xpc.openAndSavePanelService"
+                        ]
+                        if let bundleId = app.bundleIdentifier,
+                           skipList.contains(where: { bundleId.contains($0) }) {
+                            continue
+                        }
+                        
+                        // Only include apps that are likely to have windows
+                        // Include all apps that passed the filter
+                        regularApps.append(app)
+                    }
+                    
+                    Self.logger.debug("Checking \(regularApps.count) regular apps for windows (filtered from \(apps.count) total)")
+                    
                     // Process each app sequentially without any concurrent operations
                     // This ensures all AX operations stay on the main thread
-                    for app in apps {
+                    for app in regularApps {
                         do {
                             // For now, skip timeout mechanism to ensure thread safety
                             // TODO: Implement a main-thread-safe timeout mechanism
@@ -195,6 +221,8 @@ extension PeekabooAgentService {
                 properties: [
                     "title": ParameterSchema.string(description: "Window title (partial match)"),
                     "app": ParameterSchema.string(description: "Application name"),
+                    "window_id": ParameterSchema.integer(description: "Specific window ID"),
+                    "frontmost": ParameterSchema.boolean(description: "Use the frontmost window"),
                     "width": ParameterSchema.integer(description: "New width in pixels"),
                     "height": ParameterSchema.integer(description: "New height in pixels"),
                     "x": ParameterSchema.integer(description: "New X position"),
@@ -209,56 +237,97 @@ extension PeekabooAgentService {
             handler: { (params: ToolParameterParser, context: PeekabooServices) in
                 let title = params.string("title", default: nil)
                 let appName = params.string("app", default: nil)
+                let windowId = params.int("window_id", default: nil)
+                let frontmost = params.bool("frontmost", default: false)
                 let width = params.int("width", default: nil)
                 let height = params.int("height", default: nil)
                 let x = params.int("x", default: nil)
                 let y = params.int("y", default: nil)
                 let preset = params.string("preset", default: nil)
                 
-                guard title != nil || appName != nil else {
-                    throw PeekabooError.invalidInput("Either 'title' or 'app' must be provided")
+                // Validate that we have some way to identify the window
+                guard title != nil || appName != nil || windowId != nil || frontmost else {
+                    throw PeekabooError.invalidInput("Must provide either 'title', 'app', 'window_id', or 'frontmost:true' to identify the window")
                 }
                 
                 // Find the window efficiently
                 var windows: [ServiceWindowInfo] = []
+                let window: ServiceWindowInfo
                 
-                if let appName = appName {
-                    // If app is specified, only search that app
-                    windows = try await context.windows.listWindows(target: .application(appName))
-                } else if let title = title {
-                    // If only title is specified, use title-based search
-                    windows = try await context.windows.listWindows(target: .title(title))
-                } else {
-                    // Need to search all apps - process sequentially to avoid AX race conditions
+                if frontmost {
+                    // Get the frontmost application first
+                    let frontApp = try await context.applications.getFrontmostApplication()
+                    
+                    // Then get its windows
+                    windows = try await context.windows.listWindows(target: .application(frontApp.name))
+                    
+                    guard let frontWindow = windows.first else {
+                        throw PeekabooError.windowNotFound(criteria: "frontmost window for \(frontApp.name)")
+                    }
+                    window = frontWindow
+                } else if let windowId = windowId {
+                    // If window ID is specified, search all apps for that specific window
                     let apps = try await context.applications.listApplications()
+                    var foundWindow: ServiceWindowInfo? = nil
                     
                     for app in apps {
                         do {
                             let appWindows = try await context.windows.listWindows(target: .application(app.name))
-                            windows.append(contentsOf: appWindows)
+                            if let found = appWindows.first(where: { $0.windowID == windowId }) {
+                                foundWindow = found
+                                break
+                            }
                         } catch {
                             // Skip apps that fail
                             Self.logger.debug("Error getting windows for \(app.name): \(error)")
                         }
                     }
-                }
-                guard let window = windows.first(where: { window in
-                    var matches = true
-                    if let titleFilter = title {
-                        matches = matches && window.title.lowercased().contains(titleFilter.lowercased())
+                    
+                    guard let found = foundWindow else {
+                        throw PeekabooError.windowNotFound(criteria: "window with ID \(windowId)")
                     }
-                    // Note: ServiceWindowInfo doesn't have applicationName, so we can't filter by app here
-                    return matches
-                }) else {
-                    var criteriaItems: [String] = []
-                    if let titleValue = title {
-                        criteriaItems.append("title '\(titleValue)'")
+                    window = found
+                } else {
+                    // Search by title and/or app name
+                    if let appName = appName {
+                        // If app is specified, only search that app
+                        windows = try await context.windows.listWindows(target: .application(appName))
+                    } else if let title = title {
+                        // If only title is specified, use title-based search
+                        windows = try await context.windows.listWindows(target: .title(title))
+                    } else {
+                        // Need to search all apps - process sequentially to avoid AX race conditions
+                        let apps = try await context.applications.listApplications()
+                        
+                        for app in apps {
+                            do {
+                                let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                                windows.append(contentsOf: appWindows)
+                            } catch {
+                                // Skip apps that fail
+                                Self.logger.debug("Error getting windows for \(app.name): \(error)")
+                            }
+                        }
                     }
-                    if let appNameValue = appName {
-                        criteriaItems.append("app '\(appNameValue)'")
+                    guard let foundWindow = windows.first(where: { window in
+                        var matches = true
+                        if let titleFilter = title {
+                            matches = matches && window.title.lowercased().contains(titleFilter.lowercased())
+                        }
+                        // Note: ServiceWindowInfo doesn't have applicationName, so we can't filter by app here
+                        return matches
+                    }) else {
+                        var criteriaItems: [String] = []
+                        if let titleValue = title {
+                            criteriaItems.append("title '\(titleValue)'")
+                        }
+                        if let appNameValue = appName {
+                            criteriaItems.append("app '\(appNameValue)'")
+                        }
+                        let criteria = criteriaItems.joined(separator: " ")
+                        throw PeekabooError.windowNotFound(criteria: criteria)
                     }
-                    let criteria = criteriaItems.joined(separator: " ")
-                    throw PeekabooError.windowNotFound(criteria: criteria)
+                    window = foundWindow
                 }
                 
                 // Calculate new bounds
@@ -406,7 +475,6 @@ extension PeekabooAgentService {
                 
                 let targetSpace = spaces[spaceNumber - 1]
                 let spaceId = targetSpace.id
-                let spaceCount = spaces.count
                 
                 // Switch to space
                 let spaceServiceForSwitch = SpaceManagementService()

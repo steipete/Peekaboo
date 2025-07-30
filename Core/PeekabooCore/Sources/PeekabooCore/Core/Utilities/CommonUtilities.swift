@@ -50,7 +50,7 @@ extension Error {
 
 /// Perform an async operation with consistent error handling
 public func performOperation<T>(
-    _ operation: () async throws -> T,
+    _ operation: @Sendable () async throws -> T,
     errorContext: String,
     logger: LoggingServiceProtocol? = nil
 ) async throws -> T {

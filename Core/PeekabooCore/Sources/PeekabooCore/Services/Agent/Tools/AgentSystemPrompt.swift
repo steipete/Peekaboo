@@ -35,8 +35,15 @@ public struct AgentSystemPrompt {
         1. First use 'list_windows' to see all available windows
         2. If the target window isn't visible, check if the app is running with 'list_apps'
         3. Launch the app if needed using 'launch_app'
-        4. After launching, wait briefly and re-check with 'list_windows'
-        5. Use 'focus_window' to bring windows to the front
+        4. After launching, use 'list_windows' again to verify the window exists
+        5. Use 'focus_window' to bring windows to the front before operations
+        6. Ensure windows are ready before attempting resize/move operations
+        
+        **Window Resizing and Positioning:**
+        - To resize the current/active window: Use 'resize_window' with 'frontmost: true'
+        - To maximize a window: Use 'resize_window' with 'preset: "maximize"'
+        - Always specify how to identify the window: use 'app', 'title', 'window_id', or 'frontmost'
+        - Never use ambiguous phrases like "active window" as parameter values
 
         **Dialog Interaction:**
         When dealing with dialogs (sheets, alerts, panels):

@@ -181,17 +181,17 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             throw PermissionError.screenRecording()
         }
         
-        // Get frontmost application
-        guard let frontmostApp = NSWorkspace.shared.frontmostApplication else {
+        // Get frontmost application - already on main thread due to @MainActor
+        guard let app = NSWorkspace.shared.frontmostApplication else {
             logger.error("No frontmost application found", correlationId: correlationId)
             throw NotFoundError.application("frontmost")
         }
         
-        let appIdentifier = frontmostApp.bundleIdentifier ?? frontmostApp.localizedName ?? "Unknown"
+        let appIdentifier = app.bundleIdentifier ?? app.localizedName ?? "Unknown"
         logger.debug("Found frontmost application", metadata: [
-            "name": frontmostApp.localizedName ?? "unknown",
-            "bundleId": frontmostApp.bundleIdentifier ?? "none",
-            "pid": frontmostApp.processIdentifier
+            "name": app.localizedName ?? "unknown",
+            "bundleId": app.bundleIdentifier ?? "none",
+            "pid": app.processIdentifier
         ], correlationId: correlationId)
         
         return try await captureWindow(appIdentifier: appIdentifier, windowIndex: nil)

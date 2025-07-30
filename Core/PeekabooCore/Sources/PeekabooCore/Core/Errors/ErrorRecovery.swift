@@ -48,7 +48,7 @@ public struct RetryHandler {
     /// Execute an operation with retry logic
     public static func withRetry<T>(
         policy: RetryPolicy = .standard,
-        operation: () async throws -> T
+        operation: @Sendable () async throws -> T
     ) async throws -> T {
         var lastError: Error?
         var delay = policy.initialDelay
@@ -80,9 +80,9 @@ public struct RetryHandler {
     /// Execute an operation with custom retry logic
     public static func withCustomRetry<T>(
         maxAttempts: Int = 3,
-        shouldRetry: (Error, Int) -> Bool,
-        delayForAttempt: (Int) -> TimeInterval,
-        operation: () async throws -> T
+        shouldRetry: @Sendable (Error, Int) -> Bool,
+        delayForAttempt: @Sendable (Int) -> TimeInterval,
+        operation: @Sendable () async throws -> T
     ) async throws -> T {
         var lastError: Error?
         

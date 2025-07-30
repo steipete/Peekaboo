@@ -15,7 +15,7 @@ public enum AgentEvent: Sendable {
 
 /// Protocol for receiving agent events
 @MainActor
-public protocol AgentEventDelegate: AnyObject {
+public protocol AgentEventDelegate: AnyObject, Sendable {
     /// Called when an agent event is emitted
     func agentDidEmitEvent(_ event: AgentEvent)
 }

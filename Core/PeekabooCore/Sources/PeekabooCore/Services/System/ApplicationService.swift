@@ -14,27 +14,32 @@ public final class ApplicationService: ApplicationServiceProtocol {
     public func listApplications() async throws -> [ServiceApplicationInfo] {
         logger.info("Listing all running applications")
         
-        // Get running applications
+        // Already on main thread due to @MainActor on class
         let runningApps = NSWorkspace.shared.runningApplications
         
         logger.debug("Found \(runningApps.count) running processes")
         
-        // Filter apps first
-        let appsToProcess = runningApps.filter { app in
+        // Filter apps first with defensive checks
+        let appsToProcess = runningApps.compactMap { app -> NSRunningApplication? in
+            // Defensive check - ensure app is valid
+            guard !app.isTerminated else { return nil }
+            
             // Skip apps without a localized name
-            guard app.localizedName != nil else { return false }
+            guard app.localizedName != nil else { return nil }
             
             // Skip system/background apps
             if app.activationPolicy == .prohibited {
-                return false
+                return nil
             }
             
-            return true
+            return app
         }
         
         // Now create app info with window counts
-        let filteredApps = appsToProcess.map { app in
-            createApplicationInfo(from: app)
+        let filteredApps = appsToProcess.compactMap { app -> ServiceApplicationInfo? in
+            // Defensive check in case app terminated while processing
+            guard !app.isTerminated else { return nil }
+            return createApplicationInfo(from: app)
         }.sorted { (app1, app2) -> Bool in
             return app1.name < app2.name
         }
@@ -46,7 +51,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
     public func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
         logger.info("Finding application with identifier: \(identifier, privacy: .public)")
         
-        // Get running applications
+        // Already on main thread due to @MainActor on class
         let runningApps = NSWorkspace.shared.runningApplications
         
         // Check for PID format first
@@ -155,12 +160,19 @@ public final class ApplicationService: ApplicationServiceProtocol {
         logger.info("Listing windows for application: \(appIdentifier)")
         let app = try await findApplication(identifier: appIdentifier)
         
+        // Defensive: Check if the app is still running before accessing AX
+        guard NSRunningApplication(processIdentifier: app.processIdentifier)?.isTerminated == false else {
+            logger.warning("Application \(app.name) appears to have terminated")
+            return []
+        }
+        
         // Get AX element for the application
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         let appElement = Element(axApp)
         
-        // Get windows
+        // Get windows with defensive coding
         guard let axWindows = appElement.windows() else {
+            logger.debug("No windows found for \(app.name) - app may not have accessibility support")
             return []
         }
         
@@ -178,14 +190,14 @@ public final class ApplicationService: ApplicationServiceProtocol {
     public func getFrontmostApplication() async throws -> ServiceApplicationInfo {
         logger.info("Getting frontmost application")
         
-        // Get frontmost application
-        guard let frontmostApp = NSWorkspace.shared.frontmostApplication else {
+        // Already on main thread due to @MainActor on class
+        guard let app = NSWorkspace.shared.frontmostApplication else {
             logger.error("No frontmost application found")
             throw PeekabooError.appNotFound("frontmost")
         }
         
-        logger.debug("Frontmost app: \(frontmostApp.localizedName ?? "Unknown") (PID: \(frontmostApp.processIdentifier))")
-        return createApplicationInfo(from: frontmostApp)
+        logger.debug("Frontmost app: \(app.localizedName ?? "Unknown") (PID: \(app.processIdentifier))")
+        return createApplicationInfo(from: app)
     }
     
     public func isApplicationRunning(identifier: String) async -> Bool {
@@ -215,6 +227,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
         // Try to launch by bundle ID
         // Find the app URL
         let appURL: URL
+        // Already on main thread due to @MainActor on class
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier) {
             logger.debug("Found app by bundle ID at: \(url.path)")
             appURL = url
@@ -231,6 +244,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
         config.activates = true
         
         logger.debug("Launching app from URL: \(appURL.path)")
+        // Already on main thread due to @MainActor on class
         let runningApp = try await NSWorkspace.shared.openApplication(at: appURL, configuration: config)
         
         // Wait a bit for the app to fully launch
@@ -354,6 +368,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
             _ = error.asPeekabooError(context: "AX hide others action failed")
             // Fallback: hide each app individually
             logger.debug("Hiding apps individually")
+            // Already on main thread due to @MainActor on class
             let apps = NSWorkspace.shared.runningApplications
             var hiddenCount = 0
                 for runningApp in apps {
@@ -382,6 +397,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
             _ = error.asPeekabooError(context: "AX show all action failed")
             // Fallback: unhide each hidden app
             logger.debug("Unhiding apps individually")
+            // Already on main thread due to @MainActor on class
             let apps = NSWorkspace.shared.runningApplications
             var unhiddenCount = 0
                 for runningApp in apps {
@@ -542,6 +558,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
         }
         
         // Try NSWorkspace API with bundle ID
+        // Already on main thread due to @MainActor on class
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: name) {
             logger.debug("Found app via bundle identifier: \(url.path)")
             return url

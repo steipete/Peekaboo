@@ -4,7 +4,7 @@ import Foundation
 
 /// Type-safe tool parameter parser that replaces AnyCodable-based extraction
 @available(macOS 14.0, *)
-public struct ToolParameterParser {
+public struct ToolParameterParser: Sendable {
     private let jsonData: Data
     private let toolName: String
     

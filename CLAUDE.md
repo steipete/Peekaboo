@@ -216,6 +216,8 @@ This issue typically occurs when:
 
 ## Recent Updates
 
+- **Poltergeist Generic Target System** (2025-01-30): Migrated Poltergeist from hardcoded cli/macApp configuration to a flexible generic target system. Breaking change: Configuration now uses a 'targets' array instead of separate 'cli' and 'macApp' sections. Supports executable, app-bundle, library, framework, test, docker, and custom target types. Target names must contain only letters, numbers, hyphens, and underscores (no spaces). Enhanced logging, file-based locking, and improved error handling. Version bumped to 2.0.0.
+
 - **Enhanced Build Failure Recovery** (2025-01-29): Implemented smart build failure detection in Poltergeist. The wrapper script now exits with code 42 when detecting build failures, providing clear error messages and recovery instructions. Added build status tracking (`/tmp/peekaboo-build-status.json`), exponential backoff for repeated failures, and recovery signal mechanism to reset Poltergeist after manual fixes.
 
 - **Grok (xAI) support** (2025-01-27): Added full support for xAI's Grok models including grok-4-0709 (256K context), grok-3 series, and grok-2-vision. Uses OpenAI-compatible Chat Completions API at `https://api.x.ai/v1`. Supports X_AI_API_KEY or XAI_API_KEY environment variables. Parameter filtering for Grok 4 models (no frequencyPenalty, presencePenalty, or stop parameters). Default model shortcut: `grok` → `grok-4-0709`.

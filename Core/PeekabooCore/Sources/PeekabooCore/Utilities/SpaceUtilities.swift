@@ -188,15 +188,10 @@ public struct SpaceInfo: Sendable {
 @MainActor
 public final class SpaceManagementService {
     private var _connection: CGSConnectionID?
-    private lazy var connectionLock = NSLock()
     
     private var connection: CGSConnectionID {
-        connectionLock.lock()
-        defer { connectionLock.unlock() }
-        
         if _connection == nil {
-            // Ensure we're on main thread
-            // SpaceManagementService is marked @MainActor, so we're guaranteed to be on main thread
+            // We're guaranteed to be on main thread due to @MainActor
             
             // Initialize NSApplication if needed
             _ = NSApplication.shared

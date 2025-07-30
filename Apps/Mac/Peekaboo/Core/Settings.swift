@@ -397,6 +397,7 @@ final class PeekabooSettings {
         }
     }
     
+    @MainActor
     private func saveAPIKeyToCredentials(_ key: String, _ value: String) {
         do {
             if value.isEmpty {
