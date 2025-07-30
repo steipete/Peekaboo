@@ -19,6 +19,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     private let scrollService: ScrollService
     private let hotkeyService: HotkeyService
     private let gestureService: GestureService
+    private let screenCaptureService: ScreenCaptureService
     
     // Visualizer client for visual feedback
     private let visualizerClient = VisualizationClient.shared
@@ -34,6 +35,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         self.scrollService = ScrollService(sessionManager: manager, clickService: nil)
         self.hotkeyService = HotkeyService()
         self.gestureService = GestureService()
+        self.screenCaptureService = ScreenCaptureService()
         
         // Connect to visualizer if available
         visualizerClient.connect()
@@ -335,6 +337,78 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         }
         
         return nil
+    }
+    
+    // MARK: - Find Element
+    
+    public func findElement(matching criteria: UIElementSearchCriteria, in appName: String?) async throws -> DetectedElement {
+        logger.debug("Finding element matching criteria in app: \(appName ?? "any")")
+        
+        // Capture screenshot
+        let captureResult: CaptureResult
+        if let appName = appName {
+            // Try to find the application first
+            let appService = ApplicationService()
+            _ = try await appService.findApplication(identifier: appName)
+            
+            // Capture specific application
+            captureResult = try await screenCaptureService.captureWindow(
+                appIdentifier: appName,
+                windowIndex: nil
+            )
+        } else {
+            // Capture entire screen
+            captureResult = try await screenCaptureService.captureScreen(displayIndex: nil)
+        }
+        
+        // Detect elements in the screenshot
+        let detectionResult = try await detectElements(
+            in: captureResult.imageData,
+            sessionId: nil,
+            windowContext: nil
+        )
+        
+        // Search for matching element
+        let allElements = detectionResult.elements.all
+        
+        for element in allElements {
+            switch criteria {
+            case .label(let searchLabel):
+                let searchLower = searchLabel.lowercased()
+                if let label = element.label?.lowercased(), label.contains(searchLower) {
+                    return element
+                }
+                if let value = element.value?.lowercased(), value.contains(searchLower) {
+                    return element
+                }
+                
+            case .identifier(let searchId):
+                if element.id == searchId {
+                    return element
+                }
+                
+            case .type(let searchType):
+                if element.type.rawValue.lowercased() == searchType.lowercased() {
+                    return element
+                }
+            }
+        }
+        
+        // No matching element found
+        let description: String
+        switch criteria {
+        case .label(let label):
+            description = "with label '\(label)'"
+        case .identifier(let id):
+            description = "with ID '\(id)'"
+        case .type(let type):
+            description = "of type '\(type)'"
+        }
+        
+        throw PeekabooError.elementNotFound(
+            type: "element \(description)",
+            in: appName ?? "screen"
+        )
     }
 }
 

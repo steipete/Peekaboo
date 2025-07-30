@@ -90,6 +90,14 @@ public protocol UIAutomationServiceProtocol: Sendable {
     /// Get information about the currently focused UI element
     /// - Returns: Information about the focused element, or nil if no element has focus
     func getFocusedElement() -> UIFocusInfo?
+    
+    /// Find an element matching the given criteria
+    /// - Parameters:
+    ///   - criteria: Search criteria for finding the element
+    ///   - appName: Optional application name to search within
+    /// - Returns: The first element matching the criteria
+    /// - Throws: PeekabooError.elementNotFound if no matching element is found
+    func findElement(matching criteria: UIElementSearchCriteria, in appName: String?) async throws -> DetectedElement
 }
 
 /// Result of element detection

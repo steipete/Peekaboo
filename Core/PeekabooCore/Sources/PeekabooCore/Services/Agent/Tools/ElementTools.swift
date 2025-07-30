@@ -34,85 +34,39 @@ extension PeekabooAgentService {
                 let elementType = params.string("element_type", default: nil)
                 
                 let startTime = Date()
+                let targetDescription = appName ?? "entire screen"
                 
-                // Capture screen or app to get elements
-                let captureResult: CaptureResult
-                let targetDescription: String
+                // Always search by label since that's what the user is looking for
+                let searchCriteria = UIElementSearchCriteria.label(searchLabel)
                 
-                if let appName = appName {
-                    // Capture specific application
-                    captureResult = try await context.screenCapture.captureWindow(
-                        appIdentifier: appName,
-                        windowIndex: nil
+                do {
+                    let element = try await context.automation.findElement(
+                        matching: searchCriteria,
+                        in: appName
                     )
-                    targetDescription = appName
-                } else {
-                    // Capture entire screen
-                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
-                    targetDescription = "entire screen"
-                }
-                
-                // Detect elements in the screenshot
-                let detectionResult = try await context.automation.detectElements(
-                    in: captureResult.imageData,
-                    sessionId: nil,
-                    windowContext: nil
-                )
-                
-                let duration = Date().timeIntervalSince(startTime)
-                
-                // Search for matching elements
-                let elements = detectionResult.elements
-                var matches: [DetectedElement] = []
-                
-                // Helper function to check if element matches search criteria
-                func elementMatches(_ element: DetectedElement) -> Bool {
-                    // Check element type filter if specified
+                    
+                    let duration = Date().timeIntervalSince(startTime)
+                    
+                    // If element type was specified, verify it matches
                     if let elementType = elementType {
                         let expectedType = mapElementTypeToElementType(elementType)
                         if element.type != expectedType {
-                            return false
+                            var notFoundMessage = "No elements found matching '\(searchLabel)'"
+                            notFoundMessage += " of type '\(elementType)'"
+                            notFoundMessage += " in \(targetDescription)"
+                            return .failure(notFoundMessage, code: "ELEMENT_NOT_FOUND")
                         }
                     }
                     
-                    // Check label match (case-insensitive partial match)
-                    let searchLower = searchLabel.lowercased()
-                    if let label = element.label?.lowercased() {
-                        return label.contains(searchLower)
-                    }
-                    if let value = element.value?.lowercased() {
-                        return value.contains(searchLower)
-                    }
-                    return false
-                }
-                
-                // Search through all element types
-                matches.append(contentsOf: elements.buttons.filter(elementMatches))
-                matches.append(contentsOf: elements.textFields.filter(elementMatches))
-                matches.append(contentsOf: elements.links.filter(elementMatches))
-                matches.append(contentsOf: elements.menus.filter(elementMatches))
-                matches.append(contentsOf: elements.checkboxes.filter(elementMatches))
-                matches.append(contentsOf: elements.other.filter(elementMatches))
-                
-                if matches.isEmpty {
-                    var notFoundMessage = "No elements found matching '\(searchLabel)'"
-                    if let elementType = elementType {
-                        notFoundMessage += " of type '\(elementType)'"
-                    }
-                    notFoundMessage += " in \(targetDescription)"
-                    return .failure(notFoundMessage, code: "ELEMENT_NOT_FOUND")
-                }
-                
-                // Format the results
-                var description = "Found \(matches.count) element\(matches.count == 1 ? "" : "s") matching '\(searchLabel)'"
-                if let elementType = elementType {
-                    description += " of type '\(elementType)'"
-                }
-                description += " in \(targetDescription):\n"
-                
-                for (index, element) in matches.enumerated() {
+                    // Format the result
                     let displayText = element.label ?? element.value ?? "Unlabeled \(element.type)"
-                    description += "\n\(index + 1). \(displayText)"
+                    var description = "Found element matching '\(searchLabel)'"
+                    if let elementType = elementType {
+                        description += " of type '\(elementType)'"
+                    }
+                    description += " in \(targetDescription):\n"
+                    
+                    description += "\n\(displayText)"
                     description += "\n   ID: \(element.id)"
                     description += "\n   Type: \(element.type)"
                     description += "\n   Position: [\(Int(element.bounds.minX)), \(Int(element.bounds.minY))]"
@@ -120,27 +74,28 @@ extension PeekabooAgentService {
                     if !element.isEnabled {
                         description += "\n   Status: Disabled"
                     }
-                    if index < matches.count - 1 {
-                        description += "\n"
+                    
+                    return .success(
+                        description,
+                        metadata: [
+                            "elementId": element.id,
+                            "elementType": element.type.rawValue,
+                            "elementLabel": element.label ?? "",
+                            "elementX": String(Int(element.bounds.minX)),
+                            "elementY": String(Int(element.bounds.minY)),
+                            "searchLabel": searchLabel,
+                            "app": targetDescription,
+                            "duration": String(format: "%.2fs", duration)
+                        ]
+                    )
+                } catch {
+                    var notFoundMessage = "No elements found matching '\(searchLabel)'"
+                    if let elementType = elementType {
+                        notFoundMessage += " of type '\(elementType)'"
                     }
+                    notFoundMessage += " in \(targetDescription)"
+                    return .failure(notFoundMessage, code: "ELEMENT_NOT_FOUND")
                 }
-                
-                // Return metadata about the first match
-                let firstMatch = matches[0]
-                return .success(
-                    description,
-                    metadata: [
-                        "matchCount": String(matches.count),
-                        "firstMatchId": firstMatch.id,
-                        "firstMatchType": firstMatch.type.rawValue,
-                        "firstMatchLabel": firstMatch.label ?? "",
-                        "firstMatchX": String(Int(firstMatch.bounds.minX)),
-                        "firstMatchY": String(Int(firstMatch.bounds.minY)),
-                        "searchLabel": searchLabel,
-                        "app": targetDescription,
-                        "duration": String(format: "%.2fs", duration)
-                    ]
-                )
             }
         )
     }
