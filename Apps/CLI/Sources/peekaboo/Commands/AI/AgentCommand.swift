@@ -3,7 +3,7 @@ import Foundation
 import PeekabooCore
 
 // Temporary session info struct until PeekabooAgentService implements session management
-// Notification test: Terminal-notifier is now installed
+// Test: Icon notifications are now working
 struct AgentSessionInfo: Codable {
     let id: String
     let task: String

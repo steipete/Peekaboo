@@ -353,6 +353,23 @@ The agent command automatically updates the terminal title using VibeTunnel (if 
 
 This helps track multiple Claude Code sessions at a glance, especially useful when managing parallel automation tasks.
 
+#### Performance Considerations
+
+**Important**: Agent operations can be slow, especially when:
+- Listing windows across multiple applications
+- Interacting with apps that have many windows/tabs (like Safari)
+- Performing complex multi-step automation tasks
+- Waiting for UI elements to become available
+- Iterating through accessibility elements
+
+**Typical operation times**:
+- Simple operations (click, type): 1-5 seconds
+- Window listing (single app): 5-30 seconds
+- Window listing (all apps): 30 seconds - 2 minutes
+- Complex automation workflows: 2-5 minutes or more
+
+The default timeouts may be insufficient for these operations. Agent tasks can take several minutes to complete, so be patient and don't assume a task has failed just because it's taking longer than expected. Window enumeration is particularly slow when done sequentially across multiple applications due to the accessibility API constraints.
+
 
 ## OpenAI API Integration
 

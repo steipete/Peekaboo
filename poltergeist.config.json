@@ -10,6 +10,7 @@
       "lockFile": "/tmp/peekaboo-cli-build.lock",
       "settlingDelay": 1000,
       "debounceInterval": 5000,
+      "icon": "./assets/icon_512x512@2x.png",
       "watchPaths": [
         "Core/PeekabooCore/**/*.swift",
         "Core/AXorcist/**/*.swift", 
@@ -28,6 +29,7 @@
       "autoRelaunch": true,
       "settlingDelay": 1000,
       "debounceInterval": 5000,
+      "icon": "./assets/icon_512x512@2x.png",
       "watchPaths": [
         "Apps/Mac/Peekaboo/**/*.swift",
         "Apps/Mac/Peekaboo/**/*.storyboard",

@@ -65,6 +65,12 @@ public typealias CGSSpaceID = UInt64  // size_t in C
 /// Managed display identifier
 public typealias CGSManagedDisplay = UInt32
 
+/// Window level (z-order)
+public typealias CGWindowLevel = Int32
+
+/// Space type enum
+public typealias CGSSpaceType = Int
+
 /// Use _CGSDefaultConnection instead of CGSMainConnectionID for better reliability
 @_silgen_name("_CGSDefaultConnection")
 func _CGSDefaultConnection() -> CGSConnectionID
@@ -81,7 +87,7 @@ func CGSCopySpacesForWindows(_ cid: CGSConnectionID, _ mask: Int, _ windowIDs: C
 
 /// Gets the type of a space (user, fullscreen, system)
 @_silgen_name("CGSSpaceGetType")
-func CGSSpaceGetType(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> Int
+func CGSSpaceGetType(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> CGSSpaceType
 
 /// Gets the ID of the space currently visible to the user
 @_silgen_name("CGSGetActiveSpace")
@@ -90,7 +96,7 @@ func CGSGetActiveSpace(_ cid: CGSConnectionID) -> CGSSpaceID
 /// Creates a new space with the given options dictionary
 /// Valid keys are: "type": CFNumberRef, "uuid": CFStringRef
 @_silgen_name("CGSSpaceCreate")
-func CGSSpaceCreate(_ cid: CGSConnectionID, _ null: UnsafeRawPointer?, _ options: CFDictionary) -> CGSSpaceID
+func CGSSpaceCreate(_ cid: CGSConnectionID, _ null: UnsafeRawPointer, _ options: CFDictionary) -> CGSSpaceID
 
 /// Removes and destroys the space corresponding to the given space ID
 @_silgen_name("CGSSpaceDestroy")
@@ -98,18 +104,18 @@ func CGSSpaceDestroy(_ cid: CGSConnectionID, _ sid: CGSSpaceID)
 
 /// Get and set the human-readable name of a space
 @_silgen_name("CGSSpaceCopyName")
-func CGSSpaceCopyName(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> CFString?
+func CGSSpaceCopyName(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> CFString
 
 @_silgen_name("CGSSpaceSetName")
 func CGSSpaceSetName(_ cid: CGSConnectionID, _ sid: CGSSpaceID, _ name: CFString) -> CGError
 
 /// Returns an array of PIDs of applications that have ownership of a given space
 @_silgen_name("CGSSpaceCopyOwners")
-func CGSSpaceCopyOwners(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> CFArray?
+func CGSSpaceCopyOwners(_ cid: CGSConnectionID, _ sid: CGSSpaceID) -> CFArray
 
 /// Connection-local data in a given space
 @_silgen_name("CGSSpaceCopyValues")
-func CGSSpaceCopyValues(_ cid: CGSConnectionID, _ space: CGSSpaceID) -> CFDictionary?
+func CGSSpaceCopyValues(_ cid: CGSConnectionID, _ space: CGSSpaceID) -> CFDictionary
 
 @_silgen_name("CGSSpaceSetValues")
 func CGSSpaceSetValues(_ cid: CGSConnectionID, _ sid: CGSSpaceID, _ values: CFDictionary) -> CGError
@@ -141,11 +147,11 @@ func CGSRemoveWindowsFromSpaces(_ cid: CGSConnectionID, _ windows: CFArray, _ sp
 
 /// Returns information about managed display spaces
 @_silgen_name("CGSCopyManagedDisplaySpaces")
-func CGSCopyManagedDisplaySpaces(_ cid: CGSConnectionID) -> CFArray?
+func CGSCopyManagedDisplaySpaces(_ cid: CGSConnectionID) -> CFArray
 
 /// Get the level (z-order) of a window
 @_silgen_name("CGSGetWindowLevel")
-func CGSGetWindowLevel(_ cid: CGSConnectionID, _ windowID: CGWindowID) -> Int32
+func CGSGetWindowLevel(_ cid: CGSConnectionID, _ windowID: CGWindowID, _ outLevel: UnsafeMutablePointer<CGWindowLevel>) -> CGError
 
 // Space type constants (from CGSSpaceType enum)
 private let kCGSSpaceUser = 0        // User-created desktop spaces
@@ -285,10 +291,7 @@ public final class SpaceManagementService {
             return [:]
         }
         
-        guard let managedSpacesRef = CGSCopyManagedDisplaySpaces(connection) else {
-            print("ERROR: CGSCopyManagedDisplaySpaces returned nil")
-            return [:]
-        }
+        let managedSpacesRef = CGSCopyManagedDisplaySpaces(connection)
         
         let managedSpacesArray = managedSpacesRef as NSArray
         let activeSpace = CGSGetActiveSpace(connection)
@@ -503,10 +506,11 @@ public final class SpaceManagementService {
         }
         
         // Get the window level
-        let level = CGSGetWindowLevel(connection, windowID)
+        var level: CGWindowLevel = 0
+        let error = CGSGetWindowLevel(connection, windowID, &level)
         
-        // CGSGetWindowLevel returns -1 on error
-        if level == -1 {
+        // Check for error
+        if error != .success {
             return nil
         }
         
