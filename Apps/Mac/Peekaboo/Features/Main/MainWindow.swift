@@ -360,7 +360,7 @@ struct MainWindow: View {
         }
     }
     
-    private func submitAudioInput(audioData: Data, duration: TimeInterval) {
+    private func submitAudioInput(audioData: Data, duration: TimeInterval, transcript: String? = nil) {
         Task {
             self.isProcessing = true
             defer { isProcessing = false }
@@ -371,21 +371,13 @@ struct MainWindow: View {
             }
 
             do {
-                // Convert audio data to base64
-                let base64Audio = audioData.base64EncodedString()
-                
-                // Create an audio message - the AI provider will handle it appropriately
-                let audioPrompt = "[Audio message - duration: \(Int(duration))s]"
-                
-                // For now, we'll send it as a text message with metadata
-                // In the future, when providers support audio messages directly,
-                // we can send the actual audio content
-                try await self.agent.executeTask(audioPrompt)
-                
-                // Note: To properly support audio messages, we would need to:
-                // 1. Update the agent's executeTask to accept audio content
-                // 2. Update the message types to properly handle audio
-                // 3. Ensure the AI provider can process audio inputs
+                // Execute task with audio content
+                try await self.agent.executeTaskWithAudio(
+                    audioData: audioData,
+                    duration: duration,
+                    mimeType: "audio/wav",
+                    transcript: transcript
+                )
                 
                 self.errorMessage = nil
             } catch {
@@ -436,8 +428,13 @@ struct MainWindow: View {
                 // For direct mode, we'll submit the audio data
                 if let audioData = self.speechRecognizer.recordedAudioData,
                    let duration = self.speechRecognizer.recordedAudioDuration {
-                    // Submit as audio message
-                    self.submitAudioInput(audioData: audioData, duration: duration)
+                    // Submit as audio message with transcript if available
+                    let transcript = self.speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                    self.submitAudioInput(
+                        audioData: audioData, 
+                        duration: duration, 
+                        transcript: transcript.isEmpty ? nil : transcript
+                    )
                 }
             }
         } else {
@@ -590,24 +587,30 @@ struct ToolCallView: View {
     @State private var appeared = false
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "wrench.fill")
-                .font(.caption)
-                .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 2) {
+            // Tool execution summary
+            HStack(spacing: 4) {
+                AnimatedToolIcon(
+                    toolName: self.toolCall.name,
+                    isRunning: false)
 
-            Text(self.toolCall.name)
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            if !self.toolCall.result.isEmpty {
-                Text("→")
+                Text(self.toolSummary)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.primary)
+            }
 
-                Text(self.toolCall.result)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
+            // Result summary if available
+            if let resultSummary = self.resultSummary {
+                HStack(spacing: 4) {
+                    Text("→")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.leading, 20) // Align with icon
+
+                    Text(resultSummary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
         }
         .padding(.horizontal, 8)
@@ -621,5 +624,21 @@ struct ToolCallView: View {
                 appeared = true
             }
         }
+    }
+    
+    private var toolSummary: String {
+        // Use ToolFormatter to get a human-readable summary
+        ToolFormatter.compactToolSummary(
+            toolName: self.toolCall.name,
+            arguments: self.toolCall.arguments
+        )
+    }
+    
+    private var resultSummary: String? {
+        // Use ToolFormatter to extract meaningful result information
+        ToolFormatter.toolResultSummary(
+            toolName: self.toolCall.name,
+            result: self.toolCall.result
+        )
     }
 }
