@@ -100,6 +100,7 @@ struct PeekabooApp: App {
             SettingsWindow()
                 .environment(self.settings)
                 .environment(self.permissions)
+                .environmentObject(self.appDelegate.visualizerCoordinator ?? VisualizerCoordinator(overlayManager: OverlayManager()))
                 .onAppear {
                     // Ensure visualizer coordinator is available
                     if self.appDelegate.visualizerCoordinator == nil {

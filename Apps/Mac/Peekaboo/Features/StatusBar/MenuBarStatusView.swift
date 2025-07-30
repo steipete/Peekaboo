@@ -26,25 +26,22 @@ struct MenuBarStatusView: View {
 
             Divider()
 
-            // Main content area - always show current session if available
-            if let currentSession = sessionStore.currentSession {
-                self.currentSessionView(currentSession)
-                    .frame(maxHeight: 350)
-            } else if self.agent.isProcessing {
-                // Fallback when agent is processing but no session yet
-                self.activeSessionView
-                    .frame(maxHeight: 350)
-            } else {
-                // Empty state with input field
-                self.idleStateWithInput
-                    .frame(minHeight: 150)
-            }
+            // Main content area - unified experience
+            self.unifiedContentView
+                .frame(maxHeight: 350)
 
-            // Only show action buttons when there's an active session
-            if self.sessionStore.currentSession != nil {
+            Divider()
+            
+            // Always show input area and action buttons for consistent experience
+            VStack(spacing: 0) {
+                // Input area (always visible)
+                self.inputAreaView
+                    .padding(10)
+                    .background(.regularMaterial)
+                
                 Divider()
                 
-                // Bottom action buttons
+                // Action buttons (always visible)
                 self.actionButtonsView
                     .padding()
                     .background(.regularMaterial)
@@ -165,6 +162,143 @@ struct MenuBarStatusView: View {
                 .buttonStyle(.plain)
                 .help("Cancel current task")
             }
+        }
+    }
+
+    // MARK: - Unified Content View
+    
+    private var unifiedContentView: some View {
+        Group {
+            if let currentSession = sessionStore.currentSession {
+                // Show current session messages
+                self.sessionMessagesView(currentSession)
+            } else if !sessionStore.sessions.isEmpty {
+                // Show recent sessions when no active session
+                self.recentSessionsView
+            } else {
+                // Empty state
+                self.emptyStateView
+            }
+        }
+    }
+    
+    private func sessionMessagesView(_ session: ConversationSession) -> some View {
+        VStack(spacing: 0) {
+            // Tool execution history with animated blocks
+            if !self.agent.toolExecutionHistory.isEmpty {
+                CompactToolExecutionHistoryView()
+                    .environment(self.agent)
+
+                Divider()
+            }
+
+            // Messages scroll view
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        // Show all messages including system messages
+                        ForEach(session.messages) { message in
+                            MenuDetailedMessageRow(message: message)
+                                .id(message.id)
+                        }
+
+                        // Show processing indicator if actively processing but no thinking message
+                        if self.agent.isProcessing, !self.agent.isThinking {
+                            if let lastMessage = session.messages.last,
+                               lastMessage.role != .system || !lastMessage.content.contains("🤔")
+                            {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                        .scaleEffect(0.6)
+                                        .progressViewStyle(CircularProgressViewStyle())
+
+                                    Text("Processing...")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .italic()
+                                }
+                                .padding(.vertical, 4)
+                                .padding(.horizontal, 8)
+                                .id("processing")
+                            }
+                        }
+                    }
+                    .padding()
+                    .onChange(of: session.messages.count) { _, _ in
+                        // Auto-scroll to bottom on new messages
+                        withAnimation {
+                            if let lastMessage = session.messages.last {
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: self.agent.isProcessing) { _, _ in
+                        // Auto-scroll when processing state changes
+                        withAnimation {
+                            if self.agent.isProcessing {
+                                proxy.scrollTo("processing", anchor: .bottom)
+                            } else if let lastMessage = session.messages.last {
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private var emptyStateView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "moon.stars")
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
+                .symbolEffect(.pulse.byLayer, options: .repeating.speed(0.5))
+            
+            Text("Welcome to Peekaboo")
+                .font(.title3)
+                .fontWeight(.medium)
+            
+            Text("Ask me to help you with automation tasks")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
+    
+    // MARK: - Input Area View
+    
+    private var inputAreaView: some View {
+        HStack(spacing: 8) {
+            if self.isVoiceMode {
+                Image(systemName: "mic.fill")
+                    .foregroundColor(.red)
+                    .font(.caption)
+            }
+
+            TextField(self.agent.isProcessing ? "Ask a follow-up..." : "Ask Peekaboo...", text: self.$inputText)
+                .textFieldStyle(.plain)
+                .font(.body)
+                .focused(self.$isInputFocused)
+                .onSubmit {
+                    self.submitInput()
+                }
+
+            // Voice mode toggle
+            Button(action: { self.isVoiceMode.toggle() }) {
+                Image(systemName: self.isVoiceMode ? "keyboard" : "mic")
+                    .font(.body)
+                    .foregroundColor(self.isVoiceMode ? .red : .secondary)
+            }
+            .buttonStyle(.plain)
+            .help(self.isVoiceMode ? "Switch to text input" : "Switch to voice input")
+
+            Button(action: self.submitInput) {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.title2)
+            }
+            .buttonStyle(.plain)
+            .disabled(self.inputText.isEmpty && !self.isVoiceMode)
         }
     }
 
@@ -490,33 +624,41 @@ struct MenuBarStatusView: View {
 
     @ViewBuilder
     private var recentSessionsView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Recent Sessions")
-                .font(.headline)
-                .padding(.horizontal)
-
-            ScrollView {
-                VStack(spacing: 4) {
-                    ForEach(self.sessionStore.sessions.prefix(5)) { session in
-                        SessionRowCompact(
-                            session: session,
-                            isActive: false, // Simplified check
-                            onDelete: {
-                                withAnimation {
-                                    self.sessionStore.sessions.removeAll { $0.id == session.id }
-                                    Task {
-                                        self.sessionStore.saveSessions()
-                                    }
+        ScrollView {
+            VStack(spacing: 4) {
+                ForEach(self.sessionStore.sessions.prefix(5)) { session in
+                    SessionRowCompact(
+                        session: session,
+                        isActive: self.agent.currentSession?.id == session.id,
+                        onDelete: {
+                            withAnimation {
+                                self.sessionStore.sessions.removeAll { $0.id == session.id }
+                                Task {
+                                    self.sessionStore.saveSessions()
                                 }
-                            })
-                            .onTapGesture {
-                                self.sessionStore.selectSession(session)
-                                self.openMainWindow()
                             }
+                        })
+                        .onTapGesture {
+                            self.sessionStore.selectSession(session)
+                            // Don't open main window - keep the popover experience
+                        }
+                }
+                
+                if sessionStore.sessions.isEmpty {
+                    VStack(spacing: 12) {
+                        Text("No recent sessions")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text("Start by asking me something")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
                 }
             }
-            .frame(maxHeight: 200)
+            .padding()
         }
     }
 
@@ -613,19 +755,37 @@ struct MenuBarStatusView: View {
     @ViewBuilder
     private var actionButtonsView: some View {
         HStack(spacing: 12) {
+            // Session picker / current session indicator
+            if let currentSession = sessionStore.currentSession {
+                HStack {
+                    Image(systemName: "text.bubble")
+                        .font(.caption)
+                    Text(currentSession.title)
+                        .font(.caption)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.accentColor.opacity(0.1))
+                .cornerRadius(6)
+                .frame(maxWidth: .infinity)
+            } else {
+                Button(action: self.createNewSession) {
+                    Label("New Session", systemImage: "plus.circle")
+                        .font(.caption)
+                        .frame(maxWidth: .infinity)
+                }
+                .controlSize(.small)
+                .buttonStyle(.bordered)
+            }
+            
             Button(action: self.openMainWindow) {
-                Label("Open Window", systemImage: "rectangle.stack")
+                Label("Expand", systemImage: "arrow.up.left.and.arrow.down.right")
+                    .font(.caption)
                     .frame(maxWidth: .infinity)
             }
-            .controlSize(.regular)
+            .controlSize(.small)
             .buttonStyle(.bordered)
-
-            Button(action: self.createNewSession) {
-                Label("New Session", systemImage: "plus.circle")
-                    .frame(maxWidth: .infinity)
-            }
-            .controlSize(.regular)
-            .buttonStyle(.borderedProminent)
         }
     }
 
