@@ -37,7 +37,7 @@ public protocol ApprovalHandler: Sendable {
 }
 
 /// Result of an approval request
-public enum ApprovalResult {
+public enum ApprovalResult: Sendable {
     case approved
     case rejected(reason: String?)
     case approvedAlways  // Approve this and all future calls

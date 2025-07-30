@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("Annotation Drawing Integration Tests", .serialized)
@@ -95,8 +96,8 @@ struct AnnotationIntegrationTests {
         let testImage = self.createTestImage(size: imageSize)
 
         // Define test elements with known positions
-        let testElements: [String: SessionCache.UIAutomationSession.UIElement] = [
-            "B1": SessionCache.UIAutomationSession.UIElement(
+        let testElements: [String: UIElement] = [
+            "B1": UIElement(
                 id: "B1",
                 elementId: "button1",
                 role: "AXButton",
@@ -173,7 +174,7 @@ struct AnnotationIntegrationTests {
     @MainActor
     private func drawAnnotations(
         on image: NSImage,
-        elements: [String: SessionCache.UIAutomationSession.UIElement],
+        elements: [String: UIElement],
         windowBounds: CGRect?) async throws -> NSImage
     {
         let annotatedImage = NSImage(size: image.size)

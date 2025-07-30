@@ -28,6 +28,9 @@ struct ErrorHandlingTests {
         }
     }
 
+    // NOTE: PermissionErrorDetector has been removed from the codebase
+    // These tests are commented out until the functionality is reimplemented
+    /*
     @Suite("PermissionErrorDetector Tests")
     struct PermissionErrorDetectorTests {
         @Test("Detects screen recording permission errors", arguments: [
@@ -90,6 +93,7 @@ struct ErrorHandlingTests {
             #expect(PermissionErrorDetector.isScreenRecordingPermissionError(error) == true)
         }
     }
+    */
 
     @Suite("CaptureError Tests")
     struct CaptureErrorTests {

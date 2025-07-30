@@ -1,11 +1,15 @@
 import Foundation
 import Testing
+import PeekabooCore
 @testable import peekaboo
 
 @Suite("JSONOutput Tests", .tags(.jsonOutput, .unit))
 struct JSONOutputTests {
     // MARK: - AnyCodable Tests
-
+    // NOTE: AnyCodable tests are commented out because AnyCodable was removed from CLI
+    // The consolidation kept only AXorcist's version of AnyCodable
+    
+    /*
     @Test("AnyCodable encoding with various types", .tags(.fast))
     func anyCodableEncodingVariousTypes() throws {
         // Test by wrapping in a container structure since JSONSerialization needs complete documents
@@ -93,6 +97,7 @@ struct JSONOutputTests {
         #expect(json?["is_active"] as? Bool == true)
         #expect(json?["window_count"] as? Int == 2)
     }
+    */
 
     // MARK: - JSON Output Function Tests
 

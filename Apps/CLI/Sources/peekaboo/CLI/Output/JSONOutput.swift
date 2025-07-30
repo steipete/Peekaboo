@@ -1,4 +1,5 @@
 import Foundation
+import PeekabooCore
 
 /// Helper class for managing JSON output and debug logs
 public class JSONOutput {
