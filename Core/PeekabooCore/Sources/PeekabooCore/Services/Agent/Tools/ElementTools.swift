@@ -29,12 +29,118 @@ extension PeekabooAgentService {
                 required: ["label"]
             ),
             handler: { params, context in
-                let _ = try params.string("label")
-                let _ = params.string("app", default: nil)
-                let _ = params.string("element_type", default: nil)
+                let searchLabel = try params.string("label")
+                let appName = params.string("app", default: nil)
+                let elementType = params.string("element_type", default: nil)
                 
-                // TODO: Replace with proper element finding implementation
-                throw PeekabooError.serviceUnavailable("Element finding not yet implemented")
+                let startTime = Date()
+                
+                // Capture screen or app to get elements
+                let captureResult: CaptureResult
+                let targetDescription: String
+                
+                if let appName = appName {
+                    // Capture specific application
+                    captureResult = try await context.screenCapture.captureWindow(
+                        appIdentifier: appName,
+                        windowIndex: nil
+                    )
+                    targetDescription = appName
+                } else {
+                    // Capture entire screen
+                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
+                    targetDescription = "entire screen"
+                }
+                
+                // Detect elements in the screenshot
+                let detectionResult = try await context.automation.detectElements(
+                    in: captureResult.imageData,
+                    sessionId: nil,
+                    windowContext: nil
+                )
+                
+                let duration = Date().timeIntervalSince(startTime)
+                
+                // Search for matching elements
+                let elements = detectionResult.elements
+                var matches: [DetectedElement] = []
+                
+                // Helper function to check if element matches search criteria
+                func elementMatches(_ element: DetectedElement) -> Bool {
+                    // Check element type filter if specified
+                    if let elementType = elementType {
+                        let expectedType = mapElementTypeToElementType(elementType)
+                        if element.type != expectedType {
+                            return false
+                        }
+                    }
+                    
+                    // Check label match (case-insensitive partial match)
+                    let searchLower = searchLabel.lowercased()
+                    if let label = element.label?.lowercased() {
+                        return label.contains(searchLower)
+                    }
+                    if let value = element.value?.lowercased() {
+                        return value.contains(searchLower)
+                    }
+                    return false
+                }
+                
+                // Search through all element types
+                matches.append(contentsOf: elements.buttons.filter(elementMatches))
+                matches.append(contentsOf: elements.textFields.filter(elementMatches))
+                matches.append(contentsOf: elements.links.filter(elementMatches))
+                matches.append(contentsOf: elements.menus.filter(elementMatches))
+                matches.append(contentsOf: elements.checkboxes.filter(elementMatches))
+                matches.append(contentsOf: elements.other.filter(elementMatches))
+                
+                if matches.isEmpty {
+                    var notFoundMessage = "No elements found matching '\(searchLabel)'"
+                    if let elementType = elementType {
+                        notFoundMessage += " of type '\(elementType)'"
+                    }
+                    notFoundMessage += " in \(targetDescription)"
+                    return .failure(notFoundMessage, code: "ELEMENT_NOT_FOUND")
+                }
+                
+                // Format the results
+                var description = "Found \(matches.count) element\(matches.count == 1 ? "" : "s") matching '\(searchLabel)'"
+                if let elementType = elementType {
+                    description += " of type '\(elementType)'"
+                }
+                description += " in \(targetDescription):\n"
+                
+                for (index, element) in matches.enumerated() {
+                    let displayText = element.label ?? element.value ?? "Unlabeled \(element.type)"
+                    description += "\n\(index + 1). \(displayText)"
+                    description += "\n   ID: \(element.id)"
+                    description += "\n   Type: \(element.type)"
+                    description += "\n   Position: [\(Int(element.bounds.minX)), \(Int(element.bounds.minY))]"
+                    description += "\n   Size: \(Int(element.bounds.width))×\(Int(element.bounds.height))"
+                    if !element.isEnabled {
+                        description += "\n   Status: Disabled"
+                    }
+                    if index < matches.count - 1 {
+                        description += "\n"
+                    }
+                }
+                
+                // Return metadata about the first match
+                let firstMatch = matches[0]
+                return .success(
+                    description,
+                    metadata: [
+                        "matchCount": String(matches.count),
+                        "firstMatchId": firstMatch.id,
+                        "firstMatchType": firstMatch.type.rawValue,
+                        "firstMatchLabel": firstMatch.label ?? "",
+                        "firstMatchX": String(Int(firstMatch.bounds.minX)),
+                        "firstMatchY": String(Int(firstMatch.bounds.minY)),
+                        "searchLabel": searchLabel,
+                        "app": targetDescription,
+                        "duration": String(format: "%.2fs", duration)
+                    ]
+                )
             }
         )
     }
@@ -147,8 +253,39 @@ extension PeekabooAgentService {
             name: "focused",
             description: "Get information about the currently focused element",
             handler: { context in
-                // TODO: Replace with proper focused element implementation
-                throw PeekabooError.serviceUnavailable("Focused element detection not yet implemented")
+                // Get focused element information
+                guard let focusInfo = context.automation.getFocusedElement() else {
+                    return .failure("No element is currently focused", code: "NO_FOCUSED_ELEMENT")
+                }
+                
+                // Format the focused element information
+                var description = "Focused Element: \(focusInfo.role)"
+                if let title = focusInfo.title {
+                    description += " - \"\(title)\""
+                }
+                if let value = focusInfo.value, !value.isEmpty {
+                    description += "\nValue: \(value)"
+                }
+                
+                description += "\nApplication: \(focusInfo.applicationName)"
+                description += "\nPosition: [\(Int(focusInfo.frame.origin.x)), \(Int(focusInfo.frame.origin.y))]"
+                description += "\nSize: \(Int(focusInfo.frame.size.width))×\(Int(focusInfo.frame.size.height))"
+                
+                return .success(
+                    description,
+                    metadata: [
+                        "role": focusInfo.role,
+                        "title": focusInfo.title ?? "",
+                        "value": focusInfo.value ?? "",
+                        "applicationName": focusInfo.applicationName,
+                        "bundleIdentifier": focusInfo.bundleIdentifier,
+                        "processId": String(focusInfo.processId),
+                        "x": String(Int(focusInfo.frame.origin.x)),
+                        "y": String(Int(focusInfo.frame.origin.y)),
+                        "width": String(Int(focusInfo.frame.size.width)),
+                        "height": String(Int(focusInfo.frame.size.height))
+                    ]
+                )
             }
         )
     }
@@ -165,6 +302,18 @@ private func mapElementTypeToRole(_ elementType: String) -> String {
     case "radio": return "AXRadioButton"
     case "link": return "AXLink"
     default: return elementType
+    }
+}
+
+private func mapElementTypeToElementType(_ elementType: String) -> ElementType {
+    switch elementType.lowercased() {
+    case "button": return .button
+    case "text_field": return .textField
+    case "menu": return .menu
+    case "checkbox": return .checkbox
+    case "radio": return .checkbox  // Radio buttons are treated as checkboxes in ElementType
+    case "link": return .link
+    default: return .other
     }
 }
 
