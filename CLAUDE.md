@@ -281,8 +281,11 @@ npm run build:mac
 # Build everything (Swift CLI + Mac app + TypeScript)
 npm run build:all
 
-# Build universal Swift binary with optimizations
-./scripts/build-swift-universal.sh
+# Build Swift binary for ARM only (faster for development)
+npm run build:swift
+
+# Build universal Swift binary with optimizations (for releases)
+npm run build:swift:all
 ```
 
 **Note**: Swift builds can take 3-5 minutes on first build or clean builds due to dependency compilation. Subsequent incremental builds are much faster (10-30 seconds).

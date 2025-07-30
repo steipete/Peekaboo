@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "build": "cd Server && npm run build",
-    "build:swift": "./scripts/build-swift-universal.sh",
+    "build:swift": "./scripts/build-swift-arm.sh",
+    "build:swift:all": "./scripts/build-swift-universal.sh",
     "build:all": "npm run build:swift && npm run build",
     "start": "cd Server && npm start",
     "dev": "cd Server && npm run dev",

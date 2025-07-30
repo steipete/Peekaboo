@@ -15,8 +15,9 @@
   ],
   "scripts": {
     "build": "tsc",
-    "build:swift": "../Scripts/build-swift-universal.sh",
-    "build:all": "npm run build:swift && npm run build",
+    "build:swift": "../scripts/build-swift-arm.sh",
+    "build:swift:all": "../scripts/build-swift-universal.sh",
+    "build:all": "npm run build:swift:all && npm run build",
     "start": "node dist/index.js",
     "prepublishOnly": "npm run build:all",
     "dev": "tsc --watch",
