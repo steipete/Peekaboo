@@ -15,6 +15,7 @@ struct MainWindow: View {
     @State private var isRecording = false
     @State private var recordingStartTime: Date?
     @State private var showSessionList = false
+    @State private var showRecognitionModeMenu = false
 
     enum InputMode {
         case text
@@ -146,6 +147,11 @@ struct MainWindow: View {
                             ForEach(session.messages) { message in
                                 MessageRow(message: message)
                                     .id(message.id)
+                                    .transition(.asymmetric(
+                                        insertion: .push(from: .bottom).combined(with: .opacity),
+                                        removal: .opacity
+                                    ))
+                                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: session.messages.count)
                             }
                         } else {
                             self.emptyStateView
@@ -248,6 +254,39 @@ struct MainWindow: View {
 
     private var voiceInputView: some View {
         VStack(spacing: 16) {
+            // Recognition mode selector
+            HStack {
+                Text("Recognition:")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Menu {
+                    ForEach(RecognitionMode.allCases, id: \.self) { mode in
+                        Button {
+                            self.speechRecognizer.recognitionMode = mode
+                        } label: {
+                            HStack {
+                                Text(mode.rawValue)
+                                if mode == self.speechRecognizer.recognitionMode {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                        .disabled(mode.requiresOpenAIKey && self.settings.openAIAPIKey.isEmpty)
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(self.speechRecognizer.recognitionMode.rawValue)
+                            .font(.caption)
+                        Image(systemName: "chevron.down")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .help(self.speechRecognizer.recognitionMode.description)
+            }
+            
             if self.speechRecognizer.isListening {
                 // Listening state
                 HStack(spacing: 8) {
@@ -269,6 +308,7 @@ struct MainWindow: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
+                    .frame(minHeight: 40)
             }
             
             // Show error if present
@@ -290,7 +330,7 @@ struct MainWindow: View {
             .buttonStyle(.plain)
         }
         .padding()
-        .frame(height: 100)
+        .frame(minHeight: 140)
     }
 
     // MARK: - Actions
@@ -317,6 +357,40 @@ struct MainWindow: View {
 
             // Clear input
             self.inputText = ""
+        }
+    }
+    
+    private func submitAudioInput(audioData: Data, duration: TimeInterval) {
+        Task {
+            self.isProcessing = true
+            defer { isProcessing = false }
+
+            // Start recording if not already
+            if !self.isRecording {
+                self.startRecording()
+            }
+
+            do {
+                // Convert audio data to base64
+                let base64Audio = audioData.base64EncodedString()
+                
+                // Create an audio message - the AI provider will handle it appropriately
+                let audioPrompt = "[Audio message - duration: \(Int(duration))s]"
+                
+                // For now, we'll send it as a text message with metadata
+                // In the future, when providers support audio messages directly,
+                // we can send the actual audio content
+                try await self.agent.executeTask(audioPrompt)
+                
+                // Note: To properly support audio messages, we would need to:
+                // 1. Update the agent's executeTask to accept audio content
+                // 2. Update the message types to properly handle audio
+                // 3. Ensure the AI provider can process audio inputs
+                
+                self.errorMessage = nil
+            } catch {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -348,20 +422,25 @@ struct MainWindow: View {
             // Stop and submit
             self.speechRecognizer.stopListening()
 
-            let transcript = self.speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !transcript.isEmpty {
-                self.inputText = transcript
-                self.submitInput()
+            // Handle different recognition modes
+            switch self.speechRecognizer.recognitionMode {
+            case .native, .whisper:
+                // For native and whisper, use the transcript
+                let transcript = self.speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !transcript.isEmpty {
+                    self.inputText = transcript
+                    self.submitInput()
+                }
+                
+            case .direct:
+                // For direct mode, we'll submit the audio data
+                if let audioData = self.speechRecognizer.recordedAudioData,
+                   let duration = self.speechRecognizer.recordedAudioDuration {
+                    // Submit as audio message
+                    self.submitAudioInput(audioData: audioData, duration: duration)
+                }
             }
         } else {
-            // Check if OpenAI API key is available for voice transcription
-            if self.settings.openAIAPIKey.isEmpty {
-                self.errorMessage = "Voice input requires an OpenAI API key for transcription. Please add your OpenAI API key in Settings."
-                // Switch back to text input
-                self.inputMode = .text
-                return
-            }
-            
             // Start listening
             Task {
                 do {
@@ -370,7 +449,10 @@ struct MainWindow: View {
                     // Monitor for errors during recording
                     if let error = self.speechRecognizer.error {
                         self.errorMessage = error.localizedDescription
-                        self.inputMode = .text // Switch back to text mode on error
+                        // Don't switch back to text for API key errors, just show the error
+                        if !(error is SpeechError && error as! SpeechError == .apiKeyRequired) {
+                            self.inputMode = .text
+                        }
                     }
                 } catch {
                     self.errorMessage = error.localizedDescription
@@ -385,6 +467,7 @@ struct MainWindow: View {
 
 struct MessageRow: View {
     let message: ConversationMessage
+    @State private var appeared = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -416,6 +499,13 @@ struct MessageRow: View {
             }
 
             Spacer()
+        }
+        .scaleEffect(appeared ? 1 : 0.8)
+        .opacity(appeared ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                appeared = true
+            }
         }
     }
 
@@ -497,6 +587,7 @@ struct SessionListPopover: View {
 
 struct ToolCallView: View {
     let toolCall: ConversationToolCall
+    @State private var appeared = false
 
     var body: some View {
         HStack(spacing: 4) {
@@ -523,5 +614,12 @@ struct ToolCallView: View {
         .padding(.vertical, 4)
         .background(Color.secondary.opacity(0.1))
         .cornerRadius(4)
+        .scaleEffect(appeared ? 1 : 0.8)
+        .opacity(appeared ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.8).delay(0.1)) {
+                appeared = true
+            }
+        }
     }
 }

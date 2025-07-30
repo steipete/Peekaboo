@@ -144,6 +144,11 @@ struct SessionSidebar: View {
                     isActive: self.agent.currentSession?.id == session.id,
                     onDelete: { self.deleteSession(session) })
                     .tag(session.id)
+                    .transition(.asymmetric(
+                        insertion: .slide.combined(with: .opacity),
+                        removal: .opacity
+                    ))
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: self.filteredSessions.count)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             self.deleteSession(session)
@@ -372,6 +377,11 @@ struct SessionChatView: View {
                         ForEach(self.session.messages) { message in
                             DetailedMessageRow(message: message)
                                 .id(message.id)
+                                .transition(.asymmetric(
+                                    insertion: .push(from: .bottom).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
+                                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: self.session.messages.count)
                         }
 
                         // Show progress indicator for active session
@@ -379,6 +389,11 @@ struct SessionChatView: View {
                             ProgressIndicatorView(agent: self.agent)
                                 .id("progress")
                                 .padding(.top, 8)
+                                .transition(.asymmetric(
+                                    insertion: .push(from: .bottom).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
+                                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: self.agent.isProcessing)
                         }
                     }
                     .padding()
@@ -686,9 +701,12 @@ struct SessionChatHeader: View {
             .background(showDebugInfo ? Color.clear : Color(NSColor.windowBackgroundColor))
 
             if self.showDebugInfo {
+                Divider()
+                    .padding(.horizontal)
+                
                 SessionDebugInfo(session: self.session, isActive: self.isActive)
-                    .padding()
-                    .padding(.top, -8) // Reduce gap between header and debug info
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
                     .background(Color(NSColor.windowBackgroundColor))
             }
         }
@@ -742,6 +760,7 @@ struct DetailedMessageRow: View {
     @State private var isExpanded = false
     @State private var showingImageInspector = false
     @State private var selectedImage: NSImage?
+    @State private var appeared = false
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
 
@@ -1013,6 +1032,13 @@ struct DetailedMessageRow: View {
         .padding()
         .background(self.backgroundForMessage)
         .cornerRadius(8)
+        .scaleEffect(appeared ? 1 : 0.95)
+        .opacity(appeared ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                appeared = true
+            }
+        }
         .sheet(isPresented: self.$showingImageInspector) {
             if let image = selectedImage {
                 ImageInspectorView(image: image)
@@ -1310,45 +1336,61 @@ struct SessionDebugInfo: View {
     let isActive: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Session ID", systemImage: "number")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                Text(self.session.id)
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
+        HStack(spacing: 20) {
+            // Left group: Session info
+            HStack(spacing: 16) {
+                // Session ID (shortened)
+                HStack(spacing: 4) {
+                    Image(systemName: "number.square.fill")
+                        .font(.caption)
+                        .foregroundColor(.secondary.opacity(0.8))
+                    
+                    Text(String(self.session.id.prefix(8)))
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .help(self.session.id) // Full ID on hover
+                }
+                
+                Divider()
+                    .frame(height: 12)
+                
+                // Messages & Tools combined
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "message.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary.opacity(0.8))
+                        Text("\(self.session.messages.count)")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+                    
+                    HStack(spacing: 4) {
+                        Image(systemName: "wrench.and.screwdriver.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary.opacity(0.8))
+                        Text("\(self.session.messages.flatMap(\.toolCalls).count)")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+                }
             }
-
-            HStack {
-                Label("Messages", systemImage: "message")
+            
+            Spacer()
+            
+            // Right group: Duration
+            HStack(spacing: 4) {
+                Image(systemName: "clock.fill")
                     .font(.caption)
-                    .foregroundColor(.secondary)
-
-                Text("\(self.session.messages.count)")
-                    .font(.caption)
-            }
-
-            HStack {
-                Label("Tool Calls", systemImage: "wrench.and.screwdriver")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                Text("\(self.session.messages.flatMap(\.toolCalls).count)")
-                    .font(.caption)
-            }
-
-            HStack {
-                Label("Duration", systemImage: "clock")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                // Use TimeIntervalText for continuous updates
+                    .foregroundColor(.secondary.opacity(0.8))
+                
                 SessionDurationText(startTime: self.session.startTime)
                     .font(.caption)
+                    .fontWeight(.medium)
+                    .monospacedDigit()
             }
         }
+        .padding(.vertical, 4)
     }
 }
 
@@ -1369,18 +1411,18 @@ struct SessionDurationText: View {
     
     private func formatDuration(_ interval: TimeInterval) -> String {
         if interval < 60 {
-            return "\\(Int(interval))s"
+            return "\(Int(interval))s"
         } else if interval < 3600 {
             let minutes = Int(interval) / 60
             let seconds = Int(interval) % 60
-            return "\\(minutes)m \\(seconds)s"
+            return "\(minutes)m \(seconds)s"
         } else {
             let hours = Int(interval) / 3600
             let minutes = (Int(interval) % 3600) / 60
             if minutes > 0 {
-                return "\\(hours)h \\(minutes)m"
+                return "\(hours)h \(minutes)m"
             } else {
-                return "\\(hours)h"
+                return "\(hours)h"
             }
         }
     }
