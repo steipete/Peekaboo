@@ -1,10 +1,6 @@
-import { ImageInput, ImageCaptureData } from "../types/index.js";
+import type { ImageCaptureData, ImageInput } from "../types/index.js";
 
-export function buildImageSummary(
-  input: ImageInput,
-  data: ImageCaptureData,
-  question?: string,
-): string {
+export function buildImageSummary(input: ImageInput, data: ImageCaptureData, question?: string): string {
   if (!data.saved_files || data.saved_files.length === 0) {
     return "Image capture completed but no files were saved or available for analysis.";
   }

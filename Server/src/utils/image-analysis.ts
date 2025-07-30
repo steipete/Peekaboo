@@ -1,14 +1,14 @@
-import { Logger } from "pino";
 import fs from "fs/promises";
-import path from "path";
 import os from "os";
-import { parseAIProviders, analyzeImageWithProvider } from "./ai-providers.js";
+import path from "path";
+import type { Logger } from "pino";
+import { analyzeImageWithProvider, parseAIProviders } from "./ai-providers.js";
 
 export async function performAutomaticAnalysis(
   base64Image: string,
   question: string,
   logger: Logger,
-  availableProvidersEnv: string,
+  availableProvidersEnv: string
 ): Promise<{
   analysisText?: string;
   modelUsed?: string;
@@ -25,27 +25,16 @@ export async function performAutomaticAnalysis(
   // Try each provider in order until one succeeds
   for (const provider of providers) {
     try {
-      logger.debug(
-        { provider: `${provider.provider}/${provider.model}` },
-        "Attempting analysis with provider",
-      );
+      logger.debug({ provider: `${provider.provider}/${provider.model}` }, "Attempting analysis with provider");
 
       // Create a temporary file for the provider (some providers need file paths)
-      const tempDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), "peekaboo-analysis-"),
-      );
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "peekaboo-analysis-"));
       const tempPath = path.join(tempDir, "image.png");
       const imageBuffer = Buffer.from(base64Image, "base64");
       await fs.writeFile(tempPath, imageBuffer);
 
       try {
-        const analysisText = await analyzeImageWithProvider(
-          provider,
-          tempPath,
-          base64Image,
-          question,
-          logger,
-        );
+        const analysisText = await analyzeImageWithProvider(provider, tempPath, base64Image, question, logger);
 
         // Clean up temp file
         await fs.unlink(tempPath);
@@ -65,10 +54,7 @@ export async function performAutomaticAnalysis(
         }
       }
     } catch (error) {
-      logger.debug(
-        { error, provider: `${provider.provider}/${provider.model}` },
-        "Provider failed, trying next",
-      );
+      logger.debug({ error, provider: `${provider.provider}/${provider.model}` }, "Provider failed, trying next");
       // Continue to next provider
     }
   }

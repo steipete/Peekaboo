@@ -1,6 +1,6 @@
 import OpenAI from "openai";
-import { Logger } from "pino";
-import { AIProvider } from "../types/index.js";
+import type { Logger } from "pino";
+import type { AIProvider } from "../types/index.js";
 
 export function parseAIProviders(aiProvidersEnv: string): AIProvider[] {
   if (!aiProvidersEnv || !aiProvidersEnv.trim()) {
@@ -32,18 +32,12 @@ export interface ProviderStatus {
   };
 }
 
-export async function isProviderAvailable(
-  provider: AIProvider,
-  logger: Logger,
-): Promise<boolean> {
+export async function isProviderAvailable(provider: AIProvider, logger: Logger): Promise<boolean> {
   const status = await getProviderStatus(provider, logger);
   return status.available;
 }
 
-export async function getProviderStatus(
-  provider: AIProvider,
-  logger: Logger,
-): Promise<ProviderStatus> {
+export async function getProviderStatus(provider: AIProvider, logger: Logger): Promise<ProviderStatus> {
   try {
     switch (provider.provider.toLowerCase()) {
       case "ollama":
@@ -60,10 +54,7 @@ export async function getProviderStatus(
         };
     }
   } catch (error) {
-    logger.error(
-      { error, provider: provider.provider },
-      "Error checking provider status",
-    );
+    logger.error({ error, provider: provider.provider }, "Error checking provider status");
     return {
       available: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -94,8 +85,8 @@ async function checkOllamaStatus(model: string, logger: Logger): Promise<Provide
     const availableModels = tagsData.models?.map((m: { name: string }) => m.name) || [];
 
     // Check if the specific model is available
-    const modelAvailable = availableModels.some((m: string) =>
-      m === model || m.startsWith(model + ":") || model.startsWith(m.split(":")[0]),
+    const modelAvailable = availableModels.some(
+      (m: string) => m === model || m.startsWith(`${model}:`) || model.startsWith(m.split(":")[0])
     );
 
     if (!modelAvailable) {
@@ -163,7 +154,7 @@ async function checkOpenAIStatus(model: string, logger: Logger): Promise<Provide
     });
 
     const modelsResponse = await openai.models.list();
-    const availableModels = modelsResponse.data.map(m => m.id);
+    const availableModels = modelsResponse.data.map((m) => m.id);
 
     // Check if the specific model is available
     const modelAvailable = availableModels.includes(model);
@@ -171,7 +162,10 @@ async function checkOpenAIStatus(model: string, logger: Logger): Promise<Provide
     if (!modelAvailable) {
       // For OpenAI, we'll be more lenient and just warn if model isn't in the list
       // since the models list API might not include all available models
-      logger.debug({ model, availableCount: availableModels.length }, "Model not found in OpenAI models list, but this might be normal");
+      logger.debug(
+        { model, availableCount: availableModels.length },
+        "Model not found in OpenAI models list, but this might be normal"
+      );
     }
 
     return {
@@ -244,29 +238,18 @@ function checkAnthropicStatus(_model: string): ProviderStatus {
   };
 }
 
-
 export async function analyzeImageWithProvider(
   provider: AIProvider,
-  imagePath: string,
+  _imagePath: string,
   imageBase64: string,
   question: string,
-  logger: Logger,
+  logger: Logger
 ): Promise<string> {
   switch (provider.provider.toLowerCase()) {
     case "ollama":
-      return await analyzeWithOllama(
-        provider.model,
-        imageBase64,
-        question,
-        logger,
-      );
+      return await analyzeWithOllama(provider.model, imageBase64, question, logger);
     case "openai":
-      return await analyzeWithOpenAI(
-        provider.model,
-        imageBase64,
-        question,
-        logger,
-      );
+      return await analyzeWithOpenAI(provider.model, imageBase64, question, logger);
     case "anthropic":
       throw new Error("Anthropic support not yet implemented");
     default:
@@ -278,10 +261,9 @@ async function analyzeWithOllama(
   model: string,
   imageBase64: string,
   question: string,
-  logger: Logger,
+  logger: Logger
 ): Promise<string> {
-  const baseUrl =
-    process.env.PEEKABOO_OLLAMA_BASE_URL || "http://localhost:11434";
+  const baseUrl = process.env.PEEKABOO_OLLAMA_BASE_URL || "http://localhost:11434";
 
   logger.debug({ model, baseUrl }, "Analyzing image with Ollama");
 
@@ -303,10 +285,7 @@ async function analyzeWithOllama(
 
   if (!response.ok) {
     const errorText = await response.text();
-    logger.error(
-      { status: response.status, error: errorText },
-      "Ollama API error",
-    );
+    logger.error({ status: response.status, error: errorText }, "Ollama API error");
     throw new Error(`Ollama API error: ${response.status} - ${errorText}`);
   }
 
@@ -318,7 +297,7 @@ async function analyzeWithOpenAI(
   model: string,
   imageBase64: string,
   question: string,
-  logger: Logger,
+  logger: Logger
 ): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -370,7 +349,7 @@ export function getDefaultModelForProvider(provider: string): string {
 export async function determineProviderAndModel(
   providerConfig: { type?: string; model?: string } | undefined,
   configuredProviders: AIProvider[],
-  logger: Logger,
+  logger: Logger
 ): Promise<{ provider: string | null; model: string }> {
   const requestedProviderType = providerConfig?.type || "auto";
   const requestedModelName = providerConfig?.model;
@@ -378,27 +357,22 @@ export async function determineProviderAndModel(
   if (requestedProviderType !== "auto") {
     // Find specific provider in configuration
     const configuredProvider = configuredProviders.find(
-      (p) => p.provider.toLowerCase() === requestedProviderType.toLowerCase(),
+      (p) => p.provider.toLowerCase() === requestedProviderType.toLowerCase()
     );
 
     if (!configuredProvider) {
       throw new Error(
-        `Provider '${requestedProviderType}' is not enabled in server's PEEKABOO_AI_PROVIDERS configuration.`,
+        `Provider '${requestedProviderType}' is not enabled in server's PEEKABOO_AI_PROVIDERS configuration.`
       );
     }
 
     // Check if provider is available
     const available = await isProviderAvailable(configuredProvider, logger);
     if (!available) {
-      throw new Error(
-        `Provider '${requestedProviderType}' is configured but not currently available.`,
-      );
+      throw new Error(`Provider '${requestedProviderType}' is configured but not currently available.`);
     }
 
-    const model =
-      requestedModelName ||
-      configuredProvider.model ||
-      getDefaultModelForProvider(requestedProviderType);
+    const model = requestedModelName || configuredProvider.model || getDefaultModelForProvider(requestedProviderType);
 
     return {
       provider: requestedProviderType,
@@ -411,9 +385,7 @@ export async function determineProviderAndModel(
     const available = await isProviderAvailable(configuredProvider, logger);
     if (available) {
       const model =
-        requestedModelName ||
-        configuredProvider.model ||
-        getDefaultModelForProvider(configuredProvider.provider);
+        requestedModelName || configuredProvider.model || getDefaultModelForProvider(configuredProvider.provider);
 
       return {
         provider: configuredProvider.provider,

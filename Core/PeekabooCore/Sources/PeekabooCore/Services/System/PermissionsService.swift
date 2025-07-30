@@ -44,15 +44,25 @@ public final class PermissionsService: Sendable {
         // Check if we have permission to send AppleEvents
         // This checks permission for sending events to System Events
         let targetBundleID = "com.apple.systemevents"
-        let hasPermission = AEDeterminePermissionToAutomateTarget(
-            nil,
-            targetBundleID as CFString,
-            AEEventClass(typeWildCard),
-            AEEventID(typeWildCard),
-            false
-        ) == .authorized
         
-        logger.info("AppleScript permission: \(hasPermission)")
+        guard var addressDesc = NSAppleEventDescriptor(bundleIdentifier: targetBundleID).aeDesc?.pointee else {
+            logger.warning("Failed to create AppleEvent descriptor")
+            return false
+        }
+        
+        defer {
+            AEDisposeDesc(&addressDesc)
+        }
+        
+        let permissionStatus = AEDeterminePermissionToAutomateTarget(
+            &addressDesc,
+            typeWildCard,
+            typeWildCard,
+            true  // async notification
+        )
+        
+        let hasPermission = permissionStatus == noErr
+        logger.info("AppleScript permission status: \(permissionStatus), has permission: \(hasPermission)")
         return hasPermission
     }
     

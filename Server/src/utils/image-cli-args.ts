@@ -1,18 +1,15 @@
-import { ImageInput } from "../types/index.js";
-import { Logger } from "pino";
 import * as fs from "fs/promises";
-import * as path from "path";
 import * as os from "os";
+import * as path from "path";
+import type { Logger } from "pino";
+import type { ImageInput } from "../types/index.js";
 
 export interface ResolvedImagePath {
   effectivePath: string | undefined;
   tempDirUsed: string | undefined;
 }
 
-export async function resolveImagePath(
-  input: ImageInput,
-  logger: Logger,
-): Promise<ResolvedImagePath> {
+export async function resolveImagePath(input: ImageInput, logger: Logger): Promise<ResolvedImagePath> {
   // If input.path is provided, use it directly
   if (input.path) {
     return { effectivePath: input.path, tempDirUsed: undefined };
@@ -28,7 +25,7 @@ export async function resolveImagePath(
     // Create a temporary directory
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "peekaboo-img-"));
     // Generate a full file path with appropriate extension
-    const format = input.format === "data" ? "png" : (input.format || "png");
+    const format = input.format === "data" ? "png" : input.format || "png";
     const extension = format === "jpg" ? ".jpg" : ".png";
     const tempFilePath = path.join(tempDir, `capture${extension}`);
     logger.debug({ tempPath: tempFilePath }, "Created temporary file path for capture");
@@ -55,7 +52,7 @@ export function buildSwiftCliArgs(
   input: ImageInput,
   effectivePath: string | undefined,
   swiftFormat?: string,
-  logger?: Logger,
+  logger?: Logger
 ): string[] {
   const args = ["image"];
 
@@ -78,11 +75,11 @@ export function buildSwiftCliArgs(
   } else if (input.app_target.startsWith("screen:")) {
     // 'screen:INDEX': Specific display
     const screenIndexStr = input.app_target.substring(7);
-    const screenIndex = parseInt(screenIndexStr, 10);
-    if (isNaN(screenIndex) || screenIndex < 0) {
+    const screenIndex = Number.parseInt(screenIndexStr, 10);
+    if (Number.isNaN(screenIndex) || screenIndex < 0) {
       log.warn(
         { screenIndex: screenIndexStr },
-        `Invalid screen index '${screenIndexStr}' in app_target, capturing all screens.`,
+        `Invalid screen index '${screenIndexStr}' in app_target, capturing all screens.`
       );
       args.push("--mode", "screen");
     } else {
@@ -99,11 +96,8 @@ export function buildSwiftCliArgs(
     if (parts[0].toUpperCase() === "PID" && parts.length >= 2) {
       // 'PID:12345': Target process by PID
       const pid = parts[1].trim();
-      if (!pid || isNaN(Number(pid))) {
-        log.warn(
-          { pid: parts[1] },
-          "Invalid PID value, must be a number",
-        );
+      if (!pid || Number.isNaN(Number(pid))) {
+        log.warn({ pid: parts[1] }, "Invalid PID value, must be a number");
         args.push("--mode", "screen");
       } else {
         log.debug({ pid }, "Targeting process by PID");
@@ -118,12 +112,9 @@ export function buildSwiftCliArgs(
 
       // Validate that we have a non-empty app name
       if (!appName) {
-        log.warn(
-          { app_target: input.app_target },
-          "Empty app name detected in app_target, treating as malformed",
-        );
+        log.warn({ app_target: input.app_target }, "Empty app name detected in app_target, treating as malformed");
         // Try to find the first non-empty part as the app name
-        const nonEmptyParts = parts.filter(part => part.trim());
+        const nonEmptyParts = parts.filter((part) => part.trim());
         if (nonEmptyParts.length > 0) {
           args.push("--app", nonEmptyParts[0].trim());
           args.push("--mode", "multi");
@@ -141,10 +132,7 @@ export function buildSwiftCliArgs(
         } else if (specifierType.toUpperCase() === "WINDOW_INDEX") {
           args.push("--window-index", specifierValue);
         } else {
-          log.warn(
-            { specifierType },
-            "Unknown window specifier type, defaulting to main window",
-          );
+          log.warn({ specifierType }, "Unknown window specifier type, defaulting to main window");
         }
       }
     } else {
@@ -153,14 +141,11 @@ export function buildSwiftCliArgs(
       if (!cleanAppTarget || cleanAppTarget === ":".repeat(cleanAppTarget.length)) {
         log.warn(
           { app_target: input.app_target },
-          "Malformed app_target with only colons or empty, defaulting to screen mode",
+          "Malformed app_target with only colons or empty, defaulting to screen mode"
         );
         args.push("--mode", "screen");
       } else {
-        log.warn(
-          { app_target: input.app_target },
-          "Malformed window specifier, treating as app name",
-        );
+        log.warn({ app_target: input.app_target }, "Malformed window specifier, treating as app name");
         // Remove trailing colons from app name
         const appName = cleanAppTarget.replace(/:+$/, "");
         args.push("--app", appName);

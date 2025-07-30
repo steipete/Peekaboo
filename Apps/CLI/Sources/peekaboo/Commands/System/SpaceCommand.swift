@@ -58,14 +58,14 @@ struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
     
+    @MainActor
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
         
-        await MainActor.run {
-            let spaceService = SpaceManagementService()
-            let spaces = spaceService.getAllSpaces()
-            
-            if self.jsonOutput {
+        let spaceService = SpaceManagementService()
+        let spaces = spaceService.getAllSpaces()
+        
+        if self.jsonOutput {
                 let data = SpaceListData(
                     spaces: spaces.map { space in
                         SpaceData(
@@ -141,7 +141,6 @@ struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
                     print("No Spaces found (this may indicate an API issue)")
                 }
             }
-        }
     }
 }
 

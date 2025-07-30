@@ -1,6 +1,6 @@
 import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { ToolContext, ToolResponse } from "../types/index.js";
 
 // Schema for move tool
 export const moveToolSchema = z
@@ -25,7 +25,7 @@ export const moveToolSchema = z
     },
     {
       message: "Must specify either coordinates, to, id, or center",
-    },
+    }
   );
 
 export type MoveInput = z.infer<typeof moveToolSchema>;
@@ -40,10 +40,7 @@ interface MoveOutput {
   duration?: number;
 }
 
-export async function moveToolHandler(
-  args: MoveInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function moveToolHandler(args: MoveInput, context: ToolContext): Promise<ToolResponse> {
   context.logger.debug("Moving mouse cursor", { args });
 
   try {
@@ -90,7 +87,7 @@ export async function moveToolHandler(
     if (!result.success || !result.data) {
       throw new Error(result.error?.message || "Failed to move cursor");
     }
-    
+
     const moveData = result.data as MoveOutput;
 
     // Format the response

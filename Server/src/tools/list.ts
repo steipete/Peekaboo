@@ -1,52 +1,48 @@
-import { z } from "zod";
-import {
-  ToolContext,
-  ApplicationListData,
-  WindowListData,
-  ApplicationInfo,
-  WindowInfo,
-  TargetApplicationInfo,
-  SwiftCliResponse,
-  ToolResponse,
-} from "../types/index.js";
-import { parseAIProviders, getProviderStatus } from "../utils/ai-providers.js";
-import { getAIProvidersConfig } from "../utils/config-loader.js";
-import { executeSwiftCli, execPeekaboo } from "../utils/peekaboo-cli.js";
-import { generateServerStatusString } from "../utils/server-status.js";
+import { accessSync, constants, existsSync } from "fs";
 import fs from "fs/promises";
-import path from "path";
-import { existsSync, accessSync, constants } from "fs";
 import os from "os";
+import path from "path";
+import type { Logger } from "pino";
 import { fileURLToPath } from "url";
-import { Logger } from "pino";
+import { z } from "zod";
+import type {
+  ApplicationInfo,
+  ApplicationListData,
+  SwiftCliResponse,
+  TargetApplicationInfo,
+  ToolContext,
+  ToolResponse,
+  WindowInfo,
+  WindowListData,
+} from "../types/index.js";
+import { getProviderStatus, parseAIProviders } from "../utils/ai-providers.js";
+import { getAIProvidersConfig } from "../utils/config-loader.js";
+import { execPeekaboo, executeSwiftCli } from "../utils/peekaboo-cli.js";
+import { generateServerStatusString } from "../utils/server-status.js";
 
 export const listToolSchema = z
   .object({
-    item_type: z.preprocess(
-      (val) => {
+    item_type: z
+      .preprocess((val) => {
         // Convert empty string to undefined
         if (val === "" || val === null) {
           return undefined;
         }
         return val;
-      },
-      z
-        .enum(["running_applications", "application_windows", "server_status"])
-        .optional(),
-    )
+      }, z.enum(["running_applications", "application_windows", "server_status"]).optional())
       .describe(
         "Specifies the type of items to list. If omitted or empty, it defaults to 'application_windows' if 'app' is provided, otherwise 'running_applications'. Valid options are:\n" +
           "- `running_applications`: Lists all currently running applications.\n" +
           "- `application_windows`: Lists open windows for a specific application. Requires the `app` parameter.\n" +
-          "- `server_status`: Returns information about the Peekaboo MCP server.",
+          "- `server_status`: Returns information about the Peekaboo MCP server."
       ),
     app: z
       .string()
       .optional()
       .describe(
         "Required when `item_type` is `application_windows`. " +
-        "Specifies the target application by its name (e.g., \"Safari\", \"TextEdit\"), bundle ID, or process ID (e.g., \"PID:663\"). " +
-        "Fuzzy matching is used for names, so partial names may work.",
+          'Specifies the target application by its name (e.g., "Safari", "TextEdit"), bundle ID, or process ID (e.g., "PID:663"). ' +
+          "Fuzzy matching is used for names, so partial names may work."
       ),
     include_window_details: z.preprocess(
       (val) => {
@@ -73,7 +69,7 @@ export const listToolSchema = z
 
           // If it's a comma-separated string, split it
           if (val.includes(",")) {
-            return val.split(",").map(s => s.trim());
+            return val.split(",").map((s) => s.trim());
           }
 
           // Single string value, wrap in array
@@ -87,22 +83,17 @@ export const listToolSchema = z
         .optional()
         .describe(
           "Optional, only applicable when `item_type` is `application_windows`. " +
-          "Specifies additional details to include for each window. Provide an array of strings. Example: `[\"bounds\", \"ids\"]`.\n" +
-          "- `ids`: Include window ID.\n" +
-          "- `bounds`: Include window position and size (x, y, width, height).\n" +
-          "- `off_screen`: Indicate if the window is currently off-screen.",
-        ),
+            'Specifies additional details to include for each window. Provide an array of strings. Example: `["bounds", "ids"]`.\n' +
+            "- `ids`: Include window ID.\n" +
+            "- `bounds`: Include window position and size (x, y, width, height).\n" +
+            "- `off_screen`: Indicate if the window is currently off-screen."
+        )
     ),
   })
-  .refine(
-    (data) =>
-      data.item_type !== "application_windows" ||
-      (data.app !== undefined && data.app.trim() !== ""),
-    {
-      message: "For 'application_windows', 'app' identifier is required.",
-      path: ["app"],
-    },
-  )
+  .refine((data) => data.item_type !== "application_windows" || (data.app !== undefined && data.app.trim() !== ""), {
+    message: "For 'application_windows', 'app' identifier is required.",
+    path: ["app"],
+  })
   .refine(
     (data) =>
       !data.include_window_details ||
@@ -113,31 +104,27 @@ export const listToolSchema = z
       message:
         "'include_window_details' is only applicable when 'item_type' is 'application_windows' or when 'app' is provided.",
       path: ["include_window_details"],
-    },
+    }
   )
   .refine(
     (data) =>
       data.item_type !== "server_status" ||
       (data.app === undefined &&
-       (data.include_window_details === undefined || data.include_window_details.length === 0)),
+        (data.include_window_details === undefined || data.include_window_details.length === 0)),
     {
-      message:
-        "'app' and 'include_window_details' not applicable for 'server_status'.",
+      message: "'app' and 'include_window_details' not applicable for 'server_status'.",
       path: ["item_type"],
-    },
+    }
   )
   .describe(
     "Lists various system items, providing situational awareness. " +
-    "The `item_type` is optional and will be inferred if omitted (defaults to 'application_windows' if 'app' is provided, else 'running_applications'). " +
-    "App identifier uses fuzzy matching for convenience.",
+      "The `item_type` is optional and will be inferred if omitted (defaults to 'application_windows' if 'app' is provided, else 'running_applications'). " +
+      "App identifier uses fuzzy matching for convenience."
   );
 
 export type ListToolInput = z.infer<typeof listToolSchema>;
 
-export async function listToolHandler(
-  input: ListToolInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function listToolHandler(input: ListToolInput, context: ToolContext): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -150,9 +137,7 @@ export async function listToolHandler(
       const __dirname = path.dirname(__filename);
       const packageRootDir = path.resolve(__dirname, "../..");
       const packageJsonPath = path.join(packageRootDir, "package.json");
-      const packageJson = JSON.parse(
-        await fs.readFile(packageJsonPath, "utf-8"),
-      );
+      const packageJson = JSON.parse(await fs.readFile(packageJsonPath, "utf-8"));
       const version = packageJson.version || "[unknown]";
       return await handleServerStatus(version, packageRootDir, logger);
     }
@@ -168,9 +153,7 @@ export async function listToolHandler(
       logger.error({ error: swiftResponse.error }, "Swift CLI returned error");
       const errorMessage = swiftResponse.error?.message || "Unknown error";
       const errorDetails = swiftResponse.error?.details;
-      const fullErrorMessage = errorDetails
-        ? `${errorMessage}\n${errorDetails}`
-        : errorMessage;
+      const fullErrorMessage = errorDetails ? `${errorMessage}\n${errorDetails}` : errorMessage;
 
       return {
         content: [
@@ -214,16 +197,9 @@ export async function listToolHandler(
     }
 
     if (effective_item_type === "running_applications") {
-      return handleApplicationsList(
-        swiftResponse.data as ApplicationListData,
-        swiftResponse,
-      );
+      return handleApplicationsList(swiftResponse.data as ApplicationListData, swiftResponse);
     } else if (effective_item_type === "application_windows") {
-      return handleWindowsList(
-        swiftResponse.data as WindowListData,
-        input,
-        swiftResponse,
-      );
+      return handleWindowsList(swiftResponse.data as WindowListData, input, swiftResponse);
     }
 
     // Fallback
@@ -249,11 +225,7 @@ export async function listToolHandler(
   }
 }
 
-async function handleServerStatus(
-  version: string,
-  packageRootDir: string,
-  logger: Logger,
-): Promise<ToolResponse> {
+async function handleServerStatus(version: string, packageRootDir: string, logger: Logger): Promise<ToolResponse> {
   const statusSections: string[] = [];
 
   // 1. Server version and AI providers
@@ -273,11 +245,7 @@ async function handleServerStatus(
       cliExecutable = true;
 
       // Try to get CLI version
-      const versionResult = await execPeekaboo(
-        ["version"],
-        packageRootDir,
-        { expectSuccess: false },
-      );
+      const versionResult = await execPeekaboo(["version"], packageRootDir, { expectSuccess: false });
 
       if (versionResult.success && versionResult.data) {
         cliVersion = versionResult.data.trim();
@@ -300,11 +268,9 @@ async function handleServerStatus(
 
   if (cliExecutable) {
     try {
-      const permissionsResult = await execPeekaboo(
-        ["list", "permissions", "--json-output"],
-        packageRootDir,
-        { expectSuccess: false },
-      );
+      const permissionsResult = await execPeekaboo(["list", "permissions", "--json-output"], packageRootDir, {
+        expectSuccess: false,
+      });
 
       if (permissionsResult.success && permissionsResult.data) {
         const status = JSON.parse(permissionsResult.data);
@@ -331,7 +297,9 @@ async function handleServerStatus(
   const aiProvidersEnv = await getAIProvidersConfig(logger);
   if (!aiProvidersEnv || !aiProvidersEnv.trim()) {
     statusSections.push("❌ No AI providers configured");
-    statusSections.push("Configure PEEKABOO_AI_PROVIDERS environment variable or ~/.peekaboo/config.json to enable image analysis");
+    statusSections.push(
+      "Configure PEEKABOO_AI_PROVIDERS environment variable or ~/.peekaboo/config.json to enable image analysis"
+    );
   } else {
     const providers = parseAIProviders(aiProvidersEnv);
     if (providers.length === 0) {
@@ -379,7 +347,9 @@ async function handleServerStatus(
                   statusSections.push(`- Model '${provider.model}' not installed`);
                   statusSections.push(`- Install with: ollama pull ${provider.model}`);
                   if (details.modelList && details.modelList.length > 0) {
-                    statusSections.push(`- Available models: ${details.modelList.slice(0, 5).join(", ")}${details.modelList.length > 5 ? "..." : ""}`);
+                    statusSections.push(
+                      `- Available models: ${details.modelList.slice(0, 5).join(", ")}${details.modelList.length > 5 ? "..." : ""}`
+                    );
                   }
                 }
               }
@@ -448,7 +418,7 @@ async function handleServerStatus(
   if (issues.length === 0) {
     statusSections.push("✅ No configuration issues detected");
   } else {
-    issues.forEach(issue => statusSections.push(issue));
+    issues.forEach((issue) => statusSections.push(issue));
   }
 
   // 7. System Information
@@ -492,18 +462,18 @@ export function buildSwiftCliArgs(input: ListToolInput): string[] {
       break;
     case "application_windows":
       args.push("windows");
-      if (input.app && input.app.trim()) {
+      if (input.app?.trim()) {
         args.push("--app", input.app.trim());
       }
       if (input.include_window_details && input.include_window_details.length > 0) {
-        const details = input.include_window_details.filter(d => d && d.trim()).join(",");
+        const details = input.include_window_details.filter((d) => d?.trim()).join(",");
         if (details) {
           args.push("--include-details", details);
         }
       }
       break;
     case "server_status":
-      args.push("permissions");  // Always map to permissions subcommand
+      args.push("permissions"); // Always map to permissions subcommand
       break;
     default:
       // Fallback to apps if unknown type
@@ -512,12 +482,12 @@ export function buildSwiftCliArgs(input: ListToolInput): string[] {
   }
 
   // Filter out any undefined or empty values
-  return args.filter(arg => arg !== undefined && arg !== null && arg !== "");
+  return args.filter((arg) => arg !== undefined && arg !== null && arg !== "");
 }
 
 function handleApplicationsList(
   data: ApplicationListData,
-  swiftResponse: SwiftCliResponse,
+  swiftResponse: SwiftCliResponse
 ): ToolResponse & { application_list: ApplicationInfo[] } {
   const apps = data.applications || [];
 
@@ -556,8 +526,8 @@ function handleApplicationsList(
 
 function handleWindowsList(
   data: WindowListData,
-  input: ListToolInput,
-  swiftResponse: SwiftCliResponse,
+  _input: ListToolInput,
+  swiftResponse: SwiftCliResponse
 ): ToolResponse & {
   window_list?: WindowInfo[];
   target_application_info?: TargetApplicationInfo;

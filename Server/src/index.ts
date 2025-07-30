@@ -2,68 +2,64 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import pino from "pino";
-import path from "path";
-import os from "os";
-import { fileURLToPath } from "url";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import fs from "fs/promises";
-
+import os from "os";
+import path from "path";
+import pino from "pino";
+import { fileURLToPath } from "url";
+import type { z } from "zod";
 import {
-  imageToolHandler,
-  imageToolSchema,
-  analyzeToolHandler,
-  analyzeToolSchema,
-  listToolHandler,
-  listToolSchema,
-  seeToolHandler,
-  seeToolSchema,
-  clickToolHandler,
-  clickToolSchema,
-  typeToolHandler,
-  typeToolSchema,
-  scrollToolHandler,
-  scrollToolSchema,
-  hotkeyToolHandler,
-  hotkeyToolSchema,
-  swipeToolHandler,
-  swipeToolSchema,
-  runToolHandler,
-  runToolSchema,
-  sleepToolHandler,
-  sleepToolSchema,
-  cleanToolHandler,
-  cleanToolSchema,
   agentToolHandler,
   agentToolSchema,
+  analyzeToolHandler,
+  analyzeToolSchema,
   appToolHandler,
   appToolSchema,
-  windowToolHandler,
-  windowToolSchema,
-  menuToolHandler,
-  menuToolSchema,
-  permissionsToolHandler,
-  permissionsToolSchema,
-  moveToolHandler,
-  moveToolSchema,
-  dragToolHandler,
-  dragToolSchema,
-  dockToolHandler,
-  dockToolSchema,
+  cleanToolHandler,
+  cleanToolSchema,
+  clickToolHandler,
+  clickToolSchema,
   dialogToolHandler,
   dialogToolSchema,
+  dockToolHandler,
+  dockToolSchema,
+  dragToolHandler,
+  dragToolSchema,
+  hotkeyToolHandler,
+  hotkeyToolSchema,
+  imageToolHandler,
+  imageToolSchema,
+  listToolHandler,
+  listToolSchema,
+  menuToolHandler,
+  menuToolSchema,
+  moveToolHandler,
+  moveToolSchema,
+  permissionsToolHandler,
+  permissionsToolSchema,
+  runToolHandler,
+  runToolSchema,
+  scrollToolHandler,
+  scrollToolSchema,
+  seeToolHandler,
+  seeToolSchema,
+  sleepToolHandler,
+  sleepToolSchema,
   spaceToolHandler,
   spaceToolSchema,
+  swipeToolHandler,
+  swipeToolSchema,
+  typeToolHandler,
+  typeToolSchema,
+  windowToolHandler,
+  windowToolSchema,
 } from "./tools/index.js";
-import { generateServerStatusString } from "./utils/server-status.js";
+import type { ImageInput, ToolResponse } from "./types/index.js";
+import { getAIProvidersConfig, setupEnvironmentFromCredentials } from "./utils/config-loader.js";
 import { initializeSwiftCliPath } from "./utils/peekaboo-cli.js";
+import { generateServerStatusString } from "./utils/server-status.js";
 import { zodToJsonSchema } from "./utils/zod-to-json-schema.js";
-import { setupEnvironmentFromCredentials, getAIProvidersConfig } from "./utils/config-loader.js";
-import { ToolResponse, ImageInput } from "./types/index.js";
-import { z } from "zod";
 
 // Get package version and determine package root
 const __filename = fileURLToPath(import.meta.url);
@@ -133,7 +129,7 @@ const logger = pino(
     name: "peekaboo-mcp",
     level: baseLogLevel, // Overall minimum level
   },
-  pino.transport({ targets: transportTargets }),
+  pino.transport({ targets: transportTargets })
 );
 
 // Tool context for handlers
@@ -149,7 +145,7 @@ const server = new Server(
     capabilities: {
       tools: {},
     },
-  },
+  }
 );
 
 // Set up request handlers
@@ -173,8 +169,7 @@ Window shadows/frames excluded. ${serverStatus}`,
       {
         name: "analyze",
         title: "Analyze Image with AI",
-        description:
-`Analyzes a pre-existing image file from the local filesystem using a configured AI model.
+        description: `Analyzes a pre-existing image file from the local filesystem using a configured AI model.
 
 This tool is useful when an image already exists (e.g., previously captured, downloaded, or generated) and you 
 need to understand its content, extract text, or answer specific questions about it.
@@ -189,15 +184,13 @@ Capabilities:
 Example:
 If you have an image '/tmp/chart.png' showing a bar chart, you could ask:
 { "image_path": "/tmp/chart.png", "question": "Which category has the highest value in this bar chart?" }
-The AI will analyze the image and attempt to answer your question based on its visual content.` +
-          statusSuffix,
+The AI will analyze the image and attempt to answer your question based on its visual content.${statusSuffix}`,
         inputSchema: zodToJsonSchema(analyzeToolSchema),
       },
       {
         name: "list",
         title: "List System Items",
-        description:
-`Lists various system items on macOS, providing situational awareness.
+        description: `Lists various system items on macOS, providing situational awareness.
 
 Capabilities:
 - Running Applications: Get a list of all currently running applications (names and bundle IDs).
@@ -211,105 +204,85 @@ Use Cases:
   { "item_type": "running_applications" } // Agent checks if 'Photoshop' is in the list.
 - Agent wants to find a specific 'Notes' window to capture.
   { "item_type": "application_windows", "app": "Notes", "include_window_details": ["ids", "bounds"] }
-  The agent can then use the window title or ID with the 'image' tool.` +
-          statusSuffix,
+  The agent can then use the window title or ID with the 'image' tool.${statusSuffix}`,
         inputSchema: zodToJsonSchema(listToolSchema),
       },
       {
         name: "see",
         title: "See UI Elements",
-        description:
-`Captures a screenshot and analyzes UI elements for automation.
+        description: `Captures a screenshot and analyzes UI elements for automation.
 Returns UI element map with Peekaboo IDs (B1 for buttons, T1 for text fields, etc.) 
 that can be used with interaction commands.
-Creates or updates a session for tracking UI state across multiple commands.` +
-          statusSuffix,
+Creates or updates a session for tracking UI state across multiple commands.${statusSuffix}`,
         inputSchema: zodToJsonSchema(seeToolSchema),
       },
       {
         name: "click",
         title: "Click UI Elements",
-        description:
-`Clicks on UI elements or coordinates.
+        description: `Clicks on UI elements or coordinates.
 Supports element queries, specific IDs from see command, or raw coordinates.
-Includes smart waiting for elements to become actionable.` +
-          statusSuffix,
+Includes smart waiting for elements to become actionable.${statusSuffix}`,
         inputSchema: zodToJsonSchema(clickToolSchema),
       },
       {
         name: "type",
         title: "Type Text",
-        description:
-`Types text into UI elements or at current focus.
+        description: `Types text into UI elements or at current focus.
 Supports special keys ({return}, {tab}, etc.) and configurable typing speed.
-Can target specific elements or type at current keyboard focus.` +
-          statusSuffix,
+Can target specific elements or type at current keyboard focus.${statusSuffix}`,
         inputSchema: zodToJsonSchema(typeToolSchema),
       },
       {
         name: "scroll",
         title: "Scroll Content",
-        description:
-`Scrolls the mouse wheel in any direction.
+        description: `Scrolls the mouse wheel in any direction.
 Can target specific elements or scroll at current mouse position.
-Supports smooth scrolling and configurable speed.` +
-          statusSuffix,
+Supports smooth scrolling and configurable speed.${statusSuffix}`,
         inputSchema: zodToJsonSchema(scrollToolSchema),
       },
       {
         name: "hotkey",
         title: "Press Keyboard Shortcuts",
-        description:
-`Presses keyboard shortcuts and key combinations.
+        description: `Presses keyboard shortcuts and key combinations.
 Simulates pressing multiple keys simultaneously like Cmd+C or Ctrl+Shift+T.
-Keys are pressed in order and released in reverse order.` +
-          statusSuffix,
+Keys are pressed in order and released in reverse order.${statusSuffix}`,
         inputSchema: zodToJsonSchema(hotkeyToolSchema),
       },
       {
         name: "swipe",
         title: "Swipe/Drag Gesture",
-        description:
-`Performs a swipe/drag gesture from one point to another.
+        description: `Performs a swipe/drag gesture from one point to another.
 Useful for dragging elements, swiping through content, or gesture-based interactions.
-Creates smooth movement with configurable duration.` +
-          statusSuffix,
+Creates smooth movement with configurable duration.${statusSuffix}`,
         inputSchema: zodToJsonSchema(swipeToolSchema),
       },
       {
         name: "run",
         title: "Run Automation Script",
-        description:
-`Runs a batch script of Peekaboo commands from a .peekaboo.json file.
+        description: `Runs a batch script of Peekaboo commands from a .peekaboo.json file.
 Scripts can automate complex UI workflows by chaining commands.
-Each command runs sequentially with shared session state.` +
-          statusSuffix,
+Each command runs sequentially with shared session state.${statusSuffix}`,
         inputSchema: zodToJsonSchema(runToolSchema),
       },
       {
         name: "sleep",
         title: "Pause Execution",
-        description:
-`Pauses execution for a specified duration.
-Useful for waiting between UI actions or allowing animations to complete.` +
-          statusSuffix,
+        description: `Pauses execution for a specified duration.
+Useful for waiting between UI actions or allowing animations to complete.${statusSuffix}`,
         inputSchema: zodToJsonSchema(sleepToolSchema),
       },
       {
         name: "clean",
         title: "Clean Session Cache",
-        description:
-`Cleans up session cache and temporary files.
+        description: `Cleans up session cache and temporary files.
 Sessions are stored in ~/.peekaboo/session/<PID>/ directories.
-Use this to free up disk space and remove orphaned session data.` +
-          statusSuffix,
+Use this to free up disk space and remove orphaned session data.${statusSuffix}`,
         inputSchema: zodToJsonSchema(cleanToolSchema),
       },
       {
         name: "app",
         title: "Application Control",
-        description:
-`Control applications - launch, quit, relaunch, focus, hide, unhide, and switch between apps.
+        description: `Control applications - launch, quit, relaunch, focus, hide, unhide, and switch between apps.
 
 Actions:
 - launch: Start an application
@@ -326,15 +299,13 @@ Examples:
 - Launch Safari: { "action": "launch", "name": "Safari" }
 - Quit TextEdit: { "action": "quit", "name": "TextEdit" }
 - Relaunch Chrome: { "action": "relaunch", "name": "Google Chrome", "wait": 3 }
-- Focus Terminal: { "action": "focus", "name": "Terminal" }` +
-          statusSuffix,
+- Focus Terminal: { "action": "focus", "name": "Terminal" }${statusSuffix}`,
         inputSchema: zodToJsonSchema(appToolSchema),
       },
       {
         name: "window",
         title: "Window Management",
-        description:
-`Manipulate application windows - close, minimize, maximize, move, resize, and focus.
+        description: `Manipulate application windows - close, minimize, maximize, move, resize, and focus.
 
 Actions:
 - close: Close a window
@@ -350,15 +321,13 @@ Supports partial title matching for convenience.
 Examples:
 - Close Safari window: { "action": "close", "app": "Safari" }
 - Move window: { "action": "move", "app": "TextEdit", "x": 100, "y": 100 }
-- Resize window: { "action": "resize", "app": "Terminal", "width": 800, "height": 600 }` +
-          statusSuffix,
+- Resize window: { "action": "resize", "app": "Terminal", "width": 800, "height": 600 }${statusSuffix}`,
         inputSchema: zodToJsonSchema(windowToolSchema),
       },
       {
         name: "menu",
         title: "Menu Interaction",
-        description:
-`Interact with application menu bars - list available menus or click menu items.
+        description: `Interact with application menu bars - list available menus or click menu items.
 
 Actions:
 - list: Discover all available menus and menu items for an application
@@ -370,15 +339,13 @@ Use plain ellipsis "..." instead of Unicode "…" in menu paths.
 Examples:
 - List Chrome menus: { "action": "list", "app": "Google Chrome" }
 - Save document: { "action": "click", "app": "TextEdit", "path": "File > Save" }
-- Copy selection: { "action": "click", "app": "Safari", "path": "Edit > Copy" }` +
-          statusSuffix,
+- Copy selection: { "action": "click", "app": "Safari", "path": "Edit > Copy" }${statusSuffix}`,
         inputSchema: zodToJsonSchema(menuToolSchema),
       },
       {
         name: "agent",
         title: "AI Agent Task Execution",
-        description:
-`Execute complex automation tasks using an AI agent powered by OpenAI's Assistants API.
+        description: `Execute complex automation tasks using an AI agent powered by OpenAI's Assistants API.
 The agent can understand natural language instructions and break them down into specific 
 Peekaboo commands to accomplish complex workflows.
 
@@ -402,68 +369,55 @@ Example tasks:
 - "Find the login button and click it, then type my credentials"
 - "Open TextEdit, write 'Hello World', and save the document"
 
-Requires OPENAI_API_KEY environment variable to be set.` +
-          statusSuffix,
+Requires OPENAI_API_KEY environment variable to be set.${statusSuffix}`,
         inputSchema: zodToJsonSchema(agentToolSchema),
       },
       {
         name: "permissions",
         title: "Check System Permissions",
-        description:
-`Check macOS system permissions required for automation.
+        description: `Check macOS system permissions required for automation.
 Verifies both Screen Recording and Accessibility permissions.
-Returns the current permission status for each required permission.` +
-          statusSuffix,
+Returns the current permission status for each required permission.${statusSuffix}`,
         inputSchema: zodToJsonSchema(permissionsToolSchema),
       },
       {
         name: "move",
         title: "Move Mouse Cursor",
-        description:
-`Move the mouse cursor to a specific position or UI element.
+        description: `Move the mouse cursor to a specific position or UI element.
 Supports absolute coordinates, UI element targeting, or centering on screen.
-Can animate movement smoothly over a specified duration.` +
-          statusSuffix,
+Can animate movement smoothly over a specified duration.${statusSuffix}`,
         inputSchema: zodToJsonSchema(moveToolSchema),
       },
       {
         name: "drag",
         title: "Drag and Drop",
-        description:
-`Perform drag and drop operations between UI elements or coordinates.
+        description: `Perform drag and drop operations between UI elements or coordinates.
 Supports element queries, specific IDs, or raw coordinates for both start and end points.
-Includes focus options for handling windows in different spaces.` +
-          statusSuffix,
+Includes focus options for handling windows in different spaces.${statusSuffix}`,
         inputSchema: zodToJsonSchema(dragToolSchema),
       },
       {
         name: "dock",
         title: "Dock Interaction",
-        description:
-`Interact with the macOS Dock - launch apps, show context menus, hide/show dock.
+        description: `Interact with the macOS Dock - launch apps, show context menus, hide/show dock.
 Actions: launch, right-click (with menu selection), hide, show, list
-Can list all dock items including persistent and running applications.` +
-          statusSuffix,
+Can list all dock items including persistent and running applications.${statusSuffix}`,
         inputSchema: zodToJsonSchema(dockToolSchema),
       },
       {
         name: "dialog",
         title: "System Dialog Interaction",
-        description:
-`Interact with system dialogs and alerts.
+        description: `Interact with system dialogs and alerts.
 Actions: click buttons, input text, select files, dismiss dialogs, list open dialogs.
-Handles save/open dialogs, alerts, and other system prompts.` +
-          statusSuffix,
+Handles save/open dialogs, alerts, and other system prompts.${statusSuffix}`,
         inputSchema: zodToJsonSchema(dialogToolSchema),
       },
       {
         name: "space",
         title: "macOS Spaces Management",
-        description:
-`Manage macOS Spaces (virtual desktops).
+        description: `Manage macOS Spaces (virtual desktops).
 Actions: list spaces, switch to a specific space, move windows between spaces.
-Supports moving windows with optional follow behavior to switch along with the window.` +
-          statusSuffix,
+Supports moving windows with optional follow behavior to switch along with the window.${statusSuffix}`,
         inputSchema: zodToJsonSchema(spaceToolSchema),
       },
     ],
@@ -644,20 +598,20 @@ async function main() {
   try {
     // Load credentials and config before starting the server
     await setupEnvironmentFromCredentials(logger);
-    
+
     // Set up AI providers from config if not already in environment
     const aiProviders = await getAIProvidersConfig(logger);
     if (aiProviders && !process.env.PEEKABOO_AI_PROVIDERS) {
       process.env.PEEKABOO_AI_PROVIDERS = aiProviders;
       logger.info({ providers: aiProviders }, "Loaded AI providers from config file");
     }
-    
+
     // Create transport and connect
     const transport = new StdioServerTransport();
     await server.connect(transport);
 
     logger.info("Peekaboo MCP Server started successfully");
-    logger.info("🔥 Hot-reload test: Server restarted at " + new Date().toISOString());
+    logger.info(`🔥 Hot-reload test: Server restarted at ${new Date().toISOString()}`);
   } catch (error) {
     logger.error({ error }, "Failed to start server");
     process.exit(1);

@@ -1,34 +1,35 @@
-import {
-  ToolContext,
-  ToolResponse,
-} from "../types/index.js";
 import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
 
-export const scrollToolSchema = z.object({
-  direction: z.enum(["up", "down", "left", "right"]).describe(
-    "Scroll direction: up (content moves up), down (content moves down), left, or right.",
-  ),
-  amount: z.number().optional().default(3).describe(
-    "Optional. Number of scroll ticks/lines. Default: 3.",
-  ),
-  on: z.string().optional().describe(
-    "Optional. Element ID to scroll on (from see command). If not specified, scrolls at current mouse position.",
-  ),
-  session: z.string().optional().describe(
-    "Optional. Session ID from see command. Uses latest session if not specified.",
-  ),
-  delay: z.number().optional().default(2).describe(
-    "Optional. Delay between scroll ticks in milliseconds. Default: 2.",
-  ),
-  smooth: z.boolean().optional().default(false).describe(
-    "Optional. Use smooth scrolling with smaller increments.",
-  ),
-}).describe(
-  "Scrolls the mouse wheel in any direction. " +
-  "Can target specific elements or scroll at current mouse position. " +
-  "Supports smooth scrolling and configurable speed.",
-);
+export const scrollToolSchema = z
+  .object({
+    direction: z
+      .enum(["up", "down", "left", "right"])
+      .describe("Scroll direction: up (content moves up), down (content moves down), left, or right."),
+    amount: z.number().optional().default(3).describe("Optional. Number of scroll ticks/lines. Default: 3."),
+    on: z
+      .string()
+      .optional()
+      .describe(
+        "Optional. Element ID to scroll on (from see command). If not specified, scrolls at current mouse position."
+      ),
+    session: z
+      .string()
+      .optional()
+      .describe("Optional. Session ID from see command. Uses latest session if not specified."),
+    delay: z
+      .number()
+      .optional()
+      .default(2)
+      .describe("Optional. Delay between scroll ticks in milliseconds. Default: 2."),
+    smooth: z.boolean().optional().default(false).describe("Optional. Use smooth scrolling with smaller increments."),
+  })
+  .describe(
+    "Scrolls the mouse wheel in any direction. " +
+      "Can target specific elements or scroll at current mouse position. " +
+      "Supports smooth scrolling and configurable speed."
+  );
 
 interface ScrollResult {
   success: boolean;
@@ -44,10 +45,7 @@ interface ScrollResult {
 
 export type ScrollInput = z.infer<typeof scrollToolSchema>;
 
-export async function scrollToolHandler(
-  input: ScrollInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function scrollToolHandler(input: ScrollInput, context: ToolContext): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -82,8 +80,6 @@ export async function scrollToolHandler(
       args.push("--smooth");
     }
 
-
-
     // Execute the command
     const result = await executeSwiftCli(args, logger);
 
@@ -92,10 +88,12 @@ export async function scrollToolHandler(
       logger.error({ result }, errorMessage);
 
       return {
-        content: [{
-          type: "text",
-          text: `Failed to perform scroll: ${errorMessage}`,
-        }],
+        content: [
+          {
+            type: "text",
+            text: `Failed to perform scroll: ${errorMessage}`,
+          },
+        ],
         isError: true,
       };
     }
@@ -115,20 +113,23 @@ export async function scrollToolHandler(
     lines.push(`⏱️  Completed in ${scrollData.execution_time.toFixed(2)}s`);
 
     return {
-      content: [{
-        type: "text",
-        text: lines.join("\n"),
-      }],
+      content: [
+        {
+          type: "text",
+          text: lines.join("\n"),
+        },
+      ],
     };
-
   } catch (error) {
     logger.error({ error }, "Scroll tool execution failed");
 
     return {
-      content: [{
-        type: "text",
-        text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
-      }],
+      content: [
+        {
+          type: "text",
+          text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
       isError: true,
     };
   }

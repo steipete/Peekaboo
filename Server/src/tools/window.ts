@@ -1,11 +1,13 @@
+import type { Logger } from "pino";
 import { z } from "zod";
-import { ToolResponse } from "../types/index.js";
+import type { ToolResponse, WindowErrorResponse, WindowSuccessResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { Logger } from "pino";
 
 // Zod schema for window tool
 export const windowToolSchema = z.object({
-  action: z.enum(["close", "minimize", "maximize", "move", "resize", "set-bounds", "focus"]).describe("The action to perform on the window"),
+  action: z
+    .enum(["close", "minimize", "maximize", "move", "resize", "set-bounds", "focus"])
+    .describe("The action to perform on the window"),
   app: z.string().optional().describe("Target application name, bundle ID, or process ID"),
   title: z.string().optional().describe("Window title to target (partial matching supported)"),
   index: z.number().int().nonnegative().optional().describe("Window index (0-based) for multi-window applications"),
@@ -17,10 +19,7 @@ export const windowToolSchema = z.object({
 
 export type WindowInput = z.infer<typeof windowToolSchema>;
 
-export async function windowToolHandler(
-  input: WindowInput,
-  context: { logger: Logger },
-): Promise<ToolResponse> {
+export async function windowToolHandler(input: WindowInput, context: { logger: Logger }): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -84,7 +83,16 @@ export async function windowToolHandler(
           isError: true,
         };
       }
-      args.push("--x", input.x.toString(), "--y", input.y.toString(), "--width", input.width.toString(), "--height", input.height.toString());
+      args.push(
+        "--x",
+        input.x.toString(),
+        "--y",
+        input.y.toString(),
+        "--width",
+        input.width.toString(),
+        "--height",
+        input.height.toString()
+      );
     }
 
     logger.debug({ args }, "Executing window command");
@@ -127,7 +135,8 @@ export async function windowToolHandler(
 
     // Handle error responses first
     if (responseData && typeof responseData === "object" && "error" in responseData) {
-      const errorMessage = (responseData as any).error.message || "Window command failed";
+      const errorResponse = responseData as WindowErrorResponse;
+      const errorMessage = errorResponse.error.message || "Window command failed";
       return {
         content: [
           {
@@ -141,14 +150,18 @@ export async function windowToolHandler(
 
     // Handle successful window command
     if (responseData && typeof responseData === "object" && "success" in responseData) {
-      const windowResponse = responseData as any;
+      const windowResponse = responseData as WindowSuccessResponse | WindowErrorResponse;
 
-      if (windowResponse.success && windowResponse.data) {
+      if (windowResponse.success && "data" in windowResponse && windowResponse.data) {
         const windowData = windowResponse.data;
         let responseText = "";
 
         // Format the response based on action
-        const targetDesc = input.app ? (input.title ? `'${input.title}' window of ${input.app}` : `${input.app} window`) : "window";
+        const targetDesc = input.app
+          ? input.title
+            ? `'${input.title}' window of ${input.app}`
+            : `${input.app} window`
+          : "window";
 
         switch (input.action) {
           case "close":
@@ -199,8 +212,9 @@ export async function windowToolHandler(
       }
 
       // Handle window command errors within wrapped response
-      if (windowResponse.error) {
-        const errorMessage = windowResponse.error.message || "Window command failed";
+      if (!windowResponse.success) {
+        const errorResponse = windowResponse as WindowErrorResponse;
+        const errorMessage = errorResponse.error?.message || "Window command failed";
         return {
           content: [
             {
@@ -223,7 +237,6 @@ export async function windowToolHandler(
       ],
       isError: false,
     };
-
   } catch (error) {
     logger.error({ error, input }, "Window tool execution failed");
 

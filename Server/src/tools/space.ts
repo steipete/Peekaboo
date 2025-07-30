@@ -1,6 +1,6 @@
 import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { ToolContext, ToolResponse } from "../types/index.js";
 
 // Schema for space tool - includes follow option
 export const spaceToolSchema = z
@@ -41,7 +41,7 @@ export const spaceToolSchema = z
     },
     {
       message: "Invalid combination of action and parameters",
-    },
+    }
   );
 
 export type SpaceInput = z.infer<typeof spaceToolSchema>;
@@ -65,10 +65,7 @@ interface SpaceActionOutput {
   result: string;
 }
 
-export async function spaceToolHandler(
-  args: SpaceInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function spaceToolHandler(args: SpaceInput, context: ToolContext): Promise<ToolResponse> {
   context.logger.debug("Performing space operation", { args });
 
   try {
@@ -111,11 +108,7 @@ export async function spaceToolHandler(
     commandArgs.push("--json-output");
 
     // Execute space command
-    const result = await executeSwiftCli(
-      commandArgs,
-      context.logger,
-      { timeout: 10000 }
-    );
+    const result = await executeSwiftCli(commandArgs, context.logger, { timeout: 10000 });
 
     if (!result.success || !result.data) {
       throw new Error(result.error?.message || "Failed to perform space operation");
@@ -124,7 +117,7 @@ export async function spaceToolHandler(
     // Parse the JSON output
     if (args.action === "list") {
       const listData = result.data as SpaceListOutput;
-      
+
       // Format the list response
       const spacesList = listData.spaces
         .map((space, index) => {
@@ -151,7 +144,7 @@ export async function spaceToolHandler(
       };
     } else {
       const actionData = result.data as SpaceActionOutput;
-      
+
       // Format action response
       let responseText = "";
       switch (args.action) {

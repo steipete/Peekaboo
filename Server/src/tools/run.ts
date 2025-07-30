@@ -1,29 +1,24 @@
-import {
-  ToolContext,
-  ToolResponse,
-} from "../types/index.js";
-import { z } from "zod";
-import { executeSwiftCli } from "../utils/peekaboo-cli.js";
 import * as fs from "fs/promises";
+import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
+import { executeSwiftCli } from "../utils/peekaboo-cli.js";
 
-export const runToolSchema = z.object({
-  script_path: z.string().describe(
-    "Path to .peekaboo.json script file containing automation commands.",
-  ),
-  output: z.string().optional().describe(
-    "Optional. Save results to file instead of stdout.",
-  ),
-  no_fail_fast: z.boolean().optional().default(false).describe(
-    "Optional. Continue execution even if a step fails. Default: false.",
-  ),
-  verbose: z.boolean().optional().default(false).describe(
-    "Optional. Show detailed step execution. Default: false.",
-  ),
-}).describe(
-  "Runs a batch script of Peekaboo commands from a .peekaboo.json file. " +
-  "Scripts can automate complex UI workflows by chaining see, click, type, and other commands. " +
-  "Each command in the script runs sequentially.",
-);
+export const runToolSchema = z
+  .object({
+    script_path: z.string().describe("Path to .peekaboo.json script file containing automation commands."),
+    output: z.string().optional().describe("Optional. Save results to file instead of stdout."),
+    no_fail_fast: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe("Optional. Continue execution even if a step fails. Default: false."),
+    verbose: z.boolean().optional().default(false).describe("Optional. Show detailed step execution. Default: false."),
+  })
+  .describe(
+    "Runs a batch script of Peekaboo commands from a .peekaboo.json file. " +
+      "Scripts can automate complex UI workflows by chaining see, click, type, and other commands. " +
+      "Each command in the script runs sequentially."
+  );
 
 interface RunResult {
   success: boolean;
@@ -53,10 +48,7 @@ interface PeekabooScript {
 
 export type RunInput = z.infer<typeof runToolSchema>;
 
-export async function runToolHandler(
-  input: RunInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function runToolHandler(input: RunInput, context: ToolContext): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -71,18 +63,22 @@ export async function runToolHandler(
         throw new Error("Script must contain a 'commands' array");
       }
 
-      logger.info({
-        scriptName: script.name,
-        commandCount: script.commands.length,
-      }, "Loaded Peekaboo script");
-
+      logger.info(
+        {
+          scriptName: script.name,
+          commandCount: script.commands.length,
+        },
+        "Loaded Peekaboo script"
+      );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       return {
-        content: [{
-          type: "text",
-          text: `Failed to load script: ${errorMessage}`,
-        }],
+        content: [
+          {
+            type: "text",
+            text: `Failed to load script: ${errorMessage}`,
+          },
+        ],
         isError: true,
       };
     }
@@ -116,10 +112,12 @@ export async function runToolHandler(
       logger.error({ result }, errorMessage);
 
       return {
-        content: [{
-          type: "text",
-          text: `Failed to execute script: ${errorMessage}`,
-        }],
+        content: [
+          {
+            type: "text",
+            text: `Failed to execute script: ${errorMessage}`,
+          },
+        ],
         isError: true,
       };
     }
@@ -145,19 +143,21 @@ export async function runToolHandler(
     lines.push(`⏱️  Total time: ${runData.executionTime?.toFixed(2) || "0.00"}s`);
 
     // Show failed steps
-    const failedSteps = runData.steps.filter(step => !step.success);
+    const failedSteps = runData.steps.filter((step) => !step.success);
     if (failedSteps.length > 0) {
       lines.push("\n❌ Failed steps:");
-      failedSteps.forEach(step => {
+      failedSteps.forEach((step) => {
         lines.push(`  - Step ${step.stepNumber} (${step.command}): ${step.error || "Unknown error"}`);
       });
     }
 
     return {
-      content: [{
-        type: "text",
-        text: lines.join("\n"),
-      }],
+      content: [
+        {
+          type: "text",
+          text: lines.join("\n"),
+        },
+      ],
       _meta: {
         script_path: runData.scriptPath,
         completed_steps: runData.completedSteps,
@@ -165,15 +165,16 @@ export async function runToolHandler(
         success: runData.success,
       },
     };
-
   } catch (error) {
     logger.error({ error }, "Run tool execution failed");
 
     return {
-      content: [{
-        type: "text",
-        text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
-      }],
+      content: [
+        {
+          type: "text",
+          text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
       isError: true,
     };
   }

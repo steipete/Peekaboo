@@ -1,31 +1,22 @@
-import {
-  ToolContext,
-  ImageCaptureData,
-  SavedFile,
-  ToolResponse,
-  ImageInput,
-} from "../types/index.js";
-import { executeSwiftCli, readImageAsBase64 } from "../utils/peekaboo-cli.js";
-import { performAutomaticAnalysis } from "../utils/image-analysis.js";
-import { buildImageSummary } from "../utils/image-summary.js";
-import { buildSwiftCliArgs, resolveImagePath } from "../utils/image-cli-args.js";
+import * as path from "path";
+import type { ImageCaptureData, ImageInput, SavedFile, ToolContext, ToolResponse } from "../types/index.js";
 import { parseAIProviders } from "../utils/ai-providers.js";
 import { getAIProvidersConfig } from "../utils/config-loader.js";
-import * as path from "path";
+import { performAutomaticAnalysis } from "../utils/image-analysis.js";
+import { buildSwiftCliArgs, resolveImagePath } from "../utils/image-cli-args.js";
+import { buildImageSummary } from "../utils/image-summary.js";
+import { executeSwiftCli, readImageAsBase64 } from "../utils/peekaboo-cli.js";
 
 export { imageToolSchema } from "../types/index.js";
 
-export async function imageToolHandler(
-  input: ImageInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function imageToolHandler(input: ImageInput, context: ToolContext): Promise<ToolResponse> {
   const { logger } = context;
-  let _tempDirUsed: string | undefined = undefined;
+  let _tempDirUsed: string | undefined;
   let finalSavedFiles: SavedFile[] = [];
   let analysisAttempted = false;
   let analysisSucceeded = false;
-  let analysisText: string | undefined = undefined;
-  let modelUsed: string | undefined = undefined;
+  let analysisText: string | undefined;
+  let modelUsed: string | undefined;
 
   try {
     logger.debug({ input }, "Processing peekaboo.image tool call");
@@ -41,10 +32,7 @@ export async function imageToolHandler(
     // Check if format was corrected by the preprocessor
     const originalFormat = (input as ImageInput & { _originalFormat?: string })._originalFormat;
     if (originalFormat) {
-      logger.info(
-        { originalFormat, correctedFormat: effectiveFormat },
-        "Format was automatically corrected",
-      );
+      logger.info({ originalFormat, correctedFormat: effectiveFormat }, "Format was automatically corrected");
       formatWarning = `Invalid format '${originalFormat}' was provided. Automatically using ${effectiveFormat?.toUpperCase() || "PNG"} format instead.`;
     }
 
@@ -54,7 +42,7 @@ export async function imageToolHandler(
     if (effectiveFormat && !validFormats.includes(effectiveFormat)) {
       logger.warn(
         { originalFormat: effectiveFormat, fallbackFormat: "png" },
-        `Invalid format '${effectiveFormat}' detected, falling back to PNG`,
+        `Invalid format '${effectiveFormat}' detected, falling back to PNG`
       );
       effectiveFormat = "png";
       formatWarning = `Invalid format '${input.format}' was provided. Automatically using PNG format instead.`;
@@ -64,11 +52,12 @@ export async function imageToolHandler(
     if (isScreenCapture && effectiveFormat === "data") {
       logger.warn("Screen capture with format 'data' auto-fallback to PNG due to size constraints");
       effectiveFormat = "png";
-      formatWarning = "Note: Screen captures cannot use format 'data' due to large image sizes that cause JavaScript stack overflow. Automatically using PNG format instead.";
+      formatWarning =
+        "Note: Screen captures cannot use format 'data' due to large image sizes that cause JavaScript stack overflow. Automatically using PNG format instead.";
     }
 
     // Determine effective path and format for Swift CLI
-    const swiftFormat = effectiveFormat === "data" ? "png" : (effectiveFormat || "png");
+    const swiftFormat = effectiveFormat === "data" ? "png" : effectiveFormat || "png";
 
     // Create a corrected input object if format or path needs to be adjusted
     let correctedInput = input;
@@ -80,10 +69,10 @@ export async function imageToolHandler(
 
       // Map format to appropriate extension
       const extensionMap: { [key: string]: string } = {
-        "png": ".png",
-        "jpg": ".jpg",
-        "jpeg": ".jpg",
-        "data": ".png", // data format saves as PNG
+        png: ".png",
+        jpg: ".jpg",
+        jpeg: ".jpg",
+        data: ".png", // data format saves as PNG
       };
 
       const newExtension = extensionMap[effectiveFormat || "png"] || ".png";
@@ -91,7 +80,7 @@ export async function imageToolHandler(
 
       logger.debug(
         { originalPath, correctedPath, originalFormat: input.format, correctedFormat: effectiveFormat },
-        "Correcting file extension to match format",
+        "Correcting file extension to match format"
       );
 
       correctedInput = { ...input, path: correctedPath };
@@ -106,15 +95,10 @@ export async function imageToolHandler(
     const swiftResponse = await executeSwiftCli(args, logger, { timeout: 30000 });
 
     if (!swiftResponse.success) {
-      logger.error(
-        { error: swiftResponse.error },
-        "Swift CLI returned error for image capture",
-      );
+      logger.error({ error: swiftResponse.error }, "Swift CLI returned error for image capture");
       const errorMessage = swiftResponse.error?.message || "Unknown error";
       const errorDetails = swiftResponse.error?.details;
-      const fullErrorMessage = errorDetails
-        ? `${errorMessage}\n${errorDetails}`
-        : errorMessage;
+      const fullErrorMessage = errorDetails ? `${errorMessage}\n${errorDetails}` : errorMessage;
 
       return {
         content: [
@@ -129,20 +113,13 @@ export async function imageToolHandler(
     }
 
     const imageData = swiftResponse.data as ImageCaptureData | undefined;
-    if (
-      !imageData ||
-      !imageData.saved_files ||
-      imageData.saved_files.length === 0
-    ) {
+    if (!imageData || !imageData.saved_files || imageData.saved_files.length === 0) {
       const errorMessage = [
         `Image capture failed. The tool tried to save the image to "${effectivePath}".`,
         "The operation did not complete successfully.",
         "Please check if you have write permissions for this location.",
       ].join(" ");
-      logger.error(
-        { path: effectivePath },
-        "Swift CLI reported success but no data/saved_files were returned.",
-      );
+      logger.error({ path: effectivePath }, "Swift CLI reported success but no data/saved_files were returned.");
       return {
         content: [
           {
@@ -185,9 +162,7 @@ export async function imageToolHandler(
       };
 
       const aiProvidersConfig = await getAIProvidersConfig(logger);
-      const configuredProviders = parseAIProviders(
-        aiProvidersConfig || "",
-      );
+      const configuredProviders = parseAIProviders(aiProvidersConfig || "");
       if (!configuredProviders.length) {
         analysisText =
           "Analysis skipped: AI analysis not configured on this server (PEEKABOO_AI_PROVIDERS is not set or empty).";
@@ -206,7 +181,7 @@ export async function imageToolHandler(
               imageBase64,
               input.question,
               logger,
-              aiProvidersConfig || "",
+              aiProvidersConfig || ""
             );
 
             if (analysisResult.error) {
@@ -224,10 +199,7 @@ export async function imageToolHandler(
               logger.info({ provider: modelUsed, path: savedFile.path }, "Image analysis successful");
             }
           } catch (readError) {
-            logger.error(
-              { error: readError, path: savedFile.path },
-              "Failed to read captured image for analysis",
-            );
+            logger.error({ error: readError, path: savedFile.path }, "Failed to read captured image for analysis");
             analysisResults.push({
               label: analysisLabel,
               text: `Analysis skipped: Failed to read captured image at ${savedFile.path}. Error: ${readError instanceof Error ? readError.message : "Unknown read error"}`,
@@ -239,14 +211,18 @@ export async function imageToolHandler(
         if (analysisResults.length === 1) {
           analysisText = analysisResults[0].text;
         } else if (analysisResults.length > 1) {
-          analysisText = analysisResults
-            .map(result => `Analysis for ${result.label}:\n${result.text}`)
-            .join("\n\n");
+          analysisText = analysisResults.map((result) => `Analysis for ${result.label}:\n${result.text}`).join("\n\n");
         }
       }
     }
 
-    const content: Array<{ type: "text" | "image"; text?: string; data?: string; mimeType?: string; metadata?: Record<string, unknown> }> = [];
+    const content: Array<{
+      type: "text" | "image";
+      text?: string;
+      data?: string;
+      mimeType?: string;
+      metadata?: Record<string, unknown>;
+    }> = [];
     let summary = buildImageSummary(input, captureData, input.question);
     if (analysisAttempted) {
       summary += `\nAnalysis ${analysisSucceeded ? "succeeded" : "failed/skipped"}.`;
@@ -283,10 +259,7 @@ export async function imageToolHandler(
             },
           });
         } catch (error) {
-          logger.error(
-            { error, path: savedFile.path },
-            "Failed to read image file for return_data",
-          );
+          logger.error({ error, path: savedFile.path }, "Failed to read image file for return_data");
         }
       }
     }

@@ -1,43 +1,30 @@
-import {
-  ToolContext,
-  ToolResponse,
-} from "../types/index.js";
 import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
 
-export const typeToolSchema = z.object({
-  text: z.string().optional().describe(
-    "The text to type. If not specified, can use special key flags instead.",
-  ),
-  on: z.string().optional().describe(
-    "Optional. Element ID to type into (from see command). If not specified, types at current focus.",
-  ),
-  session: z.string().optional().describe(
-    "Optional. Session ID from see command. Uses latest session if not specified.",
-  ),
-  delay: z.number().optional().default(5).describe(
-    "Optional. Delay between keystrokes in milliseconds. Default: 5.",
-  ),
-  press_return: z.boolean().optional().default(false).describe(
-    "Optional. Press return/enter after typing.",
-  ),
-  tab: z.number().optional().describe(
-    "Optional. Press tab N times.",
-  ),
-  escape: z.boolean().optional().default(false).describe(
-    "Optional. Press escape key.",
-  ),
-  delete: z.boolean().optional().default(false).describe(
-    "Optional. Press delete/backspace key.",
-  ),
-  clear: z.boolean().optional().default(false).describe(
-    "Optional. Clear the field before typing (Cmd+A, Delete).",
-  ),
-}).describe(
-  "Types text or sends special keys. " +
-  "Can type text, press special keys, or combine both actions. " +
-  "Types at current keyboard focus.",
-);
+export const typeToolSchema = z
+  .object({
+    text: z.string().optional().describe("The text to type. If not specified, can use special key flags instead."),
+    on: z
+      .string()
+      .optional()
+      .describe("Optional. Element ID to type into (from see command). If not specified, types at current focus."),
+    session: z
+      .string()
+      .optional()
+      .describe("Optional. Session ID from see command. Uses latest session if not specified."),
+    delay: z.number().optional().default(5).describe("Optional. Delay between keystrokes in milliseconds. Default: 5."),
+    press_return: z.boolean().optional().default(false).describe("Optional. Press return/enter after typing."),
+    tab: z.number().optional().describe("Optional. Press tab N times."),
+    escape: z.boolean().optional().default(false).describe("Optional. Press escape key."),
+    delete: z.boolean().optional().default(false).describe("Optional. Press delete/backspace key."),
+    clear: z.boolean().optional().default(false).describe("Optional. Clear the field before typing (Cmd+A, Delete)."),
+  })
+  .describe(
+    "Types text or sends special keys. " +
+      "Can type text, press special keys, or combine both actions. " +
+      "Types at current keyboard focus."
+  );
 
 interface TypeResult {
   success: boolean;
@@ -48,10 +35,7 @@ interface TypeResult {
 
 export type TypeInput = z.infer<typeof typeToolSchema>;
 
-export async function typeToolHandler(
-  input: TypeInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function typeToolHandler(input: TypeInput, context: ToolContext): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -115,10 +99,12 @@ export async function typeToolHandler(
       logger.error({ result }, errorMessage);
 
       return {
-        content: [{
-          type: "text",
-          text: `Failed to type text: ${errorMessage}`,
-        }],
+        content: [
+          {
+            type: "text",
+            text: `Failed to type text: ${errorMessage}`,
+          },
+        ],
         isError: true,
       };
     }
@@ -131,9 +117,8 @@ export async function typeToolHandler(
 
     if (typeData.text_typed) {
       // Show a preview of what was typed (truncate if too long)
-      const preview = typeData.text_typed.length > 50
-        ? typeData.text_typed.substring(0, 47) + "..."
-        : typeData.text_typed;
+      const preview =
+        typeData.text_typed.length > 50 ? `${typeData.text_typed.substring(0, 47)}...` : typeData.text_typed;
       lines.push(`📝 Text: "${preview}"`);
     }
 
@@ -141,20 +126,23 @@ export async function typeToolHandler(
     lines.push(`⏱️  Completed in ${typeData.execution_time.toFixed(2)}s`);
 
     return {
-      content: [{
-        type: "text",
-        text: lines.join("\n"),
-      }],
+      content: [
+        {
+          type: "text",
+          text: lines.join("\n"),
+        },
+      ],
     };
-
   } catch (error) {
     logger.error({ error }, "Type tool execution failed");
 
     return {
-      content: [{
-        type: "text",
-        text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
-      }],
+      content: [
+        {
+          type: "text",
+          text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
       isError: true,
     };
   }

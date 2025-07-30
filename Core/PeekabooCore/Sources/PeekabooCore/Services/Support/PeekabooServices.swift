@@ -76,7 +76,7 @@ public final class PeekabooServices: @unchecked Sendable {
         let screenCap = ScreenCaptureService(loggingService: logging)
         logger.debug("✅ ScreenCaptureService initialized")
         
-        let auto = UIAutomationService(sessionManager: sess)
+        let auto = UIAutomationService(sessionManager: sess, loggingService: logging)
         logger.debug("✅ UIAutomationService initialized")
         
         let windows = WindowManagementService(applicationService: apps)
@@ -216,7 +216,7 @@ public final class PeekabooServices: @unchecked Sendable {
         let apps = ApplicationService()
         let sess = SessionManager()
         let screenCap = ScreenCaptureService(loggingService: logging)
-        let auto = UIAutomationService(sessionManager: sess)
+        let auto = UIAutomationService(sessionManager: sess, loggingService: logging)
         let windows = WindowManagementService(applicationService: apps)
         let menuSvc = MenuService(applicationService: apps)
         let dockSvc = DockService()

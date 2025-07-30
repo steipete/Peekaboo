@@ -113,6 +113,8 @@ extension ErrorHandlingCommand {
             return .PERMISSION_ERROR_SCREEN_RECORDING
         case .accessibilityPermissionDenied:
             return .PERMISSION_ERROR_ACCESSIBILITY
+        case .appleScriptPermissionDenied:
+            return .PERMISSION_ERROR_APPLESCRIPT
         case .noDisplaysAvailable, .noDisplaysFound:
             return .CAPTURE_FAILED
         case .invalidDisplayID, .invalidDisplayIndex:

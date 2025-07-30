@@ -1,6 +1,6 @@
 import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { ToolContext, ToolResponse } from "../types/index.js";
 
 // Schema for dock tool
 export const dockToolSchema = z
@@ -29,7 +29,7 @@ export const dockToolSchema = z
     },
     {
       message: "Invalid combination of action and parameters",
-    },
+    }
   );
 
 export type DockInput = z.infer<typeof dockToolSchema>;
@@ -52,10 +52,7 @@ interface DockListOutput {
   items: DockItem[];
 }
 
-export async function dockToolHandler(
-  args: DockInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function dockToolHandler(args: DockInput, context: ToolContext): Promise<ToolResponse> {
   context.logger.debug("Performing dock operation", { args });
 
   try {
@@ -84,11 +81,7 @@ export async function dockToolHandler(
     commandArgs.push("--json-output");
 
     // Execute dock command
-    const result = await executeSwiftCli(
-      commandArgs,
-      context.logger,
-      { timeout: 10000 }
-    );
+    const result = await executeSwiftCli(commandArgs, context.logger, { timeout: 10000 });
 
     if (!result.success || !result.data) {
       throw new Error(result.error?.message || "Failed to perform dock operation");
@@ -97,7 +90,7 @@ export async function dockToolHandler(
     // Parse the JSON output
     if (args.action === "list") {
       const listData = result.data as DockListOutput;
-      
+
       // Format the list response
       const itemsList = listData.items
         .map((item) => {
@@ -122,7 +115,7 @@ export async function dockToolHandler(
       };
     } else {
       const actionData = result.data as DockActionOutput;
-      
+
       // Format action response
       let responseText = "";
       switch (args.action) {

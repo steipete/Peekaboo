@@ -1,12 +1,19 @@
+import type { Logger } from "pino";
 import { z } from "zod";
-import { ToolResponse } from "../types/index.js";
+import type { Menu, MenuErrorResponse, MenuItem, MenuSuccessResponse, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { Logger } from "pino";
 
 // Zod schema for menu tool
 export const menuToolSchema = z.object({
-  action: z.enum(["list", "click", "click-extra", "list-all"]).describe("Action to perform: 'list' to discover menus, 'click' to interact with menu items, 'click-extra' for system menu extras, 'list-all' for all menus"),
-  app: z.string().optional().describe("Target application name, bundle ID, or process ID (required for list and click actions)"),
+  action: z
+    .enum(["list", "click", "click-extra", "list-all"])
+    .describe(
+      "Action to perform: 'list' to discover menus, 'click' to interact with menu items, 'click-extra' for system menu extras, 'list-all' for all menus"
+    ),
+  app: z
+    .string()
+    .optional()
+    .describe("Target application name, bundle ID, or process ID (required for list and click actions)"),
   item: z.string().optional().describe("Simple menu item to click (for non-nested items)"),
   path: z.string().optional().describe("Menu path for nested items (e.g., 'File > Save As...' or 'Edit > Copy')"),
   title: z.string().optional().describe("Title of system menu extra (for click-extra action)"),
@@ -14,10 +21,7 @@ export const menuToolSchema = z.object({
 
 export type MenuInput = z.infer<typeof menuToolSchema>;
 
-export async function menuToolHandler(
-  input: MenuInput,
-  context: { logger: Logger },
-): Promise<ToolResponse> {
+export async function menuToolHandler(input: MenuInput, context: { logger: Logger }): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -31,8 +35,8 @@ export async function menuToolHandler(
             {
               type: "text",
               text: "❌ Click action requires either 'item' or 'path' parameter",
-          },
-        ],
+            },
+          ],
           isError: true,
         };
       }
@@ -143,7 +147,8 @@ export async function menuToolHandler(
 
     // Handle error responses first
     if (responseData && typeof responseData === "object" && "error" in responseData) {
-      const errorMessage = (responseData as any).error.message || "Menu command failed";
+      const errorResponse = responseData as MenuErrorResponse;
+      const errorMessage = errorResponse.error.message || "Menu command failed";
       return {
         content: [
           {
@@ -157,9 +162,9 @@ export async function menuToolHandler(
 
     // Handle successful menu command
     if (responseData && typeof responseData === "object" && "success" in responseData) {
-      const menuResponse = responseData as any;
+      const menuResponse = responseData as MenuSuccessResponse | MenuErrorResponse;
 
-      if (menuResponse.success && menuResponse.data) {
+      if (menuResponse.success && "data" in menuResponse && menuResponse.data) {
         const menuData = menuResponse.data;
         let responseText = "";
 
@@ -167,10 +172,10 @@ export async function menuToolHandler(
           responseText = `✅ Menu structure for ${input.app}:\n\n`;
 
           if (menuData.menus && Array.isArray(menuData.menus)) {
-            menuData.menus.forEach((menu: any) => {
+            menuData.menus.forEach((menu: Menu) => {
               responseText += `**${menu.title || menu.name}**\n`;
               if (menu.items && Array.isArray(menu.items)) {
-                menu.items.forEach((item: any) => {
+                menu.items.forEach((item: MenuItem) => {
                   const itemName = item.title || item.name || "Unnamed Item";
                   const separator = item.separator ? " (separator)" : "";
                   const enabled = item.enabled === false ? " (disabled)" : "";
@@ -181,10 +186,10 @@ export async function menuToolHandler(
             });
           } else if (menuData.menu_bar && Array.isArray(menuData.menu_bar)) {
             // Alternative format
-            menuData.menu_bar.forEach((menu: any) => {
+            menuData.menu_bar.forEach((menu: Menu) => {
               responseText += `**${menu.title}**\n`;
               if (menu.items) {
-                menu.items.forEach((item: any) => {
+                menu.items.forEach((item: MenuItem) => {
                   responseText += `  • ${item.title || item.name}\n`;
                 });
               }
@@ -193,7 +198,6 @@ export async function menuToolHandler(
           } else {
             responseText += "Menu structure data available but in unexpected format.";
           }
-
         } else if (input.action === "click") {
           const clickedItem = input.path || input.item || "menu item";
           responseText = `✅ Successfully clicked menu item: ${clickedItem}`;
@@ -209,10 +213,10 @@ export async function menuToolHandler(
           responseText = `✅ All menus listed:\n\n`;
           // Similar structure to list, but for all applications
           if (menuData.menus && Array.isArray(menuData.menus)) {
-            menuData.menus.forEach((menu: any) => {
+            menuData.menus.forEach((menu: Menu) => {
               responseText += `**${menu.title || menu.name}**\n`;
               if (menu.items && Array.isArray(menu.items)) {
-                menu.items.forEach((item: any) => {
+                menu.items.forEach((item: MenuItem) => {
                   const itemName = item.title || item.name || "Unnamed Item";
                   const separator = item.separator ? " (separator)" : "";
                   const enabled = item.enabled === false ? " (disabled)" : "";
@@ -236,8 +240,9 @@ export async function menuToolHandler(
       }
 
       // Handle menu command errors within wrapped response
-      if (menuResponse.error) {
-        const errorMessage = menuResponse.error.message || "Menu command failed";
+      if (!menuResponse.success) {
+        const errorResponse = menuResponse as MenuErrorResponse;
+        const errorMessage = errorResponse.error?.message || "Menu command failed";
         return {
           content: [
             {
@@ -260,7 +265,6 @@ export async function menuToolHandler(
       ],
       isError: false,
     };
-
   } catch (error) {
     logger.error({ error, input }, "Menu tool execution failed");
 

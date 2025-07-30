@@ -703,7 +703,7 @@ struct AgentCommand: AsyncParsableCommand {
         let sessions = sessionSummaries.map { summary in
             AgentSessionInfo(
                 id: summary.id,
-                task: summary.metadata?.task ?? "Unknown task",
+                task: summary.metadata?.string("task") ?? "Unknown task",
                 created: summary.createdAt,
                 lastModified: summary.updatedAt,
                 messageCount: summary.messageCount

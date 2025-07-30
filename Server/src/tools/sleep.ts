@@ -1,29 +1,25 @@
-import {
-  ToolContext,
-  ToolResponse,
-} from "../types/index.js";
 import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
 
-export const sleepToolSchema = z.object({
-  duration: z.preprocess(
-    (val) => {
-      // Convert string to number if possible
-      if (typeof val === "string") {
-        const num = parseFloat(val);
-        return isNaN(num) ? val : num;
-      }
-      return val;
-    },
-    z.number().min(0),
-  ).describe(
-    "Sleep duration in milliseconds.",
-  ),
-}).describe(
-  "Pauses execution for a specified duration. " +
-  "Useful for waiting between UI actions, allowing animations to complete, " +
-  "or pacing automated workflows.",
-);
+export const sleepToolSchema = z
+  .object({
+    duration: z
+      .preprocess((val) => {
+        // Convert string to number if possible
+        if (typeof val === "string") {
+          const num = Number.parseFloat(val);
+          return Number.isNaN(num) ? val : num;
+        }
+        return val;
+      }, z.number().min(0))
+      .describe("Sleep duration in milliseconds."),
+  })
+  .describe(
+    "Pauses execution for a specified duration. " +
+      "Useful for waiting between UI actions, allowing animations to complete, " +
+      "or pacing automated workflows."
+  );
 
 interface SleepResult {
   success: boolean;
@@ -33,10 +29,7 @@ interface SleepResult {
 
 export type SleepInput = z.infer<typeof sleepToolSchema>;
 
-export async function sleepToolHandler(
-  input: SleepInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function sleepToolHandler(input: SleepInput, context: ToolContext): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -53,10 +46,12 @@ export async function sleepToolHandler(
       logger.error({ result }, errorMessage);
 
       return {
-        content: [{
-          type: "text",
-          text: `Failed to sleep: ${errorMessage}`,
-        }],
+        content: [
+          {
+            type: "text",
+            text: `Failed to sleep: ${errorMessage}`,
+          },
+        ],
         isError: true,
       };
     }
@@ -67,20 +62,23 @@ export async function sleepToolHandler(
     const durationSeconds = sleepData.actual_duration / 1000;
 
     return {
-      content: [{
-        type: "text",
-        text: `⏸️  Paused for ${durationSeconds.toFixed(1)}s`,
-      }],
+      content: [
+        {
+          type: "text",
+          text: `⏸️  Paused for ${durationSeconds.toFixed(1)}s`,
+        },
+      ],
     };
-
   } catch (error) {
     logger.error({ error }, "Sleep tool execution failed");
 
     return {
-      content: [{
-        type: "text",
-        text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
-      }],
+      content: [
+        {
+          type: "text",
+          text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
       isError: true,
     };
   }

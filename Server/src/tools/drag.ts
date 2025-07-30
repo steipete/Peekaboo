@@ -1,6 +1,6 @@
 import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { ToolContext, ToolResponse } from "../types/index.js";
 
 // Schema for drag tool - includes focus options from CLI
 export const dragToolSchema = z
@@ -36,7 +36,7 @@ export const dragToolSchema = z
     },
     {
       message: "Must specify both starting point (from/from_coords) and ending point (to/to_coords/to_app)",
-    },
+    }
   );
 
 export type DragInput = z.infer<typeof dragToolSchema>;
@@ -57,10 +57,7 @@ interface DragOutput {
   duration: number;
 }
 
-export async function dragToolHandler(
-  args: DragInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function dragToolHandler(args: DragInput, context: ToolContext): Promise<ToolResponse> {
   context.logger.debug("Performing drag operation", { args });
 
   try {
@@ -123,7 +120,7 @@ export async function dragToolHandler(
     if (!result.success || !result.data) {
       throw new Error(result.error?.message || "Failed to perform drag");
     }
-    
+
     const dragData = result.data as DragOutput;
 
     // Format the response

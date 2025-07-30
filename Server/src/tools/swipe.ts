@@ -1,28 +1,27 @@
-import {
-  ToolContext,
-  ToolResponse,
-} from "../types/index.js";
 import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
 
-export const swipeToolSchema = z.object({
-  from: z.string().describe(
-    "Starting coordinates in format 'x,y' (e.g., '100,200').",
-  ),
-  to: z.string().describe(
-    "Ending coordinates in format 'x,y' (e.g., '300,400').",
-  ),
-  duration: z.number().optional().default(500).describe(
-    "Optional. Duration of the swipe in milliseconds. Default: 500.",
-  ),
-  steps: z.number().optional().default(10).describe(
-    "Optional. Number of intermediate steps for smooth movement. Default: 10.",
-  ),
-}).describe(
-  "Performs a swipe/drag gesture from one point to another. " +
-  "Useful for dragging elements, swiping through content, or gesture-based interactions. " +
-  "Creates smooth movement with configurable duration and steps.",
-);
+export const swipeToolSchema = z
+  .object({
+    from: z.string().describe("Starting coordinates in format 'x,y' (e.g., '100,200')."),
+    to: z.string().describe("Ending coordinates in format 'x,y' (e.g., '300,400')."),
+    duration: z
+      .number()
+      .optional()
+      .default(500)
+      .describe("Optional. Duration of the swipe in milliseconds. Default: 500."),
+    steps: z
+      .number()
+      .optional()
+      .default(10)
+      .describe("Optional. Number of intermediate steps for smooth movement. Default: 10."),
+  })
+  .describe(
+    "Performs a swipe/drag gesture from one point to another. " +
+      "Useful for dragging elements, swiping through content, or gesture-based interactions. " +
+      "Creates smooth movement with configurable duration and steps."
+  );
 
 interface SwipeResult {
   success: boolean;
@@ -41,10 +40,7 @@ interface SwipeResult {
 
 export type SwipeInput = z.infer<typeof swipeToolSchema>;
 
-export async function swipeToolHandler(
-  input: SwipeInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function swipeToolHandler(input: SwipeInput, context: ToolContext): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -65,8 +61,6 @@ export async function swipeToolHandler(
     const steps = input.steps ?? 10;
     args.push("--steps", steps.toString());
 
-
-
     // Execute the command
     const result = await executeSwiftCli(args, logger);
 
@@ -75,10 +69,12 @@ export async function swipeToolHandler(
       logger.error({ result }, errorMessage);
 
       return {
-        content: [{
-          type: "text",
-          text: `Failed to perform swipe: ${errorMessage}`,
-        }],
+        content: [
+          {
+            type: "text",
+            text: `Failed to perform swipe: ${errorMessage}`,
+          },
+        ],
         isError: true,
       };
     }
@@ -95,20 +91,23 @@ export async function swipeToolHandler(
     lines.push(`⏱️  Completed in ${swipeData.execution_time.toFixed(2)}s`);
 
     return {
-      content: [{
-        type: "text",
-        text: lines.join("\n"),
-      }],
+      content: [
+        {
+          type: "text",
+          text: lines.join("\n"),
+        },
+      ],
     };
-
   } catch (error) {
     logger.error({ error }, "Swipe tool execution failed");
 
     return {
-      content: [{
-        type: "text",
-        text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
-      }],
+      content: [
+        {
+          type: "text",
+          text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
       isError: true,
     };
   }

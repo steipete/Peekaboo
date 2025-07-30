@@ -1,12 +1,12 @@
 /// <reference types="node" />
 
 import { spawn } from "child_process";
+import { existsSync } from "fs";
+import fsPromises from "fs/promises";
 import path from "path";
 // import { fileURLToPath } from 'url'; // No longer needed here
-import { Logger } from "pino";
-import fsPromises from "fs/promises";
-import { existsSync } from "fs";
-import { SwiftCliResponse } from "../types/index.js";
+import type { Logger } from "pino";
+import type { SwiftCliResponse } from "../types/index.js";
 
 let resolvedCliPath: string | null = null;
 const INVALID_PATH_SENTINEL = "PEEKABOO_CLI_PATH_RESOLUTION_FAILED";
@@ -39,7 +39,7 @@ export function initializeSwiftCliPath(packageRootDir: string): void {
     // Allow determineSwiftCliPath to handle this, and the error will be caught by getInitializedSwiftCliPath
   }
   resolvedCliPath = determineSwiftCliPath(packageRootDir);
-  
+
   // Log the resolved path for debugging
   if (resolvedCliPath && resolvedCliPath !== INVALID_PATH_SENTINEL) {
     const binaryExists = existsSync(resolvedCliPath);
@@ -52,54 +52,62 @@ export function initializeSwiftCliPath(packageRootDir: string): void {
 function getInitializedSwiftCliPath(logger: Logger): string {
   // Logger is now mandatory
   if (!resolvedCliPath || resolvedCliPath === INVALID_PATH_SENTINEL) {
-    const errorMessage = "Peekaboo Swift CLI path is not properly initialized or resolution failed. " +
+    const errorMessage =
+      "Peekaboo Swift CLI path is not properly initialized or resolution failed. " +
       `Resolved path: '${resolvedCliPath}'. Ensure PEEKABOO_CLI_PATH is valid or ` +
       "initializeSwiftCliPath() was called with a correct package root directory at startup.";
     logger.error(errorMessage);
     // Throw an error to prevent attempting to use an invalid path
     throw new Error(errorMessage);
   }
-  
+
   // Check if the binary actually exists at the resolved path
   if (!existsSync(resolvedCliPath)) {
-    const errorMessage = `Peekaboo Swift CLI binary not found at expected path: ${resolvedCliPath}\n` +
+    const errorMessage =
+      `Peekaboo Swift CLI binary not found at expected path: ${resolvedCliPath}\n` +
       `The peekaboo binary should be located in the package root directory.\n` +
       `You can override this by setting the PEEKABOO_CLI_PATH environment variable.`;
     logger.error({ binaryPath: resolvedCliPath }, errorMessage);
     throw new Error(errorMessage);
   }
-  
+
   return resolvedCliPath;
 }
 
 function mapExitCodeToErrorMessage(
   exitCode: number,
   stderr: string,
-  command: "image" | "list",
-  appTarget?: string,
+  _command: "image" | "list",
+  appTarget?: string
 ): { message: string; code: string } {
   const defaultMessage = stderr.trim()
-    ? "Peekaboo CLI Error: " + stderr.trim()
-    : "Swift CLI execution failed (exit code: " + exitCode + ")";
+    ? `Peekaboo CLI Error: ${stderr.trim()}`
+    : `Swift CLI execution failed (exit code: ${exitCode})`;
 
   // Handle exit code 18 specially with command context
   if (exitCode === 18) {
     return {
-      message: "The specified application ('" + (appTarget || "unknown") + "') is not running or could not be found.",
+      message: `The specified application ('${appTarget || "unknown"}') is not running or could not be found.`,
       code: "SWIFT_CLI_APP_NOT_FOUND",
     };
   }
 
   const errorCodeMap: { [key: number]: { message: string; code: string } } = {
     1: { message: "An unknown error occurred in the Swift CLI.", code: "SWIFT_CLI_UNKNOWN_ERROR" },
-    7: { message: "The specified application is running but has no capturable windows. Try setting 'capture_focus' to 'foreground' to un-hide application windows.", code: "SWIFT_CLI_NO_WINDOWS_FOUND" },
+    7: {
+      message:
+        "The specified application is running but has no capturable windows. Try setting 'capture_focus' to 'foreground' to un-hide application windows.",
+      code: "SWIFT_CLI_NO_WINDOWS_FOUND",
+    },
     10: { message: "No displays available for capture.", code: "SWIFT_CLI_NO_DISPLAYS" },
     11: {
-      message: "Screen Recording permission is not granted. Please enable it in System Settings > Privacy & Security > Screen Recording.",
+      message:
+        "Screen Recording permission is not granted. Please enable it in System Settings > Privacy & Security > Screen Recording.",
       code: "SWIFT_CLI_NO_SCREEN_RECORDING_PERMISSION",
     },
     12: {
-      message: "Accessibility permission is not granted. Please enable it in System Settings > Privacy & Security > Accessibility.",
+      message:
+        "Accessibility permission is not granted. Please enable it in System Settings > Privacy & Security > Accessibility.",
       code: "SWIFT_CLI_NO_ACCESSIBILITY_PERMISSION",
     },
     13: { message: "Invalid display ID provided for capture.", code: "SWIFT_CLI_INVALID_DISPLAY_ID" },
@@ -107,7 +115,8 @@ function mapExitCodeToErrorMessage(
     15: { message: "The specified window was not found.", code: "SWIFT_CLI_WINDOW_NOT_FOUND" },
     16: { message: "Failed to capture the specified window.", code: "SWIFT_CLI_WINDOW_CAPTURE_FAILED" },
     17: {
-      message: "Failed to write the capture to a file. This is often a file permissions issue. Please ensure the application has permissions to write to the destination directory.",
+      message:
+        "Failed to write the capture to a file. This is often a file permissions issue. Please ensure the application has permissions to write to the destination directory.",
       code: "SWIFT_CLI_FILE_WRITE_ERROR",
     },
     19: { message: "The specified window index is invalid.", code: "SWIFT_CLI_INVALID_WINDOW_INDEX" },
@@ -119,7 +128,7 @@ function mapExitCodeToErrorMessage(
 export async function executeSwiftCli(
   args: string[],
   logger: Logger,
-  options: { timeout?: number } = {},
+  options: { timeout?: number } = {}
 ): Promise<SwiftCliResponse> {
   let cliPath: string;
   try {
@@ -140,7 +149,7 @@ export async function executeSwiftCli(
   const fullArgs = [...args, "--json-output"];
 
   // Default timeout of 30 seconds, configurable via options or environment variable
-  const defaultTimeout = parseInt(process.env.PEEKABOO_CLI_TIMEOUT || "30000", 10);
+  const defaultTimeout = Number.parseInt(process.env.PEEKABOO_CLI_TIMEOUT || "30000", 10);
   const timeoutMs = options.timeout || defaultTimeout;
 
   logger.debug({ command: cliPath, args: fullArgs, timeoutMs }, "Executing Swift CLI");
@@ -179,7 +188,8 @@ export async function executeSwiftCli(
         resolve({
           success: false,
           error: {
-            message: `Swift CLI execution timed out after ${timeoutMs}ms. ` +
+            message:
+              `Swift CLI execution timed out after ${timeoutMs}ms. ` +
               "This may indicate a permission dialog is waiting for user input, or the process is stuck.",
             code: "SWIFT_CLI_TIMEOUT",
             details: `Command: ${cliPath} ${fullArgs.join(" ")}`,
@@ -213,17 +223,11 @@ export async function executeSwiftCli(
       }
       isResolved = true;
 
-      logger.debug(
-        { exitCode, stdout: stdout.slice(0, 200) },
-        "Swift CLI completed",
-      );
+      logger.debug({ exitCode, stdout: stdout.slice(0, 200) }, "Swift CLI completed");
 
       // Always try to parse JSON first, even on non-zero exit codes
       if (!stdout.trim()) {
-        logger.error(
-          { exitCode, stdout, stderr },
-          "Swift CLI execution failed with no output",
-        );
+        logger.error({ exitCode, stdout, stderr }, "Swift CLI execution failed with no output");
 
         // Determine command and app target from args for fallback error message
         const command = args[0] as "image" | "list";
@@ -264,7 +268,7 @@ export async function executeSwiftCli(
       } catch (parseError) {
         logger.error(
           { parseError, stdout, exitCode },
-          "Failed to parse Swift CLI JSON output, falling back to exit code mapping",
+          "Failed to parse Swift CLI JSON output, falling back to exit code mapping"
         );
 
         // Determine command and app target from args for fallback error message
@@ -320,7 +324,7 @@ export async function readImageAsBase64(imagePath: string): Promise<string> {
 export async function execPeekaboo(
   args: string[],
   packageRootDir: string,
-  options: { expectSuccess?: boolean; timeout?: number } = {},
+  options: { expectSuccess?: boolean; timeout?: number } = {}
 ): Promise<{ success: boolean; data?: string; error?: string }> {
   const cliPath = process.env.PEEKABOO_CLI_PATH || path.resolve(packageRootDir, "peekaboo");
   const timeoutMs = options.timeout || 15000; // Default 15 seconds for simple commands

@@ -1,34 +1,27 @@
-import {
-  ToolContext,
-  ToolResponse,
-} from "../types/index.js";
 import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
 
-export const cleanToolSchema = z.object({
-  all_sessions: z.boolean().optional().describe(
-    "Optional. Remove all session data.",
-  ),
-  older_than: z.number().optional().describe(
-    "Optional. Remove sessions older than specified hours.",
-  ),
-  session: z.string().optional().describe(
-    "Optional. Remove specific session by ID.",
-  ),
-  dry_run: z.boolean().optional().default(false).describe(
-    "Optional. Show what would be deleted without actually deleting.",
-  ),
-}).refine(
-  (data) => {
+export const cleanToolSchema = z
+  .object({
+    all_sessions: z.boolean().optional().describe("Optional. Remove all session data."),
+    older_than: z.number().optional().describe("Optional. Remove sessions older than specified hours."),
+    session: z.string().optional().describe("Optional. Remove specific session by ID."),
+    dry_run: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe("Optional. Show what would be deleted without actually deleting."),
+  })
+  .refine((data) => {
     const options = [data.all_sessions, data.older_than !== undefined, data.session !== undefined];
     return options.filter(Boolean).length === 1;
-  },
-  "Specify exactly one of: all_sessions, older_than, or session",
-).describe(
-  "Cleans up session cache and temporary files. " +
-  "Sessions are stored in ~/.peekaboo/session/<PID>/ directories. " +
-  "Use this to free up disk space and remove orphaned session data.",
-);
+  }, "Specify exactly one of: all_sessions, older_than, or session")
+  .describe(
+    "Cleans up session cache and temporary files. " +
+      "Sessions are stored in ~/.peekaboo/session/<PID>/ directories. " +
+      "Use this to free up disk space and remove orphaned session data."
+  );
 
 interface CleanResult {
   sessions_removed: number;
@@ -45,10 +38,7 @@ interface CleanResult {
 
 export type CleanInput = z.infer<typeof cleanToolSchema>;
 
-export async function cleanToolHandler(
-  input: CleanInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function cleanToolHandler(input: CleanInput, context: ToolContext): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -79,10 +69,12 @@ export async function cleanToolHandler(
       logger.error({ result }, errorMessage);
 
       return {
-        content: [{
-          type: "text",
-          text: `Failed to clean sessions: ${errorMessage}`,
-        }],
+        content: [
+          {
+            type: "text",
+            text: `Failed to clean sessions: ${errorMessage}`,
+          },
+        ],
         isError: true,
       };
     }
@@ -119,20 +111,23 @@ export async function cleanToolHandler(
     }
 
     return {
-      content: [{
-        type: "text",
-        text: lines.join("\n"),
-      }],
+      content: [
+        {
+          type: "text",
+          text: lines.join("\n"),
+        },
+      ],
     };
-
   } catch (error) {
     logger.error({ error }, "Clean tool execution failed");
 
     return {
-      content: [{
-        type: "text",
-        text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
-      }],
+      content: [
+        {
+          type: "text",
+          text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
       isError: true,
     };
   }

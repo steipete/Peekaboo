@@ -1,7 +1,7 @@
 import * as fs from "fs/promises";
-import * as path from "path";
 import * as os from "os";
-import { Logger } from "pino";
+import * as path from "path";
+import type { Logger } from "pino";
 
 interface PeekabooConfig {
   aiProviders?: {
@@ -33,7 +33,7 @@ interface PeekabooCredentials {
  */
 export async function loadPeekabooConfig(logger: Logger): Promise<PeekabooConfig> {
   const configPath = path.join(os.homedir(), ".peekaboo", "config.json");
-  
+
   try {
     const configContent = await fs.readFile(configPath, "utf-8");
     // Remove comments for JSONC support
@@ -42,7 +42,7 @@ export async function loadPeekabooConfig(logger: Logger): Promise<PeekabooConfig
     logger.debug({ configPath }, "Loaded Peekaboo config file");
     return config;
   } catch (error) {
-    if ((error as any).code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       logger.debug({ configPath }, "Peekaboo config file not found");
     } else {
       logger.warn({ error, configPath }, "Failed to load Peekaboo config file");
@@ -56,11 +56,11 @@ export async function loadPeekabooConfig(logger: Logger): Promise<PeekabooConfig
  */
 export async function loadPeekabooCredentials(logger: Logger): Promise<PeekabooCredentials> {
   const credentialsPath = path.join(os.homedir(), ".peekaboo", "credentials");
-  
+
   try {
     const credentialsContent = await fs.readFile(credentialsPath, "utf-8");
     const credentials: PeekabooCredentials = {};
-    
+
     // Parse key=value format
     const lines = credentialsContent.split("\n");
     for (const line of lines) {
@@ -72,11 +72,11 @@ export async function loadPeekabooCredentials(logger: Logger): Promise<PeekabooC
         }
       }
     }
-    
+
     logger.debug({ credentialsPath, count: Object.keys(credentials).length }, "Loaded Peekaboo credentials");
     return credentials;
   } catch (error) {
-    if ((error as any).code === "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       logger.debug({ credentialsPath }, "Peekaboo credentials file not found");
     } else {
       logger.warn({ error, credentialsPath }, "Failed to load Peekaboo credentials");
@@ -93,14 +93,14 @@ export async function getAIProvidersConfig(logger: Logger): Promise<string | und
   if (process.env.PEEKABOO_AI_PROVIDERS) {
     return process.env.PEEKABOO_AI_PROVIDERS;
   }
-  
+
   // Priority 2: Config file
   const config = await loadPeekabooConfig(logger);
   if (config.aiProviders?.providers) {
     logger.info("Using AI providers from Peekaboo config file");
     return config.aiProviders.providers;
   }
-  
+
   return undefined;
 }
 
@@ -109,7 +109,7 @@ export async function getAIProvidersConfig(logger: Logger): Promise<string | und
  */
 export async function setupEnvironmentFromCredentials(logger: Logger): Promise<void> {
   const credentials = await loadPeekabooCredentials(logger);
-  
+
   // Only set environment variables if they're not already set
   for (const [key, value] of Object.entries(credentials)) {
     if (!process.env[key]) {

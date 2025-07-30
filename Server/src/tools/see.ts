@@ -1,57 +1,64 @@
-import {
-  ToolContext,
-  ToolResponse,
-} from "../types/index.js";
-import { z } from "zod";
-import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { readImageAsBase64 } from "../utils/peekaboo-cli.js";
-import * as path from "path";
-import * as os from "os";
 import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
+import { z } from "zod";
+import type { SeeResponseData, ToolContext, ToolResponse, UIElement } from "../types/index.js";
+import { executeSwiftCli, readImageAsBase64 } from "../utils/peekaboo-cli.js";
 
-export const seeToolSchema = z.object({
-  app_target: z.string().optional().describe(
-    "Optional. Specifies the capture target (same as image tool).\n" +
-    "For example:\n" +
-    "Omit or use an empty string (e.g., `''`) for all screens.\n" +
-    "Use `'screen:INDEX'` (e.g., `'screen:0'`) for a specific display.\n" +
-    "Use `'frontmost'` for all windows of the current foreground application.\n" +
-    "Use `'AppName'` (e.g., `'Safari'`) for all windows of that application.\n" +
-    "Use `'PID:PROCESS_ID'` (e.g., `'PID:663'`) to target a specific process by its PID.",
-  ),
-  path: z.string().optional().describe(
-    "Optional. Path to save the screenshot. If not provided, uses a temporary file.",
-  ),
-  session: z.string().optional().describe(
-    "Optional. Session ID for UI automation state tracking. Creates new session if not provided.",
-  ),
-  annotate: z.boolean().optional().default(false).describe(
-    "Optional. If true, generates an annotated screenshot with interaction markers and IDs.",
-  ),
-}).describe(
-  "Captures a screenshot and analyzes UI elements for automation. " +
-  "Returns UI element map with Peekaboo IDs (B1 for buttons, T1 for text fields, etc.) " +
-  "that can be used with click, type, and other interaction commands. " +
-  "Creates or updates a session for tracking UI state.",
-);
+export const seeToolSchema = z
+  .object({
+    app_target: z
+      .string()
+      .optional()
+      .describe(
+        "Optional. Specifies the capture target (same as image tool).\n" +
+          "For example:\n" +
+          "Omit or use an empty string (e.g., `''`) for all screens.\n" +
+          "Use `'screen:INDEX'` (e.g., `'screen:0'`) for a specific display.\n" +
+          "Use `'frontmost'` for all windows of the current foreground application.\n" +
+          "Use `'AppName'` (e.g., `'Safari'`) for all windows of that application.\n" +
+          "Use `'PID:PROCESS_ID'` (e.g., `'PID:663'`) to target a specific process by its PID."
+      ),
+    path: z
+      .string()
+      .optional()
+      .describe("Optional. Path to save the screenshot. If not provided, uses a temporary file."),
+    session: z
+      .string()
+      .optional()
+      .describe("Optional. Session ID for UI automation state tracking. Creates new session if not provided."),
+    annotate: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe("Optional. If true, generates an annotated screenshot with interaction markers and IDs."),
+  })
+  .describe(
+    "Captures a screenshot and analyzes UI elements for automation. " +
+      "Returns UI element map with Peekaboo IDs (B1 for buttons, T1 for text fields, etc.) " +
+      "that can be used with click, type, and other interaction commands. " +
+      "Creates or updates a session for tracking UI state."
+  );
+
+interface UIElementResult {
+  id: string;
+  role: string;
+  title?: string;
+  label?: string;
+  value?: string;
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  is_actionable: boolean;
+}
 
 interface SeeResult {
   screenshot_path: string;
   session_id: string;
-  ui_elements: Array<{
-    id: string;
-    role: string;
-    title?: string;
-    label?: string;
-    value?: string;
-    bounds: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    };
-    is_actionable: boolean;
-  }>;
+  ui_elements: UIElementResult[];
   application?: string;
   window?: string;
   timestamp: string;
@@ -59,10 +66,7 @@ interface SeeResult {
 
 export type SeeInput = z.infer<typeof seeToolSchema>;
 
-export async function seeToolHandler(
-  input: SeeInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function seeToolHandler(input: SeeInput, context: ToolContext): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -115,54 +119,61 @@ export async function seeToolHandler(
       logger.error({ result }, errorMessage);
 
       return {
-        content: [{
-          type: "text",
-          text: `Failed to capture UI state: ${errorMessage}`,
-        }],
+        content: [
+          {
+            type: "text",
+            text: `Failed to capture UI state: ${errorMessage}`,
+          },
+        ],
         isError: true,
       };
     }
 
     // The CLI returns data in a different format than expected
-    const cliData = result.data as any;
-    
+    const cliData = result.data as SeeResponseData;
+
     // Read the UI map from the file
-    let uiElements: Array<any> = [];
-    if (cliData.ui_map && typeof cliData.ui_map === 'string') {
+    let uiElements: UIElementResult[] = [];
+    if (cliData.ui_map && typeof cliData.ui_map === "string") {
       try {
-        const mapFileContent = await fs.readFile(cliData.ui_map, 'utf-8');
+        const mapFileContent = await fs.readFile(cliData.ui_map, "utf-8");
         const mapData = JSON.parse(mapFileContent);
-        
+
         // Transform the UI map to the expected format
         if (mapData.uiMap) {
-          uiElements = Object.entries(mapData.uiMap).map(([key, elem]: [string, any]) => ({
-            id: elem.id || key,
-            role: elem.role || 'unknown',
-            title: elem.title,
-            label: elem.label,
-            value: elem.value,
-            bounds: elem.frame ? {
-              x: elem.frame[0][0],
-              y: elem.frame[0][1],
-              width: elem.frame[1][0],
-              height: elem.frame[1][1]
-            } : { x: 0, y: 0, width: 0, height: 0 },
-            is_actionable: elem.isActionable || false
-          }));
+          uiElements = Object.entries(mapData.uiMap).map(([key, elem]) => {
+            const element = elem as UIElement;
+            return {
+              id: element.id || key,
+              role: element.role || "unknown",
+              title: element.title,
+              label: element.label,
+              value: element.value,
+              bounds: element.frame
+                ? {
+                    x: element.frame[0][0],
+                    y: element.frame[0][1],
+                    width: element.frame[1][0],
+                    height: element.frame[1][1],
+                  }
+                : { x: 0, y: 0, width: 0, height: 0 },
+              is_actionable: element.isActionable || false,
+            };
+          });
         }
       } catch (err) {
         logger.warn({ error: err }, "Failed to read UI map file");
       }
     }
-    
+
     // Build the SeeResult in the expected format
     const seeData: SeeResult = {
-      screenshot_path: cliData.screenshot_annotated || cliData.screenshot_raw || outputPath,
-      session_id: cliData.session_id || 'unknown',
+      screenshot_path: cliData.screenshot_annotated || cliData.screenshot_raw || cliData.screenshot || outputPath,
+      session_id: cliData.session_id || cliData.session || "unknown",
       ui_elements: uiElements,
       application: cliData.application_name,
       window: cliData.window_title,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     // Build response
@@ -194,18 +205,19 @@ export async function seeToolHandler(
       _meta: {
         session_id: seeData.session_id,
         element_count: seeData.ui_elements.length,
-        actionable_count: seeData.ui_elements.filter(el => el.is_actionable).length,
+        actionable_count: seeData.ui_elements.filter((el) => el.is_actionable).length,
       },
     };
-
   } catch (error) {
     logger.error({ error }, "See tool execution failed");
 
     return {
-      content: [{
-        type: "text",
-        text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
-      }],
+      content: [
+        {
+          type: "text",
+          text: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ],
       isError: true,
     };
   }
@@ -245,7 +257,7 @@ function buildSeeSummary(data: SeeResult): string {
     if (!elements) {
       continue;
     }
-    const actionableCount = elements.filter(el => el.is_actionable).length;
+    const actionableCount = elements.filter((el) => el.is_actionable).length;
 
     lines.push(`\n${role} (${elements.length} found, ${actionableCount} actionable):`);
 

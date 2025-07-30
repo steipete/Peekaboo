@@ -1,6 +1,6 @@
 import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { ToolContext, ToolResponse } from "../types/index.js";
 
 // Schema for permissions tool
 export const permissionsToolSchema = z.object({}).strict();
@@ -14,24 +14,17 @@ interface PermissionsOutput {
   accessibility_message?: string;
 }
 
-export async function permissionsToolHandler(
-  args: PermissionsInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function permissionsToolHandler(_args: PermissionsInput, context: ToolContext): Promise<ToolResponse> {
   context.logger.debug("Checking macOS permissions");
 
   try {
     // Execute permissions command with JSON output
-    const result = await executeSwiftCli(
-      ["permissions", "--json-output"],
-      context.logger,
-      { timeout: 5000 }
-    );
+    const result = await executeSwiftCli(["permissions", "--json-output"], context.logger, { timeout: 5000 });
 
     if (!result.success || !result.data) {
       throw new Error(result.error?.message || "Failed to get permissions");
     }
-    
+
     const permissionsData = result.data as PermissionsOutput;
 
     // Format the response

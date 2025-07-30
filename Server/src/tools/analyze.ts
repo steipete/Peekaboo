@@ -1,44 +1,35 @@
-import { z } from "zod";
 import path from "path";
-import { ToolContext, ToolResponse } from "../types/index.js";
-import { readImageAsBase64 } from "../utils/peekaboo-cli.js";
-import {
-  parseAIProviders,
-  analyzeImageWithProvider,
-  determineProviderAndModel,
-} from "../utils/ai-providers.js";
+import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
+import { analyzeImageWithProvider, determineProviderAndModel, parseAIProviders } from "../utils/ai-providers.js";
 import { getAIProvidersConfig } from "../utils/config-loader.js";
+import { readImageAsBase64 } from "../utils/peekaboo-cli.js";
 
-export const analyzeToolSchema = z.object({
-  image_path: z
-    .string()
-    .optional()
-    .describe(
-      "Required. Absolute path to image file (.png, .jpg, .webp) to be analyzed.",
-    ),
-  question: z
-    .string()
-    .describe("Required. Question for the AI about the image."),
-  provider_config: z
-    .object({
-      type: z
-        .enum(["auto", "ollama", "openai"])
-        .default("auto")
-        .describe(
-          "AI provider, default: auto. 'auto' uses server's PEEKABOO_AI_PROVIDERS environment preference. Specific provider must be enabled in server's PEEKABOO_AI_PROVIDERS.",
-        ),
-      model: z
-        .string()
-        .optional()
-        .describe(
-          "Optional. Model name. If omitted, uses model from server's PEEKABOO_AI_PROVIDERS for chosen provider, or an internal default for that provider.",
-        ),
-    })
-    .optional()
-    .describe(
-      "Optional. Explicit provider/model. Validated against server's PEEKABOO_AI_PROVIDERS.",
-    ),
-})
+export const analyzeToolSchema = z
+  .object({
+    image_path: z
+      .string()
+      .optional()
+      .describe("Required. Absolute path to image file (.png, .jpg, .webp) to be analyzed."),
+    question: z.string().describe("Required. Question for the AI about the image."),
+    provider_config: z
+      .object({
+        type: z
+          .enum(["auto", "ollama", "openai"])
+          .default("auto")
+          .describe(
+            "AI provider, default: auto. 'auto' uses server's PEEKABOO_AI_PROVIDERS environment preference. Specific provider must be enabled in server's PEEKABOO_AI_PROVIDERS."
+          ),
+        model: z
+          .string()
+          .optional()
+          .describe(
+            "Optional. Model name. If omitted, uses model from server's PEEKABOO_AI_PROVIDERS for chosen provider, or an internal default for that provider."
+          ),
+      })
+      .optional()
+      .describe("Optional. Explicit provider/model. Validated against server's PEEKABOO_AI_PROVIDERS."),
+  })
   .passthrough() // Allow unknown properties (for the hidden `path` parameter)
   .refine(
     (data: unknown) => {
@@ -48,17 +39,14 @@ export const analyzeToolSchema = z.object({
     {
       message: "image_path is required",
       path: ["image_path"],
-    },
+    }
   );
 
 export type AnalyzeToolInput = z.infer<typeof analyzeToolSchema> & {
   path?: string; // Hidden parameter for backward compatibility
 };
 
-export async function analyzeToolHandler(
-  input: AnalyzeToolInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function analyzeToolHandler(input: AnalyzeToolInput, context: ToolContext): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -67,7 +55,7 @@ export async function analyzeToolHandler(
 
     logger.debug(
       { input: { ...input, effectiveImagePath: effectiveImagePath.split("/").pop() } },
-      "Processing peekaboo.analyze tool call",
+      "Processing peekaboo.analyze tool call"
     );
 
     // Validate image file extension
@@ -114,11 +102,7 @@ export async function analyzeToolHandler(
     }
 
     // Determine provider and model
-    const { provider, model } = await determineProviderAndModel(
-      input.provider_config,
-      configuredProviders,
-      logger,
-    );
+    const { provider, model } = await determineProviderAndModel(input.provider_config, configuredProviders, logger);
 
     if (!provider) {
       return {
@@ -137,10 +121,7 @@ export async function analyzeToolHandler(
     try {
       imageBase64 = await readImageAsBase64(effectiveImagePath);
     } catch (error) {
-      logger.error(
-        { error, path: effectiveImagePath },
-        "Failed to read image file",
-      );
+      logger.error({ error, path: effectiveImagePath }, "Failed to read image file");
       return {
         content: [
           {
@@ -161,7 +142,7 @@ export async function analyzeToolHandler(
         effectiveImagePath,
         imageBase64,
         input.question,
-        logger,
+        logger
       );
     } catch (error) {
       logger.error({ error, provider, model }, "AI analysis failed");

@@ -1,11 +1,20 @@
+import type { Logger } from "pino";
 import { z } from "zod";
-import { ToolResponse } from "../types/index.js";
+import type {
+  AgentErrorResponse,
+  AgentSession,
+  AgentStep,
+  AgentSuccessResponse,
+  ToolResponse,
+} from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { Logger } from "pino";
 
 // Zod schema for agent tool
 export const agentToolSchema = z.object({
-  task: z.string().optional().describe("Natural language description of the task to perform (optional when listing sessions)"),
+  task: z
+    .string()
+    .optional()
+    .describe("Natural language description of the task to perform (optional when listing sessions)"),
   verbose: z.boolean().optional().describe("Enable verbose output with full JSON debug information"),
   quiet: z.boolean().optional().describe("Quiet mode - only show final result"),
   dry_run: z.boolean().optional().describe("Dry run - show planned steps without executing"),
@@ -19,10 +28,7 @@ export const agentToolSchema = z.object({
 
 export type AgentInput = z.infer<typeof agentToolSchema>;
 
-export async function agentToolHandler(
-  input: AgentInput,
-  context: { logger: Logger },
-): Promise<ToolResponse> {
+export async function agentToolHandler(input: AgentInput, context: { logger: Logger }): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -56,7 +62,7 @@ export async function agentToolHandler(
 
     // Build command arguments
     const args = ["agent"];
-    
+
     if (input.task) {
       args.push(input.task);
     }
@@ -145,7 +151,7 @@ export async function agentToolHandler(
 
     // Handle successful agent execution
     if (parsedResult && typeof parsedResult === "object" && "success" in parsedResult) {
-      const agentResponse = parsedResult as any;
+      const agentResponse = parsedResult as AgentSuccessResponse | AgentErrorResponse;
 
       if (agentResponse.success && agentResponse.data) {
         const agentData = agentResponse.data;
@@ -157,7 +163,7 @@ export async function agentToolHandler(
           if (agentData.sessions.length === 0) {
             responseText += "\nNo sessions found.";
           } else {
-            agentData.sessions.forEach((session: any) => {
+            agentData.sessions.forEach((session: AgentSession) => {
               responseText += `\n📌 Session: ${session.id}`;
               if (session.task) {
                 responseText += `\n   Task: ${session.task}`;
@@ -181,7 +187,7 @@ export async function agentToolHandler(
         // Add steps information if available and verbose
         if (input.verbose && agentData.steps && Array.isArray(agentData.steps)) {
           responseText += `\n\nSteps executed (${agentData.steps.length}):`;
-          agentData.steps.forEach((step: any, index: number) => {
+          agentData.steps.forEach((step: AgentStep, index: number) => {
             responseText += `\n${index + 1}. ${step.description || step.command || "Unknown step"}`;
             if (step.output && step.output.length < 100) {
               responseText += ` → ${step.output}`;
@@ -201,7 +207,7 @@ export async function agentToolHandler(
       }
 
       // Handle agent errors
-      if (agentResponse.error) {
+      if (!agentResponse.success && "error" in agentResponse && agentResponse.error) {
         const errorMessage = agentResponse.error.message || "Agent execution failed";
         return {
           content: [
@@ -225,7 +231,6 @@ export async function agentToolHandler(
       ],
       isError: false,
     };
-
   } catch (error) {
     logger.error({ error, input }, "Agent tool execution failed");
 

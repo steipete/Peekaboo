@@ -1,6 +1,6 @@
 import { z } from "zod";
+import type { ToolContext, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { ToolContext, ToolResponse } from "../types/index.js";
 
 // Schema for dialog tool
 export const dialogToolSchema = z
@@ -37,7 +37,7 @@ export const dialogToolSchema = z
     },
     {
       message: "Missing required parameters for action",
-    },
+    }
   );
 
 export type DialogInput = z.infer<typeof dialogToolSchema>;
@@ -66,10 +66,7 @@ interface DialogListOutput {
   }>;
 }
 
-export async function dialogToolHandler(
-  args: DialogInput,
-  context: ToolContext,
-): Promise<ToolResponse> {
+export async function dialogToolHandler(args: DialogInput, context: ToolContext): Promise<ToolResponse> {
   context.logger.debug("Performing dialog operation", { args });
 
   try {
@@ -123,11 +120,7 @@ export async function dialogToolHandler(
     commandArgs.push("--json-output");
 
     // Execute dialog command
-    const result = await executeSwiftCli(
-      commandArgs,
-      context.logger,
-      { timeout: 10000 }
-    );
+    const result = await executeSwiftCli(commandArgs, context.logger, { timeout: 10000 });
 
     if (!result.success || !result.data) {
       throw new Error(result.error?.message || "Failed to perform dialog operation");
@@ -136,7 +129,7 @@ export async function dialogToolHandler(
     // Parse the JSON output
     if (args.action === "list") {
       const listData = result.data as DialogListOutput;
-      
+
       // Format the list response
       const dialogsList = listData.windows
         .map((window) => {
@@ -170,7 +163,7 @@ export async function dialogToolHandler(
       };
     } else {
       const actionData = result.data as DialogActionOutput;
-      
+
       // Format action response
       let responseText = "";
       switch (args.action) {

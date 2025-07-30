@@ -1,28 +1,39 @@
+import type { Logger } from "pino";
 import { z } from "zod";
-import { ToolResponse } from "../types/index.js";
+import type { AppInfo, AppResponseData, AppSuccessResponse, ToolResponse } from "../types/index.js";
 import { executeSwiftCli } from "../utils/peekaboo-cli.js";
-import { Logger } from "pino";
 
 // Zod schema for app tool
 export const appToolSchema = z.object({
-  action: z.enum(["launch", "quit", "relaunch", "focus", "hide", "unhide", "switch", "list"]).describe("The action to perform on the application"),
-  name: z.string().optional().describe("Application name, bundle ID, or process ID (e.g., 'Safari', 'com.apple.Safari', 'PID:663')"),
+  action: z
+    .enum(["launch", "quit", "relaunch", "focus", "hide", "unhide", "switch", "list"])
+    .describe("The action to perform on the application"),
+  name: z
+    .string()
+    .optional()
+    .describe("Application name, bundle ID, or process ID (e.g., 'Safari', 'com.apple.Safari', 'PID:663')"),
   bundleId: z.string().optional().describe("Launch by bundle identifier instead of name (for 'launch' action)"),
-  waitUntilReady: z.boolean().optional().describe("Wait for the application to be ready (for 'launch' and 'relaunch' actions)"),
+  waitUntilReady: z
+    .boolean()
+    .optional()
+    .describe("Wait for the application to be ready (for 'launch' and 'relaunch' actions)"),
   force: z.boolean().optional().describe("Force quit the application (for 'quit' and 'relaunch' actions)"),
   all: z.boolean().optional().describe("Quit all applications (for 'quit' action)"),
-  except: z.string().optional().describe("Comma-separated list of apps to exclude when using --all (for 'quit' action)"),
+  except: z
+    .string()
+    .optional()
+    .describe("Comma-separated list of apps to exclude when using --all (for 'quit' action)"),
   to: z.string().optional().describe("Application to switch to (for 'switch' action)"),
   cycle: z.boolean().optional().describe("Cycle to next application like Cmd+Tab (for 'switch' action)"),
-  wait: z.number().optional().describe("Wait time in seconds between quit and launch (for 'relaunch' action, default: 2)"),
+  wait: z
+    .number()
+    .optional()
+    .describe("Wait time in seconds between quit and launch (for 'relaunch' action, default: 2)"),
 });
 
 export type AppInput = z.infer<typeof appToolSchema>;
 
-export async function appToolHandler(
-  input: AppInput,
-  context: { logger: Logger },
-): Promise<ToolResponse> {
+export async function appToolHandler(input: AppInput, context: { logger: Logger }): Promise<ToolResponse> {
   const { logger } = context;
 
   try {
@@ -53,7 +64,11 @@ export async function appToolHandler(
       };
     }
 
-    if ((input.action === "quit" || input.action === "focus" || input.action === "hide" || input.action === "unhide") && !input.name && !input.all) {
+    if (
+      (input.action === "quit" || input.action === "focus" || input.action === "hide" || input.action === "unhide") &&
+      !input.name &&
+      !input.all
+    ) {
       return {
         content: [
           {
@@ -140,11 +155,13 @@ export async function appToolHandler(
 
     // Handle successful app command - the response format can vary
     if (responseData && typeof responseData === "object") {
-      let appData = responseData as any;
+      let appData = responseData as AppResponseData | AppSuccessResponse;
 
       // Check if it's wrapped in success/data structure
       if ("success" in appData && appData.success && appData.data) {
         appData = appData.data;
+      } else {
+        appData = appData as AppResponseData;
       }
 
       // Check for direct response format (which seems to be what we're getting)
@@ -205,7 +222,7 @@ export async function appToolHandler(
           case "list":
             responseText = "✅ Running applications:\n";
             if (appData.applications && Array.isArray(appData.applications)) {
-              appData.applications.forEach((app: any) => {
+              appData.applications.forEach((app: AppInfo) => {
                 responseText += `\n• ${app.name || app.localizedName}`;
                 if (app.bundleIdentifier) {
                   responseText += ` (${app.bundleIdentifier})`;
@@ -243,8 +260,13 @@ export async function appToolHandler(
       }
 
       // Handle app command errors
-      if ("error" in appData) {
-        const errorMessage = appData.error.message || "App command failed";
+      if ("error" in appData && appData.error) {
+        const errorMessage =
+          typeof appData.error === "string"
+            ? appData.error
+            : typeof appData.error === "object" && appData.error !== null && "message" in appData.error
+              ? String((appData.error as { message: unknown }).message)
+              : "App command failed";
         return {
           content: [
             {
@@ -267,7 +289,6 @@ export async function appToolHandler(
       ],
       isError: false,
     };
-
   } catch (error) {
     logger.error({ error, input }, "App tool execution failed");
 
