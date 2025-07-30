@@ -1460,36 +1460,41 @@ final class CompactEventDelegate: AgentEventDelegate {
                 self.ghostAnimator.stop()
                 self.isThinking = false
 
-                // Always add a newline before tool output for better formatting
-                // This ensures consistent spacing between thinking/content and tools
-                print()
+                // Check if this is a special communication tool that should be displayed as assistant text
+                let isCommunicationTool = (name == "task_completed" || name == "need_more_information")
+                
+                if !isCommunicationTool {
+                    // Always add a newline before tool output for better formatting
+                    // This ensures consistent spacing between thinking/content and tools
+                    print()
 
-                self.hasReceivedContent = false // Reset for next thinking phase
+                    self.hasReceivedContent = false // Reset for next thinking phase
 
-                let icon = iconForTool(name)
-                print("\(TerminalColor.blue)\(icon) \(name)\(TerminalColor.reset)", terminator: "")
+                    let icon = iconForTool(name)
+                    print("\(TerminalColor.blue)\(icon) \(name)\(TerminalColor.reset)", terminator: "")
 
-                if self.outputMode == .verbose {
-                    // Show formatted arguments in verbose mode
-                    if arguments.isEmpty || arguments == "{}" {
-                        print("\n\(TerminalColor.gray)Arguments: (none)\(TerminalColor.reset)")
-                    } else if let formatted = formatJSON(arguments) {
-                        print("\n\(TerminalColor.gray)Arguments:\(TerminalColor.reset)")
-                        print(formatted)
+                    if self.outputMode == .verbose {
+                        // Show formatted arguments in verbose mode
+                        if arguments.isEmpty || arguments == "{}" {
+                            print("\n\(TerminalColor.gray)Arguments: (none)\(TerminalColor.reset)")
+                        } else if let formatted = formatJSON(arguments) {
+                            print("\n\(TerminalColor.gray)Arguments:\(TerminalColor.reset)")
+                            print(formatted)
+                        } else {
+                            print("\n\(TerminalColor.gray)Arguments: \(arguments)\(TerminalColor.reset)")
+                        }
                     } else {
-                        print("\n\(TerminalColor.gray)Arguments: \(arguments)\(TerminalColor.reset)")
-                    }
-                } else {
-                    // Show compact summary based on tool and args
-                    if let data = arguments.data(using: .utf8),
-                       let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        let summary = self.compactToolSummary(name, args)
-                        if !summary.isEmpty {
-                            print(" \(TerminalColor.gray)\(summary)\(TerminalColor.reset)", terminator: "")
+                        // Show compact summary based on tool and args
+                        if let data = arguments.data(using: .utf8),
+                           let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            let summary = self.compactToolSummary(name, args)
+                            if !summary.isEmpty {
+                                print(" \(TerminalColor.gray)\(summary)\(TerminalColor.reset)", terminator: "")
+                            }
                         }
                     }
+                    fflush(stdout)
                 }
-                fflush(stdout)
             }
 
         case let .toolCallCompleted(name, result):
@@ -1520,52 +1525,38 @@ final class CompactEventDelegate: AgentEventDelegate {
 
                     // Special handling for task_completed tool
                     if name == "task_completed" {
-                        // Don't show the tool line in compact mode
-                        if self.outputMode == .verbose {
-                            print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                        // Show as assistant message, not tool execution
+                        print() // Add newline for spacing
+                        
+                        if let summary = json["summary"] as? String {
+                            print("\(summary)")
                         }
 
-                        // Show enhanced completion summary
+                        if let nextSteps = json["next_steps"] as? String {
+                            print("\n\(nextSteps)")
+                        }
+
+                        // Show completion stats after the message
                         let totalElapsed = Date().timeIntervalSince(startTime)
                         let tokenInfo = self.totalTokens > 0 ? ", \(self.totalTokens) tokens" : ""
                         let toolsText = self.toolCallCount == 1 ? "1 tool" : "\(self.toolCallCount) tools"
                         print(
-                            "\n\(TerminalColor.bold)\(TerminalColor.green)✅ Task completed\(TerminalColor.reset) \(TerminalColor.gray)(Total: \(self.formatDuration(totalElapsed)), \(toolsText)\(tokenInfo))\(TerminalColor.reset)"
+                            "\n\(TerminalColor.gray)Task completed in \(self.formatDuration(totalElapsed)) with \(toolsText)\(tokenInfo)\(TerminalColor.reset)"
                         )
 
                         self.hasShownFinalSummary = true
-
-                        if self.outputMode == .verbose {
-                            if let summary = json["summary"] as? String {
-                                print("\n\(TerminalColor.gray)Summary:\(TerminalColor.reset)")
-                                print("   \(summary)")
-                            }
-
-                            if let nextSteps = json["next_steps"] as? String {
-                                print("\n\(TerminalColor.cyan)Next Steps:\(TerminalColor.reset)")
-                                print("   \(nextSteps)")
-                            }
-
-                            // Show full result in verbose mode
-                            if let formatted = formatJSON(result) {
-                                print("\n\(TerminalColor.gray)Full Result:\(TerminalColor.reset)")
-                                print(formatted)
-                            }
-                        }
                     }
                     // Special handling for need_more_information tool
                     else if name == "need_more_information" {
-                        print(" \(TerminalColor.yellow)?\(TerminalColor.reset)\(duration)")
-                        print(
-                            "\n\(TerminalColor.bold)\(TerminalColor.yellow)❓ Need More Information\(TerminalColor.reset)"
-                        )
-
+                        // Show as assistant message, not tool execution
+                        print() // Add newline for spacing
+                        
                         if let question = json["question"] as? String {
-                            print("\(TerminalColor.yellow)Question: \(question)\(TerminalColor.reset)")
-                        }
-
-                        if let context = json["context"] as? String {
-                            print("\(TerminalColor.gray)Context: \(context)\(TerminalColor.reset)")
+                            print("\(question)")
+                            
+                            if let context = json["context"] as? String {
+                                print("\n\(TerminalColor.gray)Context: \(context)\(TerminalColor.reset)")
+                            }
                         }
                     }
                     // Regular tool handling

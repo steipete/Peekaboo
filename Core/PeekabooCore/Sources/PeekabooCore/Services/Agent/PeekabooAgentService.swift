@@ -116,6 +116,105 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 sessionId: sessionId)
         }
     }
+    
+    /// Execute a task with audio content
+    public func executeTaskWithAudio(
+        audioContent: AudioContent,
+        dryRun: Bool = false,
+        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+    {
+        // For dry run, just return a simulated result
+        if dryRun {
+            let description = audioContent.transcript ?? "[Audio message - duration: \(Int(audioContent.duration ?? 0))s]"
+            return AgentExecutionResult(
+                content: "Dry run completed. Audio task: \(description)",
+                messages: [],
+                sessionId: UUID().uuidString,
+                usage: nil,
+                toolCalls: [],
+                metadata: AgentMetadata(
+                    startTime: Date(),
+                    endTime: Date(),
+                    toolCallCount: 0,
+                    modelName: self.defaultModelName,
+                    isResumed: false,
+                    maskedApiKey: nil))
+        }
+
+        // Use the new architecture internally
+        let agent = self.createAutomationAgent(modelName: self.defaultModelName)
+
+        // Create a new session for this task
+        let sessionId = UUID().uuidString
+
+        // Execute with streaming if we have an event delegate
+        if eventDelegate != nil {
+            // SAFETY: We ensure that the delegate is only accessed on MainActor
+            // This is a legacy API pattern that predates Swift's strict concurrency
+            let unsafeDelegate = UnsafeTransfer(eventDelegate!)
+
+            // Create event stream infrastructure
+            let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
+
+            // Start processing events on MainActor
+            let eventTask = Task { @MainActor in
+                let delegate = unsafeDelegate.wrappedValue
+                for await event in eventStream {
+                    delegate.agentDidEmitEvent(event)
+                }
+            }
+
+            // Create the event handler
+            let eventHandler = EventHandler { event in
+                eventContinuation.yield(event)
+            }
+
+            defer {
+                eventContinuation.finish()
+                eventTask.cancel()
+            }
+
+            // For now, convert audio to text if transcript is available
+            // In the future, we'll pass audio directly to providers that support it
+            let input = audioContent.transcript ?? "[Audio message without transcript]"
+
+            // Run the agent with streaming
+            let result = try await AgentRunner.runStreaming(
+                agent: agent,
+                input: input,
+                context: self.services,
+                sessionId: sessionId,
+                streamHandler: { chunk in
+                    // Convert streaming chunks to events
+                    await eventHandler.send(.assistantMessage(content: chunk))
+                },
+                eventHandler: { toolEvent in
+                    // Convert tool events to agent events
+                    switch toolEvent {
+                    case let .started(name, arguments):
+                        await eventHandler.send(.toolCallStarted(name: name, arguments: arguments))
+                    case let .completed(name, result):
+                        await eventHandler.send(.toolCallCompleted(name: name, result: result))
+                    }
+                })
+
+            // Send completion event with usage information
+            await eventHandler.send(.completed(summary: result.content, usage: result.usage))
+
+            return result
+        } else {
+            // For now, convert audio to text if transcript is available
+            // In the future, we'll pass audio directly to providers that support it
+            let input = audioContent.transcript ?? "[Audio message without transcript]"
+            
+            // Execute without streaming
+            return try await AgentRunner.run(
+                agent: agent,
+                input: input,
+                context: self.services,
+                sessionId: sessionId)
+        }
+    }
 
     /// Clean up any cached sessions or resources
     public func cleanup() async {

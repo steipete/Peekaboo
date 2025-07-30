@@ -35,19 +35,22 @@ public struct ConversationMessage: Identifiable, Codable, Sendable {
     public let content: String
     public let timestamp: Date
     public var toolCalls: [ConversationToolCall]
+    public let audioContent: AudioContent?
 
     public init(
         id: UUID = UUID(),
         role: MessageRole,
         content: String,
         timestamp: Date = Date(),
-        toolCalls: [ConversationToolCall] = [])
+        toolCalls: [ConversationToolCall] = [],
+        audioContent: AudioContent? = nil)
     {
         self.id = id
         self.role = role
         self.content = content
         self.timestamp = timestamp
         self.toolCalls = toolCalls
+        self.audioContent = audioContent
     }
 }
 

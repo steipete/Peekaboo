@@ -288,6 +288,10 @@ extension PeekabooAgentService {
                     "preset": ParameterSchema.enumeration(
                         ["maximize", "center", "left_half", "right_half", "top_half", "bottom_half"],
                         description: "Preset size/position"),
+                    "target_screen": ParameterSchema.integer(description: "Move window to specific screen (0-based index)"),
+                    "screen_preset": ParameterSchema.enumeration(
+                        ["same", "next", "previous", "primary"],
+                        description: "Move window relative to screens"),
                 ],
                 required: []),
             handler: { (params: ToolParameterParser, context: PeekabooServices) in
@@ -300,6 +304,8 @@ extension PeekabooAgentService {
                 let x = params.int("x", default: nil)
                 let y = params.int("y", default: nil)
                 let preset = params.string("preset", default: nil)
+                let targetScreen = params.int("target_screen", default: nil)
+                let screenPreset = params.string("screen_preset", default: nil)
 
                 // Validate that we have some way to identify the window
                 guard title != nil || appName != nil || windowId != nil || frontmost else {
@@ -390,10 +396,45 @@ extension PeekabooAgentService {
 
                 // Calculate new bounds
                 var newBounds = window.bounds
+                
+                // Determine target screen
+                let targetScreenInfo: ScreenInfo?
+                if let targetScreen {
+                    // Use specific screen index
+                    targetScreenInfo = context.screens.screen(at: targetScreen)
+                } else if let screenPreset {
+                    // Use screen preset
+                    let currentScreen = context.screens.screenContainingWindow(bounds: window.bounds)
+                    let screens = context.screens.listScreens()
+                    
+                    switch screenPreset {
+                    case "primary":
+                        targetScreenInfo = context.screens.primaryScreen
+                    case "next":
+                        if let current = currentScreen, current.index < screens.count - 1 {
+                            targetScreenInfo = screens[current.index + 1]
+                        } else {
+                            targetScreenInfo = screens.first // Wrap around
+                        }
+                    case "previous":
+                        if let current = currentScreen, current.index > 0 {
+                            targetScreenInfo = screens[current.index - 1]
+                        } else {
+                            targetScreenInfo = screens.last // Wrap around
+                        }
+                    case "same":
+                        targetScreenInfo = currentScreen
+                    default:
+                        throw PeekabooError.invalidInput("Unknown screen preset: \(screenPreset)")
+                    }
+                } else {
+                    // No screen targeting - use current screen or main
+                    targetScreenInfo = context.screens.screenContainingWindow(bounds: window.bounds) ?? context.screens.primaryScreen
+                }
 
                 if let preset {
-                    // Get screen bounds
-                    let screenBounds = NSScreen.main?.frame ?? CGRect(x: 0, y: 0, width: 1920, height: 1080)
+                    // Get screen bounds from target screen
+                    let screenBounds = targetScreenInfo?.frame ?? NSScreen.main?.frame ?? CGRect(x: 0, y: 0, width: 1920, height: 1080)
 
                     switch preset {
                     case "maximize":
@@ -434,6 +475,25 @@ extension PeekabooAgentService {
                     if let y { newBounds.origin.y = CGFloat(y) }
                     if let width { newBounds.size.width = CGFloat(width) }
                     if let height { newBounds.size.height = CGFloat(height) }
+                    
+                    // If we're moving to a different screen but no preset was specified,
+                    // maintain relative position on the new screen
+                    if targetScreen != nil || screenPreset != nil {
+                        let currentScreen = context.screens.screenContainingWindow(bounds: window.bounds)
+                        if let currentScreen, let targetScreenInfo, currentScreen.index != targetScreenInfo.index {
+                            // Calculate relative position on current screen
+                            let relativeX = (window.bounds.minX - currentScreen.frame.minX) / currentScreen.frame.width
+                            let relativeY = (window.bounds.minY - currentScreen.frame.minY) / currentScreen.frame.height
+                            
+                            // Apply relative position to target screen (only if x/y not explicitly specified)
+                            if x == nil {
+                                newBounds.origin.x = targetScreenInfo.frame.minX + (relativeX * targetScreenInfo.frame.width)
+                            }
+                            if y == nil {
+                                newBounds.origin.y = targetScreenInfo.frame.minY + (relativeY * targetScreenInfo.frame.height)
+                            }
+                        }
+                    }
                 }
 
                 // Get app info for better feedback
