@@ -39,8 +39,8 @@ extension PeekabooAgentService {
                 
                 // Ensure app is focused if specified
                 if let appName = appName {
-                    let apps = try await context.applications.listApplications()
-                    if let app = apps.first(where: { $0.name.lowercased() == appName.lowercased() }) {
+                    let appsOutput = try await context.applications.listApplications()
+                    if let app = appsOutput.data.applications.first(where: { $0.name.lowercased() == appName.lowercased() }) {
                         try await context.applications.activateApplication(
                             identifier: app.bundleIdentifier ?? app.name
                         )
@@ -55,20 +55,23 @@ extension PeekabooAgentService {
                     targetApp = appName
                 } else {
                     // Get frontmost app
-                    let apps = try await context.applications.listApplications()
-                    guard let frontmost = apps.first(where: { $0.isActive }) else {
+                    let appsOutput = try await context.applications.listApplications()
+                    guard let frontmost = appsOutput.data.applications.first(where: { $0.isActive }) else {
                         throw PeekabooError.operationError(message: "No active application found")
                     }
                     targetApp = frontmost.name
                 }
                 
+                let startTime = Date()
                 try await context.menu.clickMenuItem(app: targetApp, itemPath: menuPath)
+                let duration = Date().timeIntervalSince(startTime)
                 
                 return .success(
-                    "Successfully clicked menu item: \(menuPath)",
+                    "Clicked \(targetApp) > \(menuPath)",
                     metadata: [
                         "menuPath": menuPath,
-                        "app": appName ?? "frontmost app"
+                        "app": targetApp,
+                        "duration": String(format: "%.2fs", duration)
                     ]
                 )
             }
@@ -95,6 +98,17 @@ extension PeekabooAgentService {
                 let appName = params.string("app", default: nil)
                 let specificMenu = params.string("menu", default: nil)
                 
+                let startTime = Date()
+                
+                // Get app name for context
+                let targetApp: String
+                if let appName = appName {
+                    targetApp = appName
+                } else {
+                    let frontmostApp = try await context.applications.getFrontmostApplication()
+                    targetApp = frontmostApp.name
+                }
+                
                 // Get menu structure
                 let menuStructure: MenuStructure
                 if let appName = appName {
@@ -105,29 +119,52 @@ extension PeekabooAgentService {
                     menuStructure = try await context.menu.listFrontmostMenus()
                 }
                 
+                let duration = Date().timeIntervalSince(startTime)
+                
+                // Count total menu items
+                var totalItems = 0
+                var expandedMenuItems = 0
+                
+                for menu in menuStructure.menus {
+                    totalItems += countMenuItems(menu)
+                    if let specificMenu = specificMenu, menu.title.lowercased() == specificMenu.lowercased() {
+                        expandedMenuItems = countMenuItems(menu)
+                    }
+                }
+                
                 // Format output
-                var output = "Menu structure:\n\n"
+                var output = ""
                 
                 // If specific menu requested, filter
                 if let specificMenu = specificMenu {
                     if let targetMenu = menuStructure.menus.first(where: { $0.title.lowercased() == specificMenu.lowercased() }) {
-                        output += formatMenu(targetMenu, indent: 0)
+                        output = formatMenu(targetMenu, indent: 0)
                     } else {
                         output = "Menu '\(specificMenu)' not found"
                     }
                 } else {
                     // Show all menus
+                    output = "Menu structure:\n\n"
                     for menu in menuStructure.menus {
                         output += formatMenu(menu, indent: 0)
                         output += "\n"
                     }
                 }
                 
+                // Create summary
+                var summary = "Listed \(totalItems) menu items in \(targetApp)"
+                if let specificMenu = specificMenu, expandedMenuItems > 0 {
+                    summary += " (expanded '\(specificMenu)' menu with \(expandedMenuItems) items)"
+                }
+                
                 return .success(
                     output.trimmingCharacters(in: .whitespacesAndNewlines),
                     metadata: [
-                        "app": appName ?? "frontmost app",
-                        "menuCount": String(menuStructure.menus.count)
+                        "app": targetApp,
+                        "menuCount": String(menuStructure.menus.count),
+                        "totalItems": String(totalItems),
+                        "duration": String(format: "%.2fs", duration),
+                        "summary": summary
                     ]
                 )
             }
@@ -136,6 +173,22 @@ extension PeekabooAgentService {
 }
 
 // MARK: - Helper Functions
+
+private func countMenuItems(_ menu: Menu) -> Int {
+    var count = menu.items.count
+    for item in menu.items {
+        count += countMenuItemsRecursive(item)
+    }
+    return count
+}
+
+private func countMenuItemsRecursive(_ item: MenuItem) -> Int {
+    var count = 0
+    for subitem in item.submenu {
+        count += 1 + countMenuItemsRecursive(subitem)
+    }
+    return count
+}
 
 private func formatMenu(_ menu: Menu, indent: Int) -> String {
     let indentStr = String(repeating: "  ", count: indent)

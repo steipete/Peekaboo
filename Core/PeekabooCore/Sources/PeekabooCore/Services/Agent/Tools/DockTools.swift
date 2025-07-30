@@ -22,26 +22,65 @@ extension PeekabooAgentService {
             handler: { params, context in
                 let appName = try params.string("name")
                 
+                // Check if app was already running before clicking
+                let appsBeforeLaunchOutput = try await context.applications.listApplications()
+                let wasRunning = appsBeforeLaunchOutput.data.applications.contains { 
+                    $0.name.lowercased() == appName.lowercased() 
+                }
+                
+                let startTime = Date()
                 try await context.dock.launchFromDock(appName: appName)
                 
                 // Wait a moment for launch
                 try await Task.sleep(nanoseconds: TimeInterval.mediumDelay.nanoseconds)
                 
-                // Verify launch
-                let apps = try await context.applications.listApplications()
-                let launched = apps.contains { 
-                    $0.name.lowercased() == appName.lowercased() 
-                }
-                
-                if launched {
+                // Verify launch and get window info
+                let appsAfterLaunchOutput = try await context.applications.listApplications()
+                if let launchedApp = appsAfterLaunchOutput.data.applications.first(where: { $0.name.lowercased() == appName.lowercased() }) {
+                    let duration = Date().timeIntervalSince(startTime)
+                    
+                    // Get window information
+                    let windows = try await context.windows.listWindows(target: .application(launchedApp.name))
+                    
+                    var output: String
+                    if wasRunning {
+                        output = "Activated \(launchedApp.name) from Dock (already running"
+                        if windows.isEmpty {
+                            output += ", no windows)"
+                        } else if windows.count == 1 {
+                            output += " with 1 window)"
+                        } else {
+                            output += " with \(windows.count) windows)"
+                        }
+                    } else {
+                        output = "Launched \(launchedApp.name) from Dock (was not running"
+                        if windows.isEmpty {
+                            output += ", no windows yet)"
+                        } else if windows.count == 1 {
+                            output += ", opened 1 window)"
+                        } else {
+                            output += ", opened \(windows.count) windows)"
+                        }
+                    }
+                    
                     return .success(
-                        "Successfully launched \(appName) from Dock",
-                        metadata: ["app": appName]
+                        output,
+                        metadata: [
+                            "app": launchedApp.name,
+                            "wasRunning": String(wasRunning),
+                            "windowCount": String(windows.count),
+                            "duration": String(format: "%.2fs", duration)
+                        ]
                     )
                 } else {
+                    let duration = Date().timeIntervalSince(startTime)
                     return .success(
                         "Clicked \(appName) in Dock (app may be starting)",
-                        metadata: ["app": appName]
+                        metadata: [
+                            "app": appName,
+                            "wasRunning": String(wasRunning),
+                            "duration": String(format: "%.2fs", duration)
+                        ]
                     )
                 }
             }
@@ -65,13 +104,13 @@ extension PeekabooAgentService {
             handler: { params, context in
                 let section = params.string("section", default: "all") ?? "all"
                 
+                let startTime = Date()
                 let dockItems = try await context.dock.listDockItems(includeAll: true)
+                let duration = Date().timeIntervalSince(startTime)
                 
                 if dockItems.isEmpty {
                     return .success("No items found in Dock")
                 }
-                
-                var output = "Dock items:\n\n"
                 
                 // Filter by section if requested
                 let filteredItems: [DockItem]
@@ -85,8 +124,37 @@ extension PeekabooAgentService {
                     filteredItems = dockItems
                 }
                 
-                // Group by type
+                // Group by type and count
                 let grouped = Dictionary(grouping: filteredItems) { $0.itemType }
+                let appCount = grouped[.application]?.count ?? 0
+                let runningCount = grouped[.application]?.filter { $0.isRunning == true }.count ?? 0
+                let folderCount = grouped[.folder]?.count ?? 0
+                let otherCount = grouped[.unknown]?.count ?? 0
+                
+                // Create summary
+                var summary = "Listed \(filteredItems.count) Dock items"
+                if section == "all" {
+                    var details: [String] = []
+                    if appCount > 0 {
+                        var appDetail = "\(appCount) apps"
+                        if runningCount > 0 {
+                            appDetail += " (\(runningCount) running)"
+                        }
+                        details.append(appDetail)
+                    }
+                    if folderCount > 0 {
+                        details.append("\(folderCount) folders")
+                    }
+                    if otherCount > 0 {
+                        details.append("\(otherCount) other")
+                    }
+                    if !details.isEmpty {
+                        summary += ": " + details.joined(separator: ", ")
+                    }
+                }
+                
+                // Format output
+                var output = "Dock items:\n\n"
                 
                 // Show applications
                 if let apps = grouped[.application], !apps.isEmpty {
@@ -122,7 +190,12 @@ extension PeekabooAgentService {
                     output.trimmingCharacters(in: .whitespacesAndNewlines),
                     metadata: [
                         "totalCount": String(filteredItems.count),
-                        "section": section
+                        "appCount": String(appCount),
+                        "runningCount": String(runningCount),
+                        "folderCount": String(folderCount),
+                        "section": section,
+                        "duration": String(format: "%.2fs", duration),
+                        "summary": summary
                     ]
                 )
             }

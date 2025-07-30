@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import AXorcist
+import AppKit
 
 // MARK: - Application Tools
 
@@ -14,14 +15,14 @@ extension PeekabooAgentService {
             name: "list_apps",
             description: "List all running applications",
             handler: { context in
-                let apps = try await context.applications.listApplications()
+                let appsOutput = try await context.applications.listApplications()
                 
-                if apps.isEmpty {
+                if appsOutput.data.applications.isEmpty {
                     return .success("No running applications found")
                 }
                 
                 var output = "Running applications:\n\n"
-                for app in apps.sorted(by: { $0.name < $1.name }) {
+                for app in appsOutput.data.applications.sorted(by: { $0.name < $1.name }) {
                     output += "• \(app.name)"
                     output += " [PID: \(app.processIdentifier)]"
                     if app.isActive {
@@ -32,7 +33,7 @@ extension PeekabooAgentService {
                 
                 return .success(
                     output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: ["count": String(apps.count)]
+                    metadata: ["count": String(appsOutput.data.applications.count)]
                 )
             }
         )
@@ -55,18 +56,71 @@ extension PeekabooAgentService {
                 let waitForLaunch = params.bool("wait_for_launch", default: true)
                 
                 // First check if already running
-                let runningApps = try await context.applications.listApplications()
-                if let existingApp = runningApps.first(where: { $0.name.lowercased() == appName.lowercased() }) {
+                let runningAppsOutput = try await context.applications.listApplications()
+                if let existingApp = runningAppsOutput.data.applications.first(where: { $0.name.lowercased() == appName.lowercased() }) {
+                    // Get window information
+                    let windows = try await context.windows.listWindows(target: .application(existingApp.name))
+                    
+                    // Count window states
+                    var normalWindows = 0
+                    var minimizedWindows = 0
+                    var fullscreenWindows = 0
+                    
+                    for window in windows {
+                        if window.isMinimized {
+                            minimizedWindows += 1
+                        } else if window.bounds.size == NSScreen.main?.frame.size {
+                            fullscreenWindows += 1
+                        } else {
+                            normalWindows += 1
+                        }
+                    }
+                    
                     // App is already running, just activate it
                     try await context.applications.activateApplication(
                         identifier: existingApp.bundleIdentifier ?? existingApp.name
                     )
+                    
+                    var statusMessage = "\(existingApp.name) already running"
+                    if windows.isEmpty {
+                        statusMessage += " (no windows)"
+                    } else if windows.count == 1 {
+                        let window = windows[0]
+                        if window.isMinimized {
+                            statusMessage += " (1 window: minimized)"
+                        } else if window.bounds.size == NSScreen.main?.frame.size {
+                            statusMessage += " (1 window: fullscreen)"
+                        } else {
+                            statusMessage += " (1 window)"
+                        }
+                    } else {
+                        statusMessage += " (\(windows.count) windows"
+                        var stateDescriptions: [String] = []
+                        if normalWindows > 0 {
+                            stateDescriptions.append("\(normalWindows) normal")
+                        }
+                        if minimizedWindows > 0 {
+                            stateDescriptions.append("\(minimizedWindows) minimized")
+                        }
+                        if fullscreenWindows > 0 {
+                            stateDescriptions.append("\(fullscreenWindows) fullscreen")
+                        }
+                        if !stateDescriptions.isEmpty {
+                            statusMessage += ": " + stateDescriptions.joined(separator: ", ")
+                        }
+                        statusMessage += ")"
+                    }
+                    
                     return .success(
-                        "\(appName) is already running and has been activated",
+                        statusMessage,
                         metadata: [
                             "app": existingApp.name,
                             "bundleId": existingApp.bundleIdentifier ?? "",
-                            "wasRunning": "true"
+                            "wasRunning": "true",
+                            "windowCount": String(windows.count),
+                            "normalWindows": String(normalWindows),
+                            "minimizedWindows": String(minimizedWindows),
+                            "fullscreenWindows": String(fullscreenWindows)
                         ]
                     )
                 }
@@ -78,15 +132,27 @@ extension PeekabooAgentService {
                     // Wait a bit for the app to launch
                     try await Task.sleep(nanoseconds: TimeInterval.longDelay.nanoseconds)
                     
-                    // Verify it launched
-                    let apps = try await context.applications.listApplications()
-                    if apps.contains(where: { $0.bundleIdentifier == launchedApp.bundleIdentifier }) {
+                    // Verify it launched and get window info
+                    let appsOutput = try await context.applications.listApplications()
+                    if let verifiedApp = appsOutput.data.applications.first(where: { $0.bundleIdentifier == launchedApp.bundleIdentifier }) {
+                        // Get window information
+                        let windows = try await context.windows.listWindows(target: .application(verifiedApp.name))
+                        
+                        let windowDescription = if windows.isEmpty {
+                            "no windows"
+                        } else if windows.count == 1 {
+                            "1 new window"
+                        } else {
+                            "\(windows.count) new windows"
+                        }
+                        
                         return .success(
-                            "Successfully launched \(appName)",
+                            "Launched \(launchedApp.name) (\(windowDescription))",
                             metadata: [
-                                "app": appName,
+                                "app": launchedApp.name,
                                 "bundleId": launchedApp.bundleIdentifier ?? "",
-                                "wasRunning": "false"
+                                "wasRunning": "false",
+                                "windowCount": String(windows.count)
                             ]
                         )
                     } else {
@@ -94,9 +160,9 @@ extension PeekabooAgentService {
                     }
                 } else {
                     return .success(
-                        "Launched \(appName) (not waiting for completion)",
+                        "Launched \(launchedApp.name) (not waiting for completion)",
                         metadata: [
-                            "app": appName,
+                            "app": launchedApp.name,
                             "bundleId": launchedApp.bundleIdentifier ?? "",
                             "wasRunning": "false"
                         ]

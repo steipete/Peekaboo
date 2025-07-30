@@ -37,7 +37,10 @@ extension PeekabooAgentService {
                 let format = params.string("format", default: "full") ?? "full"
                 let filterType = params.string("filter", default: nil)
                 
+                let startTime = Date()
+                
                 let captureResult: CaptureResult
+                let targetDescription: String
                 
                 if let appName = appName {
                     // Capture specific application
@@ -45,9 +48,21 @@ extension PeekabooAgentService {
                         appIdentifier: appName,
                         windowIndex: nil
                     )
+                    
+                    // Get more app context
+                    if let app = try? await context.applications.findApplication(identifier: appName) {
+                        targetDescription = app.name
+                    } else {
+                        targetDescription = appName
+                    }
                 } else {
                     // Capture entire screen
                     captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
+                    
+                    // Count visible apps on screen
+                    let appsOutput = try await context.applications.listApplications()
+                    let visibleApps = appsOutput.data.applications.filter { $0.isActive || !$0.isHidden }.count
+                    targetDescription = "entire screen (with \(visibleApps) visible apps)"
                 }
                 
                 // Detect elements in the screenshot
@@ -56,6 +71,8 @@ extension PeekabooAgentService {
                     sessionId: nil,
                     windowContext: nil
                 )
+                
+                let duration = Date().timeIntervalSince(startTime)
                 
                 // Filter elements if requested
                 var elements = detectionResult.elements
@@ -76,27 +93,43 @@ extension PeekabooAgentService {
                 
                 // Format output based on requested format
                 if format == "brief" {
-                    var summary = "Screen captured successfully.\n\n"
-                    summary += "UI Elements Found:\n"
+                    let totalElements = elements.buttons.count + elements.textFields.count + 
+                                      elements.links.count + elements.other.count
+                    
+                    var summary = "Captured \(targetDescription) (\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height)))\n"
+                    summary += "Found: "
+                    
+                    var elementSummary: [String] = []
                     if !elements.buttons.isEmpty {
-                        summary += "- \(elements.buttons.count) buttons\n"
+                        elementSummary.append("\(elements.buttons.count) buttons")
                     }
                     if !elements.textFields.isEmpty {
-                        summary += "- \(elements.textFields.count) text fields\n"
+                        elementSummary.append("\(elements.textFields.count) text fields")
                     }
                     if !elements.links.isEmpty {
-                        summary += "- \(elements.links.count) links\n"
+                        elementSummary.append("\(elements.links.count) links")
                     }
                     if !elements.other.isEmpty {
-                        summary += "- \(elements.other.count) text elements\n"
+                        elementSummary.append("\(elements.other.count) text elements")
                     }
+                    
+                    if elementSummary.isEmpty {
+                        summary += "no interactive elements"
+                    } else {
+                        summary += elementSummary.joined(separator: ", ")
+                    }
+                    
+                    let savedPath = captureResult.savedPath ?? detectionResult.screenshotPath
+                    summary += "\nSaved to: \(savedPath)"
                     
                     return .success(
                         summary,
                         metadata: [
                             "path": captureResult.savedPath ?? detectionResult.screenshotPath,
                             "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
-                            "app": appName ?? "entire screen"
+                            "app": targetDescription,
+                            "elementCount": String(totalElements),
+                            "duration": String(format: "%.2fs", duration)
                         ]
                     )
                 }
@@ -107,13 +140,20 @@ extension PeekabooAgentService {
                     filterType: filterType ?? "all"
                 )
                 
+                var fullOutput = "Captured \(targetDescription) (\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height)))\n\n"
+                fullOutput += elementList.description
+                
+                let savedPath = captureResult.savedPath ?? detectionResult.screenshotPath
+                fullOutput += "\nSaved to: \(savedPath)"
+                
                 return .success(
-                    elementList.description,
+                    fullOutput,
                     metadata: [
                         "path": captureResult.savedPath ?? detectionResult.screenshotPath,
                         "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
                         "elementCount": String(elementList.totalCount),
-                        "app": appName ?? "entire screen"
+                        "app": targetDescription,
+                        "duration": String(format: "%.2fs", duration)
                     ]
                 )
             }
@@ -137,27 +177,48 @@ extension PeekabooAgentService {
                 let expandedPath = path.expandedPath
                 let appName = params.string("app", default: nil)
                 
+                let startTime = Date()
+                
                 let captureResult: CaptureResult
+                let targetDescription: String
                 
                 if let appName = appName {
                     captureResult = try await context.screenCapture.captureWindow(
                         appIdentifier: appName,
                         windowIndex: nil
                     )
+                    
+                    // Get more app context
+                    if let app = try? await context.applications.findApplication(identifier: appName) {
+                        targetDescription = app.name
+                    } else {
+                        targetDescription = appName
+                    }
                 } else {
                     captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
+                    
+                    // Count visible apps on screen
+                    let appsOutput = try await context.applications.listApplications()
+                    let visibleApps = appsOutput.data.applications.filter { $0.isActive || !$0.isHidden }.count
+                    targetDescription = "entire screen (with \(visibleApps) visible apps)"
                 }
                 
                 // Save the image data to the specified path
                 let fileURL = URL(fileURLWithPath: expandedPath)
                 try captureResult.imageData.write(to: fileURL)
                 
+                let duration = Date().timeIntervalSince(startTime)
+                let fileSizeKB = (try? FileManager.default.attributesOfItem(atPath: expandedPath)[.size] as? Int64)
+                    .map { $0 / 1024 } ?? 0
+                
                 return .success(
-                    "Screenshot saved to \(expandedPath)",
+                    "Captured \(targetDescription) → \(expandedPath) (\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height)), \(fileSizeKB)KB)",
                     metadata: [
                         "path": expandedPath,
                         "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
-                        "source": appName ?? "entire screen"
+                        "source": targetDescription,
+                        "fileSize": "\(fileSizeKB)KB",
+                        "duration": String(format: "%.2fs", duration)
                     ]
                 )
             }
@@ -186,18 +247,22 @@ extension PeekabooAgentService {
                     throw PeekabooError.invalidInput("Either 'title' or 'window_id' must be provided")
                 }
                 
+                let startTime = Date()
+                
                 // Get windows efficiently
                 var windows: [ServiceWindowInfo] = []
+                var searchedApps = 0
                 
                 if let title = title {
                     // If title is specified, use title-based search
                     windows = try await context.windows.listWindows(target: .title(title))
                 } else if windowId == nil {
                     // No specific criteria, get all windows with timeout protection
-                    let apps = try await context.applications.listApplications()
+                    let appsOutput = try await context.applications.listApplications()
+                    searchedApps = appsOutput.data.applications.count
                     
                     // Process each app sequentially to ensure main thread execution
-                    for app in apps {
+                    for app in appsOutput.data.applications {
                         do {
                             let appWindows = try await context.windows.listWindows(target: .application(app.name))
                             windows.append(contentsOf: appWindows)
@@ -208,10 +273,11 @@ extension PeekabooAgentService {
                     }
                 } else {
                     // Window ID specified - still need to search all apps but with timeout
-                    let apps = try await context.applications.listApplications()
+                    let appsOutput = try await context.applications.listApplications()
+                    searchedApps = appsOutput.data.applications.count
                     
                     // Process each app sequentially to ensure main thread execution
-                    for app in apps {
+                    for app in appsOutput.data.applications {
                         do {
                             let appWindows = try await context.windows.listWindows(target: .application(app.name))
                             windows.append(contentsOf: appWindows)
@@ -223,23 +289,37 @@ extension PeekabooAgentService {
                 }
                 
                 let window: ServiceWindowInfo
+                let appName: String
+                
                 if let windowId = windowId {
                     guard let foundWindow = windows.first(where: { $0.windowID == windowId }) else {
                         throw PeekabooError.windowNotFound(criteria: "ID \(windowId)")
                     }
                     window = foundWindow
+                    
+                    // Find the app that owns this window
+                    let appsOutput = try await context.applications.listApplications()
+                    appName = appsOutput.data.applications.first { app in
+                        windows.contains { w in w.windowID == windowId }
+                    }?.name ?? "Unknown App"
                 } else if let title = title {
                     guard let foundWindow = windows.first(where: { $0.title.lowercased().contains(title.lowercased()) }) else {
                         throw PeekabooError.windowNotFound(criteria: "title '\(title)'")
                     }
                     window = foundWindow
+                    
+                    // Find the app that owns this window
+                    let appsOutput = try await context.applications.listApplications()
+                    appName = appsOutput.data.applications.first { app in
+                        windows.contains { w in w.title == foundWindow.title }
+                    }?.name ?? "Unknown App"
                 } else {
                     throw PeekabooError.windowNotFound(criteria: "no criteria provided")
                 }
                 
                 // Capture the window
                 let captureResult = try await context.screenCapture.captureWindow(
-                    appIdentifier: title ?? String(windowId ?? 0),
+                    appIdentifier: appName,
                     windowIndex: nil
                 )
                 
@@ -251,18 +331,39 @@ extension PeekabooAgentService {
                 )
                 
                 // Save if path provided
+                var savedPath: String? = nil
                 if let savePath = savePath {
                     let expandedPath = savePath.expandedPath
                     let fileURL = URL(fileURLWithPath: expandedPath)
                     try captureResult.imageData.write(to: fileURL)
+                    savedPath = expandedPath
+                }
+                
+                let duration = Date().timeIntervalSince(startTime)
+                let elementList = formatElementList(detectionResult.elements, filterType: "all")
+                
+                var output = "Captured \(appName) - \"\(window.title)\" (Window ID: \(window.windowID))\n"
+                output += "Resolution: \(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))\n"
+                if searchedApps > 0 {
+                    output += "Searched \(searchedApps) apps in \(String(format: "%.2fs", duration))\n"
+                }
+                output += "\n"
+                output += elementList.description
+                
+                if let savedPath = savedPath {
+                    output += "\nSaved to: \(savedPath)"
                 }
                 
                 return .success(
-                    formatElementList(detectionResult.elements, filterType: "all").description,
+                    output,
                     metadata: [
+                        "app": appName,
                         "window": window.title,
-                        "path": (savePath?.expandedPath) ?? detectionResult.screenshotPath,
-                        "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))"
+                        "windowId": String(window.windowID),
+                        "path": savedPath ?? detectionResult.screenshotPath,
+                        "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
+                        "elementCount": String(elementList.totalCount),
+                        "duration": String(format: "%.2fs", duration)
                     ]
                 )
             }

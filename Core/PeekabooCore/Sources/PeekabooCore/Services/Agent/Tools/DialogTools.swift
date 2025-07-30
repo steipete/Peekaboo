@@ -24,16 +24,28 @@ extension PeekabooAgentService {
                 let buttonLabel = try params.string("button")
                 let appName = params.string("app", default: nil)
                 
+                // Get the frontmost app if not specified
+                let targetApp: String
+                if let appName = appName {
+                    targetApp = appName
+                } else {
+                    let frontmostApp = try await context.applications.getFrontmostApplication()
+                    targetApp = frontmostApp.name
+                }
+                
+                let startTime = Date()
                 _ = try await context.dialogs.clickButton(
                     buttonText: buttonLabel,
                     windowTitle: appName
                 )
+                let duration = Date().timeIntervalSince(startTime)
                 
                 return .success(
-                    "Clicked '\(buttonLabel)' button in dialog",
+                    "Clicked '\(buttonLabel)' in dialog - \(targetApp)",
                     metadata: [
                         "button": buttonLabel,
-                        "app": appName ?? "current app"
+                        "app": targetApp,
+                        "duration": String(format: "%.2fs", duration)
                     ]
                 )
             }
@@ -66,6 +78,17 @@ extension PeekabooAgentService {
                     throw PeekabooError.serviceUnavailable("Field-specific text entry not yet implemented")
                 }
                 
+                // Get the frontmost app if not specified
+                let targetApp: String
+                if let appName = appName {
+                    targetApp = appName
+                } else {
+                    let frontmostApp = try await context.applications.getFrontmostApplication()
+                    targetApp = frontmostApp.name
+                }
+                
+                let startTime = Date()
+                
                 // Clear if requested
                 if clearFirst {
                     try await context.automation.hotkey(keys: "cmd,a", holdDuration: 0)
@@ -83,17 +106,22 @@ extension PeekabooAgentService {
                     sessionId: nil
                 )
                 
-                var output = "Entered text in dialog"
+                let duration = Date().timeIntervalSince(startTime)
+                
+                var output = "Entered \"\(text)\""
                 if let fieldLabel = fieldLabel {
-                    output += " field '\(fieldLabel)'"
+                    output += " in '\(fieldLabel)' field"
                 }
+                output += " - \(targetApp) dialog"
                 
                 return .success(
                     output,
                     metadata: [
                         "text": text,
                         "field": fieldLabel ?? "current field",
-                        "app": appName ?? "current app"
+                        "app": targetApp,
+                        "cleared": String(clearFirst),
+                        "duration": String(format: "%.2fs", duration)
                     ]
                 )
             }

@@ -60,19 +60,24 @@ extension PeekabooAgentService {
                 let appName = params.string("app", default: nil)
                 let elementType = params.string("element_type", default: "all") ?? "all"
                 
+                let startTime = Date()
+                
                 // Capture screen or app to get elements
                 let captureResult: CaptureResult
                 let detectionResult: ElementDetectionResult
                 
+                let targetDescription: String
                 if let appName = appName {
                     // Capture specific application
                     captureResult = try await context.screenCapture.captureWindow(
                         appIdentifier: appName,
                         windowIndex: nil
                     )
+                    targetDescription = appName
                 } else {
                     // Capture entire screen
                     captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
+                    targetDescription = "entire screen"
                 }
                 
                 // Detect elements in the screenshot
@@ -82,16 +87,54 @@ extension PeekabooAgentService {
                     windowContext: nil
                 )
                 
+                let duration = Date().timeIntervalSince(startTime)
+                
                 // Format the element list based on type filter
                 let elements = detectionResult.elements
                 let filteredOutput = formatFilteredElements(elements, filterType: elementType)
+                
+                // Create a better summary
+                var summary = "Found \(filteredOutput.totalCount) "
+                if elementType != "all" {
+                    summary += "\(elementType) "
+                }
+                summary += "elements in \(targetDescription)"
+                
+                // Add breakdown if showing all elements
+                if elementType == "all" && filteredOutput.totalCount > 0 {
+                    var breakdown: [String] = []
+                    if !elements.buttons.isEmpty {
+                        let enabledButtons = elements.buttons.filter { $0.isEnabled }.count
+                        let disabledButtons = elements.buttons.count - enabledButtons
+                        if disabledButtons > 0 {
+                            breakdown.append("Buttons: \(elements.buttons.count) (\(enabledButtons) enabled, \(disabledButtons) disabled)")
+                        } else {
+                            breakdown.append("Buttons: \(elements.buttons.count)")
+                        }
+                    }
+                    if !elements.textFields.isEmpty {
+                        breakdown.append("Text Fields: \(elements.textFields.count)")
+                    }
+                    if !elements.links.isEmpty {
+                        breakdown.append("Links: \(elements.links.count)")
+                    }
+                    if !elements.other.isEmpty {
+                        breakdown.append("Text: \(elements.other.count)")
+                    }
+                    
+                    if !breakdown.isEmpty {
+                        summary = "\(summary)\n  " + breakdown.joined(separator: "\n  ")
+                    }
+                }
                 
                 return .success(
                     filteredOutput.description,
                     metadata: [
                         "elementCount": String(filteredOutput.totalCount),
                         "filter": elementType,
-                        "app": appName ?? "all applications"
+                        "app": targetDescription,
+                        "duration": String(format: "%.2fs", duration),
+                        "summary": summary
                     ]
                 )
             }

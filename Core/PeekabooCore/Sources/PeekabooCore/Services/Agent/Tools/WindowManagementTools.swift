@@ -30,18 +30,20 @@ extension PeekabooAgentService {
                 
                 if let appFilter = appFilter {
                     // If app filter is specified, only get windows from that app
-                    let apps = try await context.applications.listApplications()
-                    if let targetApp = apps.first(where: { $0.name.lowercased().contains(appFilter.lowercased()) }) {
-                        windows = try await context.windows.listWindows(target: .application(targetApp.name))
+                    let appsOutput = try await context.applications.listApplications()
+                    if let targetApp = appsOutput.data.applications.first(where: { $0.name.lowercased().contains(appFilter.lowercased()) }) {
+                        // Use applications service for UnifiedToolOutput
+                        let windowsOutput = try await context.applications.listWindows(for: targetApp.name)
+                        windows = windowsOutput.data.windows
                     }
                 } else {
                     // For all windows, process apps sequentially to avoid AX race conditions
                     // AX elements are not thread-safe and must be accessed from main thread
-                    let apps = try await context.applications.listApplications()
+                    let appsOutput = try await context.applications.listApplications()
                     
                     // Filter to only regular applications (not background services)
                     var regularApps: [ServiceApplicationInfo] = []
-                    for app in apps {
+                    for app in appsOutput.data.applications {
                         // Skip apps without bundle ID (system processes)
                         guard app.bundleIdentifier != nil else { continue }
                         
@@ -51,10 +53,27 @@ extension PeekabooAgentService {
                             "com.apple.WebKit.GPU",
                             "com.apple.WebKit.Networking",
                             "com.apple.SafariServices.SafariServicesApp",
-                            "com.apple.appkit.xpc.openAndSavePanelService"
+                            "com.apple.appkit.xpc.openAndSavePanelService",
+                            "com.apple.Safari.CacheDeleteExtension",
+                            "com.apple.Safari.SafeBrowsing.Service",
+                            "com.apple.Safari.History",
+                            "com.apple.SafariServices",
+                            "com.apple.dt.Xcode.DeveloperSystemPolicyService",
+                            "com.apple.CoreSimulator",
+                            "com.apple.iphonesimulator",
+                            "com.apple.accessibility",
+                            "com.apple.ViewBridgeAuxiliary",
+                            "com.apple.hiservices-xpcservice",
+                            "com.apple.AXVisualSupportAgent",
+                            "com.apple.universalaccessAuthWarn"
                         ]
                         if let bundleId = app.bundleIdentifier,
                            skipList.contains(where: { bundleId.contains($0) }) {
+                            continue
+                        }
+                        
+                        // Skip apps that are hidden (they likely don't have visible windows)
+                        if app.isHidden {
                             continue
                         }
                         
@@ -63,7 +82,7 @@ extension PeekabooAgentService {
                         regularApps.append(app)
                     }
                     
-                    Self.logger.debug("Checking \(regularApps.count) regular apps for windows (filtered from \(apps.count) total)")
+                    Self.logger.debug("Checking \(regularApps.count) regular apps for windows (filtered from \(appsOutput.data.applications.count) total)")
                     
                     // Process each app sequentially without any concurrent operations
                     // This ensures all AX operations stay on the main thread
@@ -71,8 +90,8 @@ extension PeekabooAgentService {
                         do {
                             // For now, skip timeout mechanism to ensure thread safety
                             // TODO: Implement a main-thread-safe timeout mechanism
-                            let appWindows = try await context.windows.listWindows(target: .application(app.name))
-                            windows.append(contentsOf: appWindows)
+                            let windowsOutput = try await context.applications.listWindows(for: app.name)
+                            windows.append(contentsOf: windowsOutput.data.windows)
                         } catch {
                             // Skip apps that fail
                             Self.logger.debug("Error getting windows for \(app.name): \(error)")
@@ -140,8 +159,8 @@ extension PeekabooAgentService {
                 // First ensure the app is running and not hidden
                 if let appName = appName {
                     // Get running applications
-                    let apps = try await context.applications.listApplications()
-                    if let app = apps.first(where: { $0.name.lowercased() == appName.lowercased() }) {
+                    let appsOutput = try await context.applications.listApplications()
+                    if let app = appsOutput.data.applications.first(where: { $0.name.lowercased() == appName.lowercased() }) {
                         // Activate the application first
                         try await context.applications.activateApplication(identifier: app.bundleIdentifier ?? app.name)
                         
@@ -161,11 +180,11 @@ extension PeekabooAgentService {
                     windows = try await context.windows.listWindows(target: .title(title))
                 } else {
                     // Only window ID specified - need to search all apps
-                    let apps = try await context.applications.listApplications()
+                    let appsOutput = try await context.applications.listApplications()
                     
                     // Process each app sequentially without any concurrent operations
                     // This ensures all AX operations stay on the main thread
-                    for app in apps {
+                    for app in appsOutput.data.applications {
                         do {
                             let appWindows = try await context.windows.listWindows(target: .application(app.name))
                             windows.append(contentsOf: appWindows)
@@ -200,13 +219,45 @@ extension PeekabooAgentService {
                     window = targetWindow
                 }
                 
+                // Get app info for better feedback
+                let appInfo: ServiceApplicationInfo
+                if let appName = appName {
+                    appInfo = try await context.applications.findApplication(identifier: appName)
+                } else {
+                    // Need to find which app owns this window
+                    let appsOutput = try await context.applications.listApplications()
+                    var foundApp: ServiceApplicationInfo? = nil
+                    
+                    for app in appsOutput.data.applications {
+                        let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                        if appWindows.contains(where: { $0.windowID == window.windowID }) {
+                            foundApp = app
+                            break
+                        }
+                    }
+                    
+                    guard let app = foundApp else {
+                        throw PeekabooError.appNotFound("Could not determine app for window")
+                    }
+                    appInfo = app
+                }
+                
                 // Focus the window
+                let startTime = Date()
                 try await context.windows.focusWindow(target: .windowId(window.windowID))
+                let duration = Date().timeIntervalSince(startTime)
+                
+                // The window.windowID is already the system window ID
+                let systemWindowID = window.windowID
                 
                 return .success(
-                    "Focused window: \(window.title)",
-                    metadata: ["window": window.title,
-                               "window_id": String(window.windowID)]
+                    "Focused \(appInfo.name) - \"\(window.title)\" (Window ID: \(systemWindowID))",
+                    metadata: [
+                        "app": appInfo.name,
+                        "window": window.title,
+                        "window_id": String(systemWindowID),
+                        "duration": String(format: "%.2fs", duration)
+                    ]
                 )
             }
         )
@@ -267,10 +318,10 @@ extension PeekabooAgentService {
                     window = frontWindow
                 } else if let windowId = windowId {
                     // If window ID is specified, search all apps for that specific window
-                    let apps = try await context.applications.listApplications()
+                    let appsOutput = try await context.applications.listApplications()
                     var foundWindow: ServiceWindowInfo? = nil
                     
-                    for app in apps {
+                    for app in appsOutput.data.applications {
                         do {
                             let appWindows = try await context.windows.listWindows(target: .application(app.name))
                             if let found = appWindows.first(where: { $0.windowID == windowId }) {
@@ -297,9 +348,9 @@ extension PeekabooAgentService {
                         windows = try await context.windows.listWindows(target: .title(title))
                     } else {
                         // Need to search all apps - process sequentially to avoid AX race conditions
-                        let apps = try await context.applications.listApplications()
+                        let appsOutput = try await context.applications.listApplications()
                         
-                        for app in apps {
+                        for app in appsOutput.data.applications {
                             do {
                                 let appWindows = try await context.windows.listWindows(target: .application(app.name))
                                 windows.append(contentsOf: appWindows)
@@ -382,29 +433,67 @@ extension PeekabooAgentService {
                     if let height = height { newBounds.size.height = CGFloat(height) }
                 }
                 
+                // Get app info for better feedback
+                let appInfo: ServiceApplicationInfo
+                if frontmost {
+                    appInfo = try await context.applications.getFrontmostApplication()
+                } else if let appName = appName {
+                    appInfo = try await context.applications.findApplication(identifier: appName)
+                } else {
+                    // Need to find which app owns this window
+                    let appsOutput = try await context.applications.listApplications()
+                    var foundApp: ServiceApplicationInfo? = nil
+                    
+                    for app in appsOutput.data.applications {
+                        let appWindows = try await context.windows.listWindows(target: .application(app.name))
+                        if appWindows.contains(where: { $0.windowID == window.windowID }) {
+                            foundApp = app
+                            break
+                        }
+                    }
+                    
+                    guard let app = foundApp else {
+                        throw PeekabooError.appNotFound("Could not determine app for window")
+                    }
+                    appInfo = app
+                }
+                
                 // Apply the new bounds
+                let startTime = Date()
                 try await context.windows.setWindowBounds(
                     target: .windowId(window.windowID),
                     bounds: newBounds
                 )
+                let duration = Date().timeIntervalSince(startTime)
                 
-                var output = "Window '\(window.title)' "
+                // The window.windowID is already the system window ID
+                let systemWindowID = window.windowID
+                
+                var output = ""
                 if let preset = preset {
-                    output += preset.replacingOccurrences(of: "_", with: " ")
+                    let presetName = preset.replacingOccurrences(of: "_", with: " ").capitalized
+                    output = "\(presetName) \(appInfo.name) - \"\(window.title)\" (Window ID: \(systemWindowID))"
+                    if preset == "maximize" {
+                        output += " to \(Int(newBounds.width))x\(Int(newBounds.height))"
+                    }
                 } else {
-                    output += "resized/moved to "
-                    output += "(\(Int(newBounds.origin.x)), \(Int(newBounds.origin.y))) "
-                    output += "size: \(Int(newBounds.width))x\(Int(newBounds.height))"
+                    output = "Resized \(appInfo.name) - \"\(window.title)\" (Window ID: \(systemWindowID)) to \(Int(newBounds.width))x\(Int(newBounds.height))"
+                    if x != nil || y != nil {
+                        output += " at (\(Int(newBounds.origin.x)), \(Int(newBounds.origin.y)))"
+                    }
                 }
                 
                 return .success(
                     output,
                     metadata: [
+                        "app": appInfo.name,
                         "window": window.title,
+                        "window_id": String(systemWindowID),
                         "x": String(Int(newBounds.origin.x)),
                         "y": String(Int(newBounds.origin.y)),
                         "width": String(Int(newBounds.width)),
-                        "height": String(Int(newBounds.height))
+                        "height": String(Int(newBounds.height)),
+                        "duration": String(format: "%.2fs", duration)
                     ]
                 )
             }

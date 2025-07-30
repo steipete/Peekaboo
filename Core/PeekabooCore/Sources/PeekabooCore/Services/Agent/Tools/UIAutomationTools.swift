@@ -36,6 +36,8 @@ extension PeekabooAgentService {
                 let doubleClick = params.bool("double_click", default: false)
                 let rightClick = params.bool("right_click", default: false)
                 
+                let startTime = Date()
+                
                 // Check if target is coordinates (e.g., "100,200")
                 if target.contains(","), let coordParts = target.split(separator: ",").map(String.init).map(Double.init) as? [Double], coordParts.count == 2 {
                     let coordinates = CGPoint(x: coordParts[0], y: coordParts[1])
@@ -47,16 +49,21 @@ extension PeekabooAgentService {
                         sessionId: nil
                     )
                     
+                    let duration = Date().timeIntervalSince(startTime)
+                    
                     // Get the frontmost app for better feedback
                     let frontmostApp = try? await context.applications.getFrontmostApplication()
+                    let targetApp = appName ?? frontmostApp?.name ?? "unknown"
                     
+                    let actionType = rightClick ? "Right-clicked" : (doubleClick ? "Double-clicked" : "Clicked")
                     return .success(
-                        "Clicked at coordinates (\(Int(coordinates.x)), \(Int(coordinates.y)))",
+                        "\(actionType) at (\(Int(coordinates.x)), \(Int(coordinates.y))) in \(targetApp)",
                         metadata: [
                             "x": String(Int(coordinates.x)),
                             "y": String(Int(coordinates.y)),
                             "type": rightClick ? "right_click" : (doubleClick ? "double_click" : "click"),
-                            "app": frontmostApp?.name ?? appName ?? "unknown"
+                            "app": targetApp,
+                            "duration": String(format: "%.2fs", duration)
                         ]
                     )
                 }
@@ -70,15 +77,20 @@ extension PeekabooAgentService {
                     sessionId: nil
                 )
                 
+                let duration = Date().timeIntervalSince(startTime)
+                
                 // Get the frontmost app for better feedback
                 let frontmostApp = try? await context.applications.getFrontmostApplication()
+                let targetApp = appName ?? frontmostApp?.name ?? "unknown"
                 
+                let actionType = rightClick ? "Right-clicked" : (doubleClick ? "Double-clicked" : "Clicked")
                 return .success(
-                    "Clicked on '\(target)'",
+                    "\(actionType) on '\(target)' in \(targetApp)",
                     metadata: [
                         "element": target,
                         "type": rightClick ? "right_click" : (doubleClick ? "double_click" : "click"),
-                        "app": frontmostApp?.name ?? appName ?? "unknown"
+                        "app": targetApp,
+                        "duration": String(format: "%.2fs", duration)
                     ]
                 )
             }
@@ -110,8 +122,10 @@ extension PeekabooAgentService {
             handler: { params, context in
                 let text = try params.string("text")
                 let fieldLabel = params.string("field", default: nil)
-                let _ = params.string("app", default: nil)
+                let appName = params.string("app", default: nil)
                 let clearFirst = params.bool("clear_first", default: false)
+                
+                let startTime = Date()
                 
                 // If a specific field is targeted, click it first
                 if let fieldLabel = fieldLabel {
@@ -135,12 +149,28 @@ extension PeekabooAgentService {
                     sessionId: nil
                 )
                 
+                let duration = Date().timeIntervalSince(startTime)
+                
                 // Get the frontmost app for better feedback
                 let frontmostApp = try? await context.applications.getFrontmostApplication()
+                let targetApp = appName ?? frontmostApp?.name ?? "unknown"
                 
-                var output = "Typed: \"\(text)\""
+                let characterCount = text.count
+                var output = "Typed \(characterCount) characters"
+                if characterCount <= 20 {
+                    output = "Typed \"\(text)\""
+                } else {
+                    let preview = String(text.prefix(20)) + "..."
+                    output = "Typed \"\(preview)\" (\(characterCount) characters)"
+                }
+                
                 if let fieldLabel = fieldLabel {
-                    output += " into field '\(fieldLabel)'"
+                    output += " into '\(fieldLabel)'"
+                }
+                output += " in \(targetApp)"
+                
+                if clearFirst {
+                    output += " (cleared first)"
                 }
                 
                 return .success(
@@ -149,7 +179,9 @@ extension PeekabooAgentService {
                         "text": text,
                         "field": fieldLabel ?? "current focus",
                         "cleared": String(clearFirst),
-                        "app": frontmostApp?.name ?? "unknown"
+                        "app": targetApp,
+                        "characterCount": String(characterCount),
+                        "duration": String(format: "%.2fs", duration)
                     ]
                 )
             }
@@ -183,7 +215,9 @@ extension PeekabooAgentService {
                 let directionStr = try params.string("direction")
                 let amount = params.int("amount", default: 5) ?? 5
                 let target = params.string("target", default: nil)
-                let _ = params.string("app", default: nil)
+                let appName = params.string("app", default: nil)
+                
+                let startTime = Date()
                 
                 let direction: ScrollDirection
                 switch directionStr.lowercased() {
@@ -205,17 +239,26 @@ extension PeekabooAgentService {
                     sessionId: nil
                 )
                 
+                let duration = Date().timeIntervalSince(startTime)
+                
+                // Get the frontmost app for better feedback
+                let frontmostApp = try? await context.applications.getFrontmostApplication()
+                let targetApp = appName ?? frontmostApp?.name ?? "unknown"
+                
                 var output = "Scrolled \(directionStr) by \(amount) units"
                 if let target = target {
                     output += " in '\(target)'"
                 }
+                output += " - \(targetApp)"
                 
                 return .success(
                     output,
                     metadata: [
                         "direction": directionStr,
                         "amount": String(amount),
-                        "target": target ?? "current position"
+                        "target": target ?? "current position",
+                        "app": targetApp,
+                        "duration": String(format: "%.2fs", duration)
                     ]
                 )
             }
@@ -277,24 +320,32 @@ extension PeekabooAgentService {
                 keys.append(mappedKey)
                 let keysString = keys.joined(separator: ",")
                 
+                let startTime = Date()
+                
                 try await context.automation.hotkey(keys: keysString, holdDuration: 0)
+                
+                let duration = Date().timeIntervalSince(startTime)
                 
                 // Get the frontmost app for better feedback
                 let frontmostApp = try? await context.applications.getFrontmostApplication()
+                let targetApp = frontmostApp?.name ?? "unknown"
                 
-                var output = "Pressed"
+                // Format the shortcut nicely
+                var shortcutDisplay = ""
                 if !modifierStrs.isEmpty {
-                    output += " \(modifierStrs.joined(separator: "+"))+"
+                    shortcutDisplay = modifierStrs.map { $0.capitalized }.joined(separator: "+") + "+"
                 }
-                output += " \(keyStr)"
+                shortcutDisplay += keyStr.capitalized
                 
                 return .success(
-                    output,
+                    "Pressed \(shortcutDisplay) in \(targetApp)",
                     metadata: [
                         "key": keyStr,
                         "modifiers": modifierStrs.joined(separator: ","),
                         "keys": keysString,
-                        "app": frontmostApp?.name ?? "unknown"
+                        "shortcut": shortcutDisplay,
+                        "app": targetApp,
+                        "duration": String(format: "%.2fs", duration)
                     ]
                 )
             }
