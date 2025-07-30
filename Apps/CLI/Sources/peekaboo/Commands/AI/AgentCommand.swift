@@ -311,11 +311,11 @@ struct AgentCommand: AsyncParsableCommand {
             }
             
             // Get the most recent session
-            guard agentService is PeekabooAgentService else {
+            guard let peekabooService = agentService as? PeekabooAgentService else {
                 throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
             }
-            // TODO: Implement session listing when PeekabooAgentService supports it
-        let sessions: [AgentSessionInfo] = []
+            
+            let sessions = try await peekabooService.listSessions()
             
             if let mostRecent = sessions.first {
                 try await resumeSession(agentService, sessionId: mostRecent.id, task: continuationTask)
@@ -693,11 +693,22 @@ struct AgentCommand: AsyncParsableCommand {
     
     private func showSessions(_ agentService: AgentServiceProtocol) async throws {
         // Cast to PeekabooAgentService - this should always succeed
-        guard agentService is PeekabooAgentService else {
+        guard let peekabooService = agentService as? PeekabooAgentService else {
             throw PeekabooCore.PeekabooError.commandFailed("Agent service not properly initialized")
         }
-        // TODO: Implement session listing when PeekabooAgentService supports it
-        let sessions: [AgentSessionInfo] = []
+        
+        let sessionSummaries = try await peekabooService.listSessions()
+        
+        // Convert SessionSummary to AgentSessionInfo for display
+        let sessions = sessionSummaries.map { summary in
+            AgentSessionInfo(
+                id: summary.id,
+                task: summary.metadata?.task ?? "Unknown task",
+                created: summary.createdAt,
+                lastModified: summary.updatedAt,
+                messageCount: summary.messageCount
+            )
+        }
         
         if sessions.isEmpty {
             if jsonOutput {
