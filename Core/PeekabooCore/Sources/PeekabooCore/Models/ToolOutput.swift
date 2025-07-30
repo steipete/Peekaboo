@@ -139,11 +139,69 @@ public struct UIAnalysisData: Codable, Sendable {
     public let sessionId: String
     public let screenshot: ScreenshotInfo?
     public let elements: [DetectedUIElement]
+    public let elementsByType: ElementsByType?
+    public let metadata: DetectionMetadata?
     
-    public init(sessionId: String, screenshot: ScreenshotInfo? = nil, elements: [DetectedUIElement]) {
+    public init(sessionId: String, screenshot: ScreenshotInfo? = nil, elements: [DetectedUIElement], elementsByType: ElementsByType? = nil, metadata: DetectionMetadata? = nil) {
         self.sessionId = sessionId
         self.screenshot = screenshot
         self.elements = elements
+        self.elementsByType = elementsByType
+        self.metadata = metadata
+    }
+    
+    /// Convenience initializer from ElementDetectionResult
+    public init(from detectionResult: ElementDetectionResult) {
+        self.sessionId = detectionResult.sessionId
+        self.screenshot = ScreenshotInfo(
+            path: detectionResult.screenshotPath,
+            size: CGSize(width: 0, height: 0) // Size not available from ElementDetectionResult
+        )
+        
+        // Convert all elements to DetectedUIElement
+        let allElements = detectionResult.elements.all
+        self.elements = allElements.map { element in
+            DetectedUIElement(
+                id: element.id,
+                type: element.type.rawValue,
+                label: element.label,
+                value: element.value,
+                bounds: element.bounds,
+                isEnabled: element.isEnabled,
+                isSelected: element.isSelected,
+                isActionable: element.isEnabled, // Assume enabled elements are actionable
+                attributes: element.attributes
+            )
+        }
+        
+        // Create ElementsByType from DetectedElements
+        self.elementsByType = ElementsByType(
+            buttons: detectionResult.elements.buttons.map { $0.id },
+            textFields: detectionResult.elements.textFields.map { $0.id },
+            links: detectionResult.elements.links.map { $0.id },
+            images: detectionResult.elements.images.map { $0.id },
+            groups: detectionResult.elements.groups.map { $0.id },
+            sliders: detectionResult.elements.sliders.map { $0.id },
+            checkboxes: detectionResult.elements.checkboxes.map { $0.id },
+            menus: detectionResult.elements.menus.map { $0.id },
+            other: detectionResult.elements.other.map { $0.id }
+        )
+        
+        // Convert metadata
+        self.metadata = DetectionMetadata(
+            detectionTime: detectionResult.metadata.detectionTime,
+            elementCount: detectionResult.metadata.elementCount,
+            method: detectionResult.metadata.method,
+            warnings: detectionResult.metadata.warnings,
+            windowContext: detectionResult.metadata.windowContext.map { context in
+                WindowContext(
+                    applicationName: context.applicationName,
+                    windowTitle: context.windowTitle,
+                    windowBounds: context.windowBounds
+                )
+            },
+            isDialog: detectionResult.metadata.isDialog
+        )
     }
     
     public struct ScreenshotInfo: Codable, Sendable {
@@ -158,19 +216,113 @@ public struct UIAnalysisData: Codable, Sendable {
     
     public struct DetectedUIElement: Codable, Sendable {
         public let id: String
-        public let role: String
+        public let type: String  // Changed from 'role' to 'type' to match ElementType
         public let label: String?
+        public let value: String?  // Added to match DetectedElement
         public let bounds: CGRect
         public let isEnabled: Bool
+        public let isSelected: Bool?  // Added to match DetectedElement
         public let isActionable: Bool
+        public let attributes: [String: String]  // Added to match DetectedElement
         
-        public init(id: String, role: String, label: String?, bounds: CGRect, isEnabled: Bool, isActionable: Bool = true) {
+        /// Backward compatibility - computed property for 'role'
+        public var role: String {
+            return type
+        }
+        
+        public init(id: String, type: String, label: String?, value: String? = nil, bounds: CGRect, isEnabled: Bool, isSelected: Bool? = nil, isActionable: Bool = true, attributes: [String: String] = [:]) {
             self.id = id
-            self.role = role
+            self.type = type
             self.label = label
+            self.value = value
             self.bounds = bounds
             self.isEnabled = isEnabled
+            self.isSelected = isSelected
             self.isActionable = isActionable
+            self.attributes = attributes
+        }
+        
+        /// Backward compatibility initializer
+        public init(id: String, role: String, label: String?, bounds: CGRect, isEnabled: Bool, isActionable: Bool = true) {
+            self.init(id: id, type: role, label: label, value: nil, bounds: bounds, isEnabled: isEnabled, isSelected: nil, isActionable: isActionable, attributes: [:])
+        }
+    }
+    
+    /// Elements organized by type (contains element IDs)
+    public struct ElementsByType: Codable, Sendable {
+        public let buttons: [String]
+        public let textFields: [String]
+        public let links: [String]
+        public let images: [String]
+        public let groups: [String]
+        public let sliders: [String]
+        public let checkboxes: [String]
+        public let menus: [String]
+        public let other: [String]
+        
+        public init(
+            buttons: [String] = [],
+            textFields: [String] = [],
+            links: [String] = [],
+            images: [String] = [],
+            groups: [String] = [],
+            sliders: [String] = [],
+            checkboxes: [String] = [],
+            menus: [String] = [],
+            other: [String] = []
+        ) {
+            self.buttons = buttons
+            self.textFields = textFields
+            self.links = links
+            self.images = images
+            self.groups = groups
+            self.sliders = sliders
+            self.checkboxes = checkboxes
+            self.menus = menus
+            self.other = other
+        }
+    }
+    
+    /// Detection metadata
+    public struct DetectionMetadata: Codable, Sendable {
+        public let detectionTime: TimeInterval
+        public let elementCount: Int
+        public let method: String
+        public let warnings: [String]
+        public let windowContext: WindowContext?
+        public let isDialog: Bool
+        
+        public init(
+            detectionTime: TimeInterval,
+            elementCount: Int,
+            method: String,
+            warnings: [String] = [],
+            windowContext: WindowContext? = nil,
+            isDialog: Bool = false
+        ) {
+            self.detectionTime = detectionTime
+            self.elementCount = elementCount
+            self.method = method
+            self.warnings = warnings
+            self.windowContext = windowContext
+            self.isDialog = isDialog
+        }
+    }
+    
+    /// Window context information
+    public struct WindowContext: Codable, Sendable {
+        public let applicationName: String?
+        public let windowTitle: String?
+        public let windowBounds: CGRect?
+        
+        public init(
+            applicationName: String? = nil,
+            windowTitle: String? = nil,
+            windowBounds: CGRect? = nil
+        ) {
+            self.applicationName = applicationName
+            self.windowTitle = windowTitle
+            self.windowBounds = windowBounds
         }
     }
 }
