@@ -34,7 +34,7 @@ struct Peekaboo: AsyncParsableCommand {
           peekaboo list permissions                      # Check permissions
 
           peekaboo agent "Open TextEdit and write Hello"  # AI agent automation
-          peekaboo "Click the login button and sign in"   # Direct agent invocation
+          peekaboo agent "Click the login button"           # Automate UI interactions
           peekaboo learn                                  # Load complete usage guide for AI
 
           peekaboo see --app Safari                      # Identify UI elements
@@ -156,39 +156,7 @@ struct Main {
         // Load configuration at startup
         _ = ConfigurationManager.shared.loadConfiguration()
 
-        // Check if we should run the agent command directly
-        let args = Array(CommandLine.arguments.dropFirst())
-        if !args.isEmpty {
-            // Check if the first argument is NOT a known subcommand
-            let knownSubcommands = [
-                "image", "list", "config", "permissions", "learn",
-                "see", "click", "type", "press", "scroll", "hotkey", "swipe",
-                "drag", "move", "run", "sleep", "clean", "window",
-                "menu", "menubar", "app", "dock", "dialog", "space", "agent",
-                "help", "--help", "-h", "--version"
-            ]
-
-            let firstArg = args[0]
-            if !knownSubcommands.contains(firstArg) && !firstArg.starts(with: "-") {
-                // This looks like a direct agent invocation
-                // Manually create and run the agent command with the full task string
-                do {
-                    let taskString = args.joined(separator: " ")
-                    // Create the AgentCommand by parsing with task as argument
-                    var agentCommand = try AgentCommand.parse([taskString])
-                    try await agentCommand.run()
-                    return
-                } catch {
-                    AgentCommand.exit(withError: error)
-                }
-            }
-        } else {
-            // No arguments provided - show help instead of running default command
-            await Peekaboo.main(["--help"])
-            return
-        }
-
-        // Run the command normally
+        // Run the command normally - ArgumentParser will handle unknown commands
         await Peekaboo.main()
     }
 }

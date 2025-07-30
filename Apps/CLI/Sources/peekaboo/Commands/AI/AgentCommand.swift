@@ -168,7 +168,7 @@ struct AgentCommand: AsyncParsableCommand {
           peekaboo agent "Open TextEdit and write 'Hello World'"
           peekaboo agent "Take a screenshot of Safari and save it to Desktop"
           peekaboo agent "Click on the login button and fill the form"
-          peekaboo "Find the Terminal app and run 'ls -la'" # Direct invocation
+          peekaboo agent "Find the Terminal app and run 'ls -la'"
 
           # Audio input:
           peekaboo agent --audio  # Record from microphone
