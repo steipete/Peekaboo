@@ -556,6 +556,12 @@ public final class ApplicationService: ApplicationServiceProtocol {
 
         let isMinimized = window.isMinimized() ?? false
         let isMain = window.isMain() ?? false
+        
+        // Detect which screen this window is on
+        let screenService = ScreenService()
+        let screenInfo = screenService.screenContainingWindow(bounds: bounds)
+        let screenIndex = screenInfo?.index
+        let screenName = screenInfo?.name
 
         // Try to get the actual CGWindowID
         let windowIdentityService = WindowIdentityService()
@@ -621,7 +627,9 @@ public final class ApplicationService: ApplicationServiceProtocol {
             windowLevel: windowLevel,
             index: index,
             spaceID: spaceID,
-            spaceName: spaceName)
+            spaceName: spaceName,
+            screenIndex: screenIndex,
+            screenName: screenName)
     }
 
     private func getSpaceInfo(for windowID: CGWindowID) -> (spaceID: UInt64?, spaceName: String?) {

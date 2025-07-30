@@ -133,6 +133,12 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
 
     /// Human-readable name of the Space (if available)
     public let spaceName: String?
+    
+    /// Screen index (position in NSScreen.screens array)
+    public let screenIndex: Int?
+    
+    /// Screen name (e.g., "Built-in Display", "LG UltraFine")
+    public let screenName: String?
 
     /// Whether the window is off-screen
     public var isOffScreen: Bool {
@@ -152,7 +158,9 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
         alpha: CGFloat = 1.0,
         index: Int = 0,
         spaceID: UInt64? = nil,
-        spaceName: String? = nil)
+        spaceName: String? = nil,
+        screenIndex: Int? = nil,
+        screenName: String? = nil)
     {
         self.windowID = windowID
         self.title = title
@@ -164,5 +172,7 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
         self.index = index
         self.spaceID = spaceID
         self.spaceName = spaceName
+        self.screenIndex = screenIndex
+        self.screenName = screenName
     }
 }

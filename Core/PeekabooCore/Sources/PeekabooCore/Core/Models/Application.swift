@@ -44,26 +44,32 @@ public struct ApplicationListData: Codable, Sendable {
 /// Information about a window.
 ///
 /// Contains details about a window including its title, unique identifier,
-/// position in the window list, bounds, and visibility status.
+/// position in the window list, bounds, visibility status, and screen information.
 public struct WindowInfo: Codable, Sendable {
     public let window_title: String
     public let window_id: UInt32?
     public let window_index: Int?
     public let bounds: WindowBounds?
     public let is_on_screen: Bool?
+    public let screen_index: Int?
+    public let screen_name: String?
 
     public init(
         window_title: String,
         window_id: UInt32? = nil,
         window_index: Int? = nil,
         bounds: WindowBounds? = nil,
-        is_on_screen: Bool? = nil)
+        is_on_screen: Bool? = nil,
+        screen_index: Int? = nil,
+        screen_name: String? = nil)
     {
         self.window_title = window_title
         self.window_id = window_id
         self.window_index = window_index
         self.bounds = bounds
         self.is_on_screen = is_on_screen
+        self.screen_index = screen_index
+        self.screen_name = screen_name
     }
 }
 
