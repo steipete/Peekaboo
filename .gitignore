@@ -162,6 +162,7 @@ Core/**/.swiftpm/
 *.tmp
 *.temp
 .cache/
+debug
 
 # OS generated files
 Thumbs.db
@@ -219,3 +220,4 @@ test-fixes-summary.md
 /peekaboo.scpt
 /peekaboo-x86_64
 /peekaboo-arm64
+/debug
