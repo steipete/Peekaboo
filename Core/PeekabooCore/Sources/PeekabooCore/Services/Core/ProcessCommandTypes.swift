@@ -369,19 +369,25 @@ public enum ProcessCommandOutput: Codable, Sendable {
         public let frame: CGRect
         public let isMinimized: Bool
         public let isMainWindow: Bool
+        public let screenIndex: Int?
+        public let screenName: String?
 
         public init(
             title: String?,
             app: String,
             frame: CGRect,
             isMinimized: Bool,
-            isMainWindow: Bool)
+            isMainWindow: Bool,
+            screenIndex: Int? = nil,
+            screenName: String? = nil)
         {
             self.title = title
             self.app = app
             self.frame = frame
             self.isMinimized = isMinimized
             self.isMainWindow = isMainWindow
+            self.screenIndex = screenIndex
+            self.screenName = screenName
         }
     }
 }

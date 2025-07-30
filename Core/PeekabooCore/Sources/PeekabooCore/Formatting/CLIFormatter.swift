@@ -108,6 +108,13 @@ public enum CLIFormatter {
             let bounds = window.bounds
             result += "\n   Position: (\(Int(bounds.origin.x)), \(Int(bounds.origin.y)))"
             result += " Size: \(Int(bounds.size.width))×\(Int(bounds.size.height))"
+            
+            // Show screen information
+            if let screenName = window.screenName {
+                result += "\n   Screen: \(screenName)"
+            } else if let screenIndex = window.screenIndex {
+                result += "\n   Screen: Display \(screenIndex + 1)"
+            }
 
             if window.isMinimized {
                 result += " [MINIMIZED]"

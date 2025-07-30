@@ -56,16 +56,20 @@ public final class VisualizationClient {
 
     /// Establishes connection to the visualizer service if available
     public func connect() {
+        logger.info("🔌 Client: Attempting to connect to visualizer service")
+        
         guard self.isEnabled else {
-            self.logger.debug("Visual feedback is disabled, skipping connection")
+            self.logger.info("🔌 Client: Visual feedback is disabled, skipping connection")
             return
         }
 
         // Check if Peekaboo.app is running
         guard self.isPeekabooAppRunning() else {
-            self.logger.debug("Peekaboo.app is not running, visual feedback unavailable")
+            self.logger.info("🔌 Client: Peekaboo.app is not running, visual feedback unavailable")
             return
         }
+        
+        logger.info("🔌 Client: Peekaboo.app is running, establishing XPC connection")
 
         // Create XPC connection
         self.connection = NSXPCConnection(machServiceName: VisualizerXPCServiceName)
@@ -120,15 +124,29 @@ public final class VisualizationClient {
 
     /// Shows screenshot flash animation
     public func showScreenshotFlash(in rect: CGRect) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
-
-        // Check screenshot-specific environment variable
-        if ProcessInfo.processInfo.environment["PEEKABOO_VISUAL_SCREENSHOTS"] == "false" {
+        logger.info("📸 Client: Screenshot flash requested for rect: \(String(describing: rect))")
+        
+        guard self.isConnected else {
+            logger.warning("📸 Client: Not connected to visualizer service")
+            return false
+        }
+        
+        guard self.isEnabled else {
+            logger.info("📸 Client: Visual feedback disabled")
             return false
         }
 
+        // Check screenshot-specific environment variable
+        if ProcessInfo.processInfo.environment["PEEKABOO_VISUAL_SCREENSHOTS"] == "false" {
+            logger.info("📸 Client: Screenshot visual feedback disabled via environment variable")
+            return false
+        }
+        
+        logger.info("📸 Client: Sending screenshot flash to XPC service")
+
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showScreenshotFlash(in: rect) { success in
+                self.logger.info("📸 Client: Screenshot flash result: \(success)")
                 continuation.resume(returning: success)
             }
         }
@@ -136,10 +154,23 @@ public final class VisualizationClient {
 
     /// Shows click feedback
     public func showClickFeedback(at point: CGPoint, type: ClickType) async -> Bool {
-        guard self.isConnected, self.isEnabled else { return false }
+        logger.info("🖱️ Client: Click feedback requested at point: \(String(describing: point)), type: \(type)")
+        
+        guard self.isConnected else {
+            logger.warning("🖱️ Client: Not connected to visualizer service")
+            return false
+        }
+        
+        guard self.isEnabled else {
+            logger.info("🖱️ Client: Visual feedback disabled")
+            return false
+        }
+        
+        logger.info("🖱️ Client: Sending click feedback to XPC service")
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showClickFeedback(at: point, type: type.rawValue) { success in
+                self.logger.info("🖱️ Client: Click feedback result: \(success)")
                 continuation.resume(returning: success)
             }
         }

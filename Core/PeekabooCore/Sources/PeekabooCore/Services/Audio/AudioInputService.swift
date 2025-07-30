@@ -207,7 +207,7 @@ public final class AudioInputService: AudioInputServiceProtocol, @unchecked Send
 }
 
 /// Errors that can occur during audio input operations
-public enum AudioInputError: LocalizedError {
+public enum AudioInputError: LocalizedError, Equatable {
     case alreadyRecording
     case notRecording
     case invalidURL
