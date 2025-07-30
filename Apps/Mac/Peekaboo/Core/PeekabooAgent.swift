@@ -85,19 +85,40 @@ final class PeekabooAgent {
         guard let agentService = services.agent else {
             throw AgentError.serviceUnavailable
         }
-
+        
+        // Call the common implementation with text content
+        try await executeTaskWithContent(.text(task))
+    }
+    
+    /// Execute a task with audio content
+    func executeTaskWithAudio(audioData: Data, duration: TimeInterval, mimeType: String = "audio/wav", transcript: String? = nil) async throws {
+        guard let agentService = services.agent else {
+            throw AgentError.serviceUnavailable
+        }
+        
+        // Create audio content
+        let audioContent = AudioContent(
+            base64: audioData.base64EncodedString(),
+            transcript: transcript,
+            duration: duration,
+            mimeType: mimeType
+        )
+        
+        // Track the task
+        let taskDescription = transcript ?? "[Audio message - duration: \(Int(duration))s]"
+        
         // Create a cancellable task
         self.processingTask = Task { @MainActor in
             self.isProcessing = true
-            self.currentTask = task
+            self.currentTask = taskDescription
             self.lastError = nil
-            self.lastFailedTask = nil // Clear on new task execution
+            self.lastFailedTask = nil
             self.isThinking = true
             self.currentTool = nil
             self.currentToolArgs = nil
-            self.toolExecutionHistory = [] // Clear history for new task
-            self.taskStartTime = Date() // Track start time
-            self.lastTokenUsage = nil // Clear previous token usage
+            self.toolExecutionHistory = []
+            self.taskStartTime = Date()
+            self.lastTokenUsage = nil
             defer {
                 isProcessing = false
                 currentTask = ""
@@ -108,11 +129,6 @@ final class PeekabooAgent {
                 // Check for cancellation
                 try Task.checkCancellation()
 
-                // Use PeekabooAgentService for enhanced functionality
-                guard let peekabooAgent = agentService as? PeekabooAgentService else {
-                    throw AgentError.invalidConfiguration("Agent service not properly initialized")
-                }
-
                 // Create or get session BEFORE task execution
                 if self.sessionStore.currentSession == nil {
                     _ = self.sessionStore.createSession(title: "", modelName: self.settings.selectedModel)
@@ -120,7 +136,13 @@ final class PeekabooAgent {
 
                 // Add user message at the very beginning
                 if let currentSession = sessionStore.currentSession {
-                    let userMessage = ConversationMessage(role: .user, content: task)
+                    // Create user message with audio content
+                    let displayText = transcript ?? "[Audio message - duration: \(Int(duration))s]"
+                    let userMessage = ConversationMessage(
+                        role: .user, 
+                        content: displayText,
+                        audioContent: audioContent
+                    )
                     self.sessionStore.addMessage(userMessage, to: currentSession)
 
                     // Generate title for new sessions
@@ -138,10 +160,9 @@ final class PeekabooAgent {
                     }
                 }
 
-                let result = try await peekabooAgent.executeTask(
-                    task,
-                    sessionId: self.currentSessionId,
-                    modelName: self.settings.selectedModel,
+                let result = try await agentService.executeTaskWithAudio(
+                    audioContent: audioContent,
+                    dryRun: false,
                     eventDelegate: eventDelegate)
 
                 // Check for cancellation after execution
@@ -230,7 +251,240 @@ final class PeekabooAgent {
                     }
                 } else {
                     self.lastError = error.localizedDescription
-                    self.lastFailedTask = task // Store the failed task for retry
+                    self.lastFailedTask = taskDescription // Store the failed task for retry
+
+                    // Add error message to session
+                    if let currentSession = sessionStore.currentSession {
+                        let errorMessage = ConversationMessage(
+                            role: .system,
+                            content: "❌ Error: \(error.localizedDescription)")
+                        self.sessionStore.addMessage(errorMessage, to: currentSession)
+                    }
+                }
+                throw error
+            }
+        }
+
+        // Wait for the task to complete
+        try await self.processingTask?.value
+    }
+    
+    /// Common implementation for executing tasks with different content types
+    private func executeTaskWithContent(_ content: MessageContent) async throws {
+        guard let agentService = services.agent else {
+            throw AgentError.serviceUnavailable
+        }
+
+        // Create a cancellable task
+        self.processingTask = Task { @MainActor in
+            self.isProcessing = true
+            
+            // Extract task description from content
+            let taskDescription: String
+            switch content {
+            case .text(let text):
+                taskDescription = text
+            case .audio(let audioContent):
+                taskDescription = audioContent.transcript ?? "[Audio message - duration: \(Int(audioContent.duration ?? 0))s]"
+            case .image:
+                taskDescription = "[Image message]"
+            case .file:
+                taskDescription = "[File message]"
+            case .multimodal:
+                taskDescription = "[Multimodal message]"
+            }
+            
+            self.currentTask = taskDescription
+            self.lastError = nil
+            self.lastFailedTask = nil // Clear on new task execution
+            self.isThinking = true
+            self.currentTool = nil
+            self.currentToolArgs = nil
+            self.toolExecutionHistory = [] // Clear history for new task
+            self.taskStartTime = Date() // Track start time
+            self.lastTokenUsage = nil // Clear previous token usage
+            defer {
+                isProcessing = false
+                currentTask = ""
+                processingTask = nil
+            }
+
+            do {
+                // Check for cancellation
+                try Task.checkCancellation()
+
+                // Use PeekabooAgentService for enhanced functionality
+                guard let peekabooAgent = agentService as? PeekabooAgentService else {
+                    throw AgentError.invalidConfiguration("Agent service not properly initialized")
+                }
+
+                // Create or get session BEFORE task execution
+                if self.sessionStore.currentSession == nil {
+                    _ = self.sessionStore.createSession(title: "", modelName: self.settings.selectedModel)
+                }
+
+                // Add user message at the very beginning
+                if let currentSession = sessionStore.currentSession {
+                    // Create user message with appropriate content
+                    let userMessage: ConversationMessage
+                    switch content {
+                    case .text(let text):
+                        userMessage = ConversationMessage(role: .user, content: text)
+                    case .audio(let audioContent):
+                        // For audio, show transcript if available, otherwise show placeholder
+                        let displayText = audioContent.transcript ?? "[Audio message - duration: \(Int(audioContent.duration ?? 0))s]"
+                        userMessage = ConversationMessage(
+                            role: .user, 
+                            content: displayText,
+                            audioContent: audioContent
+                        )
+                    case .image:
+                        userMessage = ConversationMessage(role: .user, content: "[Image message]")
+                    case .file:
+                        userMessage = ConversationMessage(role: .user, content: "[File message]")
+                    case .multimodal:
+                        userMessage = ConversationMessage(role: .user, content: "[Multimodal message]")
+                    }
+                    
+                    self.sessionStore.addMessage(userMessage, to: currentSession)
+
+                    // Generate title for new sessions
+                    if currentSession.title == "New Session", currentSession.messages.count == 1 {
+                        self.sessionStore.generateTitleForSession(currentSession)
+                    }
+                }
+
+                // Create event delegate for real-time updates
+                let eventDelegate = AgentEventDelegateWrapper { [weak self] event in
+                    guard let self else { return }
+
+                    Task { @MainActor in
+                        self.handleAgentEvent(event)
+                    }
+                }
+
+                // Call the appropriate method based on content type
+                let result: AgentExecutionResult
+                switch content {
+                case .text(let text):
+                    result = try await peekabooAgent.executeTask(
+                        text,
+                        sessionId: self.currentSessionId,
+                        modelName: self.settings.selectedModel,
+                        eventDelegate: eventDelegate)
+                case .audio(let audioContent):
+                    // For now, use executeTaskWithAudio if available
+                    // TODO: Update when PeekabooAgentService supports audio directly
+                    if let transcript = audioContent.transcript {
+                        result = try await peekabooAgent.executeTask(
+                            transcript,
+                            sessionId: self.currentSessionId,
+                            modelName: self.settings.selectedModel,
+                            eventDelegate: eventDelegate)
+                    } else {
+                        // Fallback for audio without transcript
+                        result = try await peekabooAgent.executeTask(
+                            "[Audio message without transcript]",
+                            sessionId: self.currentSessionId,
+                            modelName: self.settings.selectedModel,
+                            eventDelegate: eventDelegate)
+                    }
+                case .image, .file, .multimodal:
+                    // For now, use text representation
+                    result = try await peekabooAgent.executeTask(
+                        taskDescription,
+                        sessionId: self.currentSessionId,
+                        modelName: self.settings.selectedModel,
+                        eventDelegate: eventDelegate)
+                }
+
+                // Check for cancellation after execution
+                try Task.checkCancellation()
+
+                // Update session ID for continuity
+                self.currentSessionId = result.sessionId
+
+                // Update model name if not set
+                if self.sessionStore.currentSession?.modelName.isEmpty == true {
+                    if let currentSession = sessionStore.currentSession,
+                       let index = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id })
+                    {
+                        self.sessionStore.sessions[index].modelName = self.settings.selectedModel
+                        Task {
+                            self.sessionStore.saveSessions()
+                        }
+                    }
+                }
+
+                // Add assistant response to current session (if not already added during streaming)
+                if let currentSession = sessionStore.currentSession {
+                    // Check if we already have this assistant message from streaming
+                    let hasAssistantMessage = self.sessionStore.sessions
+                        .first(where: { $0.id == currentSession.id })?
+                        .messages
+                        .contains(where: {
+                            $0.role == .assistant &&
+                                $0.content == result.content
+                        }) ?? false
+
+                    if !hasAssistantMessage {
+                        // Add assistant message WITHOUT tool calls (they're tracked separately)
+                        let assistantMessage = ConversationMessage(
+                            role: .assistant,
+                            content: result.content,
+                            toolCalls: [] // Tool calls are now separate system messages
+                        )
+                        self.sessionStore.addMessage(assistantMessage, to: currentSession)
+                    }
+
+                    // Add execution summary with timing and token usage
+                    if let startTime = taskStartTime {
+                        let totalDuration = Date().timeIntervalSince(startTime)
+                        let durationText = formatDuration(totalDuration)
+
+                        // Count total tool calls
+                        let toolCount = self.toolExecutionHistory.count
+
+                        var summaryContent = "Task completed in \(durationText)"
+                        if toolCount > 0 {
+                            summaryContent += " with \(toolCount) tool call\(toolCount == 1 ? "" : "s")"
+                        }
+
+                        // Add token usage if available
+                        if let usage = lastTokenUsage {
+                            summaryContent += " • 🤖 \(usage.totalTokens) tokens"
+                            if usage.promptTokens > 0, usage.completionTokens > 0 {
+                                summaryContent += " (\(usage.promptTokens) in, \(usage.completionTokens) out)"
+                            }
+                        }
+
+                        let summaryMessage = ConversationMessage(
+                            role: .system,
+                            content: summaryContent)
+                        self.sessionStore.addMessage(summaryMessage, to: currentSession)
+                    }
+
+                    // Update summary if needed
+                    if !result.content.isEmpty {
+                        self.sessionStore.updateSummary(result.content, for: currentSession)
+                    }
+                }
+
+            } catch {
+                if error is CancellationError {
+                    // Handle cancellation
+                    self.lastError = "Task was cancelled"
+
+                    // Add cancellation message to session
+                    if let currentSession = sessionStore.currentSession {
+                        let cancelMessage = ConversationMessage(
+                            role: .system,
+                            content: "⚠️ Task was cancelled by user")
+                        self.sessionStore.addMessage(cancelMessage, to: currentSession)
+                    }
+                } else {
+                    self.lastError = error.localizedDescription
+                    self.lastFailedTask = taskDescription // Store the failed task for retry
 
                     // Add error message to session
                     if let currentSession = sessionStore.currentSession {

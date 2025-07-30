@@ -27,7 +27,7 @@ struct SettingsWindow: View {
                     Label("Shortcuts", systemImage: "keyboard")
                 }
         }
-        .frame(width: 500, height: 400)
+        .frame(width: 550, height: 700)
     }
 }
 

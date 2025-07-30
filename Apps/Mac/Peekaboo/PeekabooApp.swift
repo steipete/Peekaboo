@@ -94,9 +94,18 @@ struct PeekabooApp: App {
 
         // Settings scene
         Settings {
-            SettingsWindow()
-                .environment(self.settings)
-                .environment(self.permissions)
+            Group {
+                if let visualizerCoordinator = self.appDelegate.visualizerCoordinator {
+                    SettingsWindow()
+                        .environment(self.settings)
+                        .environment(self.permissions)
+                        .environmentObject(visualizerCoordinator)
+                } else {
+                    SettingsWindow()
+                        .environment(self.settings)
+                        .environment(self.permissions)
+                }
+            }
         }
     }
 }
@@ -118,7 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Visualizer components
     private var overlayManager: OverlayManager?
-    private var visualizerCoordinator: VisualizerCoordinator?
+    var visualizerCoordinator: VisualizerCoordinator?
     private var visualizerXPCService: VisualizerXPCService?
 
     func applicationDidFinishLaunching(_: Notification) {
