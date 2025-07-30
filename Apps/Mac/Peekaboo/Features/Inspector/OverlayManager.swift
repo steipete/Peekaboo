@@ -3,6 +3,7 @@ import AXorcist
 import Combine
 import os.log
 import SwiftUI
+import PeekabooCore
 
 /// Manages visual overlays for the Peekaboo Inspector feature.
 ///
@@ -118,15 +119,41 @@ class OverlayManager: ObservableObject {
         }
 
         var color: Color {
-            switch self.role {
-            case "AXButton", "AXLink", "AXPopUpButton":
-                Color(red: 0, green: 122 / 255, blue: 1)
+            // Use core visualization system colors
+            let category = roleToElementCategory(self.role)
+            let styleProvider = InspectorVisualizationPreset()
+            let style = styleProvider.style(for: category, state: self.isEnabled ? .normal : .disabled)
+            return Color(cgColor: style.primaryColor)
+        }
+        
+        private func roleToElementCategory(_ role: String) -> ElementCategory {
+            switch role {
+            case "AXButton", "AXPopUpButton":
+                return .button
             case "AXTextField", "AXTextArea":
-                Color(red: 52 / 255, green: 199 / 255, blue: 89 / 255)
-            case "AXCheckBox", "AXRadioButton", "AXSlider":
-                Color(red: 142 / 255, green: 142 / 255, blue: 147 / 255)
+                return .textField
+            case "AXLink":
+                return .link
+            case "AXStaticText":
+                return .staticText
+            case "AXGroup":
+                return .group
+            case "AXSlider":
+                return .slider
+            case "AXCheckBox":
+                return .checkbox
+            case "AXRadioButton":
+                return .radioButton
+            case "AXMenuItem":
+                return .menu
+            case "AXComboBox":
+                return .popUpButton
+            case "AXRow", "AXCell", "AXOutline", "AXList", "AXTable":
+                return .tableView
+            case "AXImage":
+                return .image
             default:
-                Color(red: 255 / 255, green: 149 / 255, blue: 0)
+                return .other
             }
         }
     }
@@ -349,6 +376,9 @@ class OverlayManager: ObservableObject {
                         "Console sidebar element: role=\(role), title=\(title ?? "nil"), label=\(label ?? "nil"), isActionable=\(isActionable)")
             }
 
+            let category = roleToElementCategory(role)
+            let elementID = ElementIDGenerator.shared.generateID(for: category, index: elements.count)
+            
             let uiElement = UIElement(
                 role: role,
                 title: title,
@@ -356,7 +386,7 @@ class OverlayManager: ObservableObject {
                 value: value,
                 frame: frame,
                 isActionable: isActionable,
-                elementID: generateElementID(for: role, count: elements.count),
+                elementID: elementID,
                 appBundleID: appBundleID,
                 roleDescription: roleDescription,
                 help: help,
@@ -434,26 +464,36 @@ class OverlayManager: ObservableObject {
         return actionableRoles.contains(role)
     }
 
-    private func generateElementID(for role: String, count: Int) -> String {
-        let prefix = switch role {
-        case "AXButton": "B"
-        case "AXTextField", "AXTextArea": "T"
-        case "AXLink": "L"
-        case "AXStaticText": "St"
-        case "AXCheckBox": "C"
-        case "AXRadioButton": "R"
-        case "AXPopUpButton", "AXComboBox": "P"
-        case "AXSlider": "S"
-        case "AXMenuItem": "M"
-        case "AXRow": "Rw"
-        case "AXCell": "Ce"
-        case "AXOutline": "O"
-        case "AXList": "Li"
-        case "AXTable": "Ta"
-        case "AXGroup": "G"
-        default: "E"
+    /// Convert role to ElementCategory
+    private func roleToElementCategory(_ role: String) -> ElementCategory {
+        switch role {
+        case "AXButton", "AXPopUpButton":
+            return .button
+        case "AXTextField", "AXTextArea":
+            return .textField
+        case "AXLink":
+            return .link
+        case "AXStaticText":
+            return .staticText
+        case "AXGroup":
+            return .group
+        case "AXSlider":
+            return .slider
+        case "AXCheckBox":
+            return .checkbox
+        case "AXRadioButton":
+            return .radioButton
+        case "AXMenuItem":
+            return .menu
+        case "AXComboBox":
+            return .popUpButton
+        case "AXRow", "AXCell", "AXOutline", "AXList", "AXTable":
+            return .tableView
+        case "AXImage":
+            return .image
+        default:
+            return .other
         }
-        return "\(prefix)\(count + 1)"
     }
 
     // MARK: - Overlay Window Management
@@ -622,7 +662,7 @@ class OverlayManager: ObservableObject {
         // Wrap content in a positioned view
         let positionedContent = PositionedAnimationView(
             targetRect: rect,
-            content: content
+            content: { content }
         )
         
         // Set up the SwiftUI content
@@ -662,19 +702,21 @@ class OverlayManager: ObservableObject {
         fadeOut: Bool)
     {
         let cleanupTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
-            guard let self else { return }
+            Task { @MainActor in
+                guard let self else { return }
 
-            if fadeOut {
-                // Fade out animation
-                NSAnimationContext.runAnimationGroup({ context in
-                    context.duration = 0.3
-                    window.animator().alphaValue = 0
-                }) { [weak self] in
-                    self?.removeAnimationWindow(animationID)
+                if fadeOut {
+                    // Fade out animation
+                    NSAnimationContext.runAnimationGroup({ context in
+                        context.duration = 0.3
+                        window.animator().alphaValue = 0
+                    }) { [weak self] in
+                        self?.removeAnimationWindow(animationID)
+                    }
+                } else {
+                    // Remove immediately
+                    self.removeAnimationWindow(animationID)
                 }
-            } else {
-                // Remove immediately
-                self.removeAnimationWindow(animationID)
             }
         }
 

@@ -1,6 +1,7 @@
 import AppKit
 import os.log
 import SwiftUI
+import PeekabooCore
 
 // Legacy OverlayView - replaced by per-app overlay windows
 struct OverlayView: View {
@@ -18,6 +19,11 @@ struct ElementOverlay: View {
     let element: OverlayManager.UIElement
     let isHovered: Bool
     let isSelected: Bool = false
+    
+    // Use core visualization system
+    private let styleProvider = InspectorVisualizationPreset()
+    private let coordinateTransformer = CoordinateTransformer()
+    private let idGenerator = ElementIDGenerator.shared
 
     var body: some View {
         // Debug: Log element info to understand positioning
@@ -32,63 +38,104 @@ struct ElementOverlay: View {
             }
         }()
 
-        // Convert AX coordinates (top-left origin) to SwiftUI coordinates
-        // In a full-screen NSWindow with SwiftUI content:
-        // - AX: (0,0) is at top-left of screen
-        // - SwiftUI: (0,0) is at top-left of the window content
-        // Since our window covers the full screen, we can use AX coordinates directly for X,
-        // but need to flip Y because SwiftUI still uses top-down while position() uses bottom-up
-        let displayFrame = self.element.frame
+        // Get main screen size for coordinate transformation
+        let screenSize = NSScreen.main?.frame.size ?? CGSize(width: 1920, height: 1080)
+        
+        // Transform coordinates
+        let transformedFrame = coordinateTransformer.transform(
+            self.element.frame,
+            from: .screen,
+            to: .view(screenSize)
+        )
+        
+        // Convert UIElement to VisualizableElement for style lookup
+        let category = elementCategoryFromRole(self.element.role)
+        let elementState: ElementVisualizationState = self.element.isEnabled ? (self.isHovered ? .hover : .normal) : .disabled
+        let style = styleProvider.style(for: category, state: elementState)
+        
+        // Convert CGColor to SwiftUI Color
+        let primaryColor = Color(cgColor: style.primaryColor)
 
         // Create Peekaboo-style indicator instead of full overlay
         ZStack {
-            // Top-left corner indicator - offset by half the circle size to position correctly
-            Circle()
-                .fill(self.element.color)
-                .frame(width: 30, height: 30)
-                .overlay(
-                    Text(self.element.elementID)
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.white))
-                .position(x: displayFrame.minX + 15, y: displayFrame.minY + 15)
-                .opacity(self.isHovered ? 1.0 : 0.5)
+            // Corner indicator with ID label
+            if let labelStyle = style.labelStyle {
+                Circle()
+                    .fill(primaryColor)
+                    .frame(width: 30, height: 30)
+                    .overlay(
+                        Text(self.element.elementID)
+                            .font(.system(size: labelStyle.fontSize, weight: labelStyle.fontWeight == .bold ? .bold : .regular))
+                            .foregroundColor(Color(cgColor: labelStyle.textColor))
+                    )
+                    .position(x: transformedFrame.minX + 15, y: transformedFrame.minY + 15)
+                    .opacity(style.fillOpacity)
+            }
 
             // Only show full frame outline when hovered
             if self.isHovered {
-                Rectangle()
-                    .stroke(self.element.color, lineWidth: 2)
-                    .frame(width: displayFrame.width, height: displayFrame.height)
-                    .position(x: displayFrame.midX, y: displayFrame.midY)
+                RoundedRectangle(cornerRadius: style.cornerRadius)
+                    .stroke(primaryColor, lineWidth: style.strokeWidth)
+                    .frame(width: transformedFrame.width, height: transformedFrame.height)
+                    .position(x: transformedFrame.midX, y: transformedFrame.midY)
+                    .opacity(style.strokeOpacity)
 
-                // Info bubble
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(self.element.displayName)
-                        .font(.system(size: 10))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
+                // Info bubble with enhanced styling
+                if let labelStyle = style.labelStyle {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(self.element.displayName)
+                            .font(.system(size: labelStyle.fontSize))
+                            .foregroundColor(Color(cgColor: labelStyle.textColor))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, labelStyle.padding.horizontal)
+                    .padding(.vertical, labelStyle.padding.vertical)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color(cgColor: labelStyle.backgroundColor ?? .black).opacity(0.8))
+                    )
+                    .if(style.shadow != nil) { view in
+                        view.shadow(
+                            color: Color(cgColor: style.shadow!.color).opacity(Double(style.shadow!.color.alpha)),
+                            radius: style.shadow!.radius,
+                            x: style.shadow!.offsetX,
+                            y: style.shadow!.offsetY
+                        )
+                    }
+                    .position(x: transformedFrame.minX + 40, y: transformedFrame.minY + 10)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.black.opacity(0.8)))
-                .position(x: displayFrame.minX + 40, y: displayFrame.minY + 10)
             }
         }
     }
-
-    private func flipYCoordinate(_ rect: CGRect) -> CGRect {
-        // The Accessibility API provides coordinates in screen space with origin at top-left
-        // NSScreen also uses origin at bottom-left, but SwiftUI within the window uses top-left
-        // Since we're creating full-screen windows, we just need to flip Y relative to screen height
-
-        guard let screen = NSScreen.main else { return rect }
-
-        // In a full-screen window, SwiftUI's coordinate system matches the screen's flipped coordinates
-        // So we convert from AX's top-left to SwiftUI's top-left within our full-screen window
-        let flippedY = screen.frame.height - rect.origin.y - rect.height
-
-        return CGRect(x: rect.origin.x, y: flippedY, width: rect.width, height: rect.height)
+    
+    /// Convert role to ElementCategory
+    private func elementCategoryFromRole(_ role: String) -> ElementCategory {
+        switch role {
+        case "AXButton", "AXPopUpButton":
+            return .button
+        case "AXTextField", "AXTextArea":
+            return .textField
+        case "AXLink":
+            return .link
+        case "AXStaticText":
+            return .staticText
+        case "AXGroup":
+            return .group
+        case "AXSlider":
+            return .slider
+        case "AXCheckBox":
+            return .checkbox
+        case "AXRadioButton":
+            return .radioButton
+        case "AXMenuItem":
+            return .menu
+        case "AXComboBox":
+            return .popUpButton
+        case "AXRow", "AXCell", "AXOutline", "AXList", "AXTable":
+            return .tableView
+        default:
+            return .other
+        }
     }
 }
 
@@ -106,6 +153,20 @@ struct WindowAccessor: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
             self.window = nsView.window
+        }
+    }
+}
+
+// MARK: - View Extensions
+
+extension View {
+    /// Conditionally apply a modifier
+    @ViewBuilder
+    func `if`<Transform: View>(_ condition: Bool, transform: (Self) -> Transform) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
         }
     }
 }
