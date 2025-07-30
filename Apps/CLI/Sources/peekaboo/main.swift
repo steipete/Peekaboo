@@ -39,7 +39,8 @@ struct Peekaboo: AsyncParsableCommand {
 
           peekaboo see --app Safari                      # Identify UI elements
           peekaboo click "Submit" --space-switch         # Click with auto-focus & Space switching
-          peekaboo type "Hello" --bring-to-current-space # Type with window movement
+          peekaboo type "Hello\\nWorld" --delay 50        # Type with newline
+          peekaboo press return                          # Press Enter key
           peekaboo window focus --app Terminal           # Explicit focus management
           peekaboo space list                           # List all Spaces
 
@@ -115,6 +116,7 @@ struct Peekaboo: AsyncParsableCommand {
             SeeCommand.self,
             ClickCommand.self,
             TypeCommand.self,
+            PressCommand.self,
             ScrollCommand.self,
             HotkeyCommand.self,
             SwipeCommand.self,
@@ -160,7 +162,7 @@ struct Main {
             // Check if the first argument is NOT a known subcommand
             let knownSubcommands = [
                 "image", "list", "config", "permissions", "learn",
-                "see", "click", "type", "scroll", "hotkey", "swipe",
+                "see", "click", "type", "press", "scroll", "hotkey", "swipe",
                 "drag", "move", "run", "sleep", "clean", "window",
                 "menu", "menubar", "app", "dock", "dialog", "space", "agent",
                 "help", "--help", "-h", "--version"

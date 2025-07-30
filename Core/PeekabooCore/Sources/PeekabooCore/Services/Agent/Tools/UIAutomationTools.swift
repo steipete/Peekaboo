@@ -170,13 +170,23 @@ public struct UIAutomationToolDefinitions {
         abstract: "Type text into the currently focused element",
         discussion: """
             Types text into the currently focused UI element with customizable
-            typing speed and optional return key press.
+            typing speed and support for escape sequences.
 
             EXAMPLES:
               peekaboo type "Hello World"
               peekaboo type "username@example.com" --press-return
+              peekaboo type "Line 1\\nLine 2"       # Type with newline
+              peekaboo type "Name:\\tJohn"          # Type with tab
+              peekaboo type "Path: C:\\\\data"      # Type literal backslash
               peekaboo type "Slow typing" --delay 100
               peekaboo type "Clear and type" --clear
+
+            ESCAPE SEQUENCES:
+              \\n - Newline/return
+              \\t - Tab
+              \\b - Backspace/delete
+              \\e - Escape
+              \\\\ - Literal backslash
         """,
         category: .automation,
         parameters: [
@@ -278,6 +288,69 @@ public struct UIAutomationToolDefinitions {
         examples: [
             #"{"direction": "down", "amount": 10}"#,
             #"{"direction": "up", "x": 500, "y": 300}"#
+        ]
+    )
+    
+    public static let press = UnifiedToolDefinition(
+        name: "press",
+        commandName: nil,
+        abstract: "Press individual keys or key sequences",
+        discussion: """
+            Press individual keys for navigation and control, not for typing text.
+            Perfect for pressing Enter, Tab, Escape, arrow keys, function keys, etc.
+
+            EXAMPLES:
+              peekaboo press return                # Press Enter/Return
+              peekaboo press tab --count 3         # Press Tab 3 times
+              peekaboo press escape                # Press Escape
+              peekaboo press delete                # Press Backspace/Delete
+              peekaboo press forward_delete        # Press Forward Delete (fn+delete)
+              peekaboo press up down left right    # Arrow key sequence
+              peekaboo press f1                    # Press F1 function key
+              peekaboo press space                 # Press spacebar
+              peekaboo press enter                 # Numeric keypad Enter
+
+            AVAILABLE KEYS:
+              Navigation: up, down, left, right, home, end, pageup, pagedown
+              Editing: delete (backspace), forward_delete, clear
+              Control: return, enter, tab, escape, space
+              Function: f1-f12
+              Special: caps_lock, help
+        """,
+        category: .automation,
+        parameters: [
+            ParameterDefinition(
+                name: "keys",
+                type: .array,
+                description: "Key(s) to press",
+                required: true,
+                defaultValue: nil,
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .argument)
+            ),
+            ParameterDefinition(
+                name: "count",
+                type: .integer,
+                description: "Repeat count for all keys",
+                required: false,
+                defaultValue: "1",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            ),
+            ParameterDefinition(
+                name: "delay",
+                type: .integer,
+                description: "Delay between key presses in milliseconds",
+                required: false,
+                defaultValue: "100",
+                options: nil,
+                cliOptions: CLIOptions(argumentType: .option)
+            )
+        ],
+        examples: [
+            #"{"keys": ["return"]}"#,
+            #"{"keys": ["tab", "tab", "return"]}"#,
+            #"{"keys": ["escape"]}"#
         ]
     )
     
@@ -417,11 +490,11 @@ extension PeekabooAgentService {
     func createTypeTool() -> Tool<PeekabooServices> {
         return createTool(
             name: "type",
-            description: "Type text at the current cursor position or into a specific field",
+            description: "Type text at the current cursor position or into a specific field. Supports escape sequences: \\n (newline), \\t (tab), \\b (backspace), \\e (escape), \\\\ (literal backslash)",
             parameters: ToolParameters.object(
                 properties: [
                     "text": ParameterSchema.string(
-                        description: "Text to type"),
+                        description: "Text to type. Supports escape sequences: \\n (newline), \\t (tab), \\b (backspace), \\e (escape), \\\\ (literal backslash)"),
                     "field": ParameterSchema.string(
                         description: "Optional: Label or identifier of the text field to type into"),
                     "app": ParameterSchema.string(
@@ -558,6 +631,84 @@ extension PeekabooAgentService {
                         "direction": directionStr,
                         "amount": String(amount),
                         "target": target ?? "current position",
+                        "app": targetApp,
+                        "duration": String(format: "%.2fs", duration),
+                    ])
+            })
+    }
+
+    /// Create the press tool
+    func createPressTool() -> Tool<PeekabooServices> {
+        return createTool(
+            name: "press",
+            description: "Press individual keys like Enter, Tab, Escape, arrow keys, etc. Use this instead of type when you just need to press special keys.",
+            parameters: ToolParameters.object(
+                properties: [
+                    "key": ParameterSchema.string(
+                        description: "Key to press: return, enter, tab, escape, delete, forward_delete, space, up, down, left, right, home, end, pageup, pagedown, f1-f12, caps_lock, clear, help"),
+                    "count": ParameterSchema.integer(
+                        description: "Number of times to press the key (default: 1)"),
+                ],
+                required: ["key"]),
+            handler: { params, context in
+                let keyStr = try params.string("key")
+                let count = params.int("count", default: 1) ?? 1
+
+                let startTime = Date()
+
+                // Map key name to SpecialKey enum - handle various naming conventions
+                let normalizedKey = keyStr.lowercased()
+                    .replacingOccurrences(of: "_", with: "")
+                    .replacingOccurrences(of: "-", with: "")
+                
+                let mappedKey: String = switch normalizedKey {
+                case "return", "enter": "return"
+                case "forwarddelete", "fndelete": "forward_delete"
+                case "backspace", "delete": "delete"
+                case "escape", "esc": "escape"
+                case "up", "arrowup", "uparrow": "up"
+                case "down", "arrowdown", "downarrow": "down"
+                case "left", "arrowleft", "leftarrow": "left"
+                case "right", "arrowright", "rightarrow": "right"
+                case "pageup": "pageup"
+                case "pagedown": "pagedown"
+                case "capslock": "caps_lock"
+                default: normalizedKey
+                }
+                
+                guard let specialKey = SpecialKey(rawValue: mappedKey) else {
+                    throw PeekabooError.invalidInput("Unknown key: '\(keyStr)'. Available keys: return, enter, tab, escape, delete, forward_delete, space, up, down, left, right, home, end, pageup, pagedown, f1-f12, caps_lock, clear, help")
+                }
+
+                // Build type actions for the key presses
+                var actions: [TypeAction] = []
+                for _ in 0..<count {
+                    actions.append(.key(specialKey))
+                }
+
+                // Execute the key presses
+                let result = try await context.automation.typeActions(
+                    actions,
+                    typingDelay: 100, // 100ms between key presses
+                    sessionId: nil)
+
+                let duration = Date().timeIntervalSince(startTime)
+
+                // Get the frontmost app for better feedback
+                let frontmostApp = try? await context.applications.getFrontmostApplication()
+                let targetApp = frontmostApp?.name ?? "unknown"
+
+                var output = "Pressed '\(keyStr)'"
+                if count > 1 {
+                    output += " \(count) times"
+                }
+                output += " in \(targetApp)"
+
+                return .success(
+                    output,
+                    metadata: [
+                        "key": keyStr,
+                        "count": String(count),
                         "app": targetApp,
                         "duration": String(format: "%.2fs", duration),
                     ])

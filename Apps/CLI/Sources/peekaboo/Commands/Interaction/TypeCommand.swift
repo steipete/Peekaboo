@@ -20,6 +20,9 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
               peekaboo type "password" --return     # Type and press return
               peekaboo type --tab 3                 # Press tab 3 times
               peekaboo type "text" --clear          # Clear field first
+              peekaboo type "Line 1\\nLine 2"        # Type with newline
+              peekaboo type "Name:\\tJohn"           # Type with tab
+              peekaboo type "Path: C:\\\\data"       # Type literal backslash
 
             SPECIAL KEYS:
               Use flags for special keys:
@@ -28,6 +31,14 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
               --escape    Press escape
               --delete    Press delete
               --clear     Clear current field (Cmd+A, Delete)
+            
+            ESCAPE SEQUENCES:
+              Supported escape sequences in text:
+              \\n  - Newline/return
+              \\t  - Tab
+              \\b  - Backspace/delete
+              \\e  - Escape
+              \\\\  - Literal backslash
 
             FOCUS MANAGEMENT:
               The command assumes an element is already focused.
@@ -80,7 +91,9 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
             }
 
             if let textToType = text {
-                actions.append(.text(textToType))
+                // Process escape sequences
+                let processedActions = processTextWithEscapes(textToType)
+                actions.append(contentsOf: processedActions)
             }
 
             if let tabCount = tab {
@@ -155,6 +168,88 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
     }
 
     // Error handling is provided by ErrorHandlingCommand protocol
+    
+    /// Process text with escape sequences like \n, \t, etc.
+    private func processTextWithEscapes(_ text: String) -> [TypeAction] {
+        var actions: [TypeAction] = []
+        var currentText = ""
+        var i = text.startIndex
+        
+        while i < text.endIndex {
+            let char = text[i]
+            
+            if char == "\\" && text.index(after: i) < text.endIndex {
+                let nextChar = text[text.index(after: i)]
+                
+                switch nextChar {
+                case "n":
+                    // Add accumulated text
+                    if !currentText.isEmpty {
+                        actions.append(.text(currentText))
+                        currentText = ""
+                    }
+                    // Add return key
+                    actions.append(.key(.return))
+                    // Skip the 'n'
+                    i = text.index(after: i)
+                    
+                case "t":
+                    // Add accumulated text
+                    if !currentText.isEmpty {
+                        actions.append(.text(currentText))
+                        currentText = ""
+                    }
+                    // Add tab key
+                    actions.append(.key(.tab))
+                    // Skip the 't'
+                    i = text.index(after: i)
+                    
+                case "b":
+                    // Add accumulated text
+                    if !currentText.isEmpty {
+                        actions.append(.text(currentText))
+                        currentText = ""
+                    }
+                    // Add backspace/delete key
+                    actions.append(.key(.delete))
+                    // Skip the 'b'
+                    i = text.index(after: i)
+                    
+                case "e":
+                    // Add accumulated text
+                    if !currentText.isEmpty {
+                        actions.append(.text(currentText))
+                        currentText = ""
+                    }
+                    // Add escape key
+                    actions.append(.key(.escape))
+                    // Skip the 'e'
+                    i = text.index(after: i)
+                    
+                case "\\":
+                    // Escaped backslash
+                    currentText.append("\\")
+                    // Skip the second backslash
+                    i = text.index(after: i)
+                    
+                default:
+                    // Not a recognized escape, keep the backslash
+                    currentText.append(char)
+                }
+            } else {
+                currentText.append(char)
+            }
+            
+            i = text.index(after: i)
+        }
+        
+        // Add any remaining text
+        if !currentText.isEmpty {
+            actions.append(.text(currentText))
+        }
+        
+        return actions
+    }
 }
 
 // MARK: - JSON Output Structure

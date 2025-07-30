@@ -370,9 +370,11 @@ public enum TypeAction: Sendable {
 /// Special keys for typing
 public enum SpecialKey: String, Sendable {
     case `return`
+    case enter  // Numeric keypad enter
     case tab
     case escape
-    case delete
+    case delete  // Backspace
+    case forwardDelete = "forward_delete"  // fn+delete
     case space
     case leftArrow = "left"
     case rightArrow = "right"
@@ -382,6 +384,21 @@ public enum SpecialKey: String, Sendable {
     case pageDown = "pagedown"
     case home
     case end
+    case f1
+    case f2
+    case f3
+    case f4
+    case f5
+    case f6
+    case f7
+    case f8
+    case f9
+    case f10
+    case f11
+    case f12
+    case capsLock = "caps_lock"
+    case clear
+    case help
 }
 
 /// Result of typing operations

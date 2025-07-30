@@ -251,12 +251,16 @@ public final class TypeService {
 
     private func mapSpecialKeyToVirtualCode(_ key: String) -> CGKeyCode {
         switch key.lowercased() {
-        case "return", "enter":
+        case "return":
             CGKeyCode(kVK_Return)
+        case "enter":
+            CGKeyCode(kVK_ANSI_KeypadEnter)
         case "tab":
             CGKeyCode(kVK_Tab)
         case "delete", "backspace":
             CGKeyCode(kVK_Delete)
+        case "forward_delete", "forwarddelete":
+            CGKeyCode(kVK_ForwardDelete)
         case "escape", "esc":
             CGKeyCode(kVK_Escape)
         case "space":
@@ -301,6 +305,12 @@ public final class TypeService {
             CGKeyCode(kVK_F11)
         case "f12":
             CGKeyCode(kVK_F12)
+        case "caps_lock", "capslock":
+            CGKeyCode(kVK_CapsLock)
+        case "clear":
+            CGKeyCode(kVK_ANSI_KeypadClear)
+        case "help":
+            CGKeyCode(kVK_Help)
         default:
             0xFFFF // Invalid
         }
@@ -356,3 +366,7 @@ private let kVK_LeftArrow: CGKeyCode = 0x7B
 private let kVK_RightArrow: CGKeyCode = 0x7C
 private let kVK_DownArrow: CGKeyCode = 0x7D
 private let kVK_UpArrow: CGKeyCode = 0x7E
+private let kVK_ForwardDelete: CGKeyCode = 0x75
+private let kVK_Help: CGKeyCode = 0x72
+private let kVK_ANSI_KeypadEnter: CGKeyCode = 0x4C
+private let kVK_ANSI_KeypadClear: CGKeyCode = 0x47

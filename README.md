@@ -102,6 +102,9 @@ peekaboo see --analyze "Describe this UI" --app Chrome
 peekaboo see --app Safari               # Identify UI elements
 peekaboo click "Submit"                 # Click button by text
 peekaboo type "Hello world"             # Type at current focus
+peekaboo type "Line 1\nLine 2"          # Type with newline (escape sequences)
+peekaboo press return                   # Press Enter key
+peekaboo press tab --count 3            # Press Tab 3 times
 peekaboo scroll --direction down --amount 5  # Scroll down 5 ticks
 
 # AI Agent - Natural language automation
@@ -257,9 +260,9 @@ done
 peekaboo see --app MyApp                # Creates new session
 peekaboo click --on T1                  # Automatically uses session from 'see'
 peekaboo type "user@example.com"        # Still using same session
-peekaboo click --on T2                  # No need to specify --session
+peekaboo press tab                      # Press Tab to move to next field
 peekaboo type "password123"
-peekaboo click "Sign In"
+peekaboo press return                   # Press Enter to submit
 peekaboo sleep 2000                     # Wait 2 seconds
 
 # Multiple app automation with explicit sessions
@@ -368,27 +371,28 @@ Add to your Cursor settings:
 #### UI Automation Tools
 4. **`see`** - Capture screen and identify UI elements
 5. **`click`** - Click on UI elements or coordinates
-6. **`type`** - Type text into UI elements
-7. **`scroll`** - Scroll content in any direction
-8. **`hotkey`** - Press keyboard shortcuts
-9. **`swipe`** - Perform swipe/drag gestures
-10. **`move`** - Move mouse cursor to specific position or element
-11. **`drag`** - Perform drag and drop operations
+6. **`type`** - Type text into UI elements (supports escape sequences)
+7. **`press`** - Press individual keys (return, tab, escape, arrows, etc.)
+8. **`scroll`** - Scroll content in any direction
+9. **`hotkey`** - Press keyboard shortcuts
+10. **`swipe`** - Perform swipe/drag gestures
+11. **`move`** - Move mouse cursor to specific position or element
+12. **`drag`** - Perform drag and drop operations
 
 #### Application & Window Management
-12. **`app`** - Launch, quit, focus, hide, and manage applications
-13. **`window`** - Manipulate windows (close, minimize, maximize, move, resize, focus)
-14. **`menu`** - Interact with application menus and system menu extras
-15. **`dock`** - Launch apps from dock and manage dock items
-16. **`dialog`** - Handle dialog windows (click buttons, input text)
-17. **`space`** - Manage macOS Spaces (virtual desktops)
+13. **`app`** - Launch, quit, focus, hide, and manage applications
+14. **`window`** - Manipulate windows (close, minimize, maximize, move, resize, focus)
+15. **`menu`** - Interact with application menus and system menu extras
+16. **`dock`** - Launch apps from dock and manage dock items
+17. **`dialog`** - Handle dialog windows (click buttons, input text)
+18. **`space`** - Manage macOS Spaces (virtual desktops)
 
 #### Utility Tools
-18. **`run`** - Execute automation scripts from .peekaboo.json files
-19. **`sleep`** - Pause execution for specified duration
-20. **`clean`** - Clean up session cache and temporary files
-21. **`permissions`** - Check system permissions (screen recording, accessibility)
-22. **`agent`** - Execute complex automation tasks using AI
+19. **`run`** - Execute automation scripts from .peekaboo.json files
+20. **`sleep`** - Pause execution for specified duration
+21. **`clean`** - Clean up session cache and temporary files
+22. **`permissions`** - Check system permissions (screen recording, accessibility)
+23. **`agent`** - Execute complex automation tasks using AI
 
 ## 🚀 GUI Automation with Peekaboo v3
 
@@ -467,7 +471,7 @@ await click({ query: "Save", wait_for: 10000 })
 
 ### ⌨️ The `type` Tool
 
-Type text with support for special keys:
+Type text with support for escape sequences:
 
 ```typescript
 // Type into a specific field
@@ -479,23 +483,56 @@ await type({ text: "Hello world" })
 // Clear existing text first
 await type({ text: "New text", on: "T2", clear: true })
 
-// Use special keys
-await type({ text: "Select all{cmd+a}Copy{cmd+c}" })
-await type({ text: "Line 1{return}Line 2{tab}Indented" })
+// Use escape sequences
+await type({ text: "Line 1\nLine 2\nLine 3" })         // Newlines
+await type({ text: "Name:\tJohn\tDoe" })                // Tabs
+await type({ text: "Path: C:\\data\\file.txt" })        // Literal backslash
+
+// Press return after typing
+await type({ text: "Submit", press_return: true })
 
 // Adjust typing speed
 await type({ text: "Slow typing", delay: 100 })
 ```
 
-#### Supported Special Keys
-- `{return}` or `{enter}` - Return/Enter key
-- `{tab}` - Tab key
-- `{escape}` or `{esc}` - Escape key
-- `{delete}` or `{backspace}` - Delete key
-- `{space}` - Space key
-- `{cmd+a}`, `{cmd+c}`, etc. - Command combinations
-- `{arrow_up}`, `{arrow_down}`, `{arrow_left}`, `{arrow_right}` - Arrow keys
-- `{f1}` through `{f12}` - Function keys
+#### Supported Escape Sequences
+- `\n` - Newline/return
+- `\t` - Tab
+- `\b` - Backspace/delete
+- `\e` - Escape
+- `\\` - Literal backslash
+
+### 🔑 The `press` Tool
+
+Press individual keys or key sequences:
+
+```typescript
+// Press single keys
+await press({ key: "return" })                          // Press Enter
+await press({ key: "tab", count: 3 })                   // Press Tab 3 times
+await press({ key: "escape" })                          // Press Escape
+
+// Navigation keys
+await press({ key: "up" })                             // Arrow up
+await press({ key: "down", count: 5 })                 // Arrow down 5 times
+await press({ key: "home" })                           // Home key
+await press({ key: "end" })                            // End key
+
+// Function keys
+await press({ key: "f1" })                             // F1 help key
+await press({ key: "f11" })                            // F11 full screen
+
+// Special keys
+await press({ key: "forward_delete" })                 // Forward delete (fn+delete)
+await press({ key: "caps_lock" })                      // Caps Lock
+```
+
+#### Available Keys
+- **Navigation**: up, down, left, right, home, end, pageup, pagedown
+- **Editing**: delete (backspace), forward_delete, clear
+- **Control**: return, enter, tab, escape, space
+- **Function**: f1-f12
+- **Special**: caps_lock, help
 
 ### 📜 The `scroll` Tool
 

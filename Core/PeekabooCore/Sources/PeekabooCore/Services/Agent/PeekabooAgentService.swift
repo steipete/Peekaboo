@@ -353,6 +353,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         // UI automation tools
         tools.append(createClickTool())
         tools.append(createTypeTool())
+        tools.append(createPressTool())
         tools.append(createScrollTool())
         tools.append(createHotkeyTool())
 
