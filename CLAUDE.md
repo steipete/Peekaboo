@@ -741,3 +741,48 @@ When asked to test CLI tools with the Playground app, follow the comprehensive t
 
 The Playground app is specifically designed for testing Peekaboo's automation capabilities with various UI elements and logging to verify command execution.
 
+## Agent Log Debug Mode
+
+When the user types "agent log debug", analyze Peekaboo CLI logs to identify bugs and improvement opportunities. The goal is to make Peekaboo more agent-friendly.
+
+**What to Look For:**
+
+1. **Common Agent Mistakes**:
+   - Missing required parameters or incorrect parameter usage
+   - Misunderstanding of command syntax or options
+   - Attempting unsupported operations
+   - Confusion about tool capabilities or limitations
+
+2. **Actual Bugs**:
+   - Crashes, errors, or unexpected behavior
+   - Missing functionality that should exist
+   - Performance issues or timeouts
+   - Inconsistent behavior across similar commands
+
+3. **UX Improvements**:
+   - Unclear error messages that could be more helpful
+   - Missing hints or suggestions when agents make mistakes
+   - Opportunities to add guardrails or validation
+   - Places where agents get stuck in loops or retry patterns
+
+4. **Missing Features**:
+   - Common operations that require multiple steps but could be simplified
+   - Patterns where agents work around limitations
+   - Frequently attempted unsupported commands
+
+**How to Analyze:**
+
+1. Read through the entire log systematically
+2. Identify patterns of confusion or repeated attempts
+3. Note any error messages that could be clearer
+4. Look for places where the agent had to guess or try multiple approaches
+5. Consider what helpful messages or features would have prevented issues
+
+**Output Format:**
+
+- List specific bugs found with reproduction steps
+- Suggest concrete improvements to error messages
+- Recommend new features or commands based on agent behavior
+- Propose additions to system/tool prompts to guide future agents
+- Prioritize fixes by impact on agent experience
+
