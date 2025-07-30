@@ -21,8 +21,13 @@ public enum DialogError: Error {
 public final class DialogService: DialogServiceProtocol {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "DialogService")
     
+    // Visualizer client for visual feedback
+    private let visualizerClient = VisualizationClient.shared
+    
     public init() {
         logger.debug("DialogService initialized")
+        // Connect to visualizer if available
+        visualizerClient.connect()
     }
     
     public func findActiveDialog(windowTitle: String?) async throws -> DialogInfo {
@@ -74,6 +79,23 @@ public final class DialogService: DialogServiceProtocol {
             btn.title() == buttonText || btn.title()?.contains(buttonText) == true
         }) else {
             throw PeekabooError.elementNotFound("\(buttonText)")
+        }
+        
+        // Get button bounds for visual feedback
+        let buttonBounds: CGRect
+        if let position = targetButton.position(), let size = targetButton.size() {
+            buttonBounds = CGRect(origin: position, size: size)
+        } else {
+            buttonBounds = .zero
+        }
+        
+        // Show dialog interaction visual feedback
+        if buttonBounds != .zero {
+            _ = await visualizerClient.showDialogInteraction(
+                element: .button,
+                elementRect: buttonBounds,
+                action: .click
+            )
         }
         
         // Click the button
@@ -135,6 +157,23 @@ public final class DialogService: DialogServiceProtocol {
             } else {
                 // Use first field
                 targetField = textFields[0]
+            }
+            
+            // Get field bounds for visual feedback
+            let fieldBounds: CGRect
+            if let position = targetField.position(), let size = targetField.size() {
+                fieldBounds = CGRect(origin: position, size: size)
+            } else {
+                fieldBounds = .zero
+            }
+            
+            // Show dialog interaction visual feedback for text field
+            if fieldBounds != .zero {
+                _ = await visualizerClient.showDialogInteraction(
+                    element: .textField,
+                    elementRect: fieldBounds,
+                    action: .typeText
+                )
             }
             
             // Focus the field

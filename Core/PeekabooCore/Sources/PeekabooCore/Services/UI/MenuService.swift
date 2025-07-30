@@ -9,8 +9,13 @@ public final class MenuService: MenuServiceProtocol {
     
     private let applicationService: ApplicationServiceProtocol
     
+    // Visualizer client for visual feedback
+    private let visualizerClient = VisualizationClient.shared
+    
     public init(applicationService: ApplicationServiceProtocol? = nil) {
         self.applicationService = applicationService ?? ApplicationService()
+        // Connect to visualizer if available
+        visualizerClient.connect()
     }
     
     public func listMenus(for appIdentifier: String) async throws -> MenuStructure {
@@ -71,6 +76,7 @@ public final class MenuService: MenuServiceProtocol {
         
         // Navigate menu hierarchy
         var currentElement: Element = menuBar
+        var menuPath: [String] = []
         
         for (index, component) in pathComponents.enumerated() {
             // Get children of current menu
@@ -89,8 +95,14 @@ public final class MenuService: MenuServiceProtocol {
                 )
             }
             
+            // Add to menu path for visual feedback
+            menuPath.append(component)
+            
             // If this is the last component, click it
             if index == pathComponents.count - 1 {
+                // Show menu navigation visual feedback
+                _ = await visualizerClient.showMenuNavigation(menuPath: menuPath)
+                
                 do {
                     try menuItem.performAction(Attribute<String>("AXPress"))
                 } catch {

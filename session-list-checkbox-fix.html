@@ -1,0 +1,78 @@
+<!-- Example HTML structure with Tailwind v4 checkbox fix -->
+
+<!-- Option 1: Direct inline fix -->
+<div class="flex items-center space-x-2">
+  <input type="checkbox" id="show-sessions" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500" />
+  <label for="show-sessions" class="text-sm font-medium text-gray-700">Show</label>
+</div>
+
+<!-- Option 2: If you're using a component framework like React/Vue -->
+<!-- React example: -->
+<div className="session-list-header">
+  <div className="flex items-center justify-between">
+    <div className="flex space-x-4">
+      <span className="text-green-600">4 Active</span>
+      <span className="text-gray-500">4 Idle</span>
+      <span className="text-red-600">146 Exited</span>
+    </div>
+    <div className="flex items-center space-x-2">
+      <input 
+        type="checkbox" 
+        id="show-sessions" 
+        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+        checked={showSessions}
+        onChange={(e) => setShowSessions(e.target.checked)}
+      />
+      <label htmlFor="show-sessions" className="text-sm font-medium text-gray-700 cursor-pointer">
+        Show
+      </label>
+    </div>
+  </div>
+</div>
+
+<!-- Option 3: Vue.js example -->
+<template>
+  <div class="session-list-header">
+    <div class="flex items-center justify-between">
+      <div class="flex space-x-4">
+        <span class="text-green-600">{{ activeCount }} Active</span>
+        <span class="text-gray-500">{{ idleCount }} Idle</span>
+        <span class="text-red-600">{{ exitedCount }} Exited</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <input 
+          type="checkbox" 
+          id="show-sessions" 
+          class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+          v-model="showSessions"
+        />
+        <label for="show-sessions" class="text-sm font-medium text-gray-700 cursor-pointer">
+          Show
+        </label>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- CSS fix to add to your global styles -->
+<style>
+/* Global fix for all checkboxes if you prefer */
+input[type="checkbox"] {
+  @apply w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer;
+}
+
+/* Or use a specific class */
+.session-checkbox {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  border: 1px solid #d1d5db;
+  accent-color: #3b82f6;
+}
+
+.session-checkbox:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+</style>

@@ -12,9 +12,12 @@ private let USE_MODERN_SCREENCAPTURE_API = ProcessInfo.processInfo.environment["
 @MainActor
 public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     private let logger: CategoryLogger
+    private let visualizerClient = VisualizationClient.shared
     
     public init(loggingService: LoggingServiceProtocol) {
         self.logger = loggingService.logger(category: LoggingService.Category.screenCapture)
+        // Connect to visualizer if available
+        visualizerClient.connect()
     }
     
     public func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
@@ -82,6 +85,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     "imageSize": "\(image.width)x\(image.height)",
                     "dataSize": imageData.count
                 ], correlationId: correlationId)
+                
+                // Show screenshot flash animation if available
+                _ = await visualizerClient.showScreenshotFlash(in: targetDisplay.frame)
                 
                 // Create metadata
                 let metadata = CaptureMetadata(
@@ -429,6 +435,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             "imageSize": "\(image.width)x\(image.height)",
             "dataSize": imageData.count
         ], correlationId: correlationId)
+        
+        // Show screenshot flash animation if available
+        _ = await visualizerClient.showScreenshotFlash(in: targetWindow.frame)
         
         // Create metadata
         let metadata = CaptureMetadata(

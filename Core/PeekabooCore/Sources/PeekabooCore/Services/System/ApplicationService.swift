@@ -9,7 +9,13 @@ public final class ApplicationService: ApplicationServiceProtocol {
     
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ApplicationService")
     
-    public init() {}
+    // Visualizer client for visual feedback
+    private let visualizerClient = VisualizationClient.shared
+    
+    public init() {
+        // Connect to visualizer if available
+        visualizerClient.connect()
+    }
     
     public func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
         let startTime = Date()
@@ -340,6 +346,15 @@ public final class ApplicationService: ApplicationServiceProtocol {
         config.activates = true
         
         logger.debug("Launching app from URL: \(appURL.path)")
+        
+        // Extract app name and icon path
+        let appName = appURL.lastPathComponent.replacingOccurrences(of: ".app", with: "")
+        let iconPath = appURL.appendingPathComponent("Contents/Resources/AppIcon.icns").path
+        let hasIcon = FileManager.default.fileExists(atPath: iconPath)
+        
+        // Show app launch animation
+        _ = await visualizerClient.showAppLaunch(appName: appName, iconPath: hasIcon ? iconPath : nil)
+        
         // Already on main thread due to @MainActor on class
         let runningApp = try await NSWorkspace.shared.openApplication(at: appURL, configuration: config)
         
@@ -385,6 +400,18 @@ public final class ApplicationService: ApplicationServiceProtocol {
         guard let runningApp = runningApp else {
             throw PeekabooError.appNotFound(identifier)
         }
+        
+        // Try to get app icon path for animation
+        var iconPath: String? = nil
+        if let bundleURL = runningApp.bundleURL {
+            let potentialIconPath = bundleURL.appendingPathComponent("Contents/Resources/AppIcon.icns").path
+            if FileManager.default.fileExists(atPath: potentialIconPath) {
+                iconPath = potentialIconPath
+            }
+        }
+        
+        // Show app quit animation
+        _ = await visualizerClient.showAppQuit(appName: app.name, iconPath: iconPath)
         
         logger.debug("Sending \(force ? "force terminate" : "terminate") signal to \(app.name)")
         let success = force ? runningApp.forceTerminate() : runningApp.terminate()

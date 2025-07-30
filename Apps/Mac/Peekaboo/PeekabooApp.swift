@@ -116,12 +116,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var permissions: Permissions?
     private var speechRecognizer: SpeechRecognizer?
     private var agent: PeekabooAgent?
+    
+    // Visualizer components
+    private var overlayManager: OverlayManager?
+    private var visualizerCoordinator: VisualizerCoordinator?
+    private var visualizerXPCService: VisualizerXPCService?
 
     func applicationDidFinishLaunching(_: Notification) {
         self.logger.info("Peekaboo launching... (Poltergeist test)")
         
         // Initialize dock icon manager (it will set the activation policy based on settings) - Test!
         // Don't set activation policy here - let DockIconManager handle it
+        
+        // Initialize visualizer components
+        overlayManager = OverlayManager()
+        if let overlayManager = overlayManager {
+            visualizerCoordinator = VisualizerCoordinator(overlayManager: overlayManager)
+            
+            if let coordinator = visualizerCoordinator {
+                visualizerXPCService = VisualizerXPCService(visualizerCoordinator: coordinator)
+                visualizerXPCService?.start()
+                logger.info("Visualizer XPC service started")
+            }
+        }
         
         // Status bar will be created after state is connected
     }

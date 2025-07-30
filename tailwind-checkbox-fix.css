@@ -1,0 +1,62 @@
+/* Tailwind CSS v4 Checkbox Visibility Fix */
+
+/* Option 1: Global fix for all checkboxes */
+input[type="checkbox"] {
+  /* Restore default sizing */
+  width: 1rem;
+  height: 1rem;
+  
+  /* Optional: Add styling for better visibility */
+  @apply cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500;
+}
+
+/* Option 2: Specific class-based approach */
+.form-checkbox {
+  @apply h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500;
+}
+
+/* Option 3: Dark mode support */
+@media (prefers-color-scheme: dark) {
+  input[type="checkbox"] {
+    @apply border-gray-600 bg-gray-700;
+  }
+}
+
+/* Option 4: Custom checkbox with explicit dimensions */
+.custom-checkbox {
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid #d1d5db;
+  border-radius: 0.25rem;
+  background-color: white;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease-in-out;
+}
+
+.custom-checkbox:checked {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.custom-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: bold;
+}
+
+.custom-checkbox:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+/* Option 5: Inline styles as a quick fix */
+/* Add this directly to your checkbox element:
+   style="width: 1rem; height: 1rem;"
+*/

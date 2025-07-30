@@ -43,5 +43,10 @@
             </dict>
         </dict>
     </dict>
+    <key>MachServices</key>
+    <dict>
+        <key>boo.peekaboo.visualizer</key>
+        <true/>
+    </dict>
 </dict>
 </plist>

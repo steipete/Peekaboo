@@ -20,6 +20,9 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     private let hotkeyService: HotkeyService
     private let gestureService: GestureService
     
+    // Visualizer client for visual feedback
+    private let visualizerClient = VisualizationClient.shared
+    
     public init(sessionManager: SessionManagerProtocol? = nil) {
         let manager = sessionManager ?? SessionManager()
         self.sessionManager = manager
@@ -31,6 +34,9 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         self.scrollService = ScrollService(sessionManager: manager, clickService: nil)
         self.hotkeyService = HotkeyService()
         self.gestureService = GestureService()
+        
+        // Connect to visualizer if available
+        visualizerClient.connect()
     }
     
     // MARK: - Element Detection
@@ -45,6 +51,29 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     public func click(target: ClickTarget, clickType: ClickType, sessionId: String?) async throws {
         logger.debug("Delegating click to ClickService")
         try await clickService.click(target: target, clickType: clickType, sessionId: sessionId)
+        
+        // Show visual feedback if available
+        if let clickPoint = try await getClickPoint(for: target, sessionId: sessionId) {
+            _ = await visualizerClient.showClickFeedback(at: clickPoint, type: clickType)
+        }
+    }
+    
+    private func getClickPoint(for target: ClickTarget, sessionId: String?) async throws -> CGPoint? {
+        switch target {
+        case .coordinates(let point):
+            return point
+        case .elementId(let id):
+            if let sessionId = sessionId,
+               let result = try? await sessionManager.getDetectionResult(sessionId: sessionId),
+               let element = result.elements.findById(id) {
+                return CGPoint(x: element.rect.midX, y: element.rect.midY)
+            }
+        case .query:
+            // For queries, we don't have easy access to the clicked element's position
+            // The click service would need to expose this information
+            return nil
+        }
+        return nil
     }
     
     // MARK: - Typing Operations
@@ -58,6 +87,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             typingDelay: typingDelay,
             sessionId: sessionId
         )
+        
+        // Show visual feedback if available
+        let keys = Array(text).map { String($0) }
+        _ = await visualizerClient.showTypingFeedback(keys: keys, duration: 2.0)
     }
     
     public func typeActions(_ actions: [TypeAction], typingDelay: Int, sessionId: String?) async throws -> TypeResult {
@@ -77,6 +110,11 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             delay: delay,
             sessionId: sessionId
         )
+        
+        // Show visual feedback if available
+        // Get current mouse location for scroll indicator
+        let mouseLocation = NSEvent.mouseLocation
+        _ = await visualizerClient.showScrollFeedback(at: mouseLocation, direction: direction, amount: amount)
     }
     
     // MARK: - Hotkey Operations
@@ -84,6 +122,10 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     public func hotkey(keys: String, holdDuration: Int) async throws {
         logger.debug("Delegating hotkey to HotkeyService")
         try await hotkeyService.hotkey(keys: keys, holdDuration: holdDuration)
+        
+        // Show visual feedback if available
+        let keyArray = keys.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+        _ = await visualizerClient.showHotkeyDisplay(keys: keyArray, duration: 1.0)
     }
     
     // MARK: - Gesture Operations
@@ -91,6 +133,9 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     public func swipe(from: CGPoint, to: CGPoint, duration: Int, steps: Int) async throws {
         logger.debug("Delegating swipe to GestureService")
         try await gestureService.swipe(from: from, to: to, duration: duration, steps: steps)
+        
+        // Show visual feedback if available
+        _ = await visualizerClient.showSwipeGesture(from: from, to: to, duration: TimeInterval(duration) / 1000.0)
     }
     
     public func drag(from: CGPoint, to: CGPoint, duration: Int, steps: Int, modifiers: String?) async throws {
@@ -106,7 +151,14 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     
     public func moveMouse(to: CGPoint, duration: Int, steps: Int) async throws {
         logger.debug("Delegating moveMouse to GestureService")
+        
+        // Get current mouse position for the animation start point
+        let fromPoint = NSEvent.mouseLocation
+        
         try await gestureService.moveMouse(to: to, duration: duration, steps: steps)
+        
+        // Show visual feedback if available
+        _ = await visualizerClient.showMouseMovement(from: fromPoint, to: to, duration: TimeInterval(duration) / 1000.0)
     }
     
     // MARK: - Accessibility and Focus

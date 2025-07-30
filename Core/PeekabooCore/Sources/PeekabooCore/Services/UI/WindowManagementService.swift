@@ -11,13 +11,35 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     private let applicationService: ApplicationServiceProtocol
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowManagementService")
     
+    // Visualizer client for visual feedback
+    private let visualizerClient = VisualizationClient.shared
+    
     public init(applicationService: ApplicationServiceProtocol? = nil) {
         self.applicationService = applicationService ?? ApplicationService()
+        // Connect to visualizer if available
+        visualizerClient.connect()
     }
     
     public func closeWindow(target: WindowTarget) async throws {
+        // Get window bounds for animation
+        var windowBounds: CGRect? = nil
+        
         let success = try await performWindowOperation(target: target) { window in
-            window.closeWindow()
+            // Get window bounds before closing
+            if let position = window.position(), let size = window.size() {
+                windowBounds = CGRect(origin: position, size: size)
+            }
+            
+            let result = window.closeWindow()
+            
+            // Show close animation if we have bounds
+            if let bounds = windowBounds {
+                Task {
+                    _ = await self.visualizerClient.showWindowOperation(.close, windowRect: bounds, duration: 0.5)
+                }
+            }
+            
+            return result
         }
         
         if !success {
@@ -29,8 +51,25 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func minimizeWindow(target: WindowTarget) async throws {
+        // Get window bounds for animation
+        var windowBounds: CGRect? = nil
+        
         let success = try await performWindowOperation(target: target) { window in
-            window.minimizeWindow()
+            // Get window bounds before minimizing
+            if let position = window.position(), let size = window.size() {
+                windowBounds = CGRect(origin: position, size: size)
+            }
+            
+            let result = window.minimizeWindow()
+            
+            // Show minimize animation if we have bounds
+            if let bounds = windowBounds {
+                Task {
+                    _ = await self.visualizerClient.showWindowOperation(.minimize, windowRect: bounds, duration: 0.5)
+                }
+            }
+            
+            return result
         }
         
         if !success {
@@ -42,8 +81,25 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func maximizeWindow(target: WindowTarget) async throws {
+        // Get window bounds for animation
+        var windowBounds: CGRect? = nil
+        
         let success = try await performWindowOperation(target: target) { window in
-            window.maximizeWindow()
+            // Get window bounds before maximizing
+            if let position = window.position(), let size = window.size() {
+                windowBounds = CGRect(origin: position, size: size)
+            }
+            
+            let result = window.maximizeWindow()
+            
+            // Show maximize animation if we have bounds
+            if let bounds = windowBounds {
+                Task {
+                    _ = await self.visualizerClient.showWindowOperation(.maximize, windowRect: bounds, duration: 0.5)
+                }
+            }
+            
+            return result
         }
         
         if !success {
@@ -55,8 +111,27 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func moveWindow(target: WindowTarget, to position: CGPoint) async throws {
+        // Get window bounds for animation
+        var windowBounds: CGRect? = nil
+        
         let success = try await performWindowOperation(target: target) { window in
-            window.moveWindow(to: position)
+            // Get window bounds before moving
+            if let currentPosition = window.position(), let size = window.size() {
+                windowBounds = CGRect(origin: currentPosition, size: size)
+            }
+            
+            let result = window.moveWindow(to: position)
+            
+            // Show move animation if we have bounds
+            if let bounds = windowBounds {
+                // Create new bounds at target position
+                let newBounds = CGRect(origin: position, size: bounds.size)
+                Task {
+                    _ = await self.visualizerClient.showWindowOperation(.move, windowRect: newBounds, duration: 0.5)
+                }
+            }
+            
+            return result
         }
         
         if !success {
@@ -68,8 +143,25 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     }
     
     public func resizeWindow(target: WindowTarget, to size: CGSize) async throws {
+        // Get window bounds for animation
+        var windowBounds: CGRect? = nil
+        
         let success = try await performWindowOperation(target: target) { window in
-            window.resizeWindow(to: size)
+            // Get window position before resizing
+            if let position = window.position() {
+                windowBounds = CGRect(origin: position, size: size)
+            }
+            
+            let result = window.resizeWindow(to: size)
+            
+            // Show resize animation if we have bounds
+            if let bounds = windowBounds {
+                Task {
+                    _ = await self.visualizerClient.showWindowOperation(.resize, windowRect: bounds, duration: 0.5)
+                }
+            }
+            
+            return result
         }
         
         if !success {
@@ -82,7 +174,14 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     
     public func setWindowBounds(target: WindowTarget, bounds: CGRect) async throws {
         let success = try await performWindowOperation(target: target) { window in
-            window.setWindowBounds(bounds)
+            let result = window.setWindowBounds(bounds)
+            
+            // Show bounds animation after setting
+            Task {
+                _ = await self.visualizerClient.showWindowOperation(.setBounds, windowRect: bounds, duration: 0.5)
+            }
+            
+            return result
         }
         
         if !success {
@@ -98,13 +197,29 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         logger.info("Attempting to focus window with target: \(target)")
         logger.debug("WindowManagementService.focusWindow called with target: \(target)")
         
+        // Get window bounds for animation
+        var windowBounds: CGRect? = nil
+        
         let success = try await performWindowOperation(target: target) { window in
+            // Get window bounds for focus animation
+            if let position = window.position(), let size = window.size() {
+                windowBounds = CGRect(origin: position, size: size)
+            }
+            
             logger.debug("About to call window.focusWindow()")
             let result = window.focusWindow()
             logger.debug("window.focusWindow() returned: \(result)")
             if !result {
                 self.logger.error("focusWindow() returned false for window")
             }
+            
+            // Show focus animation if we have bounds
+            if let bounds = windowBounds {
+                Task {
+                    _ = await self.visualizerClient.showWindowOperation(.focus, windowRect: bounds, duration: 0.5)
+                }
+            }
+            
             return result
         }
         
