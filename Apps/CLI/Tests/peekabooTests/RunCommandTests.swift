@@ -119,7 +119,7 @@ struct RunCommandTests {
 
     @Test("Script JSON parsing")
     func scriptJSONParsing() throws {
-        let jsonData = """
+        let jsonString = """
         {
             "description": "A test automation script",
             "steps": [
@@ -140,7 +140,8 @@ struct RunCommandTests {
                 }
             ]
         }
-        """.data(using: .utf8)!
+        """
+        let jsonData = Data(jsonString.utf8)
 
         let script = try JSONDecoder().decode(TestPeekabooScript.self, from: jsonData)
         #expect(script.description == "A test automation script")

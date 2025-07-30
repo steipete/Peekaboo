@@ -5,9 +5,8 @@ import PeekabooCore
 
 // Simple stderr logging function
 func logError(_ message: String) {
-    if let data = "\(message)\n".data(using: .utf8) {
-        FileHandle.standardError.write(data)
-    }
+    let data = Data("\(message)\n".utf8)
+    FileHandle.standardError.write(data)
 }
 
 /// Main command-line interface for Peekaboo.
@@ -17,7 +16,8 @@ func logError(_ message: String) {
 struct Peekaboo: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "peekaboo",
-        abstract: "Lightning-fast macOS screenshots, AI vision analysis, and GUI automation with intelligent focus management",
+        abstract: "Lightning-fast macOS screenshots, AI vision analysis, " +
+                  "and GUI automation with intelligent focus management",
         discussion: """
         VERSION: \(Version.fullVersion)
 

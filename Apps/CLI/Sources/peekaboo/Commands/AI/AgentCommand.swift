@@ -1710,8 +1710,9 @@ final class CompactEventDelegate: AgentEventDelegate {
                 }
                 // Show error message with exit code on same line
                 let exitCode = json["exitCode"] as? Int ?? 0
+                let errorMsg = error.trimmingCharacters(in: .whitespacesAndNewlines)
                 print(
-                    "   \(TerminalColor.red)Error (Exit code: \(exitCode)): \(error.trimmingCharacters(in: .whitespacesAndNewlines))\(TerminalColor.reset)"
+                    "   \(TerminalColor.red)Error (Exit code: \(exitCode)): \(errorMsg)\(TerminalColor.reset)"
                 )
             default:
                 // For other tools, just show the error

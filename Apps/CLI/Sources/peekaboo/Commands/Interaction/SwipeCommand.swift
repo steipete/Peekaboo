@@ -83,7 +83,8 @@ struct SwipeCommand: AsyncParsableCommand {
             if self.rightButton {
                 throw ArgumentParser
                     .ValidationError(
-                        "Right-button swipe is not currently supported. Please use the standard swipe command for right-button gestures."
+                        "Right-button swipe is not currently supported. " +
+                        "Please use the standard swipe command for right-button gestures."
                     )
             }
 

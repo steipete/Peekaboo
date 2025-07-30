@@ -53,7 +53,7 @@ struct ClickCommandFocusTests {
 
         // Create a basic click command with all options
         var args = ["click", "100", "100", "--json-output"]
-        args.append(contentsOf: focusOptions.flatMap { [$0] }.enumerated().compactMap { _, arg in
+        args.append(contentsOf: focusOptions.flatMap { [$0] }.compactMap { arg in
             // Add values for options that need them
             if arg == "--focus-timeout" { return ["--focus-timeout", "3.0"] }
             if arg == "--focus-retry-count" { return ["--focus-retry-count", "5"] }

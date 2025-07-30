@@ -5,11 +5,11 @@ import Testing
 @Suite("Version Tests")
 struct VersionTests {
     @Test("Version follows semantic versioning format")
-    func semanticVersioningFormat() {
+    func semanticVersioningFormat() throws {
         let version = Version.current
 
         // Version should be in format "Peekaboo X.Y.Z" or "Peekaboo X.Y.Z-prerelease"
-        let versionRegex = try! NSRegularExpression(pattern: #"^Peekaboo \d+\.\d+\.\d+(-[\w\.]+)?$"#)
+        let versionRegex = try NSRegularExpression(pattern: #"^Peekaboo \d+\.\d+\.\d+(-[\w\.]+)?$"#)
         let range = NSRange(location: 0, length: version.utf16.count)
         let matches = versionRegex.matches(in: version, range: range)
 
