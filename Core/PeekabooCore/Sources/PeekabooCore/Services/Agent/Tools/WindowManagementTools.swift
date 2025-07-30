@@ -181,11 +181,14 @@ extension PeekabooAgentService {
                 // Get windows more efficiently based on search criteria
                 var windows: [ServiceWindowInfo] = []
 
-                if let appName {
-                    // If app is specified, only search that app
+                if let appName, let title {
+                    // OPTIMIZED: Use the new applicationAndTitle case for efficient searching
+                    windows = try await context.windows.listWindows(target: .applicationAndTitle(app: appName, title: title))
+                } else if let appName {
+                    // If only app is specified, get all windows from that app
                     windows = try await context.windows.listWindows(target: .application(appName))
                 } else if let title {
-                    // If only title is specified, use title-based search
+                    // If only title is specified, use title-based search (searches all apps)
                     windows = try await context.windows.listWindows(target: .title(title))
                 } else {
                     // Only window ID specified - need to search all apps
@@ -306,6 +309,24 @@ extension PeekabooAgentService {
                 let preset = params.string("preset", default: nil)
                 let targetScreen = params.int("target_screen", default: nil)
                 let screenPreset = params.string("screen_preset", default: nil)
+                
+                // Log the resize request for debugging
+                var searchCriteria: [String] = []
+                if let title { searchCriteria.append("title='\(title)'") }
+                if let appName { searchCriteria.append("app='\(appName)'") }
+                if let windowId { searchCriteria.append("id=\(windowId)") }
+                if frontmost { searchCriteria.append("frontmost=true") }
+                
+                var resizeParams: [String] = []
+                if let width { resizeParams.append("width=\(width)") }
+                if let height { resizeParams.append("height=\(height)") }
+                if let x { resizeParams.append("x=\(x)") }
+                if let y { resizeParams.append("y=\(y)") }
+                if let preset { resizeParams.append("preset=\(preset)") }
+                if let targetScreen { resizeParams.append("targetScreen=\(targetScreen)") }
+                if let screenPreset { resizeParams.append("screenPreset=\(screenPreset)") }
+                
+                Self.logger.info("resize_window: Searching for window with [\(searchCriteria.joined(separator: ", "))], resize params: [\(resizeParams.joined(separator: ", "))]")
 
                 // Validate that we have some way to identify the window
                 guard title != nil || appName != nil || windowId != nil || frontmost else {
@@ -348,16 +369,21 @@ extension PeekabooAgentService {
                     }
 
                     guard let found = foundWindow else {
+                        Self.logger.error("Window not found with ID \(windowId). Searched \(appsOutput.data.applications.count) applications.")
                         throw PeekabooError.windowNotFound(criteria: "window with ID \(windowId)")
                     }
                     window = found
                 } else {
                     // Search by title and/or app name
-                    if let appName {
-                        // If app is specified, only search that app
+                    if let appName, let title {
+                        // OPTIMIZED: Use the new applicationAndTitle case for efficient searching
+                        windows = try await context.windows.listWindows(target: .applicationAndTitle(app: appName, title: title))
+                        // No need to filter further - the service already filtered by title
+                    } else if let appName {
+                        // If only app is specified, get all windows from that app
                         windows = try await context.windows.listWindows(target: .application(appName))
                     } else if let title {
-                        // If only title is specified, use title-based search
+                        // If only title is specified, use title-based search (searches all apps)
                         windows = try await context.windows.listWindows(target: .title(title))
                     } else {
                         // Need to search all apps - process sequentially to avoid AX race conditions
@@ -373,7 +399,9 @@ extension PeekabooAgentService {
                             }
                         }
                     }
-                    guard let foundWindow = windows.first(where: { window in
+                    
+                    // For the optimized case where both app and title are provided, windows are already filtered
+                    guard let foundWindow = (appName != nil && title != nil) ? windows.first : windows.first(where: { window in
                         var matches = true
                         if let titleFilter = title {
                             matches = matches && window.title.lowercased().contains(titleFilter.lowercased())
@@ -389,6 +417,13 @@ extension PeekabooAgentService {
                             criteriaItems.append("app '\(appNameValue)'")
                         }
                         let criteria = criteriaItems.joined(separator: " ")
+                        
+                        // Log more helpful error message
+                        Self.logger.error("Window not found matching \(criteria). Found \(windows.count) total windows.")
+                        if windows.count > 0 {
+                            Self.logger.debug("Available windows: \(windows.map { "\($0.title) (ID: \($0.windowID))" }.joined(separator: ", "))")
+                        }
+                        
                         throw PeekabooError.windowNotFound(criteria: criteria)
                     }
                     window = foundWindow

@@ -13,7 +13,15 @@ public final class ApplicationService: ApplicationServiceProtocol {
 
     public init() {
         // Connect to visualizer if available
-        self.visualizerClient.connect()
+        // Only connect to visualizer if we're not running inside the Mac app
+        // The Mac app provides the visualizer service, not consumes it
+        let isMacApp = Bundle.main.bundleIdentifier == "boo.peekaboo.mac"
+        if !isMacApp {
+            self.logger.debug("Connecting to visualizer service (running as CLI/external tool)")
+            self.visualizerClient.connect()
+        } else {
+            self.logger.debug("Skipping visualizer connection (running inside Mac app)")
+        }
     }
 
     public func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {

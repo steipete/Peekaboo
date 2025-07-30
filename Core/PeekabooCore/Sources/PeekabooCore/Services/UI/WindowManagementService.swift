@@ -15,8 +15,16 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
 
     public init(applicationService: ApplicationServiceProtocol? = nil) {
         self.applicationService = applicationService ?? ApplicationService()
-        // Connect to visualizer if available
-        self.visualizerClient.connect()
+        
+        // Only connect to visualizer if we're not running inside the Mac app
+        // The Mac app provides the visualizer service, not consumes it
+        let isMacApp = Bundle.main.bundleIdentifier == "boo.peekaboo.mac"
+        if !isMacApp {
+            self.logger.debug("Connecting to visualizer service (running as CLI/external tool)")
+            self.visualizerClient.connect()
+        } else {
+            self.logger.debug("Skipping visualizer connection (running inside Mac app)")
+        }
     }
 
     public func closeWindow(target: WindowTarget) async throws {
@@ -140,6 +148,10 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     public func resizeWindow(target: WindowTarget, to size: CGSize) async throws {
         // Get window bounds for animation
         var windowBounds: CGRect?
+        
+        // Log the resize operation for performance debugging
+        self.logger.info("Starting resize window operation: target=\(target), size=(width: \(size.width), height: \(size.height))")
+        let startTime = Date()
 
         let success = try await performWindowOperation(target: target) { window in
             // Get window position before resizing
@@ -158,6 +170,9 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
 
             return result
         }
+
+        let elapsed = Date().timeIntervalSince(startTime)
+        self.logger.info("Resize window operation completed in \(elapsed)s")
 
         if !success {
             throw OperationError.interactionFailed(
@@ -227,6 +242,8 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
                 "window with title containing '\(title)'"
             case let .index(app, index):
                 "window at index \(index) for app '\(app)'"
+            case let .applicationAndTitle(app, title):
+                "window with title '\(title)' for app '\(app)'"
             case let .windowId(id):
                 "window with ID \(id)"
             }
@@ -259,6 +276,14 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             }
 
             return matchingWindows
+            
+        case let .applicationAndTitle(appIdentifier, titleSubstring):
+            // More efficient: only search windows of the specified app
+            let windowsOutput = try await applicationService.listWindows(for: appIdentifier)
+            let filtered = windowsOutput.data.windows.filter { window in
+                window.title.localizedCaseInsensitiveContains(titleSubstring)
+            }
+            return filtered
 
         case let .index(app, index):
             let windowsOutput = try await applicationService.listWindows(for: app)
@@ -318,6 +343,12 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             let appsOutput = try await applicationService.listApplications()
             let window = try findWindowByTitle(titleSubstring, in: appsOutput.data.applications)
             return operation(window)
+            
+        case let .applicationAndTitle(appIdentifier, titleSubstring):
+            // More efficient: only search within the specified app
+            let app = try await applicationService.findApplication(identifier: appIdentifier)
+            let window = try findWindowByTitleInApp(titleSubstring, app: app)
+            return operation(window)
 
         case let .index(appIdentifier, index):
             let app = try await applicationService.findApplication(identifier: appIdentifier)
@@ -367,22 +398,95 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
 
     @MainActor
     private func findWindowByTitle(_ titleSubstring: String, in apps: [ServiceApplicationInfo]) throws -> Element {
-        for app in apps {
-            let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        // Log the search operation
+        self.logger.info("Searching for window with title containing: '\(titleSubstring)' in \(apps.count) apps")
+        let startTime = Date()
+        
+        // First, try to find the window in the frontmost app (most common case)
+        if let frontmostApp = apps.first(where: { app in
+            // Check if this is the frontmost app by checking if it's active
+            NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier
+        }) {
+            self.logger.debug("Checking frontmost app first: \(frontmostApp.name)")
+            let axApp = AXUIElementCreateApplication(frontmostApp.processIdentifier)
             let appElement = Element(axApp)
-
+            
             if let windows = appElement.windows() {
                 for window in windows {
                     if let title = window.title(),
                        title.localizedCaseInsensitiveContains(titleSubstring)
                     {
+                        let elapsed = Date().timeIntervalSince(startTime)
+                        self.logger.info("Found window in frontmost app after \(elapsed)s")
+                        return window
+                    }
+                }
+            }
+        }
+        
+        // If not found in frontmost app, search all apps
+        var searchedApps = 0
+        var totalWindows = 0
+        
+        for app in apps {
+            searchedApps += 1
+            
+            // Skip system apps that rarely have user windows
+            if app.name.hasPrefix("com.apple.") && 
+               !["Safari", "Mail", "Notes", "Terminal", "Finder"].contains(app.name) {
+                continue
+            }
+            
+            let axApp = AXUIElementCreateApplication(app.processIdentifier)
+            let appElement = Element(axApp)
+
+            if let windows = appElement.windows() {
+                totalWindows += windows.count
+                
+                // Log progress every 5 apps to help debug performance
+                if searchedApps % 5 == 0 {
+                    let elapsed = Date().timeIntervalSince(startTime)
+                    self.logger.debug("Searched \(searchedApps) apps, \(totalWindows) windows so far (\(elapsed)s)")
+                }
+                
+                for window in windows {
+                    if let title = window.title(),
+                       title.localizedCaseInsensitiveContains(titleSubstring)
+                    {
+                        let elapsed = Date().timeIntervalSince(startTime)
+                        self.logger.info("Found window '\(title)' in app '\(app.name)' after searching \(searchedApps) apps and \(totalWindows) windows (\(elapsed)s)")
                         return window
                     }
                 }
             }
         }
 
+        let elapsed = Date().timeIntervalSince(startTime)
+        self.logger.error("Window not found after searching \(searchedApps) apps and \(totalWindows) windows (\(elapsed)s)")
         throw PeekabooError.windowNotFound()
+    }
+    
+    @MainActor
+    private func findWindowByTitleInApp(_ titleSubstring: String, app: ServiceApplicationInfo) throws -> Element {
+        self.logger.info("Searching for window with title containing: '\(titleSubstring)' in app: \(app.name)")
+        
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        let appElement = Element(axApp)
+        
+        guard let windows = appElement.windows() else {
+            throw NotFoundError.window(app: app.name)
+        }
+        
+        for window in windows {
+            if let title = window.title(),
+               title.localizedCaseInsensitiveContains(titleSubstring)
+            {
+                self.logger.info("Found window '\(title)' in app '\(app.name)'")
+                return window
+            }
+        }
+        
+        throw PeekabooError.windowNotFound(criteria: "title containing '\(titleSubstring)' in app '\(app.name)'")
     }
 
     @MainActor

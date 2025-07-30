@@ -56,6 +56,7 @@ func finalizeAndEncodeResponse(
 func encodeToJson(_ object: some Encodable) -> String? {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
+    encoder.keyEncodingStrategy = .convertToSnakeCase
 
     do {
         let data = try encoder.encode(object)

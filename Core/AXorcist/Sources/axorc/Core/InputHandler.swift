@@ -110,8 +110,7 @@ enum InputHandler {
     }
 
     private static func handleNoInput() -> ParseResult {
-        let error =
-            "No input provided. Use --stdin, --file <path>, --json <json_string>, or provide JSON as a direct argument."
+        let error = "No JSON input method specified"
         axErrorLog("No input method specified and no direct payload provided.")
         return ParseResult(jsonString: nil, sourceDescription: "No input", error: error)
     }

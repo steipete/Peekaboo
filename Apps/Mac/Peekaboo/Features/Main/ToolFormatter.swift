@@ -255,9 +255,25 @@ struct ToolFormatter {
             var parts = ["Click menu"]
             
             if let menuPath = args["menuPath"] as? String {
-                parts.append("'\(menuPath)'")
+                // Show the full menu path with proper formatting
+                let components = menuPath.components(separatedBy: " > ")
+                if components.count > 1 {
+                    let menuName = components.first ?? ""
+                    let itemName = components.last ?? ""
+                    parts.append("\(menuName) → \(itemName)")
+                } else {
+                    parts.append("'\(menuPath)'")
+                }
             } else if let path = args["path"] as? String {
-                parts.append("'\(path)'")
+                // Show the full menu path with proper formatting
+                let components = path.components(separatedBy: " > ")
+                if components.count > 1 {
+                    let menuName = components.first ?? ""
+                    let itemName = components.last ?? ""
+                    parts.append("\(menuName) → \(itemName)")
+                } else {
+                    parts.append("'\(path)'")
+                }
             }
             
             // Add app context if available
@@ -825,16 +841,35 @@ struct ToolFormatter {
         case .menuClick:
             var parts = ["Clicked"]
 
-            // Get the menu path
+            // Get the menu path with better formatting
             if let menuPath = actualResult["menuPath"] as? String {
-                parts.append("'\(menuPath)'")
+                let components = menuPath.components(separatedBy: " > ")
+                if components.count > 1 {
+                    let menuName = components.first ?? ""
+                    let itemName = components.last ?? ""
+                    parts.append("\(menuName) → \(itemName)")
+                } else {
+                    parts.append("'\(menuPath)'")
+                }
             } else if let path = actualResult["path"] as? String {
-                parts.append("'\(path)'")
+                let components = path.components(separatedBy: " > ")
+                if components.count > 1 {
+                    let menuName = components.first ?? ""
+                    let itemName = components.last ?? ""
+                    parts.append("\(menuName) → \(itemName)")
+                } else {
+                    parts.append("'\(path)'")
+                }
             }
 
             // Add app if available
             if let app = actualResult["app"] as? String {
                 parts.append("in \(app)")
+            }
+            
+            // Add keyboard shortcut if the menu item had one
+            if let shortcut = actualResult["shortcut"] as? String {
+                parts.append("(\(formatKeyboardShortcut(shortcut)))")
             }
 
             return parts.joined(separator: " ")

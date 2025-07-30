@@ -104,9 +104,16 @@ struct AXORCCommand: ParsableCommand {
         }
     }
 
-    @MainActor mutating func run() async throws {
-        fputs("AXORCMain.run: VERY FIRST LINE EXECUTED.\n", stderr)
-        fflush(stderr)
+    func run() throws {
+        try MainActor.assumeIsolated {
+            try runMain()
+        }
+    }
+    
+    @MainActor
+    private func runMain() throws {
+        // fputs("AXORCMain.run: VERY FIRST LINE EXECUTED.\n", stderr)
+        // fflush(stderr)
 
         // Configure global logger according to flags.
         if verbose {
@@ -130,14 +137,17 @@ struct AXORCCommand: ParsableCommand {
         }
 
         // For clarity in stderr output
-        fputs("AXORCMain.run: AXorc version \(axorcVersion) build \(axorcBuildStamp). Detail level: \(GlobalAXLogger.shared.detailLevel).\n", stderr)
+        if debug || verbose {
+            fputs("AXORCMain.run: AXorc version \(axorcVersion) build \(axorcBuildStamp). Detail level: \(GlobalAXLogger.shared.detailLevel).\n", stderr)
+        }
 
         // <<< TEST LOGGING START >>>
-        axErrorLog("AXORCMain.run: TEST ERROR LOG -- SHOULD ALWAYS APPEAR IN DEBUG OUTPUT IF LOGS ARE PRINTED")
-        axDebugLog("AXORCMain.run: TEST DEBUG LOG -- SHOULD APPEAR IF CLI --debug IS ON")
-        if debug {
-            fputs("AXORCMain.run: STDERR - CLI --debug IS ON. TEST LOGGING.\n", stderr)
-        }
+        // Commented out test logging that interferes with tests
+        // axErrorLog("AXORCMain.run: TEST ERROR LOG -- SHOULD ALWAYS APPEAR IN DEBUG OUTPUT IF LOGS ARE PRINTED")
+        // axDebugLog("AXORCMain.run: TEST DEBUG LOG -- SHOULD APPEAR IF CLI --debug IS ON")
+        // if debug {
+        //     fputs("AXORCMain.run: STDERR - CLI --debug IS ON. TEST LOGGING.\n", stderr)
+        // }
         // <<< TEST LOGGING END >>>
 
         let inputResult = InputHandler.parseInput(
@@ -146,13 +156,20 @@ struct AXORCCommand: ParsableCommand {
             json: json,
             directPayload: directPayload
         )
+        
+        // Set the global input source for ping responses
+        axorcInputSource = inputResult.sourceDescription
 
         let axorcistInstance = AXorcist.shared // Use the shared instance
 
         if let error = inputResult.error {
             let collectedLogs = debug ? axGetLogsAsStrings(format: .text) : nil
             let errorResponse = ErrorResponse(commandId: "input_error", error: error, debugLogs: collectedLogs)
-            if let jsonData = try? JSONEncoder().encode(errorResponse), let jsonString = String(data: jsonData, encoding: .utf8) {
+            // Use the same encoder as other responses
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            encoder.keyEncodingStrategy = .convertToSnakeCase
+            if let jsonData = try? encoder.encode(errorResponse), let jsonString = String(data: jsonData, encoding: .utf8) {
                 print(jsonString)
             } else {
                 print("{\"error\": \"Failed to encode error response\"}")
@@ -163,7 +180,10 @@ struct AXORCCommand: ParsableCommand {
         guard let jsonStringFromInput = inputResult.jsonString else {
             let collectedLogs = debug ? axGetLogsAsStrings(format: .text) : nil
             let errorResponse = ErrorResponse(commandId: "no_input", error: "No valid JSON input received", debugLogs: collectedLogs)
-            if let jsonData = try? JSONEncoder().encode(errorResponse), let jsonStr = String(data: jsonData, encoding: .utf8) {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            encoder.keyEncodingStrategy = .convertToSnakeCase
+            if let jsonData = try? encoder.encode(errorResponse), let jsonStr = String(data: jsonData, encoding: .utf8) {
                 print(jsonStr)
             } else {
                 print("{\"error\": \"Failed to encode error response\"}")
@@ -198,7 +218,10 @@ struct AXORCCommand: ParsableCommand {
                         error: "Failed to decode JSON input: \(singleDecodeError.localizedDescription)",
                         debugLogs: debug ? axGetLogsAsStrings() : nil
                     )
-                    if let jsonData = try? JSONEncoder().encode(errorResponse), let jsonErrorString = String(data: jsonData, encoding: .utf8) {
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = [.sortedKeys]
+                    encoder.keyEncodingStrategy = .convertToSnakeCase
+                    if let jsonData = try? encoder.encode(errorResponse), let jsonErrorString = String(data: jsonData, encoding: .utf8) {
                         print(jsonErrorString)
                     } else {
                         print("{\"error\": \"Failed to encode decode error response: \(singleDecodeError.localizedDescription)\"}")
@@ -209,7 +232,10 @@ struct AXORCCommand: ParsableCommand {
         } else {
             axDebugLog("AXORCMain Test: Failed to convert jsonStringFromInput to data.")
             let errorResponse = ErrorResponse(commandId: "data_conversion_error", error: "Failed to convert JSON string to data", debugLogs: debug ? axGetLogsAsStrings() : nil)
-            if let jsonData = try? JSONEncoder().encode(errorResponse), let jsonErrorString = String(data: jsonData, encoding: .utf8) {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            encoder.keyEncodingStrategy = .convertToSnakeCase
+            if let jsonData = try? encoder.encode(errorResponse), let jsonErrorString = String(data: jsonData, encoding: .utf8) {
                 print(jsonErrorString)
             } else {
                 print("{\"error\": \"Failed to encode data conversion error response\"}")

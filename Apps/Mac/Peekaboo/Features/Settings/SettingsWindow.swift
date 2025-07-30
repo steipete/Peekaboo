@@ -1,5 +1,6 @@
 import Observation
 import SwiftUI
+import AppKit
 
 struct SettingsWindow: View {
     @Environment(PeekabooSettings.self) private var settings
@@ -17,7 +18,7 @@ struct SettingsWindow: View {
                     Label("AI", systemImage: "brain")
                 }
             
-            VisualizerSettingsView(settings: settings)
+            VisualizerSettingsTabView()
                 .tabItem {
                     Label("Visualizer", systemImage: "sparkles")
                 }
@@ -332,6 +333,52 @@ struct AISettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+    }
+}
+
+// MARK: - Visualizer Settings Tab Wrapper
+
+struct VisualizerSettingsTabView: View {
+    @Environment(PeekabooSettings.self) private var settings
+    @State private var showVisualizerError = false
+    
+    var body: some View {
+        Group {
+            if let appDelegate = NSApp.delegate as? AppDelegate,
+               let visualizerCoordinator = appDelegate.visualizerCoordinator {
+                VisualizerSettingsView(settings: settings)
+                    .environmentObject(visualizerCoordinator)
+            } else {
+                VStack(spacing: 20) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.largeTitle)
+                        .foregroundColor(.orange)
+                    
+                    Text("Visualizer Not Available")
+                        .font(.headline)
+                    
+                    Text("The visualizer coordinator is not initialized. Please restart the app.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    
+                    Button("Check Again") {
+                        showVisualizerError = true
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .alert("Visualizer Status", isPresented: $showVisualizerError) {
+                    Button("OK") { }
+                } message: {
+                    if NSApp.delegate as? AppDelegate != nil {
+                        Text("App delegate found but visualizer coordinator is not initialized.")
+                    } else {
+                        Text("App delegate not available.")
+                    }
+                }
+            }
+        }
     }
 }
 

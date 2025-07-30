@@ -51,8 +51,8 @@ final class StatusBarController: NSObject {
     private func setupStatusItem() {
         guard let button = statusItem.button else { return }
 
-        // Use our custom ghost icon
-        button.image = GhostMenuIcon.createIcon()
+        // Use the MenuIcon asset
+        button.image = NSImage(named: "MenuIcon")
         button.image?.isTemplate = true
         button.action = #selector(self.statusItemClicked)
         button.target = self
@@ -101,21 +101,8 @@ final class StatusBarController: NSObject {
         if self.popover.isShown {
             self.popover.performClose(nil)
         } else {
-            // Recreate the content view to ensure fresh state
-            let contentView = MenuBarStatusView()
-                .environment(self.agent)
-                .environment(self.sessionStore)
-                .environment(self.speechRecognizer)
-
-            self.popover.contentViewController = NSHostingController(rootView: contentView)
-
             guard let button = statusItem.button else { return }
             self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-
-            // Focus on input field
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.popover.contentViewController?.view.window?.makeFirstResponder(nil)
-            }
         }
     }
 
@@ -256,26 +243,11 @@ final class StatusBarController: NSObject {
                 // Update animation state based on agent processing
                 self.animationController.updateAnimationState()
 
-                // If popover is shown and agent state changed, refresh its content
-                if self.popover.isShown {
-                    // Delay slightly to ensure all state updates are propagated
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        self.refreshPopoverContent()
-                    }
-                }
-
+                // The MenuBarStatusView already observes these properties internally
+                // so we don't need to refresh the entire popover content
                 self.observeAgentState() // Continue observing
             }
         }
-    }
-
-    private func refreshPopoverContent() {
-        let contentView = MenuBarStatusView()
-            .environment(self.agent)
-            .environment(self.sessionStore)
-            .environment(self.speechRecognizer)
-
-        self.popover.contentViewController = NSHostingController(rootView: contentView)
     }
 }
 

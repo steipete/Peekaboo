@@ -2,11 +2,13 @@ import AppKit
 import AXorcist
 import CoreGraphics
 import Foundation
+import os
 
 /// Default implementation of menu interaction operations
 @MainActor
 public final class MenuService: MenuServiceProtocol {
     private let applicationService: ApplicationServiceProtocol
+    private let logger = Logger(subsystem: "boo.peekaboo.core", category: "MenuService")
 
     // Visualizer client for visual feedback
     private let visualizerClient = VisualizationClient.shared
@@ -14,7 +16,15 @@ public final class MenuService: MenuServiceProtocol {
     public init(applicationService: ApplicationServiceProtocol? = nil) {
         self.applicationService = applicationService ?? ApplicationService()
         // Connect to visualizer if available
-        self.visualizerClient.connect()
+        // Only connect to visualizer if we're not running inside the Mac app
+        // The Mac app provides the visualizer service, not consumes it
+        let isMacApp = Bundle.main.bundleIdentifier == "boo.peekaboo.mac"
+        if !isMacApp {
+            self.logger.debug("Connecting to visualizer service (running as CLI/external tool)")
+            self.visualizerClient.connect()
+        } else {
+            self.logger.debug("Skipping visualizer connection (running inside Mac app)")
+        }
     }
 
     public func listMenus(for appIdentifier: String) async throws -> MenuStructure {

@@ -14,6 +14,7 @@ struct MenuBarStatusView: View {
     @State private var isVoiceMode = false
     @State private var inputText = ""
     @State private var refreshTrigger = UUID()
+    @FocusState private var isInputFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,17 +35,20 @@ struct MenuBarStatusView: View {
                 self.activeSessionView
                     .frame(maxHeight: 350)
             } else {
-                // Empty state when no session
-                self.emptyStateView
+                // Empty state with input field
+                self.idleStateWithInput
                     .frame(minHeight: 150)
             }
 
-            Divider()
-
-            // Bottom action buttons
-            self.actionButtonsView
-                .padding()
-                .background(.regularMaterial)
+            // Only show action buttons when there's an active session
+            if self.sessionStore.currentSession != nil {
+                Divider()
+                
+                // Bottom action buttons
+                self.actionButtonsView
+                    .padding()
+                    .background(.regularMaterial)
+            }
         }
         .frame(width: 380)
         .background(.ultraThinMaterial)
@@ -54,6 +58,10 @@ struct MenuBarStatusView: View {
             DispatchQueue.main.async {
                 self.hasAppeared = true
                 self.refreshTrigger = UUID()
+                // Focus the input field when idle
+                if self.sessionStore.currentSession == nil && !self.agent.isProcessing {
+                    self.isInputFocused = true
+                }
             }
         }
         .onChange(of: self.agent.isProcessing) { _, _ in
@@ -162,82 +170,10 @@ struct MenuBarStatusView: View {
 
     private func currentSessionView(_ session: ConversationSession) -> some View {
         VStack(spacing: 0) {
-            // Tool execution history (showing recent tools)
+            // Tool execution history with animated blocks
             if !self.agent.toolExecutionHistory.isEmpty {
-                VStack(spacing: 4) {
-                    // Show current running tool prominently
-                    if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
-                        HStack(spacing: 8) {
-                            EnhancedToolIcon(
-                                toolName: currentTool.toolName,
-                                status: .running)
-                                .font(.system(size: 16))
-                                .frame(width: 20, height: 20)
-                                .background(Color.blue.opacity(0.1))
-                                .clipShape(Circle())
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(ToolFormatter.compactToolSummary(
-                                    toolName: currentTool.toolName,
-                                    arguments: currentTool.arguments))
-                                    .font(.caption)
-                                    .foregroundColor(.primary)
-                                    .lineLimit(1)
-
-                                // Show elapsed time for running tool
-                                TimeIntervalText(startTime: currentTool.timestamp)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Spacer()
-
-                            Button(action: { self.agent.cancelCurrentTask() }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.red)
-                            }
-                            .buttonStyle(.plain)
-                            .help("Cancel current task")
-                        }
-                        .padding(.horizontal)
-                        .padding(.vertical, 8)
-                        .background(Color.orange.opacity(0.1))
-                    }
-
-                    // Show recent completed tools
-                    ForEach(self.agent.toolExecutionHistory.suffix(3).reversed()) { tool in
-                        if tool.status != .running {
-                            HStack(spacing: 6) {
-                                EnhancedToolIcon(
-                                    toolName: tool.toolName,
-                                    status: tool.status)
-                                    .font(.system(size: 12))
-                                    .frame(width: 14, height: 14)
-
-                                Text(ToolFormatter.compactToolSummary(
-                                    toolName: tool.toolName,
-                                    arguments: tool.arguments))
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-
-                                Spacer()
-
-                                // Duration for completed tools
-                                if let duration = tool.duration {
-                                    Text(ToolFormatter.formatDuration(duration))
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                        .opacity(0.7)
-                                }
-                            }
-                            .padding(.horizontal)
-                            .padding(.vertical, 2)
-                            .opacity(0.7)
-                        }
-                    }
-                }
-                .background(Color.secondary.opacity(0.05))
+                CompactToolExecutionHistoryView()
+                    .environment(self.agent)
 
                 Divider()
             }
@@ -312,6 +248,7 @@ struct MenuBarStatusView: View {
                 TextField(self.agent.isProcessing ? "Ask a follow-up..." : "Ask Peekaboo...", text: self.$inputText)
                     .textFieldStyle(.plain)
                     .font(.body)
+                    .focused(self.$isInputFocused)
                     .onSubmit {
                         self.submitInput()
                     }
@@ -584,25 +521,93 @@ struct MenuBarStatusView: View {
     }
 
     @ViewBuilder
-    private var emptyStateView: some View {
+    private var idleStateWithInput: some View {
         VStack(spacing: 16) {
-            // Empty state icon
-            Image(systemName: "moon.stars")
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-                .symbolEffect(.pulse.byLayer, options: .repeating.speed(0.5))
-
-            Text("No active session")
-                .font(.headline)
-                .foregroundColor(.secondary)
-
-            Text("Start a new session or open the main window")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+            // Header with ghost icon
+            VStack(spacing: 8) {
+                Image(systemName: "moon.stars")
+                    .font(.system(size: 36))
+                    .foregroundColor(.secondary)
+                    .symbolEffect(.pulse.byLayer, options: .repeating.speed(0.5))
+                
+                Text("Ask Peekaboo")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+            }
+            .padding(.top)
+            
+            // Input field - always visible
+            HStack(spacing: 8) {
+                if self.isVoiceMode {
+                    Image(systemName: "mic.fill")
+                        .foregroundColor(.red)
+                        .font(.caption)
+                }
+                
+                TextField("What would you like me to do?", text: self.$inputText)
+                    .textFieldStyle(.plain)
+                    .font(.body)
+                    .focused(self.$isInputFocused)
+                    .onSubmit {
+                        self.submitInput()
+                    }
+                
+                Button(action: self.submitInput) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.title2)
+                }
+                .buttonStyle(.plain)
+                .disabled(self.inputText.isEmpty)
+            }
+            .padding(10)
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(8)
+            .padding(.horizontal)
+            
+            // Recent sessions if any
+            if !self.sessionStore.sessions.isEmpty {
+                Divider()
+                    .padding(.horizontal)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Recent Sessions")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal)
+                    
+                    ScrollView {
+                        VStack(spacing: 2) {
+                            ForEach(self.sessionStore.sessions.prefix(3)) { session in
+                                HStack {
+                                    Text(session.title)
+                                        .font(.caption)
+                                        .lineLimit(1)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    Text(formatSessionDuration(session))
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
+                                .cornerRadius(4)
+                                .onTapGesture {
+                                    self.sessionStore.selectSession(session)
+                                    // Don't open main window - just load the session
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .frame(maxHeight: 100)
+                }
+            }
+            
+            Spacer(minLength: 0)
         }
-        .padding()
     }
 
     @ViewBuilder
@@ -925,4 +930,144 @@ private func formatSessionDuration(_ session: ConversationSession) -> String {
     formatter.maximumUnitCount = 2
 
     return formatter.string(from: duration) ?? "0s"
+}
+
+// MARK: - Compact Tool Execution History for Menu Bar
+
+/// Compact version of tool execution history for menu bar display
+struct CompactToolExecutionHistoryView: View {
+    @Environment(PeekabooAgent.self) private var agent
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            // Show current running tool prominently
+            if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
+                HStack(spacing: 8) {
+                    // Animated tool icon
+                    EnhancedToolIcon(
+                        toolName: currentTool.toolName,
+                        status: .running)
+                        .font(.system(size: 16))
+                        .frame(width: 20, height: 20)
+                        .background(Color.accentColor.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(ToolFormatter.compactToolSummary(
+                            toolName: currentTool.toolName,
+                            arguments: currentTool.arguments))
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+
+                        // Show elapsed time with rich result info
+                        HStack(spacing: 4) {
+                            TimeIntervalText(startTime: currentTool.timestamp)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            
+                            if let metadata = currentTool.metadata["progress"] {
+                                Text("• \(metadata)")
+                                    .font(.caption2)
+                                    .foregroundColor(.accentColor)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+
+                    Spacer()
+
+                    Button(action: { agent.cancelCurrentTask() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Cancel current task")
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(6)
+            }
+
+            // Show recent completed tools with animated icons
+            ForEach(agent.toolExecutionHistory.suffix(3).reversed()) { tool in
+                if tool.status != .running {
+                    CompactToolRow(tool: tool)
+                        .transition(.asymmetric(
+                            insertion: .push(from: .bottom).combined(with: .opacity),
+                            removal: .push(from: .top).combined(with: .opacity)))
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .background(Color.secondary.opacity(0.05))
+    }
+}
+
+/// Compact row for individual tool execution
+struct CompactToolRow: View {
+    let tool: ToolExecution
+    @State private var showResult = false
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            // Animated icon
+            EnhancedToolIcon(
+                toolName: tool.toolName,
+                status: tool.status)
+                .font(.system(size: 12))
+                .frame(width: 16, height: 16)
+
+            VStack(alignment: .leading, spacing: 1) {
+                // Tool summary with rich details
+                Text(ToolFormatter.compactToolSummary(
+                    toolName: tool.toolName,
+                    arguments: tool.arguments))
+                    .font(.caption2)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                
+                // Show result if available
+                if showResult,
+                   let resultSummary = ToolFormatter.toolResultSummary(
+                       toolName: tool.toolName,
+                       result: tool.result) {
+                    Text(resultSummary)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer()
+
+            // Duration with status indicator
+            HStack(spacing: 2) {
+                if tool.status == .failed {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundColor(.red)
+                }
+                
+                if let duration = tool.duration {
+                    Text(ToolFormatter.formatDuration(duration))
+                        .font(.caption2)
+                        .foregroundColor(tool.status == .failed ? .red : .secondary)
+                        .monospacedDigit()
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 3)
+        .background(tool.status == .failed ? Color.red.opacity(0.05) : Color.clear)
+        .cornerRadius(4)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                showResult = hovering && tool.result != nil
+            }
+        }
+    }
 }

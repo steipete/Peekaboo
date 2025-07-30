@@ -63,6 +63,9 @@ public enum WindowTarget: Sendable, CustomStringConvertible {
 
     /// Target by application and window index
     case index(app: String, index: Int)
+    
+    /// Target by application and window title (more efficient than title alone)
+    case applicationAndTitle(app: String, title: String)
 
     /// Target the frontmost window
     case frontmost
@@ -78,6 +81,8 @@ public enum WindowTarget: Sendable, CustomStringConvertible {
             "title(\(title))"
         case let .index(app, index):
             "index(app: \(app), index: \(index))"
+        case let .applicationAndTitle(app, title):
+            "applicationAndTitle(app: \(app), title: \(title))"
         case .frontmost:
             "frontmost"
         case let .windowId(id):

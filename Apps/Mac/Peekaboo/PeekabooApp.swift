@@ -16,6 +16,9 @@ struct PeekabooApp: App {
     // Dependencies that need the core state
     @State private var speechRecognizer: SpeechRecognizer?
     @State private var agent: PeekabooAgent?
+    
+    // Logger
+    private let logger = Logger(subsystem: "boo.peekaboo.app", category: "PeekabooApp")
 
     var body: some Scene {
         // Hidden window to make Settings work in MenuBarExtra apps
@@ -94,18 +97,15 @@ struct PeekabooApp: App {
 
         // Settings scene
         Settings {
-            Group {
-                if let visualizerCoordinator = self.appDelegate.visualizerCoordinator {
-                    SettingsWindow()
-                        .environment(self.settings)
-                        .environment(self.permissions)
-                        .environmentObject(visualizerCoordinator)
-                } else {
-                    SettingsWindow()
-                        .environment(self.settings)
-                        .environment(self.permissions)
+            SettingsWindow()
+                .environment(self.settings)
+                .environment(self.permissions)
+                .onAppear {
+                    // Ensure visualizer coordinator is available
+                    if self.appDelegate.visualizerCoordinator == nil {
+                        self.logger.error("VisualizerCoordinator not initialized in AppDelegate")
+                    }
                 }
-            }
         }
     }
 }
