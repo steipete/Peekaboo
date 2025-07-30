@@ -36,6 +36,8 @@ extension PeekabooAgentService {
 
                 let captureResult: CaptureResult
                 let targetDescription: String
+                let detectionResult: ElementDetectionResult
+                let skipElementDetection: Bool
 
                 if let appName {
                     // Capture specific application
@@ -49,6 +51,13 @@ extension PeekabooAgentService {
                     } else {
                         targetDescription = appName
                     }
+                    
+                    // Only detect elements for specific app captures
+                    detectionResult = try await context.automation.detectElements(
+                        in: captureResult.imageData,
+                        sessionId: nil,
+                        windowContext: WindowContext(applicationName: appName, windowTitle: nil))
+                    skipElementDetection = false
                 } else {
                     // Capture entire screen
                     captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
@@ -57,13 +66,34 @@ extension PeekabooAgentService {
                     let appsOutput = try await context.applications.listApplications()
                     let visibleApps = appsOutput.data.applications.count(where: { $0.isActive || !$0.isHidden })
                     targetDescription = "entire screen (with \(visibleApps) visible apps)"
+                    
+                    // SKIP element detection for entire screen - too expensive!
+                    // Create an empty result instead
+                    detectionResult = ElementDetectionResult(
+                        sessionId: UUID().uuidString,
+                        screenshotPath: captureResult.savedPath ?? "",
+                        elements: DetectedElements(
+                            buttons: [],
+                            textFields: [],
+                            links: [],
+                            images: [],
+                            groups: [],
+                            sliders: [],
+                            checkboxes: [],
+                            menus: [],
+                            other: []
+                        ),
+                        metadata: DetectionMetadata(
+                            detectionTime: 0.0,
+                            elementCount: 0,
+                            method: "Skipped - entire screen capture",
+                            warnings: ["Element detection is disabled for entire screen captures to prevent UI freezing"],
+                            windowContext: nil,
+                            isDialog: false
+                        )
+                    )
+                    skipElementDetection = true
                 }
-
-                // Detect elements in the screenshot
-                let detectionResult = try await context.automation.detectElements(
-                    in: captureResult.imageData,
-                    sessionId: nil,
-                    windowContext: nil)
 
                 let duration = Date().timeIntervalSince(startTime)
 
@@ -89,26 +119,31 @@ extension PeekabooAgentService {
                         elements.links.count + elements.other.count
 
                     var summary = "Captured \(targetDescription) (\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height)))\n"
-                    summary += "Found: "
-
-                    var elementSummary: [String] = []
-                    if !elements.buttons.isEmpty {
-                        elementSummary.append("\(elements.buttons.count) buttons")
-                    }
-                    if !elements.textFields.isEmpty {
-                        elementSummary.append("\(elements.textFields.count) text fields")
-                    }
-                    if !elements.links.isEmpty {
-                        elementSummary.append("\(elements.links.count) links")
-                    }
-                    if !elements.other.isEmpty {
-                        elementSummary.append("\(elements.other.count) text elements")
-                    }
-
-                    if elementSummary.isEmpty {
-                        summary += "no interactive elements"
+                    
+                    if skipElementDetection {
+                        summary += "Note: Element detection skipped for entire screen captures (too expensive)\n"
                     } else {
-                        summary += elementSummary.joined(separator: ", ")
+                        summary += "Found: "
+
+                        var elementSummary: [String] = []
+                        if !elements.buttons.isEmpty {
+                            elementSummary.append("\(elements.buttons.count) buttons")
+                        }
+                        if !elements.textFields.isEmpty {
+                            elementSummary.append("\(elements.textFields.count) text fields")
+                        }
+                        if !elements.links.isEmpty {
+                            elementSummary.append("\(elements.links.count) links")
+                        }
+                        if !elements.other.isEmpty {
+                            elementSummary.append("\(elements.other.count) text elements")
+                        }
+
+                        if elementSummary.isEmpty {
+                            summary += "no interactive elements"
+                        } else {
+                            summary += elementSummary.joined(separator: ", ")
+                        }
                     }
 
                     let savedPath = captureResult.savedPath ?? detectionResult.screenshotPath
@@ -122,16 +157,22 @@ extension PeekabooAgentService {
                             "app": targetDescription,
                             "elementCount": String(totalElements),
                             "duration": String(format: "%.2fs", duration),
+                            "elementDetectionSkipped": String(skipElementDetection),
                         ])
                 }
 
                 // Full format with detailed element list
-                let elementList = formatElementList(
-                    elements,
-                    filterType: filterType ?? "all")
-
                 var fullOutput = "Captured \(targetDescription) (\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height)))\n\n"
-                fullOutput += elementList.description
+                
+                if skipElementDetection {
+                    fullOutput += "Note: Element detection is disabled for entire screen captures to prevent UI freezing.\n"
+                    fullOutput += "To analyze UI elements, please capture a specific application instead.\n"
+                } else {
+                    let elementList = formatElementList(
+                        elements,
+                        filterType: filterType ?? "all")
+                    fullOutput += elementList.description
+                }
 
                 let savedPath = captureResult.savedPath ?? detectionResult.screenshotPath
                 fullOutput += "\nSaved to: \(savedPath)"
@@ -141,9 +182,10 @@ extension PeekabooAgentService {
                     metadata: [
                         "path": captureResult.savedPath ?? detectionResult.screenshotPath,
                         "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
-                        "elementCount": String(elementList.totalCount),
+                        "elementCount": String(skipElementDetection ? 0 : formatElementList(elements, filterType: filterType ?? "all").totalCount),
                         "app": targetDescription,
                         "duration": String(format: "%.2fs", duration),
+                        "elementDetectionSkipped": String(skipElementDetection),
                     ])
             })
     }
