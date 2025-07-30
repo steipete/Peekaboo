@@ -209,10 +209,10 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
         Logger.shared.verbose("Capturing all windows for app: \(appIdentifier)")
 
         // Get window count
-        let windows = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
+        let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
         var savedFiles: [SavedFile] = []
 
-        for (index, window) in windows.enumerated() {
+        for (index, window) in windowsOutput.data.windows.enumerated() {
             Logger.shared.verbose("Capturing window \(index): \(window.title)")
 
             let result = try await PeekabooServices.shared.screenCapture.captureWindow(

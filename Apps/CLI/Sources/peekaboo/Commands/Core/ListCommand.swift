@@ -62,22 +62,14 @@ struct AppsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
             try await requireScreenRecordingPermission()
 
             // Get applications from the service
-            let serviceApps = try await PeekabooServices.shared.applications.listApplications()
+            let output = try await PeekabooServices.shared.applications.listApplications()
 
-            // Convert to CLI model format for compatibility
-            let applications = serviceApps.map { app in
-                ApplicationInfo(
-                    app_name: app.name,
-                    bundle_id: app.bundleIdentifier ?? "unknown",
-                    pid: app.processIdentifier,
-                    is_active: app.isActive,
-                    window_count: app.windowCount)
-            }
-
-            let data = ApplicationListData(applications: applications)
-
-            output(data) {
-                self.printApplicationList(applications)
+            if jsonOutput {
+                // Output full UnifiedToolOutput as JSON
+                print(try output.toJSON())
+            } else {
+                // Use CLIFormatter for human-readable output
+                print(CLIFormatter.format(output))
             }
 
         } catch {
@@ -87,29 +79,6 @@ struct AppsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
     }
 
     // Error handling is provided by ErrorHandlingCommand protocol
-
-    private func printApplicationList(_ applications: [ApplicationInfo]) {
-        let output = self.formatApplicationList(applications)
-        print(output)
-    }
-
-    func formatApplicationList(_ applications: [ApplicationInfo]) -> String {
-        var output = "Running Applications (\(applications.count)):\n\n"
-
-        for (index, app) in applications.enumerated() {
-            output += "\(index + 1). \(app.app_name)\n"
-            output += "   Bundle ID: \(app.bundle_id)\n"
-            output += "   PID: \(app.pid)\n"
-            output += "   Status: \(app.is_active ? "Active" : "Background")\n"
-            // Only show window count if it's not 1
-            if app.window_count != 1 {
-                output += "   Windows: \(app.window_count)\n"
-            }
-            output += "\n"
-        }
-
-        return output
-    }
 }
 
 /// Subcommand for listing windows of a specific application using PeekabooServices.shared.
@@ -145,38 +114,48 @@ struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
             let appIdentifier = try self.resolveApplicationIdentifier()
             
             // Find the target application using the service
-            let targetApp = try await PeekabooServices.shared.applications.findApplication(identifier: appIdentifier)
-
-            // Parse include details options
-            let detailOptions = self.parseIncludeDetails()
-
             // Get windows for the app using the service
-            let serviceWindows = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
+            let output = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
 
-            // Convert to CLI model format with requested details
-            let windows = serviceWindows.enumerated().map { _, window in
-                WindowInfo(
-                    window_title: window.title,
-                    window_id: detailOptions.contains(.ids) ? UInt32(window.windowID) : nil,
-                    bounds: detailOptions.contains(.bounds) ? WindowBounds(
-                        x: Int(window.bounds.origin.x),
-                        y: Int(window.bounds.origin.y),
-                        width: Int(window.bounds.size.width),
-                        height: Int(window.bounds.size.height)) : nil,
-                    is_on_screen: detailOptions.contains(.off_screen) ? !window.isMinimized : nil)
-            }
-
-            let targetAppInfo = TargetApplicationInfo(
-                app_name: targetApp.name,
-                bundle_id: targetApp.bundleIdentifier,
-                pid: targetApp.processIdentifier)
-
-            let data = WindowListData(
-                windows: windows,
-                target_application_info: targetAppInfo)
-
-            output(data) {
-                self.printWindowList(data)
+            if jsonOutput {
+                // For JSON output, include window details if requested
+                if includeDetails != nil {
+                    // Parse include details options
+                    let detailOptions = self.parseIncludeDetails()
+                    
+                    // Create modified output with filtered window data
+                    let modifiedWindows = output.data.windows.map { window in
+                        // Create new window with filtered data
+                        ServiceWindowInfo(
+                            windowID: detailOptions.contains(.ids) ? window.windowID : 0,
+                            title: window.title,
+                            bounds: detailOptions.contains(.bounds) ? window.bounds : .zero,
+                            isMinimized: window.isMinimized,
+                            isMainWindow: window.isMainWindow,
+                            windowLevel: window.windowLevel,
+                            alpha: window.alpha,
+                            index: window.index,
+                            spaceID: window.spaceID,
+                            spaceName: window.spaceName
+                        )
+                    }
+                    
+                    let modifiedData = ServiceWindowListData(
+                        windows: modifiedWindows,
+                        targetApplication: output.data.targetApplication
+                    )
+                    let filteredOutput = UnifiedToolOutput(
+                        data: modifiedData,
+                        summary: output.summary,
+                        metadata: output.metadata
+                    )
+                    print(try filteredOutput.toJSON())
+                } else {
+                    print(try output.toJSON())
+                }
+            } else {
+                // Use CLIFormatter for human-readable output
+                print(CLIFormatter.format(output))
             }
 
         } catch {
@@ -202,42 +181,6 @@ struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
         }
 
         return options
-    }
-
-    private func printWindowList(_ data: WindowListData) {
-        let app = data.target_application_info
-        let windows = data.windows
-
-        print("Windows for \(app.app_name)")
-        if let bundleId = app.bundle_id {
-            print("Bundle ID: \(bundleId)")
-        }
-        print("PID: \(app.pid)")
-        print("Total Windows: \(windows.count)")
-        print()
-
-        if windows.isEmpty {
-            print("No windows found.")
-            return
-        }
-
-        for (index, window) in windows.enumerated() {
-            print("\(index + 1). \"\(window.window_title)\"")
-
-            if let windowId = window.window_id {
-                print("   Window ID: \(windowId)")
-            }
-
-            if let isOnScreen = window.is_on_screen {
-                print("   On Screen: \(isOnScreen ? "Yes" : "No")")
-            }
-
-            if let bounds = window.bounds {
-                print("   Bounds: (\(bounds.x), \(bounds.y)) \(bounds.width)×\(bounds.height)")
-            }
-
-            print()
-        }
     }
 }
 

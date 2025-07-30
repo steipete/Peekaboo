@@ -491,10 +491,10 @@ struct AppCommand: AsyncParsableCommand {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
-                let apps = try await PeekabooServices.shared.applications.listApplications()
+                let appsOutput = try await PeekabooServices.shared.applications.listApplications()
                 
                 // Filter based on flags
-                let filtered = apps.filter { app in
+                let filtered = appsOutput.data.applications.filter { app in
                     if !includeHidden && app.isHidden { return false }
                     if !includeBackground && app.name.isEmpty { return false }
                     return true

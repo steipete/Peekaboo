@@ -181,10 +181,10 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                         "Searching for window with title",
                         category: "WindowSearch",
                         metadata: ["title": title])
-                    let windows = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
-                    Logger.shared.verbose("Found windows", category: "WindowSearch", metadata: ["count": windows.count])
+                    let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
+                    Logger.shared.verbose("Found windows", category: "WindowSearch", metadata: ["count": windowsOutput.data.windows.count])
 
-                    if let windowIndex = windows.firstIndex(where: { $0.title.contains(title) }) {
+                    if let windowIndex = windowsOutput.data.windows.firstIndex(where: { $0.title.contains(title) }) {
                         Logger.shared.verbose(
                             "Window found at index",
                             category: "WindowSearch",
@@ -314,17 +314,22 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
 
         // Draw into context
         NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmapRep)
+        guard let context = NSGraphicsContext(bitmapImageRep: bitmapRep) else {
+            Logger.shared.error("Failed to create graphics context")
+            throw CaptureError.captureFailure("Failed to create graphics context")
+        }
+        NSGraphicsContext.current = context
+        Logger.shared.verbose("Graphics context created successfully")
 
         // Draw original image
         nsImage.draw(in: NSRect(origin: .zero, size: imageSize))
+        Logger.shared.verbose("Original image drawn")
 
-        // Configure text attributes
-        let fontSize: CGFloat = 14
+        // Configure text attributes - smaller font
+        let fontSize: CGFloat = 10
         let textAttributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: fontSize, weight: .medium),
             .foregroundColor: NSColor.white,
-            .backgroundColor: NSColor.black.withAlphaComponent(0.8),
         ]
 
         // Role-based colors from spec
@@ -338,22 +343,49 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
         ]
 
         // Draw UI elements
-        for element in detectionResult.elements.all where element.isEnabled {
-            // Get color for element type
-            let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
-
-            // Use the bounds directly - they're already window-relative from detectElementsEnhanced
-            let elementFrame = element.bounds
-
-            // Draw bounding box
-            // Note: The element bounds are already in window-relative coordinates with top-left origin
-            // We need to flip Y for NSGraphicsContext which uses bottom-left origin
+        let enabledElements = detectionResult.elements.all.filter { $0.isEnabled }
+        Logger.shared.verbose("Drawing \(enabledElements.count) enabled elements out of \(detectionResult.elements.all.count) total")
+        Logger.shared.verbose("Image size: \(imageSize)")
+        
+        // Calculate window origin from element bounds if we have elements
+        var windowOrigin = CGPoint.zero
+        if !detectionResult.elements.all.isEmpty {
+            // Find the leftmost and topmost element to estimate window origin
+            let minX = detectionResult.elements.all.map { $0.bounds.minX }.min() ?? 0
+            let minY = detectionResult.elements.all.map { $0.bounds.minY }.min() ?? 0
+            windowOrigin = CGPoint(x: minX, y: minY)
+            Logger.shared.verbose("Estimated window origin from elements: \(windowOrigin)")
+        }
+        
+        // Convert all element bounds to window-relative coordinates and flip Y
+        var elementRects: [(element: DetectedElement, rect: NSRect)] = []
+        for element in enabledElements {
+            let elementFrame = CGRect(
+                x: element.bounds.origin.x - windowOrigin.x,
+                y: element.bounds.origin.y - windowOrigin.y,
+                width: element.bounds.width,
+                height: element.bounds.height
+            )
+            
             let rect = NSRect(
                 x: elementFrame.origin.x,
                 y: imageSize.height - elementFrame.origin.y - elementFrame.height, // Flip Y coordinate
                 width: elementFrame.width,
                 height: elementFrame.height)
+            
+            elementRects.append((element: element, rect: rect))
+        }
+        
+        // Draw elements and calculate label positions
+        var labelPositions: [(rect: NSRect, connection: NSPoint?, element: DetectedElement)] = []
+        
+        for (element, rect) in elementRects {
+            Logger.shared.verbose("Drawing element: \(element.id), type: \(element.type), original bounds: \(element.bounds), window rect: \(rect)")
+            
+            // Get color for element type
+            let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
 
+            // Draw bounding box
             color.withAlphaComponent(0.5).setFill()
             rect.fill()
 
@@ -362,22 +394,151 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             path.lineWidth = 2
             path.stroke()
 
-            // Draw element ID label
+            // Calculate label size
             let idString = NSAttributedString(string: element.id, attributes: textAttributes)
             let textSize = idString.size()
-
-            // Position label in top-left corner of element with padding
-            let labelRect = NSRect(
-                x: rect.origin.x + 4,
-                y: rect.origin.y + rect.height - textSize.height - 4,
-                width: textSize.width + 8,
-                height: textSize.height + 4)
-
+            let labelPadding: CGFloat = 4
+            let labelSize = NSSize(width: textSize.width + labelPadding * 2, height: textSize.height + labelPadding)
+            
+            // Smart label placement
+            let labelSpacing: CGFloat = 4
+            var labelRect: NSRect? = nil
+            var connectionPoint: NSPoint? = nil
+            
+            // Try positions in order: above, right, left, below, inside
+            let positions = [
+                // Above
+                NSRect(x: rect.midX - labelSize.width / 2, 
+                      y: rect.maxY + labelSpacing, 
+                      width: labelSize.width, 
+                      height: labelSize.height),
+                // Right
+                NSRect(x: rect.maxX + labelSpacing, 
+                      y: rect.midY - labelSize.height / 2, 
+                      width: labelSize.width, 
+                      height: labelSize.height),
+                // Left
+                NSRect(x: rect.minX - labelSize.width - labelSpacing, 
+                      y: rect.midY - labelSize.height / 2, 
+                      width: labelSize.width, 
+                      height: labelSize.height),
+                // Below
+                NSRect(x: rect.midX - labelSize.width / 2, 
+                      y: rect.minY - labelSize.height - labelSpacing, 
+                      width: labelSize.width, 
+                      height: labelSize.height),
+            ]
+            
+            // Check each position
+            for (index, candidateRect) in positions.enumerated() {
+                // Check if position is within image bounds
+                if candidateRect.minX >= 0 && candidateRect.maxX <= imageSize.width &&
+                   candidateRect.minY >= 0 && candidateRect.maxY <= imageSize.height {
+                    
+                    // Check if it overlaps with any other element
+                    var overlaps = false
+                    for (otherElement, otherRect) in elementRects {
+                        if otherElement.id != element.id && candidateRect.intersects(otherRect) {
+                            overlaps = true
+                            break
+                        }
+                    }
+                    
+                    // Check if it overlaps with already placed labels
+                    for (existingLabel, _, _) in labelPositions {
+                        if candidateRect.intersects(existingLabel) {
+                            overlaps = true
+                            break
+                        }
+                    }
+                    
+                    if !overlaps {
+                        labelRect = candidateRect
+                        // Set connection point based on position
+                        switch index {
+                        case 0: // Above
+                            connectionPoint = NSPoint(x: rect.midX, y: rect.maxY)
+                        case 1: // Right
+                            connectionPoint = NSPoint(x: rect.maxX, y: rect.midY)
+                        case 2: // Left
+                            connectionPoint = NSPoint(x: rect.minX, y: rect.midY)
+                        case 3: // Below
+                            connectionPoint = NSPoint(x: rect.midX, y: rect.minY)
+                        default:
+                            break
+                        }
+                        break
+                    }
+                }
+            }
+            
+            // If no external position works, place inside (top-left with minimal overlap)
+            if labelRect == nil {
+                // Try different corners inside the element
+                let insidePositions = [
+                    NSRect(x: rect.minX + 2, y: rect.maxY - labelSize.height - 2, width: labelSize.width, height: labelSize.height), // Top-left
+                    NSRect(x: rect.maxX - labelSize.width - 2, y: rect.maxY - labelSize.height - 2, width: labelSize.width, height: labelSize.height), // Top-right
+                    NSRect(x: rect.minX + 2, y: rect.minY + 2, width: labelSize.width, height: labelSize.height), // Bottom-left
+                    NSRect(x: rect.maxX - labelSize.width - 2, y: rect.minY + 2, width: labelSize.width, height: labelSize.height), // Bottom-right
+                ]
+                
+                // Pick the first one that fits
+                for candidateRect in insidePositions {
+                    if rect.contains(candidateRect) {
+                        labelRect = candidateRect
+                        connectionPoint = nil // No connection line needed for inside placement
+                        break
+                    }
+                }
+                
+                // Ultimate fallback - center of element
+                if labelRect == nil {
+                    labelRect = NSRect(
+                        x: rect.midX - labelSize.width / 2,
+                        y: rect.midY - labelSize.height / 2,
+                        width: labelSize.width,
+                        height: labelSize.height
+                    )
+                }
+            }
+            
+            if let finalLabelRect = labelRect {
+                labelPositions.append((rect: finalLabelRect, connection: connectionPoint, element: element))
+            }
+        }
+        
+        // Draw all labels and connection lines
+        for (labelRect, connectionPoint, element) in labelPositions {
+            // Draw connection line if label is outside
+            if let connection = connectionPoint {
+                NSColor.black.withAlphaComponent(0.6).setStroke()
+                let linePath = NSBezierPath()
+                linePath.lineWidth = 1
+                
+                // Draw line from connection point to nearest edge of label
+                linePath.move(to: connection)
+                
+                // Find the closest point on label rectangle to the connection point
+                let closestX = max(labelRect.minX, min(connection.x, labelRect.maxX))
+                let closestY = max(labelRect.minY, min(connection.y, labelRect.maxY))
+                linePath.line(to: NSPoint(x: closestX, y: closestY))
+                
+                linePath.stroke()
+            }
+            
             // Draw label background
-            NSColor.black.withAlphaComponent(0.8).setFill()
-            NSBezierPath(roundedRect: labelRect, xRadius: 3, yRadius: 3).fill()
-
+            NSColor.black.withAlphaComponent(0.85).setFill()
+            NSBezierPath(roundedRect: labelRect, xRadius: 2, yRadius: 2).fill()
+            
+            // Draw label border (same color as element)
+            let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
+            color.setStroke()
+            let borderPath = NSBezierPath(roundedRect: labelRect, xRadius: 2, yRadius: 2)
+            borderPath.lineWidth = 1
+            borderPath.stroke()
+            
             // Draw label text
+            let idString = NSAttributedString(string: element.id, attributes: textAttributes)
             idString.draw(at: NSPoint(x: labelRect.origin.x + 4, y: labelRect.origin.y + 2))
         }
 
