@@ -112,7 +112,8 @@ struct ConfigurationTests {
             cliValue: "cli_value",
             envVar: nil,
             configValue: "config_value",
-            defaultValue: "default_value")
+            defaultValue: "default_value"
+        )
         #expect(cliResult == "cli_value")
 
         // Environment variable takes second precedence
@@ -121,7 +122,8 @@ struct ConfigurationTests {
             cliValue: nil as String?,
             envVar: "TEST_ENV_VAR",
             configValue: "config_value",
-            defaultValue: "default_value")
+            defaultValue: "default_value"
+        )
         #expect(envResult == "env_value")
         unsetenv("TEST_ENV_VAR")
 
@@ -130,7 +132,8 @@ struct ConfigurationTests {
             cliValue: nil as String?,
             envVar: "UNDEFINED_VAR",
             configValue: "config_value",
-            defaultValue: "default_value")
+            defaultValue: "default_value"
+        )
         #expect(configResult == "config_value")
 
         // Default value as fallback
@@ -138,7 +141,8 @@ struct ConfigurationTests {
             cliValue: nil as String?,
             envVar: "UNDEFINED_VAR",
             configValue: nil as String?,
-            defaultValue: "default_value")
+            defaultValue: "default_value"
+        )
         #expect(defaultResult == "default_value")
     }
 

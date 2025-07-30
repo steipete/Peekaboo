@@ -38,7 +38,8 @@ struct ErrorHandlingTests {
             let error = NSError(
                 domain: errorDomain,
                 code: -3801,
-                userInfo: nil)
+                userInfo: nil
+            )
 
             #expect(PermissionErrorDetector.isScreenRecordingPermissionError(error) == true)
         }
@@ -48,7 +49,8 @@ struct ErrorHandlingTests {
             let error = NSError(
                 domain: NSOSStatusErrorDomain,
                 code: -25201, // CGWindowListCreateImage permission error
-                userInfo: nil)
+                userInfo: nil
+            )
 
             #expect(PermissionErrorDetector.isScreenRecordingPermissionError(error) == true)
         }
@@ -58,14 +60,16 @@ struct ErrorHandlingTests {
             let genericError = NSError(
                 domain: "com.example.error",
                 code: 123,
-                userInfo: nil)
+                userInfo: nil
+            )
 
             #expect(PermissionErrorDetector.isScreenRecordingPermissionError(genericError) == false)
 
             let wrongCode = NSError(
                 domain: "com.apple.screencapturekit.stream",
                 code: -1234, // Wrong code
-                userInfo: nil)
+                userInfo: nil
+            )
 
             #expect(PermissionErrorDetector.isScreenRecordingPermissionError(wrongCode) == false)
         }
@@ -150,7 +154,8 @@ struct ErrorHandlingTests {
                 success: true,
                 data: ["path": "/tmp/screenshot.png", "size": 1024],
                 messages: ["Screenshot captured successfully"],
-                debugLogs: ["Starting capture", "Capture complete"])
+                debugLogs: ["Starting capture", "Capture complete"]
+            )
 
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys]
@@ -172,11 +177,13 @@ struct ErrorHandlingTests {
             let errorInfo = ErrorInfo(
                 message: "Screen recording permission denied",
                 code: .PERMISSION_ERROR_SCREEN_RECORDING,
-                details: "Grant permission in System Settings")
+                details: "Grant permission in System Settings"
+            )
 
             let response = JSONResponse(
                 success: false,
-                error: errorInfo)
+                error: errorInfo
+            )
 
             let data = try JSONEncoder().encode(response)
             let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]

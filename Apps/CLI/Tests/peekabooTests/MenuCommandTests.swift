@@ -85,7 +85,11 @@ struct MenuCommandTests {
 
 // MARK: - Menu Command Integration Tests
 
-@Suite("Menu Command Integration Tests", .serialized, .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+@Suite(
+    "Menu Command Integration Tests",
+    .serialized,
+    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+)
 struct MenuCommandIntegrationTests {
     @Test("Click menu item in Finder")
     func clickFinderMenuItem() async throws {
@@ -113,8 +117,7 @@ struct MenuCommandIntegrationTests {
 
         if let menuData = data.data,
            let dict = menuData.value as? [String: Any],
-           let structure = dict["menu_structure"] as? [[String: Any]]
-        {
+           let structure = dict["menu_structure"] as? [[String: Any]] {
             #expect(!structure.isEmpty)
 
             // Check for standard menus

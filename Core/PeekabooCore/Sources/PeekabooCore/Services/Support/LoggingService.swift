@@ -7,37 +7,37 @@ public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
     private var loggers: [String: Logger]
     private let queue = DispatchQueue(label: "boo.peekaboo.logging", attributes: .concurrent)
     private var performanceMeasurements = [String: (startTime: Date, operation: String, correlationId: String?)]()
-    
+
     public var minimumLogLevel: LogLevel = .info {
         didSet {
-            queue.async(flags: .barrier) {
+            self.queue.async(flags: .barrier) {
                 self.updateLogLevel()
             }
         }
     }
-    
+
     /// Initialize with subsystem identifier
     public init(subsystem: String = "boo.peekaboo.core") {
         self.subsystem = subsystem
         self.loggers = [:]
-        
+
         // Set initial log level from environment
         if let envLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
             switch envLevel {
-            case "trace": minimumLogLevel = .trace
-            case "debug": minimumLogLevel = .debug
-            case "info": minimumLogLevel = .info
-            case "warning", "warn": minimumLogLevel = .warning
-            case "error": minimumLogLevel = .error
-            case "critical": minimumLogLevel = .critical
+            case "trace": self.minimumLogLevel = .trace
+            case "debug": self.minimumLogLevel = .debug
+            case "info": self.minimumLogLevel = .info
+            case "warning", "warn": self.minimumLogLevel = .warning
+            case "error": self.minimumLogLevel = .error
+            case "critical": self.minimumLogLevel = .critical
             default: break
             }
         }
     }
-    
+
     /// Get or create a Logger for the specified category
     private func logger(for category: String) -> Logger {
-        queue.sync {
+        self.queue.sync {
             if let logger = loggers[category] {
                 return logger
             }
@@ -45,20 +45,20 @@ public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
             return logger
         }
     }
-    
+
     /// Store a logger for reuse
     private func storeLogger(_ logger: Logger, for category: String) {
-        queue.async(flags: .barrier) {
+        self.queue.async(flags: .barrier) {
             self.loggers[category] = logger
         }
     }
-    
+
     public func log(_ entry: LogEntry) {
-        guard entry.level >= minimumLogLevel else { return }
-        
+        guard entry.level >= self.minimumLogLevel else { return }
+
         let logger = logger(for: entry.category)
-        storeLogger(logger, for: entry.category)
-        
+        self.storeLogger(logger, for: entry.category)
+
         // Convert metadata to structured format
         var logMessage = entry.message
         if !entry.metadata.isEmpty {
@@ -67,11 +67,11 @@ public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
                 .joined(separator: " ")
             logMessage += " | \(metadataString)"
         }
-        
+
         if let correlationId = entry.correlationId {
             logMessage = "[\(correlationId)] \(logMessage)"
         }
-        
+
         // Log at appropriate level
         switch entry.level {
         case .trace:
@@ -88,45 +88,44 @@ public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
             logger.critical("\(logMessage)")
         }
     }
-    
+
     public func startPerformanceMeasurement(operation: String, correlationId: String?) -> String {
         let measurementId = UUID().uuidString
-        queue.async(flags: .barrier) {
+        self.queue.async(flags: .barrier) {
             self.performanceMeasurements[measurementId] = (Date(), operation, correlationId)
         }
         return measurementId
     }
-    
+
     public func endPerformanceMeasurement(measurementId: String, metadata: [String: Any] = [:]) {
-        queue.sync {
+        self.queue.sync {
             guard let measurement = performanceMeasurements[measurementId] else {
                 return
             }
-            
+
             let duration = Date().timeIntervalSince(measurement.startTime)
             var performanceMetadata = metadata
             performanceMetadata["duration_ms"] = Int(duration * 1000)
             performanceMetadata["operation"] = measurement.operation
-            
+
             let level: LogLevel = duration > 1.0 ? .warning : .debug
-            log(LogEntry(
+            self.log(LogEntry(
                 level: level,
                 message: "Performance: \(measurement.operation) completed",
                 category: "Performance",
                 metadata: performanceMetadata,
-                correlationId: measurement.correlationId
-            ))
+                correlationId: measurement.correlationId))
         }
-        
-        queue.async(flags: .barrier) {
+
+        self.queue.async(flags: .barrier) {
             self.performanceMeasurements.removeValue(forKey: measurementId)
         }
     }
-    
+
     public func logger(category: String) -> CategoryLogger {
         CategoryLogger(service: self, category: category)
     }
-    
+
     private func updateLogLevel() {
         // This is where we could update os.log settings if Apple provided an API for it
         // For now, we just use our internal minimumLogLevel for filtering
@@ -134,8 +133,8 @@ public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
 }
 
 /// Standard log categories for Peekaboo
-public extension LoggingService {
-    enum Category {
+extension LoggingService {
+    public enum Category {
         static let screenCapture = "ScreenCapture"
         static let automation = "Automation"
         static let windows = "Windows"
@@ -159,33 +158,32 @@ public final class MockLoggingService: LoggingServiceProtocol, @unchecked Sendab
     public var minimumLogLevel: LogLevel = .trace
     public var loggedEntries: [LogEntry] = []
     public var performanceMeasurements: [String: (startTime: Date, operation: String)] = [:]
-    
+
     public func log(_ entry: LogEntry) {
-        guard entry.level >= minimumLogLevel else { return }
-        loggedEntries.append(entry)
+        guard entry.level >= self.minimumLogLevel else { return }
+        self.loggedEntries.append(entry)
     }
-    
+
     public func startPerformanceMeasurement(operation: String, correlationId: String?) -> String {
         let id = UUID().uuidString
-        performanceMeasurements[id] = (Date(), operation)
+        self.performanceMeasurements[id] = (Date(), operation)
         return id
     }
-    
+
     public func endPerformanceMeasurement(measurementId: String, metadata: [String: Any]) {
         if let measurement = performanceMeasurements.removeValue(forKey: measurementId) {
             let duration = Date().timeIntervalSince(measurement.startTime)
             var perfMetadata = metadata
             perfMetadata["duration_ms"] = Int(duration * 1000)
-            
-            log(LogEntry(
+
+            self.log(LogEntry(
                 level: .debug,
                 message: "Performance: \(measurement.operation) completed",
                 category: "Performance",
-                metadata: perfMetadata
-            ))
+                metadata: perfMetadata))
         }
     }
-    
+
     public func logger(category: String) -> CategoryLogger {
         CategoryLogger(service: self, category: category)
     }

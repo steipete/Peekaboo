@@ -7,87 +7,87 @@ public final class PeekabooServices: @unchecked Sendable {
     /// Shared instance for convenience
     @MainActor
     public static let shared = PeekabooServices.createShared()
-    
+
     /// Logger for service initialization and operations
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "Services")
-    
+
     /// Unified logging service
     public let logging: LoggingServiceProtocol
-    
+
     /// Screen capture operations
     public let screenCapture: ScreenCaptureServiceProtocol
-    
+
     /// Application and window queries
     public let applications: ApplicationServiceProtocol
-    
+
     /// UI automation operations
     public let automation: UIAutomationServiceProtocol
-    
+
     /// Window management operations
     public let windows: WindowManagementServiceProtocol
-    
+
     /// Menu interaction operations
     public let menu: MenuServiceProtocol
-    
+
     /// Dock interaction operations
     public let dock: DockServiceProtocol
-    
+
     /// Dialog interaction operations
     public let dialogs: DialogServiceProtocol
-    
+
     /// Session management
     public let sessions: SessionManagerProtocol
-    
+
     /// File system operations
     public let files: FileServiceProtocol
-    
+
     /// Configuration management
     public let configuration: ConfigurationManager
-    
+
     /// Process/script execution service
     public let process: ProcessServiceProtocol
-    
+
     /// Permissions checking service
     public let permissions: PermissionsService
-    
+
     /// Agent service for AI-powered automation
     public private(set) var agent: AgentServiceProtocol?
-    
+
     /// Audio input service for voice commands and audio transcription
     public let audioInput: AudioInputServiceProtocol
-    
+
     /// Lock for thread-safe agent updates
     private let agentLock = NSLock()
-    
+
     /// Initialize with default service implementations
     @MainActor
     public init() {
-        logger.info("🚀 Initializing PeekabooServices with default implementations")
-        
+        self.logger.info("🚀 Initializing PeekabooServices with default implementations")
+
         let logging = LoggingService()
-        logger.debug("✅ LoggingService initialized")
-        
+        self.logger.debug("✅ LoggingService initialized")
+
         let apps = ApplicationService()
-        logger.debug("✅ ApplicationService initialized")
-        
+        self.logger.debug("✅ ApplicationService initialized")
+
         let sess = SessionManager()
-        logger.debug("✅ SessionManager initialized")
-        
+        self.logger.debug("✅ SessionManager initialized")
+
         let screenCap = ScreenCaptureService(loggingService: logging)
-        logger.debug("✅ ScreenCaptureService initialized")
-        
+        self.logger.debug("✅ ScreenCaptureService initialized")
+
         let auto = UIAutomationService(sessionManager: sess, loggingService: logging)
-        logger.debug("✅ UIAutomationService initialized")
-        
+        self.logger.debug("✅ UIAutomationService initialized")
+
         let windows = WindowManagementService(applicationService: apps)
-        logger.debug("✅ WindowManagementService initialized")
-        
+        self.logger.debug("✅ WindowManagementService initialized")
+
         let menuSvc = MenuService(applicationService: apps)
-        logger.debug("✅ MenuService initialized")
-        
+        self.logger.debug("✅ MenuService initialized")
+
         let dockSvc = DockService()
-        logger.debug("✅ DockService initialized")
-        
+        self.logger.debug("✅ DockService initialized")
+
         self.logging = logging
         self.screenCapture = screenCap
         self.applications = apps
@@ -95,18 +95,18 @@ public final class PeekabooServices: @unchecked Sendable {
         self.windows = windows
         self.menu = menuSvc
         self.dock = dockSvc
-        
+
         self.dialogs = DialogService()
-        logger.debug("✅ DialogService initialized")
-        
+        self.logger.debug("✅ DialogService initialized")
+
         self.sessions = sess
-        
+
         self.files = FileService()
-        logger.debug("✅ FileService initialized")
-        
+        self.logger.debug("✅ FileService initialized")
+
         self.configuration = ConfigurationManager.shared
-        logger.debug("✅ ConfigurationManager initialized")
-        
+        self.logger.debug("✅ ConfigurationManager initialized")
+
         self.process = ProcessService(
             applicationService: apps,
             screenCaptureService: screenCap,
@@ -114,24 +114,23 @@ public final class PeekabooServices: @unchecked Sendable {
             uiAutomationService: auto,
             windowManagementService: windows,
             menuService: menuSvc,
-            dockService: dockSvc
-        )
-        logger.debug("✅ ProcessService initialized")
-        
+            dockService: dockSvc)
+        self.logger.debug("✅ ProcessService initialized")
+
         self.permissions = PermissionsService()
-        logger.debug("✅ PermissionsService initialized")
-        
+        self.logger.debug("✅ PermissionsService initialized")
+
         // Agent service will be initialized by createShared method
         self.agent = nil
-        
+
         // Audio input service needs AI service, so temporarily initialize with placeholder
         // Will be properly initialized in createShared with actual AI service
         self.audioInput = AudioInputService(aiService: PeekabooAIService())
-        logger.debug("✅ AudioInputService initialized (placeholder)")
-        
-        logger.info("✨ PeekabooServices initialization complete")
+        self.logger.debug("✅ AudioInputService initialized (placeholder)")
+
+        self.logger.info("✨ PeekabooServices initialization complete")
     }
-    
+
     /// Initialize with custom service implementations (for testing)
     @MainActor
     public init(
@@ -149,9 +148,9 @@ public final class PeekabooServices: @unchecked Sendable {
         permissions: PermissionsService? = nil,
         agent: AgentServiceProtocol? = nil,
         configuration: ConfigurationManager? = nil,
-        audioInput: AudioInputServiceProtocol? = nil
-    ) {
-        logger.info("🚀 Initializing PeekabooServices with custom implementations")
+        audioInput: AudioInputServiceProtocol? = nil)
+    {
+        self.logger.info("🚀 Initializing PeekabooServices with custom implementations")
         self.logging = logging ?? LoggingService()
         self.screenCapture = screenCapture
         self.applications = applications
@@ -167,10 +166,10 @@ public final class PeekabooServices: @unchecked Sendable {
         self.agent = agent
         self.configuration = configuration ?? ConfigurationManager.shared
         self.audioInput = audioInput ?? AudioInputService(aiService: PeekabooAIService())
-        
-        logger.info("✨ PeekabooServices initialization complete (custom)")
+
+        self.logger.info("✨ PeekabooServices initialization complete (custom)")
     }
-    
+
     /// Internal initializer that takes all services including agent
     private init(
         logging: LoggingServiceProtocol,
@@ -187,8 +186,8 @@ public final class PeekabooServices: @unchecked Sendable {
         permissions: PermissionsService,
         configuration: ConfigurationManager,
         agent: AgentServiceProtocol?,
-        audioInput: AudioInputServiceProtocol
-    ) {
+        audioInput: AudioInputServiceProtocol)
+    {
         self.logging = logging
         self.screenCapture = screenCapture
         self.applications = applications
@@ -205,13 +204,13 @@ public final class PeekabooServices: @unchecked Sendable {
         self.agent = agent
         self.audioInput = audioInput
     }
-    
+
     /// Create the shared instance with proper initialization order
     @MainActor
     private static func createShared() -> PeekabooServices {
         let logger = Logger(subsystem: "boo.peekaboo.core", category: "Services")
         logger.info("🚀 Creating shared PeekabooServices instance")
-        
+
         let logging = LoggingService()
         let apps = ApplicationService()
         let sess = SessionManager()
@@ -231,14 +230,13 @@ public final class PeekabooServices: @unchecked Sendable {
             uiAutomationService: auto,
             windowManagementService: windows,
             menuService: menuSvc,
-            dockService: dockSvc
-        )
-        
+            dockService: dockSvc)
+
         // Create AI service and audio service
         let aiService = PeekabooAIService()
         let audioInput = AudioInputService(aiService: aiService)
         logger.debug("✅ AudioInputService initialized")
-        
+
         // Create services instance first
         let services = PeekabooServices(
             logging: logging,
@@ -255,9 +253,8 @@ public final class PeekabooServices: @unchecked Sendable {
             permissions: permissions,
             configuration: config,
             agent: nil,
-            audioInput: audioInput
-        )
-        
+            audioInput: audioInput)
+
         // Initialize ModelProvider with available API keys
         Task {
             do {
@@ -268,23 +265,25 @@ public final class PeekabooServices: @unchecked Sendable {
                 logger.error("⚠️ ModelProvider setup failed: \(peekabooError.localizedDescription)")
             }
         }
-        
+
         // Now create agent service if any API key is available
         // Check for OpenAI, Anthropic, or Ollama availability
         let agent: AgentServiceProtocol?
         let hasOpenAI = config.getOpenAIAPIKey() != nil && !config.getOpenAIAPIKey()!.isEmpty
         let hasAnthropic = config.getAnthropicAPIKey() != nil && !config.getAnthropicAPIKey()!.isEmpty
         let hasOllama = true // Ollama doesn't require API key
-        
+
         if hasOpenAI || hasAnthropic || hasOllama {
             let agentConfig = config.getConfiguration()
             let providers = config.getAIProviders()
             let isEnvironmentProvided = ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] != nil
-            
+
             logger.debug("🔍 AI Providers from config: '\(providers)'")
-            logger.debug("🔍 Environment PEEKABOO_AI_PROVIDERS: '\(ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] ?? "not set")'")
+            logger
+                .debug(
+                    "🔍 Environment PEEKABOO_AI_PROVIDERS: '\(ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] ?? "not set")'")
             logger.debug("🔍 Has OpenAI: \(hasOpenAI), Has Anthropic: \(hasAnthropic), Has Ollama: \(hasOllama)")
-            
+
             // Determine default model using the parser with conflict detection
             let determination = AIProviderParser.determineDefaultModelWithConflict(
                 from: providers,
@@ -292,18 +291,17 @@ public final class PeekabooServices: @unchecked Sendable {
                 hasAnthropic: hasAnthropic,
                 hasOllama: hasOllama,
                 configuredDefault: agentConfig?.agent?.defaultModel,
-                isEnvironmentProvided: isEnvironmentProvided
-            )
-            
+                isEnvironmentProvided: isEnvironmentProvided)
+
             logger.debug("🔍 Determined default model: '\(determination.model)'")
-            
+
             // Print conflict warning if needed
             if determination.hasConflict {
                 logger.warning("⚠️ Model configuration conflict detected:")
                 logger.warning("   Config file specifies: \(determination.configModel ?? "none")")
                 logger.warning("   Environment variable specifies: \(determination.environmentModel ?? "none")")
                 logger.warning("   Using environment variable: \(determination.model)")
-                
+
                 // Also print to stdout so user sees it as a warning
                 print("""
                 ⚠️  Model configuration conflict:
@@ -312,17 +310,16 @@ public final class PeekabooServices: @unchecked Sendable {
                    → Using environment variable: \(determination.model)
                 """)
             }
-            
+
             agent = PeekabooAgentService(
                 services: services,
-                defaultModelName: determination.model
-            )
+                defaultModelName: determination.model)
             logger.debug("✅ PeekabooAgentService initialized with available providers")
         } else {
             agent = nil
             logger.debug("⚠️ PeekabooAgentService skipped - no API keys found for any provider")
         }
-        
+
         // Return services with agent
         return PeekabooServices(
             logging: logging,
@@ -339,53 +336,52 @@ public final class PeekabooServices: @unchecked Sendable {
             permissions: permissions,
             configuration: config,
             agent: agent,
-            audioInput: audioInput
-        )
+            audioInput: audioInput)
     }
-    
+
     /// Refresh the agent service when API keys change
     @MainActor
     public func refreshAgentService() {
-        logger.info("🔄 Refreshing agent service with updated configuration")
-        
+        self.logger.info("🔄 Refreshing agent service with updated configuration")
+
         // Reload configuration to get latest API keys
-        _ = configuration.loadConfiguration()
-        
+        _ = self.configuration.loadConfiguration()
+
         // Check for available API keys
-        let hasOpenAI = configuration.getOpenAIAPIKey() != nil && !configuration.getOpenAIAPIKey()!.isEmpty
-        let hasAnthropic = configuration.getAnthropicAPIKey() != nil && !configuration.getAnthropicAPIKey()!.isEmpty
+        let hasOpenAI = self.configuration.getOpenAIAPIKey() != nil && !self.configuration.getOpenAIAPIKey()!.isEmpty
+        let hasAnthropic = self.configuration.getAnthropicAPIKey() != nil && !self.configuration.getAnthropicAPIKey()!
+            .isEmpty
         let hasOllama = true // Ollama doesn't require API key
-        
+
         if hasOpenAI || hasAnthropic || hasOllama {
-            let agentConfig = configuration.getConfiguration()
-            let providers = configuration.getAIProviders()
-            
+            let agentConfig = self.configuration.getConfiguration()
+            let providers = self.configuration.getAIProviders()
+
             // Determine default model based on first available provider
             var defaultModel = agentConfig?.agent?.defaultModel
             if defaultModel == nil {
-                if providers.contains("anthropic") && hasAnthropic {
+                if providers.contains("anthropic"), hasAnthropic {
                     defaultModel = "claude-opus-4-20250514"
-                } else if providers.contains("openai") && hasOpenAI {
+                } else if providers.contains("openai"), hasOpenAI {
                     defaultModel = "gpt-4.1"
                 } else if providers.contains("ollama") {
                     defaultModel = "llava:latest"
                 }
             }
-            
-            agentLock.lock()
+
+            self.agentLock.lock()
             defer { agentLock.unlock() }
-            
+
             self.agent = PeekabooAgentService(
                 services: self,
-                defaultModelName: defaultModel ?? "claude-opus-4-20250514"
-            )
-            logger.info("✅ Agent service refreshed with providers: \(providers)")
+                defaultModelName: defaultModel ?? "claude-opus-4-20250514")
+            self.logger.info("✅ Agent service refreshed with providers: \(providers)")
         } else {
-            agentLock.lock()
+            self.agentLock.lock()
             defer { agentLock.unlock() }
-            
+
             self.agent = nil
-            logger.warning("⚠️ No API keys available - agent service disabled")
+            self.logger.warning("⚠️ No API keys available - agent service disabled")
         }
     }
 }
@@ -393,7 +389,7 @@ public final class PeekabooServices: @unchecked Sendable {
 /// High-level convenience methods
 extension PeekabooServices {
     // REMOVED: captureAndAnalyze method - AI analysis should be done through the agent service
-    
+
     /// Perform UI automation with automatic session management
     /// - Parameters:
     ///   - appIdentifier: Target application
@@ -401,111 +397,106 @@ extension PeekabooServices {
     /// - Returns: Automation result
     public func automate(
         appIdentifier: String,
-        actions: [AutomationAction]
-    ) async throws -> AutomationResult {
-        logger.info("🤖 Starting automation for app: \(appIdentifier)")
-        logger.debug("Number of actions: \(actions.count)")
-        
+        actions: [AutomationAction]) async throws -> AutomationResult
+    {
+        self.logger.info("🤖 Starting automation for app: \(appIdentifier)")
+        self.logger.debug("Number of actions: \(actions.count)")
+
         // Create a new session
         let sessionId = try await sessions.createSession()
-        logger.debug("Created session: \(sessionId)")
-        
+        self.logger.debug("Created session: \(sessionId)")
+
         // Capture initial state
-        logger.debug("Capturing initial window state")
+        self.logger.debug("Capturing initial window state")
         let captureResult = try await screenCapture.captureWindow(
             appIdentifier: appIdentifier,
-            windowIndex: nil
-        )
-        
+            windowIndex: nil)
+
         // Detect elements
-        logger.debug("Detecting UI elements")
+        self.logger.debug("Detecting UI elements")
         let windowContext = WindowContext(
             applicationName: captureResult.metadata.applicationInfo?.name,
             windowTitle: captureResult.metadata.windowInfo?.title,
-            windowBounds: captureResult.metadata.windowInfo?.bounds
-        )
+            windowBounds: captureResult.metadata.windowInfo?.bounds)
         let detectionResult = try await automation.detectElements(
             in: captureResult.imageData,
             sessionId: sessionId,
-            windowContext: windowContext
-        )
-        logger.info("Detected \(detectionResult.elements.all.count) elements")
-        
+            windowContext: windowContext)
+        self.logger.info("Detected \(detectionResult.elements.all.count) elements")
+
         // Store in session
-        try await sessions.storeDetectionResult(sessionId: sessionId, result: detectionResult)
-        
+        try await self.sessions.storeDetectionResult(sessionId: sessionId, result: detectionResult)
+
         // Execute actions
         var executedActions: [ExecutedAction] = []
-        
+
         for (index, action) in actions.enumerated() {
-            logger.info("Executing action \(index + 1)/\(actions.count): \(String(describing: action))")
+            self.logger.info("Executing action \(index + 1)/\(actions.count): \(String(describing: action))")
             let startTime = Date()
             do {
                 switch action {
-                case .click(let target, let clickType):
-                    try await automation.click(
+                case let .click(target, clickType):
+                    try await self.automation.click(
                         target: target,
                         clickType: clickType,
-                        sessionId: sessionId
-                    )
-                    
-                case .type(let text, let target, let clear):
-                    try await automation.type(
+                        sessionId: sessionId)
+
+                case let .type(text, target, clear):
+                    try await self.automation.type(
                         text: text,
                         target: target,
                         clearExisting: clear,
                         typingDelay: 50,
-                        sessionId: sessionId
-                    )
-                    
-                case .scroll(let direction, let amount, let target):
-                    try await automation.scroll(
+                        sessionId: sessionId)
+
+                case let .scroll(direction, amount, target):
+                    try await self.automation.scroll(
                         direction: direction,
                         amount: amount,
                         target: target,
                         smooth: false,
-                        delay: 10,  // 10ms between scroll ticks
-                        sessionId: sessionId
-                    )
-                    
-                case .hotkey(let keys):
-                    try await automation.hotkey(keys: keys, holdDuration: 100)
-                    
-                case .wait(let milliseconds):
+                        delay: 10, // 10ms between scroll ticks
+                        sessionId: sessionId)
+
+                case let .hotkey(keys):
+                    try await self.automation.hotkey(keys: keys, holdDuration: 100)
+
+                case let .wait(milliseconds):
                     try await Task.sleep(nanoseconds: UInt64(milliseconds) * 1_000_000)
                 }
-                
+
                 let duration = Date().timeIntervalSince(startTime)
-                logger.debug("✅ Action completed in \(String(format: "%.2f", duration))s")
-                
+                self.logger.debug("✅ Action completed in \(String(format: "%.2f", duration))s")
+
                 executedActions.append(ExecutedAction(
                     action: action,
                     success: true,
                     duration: duration,
-                    error: nil
-                ))
+                    error: nil))
             } catch {
                 let duration = Date().timeIntervalSince(startTime)
                 let peekabooError = error.asPeekabooError(context: "Action execution failed")
-                logger.error("❌ Action failed after \(String(format: "%.2f", duration))s: \(peekabooError.localizedDescription)")
-                
+                self.logger
+                    .error(
+                        "❌ Action failed after \(String(format: "%.2f", duration))s: \(peekabooError.localizedDescription)")
+
                 executedActions.append(ExecutedAction(
                     action: action,
                     success: false,
                     duration: duration,
-                    error: peekabooError.localizedDescription
-                ))
+                    error: peekabooError.localizedDescription))
                 throw peekabooError
             }
         }
-        
-        logger.info("✅ Automation complete: \(executedActions.filter { $0.success }.count)/\(executedActions.count) actions succeeded")
-        
+
+        self.logger
+            .info(
+                "✅ Automation complete: \(executedActions.count(where: { $0.success }))/\(executedActions.count) actions succeeded")
+
         return AutomationResult(
             sessionId: sessionId,
             actions: executedActions,
-            initialScreenshot: captureResult.savedPath
-        )
+            initialScreenshot: captureResult.savedPath)
     }
 }
 

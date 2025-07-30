@@ -12,7 +12,7 @@ public struct ToolExecution: Identifiable, Sendable {
     public var result: String?
     public var duration: TimeInterval?
     public var metadata: [String: String]
-    
+
     public init(
         toolName: String,
         arguments: String,
@@ -20,8 +20,8 @@ public struct ToolExecution: Identifiable, Sendable {
         status: ToolExecutionStatus = .running,
         result: String? = nil,
         duration: TimeInterval? = nil,
-        metadata: [String: String] = [:]
-    ) {
+        metadata: [String: String] = [:])
+    {
         self.toolName = toolName
         self.arguments = arguments
         self.timestamp = timestamp
@@ -38,20 +38,20 @@ public enum ToolExecutionStatus: String, Sendable {
     case completed
     case failed
     case cancelled
-    
+
     public var displayName: String {
         switch self {
-        case .running: return "Running"
-        case .completed: return "Completed"
-        case .failed: return "Failed"
-        case .cancelled: return "Cancelled"
+        case .running: "Running"
+        case .completed: "Completed"
+        case .failed: "Failed"
+        case .cancelled: "Cancelled"
         }
     }
-    
+
     public var isTerminal: Bool {
         switch self {
-        case .running: return false
-        case .completed, .failed, .cancelled: return true
+        case .running: false
+        case .completed, .failed, .cancelled: true
         }
     }
 }
@@ -62,13 +62,13 @@ public struct ToolExecutionResult: Sendable {
     public let metadata: [String: String]
     public let duration: TimeInterval
     public let status: ToolExecutionStatus
-    
+
     public init(
         output: ToolOutput,
         metadata: [String: String] = [:],
         duration: TimeInterval = 0,
-        status: ToolExecutionStatus = .completed
-    ) {
+        status: ToolExecutionStatus = .completed)
+    {
         self.output = output
         self.metadata = metadata
         self.duration = duration
@@ -79,38 +79,38 @@ public struct ToolExecutionResult: Sendable {
 /// History of tool executions for a session
 public struct ToolExecutionHistory: Sendable {
     public private(set) var executions: [ToolExecution] = []
-    
+
     public init(executions: [ToolExecution] = []) {
         self.executions = executions
     }
-    
+
     /// Add a new execution to the history
     public mutating func add(_ execution: ToolExecution) {
-        executions.append(execution)
+        self.executions.append(execution)
     }
-    
+
     /// Update an existing execution
     public mutating func update(id: UUID, with update: (inout ToolExecution) -> Void) {
         if let index = executions.firstIndex(where: { $0.id == id }) {
-            update(&executions[index])
+            update(&self.executions[index])
         }
     }
-    
+
     /// Get executions filtered by status
     public func executions(with status: ToolExecutionStatus) -> [ToolExecution] {
-        executions.filter { $0.status == status }
+        self.executions.filter { $0.status == status }
     }
-    
+
     /// Get the currently running execution if any
     public var runningExecution: ToolExecution? {
-        executions.first { $0.status == .running }
+        self.executions.first { $0.status == .running }
     }
-    
+
     /// Total duration of all completed executions
     public var totalDuration: TimeInterval {
-        executions
+        self.executions
             .filter { $0.status == .completed }
-            .compactMap { $0.duration }
+            .compactMap(\.duration)
             .reduce(0, +)
     }
 }
@@ -126,33 +126,31 @@ public protocol ToolExecutor: Sendable {
 // MARK: - Tool Builder for Convenience
 
 /// Convenience factory for creating tools
-public struct ToolFactory {
+public enum ToolFactory {
     public static func tool<Context>(
         name: String,
         description: String,
         parameters: ToolParameters,
-        execute: @escaping @Sendable (ToolInput, Context) async throws -> ToolOutput
-    ) -> Tool<Context> {
+        execute: @escaping @Sendable (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
+    {
         Tool(
             name: name,
             description: description,
             parameters: parameters,
-            execute: execute
-        )
+            execute: execute)
     }
-    
+
     /// Build a tool specifically for PeekabooServices context
     public static func peekabooTool(
         name: String,
         description: String,
         parameters: ToolParameters,
-        execute: @escaping @Sendable (ToolInput, PeekabooServices) async throws -> ToolOutput
-    ) -> Tool<PeekabooServices> {
-        tool(
+        execute: @escaping @Sendable (ToolInput, PeekabooServices) async throws -> ToolOutput) -> Tool<PeekabooServices>
+    {
+        self.tool(
             name: name,
             description: description,
             parameters: parameters,
-            execute: execute
-        )
+            execute: execute)
     }
 }

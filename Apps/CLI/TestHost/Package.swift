@@ -9,7 +9,8 @@ let package = Package(
     products: [
         .executable(
             name: "PeekabooTestHost",
-            targets: ["PeekabooTestHost"]),
+            targets: ["PeekabooTestHost"]
+        ),
     ],
     targets: [
         .executableTarget(
@@ -18,5 +19,7 @@ let package = Package(
             sources: ["TestHostApp.swift", "ContentView.swift"],
             swiftSettings: [
                 .swiftLanguageMode(.v6),
-            ]),
-    ])
+            ]
+        ),
+    ]
+)

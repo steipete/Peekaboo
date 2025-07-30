@@ -3,51 +3,50 @@ import Foundation
 // MARK: - Error Formatter
 
 /// Formats errors for consistent presentation across Peekaboo
-public struct ErrorFormatter {
-    
+public enum ErrorFormatter {
     /// Format an error for CLI output
     public static func formatForCLI(_ error: Error, verbose: Bool = false) -> String {
         let standardized = ErrorStandardizer.standardize(error)
-        
+
         var output = standardized.userMessage
-        
+
         if let suggestion = standardized.recoverySuggestion {
             output += "\n\nSuggestion: \(suggestion)"
         }
-        
-        if verbose && !standardized.context.isEmpty {
+
+        if verbose, !standardized.context.isEmpty {
             output += "\n\nContext:"
             for (key, value) in standardized.context.sorted(by: { $0.key < $1.key }) {
                 output += "\n  \(key): \(value)"
             }
         }
-        
+
         return output
     }
-    
+
     /// Format an error for JSON output
     public static func formatForJSON(_ error: Error) -> [String: Any] {
         let standardized = ErrorStandardizer.standardize(error)
-        
+
         var json: [String: Any] = [
             "error_code": standardized.code.rawValue,
             "message": standardized.userMessage,
-            "context": standardized.context
+            "context": standardized.context,
         ]
-        
+
         if let suggestion = standardized.recoverySuggestion {
             json["recovery_suggestion"] = suggestion
         }
-        
+
         return json
     }
-    
+
     /// Format an error for logging
     public static func formatForLog(_ error: Error) -> String {
         let standardized = ErrorStandardizer.standardize(error)
-        
+
         var output = "[\(standardized.code.rawValue)] \(standardized.userMessage)"
-        
+
         if !standardized.context.isEmpty {
             let contextStr = standardized.context
                 .sorted(by: { $0.key < $1.key })
@@ -55,97 +54,97 @@ public struct ErrorFormatter {
                 .joined(separator: ", ")
             output += " | Context: \(contextStr)"
         }
-        
+
         return output
     }
-    
+
     /// Format multiple errors into a summary
     public static func formatMultipleErrors(_ errors: [Error]) -> String {
         guard !errors.isEmpty else { return "No errors" }
-        
+
         if errors.count == 1 {
-            return formatForCLI(errors[0])
+            return self.formatForCLI(errors[0])
         }
-        
+
         var output = "Multiple errors occurred (\(errors.count)):\n"
-        
+
         for (index, error) in errors.enumerated() {
             let standardized = ErrorStandardizer.standardize(error)
             output += "\n\(index + 1). \(standardized.userMessage)"
         }
-        
+
         return output
     }
 }
 
 // MARK: - Error Code Formatting
 
-public extension StandardErrorCode {
+extension StandardErrorCode {
     /// Human-readable description of the error code
-    var description: String {
+    public var description: String {
         switch self {
         case .screenRecordingPermissionDenied:
-            return "Screen Recording Permission Denied"
+            "Screen Recording Permission Denied"
         case .accessibilityPermissionDenied:
-            return "Accessibility Permission Denied"
+            "Accessibility Permission Denied"
         case .applicationNotFound:
-            return "Application Not Found"
+            "Application Not Found"
         case .windowNotFound:
-            return "Window Not Found"
+            "Window Not Found"
         case .elementNotFound:
-            return "UI Element Not Found"
+            "UI Element Not Found"
         case .sessionNotFound:
-            return "Session Not Found"
+            "Session Not Found"
         case .fileNotFound:
-            return "File Not Found"
+            "File Not Found"
         case .menuNotFound:
-            return "Menu Not Found"
+            "Menu Not Found"
         case .captureFailed:
-            return "Screen Capture Failed"
+            "Screen Capture Failed"
         case .interactionFailed:
-            return "Interaction Failed"
+            "Interaction Failed"
         case .timeout:
-            return "Operation Timed Out"
+            "Operation Timed Out"
         case .cancelled:
-            return "Operation Cancelled"
+            "Operation Cancelled"
         case .invalidInput:
-            return "Invalid Input"
+            "Invalid Input"
         case .invalidCoordinates:
-            return "Invalid Coordinates"
+            "Invalid Coordinates"
         case .invalidDisplayIndex:
-            return "Invalid Display Index"
+            "Invalid Display Index"
         case .invalidWindowIndex:
-            return "Invalid Window Index"
+            "Invalid Window Index"
         case .ambiguousAppIdentifier:
-            return "Ambiguous Application Identifier"
+            "Ambiguous Application Identifier"
         case .fileIOError:
-            return "File I/O Error"
+            "File I/O Error"
         case .configurationError:
-            return "Configuration Error"
+            "Configuration Error"
         case .unknownError:
-            return "Unknown Error"
+            "Unknown Error"
         case .aiProviderUnavailable:
-            return "AI Provider Unavailable"
+            "AI Provider Unavailable"
         case .aiAnalysisFailed:
-            return "AI Analysis Failed"
+            "AI Analysis Failed"
         }
     }
-    
+
     /// Error category for grouping
-    var category: String {
+    public var category: String {
         switch self {
         case .screenRecordingPermissionDenied, .accessibilityPermissionDenied:
-            return "Permission"
+            "Permission"
         case .applicationNotFound, .windowNotFound, .elementNotFound, .sessionNotFound, .fileNotFound, .menuNotFound:
-            return "Not Found"
+            "Not Found"
         case .captureFailed, .interactionFailed, .timeout, .cancelled:
-            return "Operation"
+            "Operation"
         case .invalidInput, .invalidCoordinates, .invalidDisplayIndex, .invalidWindowIndex, .ambiguousAppIdentifier:
-            return "Validation"
+            "Validation"
         case .fileIOError, .configurationError, .unknownError:
-            return "System"
+            "System"
         case .aiProviderUnavailable, .aiAnalysisFailed:
-            return "AI"
+            "AI"
         }
     }
 }

@@ -7,29 +7,30 @@ func checkBuildStaleness() {
     let configCheck = Process()
     configCheck.executableURL = URL(fileURLWithPath: "/usr/bin/git")
     configCheck.arguments = ["config", "peekaboo.check-build-staleness"]
-    
+
     let configPipe = Pipe()
     configCheck.standardOutput = configPipe
     configCheck.standardError = Pipe() // Silence stderr
-    
+
     do {
         try configCheck.run()
         configCheck.waitUntilExit()
-        
+
         // Only proceed if the config value is "true"
         let configData = configPipe.fileHandleForReading.readDataToEndOfFile()
-        let configValue = String(data: configData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        
+        let configValue = String(data: configData, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
         guard configValue == "true" else {
             return // Staleness checking is disabled
         }
     } catch {
         return // Git config command failed, skip check
     }
-    
+
     // Check 1: Git commit comparison
     checkGitCommitStaleness()
-    
+
     // Check 2: File modification time comparison
     checkFileModificationStaleness()
 }
@@ -40,25 +41,25 @@ private func checkGitCommitStaleness() {
     let gitProcess = Process()
     gitProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
     gitProcess.arguments = ["rev-parse", "--short", "HEAD"]
-    
+
     let gitPipe = Pipe()
     gitProcess.standardOutput = gitPipe
     gitProcess.standardError = Pipe() // Silence stderr
-    
+
     do {
         try gitProcess.run()
         gitProcess.waitUntilExit()
-        
+
         guard gitProcess.terminationStatus == 0 else {
             return // Git command failed, skip check
         }
-        
+
         let gitData = gitPipe.fileHandleForReading.readDataToEndOfFile()
         let currentCommit = String(data: gitData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        
+
         // Get embedded commit from build (strip -dirty suffix if present)
         let embeddedCommit = Version.gitCommit.replacingOccurrences(of: "-dirty", with: "")
-        
+
         // Compare commits
         if !currentCommit.isEmpty && currentCommit != embeddedCommit {
             logError("❌ CLI binary is outdated and needs to be rebuilt!")
@@ -80,35 +81,35 @@ private func checkFileModificationStaleness() {
     guard let buildDate = dateFormatter.date(from: Version.buildDate) else {
         return // Could not parse build date, skip check
     }
-    
+
     // Get git repository root
     guard let gitRoot = getGitRepositoryRoot() else {
         return // Could not determine git root, skip check
     }
-    
+
     // Get list of modified files from git status
     let gitStatusProcess = Process()
     gitStatusProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
     gitStatusProcess.arguments = ["status", "--porcelain=1"]
-    
+
     let statusPipe = Pipe()
     gitStatusProcess.standardOutput = statusPipe
     gitStatusProcess.standardError = Pipe() // Silence stderr
-    
+
     do {
         try gitStatusProcess.run()
         gitStatusProcess.waitUntilExit()
-        
+
         guard gitStatusProcess.terminationStatus == 0 else {
             return // Git command failed, skip check
         }
-        
+
         let statusData = statusPipe.fileHandleForReading.readDataToEndOfFile()
         let statusOutput = String(data: statusData, encoding: .utf8) ?? ""
-        
+
         // Parse git status output
         let modifiedFiles = parseGitStatusOutput(statusOutput)
-        
+
         // Check each modified file's modification time
         for filePath in modifiedFiles {
             if isFileNewerThanBuild(filePath: filePath, buildDate: buildDate, gitRoot: gitRoot) {
@@ -130,26 +131,27 @@ private func checkFileModificationStaleness() {
 private func parseGitStatusOutput(_ output: String) -> [String] {
     let lines = output.components(separatedBy: .newlines)
     var filePaths: [String] = []
-    
+
     for line in lines {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { continue }
-        
+
         // Git status format: "XY filename" or "XY orig_path -> new_path"
         // X = staged status, Y = working tree status
         guard trimmed.count >= 3 else { continue }
-        
+
         let statusCodes = String(trimmed.prefix(2))
         var filePath = String(trimmed.dropFirst(2)) // Skip "XY"
-        
+
         // Remove leading space if present
         if filePath.hasPrefix(" ") {
             filePath = String(filePath.dropFirst())
         }
-        
+
         // Include files that are modified (M), added (A), or have other changes
         // Skip deleted files (D) since they can't be newer than build
-        if statusCodes.contains("M") || statusCodes.contains("A") || statusCodes.contains("R") || statusCodes.contains("C") || statusCodes.contains("U") {
+        if statusCodes.contains("M") || statusCodes.contains("A") || statusCodes.contains("R") || statusCodes
+            .contains("C") || statusCodes.contains("U") {
             // Handle renamed files: "orig_path -> new_path"
             // For renames, we want to check the new path
             if filePath.contains(" -> ") {
@@ -158,15 +160,15 @@ private func parseGitStatusOutput(_ output: String) -> [String] {
                     filePath = components[1] // Use the new path
                 }
             }
-            
+
             // Handle quoted paths (git quotes paths with special characters)
-            let cleanPath = filePath.hasPrefix("\"") && filePath.hasSuffix("\"") 
-                ? String(filePath.dropFirst().dropLast()) 
+            let cleanPath = filePath.hasPrefix("\"") && filePath.hasSuffix("\"")
+                ? String(filePath.dropFirst().dropLast())
                 : filePath
             filePaths.append(cleanPath)
         }
     }
-    
+
     return filePaths
 }
 
@@ -175,23 +177,23 @@ private func getGitRepositoryRoot() -> String? {
     let gitProcess = Process()
     gitProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
     gitProcess.arguments = ["rev-parse", "--show-toplevel"]
-    
+
     let pipe = Pipe()
     gitProcess.standardOutput = pipe
     gitProcess.standardError = Pipe() // Silence stderr
-    
+
     do {
         try gitProcess.run()
         gitProcess.waitUntilExit()
-        
+
         guard gitProcess.terminationStatus == 0 else {
             return nil
         }
-        
+
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
         // Check if output is empty after trimming
-        guard let output = output, !output.isEmpty else {
+        guard let output, !output.isEmpty else {
             return nil
         }
         return output
@@ -205,7 +207,7 @@ private func isFileNewerThanBuild(filePath: String, buildDate: Date, gitRoot: St
     let fileManager = FileManager.default
     // Git status paths are relative to repository root, not current directory
     let fullPath = (filePath.hasPrefix("/")) ? filePath : "\(gitRoot)/\(filePath)"
-    
+
     do {
         let attributes = try fileManager.attributesOfItem(atPath: fullPath)
         if let modificationDate = attributes[.modificationDate] as? Date {
@@ -215,6 +217,6 @@ private func isFileNewerThanBuild(filePath: String, buildDate: Date, gitRoot: St
         // File might not exist or be accessible, skip this check
         return false
     }
-    
+
     return false
 }

@@ -30,7 +30,8 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
               - Role descriptions
 
               Use --id for precise element targeting from 'see' output.
-        """)
+        """
+    )
 
     @Argument(help: "Element text or query to click")
     var query: String?
@@ -40,10 +41,10 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
 
     @Option(help: "Element ID to click (e.g., B1, T2)")
     var on: String?
-    
+
     @Option(name: .customLong("id"), help: "Element ID to click (alias for --on)")
     var id: String?
-    
+
     @Option(help: "Application name to focus before clicking")
     var app: String?
 
@@ -61,7 +62,7 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
-    
+
     @OptionGroup var focusOptions: FocusOptions
 
     mutating func run() async throws {
@@ -87,7 +88,7 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                 clickTarget = .coordinates(CGPoint(x: x, y: y))
                 waitResult = WaitForElementResult(found: true, element: nil, waitTime: 0)
                 activeSessionId = "" // Not needed for coordinate clicks
-                
+
             } else {
                 // For element-based clicks, try to get a session but allow fallback
                 let sessionId: String? = if let providedSession = session {
@@ -97,7 +98,7 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                 }
                 // Use session if available, otherwise use empty string to indicate no session
                 activeSessionId = sessionId ?? ""
-                
+
                 // If app is specified, focus it first
                 if let appName = app {
                     // Focus the specified app
@@ -105,28 +106,29 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     // Brief delay to ensure focus is complete
                     try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                 }
-                
+
                 // Ensure window is focused before clicking (if auto-focus is enabled)
                 try await self.ensureFocused(
                     sessionId: activeSessionId,
-                    options: focusOptions
+                    options: self.focusOptions
                 )
-                
+
                 // Check if both --on and --id are specified
-                if on != nil && id != nil {
+                if self.on != nil && self.id != nil {
                     throw ArgumentParser.ValidationError("Cannot specify both --on and --id")
                 }
-                
+
                 // Use whichever element ID parameter was provided
-                let elementId = on ?? id
-                
-                if let elementId = elementId {
+                let elementId = self.on ?? self.id
+
+                if let elementId {
                     // Click by element ID with auto-wait
                     clickTarget = .elementId(elementId)
                     waitResult = try await PeekabooServices.shared.automation.waitForElement(
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
-                        sessionId: activeSessionId.isEmpty ? nil : activeSessionId)
+                        sessionId: activeSessionId.isEmpty ? nil : activeSessionId
+                    )
 
                     if !waitResult.found {
                         throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
@@ -138,11 +140,13 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     waitResult = try await PeekabooServices.shared.automation.waitForElement(
                         target: clickTarget,
                         timeout: TimeInterval(self.waitFor) / 1000.0,
-                        sessionId: activeSessionId.isEmpty ? nil : activeSessionId)
+                        sessionId: activeSessionId.isEmpty ? nil : activeSessionId
+                    )
 
                     if !waitResult.found {
                         throw PeekabooError.elementNotFound(
-                            "No actionable element found matching '\(searchQuery)' after \(self.waitFor)ms")
+                            "No actionable element found matching '\(searchQuery)' after \(self.waitFor)ms"
+                        )
                     }
 
                 } else {
@@ -159,13 +163,15 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                 try await PeekabooServices.shared.automation.click(
                     target: clickTarget,
                     clickType: clickType,
-                    sessionId: nil)
+                    sessionId: nil
+                )
             } else {
                 // For element-based clicks, pass the session ID
                 try await PeekabooServices.shared.automation.click(
                     target: clickTarget,
                     clickType: clickType,
-                    sessionId: activeSessionId.isEmpty ? nil : activeSessionId)
+                    sessionId: activeSessionId.isEmpty ? nil : activeSessionId
+                )
             }
 
             // Brief delay to ensure click is processed
@@ -174,7 +180,7 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
             // Get the frontmost app after clicking
             let frontmostApp = NSWorkspace.shared.frontmostApplication
             let appName = frontmostApp?.localizedName ?? "Unknown"
-            
+
             // Prepare result
             let clickLocation: CGPoint
             let clickedElement: String?
@@ -212,8 +218,9 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                 clickLocation: clickLocation,
                 waitTime: waitResult.waitTime,
                 executionTime: Date().timeIntervalSince(startTime),
-                targetApp: appName)
-            
+                targetApp: appName
+            )
+
             output(result) {
                 print("✅ Click successful")
                 print("🎯 App: \(appName)")
@@ -258,8 +265,8 @@ struct ClickResult: Codable {
         clickLocation: CGPoint,
         waitTime: Double,
         executionTime: TimeInterval,
-        targetApp: String)
-    {
+        targetApp: String
+    ) {
         self.success = success
         self.clickedElement = clickedElement
         self.clickLocation = ["x": clickLocation.x, "y": clickLocation.y]
@@ -282,18 +289,18 @@ extension ClickCommand {
         }
         return CGPoint(x: x, y: y)
     }
-    
+
     /// Create element locator from query string
     static func createLocatorFromQuery(_ query: String) -> (type: String, value: String) {
         // Simple heuristic for determining locator type
         if query.hasPrefix("#") {
-            return ("id", String(query.dropFirst()))
+            ("id", String(query.dropFirst()))
         } else if query.hasPrefix(".") {
-            return ("class", String(query.dropFirst()))
+            ("class", String(query.dropFirst()))
         } else if query.hasPrefix("//") || query.hasPrefix("/") {
-            return ("xpath", query)
+            ("xpath", query)
         } else {
-            return ("text", query)
+            ("text", query)
         }
     }
 }

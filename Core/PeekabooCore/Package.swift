@@ -28,7 +28,7 @@ let package = Package(
                 "Core/README.md",
                 "AI/README.md",
                 "Services/README.md",
-                "Services/Agent/Tools/README.md"
+                "Services/Agent/Tools/README.md",
             ]),
         .testTarget(
             name: "PeekabooTests",

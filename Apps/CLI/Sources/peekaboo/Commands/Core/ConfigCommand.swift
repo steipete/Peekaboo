@@ -36,13 +36,15 @@ struct ConfigCommand: ParsableCommand {
             EditCommand.self,
             ValidateCommand.self,
             SetCredentialCommand.self,
-        ])
+        ]
+    )
 
     /// Subcommand to create a default configuration file
     struct InitCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "init",
-            abstract: "Create a default configuration file")
+            abstract: "Create a default configuration file"
+        )
 
         @Flag(name: .long, help: "Force overwrite existing configuration")
         var force = false
@@ -60,7 +62,8 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: "Configuration file already exists. Use --force to overwrite.",
-                        details: "Path: \(configPath)")
+                        details: "Path: \(configPath)"
+                    )
                     outputJSON(errorOutput)
                 } else {
                     print("Configuration file already exists at: \(configPath)")
@@ -78,7 +81,8 @@ struct ConfigCommand: ParsableCommand {
                         data: [
                             "message": "Configuration file created successfully",
                             "path": configPath,
-                        ])
+                        ]
+                    )
                     outputJSON(successOutput)
                 } else {
                     print("✅ Configuration file created at: \(configPath)")
@@ -91,7 +95,8 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: error.localizedDescription,
-                        details: "Path: \(configPath)")
+                        details: "Path: \(configPath)"
+                    )
                     outputJSON(errorOutput)
                 } else {
                     print("❌ Failed to create configuration file: \(error)")
@@ -105,7 +110,8 @@ struct ConfigCommand: ParsableCommand {
     struct ShowCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
-            abstract: "Display current configuration")
+            abstract: "Display current configuration"
+        )
 
         @Flag(name: .long, help: "Show effective configuration (merged with environment)")
         var effective = false
@@ -125,7 +131,8 @@ struct ConfigCommand: ParsableCommand {
                             error: true,
                             code: "FILE_IO_ERROR",
                             message: "No configuration file found",
-                            details: "Path: \(configPath). Run 'peekaboo config init' to create one.")
+                            details: "Path: \(configPath). Run 'peekaboo config init' to create one."
+                        )
                         outputJSON(errorOutput)
                     } else {
                         print("No configuration file found at: \(configPath)")
@@ -148,7 +155,8 @@ struct ConfigCommand: ParsableCommand {
                                 error: true,
                                 code: "FILE_IO_ERROR",
                                 message: "Failed to parse configuration file",
-                                details: nil)
+                                details: nil
+                            )
                             outputJSON(errorOutput)
                             throw ExitCode.failure
                         }
@@ -161,7 +169,8 @@ struct ConfigCommand: ParsableCommand {
                             error: true,
                             code: "FILE_IO_ERROR",
                             message: error.localizedDescription,
-                            details: nil)
+                            details: nil
+                        )
                         outputJSON(errorOutput)
                     } else {
                         print("Failed to read configuration file: \(error)")
@@ -194,7 +203,8 @@ struct ConfigCommand: ParsableCommand {
                 if self.jsonOutput {
                     let successOutput = SuccessOutput(
                         success: true,
-                        data: effectiveConfig)
+                        data: effectiveConfig
+                    )
                     outputJSON(successOutput)
                 } else {
                     print("Effective Configuration (after merging all sources):")
@@ -214,9 +224,11 @@ struct ConfigCommand: ParsableCommand {
                     print()
                     print("Files:")
                     print(
-                        "  Config File: \(FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND")")
+                        "  Config File: \(FileManager.default.fileExists(atPath: configPath) ? configPath : "NOT FOUND")"
+                    )
                     print(
-                        "  Credentials: \(FileManager.default.fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND")")
+                        "  Credentials: \(FileManager.default.fileExists(atPath: credentialsPath) ? credentialsPath : "NOT FOUND")"
+                    )
                 }
             }
         }
@@ -226,7 +238,8 @@ struct ConfigCommand: ParsableCommand {
     struct EditCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "edit",
-            abstract: "Open configuration file in your default editor")
+            abstract: "Open configuration file in your default editor"
+        )
 
         @Option(name: .long, help: "Editor to use (defaults to $EDITOR or nano)")
         var editor: String?
@@ -291,7 +304,8 @@ struct ConfigCommand: ParsableCommand {
                             error: true,
                             code: "UNKNOWN_ERROR",
                             message: "Editor exited with non-zero status: \(process.terminationStatus)",
-                            details: "Editor: \(editorCommand)")
+                            details: "Editor: \(editorCommand)"
+                        )
                         outputJSON(errorOutput)
                     } else {
                         print("Editor exited with status: \(process.terminationStatus)")
@@ -304,7 +318,8 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "UNKNOWN_ERROR",
                         message: error.localizedDescription,
-                        details: "Editor: \(editorCommand)")
+                        details: "Editor: \(editorCommand)"
+                    )
                     outputJSON(errorOutput)
                 } else {
                     print("Failed to open editor: \(error)")
@@ -318,7 +333,8 @@ struct ConfigCommand: ParsableCommand {
     struct ValidateCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "validate",
-            abstract: "Validate configuration file syntax")
+            abstract: "Validate configuration file syntax"
+        )
 
         @Flag(name: .long, help: "Output JSON data for programmatic use")
         var jsonOutput = false
@@ -332,7 +348,8 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: "No configuration file found",
-                        details: "Path: \(configPath). Run 'peekaboo config init' to create one.")
+                        details: "Path: \(configPath). Run 'peekaboo config init' to create one."
+                    )
                     outputJSON(errorOutput)
                 } else {
                     print("No configuration file found at: \(configPath)")
@@ -368,7 +385,8 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: "Failed to parse configuration file. Check for syntax errors.",
-                        details: "Path: \(configPath). Common issues: trailing commas, unclosed comments, invalid JSON syntax.")
+                        details: "Path: \(configPath). Common issues: trailing commas, unclosed comments, invalid JSON syntax."
+                    )
                     outputJSON(errorOutput)
                 } else {
                     print("❌ Configuration is invalid!")
@@ -389,7 +407,8 @@ struct ConfigCommand: ParsableCommand {
     struct SetCredentialCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "set-credential",
-            abstract: "Set an API key or credential securely")
+            abstract: "Set an API key or credential securely"
+        )
 
         @Argument(help: "The credential name (e.g., OPENAI_API_KEY)")
         var key: String
@@ -422,7 +441,8 @@ struct ConfigCommand: ParsableCommand {
                         error: true,
                         code: "FILE_IO_ERROR",
                         message: error.localizedDescription,
-                        details: "Failed to save credential")
+                        details: "Failed to save credential"
+                    )
                     outputJSON(errorOutput)
                 } else {
                     print("❌ Failed to set credential: \(error)")
@@ -491,8 +511,7 @@ private func outputJSON(_ value: some Encodable) {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     if let data = try? encoder.encode(value),
-       let json = String(data: data, encoding: .utf8)
-    {
+       let json = String(data: data, encoding: .utf8) {
         print(json)
     }
 }

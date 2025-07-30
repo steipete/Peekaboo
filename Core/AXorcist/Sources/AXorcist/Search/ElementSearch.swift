@@ -216,7 +216,7 @@ public func traverseAndSearch(
     struct VisitedSet { nonisolated(unsafe) static var set = Set<UInt>() }
 
     if let children = element.children(strict: false), !children.isEmpty,
-       (axorcScanAll || (element.role().map { containerRoles.contains($0) } ?? false)) {
+       axorcScanAll || (element.role().map { containerRoles.contains($0) } ?? false) {
         // Abort if we are past the deadline
         if let deadline = traversalDeadline, Date() > deadline {
             logger.warning("Traverse: global search timeout (\(axorcTraversalTimeout)s) reached. Aborting traversal.")
@@ -377,7 +377,7 @@ private let containerRoles: Set<String> = [
     AXRoleNames.kAXListRole,
     AXRoleNames.kAXOutlineRole,
     AXRoleNames.kAXUnknownRole,
-    "AXGeneric","AXSection","AXArticle","AXSplitter","AXScrollBar","AXPane"
+    "AXGeneric", "AXSection", "AXArticle", "AXSplitter", "AXScrollBar", "AXPane"
 ]
 
 // MARK: - Search Timeout Handling

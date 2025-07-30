@@ -1,10 +1,10 @@
-import SwiftUI
 import os.log
 import PeekabooCore
+import SwiftUI
 
 struct MenuBarStatusView: View {
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "MenuBarStatus")
-    
+
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
     @Environment(SpeechRecognizer.self) private var speechRecognizer
@@ -14,82 +14,83 @@ struct MenuBarStatusView: View {
     @State private var isVoiceMode = false
     @State private var inputText = ""
     @State private var refreshTrigger = UUID()
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Header with current status
-            headerView
+            self.headerView
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(.regularMaterial)
-            
+
             Divider()
-            
+
             // Main content area - always show current session if available
             if let currentSession = sessionStore.currentSession {
-                currentSessionView(currentSession)
+                self.currentSessionView(currentSession)
                     .frame(maxHeight: 350)
-            } else if agent.isProcessing {
+            } else if self.agent.isProcessing {
                 // Fallback when agent is processing but no session yet
-                activeSessionView
+                self.activeSessionView
                     .frame(maxHeight: 350)
             } else {
                 // Empty state when no session
-                emptyStateView
+                self.emptyStateView
                     .frame(minHeight: 150)
             }
-            
+
             Divider()
-            
+
             // Bottom action buttons
-            actionButtonsView
+            self.actionButtonsView
                 .padding()
                 .background(.regularMaterial)
         }
         .frame(width: 380)
         .background(.ultraThinMaterial)
         .onAppear {
-            hasAppeared = true
+            self.hasAppeared = true
             // Force a UI update in case environment values weren't ready
             DispatchQueue.main.async {
                 self.hasAppeared = true
                 self.refreshTrigger = UUID()
             }
         }
-        .onChange(of: agent.isProcessing) { _, _ in
-            refreshTrigger = UUID()
+        .onChange(of: self.agent.isProcessing) { _, _ in
+            self.refreshTrigger = UUID()
         }
-        .onChange(of: sessionStore.currentSession?.messages.count ?? 0) { _, _ in
-            refreshTrigger = UUID()
+        .onChange(of: self.sessionStore.currentSession?.messages.count ?? 0) { _, _ in
+            self.refreshTrigger = UUID()
         }
-        .onChange(of: agent.toolExecutionHistory.count) { _, _ in
-            refreshTrigger = UUID()
+        .onChange(of: self.agent.toolExecutionHistory.count) { _, _ in
+            self.refreshTrigger = UUID()
         }
     }
-    
+
     private var headerView: some View {
         HStack {
-            Image(systemName: agent.isProcessing ? "brain" : "moon.stars")
+            Image(systemName: self.agent.isProcessing ? "brain" : "moon.stars")
                 .font(.title2)
-                .foregroundColor(agent.isProcessing ? .accentColor : .secondary)
-                .symbolEffect(.pulse, options: .repeating, isActive: agent.isProcessing)
-            
+                .foregroundColor(self.agent.isProcessing ? .accentColor : .secondary)
+                .symbolEffect(.pulse, options: .repeating, isActive: self.agent.isProcessing)
+
             VStack(alignment: .leading, spacing: 2) {
                 if let currentSession = sessionStore.currentSession {
                     Text(currentSession.title)
                         .font(.headline)
                         .lineLimit(1)
-                    
-                    if agent.isProcessing {
+
+                    if self.agent.isProcessing {
                         if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
                             HStack(spacing: 4) {
                                 EnhancedToolIcon(
                                     toolName: currentTool.toolName,
-                                    status: .running
-                                )
-                                .font(.system(size: 12))
-                                .frame(width: 14, height: 14)
-                                Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
+                                    status: .running)
+                                    .font(.system(size: 12))
+                                    .frame(width: 14, height: 14)
+                                Text(ToolFormatter.compactToolSummary(
+                                    toolName: currentTool.toolName,
+                                    arguments: currentTool.arguments))
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                     .lineLimit(1)
@@ -111,13 +112,13 @@ struct MenuBarStatusView: View {
                         }
                     }
                 } else {
-                    Text(agent.isProcessing ? "Agent Active" : "Agent Idle")
+                    Text(self.agent.isProcessing ? "Agent Active" : "Agent Idle")
                         .font(.headline)
                 }
             }
-            
+
             Spacer()
-            
+
             // Show token count if available
             if let usage = agent.tokenUsage {
                 HStack(spacing: 2) {
@@ -129,22 +130,25 @@ struct MenuBarStatusView: View {
                 }
                 .help("Tokens: \(usage.promptTokens) in, \(usage.completionTokens) out")
             }
-            
+
             // Voice mode toggle button
-            if !agent.isProcessing {
-                Button(action: { isVoiceMode.toggle() }) {
-                    Image(systemName: isVoiceMode ? "keyboard" : "mic")
+            if !self.agent.isProcessing {
+                Button(action: { self.isVoiceMode.toggle() }) {
+                    Image(systemName: self.isVoiceMode ? "keyboard" : "mic")
                         .font(.title3)
-                        .foregroundColor(isVoiceMode ? .red : .accentColor)
-                        .symbolEffect(.pulse, options: .repeating, isActive: isVoiceMode && speechRecognizer.isListening)
+                        .foregroundColor(self.isVoiceMode ? .red : .accentColor)
+                        .symbolEffect(
+                            .pulse,
+                            options: .repeating,
+                            isActive: self.isVoiceMode && self.speechRecognizer.isListening)
                 }
                 .buttonStyle(.plain)
-                .help(isVoiceMode ? "Switch to text input" : "Switch to voice input")
+                .help(self.isVoiceMode ? "Switch to text input" : "Switch to voice input")
             }
-            
-            if agent.isProcessing {
-                Button(action: { 
-                    agent.cancelCurrentTask()
+
+            if self.agent.isProcessing {
+                Button(action: {
+                    self.agent.cancelCurrentTask()
                 }) {
                     Image(systemName: "stop.circle.fill")
                         .font(.title2)
@@ -155,39 +159,40 @@ struct MenuBarStatusView: View {
             }
         }
     }
-    
+
     private func currentSessionView(_ session: ConversationSession) -> some View {
         VStack(spacing: 0) {
             // Tool execution history (showing recent tools)
-            if !agent.toolExecutionHistory.isEmpty {
+            if !self.agent.toolExecutionHistory.isEmpty {
                 VStack(spacing: 4) {
                     // Show current running tool prominently
                     if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
                         HStack(spacing: 8) {
                             EnhancedToolIcon(
                                 toolName: currentTool.toolName,
-                                status: .running
-                            )
-                            .font(.system(size: 16))
-                            .frame(width: 20, height: 20)
-                            .background(Color.blue.opacity(0.1))
-                            .clipShape(Circle())
-                            
+                                status: .running)
+                                .font(.system(size: 16))
+                                .frame(width: 20, height: 20)
+                                .background(Color.blue.opacity(0.1))
+                                .clipShape(Circle())
+
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
+                                Text(ToolFormatter.compactToolSummary(
+                                    toolName: currentTool.toolName,
+                                    arguments: currentTool.arguments))
                                     .font(.caption)
                                     .foregroundColor(.primary)
                                     .lineLimit(1)
-                                
+
                                 // Show elapsed time for running tool
                                 TimeIntervalText(startTime: currentTool.timestamp)
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                             }
-                            
+
                             Spacer()
-                            
-                            Button(action: { agent.cancelCurrentTask() }) {
+
+                            Button(action: { self.agent.cancelCurrentTask() }) {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.red)
                             }
@@ -198,25 +203,26 @@ struct MenuBarStatusView: View {
                         .padding(.vertical, 8)
                         .background(Color.orange.opacity(0.1))
                     }
-                    
+
                     // Show recent completed tools
-                    ForEach(agent.toolExecutionHistory.suffix(3).reversed()) { tool in
+                    ForEach(self.agent.toolExecutionHistory.suffix(3).reversed()) { tool in
                         if tool.status != .running {
                             HStack(spacing: 6) {
                                 EnhancedToolIcon(
                                     toolName: tool.toolName,
-                                    status: tool.status
-                                )
-                                .font(.system(size: 12))
-                                .frame(width: 14, height: 14)
-                                
-                                Text(ToolFormatter.compactToolSummary(toolName: tool.toolName, arguments: tool.arguments))
+                                    status: tool.status)
+                                    .font(.system(size: 12))
+                                    .frame(width: 14, height: 14)
+
+                                Text(ToolFormatter.compactToolSummary(
+                                    toolName: tool.toolName,
+                                    arguments: tool.arguments))
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                                     .lineLimit(1)
-                                
+
                                 Spacer()
-                                
+
                                 // Duration for completed tools
                                 if let duration = tool.duration {
                                     Text(ToolFormatter.formatDuration(duration))
@@ -232,12 +238,12 @@ struct MenuBarStatusView: View {
                     }
                 }
                 .background(Color.secondary.opacity(0.05))
-                
+
                 Divider()
             }
-            
+
             Divider()
-            
+
             // Messages scroll view
             ScrollViewReader { proxy in
                 ScrollView {
@@ -247,18 +253,19 @@ struct MenuBarStatusView: View {
                             MenuDetailedMessageRow(message: message)
                                 .id(message.id)
                         }
-                        
+
                         // Thinking is now handled within MenuDetailedMessageRow
-                        
+
                         // Show processing indicator if actively processing but no thinking message
-                        if agent.isProcessing && !agent.isThinking {
+                        if self.agent.isProcessing, !self.agent.isThinking {
                             if let lastMessage = session.messages.last,
-                               lastMessage.role != .system || !lastMessage.content.contains("🤔") {
+                               lastMessage.role != .system || !lastMessage.content.contains("🤔")
+                            {
                                 HStack(spacing: 8) {
                                     ProgressView()
                                         .scaleEffect(0.6)
                                         .progressViewStyle(CircularProgressViewStyle())
-                                    
+
                                     Text("Processing...")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
@@ -279,10 +286,10 @@ struct MenuBarStatusView: View {
                             }
                         }
                     }
-                    .onChange(of: agent.isProcessing) { _, _ in
+                    .onChange(of: self.agent.isProcessing) { _, _ in
                         // Auto-scroll when processing state changes
                         withAnimation {
-                            if agent.isProcessing {
+                            if self.agent.isProcessing {
                                 proxy.scrollTo("processing", anchor: .bottom)
                             } else if let lastMessage = session.messages.last {
                                 proxy.scrollTo(lastMessage.id, anchor: .bottom)
@@ -291,90 +298,89 @@ struct MenuBarStatusView: View {
                     }
                 }
             }
-            
+
             // Input area (shown when idle or processing)
             Divider()
-            
+
             HStack(spacing: 8) {
-                if isVoiceMode {
+                if self.isVoiceMode {
                     Image(systemName: "mic.fill")
                         .foregroundColor(.red)
                         .font(.caption)
                 }
-                
-                TextField(agent.isProcessing ? "Ask a follow-up..." : "Ask Peekaboo...", text: $inputText)
+
+                TextField(self.agent.isProcessing ? "Ask a follow-up..." : "Ask Peekaboo...", text: self.$inputText)
                     .textFieldStyle(.plain)
                     .font(.body)
                     .onSubmit {
-                        submitInput()
+                        self.submitInput()
                     }
-                
-                Button(action: submitInput) {
+
+                Button(action: self.submitInput) {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.title2)
                 }
                 .buttonStyle(.plain)
-                .disabled(inputText.isEmpty)
+                .disabled(self.inputText.isEmpty)
             }
             .padding(10)
             .background(.regularMaterial)
         }
     }
-    
+
     private func submitInput() {
-        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = self.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        
+
         // Add user message to current session (or create new if needed)
         if let session = sessionStore.currentSession {
-            sessionStore.addMessage(
+            self.sessionStore.addMessage(
                 ConversationMessage(role: .user, content: text),
-                to: session
-            )
+                to: session)
         } else {
             // Create new session if needed
-            let newSession = sessionStore.createSession(title: text)
-            sessionStore.addMessage(
+            let newSession = self.sessionStore.createSession(title: text)
+            self.sessionStore.addMessage(
                 ConversationMessage(role: .user, content: text),
-                to: newSession
-            )
+                to: newSession)
         }
-        
-        inputText = ""
-        
+
+        self.inputText = ""
+
         // Execute the task
         Task {
             do {
-                try await agent.executeTask(text)
+                try await self.agent.executeTask(text)
             } catch {
                 print("Failed to execute task: \(error)")
             }
         }
     }
-    
+
     private var activeSessionView: some View {
         Group {
             if let session = sessionStore.currentSession {
                 VStack(spacing: 0) {
                     // Active task indicator
-                    if agent.isProcessing {
+                    if self.agent.isProcessing {
                         HStack(spacing: 8) {
                             if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
                                 EnhancedToolIcon(
                                     toolName: currentTool.toolName,
-                                    status: .running
-                                )
-                                .font(.system(size: 16))
-                                .frame(width: 20, height: 20)
-                                .background(Color.blue.opacity(0.1))
-                                .clipShape(Circle())
-                                
+                                    status: .running)
+                                    .font(.system(size: 16))
+                                    .frame(width: 20, height: 20)
+                                    .background(Color.blue.opacity(0.1))
+                                    .clipShape(Circle())
+
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
+                                    Text(ToolFormatter.compactToolSummary(
+                                        toolName: currentTool.toolName,
+                                        arguments: currentTool.arguments))
                                         .font(.caption)
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
-                                    
+
                                     // Show elapsed time for running tool
                                     TimeIntervalText(startTime: currentTool.timestamp)
                                         .font(.caption2)
@@ -384,17 +390,17 @@ struct MenuBarStatusView: View {
                                 ProgressView()
                                     .scaleEffect(0.7)
                                     .progressViewStyle(CircularProgressViewStyle())
-                                
+
                                 Text("Initializing...")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                     .lineLimit(1)
                             }
-                            
+
                             Spacer()
-                            
-                            Button(action: { 
-                                agent.cancelCurrentTask()
+
+                            Button(action: {
+                                self.agent.cancelCurrentTask()
                             }) {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.red)
@@ -405,10 +411,10 @@ struct MenuBarStatusView: View {
                         .padding(.horizontal)
                         .padding(.vertical, 8)
                         .background(Color.orange.opacity(0.1))
-                        
+
                         Divider()
                     }
-                    
+
                     ScrollViewReader { proxy in
                         ScrollView {
                             VStack(alignment: .leading, spacing: 8) {
@@ -425,11 +431,10 @@ struct MenuBarStatusView: View {
                                                         Animation.easeInOut(duration: 0.8)
                                                             .repeatForever()
                                                             .delay(Double(index) * 0.2),
-                                                        value: agent.isProcessing
-                                                    )
+                                                        value: self.agent.isProcessing)
                                             }
                                         }
-                                        
+
                                         Text("Initializing task...")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
@@ -441,7 +446,7 @@ struct MenuBarStatusView: View {
                                         MenuDetailedMessageRow(message: message)
                                             .id(message.id)
                                     }
-                                    
+
                                     // Thinking is now handled within MenuDetailedMessageRow
                                 }
                             }
@@ -457,25 +462,25 @@ struct MenuBarStatusView: View {
                         }
                         .frame(maxHeight: 300)
                     }
-                    
+
                     // Input area for chatting during execution
-                    if agent.isProcessing {
+                    if self.agent.isProcessing {
                         Divider()
-                        
+
                         HStack(spacing: 8) {
-                            TextField("Ask a follow-up question...", text: $inputText)
+                            TextField("Ask a follow-up question...", text: self.$inputText)
                                 .textFieldStyle(.plain)
                                 .font(.caption)
                                 .onSubmit {
-                                    submitFollowUp()
+                                    self.submitFollowUp()
                                 }
-                            
-                            Button(action: submitFollowUp) {
+
+                            Button(action: self.submitFollowUp) {
                                 Image(systemName: "arrow.up.circle.fill")
                                     .font(.body)
                             }
                             .buttonStyle(.plain)
-                            .disabled(inputText.isEmpty)
+                            .disabled(self.inputText.isEmpty)
                         }
                         .padding(10)
                         .background(.regularMaterial)
@@ -494,31 +499,30 @@ struct MenuBarStatusView: View {
             }
         }
     }
-    
+
     private func submitFollowUp() {
-        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = self.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        
+
         // Add user message to current session
         if let session = sessionStore.currentSession {
-            sessionStore.addMessage(
+            self.sessionStore.addMessage(
                 ConversationMessage(role: .user, content: text),
-                to: session
-            )
+                to: session)
         }
-        
-        inputText = ""
-        
+
+        self.inputText = ""
+
         // Execute the task
         Task {
             do {
-                try await agent.executeTask(text)
+                try await self.agent.executeTask(text)
             } catch {
                 print("Failed to execute task: \(error)")
             }
         }
     }
-    
+
     private var idleView: some View {
         VStack(spacing: 16) {
             // Show current session if there is one (even when idle)
@@ -526,60 +530,59 @@ struct MenuBarStatusView: View {
                 currentSessionPreview(currentSession)
                     .padding(.horizontal)
                     .padding(.top)
-                
+
                 Divider()
             }
-            
+
             // Show voice input UI when in voice mode
-            if isVoiceMode {
-                voiceInputView
+            if self.isVoiceMode {
+                self.voiceInputView
             }
-            
+
             // Recent sessions (show when not in voice mode)
-            if !isVoiceMode && !sessionStore.sessions.isEmpty {
-                recentSessionsView
+            if !self.isVoiceMode, !self.sessionStore.sessions.isEmpty {
+                self.recentSessionsView
                     .padding(.top)
             }
-            
+
             // Quick actions
-            quickActionsView
+            self.quickActionsView
                 .padding()
         }
     }
-    
+
     @ViewBuilder
     private var recentSessionsView: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Recent Sessions")
                 .font(.headline)
                 .padding(.horizontal)
-            
+
             ScrollView {
                 VStack(spacing: 4) {
-                    ForEach(sessionStore.sessions.prefix(5)) { session in
+                    ForEach(self.sessionStore.sessions.prefix(5)) { session in
                         SessionRowCompact(
                             session: session,
                             isActive: false, // Simplified check
                             onDelete: {
                                 withAnimation {
-                                    sessionStore.sessions.removeAll { $0.id == session.id }
+                                    self.sessionStore.sessions.removeAll { $0.id == session.id }
                                     Task {
-                                        sessionStore.saveSessions()
+                                        self.sessionStore.saveSessions()
                                     }
                                 }
+                            })
+                            .onTapGesture {
+                                self.sessionStore.selectSession(session)
+                                self.openMainWindow()
                             }
-                        )
-                        .onTapGesture {
-                            sessionStore.selectSession(session)
-                            openMainWindow()
-                        }
                     }
                 }
             }
             .frame(maxHeight: 200)
         }
     }
-    
+
     @ViewBuilder
     private var emptyStateView: some View {
         VStack(spacing: 16) {
@@ -588,11 +591,11 @@ struct MenuBarStatusView: View {
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
                 .symbolEffect(.pulse.byLayer, options: .repeating.speed(0.5))
-            
+
             Text("No active session")
                 .font(.headline)
                 .foregroundColor(.secondary)
-            
+
             Text("Start a new session or open the main window")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -601,18 +604,18 @@ struct MenuBarStatusView: View {
         }
         .padding()
     }
-    
+
     @ViewBuilder
     private var actionButtonsView: some View {
         HStack(spacing: 12) {
-            Button(action: openMainWindow) {
+            Button(action: self.openMainWindow) {
                 Label("Open Window", systemImage: "rectangle.stack")
                     .frame(maxWidth: .infinity)
             }
             .controlSize(.regular)
             .buttonStyle(.bordered)
-            
-            Button(action: createNewSession) {
+
+            Button(action: self.createNewSession) {
                 Label("New Session", systemImage: "plus.circle")
                     .frame(maxWidth: .infinity)
             }
@@ -620,18 +623,18 @@ struct MenuBarStatusView: View {
             .buttonStyle(.borderedProminent)
         }
     }
-    
+
     @ViewBuilder
     private var quickActionsView: some View {
         VStack(spacing: 8) {
-            Button(action: openMainWindow) {
+            Button(action: self.openMainWindow) {
                 Label("Open Main Window", systemImage: "rectangle.stack")
                     .frame(maxWidth: .infinity)
             }
             .controlSize(.large)
             .buttonStyle(.bordered)
-            
-            Button(action: createNewSession) {
+
+            Button(action: self.createNewSession) {
                 Label("New Session", systemImage: "plus.circle")
                     .frame(maxWidth: .infinity)
             }
@@ -639,90 +642,89 @@ struct MenuBarStatusView: View {
             .buttonStyle(.borderedProminent)
         }
     }
-    
+
     private func openMainWindow() {
-        logger.info("Opening main window")
-        
+        self.logger.info("Opening main window")
+
         // Show dock icon temporarily
         DockIconManager.shared.temporarilyShowDock()
-        
+
         // Activate the app
         NSApp.activate(ignoringOtherApps: true)
-        
+
         // Use SwiftUI's openWindow directly
-        openWindow(id: "main")
+        self.openWindow(id: "main")
     }
-    
+
     private func createNewSession() {
-        logger.info("Creating new session")
-        
+        self.logger.info("Creating new session")
+
         // Create a new session first
-        _ = sessionStore.createSession(title: "New Session")
-        
+        _ = self.sessionStore.createSession(title: "New Session")
+
         // Then open the main window
-        openMainWindow()
+        self.openMainWindow()
     }
-    
+
     private var voiceInputView: some View {
         VStack(spacing: 16) {
             // Listening indicator
             VStack(spacing: 8) {
-                if speechRecognizer.isListening {
+                if self.speechRecognizer.isListening {
                     HStack(spacing: 4) {
                         ForEach(0..<3) { index in
                             Circle()
                                 .fill(Color.accentColor)
                                 .frame(width: 8, height: 8)
-                                .scaleEffect(speechRecognizer.isListening ? 1.2 : 0.8)
+                                .scaleEffect(self.speechRecognizer.isListening ? 1.2 : 0.8)
                                 .animation(
                                     Animation.easeInOut(duration: 0.6)
                                         .repeatForever()
                                         .delay(Double(index) * 0.2),
-                                    value: speechRecognizer.isListening
-                                )
+                                    value: self.speechRecognizer.isListening)
                         }
                     }
                     .frame(height: 20)
                 }
-                
-                Text(speechRecognizer.transcript.isEmpty ? "Listening..." : speechRecognizer.transcript)
+
+                Text(self.speechRecognizer.transcript.isEmpty ? "Listening..." : self.speechRecognizer.transcript)
                     .font(.callout)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
                     .frame(maxHeight: 100)
             }
-            
+
             // Microphone button
             Button {
-                toggleVoiceRecording()
+                self.toggleVoiceRecording()
             } label: {
-                Image(systemName: speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
+                Image(systemName: self.speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
                     .font(.system(size: 48))
-                    .foregroundColor(speechRecognizer.isListening ? .red : .accentColor)
+                    .foregroundColor(self.speechRecognizer.isListening ? .red : .accentColor)
             }
             .buttonStyle(.plain)
         }
         .padding()
         .frame(minHeight: 200)
     }
-    
+
     // MARK: - Actions
-    
+
     private func toggleVoiceRecording() {
-        if speechRecognizer.isListening {
+        if self.speechRecognizer.isListening {
             // Stop and submit
-            speechRecognizer.stopListening()
-            
-            let transcript = speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            self.speechRecognizer.stopListening()
+
+            let transcript = self.speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
             if !transcript.isEmpty {
-                submitVoiceInput(transcript)
+                self.submitVoiceInput(transcript)
             }
         } else {
             // Start listening
             Task {
                 do {
-                    try speechRecognizer.startListening()
+                    try self.speechRecognizer.startListening()
                 } catch {
                     // Handle error - could show alert or status
                     print("Failed to start speech recognition: \(error)")
@@ -730,15 +732,15 @@ struct MenuBarStatusView: View {
             }
         }
     }
-    
+
     private func submitVoiceInput(_ text: String) {
         Task {
             // Close voice mode
-            isVoiceMode = false
-            
+            self.isVoiceMode = false
+
             // Execute the task
             do {
-                try await agent.executeTask(text)
+                try await self.agent.executeTask(text)
             } catch {
                 // Handle error - could show in UI
                 print("Task execution error: \(error)")
@@ -747,34 +749,33 @@ struct MenuBarStatusView: View {
     }
 }
 
-
 // Compact session row for menu bar
 struct SessionRowCompact: View {
     let session: ConversationSession
     let isActive: Bool
     let onDelete: () -> Void
     @State private var isHovering = false
-    
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(session.title)
+                Text(self.session.title)
                     .font(.caption)
                     .lineLimit(1)
-                
+
                 HStack(spacing: 4) {
                     Image(systemName: "clock")
                         .font(.caption2)
-                    Text(formatSessionDuration(session))
+                    Text(formatSessionDuration(self.session))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
             }
-            
+
             Spacer()
-            
-            if isHovering && !isActive {
-                Button(action: onDelete) {
+
+            if self.isHovering, !self.isActive {
+                Button(action: self.onDelete) {
                     Image(systemName: "trash")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -793,7 +794,7 @@ struct SessionRowCompact: View {
         .cornerRadius(6)
         .padding(.horizontal)
         .onHover { hovering in
-            isHovering = hovering
+            self.isHovering = hovering
         }
     }
 }
@@ -814,33 +815,33 @@ extension MenuBarStatusView {
                         .fontWeight(.medium)
                         .lineLimit(1)
                 }
-                
+
                 Spacer()
-                
+
                 // Open button
-                Button(action: openMainWindow) {
+                Button(action: self.openMainWindow) {
                     Image(systemName: "arrow.up.right.square")
                         .font(.body)
                 }
                 .buttonStyle(.plain)
                 .help("Open in main window")
             }
-            
+
             // Show last few messages
             if !session.messages.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(session.messages.suffix(3)) { message in
                         HStack(alignment: .top, spacing: 6) {
-                            Image(systemName: iconForRole(message.role))
+                            Image(systemName: self.iconForRole(message.role))
                                 .font(.caption2)
-                                .foregroundColor(colorForRole(message.role))
+                                .foregroundColor(self.colorForRole(message.role))
                                 .frame(width: 12)
-                            
-                            Text(truncatedContent(message.content))
+
+                            Text(self.truncatedContent(message.content))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
-                            
+
                             Spacer()
                         }
                     }
@@ -849,21 +850,21 @@ extension MenuBarStatusView {
                 .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
                 .cornerRadius(6)
             }
-            
+
             // Session stats
             HStack(spacing: 12) {
                 Label("\(session.messages.count)", systemImage: "message")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
-                if agent.tokenUsage != nil {
-                    Label("\(agent.tokenUsage?.totalTokens ?? 0)", systemImage: "circle.hexagongrid.circle")
+
+                if self.agent.tokenUsage != nil {
+                    Label("\(self.agent.tokenUsage?.totalTokens ?? 0)", systemImage: "circle.hexagongrid.circle")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 Text(formatSessionDuration(session))
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -873,23 +874,23 @@ extension MenuBarStatusView {
         .background(.regularMaterial)
         .cornerRadius(8)
     }
-    
+
     private func iconForRole(_ role: MessageRole) -> String {
         switch role {
-        case .user: return "person.circle"
-        case .assistant: return "brain"
-        case .system: return "gear"
+        case .user: "person.circle"
+        case .assistant: "brain"
+        case .system: "gear"
         }
     }
-    
+
     private func colorForRole(_ role: MessageRole) -> Color {
         switch role {
-        case .user: return .blue
-        case .assistant: return .green
-        case .system: return .orange
+        case .user: .blue
+        case .assistant: .green
+        case .system: .orange
         }
     }
-    
+
     private func truncatedContent(_ content: String) -> String {
         let cleaned = content
             .replacingOccurrences(of: "🤔 ", with: "")
@@ -899,7 +900,7 @@ extension MenuBarStatusView {
             .replacingOccurrences(of: "⚠️ ", with: "")
             .components(separatedBy: .newlines)
             .first ?? content
-        
+
         return String(cleaned.prefix(50)) + (cleaned.count > 50 ? "..." : "")
     }
 }
@@ -908,19 +909,20 @@ extension MenuBarStatusView {
 
 private func formatSessionDuration(_ session: ConversationSession) -> String {
     let duration: TimeInterval
-    
-    // If there's a last message, calculate duration from start to last message
-    if let lastMessage = session.messages.last {
-        duration = lastMessage.timestamp.timeIntervalSince(session.startTime)
+
+        // If there's a last message, calculate duration from start to last message
+        = if let lastMessage = session.messages.last
+    {
+        lastMessage.timestamp.timeIntervalSince(session.startTime)
     } else {
         // Otherwise just show time since start
-        duration = Date().timeIntervalSince(session.startTime)
+        Date().timeIntervalSince(session.startTime)
     }
-    
+
     let formatter = DateComponentsFormatter()
     formatter.allowedUnits = [.hour, .minute, .second]
     formatter.unitsStyle = .abbreviated
     formatter.maximumUnitCount = 2
-    
+
     return formatter.string(from: duration) ?? "0s"
 }

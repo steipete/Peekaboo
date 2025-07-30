@@ -30,7 +30,8 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
           # Multi-select with modifier keys
           peekaboo drag --from T1 --to T5 --modifiers shift
         """,
-        version: "2.0.0")
+        version: "2.0.0"
+    )
 
     @Option(help: "Starting element ID from session")
     var from: String?
@@ -61,7 +62,7 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
-    
+
     @OptionGroup var focusOptions: FocusOptions
 
     @MainActor
@@ -85,12 +86,12 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
             } else {
                 await PeekabooServices.shared.sessions.getMostRecentSession()
             }
-            
+
             // Ensure window is focused before dragging (if we have a session and auto-focus is enabled)
-            if let sessionId = sessionId {
+            if let sessionId {
                 try await self.ensureFocused(
                     sessionId: sessionId,
-                    options: focusOptions
+                    options: self.focusOptions
                 )
             }
 
@@ -100,7 +101,8 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                 coords: fromCoords,
                 sessionId: sessionId,
                 description: "from",
-                waitTimeout: 5.0)
+                waitTimeout: 5.0
+            )
 
             // Resolve ending point
             let endPoint: CGPoint = if let targetApp = toApp {
@@ -112,7 +114,8 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                     coords: self.toCoords,
                     sessionId: sessionId,
                     description: "to",
-                    waitTimeout: 5.0)
+                    waitTimeout: 5.0
+                )
             }
 
             // Perform the drag using UIAutomationService
@@ -121,7 +124,8 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                 to: endPoint,
                 duration: self.duration,
                 steps: self.steps,
-                modifiers: self.modifiers)
+                modifiers: self.modifiers
+            )
 
             // Small delay to ensure drag is processed
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
@@ -134,8 +138,9 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                 duration: self.duration,
                 steps: self.steps,
                 modifiers: self.modifiers ?? "none",
-                executionTime: Date().timeIntervalSince(startTime))
-                
+                executionTime: Date().timeIntervalSince(startTime)
+            )
+
             output(result) {
                 print("✅ Drag successful")
                 print("📍 From: (\(Int(startPoint.x)), \(Int(startPoint.y)))")
@@ -159,8 +164,8 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
         coords: String?,
         sessionId: String?,
         description: String,
-        waitTimeout: TimeInterval) async throws -> CGPoint
-    {
+        waitTimeout: TimeInterval
+    ) async throws -> CGPoint {
         if let coordString = coords {
             // Parse coordinates
             let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -177,7 +182,8 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
             let waitResult = try await PeekabooServices.shared.automation.waitForElement(
                 target: target,
                 timeout: waitTimeout,
-                sessionId: activeSessionId)
+                sessionId: activeSessionId
+            )
 
             if !waitResult.found {
                 throw PeekabooError.elementNotFound("Element with ID '\(element)' not found")
@@ -190,7 +196,8 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
             // Return center of element
             return CGPoint(
                 x: foundElement.bounds.origin.x + foundElement.bounds.width / 2,
-                y: foundElement.bounds.origin.y + foundElement.bounds.height / 2)
+                y: foundElement.bounds.origin.y + foundElement.bounds.height / 2
+            )
         } else if elementId != nil {
             throw ArgumentParser.ValidationError("Session ID required when using element IDs")
         } else {
@@ -210,11 +217,11 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                     // Trash is typically the last item
                     if let trash = items.last {
                         if let position = trash.position(),
-                           let size = trash.size()
-                        {
+                           let size = trash.size() {
                             return CGPoint(
                                 x: position.x + size.width / 2,
-                                y: position.y + size.height / 2)
+                                y: position.y + size.height / 2
+                            )
                         }
                     }
                 }
@@ -231,7 +238,8 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                 // Return center of window
                 return CGPoint(
                     x: firstWindow.bounds.origin.x + firstWindow.bounds.width / 2,
-                    y: firstWindow.bounds.origin.y + firstWindow.bounds.height / 2)
+                    y: firstWindow.bounds.origin.y + firstWindow.bounds.height / 2
+                )
             }
 
             throw PeekabooError.windowNotFound(criteria: "No window found for application '\(appName)'")
@@ -246,11 +254,11 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                             item.title()?.contains(appName) == true
                     }) {
                         if let position = appItem.position(),
-                           let size = appItem.size()
-                        {
+                           let size = appItem.size() {
                             return CGPoint(
                                 x: position.x + size.width / 2,
-                                y: position.y + size.height / 2)
+                                y: position.y + size.height / 2
+                            )
                         }
                     }
                 }

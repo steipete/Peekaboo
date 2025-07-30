@@ -78,7 +78,8 @@ struct AnalyzeCommandTests {
         let error = AnalyzeError.unsupportedFormat("txt")
         #expect(
             error.errorDescription ==
-                "Unsupported image format: .txt. Supported formats: .png, .jpg, .jpeg, .webp")
+                "Unsupported image format: .txt. Supported formats: .png, .jpg, .jpeg, .webp"
+        )
     }
 
     @Test("Analyze error no providers configured")
@@ -86,7 +87,8 @@ struct AnalyzeCommandTests {
         let error = AnalyzeError.noProvidersConfigured
         #expect(
             error.errorDescription ==
-                "AI analysis not configured. Set the PEEKABOO_AI_PROVIDERS environment variable.")
+                "AI analysis not configured. Set the PEEKABOO_AI_PROVIDERS environment variable."
+        )
     }
 }
 

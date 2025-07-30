@@ -1,8 +1,8 @@
 import ApplicationServices
 import AXorcist
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import peekaboo
 
 @Suite("Label Extraction Tests", .serialized, .tags(.localOnly))
@@ -42,7 +42,8 @@ struct LabelExtractionTests {
             window,
             parentId: nil,
             uiMap: &uiMap,
-            roleCounters: &roleCounters)
+            roleCounters: &roleCounters
+        )
 
         // Find numeric buttons and verify they have labels
         let numericButtons = uiMap.values.filter { element in
@@ -69,7 +70,8 @@ struct LabelExtractionTests {
                 ]
                 #expect(
                     button.identifier == expectedIdentifiers[digitStr],
-                    "Button \(digit) should have identifier '\(expectedIdentifiers[digitStr] ?? "")'")
+                    "Button \(digit) should have identifier '\(expectedIdentifiers[digitStr] ?? "")'"
+                )
             }
         }
 
@@ -95,7 +97,8 @@ struct LabelExtractionTests {
         let mockElement1 = MockAccessibilityElement(
             axLabel: "Button Label",
             title: "Button Title",
-            description: "Button Description")
+            description: "Button Description"
+        )
         let label1 = self.extractLabelFromElement(mockElement1)
         #expect(label1 == "Button Label", "Should prefer AXLabel when available")
 
@@ -103,7 +106,8 @@ struct LabelExtractionTests {
         let mockElement2 = MockAccessibilityElement(
             axLabel: nil,
             title: "Button Title",
-            description: "Button Description")
+            description: "Button Description"
+        )
         let label2 = self.extractLabelFromElement(mockElement2)
         #expect(label2 == "Button Description", "Should fall back to description")
 
@@ -111,7 +115,8 @@ struct LabelExtractionTests {
         let mockElement3 = MockAccessibilityElement(
             axLabel: nil,
             title: "Button Title",
-            description: nil)
+            description: nil
+        )
         let label3 = self.extractLabelFromElement(mockElement3)
         #expect(label3 == "Button Title", "Should fall back to title")
 
@@ -120,7 +125,8 @@ struct LabelExtractionTests {
             axLabel: nil,
             title: nil,
             description: nil,
-            value: "Button Value")
+            value: "Button Value"
+        )
         let label4 = self.extractLabelFromElement(mockElement4)
         #expect(label4 == "Button Value", "Should fall back to value as last resort")
     }
@@ -141,7 +147,8 @@ struct LabelExtractionTests {
             identifier: "Seven",
             frame: CGRect(x: 100, y: 100, width: 50, height: 50),
             isActionable: true,
-            keyboardShortcut: nil)
+            keyboardShortcut: nil
+        )
 
         // Verify fields are set correctly
         #expect(element.label == "7")
@@ -155,7 +162,8 @@ struct LabelExtractionTests {
             uiMap: ["B1": element],
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window")
+            windowTitle: "Test Window"
+        )
 
         // Verify the element is stored correctly
         #expect(sessionData.uiMap["B1"]?.label == "7")
@@ -168,8 +176,8 @@ struct LabelExtractionTests {
         _ element: Element,
         parentId: String?,
         uiMap: inout [String: UIElement],
-        roleCounters: inout [String: Int]) async
-    {
+        roleCounters: inout [String: Int]
+    ) async {
         let role = element.role() ?? "AXGroup"
         let title = element.title()
         let description = element.descriptionText()
@@ -213,7 +221,8 @@ struct LabelExtractionTests {
             identifier: identifier,
             frame: frame,
             isActionable: ElementIDGenerator.isActionableRole(role),
-            keyboardShortcut: nil)
+            keyboardShortcut: nil
+        )
 
         uiMap[elementId] = uiElement
 
@@ -224,7 +233,8 @@ struct LabelExtractionTests {
                     child,
                     parentId: elementId,
                     uiMap: &uiMap,
-                    roleCounters: &roleCounters)
+                    roleCounters: &roleCounters
+                )
             }
         }
     }
@@ -256,8 +266,8 @@ struct MockAccessibilityElement {
         description: String? = nil,
         help: String? = nil,
         roleDescription: String? = nil,
-        value: String? = nil)
-    {
+        value: String? = nil
+    ) {
         self.axLabel = axLabel
         self.title = title
         self.description = description

@@ -87,14 +87,14 @@ struct AXORCCommand: ParsableCommand {
             if observerSetupSucceeded {
                 axInfoLog("AXORCMain: Observer setup successful. Process will remain alive by running current RunLoop.")
                 #if DEBUG
-                    axInfoLog("AXORCMain: DEBUG mode - entering RunLoop.current.run() for observer.")
-                    RunLoop.current.run()
-                    axInfoLog("AXORCMain: DEBUG mode - RunLoop.current.run() finished.")
+                axInfoLog("AXORCMain: DEBUG mode - entering RunLoop.current.run() for observer.")
+                RunLoop.current.run()
+                axInfoLog("AXORCMain: DEBUG mode - RunLoop.current.run() finished.")
                 #else
-                    fputs("{\"error\": \"The 'observe' command is intended for DEBUG builds or specific use cases. " +
-                        "In release, it sets up the observer but will not keep the process alive indefinitely by itself. " +
-                        "Exiting normally after setup.\"}\n", stderr)
-                    fflush(stderr)
+                fputs("{\"error\": \"The 'observe' command is intended for DEBUG builds or specific use cases. " +
+                    "In release, it sets up the observer but will not keep the process alive indefinitely by itself. " +
+                    "Exiting normally after setup.\"}\n", stderr)
+                fflush(stderr)
                 #endif
             } else {
                 axErrorLog("AXORCMain: Observe command setup reported failure or result was not a success status. Exiting.")

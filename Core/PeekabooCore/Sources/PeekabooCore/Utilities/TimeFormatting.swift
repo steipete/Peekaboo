@@ -24,7 +24,7 @@ public func formatDuration(_ seconds: TimeInterval) -> String {
 /// - Returns: A formatted string like "just now", "5 minutes ago", "2 hours ago", etc.
 public func formatTimeAgo(_ date: Date, from now: Date = Date()) -> String {
     let interval = now.timeIntervalSince(date)
-    
+
     if interval < 60 {
         return "just now"
     } else if interval < 3600 {

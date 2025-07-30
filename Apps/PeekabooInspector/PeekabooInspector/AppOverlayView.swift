@@ -6,7 +6,7 @@ struct AppOverlayView: View {
     @ObservedObject var overlayManager: OverlayManager
 
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             ZStack {
                 Color.clear
                     .contentShape(Rectangle())

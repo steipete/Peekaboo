@@ -5,7 +5,7 @@ import Testing
 @Suite("Application Models Tests", .tags(.models, .unit))
 struct ApplicationModelsTests {
     // MARK: - Enum Tests
-    
+
     @Test("WindowDetailOption enum values and parsing", .tags(.fast))
     func windowDetailOption() {
         // Test WindowDetailOption enum values
@@ -56,8 +56,7 @@ struct ApplicationModelsTests {
             window_id: 12345,
             window_index: 0,
             bounds: bounds,
-            is_on_screen: true
-        )
+            is_on_screen: true)
 
         #expect(windowInfo.window_title == "Safari - Main Window")
         #expect(windowInfo.window_id == 12345)

@@ -1,6 +1,6 @@
 import ArgumentParser
-import Foundation
 import CoreGraphics
+import Foundation
 import PeekabooCore
 
 // Simple stderr logging function
@@ -20,7 +20,7 @@ struct Peekaboo: AsyncParsableCommand {
         abstract: "Lightning-fast macOS screenshots, AI vision analysis, and GUI automation with intelligent focus management",
         discussion: """
         VERSION: \(Version.fullVersion)
-        
+
         EXAMPLES:
           peekaboo image --app Safari                    # Capture Safari window
           peekaboo image --mode screen                   # Capture entire screen
@@ -35,7 +35,7 @@ struct Peekaboo: AsyncParsableCommand {
 
           peekaboo agent "Open TextEdit and write Hello"  # AI agent automation
           peekaboo "Click the login button and sign in"   # Direct agent invocation
-          
+
           peekaboo see --app Safari                      # Identify UI elements
           peekaboo click "Submit" --space-switch         # Click with auto-focus & Space switching
           peekaboo type "Hello" --bring-to-current-space # Type with window movement
@@ -51,7 +51,7 @@ struct Peekaboo: AsyncParsableCommand {
           for app in Safari Chrome "Visual Studio Code"; do
             peekaboo image --app "$app" --mode multi --path ~/Screenshots/
           done
-          
+
           # Cross-Space automation workflow
           peekaboo see --app "TextEdit"                  # Find UI elements
           peekaboo click --on T1 --space-switch          # Auto-switch Space & click
@@ -135,10 +135,10 @@ struct Main {
         // Check for build staleness in debug mode
         checkBuildStaleness()
         #endif
-        
+
         // Initialize CoreGraphics silently to prevent CGS_REQUIRE_INIT error
         _ = CGMainDisplayID()
-        
+
         // Load configuration at startup
         _ = ConfigurationManager.shared.loadConfiguration()
 
@@ -153,7 +153,7 @@ struct Main {
                 "menu", "app", "dock", "dialog", "space", "agent",
                 "help", "--help", "-h", "--version"
             ]
-            
+
             let firstArg = args[0]
             if !knownSubcommands.contains(firstArg) && !firstArg.starts(with: "-") {
                 // This looks like a direct agent invocation

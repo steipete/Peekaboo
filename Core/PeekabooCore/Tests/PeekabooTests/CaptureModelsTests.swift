@@ -49,9 +49,9 @@ struct CaptureModelsTests {
         #expect(CaptureFocus(rawValue: "foreground") == .foreground)
         #expect(CaptureFocus(rawValue: "invalid") == nil)
     }
-    
+
     // MARK: - Model Tests
-    
+
     @Test("SavedFile initialization and properties")
     func savedFileModel() {
         let savedFile = SavedFile(
@@ -60,9 +60,8 @@ struct CaptureModelsTests {
             window_title: "Safari",
             window_id: 12345,
             window_index: 0,
-            mime_type: "image/png"
-        )
-        
+            mime_type: "image/png")
+
         #expect(savedFile.path == "/tmp/screenshot.png")
         #expect(savedFile.item_label == "Main Window")
         #expect(savedFile.window_title == "Safari")
@@ -70,14 +69,13 @@ struct CaptureModelsTests {
         #expect(savedFile.window_index == 0)
         #expect(savedFile.mime_type == "image/png")
     }
-    
+
     @Test("SavedFile with nil optional properties")
     func savedFileWithNilProperties() {
         let savedFile = SavedFile(
             path: "/tmp/screenshot.png",
-            mime_type: "image/png"
-        )
-        
+            mime_type: "image/png")
+
         #expect(savedFile.path == "/tmp/screenshot.png")
         #expect(savedFile.item_label == nil)
         #expect(savedFile.window_title == nil)
@@ -85,19 +83,18 @@ struct CaptureModelsTests {
         #expect(savedFile.window_index == nil)
         #expect(savedFile.mime_type == "image/png")
     }
-    
+
     @Test("ImageCaptureData initialization")
     func imageCaptureDataModel() {
         let files = [
             SavedFile(path: "/tmp/screen1.png", mime_type: "image/png"),
-            SavedFile(path: "/tmp/screen2.png", mime_type: "image/png")
+            SavedFile(path: "/tmp/screen2.png", mime_type: "image/png"),
         ]
-        
+
         let captureData = ImageCaptureData(saved_files: files)
-        
+
         #expect(captureData.saved_files.count == 2)
         #expect(captureData.saved_files[0].path == "/tmp/screen1.png")
         #expect(captureData.saved_files[1].path == "/tmp/screen2.png")
     }
 }
-

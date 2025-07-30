@@ -13,30 +13,30 @@ import os.log
 final class DockIconManager: NSObject {
     /// Shared instance
     static let shared = DockIconManager()
-    
+
     private var windowsObservation: NSKeyValueObservation?
     private let logger = Logger(subsystem: "boo.peekaboo", category: "DockIconManager")
     private var settings: PeekabooSettings?
-    
+
     override private init() {
         super.init()
         self.setupObservers()
         self.updateDockVisibility()
     }
-    
+
     deinit {
         self.windowsObservation?.invalidate()
         NotificationCenter.default.removeObserver(self)
     }
-    
+
     // MARK: - Public Methods
-    
+
     /// Connect to settings instance for preference changes
     func connectToSettings(_ settings: PeekabooSettings) {
         self.settings = settings
         self.updateDockVisibility()
     }
-    
+
     /// Update dock visibility based on current state.
     /// Call this when user preferences change or when you need to ensure proper state.
     func updateDockVisibility() {
@@ -45,9 +45,9 @@ final class DockIconManager: NSObject {
             self.logger.warning("NSApp not available yet, skipping dock visibility update")
             return
         }
-        
+
         let userWantsDockShown = self.settings?.showInDock ?? true // Default to showing
-        
+
         // Count visible windows (excluding panels and hidden windows)
         let visibleWindows = NSApp.windows.filter { window in
             window.isVisible &&
@@ -57,11 +57,13 @@ final class DockIconManager: NSObject {
                 // Exclude the hidden window
                 !(window.identifier?.rawValue.contains("HiddenWindow") ?? false)
         }
-        
+
         let hasVisibleWindows = !visibleWindows.isEmpty
-        
-        self.logger.debug("Updating dock visibility - User wants shown: \(userWantsDockShown), Visible windows: \(visibleWindows.count)")
-        
+
+        self.logger
+            .debug(
+                "Updating dock visibility - User wants shown: \(userWantsDockShown), Visible windows: \(visibleWindows.count)")
+
         // Show dock if user wants it shown OR if any windows are open
         if userWantsDockShown || hasVisibleWindows {
             self.logger.debug("Showing dock icon")
@@ -71,7 +73,7 @@ final class DockIconManager: NSObject {
             NSApp.setActivationPolicy(.accessory)
         }
     }
-    
+
     /// Force show the dock icon temporarily (e.g., when opening a window).
     /// The dock visibility will be properly managed automatically via KVO.
     func temporarilyShowDock() {
@@ -81,9 +83,9 @@ final class DockIconManager: NSObject {
         }
         NSApp.setActivationPolicy(.regular)
     }
-    
+
     // MARK: - Private Methods
-    
+
     private func setupObservers() {
         // Ensure NSApp is available before setting up observers
         guard NSApp != nil else {
@@ -94,7 +96,7 @@ final class DockIconManager: NSObject {
             }
             return
         }
-        
+
         // Observe changes to NSApp.windows using KVO
         if let app = NSApp {
             self.windowsObservation = app.observe(\.windows, options: [.new]) { [weak self] _, _ in
@@ -105,27 +107,27 @@ final class DockIconManager: NSObject {
                 }
             }
         }
-        
+
         // Also observe individual window visibility changes
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(self.windowVisibilityChanged),
             name: NSWindow.didBecomeKeyNotification,
             object: nil)
-        
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(self.windowVisibilityChanged),
             name: NSWindow.didResignKeyNotification,
             object: nil)
-        
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(self.windowVisibilityChanged),
             name: NSWindow.willCloseNotification,
             object: nil)
     }
-    
+
     @objc
     private func windowVisibilityChanged(_: Notification) {
         self.updateDockVisibility()

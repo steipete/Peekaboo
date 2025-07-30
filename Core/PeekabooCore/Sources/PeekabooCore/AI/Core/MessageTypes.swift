@@ -10,100 +10,98 @@ public enum Message: Codable, Sendable {
     case assistant(id: String? = nil, content: [AssistantContent], status: MessageStatus = .completed)
     case tool(id: String? = nil, toolCallId: String, content: String)
     case reasoning(id: String? = nil, content: String)
-    
+
     // MARK: - Properties
-    
+
     /// Get the message type
     public var type: MessageType {
         switch self {
-        case .system: return .system
-        case .user: return .user
-        case .assistant: return .assistant
-        case .tool: return .tool
-        case .reasoning: return .reasoning
+        case .system: .system
+        case .user: .user
+        case .assistant: .assistant
+        case .tool: .tool
+        case .reasoning: .reasoning
         }
     }
-    
+
     /// Get the message ID
     public var id: String? {
         switch self {
-        case .system(let id, _), .user(let id, _), .assistant(let id, _, _), 
-             .tool(let id, _, _), .reasoning(let id, _):
-            return id
+        case let .system(id, _), let .user(id, _), let .assistant(id, _, _),
+             let .tool(id, _, _), let .reasoning(id, _):
+            id
         }
     }
-    
+
     // MARK: - Codable Implementation
-    
+
     private enum CodingKeys: String, CodingKey {
         case type, id, content, status, toolCallId
     }
-    
+
     public enum MessageType: String, Codable {
         case system, user, assistant, tool, reasoning
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(MessageType.self, forKey: .type)
         let id = try container.decodeIfPresent(String.self, forKey: .id)
-        
+
         switch type {
         case .system:
             let content = try container.decode(String.self, forKey: .content)
             self = .system(id: id, content: content)
-            
+
         case .user:
             let content = try container.decode(MessageContent.self, forKey: .content)
             self = .user(id: id, content: content)
-            
+
         case .assistant:
             let content = try container.decode([AssistantContent].self, forKey: .content)
             let status = try container.decodeIfPresent(MessageStatus.self, forKey: .status) ?? .completed
             self = .assistant(id: id, content: content, status: status)
-            
+
         case .tool:
             let toolCallId = try container.decode(String.self, forKey: .toolCallId)
             let content = try container.decode(String.self, forKey: .content)
             self = .tool(id: id, toolCallId: toolCallId, content: content)
-            
+
         case .reasoning:
             let content = try container.decode(String.self, forKey: .content)
             self = .reasoning(id: id, content: content)
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(type, forKey: .type)
-        
+        try container.encode(self.type, forKey: .type)
+
         switch self {
-        case .system(let id, let content):
+        case let .system(id, content):
             try container.encodeIfPresent(id, forKey: .id)
             try container.encode(content, forKey: .content)
-            
-        case .user(let id, let content):
+
+        case let .user(id, content):
             try container.encodeIfPresent(id, forKey: .id)
             try container.encode(content, forKey: .content)
-            
-        case .assistant(let id, let content, let status):
+
+        case let .assistant(id, content, status):
             try container.encodeIfPresent(id, forKey: .id)
             try container.encode(content, forKey: .content)
             try container.encode(status, forKey: .status)
-            
-        case .tool(let id, let toolCallId, let content):
+
+        case let .tool(id, toolCallId, content):
             try container.encodeIfPresent(id, forKey: .id)
             try container.encode(toolCallId, forKey: .toolCallId)
             try container.encode(content, forKey: .content)
-            
-        case .reasoning(let id, let content):
+
+        case let .reasoning(id, content):
             try container.encodeIfPresent(id, forKey: .id)
             try container.encode(content, forKey: .content)
         }
     }
 }
-
-
 
 // MARK: - Content Types
 
@@ -114,20 +112,20 @@ public enum MessageContent: Codable, Sendable {
     case file(FileContent)
     case audio(AudioContent)
     case multimodal([MessageContentPart])
-    
+
     // Custom coding for enum
     enum CodingKeys: String, CodingKey {
         case type, value
     }
-    
+
     enum ContentType: String, Codable {
         case text, image, file, audio, multimodal
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(ContentType.self, forKey: .type)
-        
+
         switch type {
         case .text:
             let value = try container.decode(String.self, forKey: .value)
@@ -146,24 +144,24 @@ public enum MessageContent: Codable, Sendable {
             self = .multimodal(value)
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
+
         switch self {
-        case .text(let value):
+        case let .text(value):
             try container.encode(ContentType.text, forKey: .type)
             try container.encode(value, forKey: .value)
-        case .image(let value):
+        case let .image(value):
             try container.encode(ContentType.image, forKey: .type)
             try container.encode(value, forKey: .value)
-        case .file(let value):
+        case let .file(value):
             try container.encode(ContentType.file, forKey: .type)
             try container.encode(value, forKey: .value)
-        case .audio(let value):
+        case let .audio(value):
             try container.encode(ContentType.audio, forKey: .type)
             try container.encode(value, forKey: .value)
-        case .multimodal(let value):
+        case let .multimodal(value):
             try container.encode(ContentType.multimodal, forKey: .type)
             try container.encode(value, forKey: .value)
         }
@@ -175,11 +173,11 @@ public struct ImageContent: Codable, Sendable {
     public let url: String?
     public let base64: String?
     public let detail: ImageDetail?
-    
+
     public enum ImageDetail: String, Codable, Sendable {
         case auto, low, high
     }
-    
+
     public init(url: String? = nil, base64: String? = nil, detail: ImageDetail? = nil) {
         self.url = url
         self.base64 = base64
@@ -192,7 +190,7 @@ public struct FileContent: Codable, Sendable {
     public let id: String?
     public let url: String?
     public let name: String?
-    
+
     public init(id: String? = nil, url: String? = nil, name: String? = nil) {
         self.id = id
         self.url = url
@@ -207,9 +205,14 @@ public struct AudioContent: Codable, Sendable {
     public let transcript: String?
     public let duration: TimeInterval?
     public let mimeType: String?
-    
-    public init(url: String? = nil, base64: String? = nil, transcript: String? = nil, 
-                duration: TimeInterval? = nil, mimeType: String? = nil) {
+
+    public init(
+        url: String? = nil,
+        base64: String? = nil,
+        transcript: String? = nil,
+        duration: TimeInterval? = nil,
+        mimeType: String? = nil)
+    {
         self.url = url
         self.base64 = base64
         self.transcript = transcript
@@ -223,7 +226,7 @@ public struct MessageContentPart: Codable, Sendable {
     public let type: String
     public let text: String?
     public let imageUrl: ImageContent?
-    
+
     public init(type: String, text: String? = nil, imageUrl: ImageContent? = nil) {
         self.type = type
         self.text = text
@@ -236,20 +239,20 @@ public enum AssistantContent: Codable, Sendable {
     case outputText(String)
     case refusal(String)
     case toolCall(ToolCallItem)
-    
+
     // Custom coding
     enum CodingKeys: String, CodingKey {
         case type, value
     }
-    
+
     enum ContentType: String, Codable {
         case text, refusal, toolCall
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(ContentType.self, forKey: .type)
-        
+
         switch type {
         case .text:
             let value = try container.decode(String.self, forKey: .value)
@@ -262,18 +265,18 @@ public enum AssistantContent: Codable, Sendable {
             self = .toolCall(value)
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
+
         switch self {
-        case .outputText(let value):
+        case let .outputText(value):
             try container.encode(ContentType.text, forKey: .type)
             try container.encode(value, forKey: .value)
-        case .refusal(let value):
+        case let .refusal(value):
             try container.encode(ContentType.refusal, forKey: .type)
             try container.encode(value, forKey: .value)
-        case .toolCall(let value):
+        case let .toolCall(value):
             try container.encode(ContentType.toolCall, forKey: .type)
             try container.encode(value, forKey: .value)
         }
@@ -288,7 +291,7 @@ public struct ToolCallItem: Codable, Sendable {
     public let type: ToolCallType
     public let function: FunctionCall
     public let status: ToolCallStatus?
-    
+
     public init(id: String, type: ToolCallType = .function, function: FunctionCall, status: ToolCallStatus? = nil) {
         self.id = id
         self.type = type
@@ -299,16 +302,16 @@ public struct ToolCallItem: Codable, Sendable {
 
 /// Types of tool calls
 public enum ToolCallType: String, Codable, Sendable {
-    case function = "function"
+    case function
     case hosted = "hosted_tool"
-    case computer = "computer"
+    case computer
 }
 
 /// Function call details
 public struct FunctionCall: Codable, Sendable {
     public let name: String
     public let arguments: String
-    
+
     public init(name: String, arguments: String) {
         self.name = name
         self.arguments = arguments
@@ -318,15 +321,15 @@ public struct FunctionCall: Codable, Sendable {
 /// Tool call execution status
 public enum ToolCallStatus: String, Codable, Sendable {
     case inProgress = "in_progress"
-    case completed = "completed"
-    case failed = "failed"
+    case completed
+    case failed
 }
 
 /// Message processing status
 public enum MessageStatus: String, Codable, Sendable {
     case inProgress = "in_progress"
-    case completed = "completed"
-    case incomplete = "incomplete"
+    case completed
+    case incomplete
 }
 
 // MARK: - Helper Extensions
@@ -337,12 +340,12 @@ extension AssistantContent {
     /// Extract text content if available
     public var textContent: String? {
         switch self {
-        case .outputText(let text):
-            return text
-        case .refusal(let text):
-            return text
+        case let .outputText(text):
+            text
+        case let .refusal(text):
+            text
         case .toolCall:
-            return nil
+            nil
         }
     }
 }

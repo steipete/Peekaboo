@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 /// Enhanced message row for menu bar with full agent flow visualization
 struct MenuDetailedMessageRow: View {
@@ -9,75 +9,74 @@ struct MenuDetailedMessageRow: View {
     @State private var selectedImage: NSImage?
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
-    
+
     private let compactAvatarSize: CGFloat = 20
     private let compactSpacing: CGFloat = 8
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: compactSpacing) {
+        VStack(alignment: .leading, spacing: self.compactSpacing) {
             // Main message content
-            HStack(alignment: .top, spacing: compactSpacing) {
+            HStack(alignment: .top, spacing: self.compactSpacing) {
                 // Compact avatar or tool icon
-                avatarView
-                    .frame(width: compactAvatarSize, height: compactAvatarSize)
-                
+                self.avatarView
+                    .frame(width: self.compactAvatarSize, height: self.compactAvatarSize)
+
                 // Message content
                 VStack(alignment: .leading, spacing: 4) {
                     // Header line with role, time, and status
-                    headerView
-                    
+                    self.headerView
+
                     // Message content
-                    contentView
-                    
+                    self.contentView
+
                     // Tool execution summary (if applicable)
-                    if isToolMessage && !message.toolCalls.isEmpty {
-                        toolExecutionSummary
+                    if self.isToolMessage, !self.message.toolCalls.isEmpty {
+                        self.toolExecutionSummary
                     }
                 }
-                
+
                 Spacer(minLength: 0)
             }
-            
+
             // Expandable tool details
-            if isExpanded && !message.toolCalls.isEmpty {
-                toolDetailsView
-                    .padding(.leading, compactAvatarSize + compactSpacing)
+            if self.isExpanded, !self.message.toolCalls.isEmpty {
+                self.toolDetailsView
+                    .padding(.leading, self.compactAvatarSize + self.compactSpacing)
             }
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 8)
-        .background(backgroundForMessage)
+        .background(self.backgroundForMessage)
         .cornerRadius(6)
-        .sheet(isPresented: $showingImageInspector) {
+        .sheet(isPresented: self.$showingImageInspector) {
             if let image = selectedImage {
                 ImageInspectorView(image: image)
             }
         }
     }
-    
+
     // MARK: - Avatar View
-    
+
     @ViewBuilder
     private var avatarView: some View {
-        if isToolMessage {
-            let toolName = extractToolName(from: message.content)
-            let toolStatus = determineToolStatus(from: message)
-            
+        if self.isToolMessage {
+            let toolName = self.extractToolName(from: self.message.content)
+            let toolStatus = self.determineToolStatus(from: self.message)
+
             EnhancedToolIcon(
                 toolName: toolName,
-                status: toolStatus
-            )
-            .font(.system(size: 14))
-            .background(Color.blue.opacity(0.1))
-            .clipShape(Circle())
-        } else if isThinkingMessage {
+                status: toolStatus)
+                .font(.system(size: 14))
+                .background(Color.blue.opacity(0.1))
+                .clipShape(Circle())
+        } else if self.isThinkingMessage {
             ZStack {
                 Image(systemName: "brain")
                     .font(.caption)
                     .foregroundColor(.purple)
                     .background(Color.purple.opacity(0.1))
                     .clipShape(Circle())
-                
+
                 // Subtle rotation animation
                 Circle()
                     .stroke(Color.purple.opacity(0.3), lineWidth: 1)
@@ -86,72 +85,71 @@ struct MenuDetailedMessageRow: View {
                     .animation(
                         Animation.linear(duration: 3)
                             .repeatForever(autoreverses: false),
-                        value: true
-                    )
+                        value: true)
             }
         } else {
-            Image(systemName: iconName)
+            Image(systemName: self.iconName)
                 .font(.caption)
-                .foregroundColor(iconColor)
-                .background(iconColor.opacity(0.1))
+                .foregroundColor(self.iconColor)
+                .background(self.iconColor.opacity(0.1))
                 .clipShape(Circle())
         }
     }
-    
+
     // MARK: - Header View
-    
+
     @ViewBuilder
     private var headerView: some View {
         HStack(spacing: 4) {
             // Role or tool name
-            if isToolMessage {
-                Text(extractToolName(from: message.content))
+            if self.isToolMessage {
+                Text(self.extractToolName(from: self.message.content))
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundColor(.primary)
             } else {
-                Text(roleTitle)
+                Text(self.roleTitle)
                     .font(.caption2)
                     .fontWeight(.medium)
                     .foregroundColor(.secondary)
             }
-            
+
             // Status indicators
-            if isErrorMessage {
+            if self.isErrorMessage {
                 Image(systemName: "exclamationmark.circle.fill")
                     .font(.caption2)
                     .foregroundColor(.red)
-            } else if isWarningMessage {
+            } else if self.isWarningMessage {
                 Image(systemName: "xmark.circle.fill")
                     .font(.caption2)
                     .foregroundColor(.orange)
             }
-            
+
             // Time
             Text("•")
                 .font(.caption2)
                 .foregroundColor(.secondary)
-            
-            Text(message.timestamp, style: .time)
+
+            Text(self.message.timestamp, style: .time)
                 .font(.caption2)
                 .foregroundColor(.secondary)
-            
+
             Spacer()
-            
+
             // Expand button for tool calls
-            if !message.toolCalls.isEmpty {
-                Button(action: { isExpanded.toggle() }) {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+            if !self.message.toolCalls.isEmpty {
+                Button(action: { self.isExpanded.toggle() }) {
+                    Image(systemName: self.isExpanded ? "chevron.down" : "chevron.right")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help(isExpanded ? "Hide details" : "Show details")
+                .help(self.isExpanded ? "Hide details" : "Show details")
             }
-            
+
             // Retry button for errors
-            if isErrorMessage && !agent.isProcessing {
-                Button(action: retryLastTask) {
+            if self.isErrorMessage, !self.agent.isProcessing {
+                Button(action: self.retryLastTask) {
                     Image(systemName: "arrow.clockwise")
                         .font(.caption2)
                         .foregroundColor(.white)
@@ -164,121 +162,120 @@ struct MenuDetailedMessageRow: View {
             }
         }
     }
-    
+
     // MARK: - Content View
-    
+
     @ViewBuilder
     private var contentView: some View {
-        if isThinkingMessage {
+        if self.isThinkingMessage {
             HStack(spacing: 4) {
-                Text(message.content.replacingOccurrences(of: "🤔 ", with: ""))
+                Text(self.message.content.replacingOccurrences(of: "🤔 ", with: ""))
                     .font(.caption)
                     .foregroundColor(.purple)
                     .italic()
                     .lineLimit(2)
-                
+
                 if #available(macOS 15.0, *) {
                     AnimatedThinkingDots()
                         .font(.caption)
                         .foregroundColor(.purple)
                 }
             }
-        } else if isToolMessage {
+        } else if self.isToolMessage {
             // Compact tool display
             if let toolCall = message.toolCalls.first {
                 let isRunning = toolCall.result == "Running..."
-                
+
                 HStack(spacing: 4) {
-                    Text(formatToolContent())
+                    Text(self.formatToolContent())
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(.primary)
                         .lineLimit(1)
-                    
+
                     if isRunning {
-                        TimeIntervalText(startTime: message.timestamp)
+                        TimeIntervalText(startTime: self.message.timestamp)
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
                 }
             } else {
-                Text(formatToolContent())
+                Text(self.formatToolContent())
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundColor(.primary)
                     .lineLimit(1)
             }
-        } else if message.role == .assistant {
+        } else if self.message.role == .assistant {
             // Markdown support for assistant messages
             Text(try! AttributedString(
-                markdown: message.content,
+                markdown: self.message.content,
                 options: AttributedString.MarkdownParsingOptions(
                     allowsExtendedAttributes: true,
-                    interpretedSyntax: .inlineOnlyPreservingWhitespace
-                )
-            ))
-            .font(.caption)
-            .lineLimit(isExpanded ? nil : 3)
-            .textSelection(.enabled)
-        } else {
-            Text(message.content)
+                    interpretedSyntax: .inlineOnlyPreservingWhitespace)))
                 .font(.caption)
-                .foregroundColor(isErrorMessage ? .red : (isWarningMessage ? .orange : .primary))
-                .lineLimit(isExpanded ? nil : 2)
+                .lineLimit(self.isExpanded ? nil : 3)
+                .textSelection(.enabled)
+        } else {
+            Text(self.message.content)
+                .font(.caption)
+                .foregroundColor(self.isErrorMessage ? .red : (self.isWarningMessage ? .orange : .primary))
+                .lineLimit(self.isExpanded ? nil : 2)
                 .textSelection(.enabled)
         }
     }
-    
+
     // MARK: - Tool Execution Summary
-    
+
     @ViewBuilder
     private var toolExecutionSummary: some View {
         if let toolCall = message.toolCalls.first,
            toolCall.result != "Running...",
            let toolName = message.toolCalls.first?.name,
-           let resultSummary = ToolFormatter.toolResultSummary(toolName: toolName, result: toolCall.result) {
+           let resultSummary = ToolFormatter.toolResultSummary(toolName: toolName, result: toolCall.result)
+        {
             Text(resultSummary)
                 .font(.caption2)
                 .foregroundColor(.secondary)
                 .lineLimit(1)
         }
     }
-    
+
     // MARK: - Tool Details View
-    
+
     @ViewBuilder
     private var toolDetailsView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ForEach(message.toolCalls) { toolCall in
+            ForEach(self.message.toolCalls) { toolCall in
                 VStack(alignment: .leading, spacing: 4) {
                     // Arguments (if not empty)
-                    if !toolCall.arguments.isEmpty && toolCall.arguments != "{}" {
+                    if !toolCall.arguments.isEmpty, toolCall.arguments != "{}" {
                         Text("Arguments:")
                             .font(.caption2)
                             .foregroundColor(.secondary)
-                        
-                        Text(formatCompactJSON(toolCall.arguments))
+
+                        Text(self.formatCompactJSON(toolCall.arguments))
                             .font(.system(size: 10, design: .monospaced))
                             .textSelection(.enabled)
                             .padding(4)
                             .background(Color(NSColor.textBackgroundColor))
                             .cornerRadius(3)
                     }
-                    
+
                     // Result (if available)
-                    if !toolCall.result.isEmpty && toolCall.result != "Running..." {
+                    if !toolCall.result.isEmpty, toolCall.result != "Running..." {
                         Text("Result:")
                             .font(.caption2)
                             .foregroundColor(.secondary)
-                        
+
                         // Check for image data
                         if toolCall.name.contains("image") || toolCall.name.contains("screenshot"),
                            let imageData = extractImageData(from: toolCall.result),
-                           let image = NSImage(data: imageData) {
-                            
+                           let image = NSImage(data: imageData)
+                        {
                             Button(action: {
-                                selectedImage = image
-                                showingImageInspector = true
+                                self.selectedImage = image
+                                self.showingImageInspector = true
                             }) {
                                 Image(nsImage: image)
                                     .resizable()
@@ -287,8 +284,7 @@ struct MenuDetailedMessageRow: View {
                                     .cornerRadius(4)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 4)
-                                            .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
-                                    )
+                                            .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5))
                             }
                             .buttonStyle(.plain)
                             .help("Click to inspect")
@@ -307,91 +303,94 @@ struct MenuDetailedMessageRow: View {
             }
         }
     }
-    
+
     // MARK: - Helper Properties
-    
+
     private var isThinkingMessage: Bool {
-        message.role == .system && message.content.contains("🤔")
+        self.message.role == .system && self.message.content.contains("🤔")
     }
-    
+
     private var isErrorMessage: Bool {
-        message.role == .system && message.content.contains("❌")
+        self.message.role == .system && self.message.content.contains("❌")
     }
-    
+
     private var isWarningMessage: Bool {
-        message.role == .system && message.content.contains("⚠️")
+        self.message.role == .system && self.message.content.contains("⚠️")
     }
-    
+
     private var isToolMessage: Bool {
-        message.role == .system && (message.content.contains("🔧") || message.content.contains("✅") || message.content.contains("❌"))
+        self.message
+            .role == .system &&
+            (self.message.content.contains("🔧") || self.message.content.contains("✅") || self.message.content
+                .contains("❌"))
     }
-    
+
     private var backgroundForMessage: Color {
-        if isErrorMessage {
-            return Color.red.opacity(0.08)
-        } else if isWarningMessage {
-            return Color.orange.opacity(0.08)
-        } else if isThinkingMessage {
-            return Color.purple.opacity(0.05)
-        } else if isToolMessage {
-            return Color.blue.opacity(0.05)
+        if self.isErrorMessage {
+            Color.red.opacity(0.08)
+        } else if self.isWarningMessage {
+            Color.orange.opacity(0.08)
+        } else if self.isThinkingMessage {
+            Color.purple.opacity(0.05)
+        } else if self.isToolMessage {
+            Color.blue.opacity(0.05)
         } else {
-            switch message.role {
+            switch self.message.role {
             case .user:
-                return Color.blue.opacity(0.08)
+                Color.blue.opacity(0.08)
             case .assistant:
-                return Color.green.opacity(0.08)
+                Color.green.opacity(0.08)
             case .system:
-                return Color.orange.opacity(0.08)
+                Color.orange.opacity(0.08)
             }
         }
     }
-    
+
     private var iconName: String {
-        switch message.role {
-        case .user: return "person.circle"
-        case .assistant: return "brain"
-        case .system: return "gear"
+        switch self.message.role {
+        case .user: "person.circle"
+        case .assistant: "brain"
+        case .system: "gear"
         }
     }
-    
+
     private var iconColor: Color {
-        switch message.role {
-        case .user: return .blue
-        case .assistant: return .green
-        case .system: return .orange
+        switch self.message.role {
+        case .user: .blue
+        case .assistant: .green
+        case .system: .orange
         }
     }
-    
+
     private var roleTitle: String {
-        switch message.role {
-        case .user: return "You"
-        case .assistant: return "Agent"
-        case .system: return "System"
+        switch self.message.role {
+        case .user: "You"
+        case .assistant: "Agent"
+        case .system: "System"
         }
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private func extractToolName(from content: String) -> String {
         let cleaned = content
             .replacingOccurrences(of: "🔧 ", with: "")
             .replacingOccurrences(of: "✅ ", with: "")
             .replacingOccurrences(of: "❌ ", with: "")
-        
+
         if let colonIndex = cleaned.firstIndex(of: ":") {
             return String(cleaned[..<colonIndex]).trimmingCharacters(in: .whitespaces)
         }
         return ""
     }
-    
+
     private func formatToolContent() -> String {
-        message.content
+        self.message.content
             .replacingOccurrences(of: "🔧 ", with: "")
             .replacingOccurrences(of: "✅ ", with: "")
             .replacingOccurrences(of: "❌ ", with: "")
     }
-    
+
     private func determineToolStatus(from message: ConversationMessage) -> ToolExecutionStatus {
         if let toolCall = message.toolCalls.first {
             if toolCall.result == "Running..." {
@@ -407,15 +406,15 @@ struct MenuDetailedMessageRow: View {
                 }
             }
         }
-        
+
         // Check agent's tool execution history
-        let toolName = extractToolName(from: message.content)
+        let toolName = self.extractToolName(from: message.content)
         if !toolName.isEmpty {
             if let execution = agent.toolExecutionHistory.last(where: { $0.toolName == toolName }) {
                 return execution.status
             }
         }
-        
+
         // Fallback to content indicators
         if message.content.contains("✅") {
             return .completed
@@ -424,56 +423,59 @@ struct MenuDetailedMessageRow: View {
         } else if message.content.contains("⚠️") {
             return .cancelled
         }
-        
+
         return .running
     }
-    
+
     private func formatCompactJSON(_ json: String) -> String {
         // For menu view, show compact single-line JSON
         guard let data = json.data(using: .utf8),
-              let jsonObject = try? JSONSerialization.jsonObject(with: data) else {
+              let jsonObject = try? JSONSerialization.jsonObject(with: data)
+        else {
             return json
         }
-        
+
         // Format as single line with minimal spacing
         if let formattedData = try? JSONSerialization.data(withJSONObject: jsonObject, options: [.sortedKeys]),
-           let formattedString = String(data: formattedData, encoding: .utf8) {
+           let formattedString = String(data: formattedData, encoding: .utf8)
+        {
             return formattedString
                 .replacingOccurrences(of: "\n", with: " ")
                 .replacingOccurrences(of: "  ", with: " ")
         }
         return json
     }
-    
+
     private func extractImageData(from result: String) -> Data? {
         if let data = result.data(using: .utf8),
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let screenshotData = json["screenshot_data"] as? String,
-           let imageData = Data(base64Encoded: screenshotData) {
+           let imageData = Data(base64Encoded: screenshotData)
+        {
             return imageData
         }
         return nil
     }
-    
+
     private func retryLastTask() {
         guard let session = sessionStore.sessions.first(where: { session in
             session.messages.contains(where: { $0.id == message.id })
         }) else { return }
-        
+
         guard let errorIndex = session.messages.firstIndex(where: { $0.id == message.id }),
               errorIndex > 0 else { return }
-        
+
         // Find last user message
         for i in stride(from: errorIndex - 1, through: 0, by: -1) {
             let msg = session.messages[i]
             if msg.role == .user {
-                if sessionStore.currentSession?.id != session.id {
-                    sessionStore.selectSession(session)
+                if self.sessionStore.currentSession?.id != session.id {
+                    self.sessionStore.selectSession(session)
                 }
-                
+
                 Task {
                     do {
-                        try await agent.executeTask(msg.content)
+                        try await self.agent.executeTask(msg.content)
                     } catch {
                         print("Retry failed: \(error)")
                     }

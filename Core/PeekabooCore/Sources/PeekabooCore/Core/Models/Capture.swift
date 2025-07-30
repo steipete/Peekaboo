@@ -13,15 +13,15 @@ public struct SavedFile: Codable, Sendable {
     public let window_id: UInt32?
     public let window_index: Int?
     public let mime_type: String
-    
+
     public init(
         path: String,
         item_label: String? = nil,
         window_title: String? = nil,
         window_id: UInt32? = nil,
         window_index: Int? = nil,
-        mime_type: String
-    ) {
+        mime_type: String)
+    {
         self.path = path
         self.item_label = item_label
         self.window_title = window_title
@@ -37,7 +37,7 @@ public struct SavedFile: Codable, Sendable {
 /// supporting multi-window and multi-screen captures.
 public struct ImageCaptureData: Codable, Sendable {
     public let saved_files: [SavedFile]
-    
+
     public init(saved_files: [SavedFile]) {
         self.saved_files = saved_files
     }

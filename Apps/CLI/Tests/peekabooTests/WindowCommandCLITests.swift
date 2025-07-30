@@ -140,7 +140,8 @@ struct WindowCommandCLITests {
 @Suite(
     "Window Command Integration Tests",
     .serialized,
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+)
 struct WindowCommandLocalTests {
     @Test("Window operations with TextEdit")
     func textEditWindowOperations() async throws {
@@ -170,8 +171,7 @@ struct WindowCommandLocalTests {
 
             if moveResponse.success,
                let data = moveResponse.data?.value as? [String: Any],
-               let bounds = data["new_bounds"] as? [String: Any]
-            {
+               let bounds = data["new_bounds"] as? [String: Any] {
                 #expect(bounds["x"] as? Int == 200)
                 #expect(bounds["y"] as? Int == 200)
             }

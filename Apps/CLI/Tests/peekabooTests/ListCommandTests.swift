@@ -76,7 +76,8 @@ struct ListCommandTests {
             "off_screen,bounds",
             "bounds,ids",
             "off_screen,bounds,ids"
-        ])
+        ]
+    )
     func windowsDetailParsing(details: String) throws {
         let command = try WindowsSubcommand.parse([
             "--app", "Safari",
@@ -96,7 +97,8 @@ struct ListCommandTests {
             bundle_id: "com.apple.finder",
             pid: 123,
             is_active: true,
-            window_count: 5)
+            window_count: 5
+        )
 
         let encoder = JSONEncoder()
         // Properties are already in snake_case, no conversion needed
@@ -122,14 +124,17 @@ struct ListCommandTests {
                     bundle_id: "com.apple.finder",
                     pid: 123,
                     is_active: true,
-                    window_count: 3),
+                    window_count: 3
+                ),
                 ApplicationInfo(
                     app_name: "Safari",
                     bundle_id: "com.apple.Safari",
                     pid: 456,
                     is_active: false,
-                    window_count: 2),
-            ])
+                    window_count: 2
+                ),
+            ]
+        )
 
         let encoder = JSONEncoder()
         // Properties are already in snake_case, no conversion needed
@@ -150,7 +155,8 @@ struct ListCommandTests {
             window_id: 1001,
             window_index: 0,
             bounds: WindowBounds(x: 100, y: 200, width: 800, height: 600),
-            is_on_screen: true)
+            is_on_screen: true
+        )
 
         let encoder = JSONEncoder()
         // Properties are already in snake_case, no conversion needed
@@ -180,12 +186,15 @@ struct ListCommandTests {
                     window_id: 1001,
                     window_index: 0,
                     bounds: WindowBounds(x: 100, y: 200, width: 800, height: 600),
-                    is_on_screen: true),
+                    is_on_screen: true
+                ),
             ],
             target_application_info: TargetApplicationInfo(
                 app_name: "Finder",
                 bundle_id: "com.apple.finder",
-                pid: 123))
+                pid: 123
+            )
+        )
 
         let encoder = JSONEncoder()
         // Properties are already in snake_case, no conversion needed
@@ -245,7 +254,8 @@ struct ListCommandTests {
 
     @Test(
         "ApplicationListData encoding performance",
-        arguments: [10, 50, 100, 200])
+        arguments: [10, 50, 100, 200]
+    )
     func applicationListEncodingPerformance(appCount: Int) throws {
         // Test performance of encoding many applications
         let apps = (0..<appCount).map { index in
@@ -254,7 +264,8 @@ struct ListCommandTests {
                 bundle_id: "com.example.app\(index)",
                 pid: Int32(1000 + index),
                 is_active: index == 0,
-                window_count: index % 5)
+                window_count: index % 5
+            )
         }
 
         let appData = ApplicationListData(applications: apps)
@@ -277,19 +288,22 @@ struct ListCommandTests {
                 bundle_id: "com.test.single",
                 pid: 123,
                 is_active: false,
-                window_count: 1),
+                window_count: 1
+            ),
             ApplicationInfo(
                 app_name: "Multi Window App",
                 bundle_id: "com.test.multi",
                 pid: 456,
                 is_active: true,
-                window_count: 5),
+                window_count: 5
+            ),
             ApplicationInfo(
                 app_name: "No Windows App",
                 bundle_id: "com.test.none",
                 pid: 789,
                 is_active: false,
-                window_count: 0),
+                window_count: 0
+            ),
         ]
 
         // Get formatted output using the testable method
@@ -317,19 +331,22 @@ struct ListCommandTests {
                 bundle_id: "com.test.zero",
                 pid: 100,
                 is_active: false,
-                window_count: 0),
+                window_count: 0
+            ),
             ApplicationInfo(
                 app_name: "Two Windows",
                 bundle_id: "com.test.two",
                 pid: 200,
                 is_active: false,
-                window_count: 2),
+                window_count: 2
+            ),
             ApplicationInfo(
                 app_name: "Many Windows",
                 bundle_id: "com.test.many",
                 pid: 300,
                 is_active: false,
-                window_count: 10),
+                window_count: 10
+            ),
         ]
 
         let command = AppsSubcommand()
@@ -349,7 +366,8 @@ struct ListCommandTests {
                 bundle_id: "com.test.app",
                 pid: 12345,
                 is_active: true,
-                window_count: 1),
+                window_count: 1
+            ),
         ]
 
         let command = AppsSubcommand()
@@ -374,13 +392,15 @@ struct ListCommandTests {
                 bundle_id: "com.test.edge1",
                 pid: 1,
                 is_active: false,
-                window_count: 1),
+                window_count: 1
+            ),
             ApplicationInfo(
                 app_name: "Edge Case 2",
                 bundle_id: "com.test.edge2",
                 pid: 2,
                 is_active: true,
-                window_count: 1),
+                window_count: 1
+            ),
         ]
 
         let command = AppsSubcommand()
@@ -456,14 +476,16 @@ struct ListCommandAdvancedTests {
             (title: "Main Window", id: 1001, onScreen: true),
             (title: "Hidden Window", id: 2001, onScreen: false),
             (title: "Minimized", id: 3001, onScreen: false)
-        ])
+        ]
+    )
     func complexWindowInfo(title: String, id: UInt32, onScreen: Bool) throws {
         let windowInfo = WindowInfo(
             window_title: title,
             window_id: id,
             window_index: 0,
             bounds: nil,
-            is_on_screen: onScreen)
+            is_on_screen: onScreen
+        )
 
         let encoder = JSONEncoder()
         // No need for convertToSnakeCase since properties are already in snake_case
@@ -485,14 +507,16 @@ struct ListCommandAdvancedTests {
             (active: false, windowCount: 0),
             (active: true, windowCount: 0),
             (active: false, windowCount: 10),
-        ])
+        ]
+    )
     func applicationStates(active: Bool, windowCount: Int) {
         let appInfo = ApplicationInfo(
             app_name: "TestApp",
             bundle_id: "com.test.app",
             pid: 1234,
             is_active: active,
-            window_count: windowCount)
+            window_count: windowCount
+        )
 
         #expect(appInfo.is_active == active)
         #expect(appInfo.window_count == windowCount)
@@ -511,14 +535,15 @@ struct ListCommandAdvancedTests {
             let screen_recording: Bool
             let accessibility: Bool
         }
-        
+
         struct ServerStatusData: Codable {
             let permissions: ServerPermissions
         }
-        
+
         let permissions = ServerPermissions(
             screen_recording: true,
-            accessibility: false)
+            accessibility: false
+        )
 
         let statusData = ServerStatusData(permissions: permissions)
 

@@ -33,14 +33,16 @@ struct DialogCommand: AsyncParsableCommand {
             FileSubcommand.self,
             DismissSubcommand.self,
             ListSubcommand.self,
-        ])
+        ]
+    )
 
     // MARK: - Click Dialog Button
 
     struct ClickSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "click",
-            abstract: "Click a button in a dialog using DialogService")
+            abstract: "Click a button in a dialog using DialogService"
+        )
 
         @Option(help: "Button text to click (e.g., 'OK', 'Cancel', 'Save')")
         var button: String
@@ -59,7 +61,8 @@ struct DialogCommand: AsyncParsableCommand {
                 // Click the button using the service
                 let result = try await PeekabooServices.shared.dialogs.clickButton(
                     buttonText: self.button,
-                    windowTitle: self.window)
+                    windowTitle: self.window
+                )
 
                 // Output result
                 if self.jsonOutput {
@@ -68,7 +71,7 @@ struct DialogCommand: AsyncParsableCommand {
                         let button: String
                         let window: String
                     }
-                    
+
                     let outputData = DialogClickResult(
                         action: "dialog_click",
                         button: result.details["button"] ?? self.button,
@@ -94,7 +97,8 @@ struct DialogCommand: AsyncParsableCommand {
     struct InputSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "input",
-            abstract: "Enter text in a dialog field using DialogService")
+            abstract: "Enter text in a dialog field using DialogService"
+        )
 
         @Option(help: "Text to enter")
         var text: String
@@ -124,7 +128,8 @@ struct DialogCommand: AsyncParsableCommand {
                     text: self.text,
                     fieldIdentifier: fieldIdentifier,
                     clearExisting: self.clear,
-                    windowTitle: nil)
+                    windowTitle: nil
+                )
 
                 // Output result
                 if self.jsonOutput {
@@ -134,7 +139,7 @@ struct DialogCommand: AsyncParsableCommand {
                         let textLength: String
                         let cleared: String
                     }
-                    
+
                     let outputData = DialogInputResult(
                         action: "dialog_input",
                         field: result.details["field"] ?? "Text Field",
@@ -161,7 +166,8 @@ struct DialogCommand: AsyncParsableCommand {
     struct FileSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "file",
-            abstract: "Handle file save/open dialogs using DialogService")
+            abstract: "Handle file save/open dialogs using DialogService"
+        )
 
         @Option(help: "Full file path to navigate to")
         var path: String?
@@ -184,7 +190,8 @@ struct DialogCommand: AsyncParsableCommand {
                 let result = try await PeekabooServices.shared.dialogs.handleFileDialog(
                     path: self.path,
                     filename: self.name,
-                    actionButton: self.select)
+                    actionButton: self.select
+                )
 
                 // Output result
                 if self.jsonOutput {
@@ -194,7 +201,7 @@ struct DialogCommand: AsyncParsableCommand {
                         let name: String?
                         let buttonClicked: String
                     }
-                    
+
                     let outputData = FileDialogResult(
                         action: "file_dialog",
                         path: result.details["path"],
@@ -224,7 +231,8 @@ struct DialogCommand: AsyncParsableCommand {
     struct DismissSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "dismiss",
-            abstract: "Dismiss a dialog using DialogService")
+            abstract: "Dismiss a dialog using DialogService"
+        )
 
         @Flag(help: "Force dismiss with Escape key")
         var force = false
@@ -243,7 +251,8 @@ struct DialogCommand: AsyncParsableCommand {
                 // Dismiss dialog using the service
                 let result = try await PeekabooServices.shared.dialogs.dismissDialog(
                     force: self.force,
-                    windowTitle: self.window)
+                    windowTitle: self.window
+                )
 
                 // Output result
                 if self.jsonOutput {
@@ -252,7 +261,7 @@ struct DialogCommand: AsyncParsableCommand {
                         let method: String
                         let button: String?
                     }
-                    
+
                     let outputData = DialogDismissResult(
                         action: "dialog_dismiss",
                         method: result.details["method"] ?? "unknown",
@@ -284,7 +293,8 @@ struct DialogCommand: AsyncParsableCommand {
     struct ListSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
-            abstract: "List elements in current dialog using DialogService")
+            abstract: "List elements in current dialog using DialogService"
+        )
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
@@ -305,14 +315,14 @@ struct DialogCommand: AsyncParsableCommand {
                         let buttons: [String]
                         let textFields: [TextField]
                         let textElements: [String]
-                        
+
                         struct TextField: Codable {
                             let title: String
                             let value: String
                             let placeholder: String
                         }
                     }
-                    
+
                     let textFields = elements.textFields.map { field in
                         DialogListResult.TextField(
                             title: field.title ?? "",
@@ -320,7 +330,7 @@ struct DialogCommand: AsyncParsableCommand {
                             placeholder: field.placeholder ?? ""
                         )
                     }
-                    
+
                     let outputData = DialogListResult(
                         title: elements.dialogInfo.title,
                         role: elements.dialogInfo.role,
@@ -390,7 +400,9 @@ private func handleDialogServiceError(_ error: DialogError, jsonOutput: Bool) {
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: errorCode))
+                code: errorCode
+            )
+        )
         outputJSON(response)
     } else {
         fputs("❌ \(error.localizedDescription)\n", stderr)

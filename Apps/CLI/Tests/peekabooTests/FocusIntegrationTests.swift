@@ -4,7 +4,6 @@ import Testing
 
 @Suite("Focus Integration Tests", .serialized)
 struct FocusIntegrationTests {
-    
     // Helper function to run peekaboo commands
     private func runPeekabooCommand(_ arguments: [String]) async throws -> String {
         let projectRoot = URL(fileURLWithPath: #file)
@@ -13,33 +12,34 @@ struct FocusIntegrationTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
         process.currentDirectoryURL = projectRoot
         process.arguments = ["run", "peekaboo"] + arguments
-        
+
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
-        
+
         try process.run()
         process.waitUntilExit()
-        
+
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         guard let output = String(data: data, encoding: .utf8) else {
             throw ProcessError(message: "Failed to decode output")
         }
-        
+
         guard process.terminationStatus == 0 else {
-            throw ProcessError(message: "Process failed with exit code: \(process.terminationStatus)\nOutput: \(output)")
+            throw ProcessError(message: "Process failed with exit code: \(process.terminationStatus)\nOutput: \(output)"
+            )
         }
-        
+
         return output
     }
-    
+
     // MARK: - Session-based Focus Tests
-    
+
     @Test("click with session auto-focuses window")
     func clickWithSessionAutoFocus() async throws {
         // Create a session with Finder
@@ -48,63 +48,63 @@ struct FocusIntegrationTests {
             "--app", "Finder",
             "--json-output"
         ])
-        
+
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
         guard seeData.success,
               let sessionId = seeData.data?.session_id else {
             throw Issue.record("Failed to create session")
         }
-        
+
         // Click should auto-focus the Finder window
         let clickOutput = try await runPeekabooCommand([
             "click", "button",
             "--session", sessionId,
             "--json-output"
         ])
-        
+
         let clickData = try JSONDecoder().decode(ClickResponse.self, from: clickOutput.data(using: .utf8)!)
         // Should either click successfully (with auto-focus) or fail gracefully
         #expect(clickData.success == true || clickData.error != nil)
     }
-    
+
     @Test("type with session auto-focuses window")
     func typeWithSessionAutoFocus() async throws {
         // Create a session with a text editor if available
         let apps = ["TextEdit", "Notes", "Stickies"]
         var sessionId: String?
-        
+
         for app in apps {
             let seeOutput = try await runPeekabooCommand([
                 "see",
                 "--app", app,
                 "--json-output"
             ])
-            
+
             let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
             if seeData.success, let id = seeData.data?.session_id {
                 sessionId = id
                 break
             }
         }
-        
+
         guard let session = sessionId else {
             // Skip test if no text editor is available
             return
         }
-        
+
         // Type should auto-focus the window
         let typeOutput = try await runPeekabooCommand([
             "type", "test",
             "--session", session,
             "--json-output"
         ])
-        
+
         let typeData = try JSONDecoder().decode(TypeResponse.self, from: typeOutput.data(using: .utf8)!)
         #expect(typeData.success == true || typeData.error != nil)
     }
-    
+
     // MARK: - Application-based Focus Tests
-    
+
     @Test("menu command auto-focuses application")
     func menuCommandAutoFocus() async throws {
         // Menu command should auto-focus the app
@@ -113,14 +113,14 @@ struct FocusIntegrationTests {
             "--app", "Finder",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(MenuResponse.self, from: output.data(using: .utf8)!)
         // Should either show menu (with auto-focus) or fail gracefully
         #expect(data.success == true || data.error != nil)
     }
-    
+
     // MARK: - Focus Options Integration Tests
-    
+
     @Test("click respects no-auto-focus flag")
     func clickNoAutoFocus() async throws {
         // Create session
@@ -129,13 +129,13 @@ struct FocusIntegrationTests {
             "--app", "Finder",
             "--json-output"
         ])
-        
+
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
         guard seeData.success,
               let sessionId = seeData.data?.session_id else {
             throw Issue.record("Failed to create session")
         }
-        
+
         // Click with auto-focus disabled
         let clickOutput = try await runPeekabooCommand([
             "click", "button",
@@ -143,12 +143,12 @@ struct FocusIntegrationTests {
             "--no-auto-focus",
             "--json-output"
         ])
-        
+
         let clickData = try JSONDecoder().decode(ClickResponse.self, from: clickOutput.data(using: .utf8)!)
         // Command should be accepted (may fail if window not focused)
         #expect(clickData.success == true || clickData.error != nil)
     }
-    
+
     @Test("type with custom focus timeout")
     func typeCustomTimeout() async throws {
         // Type with very short timeout
@@ -157,12 +157,12 @@ struct FocusIntegrationTests {
             "--focus-timeout", "0.1",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(TypeResponse.self, from: output.data(using: .utf8)!)
         // Should handle timeout gracefully
         #expect(data.success == true || data.error != nil)
     }
-    
+
     @Test("menu with high retry count")
     func menuHighRetryCount() async throws {
         let output = try await runPeekabooCommand([
@@ -171,14 +171,14 @@ struct FocusIntegrationTests {
             "--focus-retry-count", "10",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(MenuResponse.self, from: output.data(using: .utf8)!)
         // Should respect retry count
         #expect(data.success == true || data.error != nil)
     }
-    
+
     // MARK: - Window Focus with Space Integration
-    
+
     @Test("window focus switches Space if needed")
     func windowFocusSpaceSwitch() async throws {
         // This test would ideally create a window on another Space
@@ -189,11 +189,11 @@ struct FocusIntegrationTests {
             "--space-switch",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(WindowActionResponse.self, from: output.data(using: .utf8)!)
         #expect(data.success == true || data.error != nil)
     }
-    
+
     @Test("window focus moves window to current Space")
     func windowFocusMoveHere() async throws {
         let output = try await runPeekabooCommand([
@@ -202,13 +202,13 @@ struct FocusIntegrationTests {
             "--move-here",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(WindowActionResponse.self, from: output.data(using: .utf8)!)
         #expect(data.success == true || data.error != nil)
     }
-    
+
     // MARK: - Error Handling Tests
-    
+
     @Test("focus non-existent application")
     func focusNonExistentApp() async throws {
         let output = try await runPeekabooCommand([
@@ -216,14 +216,15 @@ struct FocusIntegrationTests {
             "--app", "NonExistentApp12345",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(WindowActionResponse.self, from: output.data(using: .utf8)!)
         #expect(data.success == false)
         #expect(data.error != nil)
-        #expect(data.error?.contains("not found") == true || 
-                data.error?.contains("not running") == true)
+        #expect(data.error?.contains("not found") == true ||
+            data.error?.contains("not running") == true
+        )
     }
-    
+
     @Test("focus window with invalid title")
     func focusInvalidWindowTitle() async throws {
         let output = try await runPeekabooCommand([
@@ -232,7 +233,7 @@ struct FocusIntegrationTests {
             "--window-title", "ThisWindowDoesNotExist12345",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(WindowActionResponse.self, from: output.data(using: .utf8)!)
         // Should either find no match or use frontmost window
         #expect(data.success == true || data.error != nil)

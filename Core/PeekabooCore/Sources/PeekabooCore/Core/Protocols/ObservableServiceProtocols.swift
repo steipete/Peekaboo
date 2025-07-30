@@ -7,16 +7,16 @@ import Observation
 @available(macOS 14.0, *)
 public protocol ObservableService: AnyObject {
     associatedtype State: Sendable
-    
+
     /// The current state of the service
     var state: State { get }
-    
+
     /// Start monitoring for state changes
     func startMonitoring() async
-    
+
     /// Stop monitoring for state changes
     func stopMonitoring() async
-    
+
     /// Check if monitoring is active
     var isMonitoring: Bool { get }
 }
@@ -27,10 +27,10 @@ public protocol ObservableService: AnyObject {
 public protocol ServiceState: Sendable {
     /// Whether the service is currently loading
     var isLoading: Bool { get }
-    
+
     /// Last error encountered by the service
     var lastError: Error? { get }
-    
+
     /// Timestamp of last update
     var lastUpdated: Date { get }
 }
@@ -42,10 +42,10 @@ public protocol ServiceState: Sendable {
 public protocol RefreshableService: ObservableService {
     /// Manually refresh the service state
     func refresh() async throws
-    
+
     /// Check if refresh is available
     var canRefresh: Bool { get }
-    
+
     /// Check if currently refreshing
     var isRefreshing: Bool { get }
 }
@@ -56,13 +56,13 @@ public protocol RefreshableService: ObservableService {
 @available(macOS 14.0, *)
 public protocol ConfigurableService: ObservableService {
     associatedtype Configuration
-    
+
     /// Current configuration
     var configuration: Configuration { get }
-    
+
     /// Update the service configuration
     func updateConfiguration(_ configuration: Configuration) async throws
-    
+
     /// Validate a configuration before applying
     func validateConfiguration(_ configuration: Configuration) -> Result<Void, Error>
 }
@@ -74,16 +74,16 @@ public protocol ConfigurableService: ObservableService {
 public protocol ServiceLifecycle: AnyObject {
     /// Initialize the service
     func initialize() async throws
-    
+
     /// Start the service
     func start() async throws
-    
+
     /// Stop the service
     func stop() async throws
-    
+
     /// Cleanup service resources
     func cleanup() async
-    
+
     /// Current lifecycle state
     var lifecycleState: ServiceLifecycleState { get }
 }
@@ -100,7 +100,6 @@ public enum ServiceLifecycleState: String, Sendable {
     case failed
 }
 
-
 // MARK: - Service Registry Protocol
 
 /// Protocol for service registries
@@ -108,16 +107,16 @@ public enum ServiceLifecycleState: String, Sendable {
 public protocol ServiceRegistry {
     /// Register a service
     func register<T>(_ service: T, for type: T.Type)
-    
+
     /// Retrieve a service
     func get<T>(_ type: T.Type) -> T?
-    
+
     /// Remove a service
-    func remove<T>(_ type: T.Type)
-    
+    func remove(_ type: (some Any).Type)
+
     /// Check if a service is registered
-    func contains<T>(_ type: T.Type) -> Bool
-    
+    func contains(_ type: (some Any).Type) -> Bool
+
     /// Get all registered service types
     var registeredTypes: [String] { get }
 }
@@ -145,13 +144,13 @@ public protocol ServiceObserver: AnyObject {
 
 // MARK: - Default Implementations
 
-public extension ServiceState {
-    var isLoading: Bool { false }
-    var lastError: Error? { nil }
-    var lastUpdated: Date { Date() }
+extension ServiceState {
+    public var isLoading: Bool { false }
+    public var lastError: Error? { nil }
+    public var lastUpdated: Date { Date() }
 }
 
 @available(macOS 14.0, *)
-public extension RefreshableService {
-    var canRefresh: Bool { !isRefreshing }
+extension RefreshableService {
+    public var canRefresh: Bool { !isRefreshing }
 }

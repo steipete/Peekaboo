@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 // Type alias for permission status
 typealias PermissionStatus = ObservablePermissionsService.PermissionState
@@ -135,10 +135,10 @@ struct OnboardingView: View {
                     let config = URLSessionConfiguration.default
                     config.httpAdditionalHeaders = ["Authorization": "Bearer \(self.apiKey)"]
                     let session = URLSession(configuration: config)
-                    
+
                     let url = URL(string: "https://api.openai.com/v1/models")!
                     let (_, response) = try await session.data(from: url)
-                    
+
                     if let httpResponse = response as? HTTPURLResponse {
                         if httpResponse.statusCode == 401 {
                             await MainActor.run {
@@ -152,7 +152,7 @@ struct OnboardingView: View {
                             return
                         }
                     }
-                    
+
                     // Save the key if validation succeeded
                     await MainActor.run {
                         self.settings.openAIAPIKey = self.apiKey
@@ -206,7 +206,7 @@ struct PermissionsView: View {
                     action: {
                         self.permissions.requestAccessibility()
                     })
-                
+
                 PermissionRow(
                     title: "Automation",
                     description: "Required to control applications and execute commands",
@@ -234,7 +234,7 @@ struct PermissionsView: View {
         .task {
             // Check permissions before first render
             await self.permissions.check()
-            
+
             // Start monitoring
             self.permissions.startMonitoring()
         }

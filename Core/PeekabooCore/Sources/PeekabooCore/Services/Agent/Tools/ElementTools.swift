@@ -1,13 +1,12 @@
-import Foundation
-import CoreGraphics
 import AXorcist
+import CoreGraphics
+import Foundation
 
 // MARK: - Element Tools
 
 /// Element-focused tools for finding and listing UI elements
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
-    
     /// Create the find element tool
     func createFindElementTool() -> Tool<PeekabooServices> {
         createTool(
@@ -16,39 +15,34 @@ extension PeekabooAgentService {
             parameters: .object(
                 properties: [
                     "label": ParameterSchema.string(
-                        description: "Label or text to search for"
-                    ),
+                        description: "Label or text to search for"),
                     "app": ParameterSchema.string(
-                        description: "Optional: Application name to search within"
-                    ),
+                        description: "Optional: Application name to search within"),
                     "element_type": ParameterSchema.enumeration(
                         ["button", "text_field", "menu", "checkbox", "radio", "link"],
-                        description: "Optional: Specific element type to find"
-                    )
+                        description: "Optional: Specific element type to find"),
                 ],
-                required: ["label"]
-            ),
+                required: ["label"]),
             handler: { params, context in
                 let searchLabel = try params.string("label")
                 let appName = params.string("app", default: nil)
                 let elementType = params.string("element_type", default: nil)
-                
+
                 let startTime = Date()
                 let targetDescription = appName ?? "entire screen"
-                
+
                 // Always search by label since that's what the user is looking for
                 let searchCriteria = UIElementSearchCriteria.label(searchLabel)
-                
+
                 do {
                     let element = try await context.automation.findElement(
                         matching: searchCriteria,
-                        in: appName
-                    )
-                    
+                        in: appName)
+
                     let duration = Date().timeIntervalSince(startTime)
-                    
+
                     // If element type was specified, verify it matches
-                    if let elementType = elementType {
+                    if let elementType {
                         let expectedType = mapElementTypeToElementType(elementType)
                         if element.type != expectedType {
                             var notFoundMessage = "No elements found matching '\(searchLabel)'"
@@ -57,15 +51,15 @@ extension PeekabooAgentService {
                             return .error(message: notFoundMessage, code: "ELEMENT_NOT_FOUND")
                         }
                     }
-                    
+
                     // Format the result
                     let displayText = element.label ?? element.value ?? "Unlabeled \(element.type)"
                     var description = "Found element matching '\(searchLabel)'"
-                    if let elementType = elementType {
+                    if let elementType {
                         description += " of type '\(elementType)'"
                     }
                     description += " in \(targetDescription):\n"
-                    
+
                     description += "\n\(displayText)"
                     description += "\n   ID: \(element.id)"
                     description += "\n   Type: \(element.type)"
@@ -74,7 +68,7 @@ extension PeekabooAgentService {
                     if !element.isEnabled {
                         description += "\n   Status: Disabled"
                     }
-                    
+
                     return .success(
                         description,
                         metadata: [
@@ -85,21 +79,19 @@ extension PeekabooAgentService {
                             "elementY": String(Int(element.bounds.minY)),
                             "searchLabel": searchLabel,
                             "app": targetDescription,
-                            "duration": String(format: "%.2fs", duration)
-                        ]
-                    )
+                            "duration": String(format: "%.2fs", duration),
+                        ])
                 } catch {
                     var notFoundMessage = "No elements found matching '\(searchLabel)'"
-                    if let elementType = elementType {
+                    if let elementType {
                         notFoundMessage += " of type '\(elementType)'"
                     }
                     notFoundMessage += " in \(targetDescription)"
                     return .error(message: notFoundMessage, code: "ELEMENT_NOT_FOUND")
                 }
-            }
-        )
+            })
     }
-    
+
     /// Create the list elements tool
     func createListElementsTool() -> Tool<PeekabooServices> {
         createTool(
@@ -108,67 +100,64 @@ extension PeekabooAgentService {
             parameters: .object(
                 properties: [
                     "app": ParameterSchema.string(
-                        description: "Optional: Application name to search within"
-                    ),
+                        description: "Optional: Application name to search within"),
                     "element_type": ParameterSchema.enumeration(
                         ["button", "text_field", "menu", "checkbox", "radio", "link", "all"],
-                        description: "Optional: Filter by element type"
-                    )
+                        description: "Optional: Filter by element type"),
                 ],
-                required: []
-            ),
+                required: []),
             handler: { params, context in
                 let appName = params.string("app", default: nil)
                 let elementType = params.string("element_type", default: "all") ?? "all"
-                
+
                 let startTime = Date()
-                
+
                 // Capture screen or app to get elements
                 let captureResult: CaptureResult
                 let detectionResult: ElementDetectionResult
-                
+
                 let targetDescription: String
-                if let appName = appName {
+                if let appName {
                     // Capture specific application
                     captureResult = try await context.screenCapture.captureWindow(
                         appIdentifier: appName,
-                        windowIndex: nil
-                    )
+                        windowIndex: nil)
                     targetDescription = appName
                 } else {
                     // Capture entire screen
                     captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
                     targetDescription = "entire screen"
                 }
-                
+
                 // Detect elements in the screenshot
                 detectionResult = try await context.automation.detectElements(
                     in: captureResult.imageData,
                     sessionId: nil,
-                    windowContext: nil
-                )
-                
+                    windowContext: nil)
+
                 let duration = Date().timeIntervalSince(startTime)
-                
+
                 // Format the element list based on type filter
                 let elements = detectionResult.elements
                 let filteredOutput = formatFilteredElements(elements, filterType: elementType)
-                
+
                 // Create a better summary
                 var summary = "Found \(filteredOutput.totalCount) "
                 if elementType != "all" {
                     summary += "\(elementType) "
                 }
                 summary += "elements in \(targetDescription)"
-                
+
                 // Add breakdown if showing all elements
-                if elementType == "all" && filteredOutput.totalCount > 0 {
+                if elementType == "all", filteredOutput.totalCount > 0 {
                     var breakdown: [String] = []
                     if !elements.buttons.isEmpty {
-                        let enabledButtons = elements.buttons.filter { $0.isEnabled }.count
+                        let enabledButtons = elements.buttons.count(where: { $0.isEnabled })
                         let disabledButtons = elements.buttons.count - enabledButtons
                         if disabledButtons > 0 {
-                            breakdown.append("Buttons: \(elements.buttons.count) (\(enabledButtons) enabled, \(disabledButtons) disabled)")
+                            breakdown
+                                .append(
+                                    "Buttons: \(elements.buttons.count) (\(enabledButtons) enabled, \(disabledButtons) disabled)")
                         } else {
                             breakdown.append("Buttons: \(elements.buttons.count)")
                         }
@@ -182,12 +171,12 @@ extension PeekabooAgentService {
                     if !elements.other.isEmpty {
                         breakdown.append("Text: \(elements.other.count)")
                     }
-                    
+
                     if !breakdown.isEmpty {
                         summary = "\(summary)\n  " + breakdown.joined(separator: "\n  ")
                     }
                 }
-                
+
                 return .success(
                     filteredOutput.description,
                     metadata: [
@@ -195,13 +184,11 @@ extension PeekabooAgentService {
                         "filter": elementType,
                         "app": targetDescription,
                         "duration": String(format: "%.2fs", duration),
-                        "summary": summary
-                    ]
-                )
-            }
-        )
+                        "summary": summary,
+                    ])
+            })
     }
-    
+
     /// Create the focused element tool
     func createFocusedTool() -> Tool<PeekabooServices> {
         createSimpleTool(
@@ -212,7 +199,7 @@ extension PeekabooAgentService {
                 guard let focusInfo = context.automation.getFocusedElement() else {
                     return .error(message: "No element is currently focused", code: "NO_FOCUSED_ELEMENT")
                 }
-                
+
                 // Format the focused element information
                 var description = "Focused Element: \(focusInfo.role)"
                 if let title = focusInfo.title {
@@ -221,11 +208,11 @@ extension PeekabooAgentService {
                 if let value = focusInfo.value, !value.isEmpty {
                     description += "\nValue: \(value)"
                 }
-                
+
                 description += "\nApplication: \(focusInfo.applicationName)"
                 description += "\nPosition: [\(Int(focusInfo.frame.origin.x)), \(Int(focusInfo.frame.origin.y))]"
                 description += "\nSize: \(Int(focusInfo.frame.size.width))×\(Int(focusInfo.frame.size.height))"
-                
+
                 return .success(
                     description,
                     metadata: [
@@ -238,11 +225,9 @@ extension PeekabooAgentService {
                         "x": String(Int(focusInfo.frame.origin.x)),
                         "y": String(Int(focusInfo.frame.origin.y)),
                         "width": String(Int(focusInfo.frame.size.width)),
-                        "height": String(Int(focusInfo.frame.size.height))
-                    ]
-                )
-            }
-        )
+                        "height": String(Int(focusInfo.frame.size.height)),
+                    ])
+            })
     }
 }
 
@@ -250,32 +235,35 @@ extension PeekabooAgentService {
 
 private func mapElementTypeToRole(_ elementType: String) -> String {
     switch elementType.lowercased() {
-    case "button": return "AXButton"
-    case "text_field": return "AXTextField"
-    case "menu": return "AXMenu"
-    case "checkbox": return "AXCheckBox"
-    case "radio": return "AXRadioButton"
-    case "link": return "AXLink"
-    default: return elementType
+    case "button": "AXButton"
+    case "text_field": "AXTextField"
+    case "menu": "AXMenu"
+    case "checkbox": "AXCheckBox"
+    case "radio": "AXRadioButton"
+    case "link": "AXLink"
+    default: elementType
     }
 }
 
 private func mapElementTypeToElementType(_ elementType: String) -> ElementType {
     switch elementType.lowercased() {
-    case "button": return .button
-    case "text_field": return .textField
-    case "menu": return .menu
-    case "checkbox": return .checkbox
-    case "radio": return .checkbox  // Radio buttons are treated as checkboxes in ElementType
-    case "link": return .link
-    default: return .other
+    case "button": .button
+    case "text_field": .textField
+    case "menu": .menu
+    case "checkbox": .checkbox
+    case "radio": .checkbox // Radio buttons are treated as checkboxes in ElementType
+    case "link": .link
+    default: .other
     }
 }
 
-private func formatFilteredElements(_ elements: DetectedElements, filterType: String) -> (description: String, totalCount: Int) {
+private func formatFilteredElements(
+    _ elements: DetectedElements,
+    filterType: String) -> (description: String, totalCount: Int)
+{
     var output = ""
     var totalCount = 0
-    
+
     switch filterType.lowercased() {
     case "button":
         if !elements.buttons.isEmpty {
@@ -285,7 +273,7 @@ private func formatFilteredElements(_ elements: DetectedElements, filterType: St
             }
             totalCount = elements.buttons.count
         }
-        
+
     case "text_field":
         if !elements.textFields.isEmpty {
             output += "TEXT FIELDS:\n"
@@ -294,7 +282,7 @@ private func formatFilteredElements(_ elements: DetectedElements, filterType: St
             }
             totalCount = elements.textFields.count
         }
-        
+
     case "link":
         if !elements.links.isEmpty {
             output += "LINKS:\n"
@@ -303,7 +291,7 @@ private func formatFilteredElements(_ elements: DetectedElements, filterType: St
             }
             totalCount = elements.links.count
         }
-        
+
     case "menu":
         if !elements.menus.isEmpty {
             output += "MENUS:\n"
@@ -312,15 +300,15 @@ private func formatFilteredElements(_ elements: DetectedElements, filterType: St
             }
             totalCount = elements.menus.count
         }
-        
+
     default: // "all"
         // Count all elements
-        let totalCount = elements.buttons.count + elements.textFields.count + 
-                        elements.links.count + elements.menus.count + 
-                        elements.other.count + elements.images.count +
-                        elements.checkboxes.count + elements.sliders.count + 
-                        elements.groups.count
-        
+        let totalCount = elements.buttons.count + elements.textFields.count +
+            elements.links.count + elements.menus.count +
+            elements.other.count + elements.images.count +
+            elements.checkboxes.count + elements.sliders.count +
+            elements.groups.count
+
         // Format all elements
         var output = ""
         if !elements.buttons.isEmpty {
@@ -358,18 +346,18 @@ private func formatFilteredElements(_ elements: DetectedElements, filterType: St
             }
             output += "\n"
         }
-        
+
         if output.isEmpty {
             output = "No interactive elements found"
         }
-        
+
         return (output, totalCount)
     }
-    
+
     if output.isEmpty {
         output = "No \(filterType) elements found"
     }
-    
+
     return (output, totalCount)
 }
 

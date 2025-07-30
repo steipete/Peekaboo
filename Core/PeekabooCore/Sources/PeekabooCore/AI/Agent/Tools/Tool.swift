@@ -6,44 +6,42 @@ import Foundation
 public struct Tool<Context> {
     /// Unique name of the tool
     public let name: String
-    
+
     /// Description of what the tool does
     public let description: String
-    
+
     /// Parameters the tool accepts
     public let parameters: ToolParameters
-    
+
     /// Whether to use strict parameter validation
     public let strict: Bool
-    
+
     /// The function to execute when the tool is called
     public let execute: (ToolInput, Context) async throws -> ToolOutput
-    
+
     public init(
         name: String,
         description: String,
         parameters: ToolParameters,
         strict: Bool = true,
-        execute: @escaping (ToolInput, Context) async throws -> ToolOutput
-    ) {
+        execute: @escaping (ToolInput, Context) async throws -> ToolOutput)
+    {
         self.name = name
         self.description = description
         self.parameters = parameters
         self.strict = strict
         self.execute = execute
     }
-    
+
     /// Convert to a tool definition for the model
     public func toToolDefinition() -> ToolDefinition {
         ToolDefinition(
             type: .function,
             function: FunctionDefinition(
-                name: name,
-                description: description,
-                parameters: parameters,
-                strict: strict
-            )
-        )
+                name: self.name,
+                description: self.description,
+                parameters: self.parameters,
+                strict: self.strict))
     }
 }
 
@@ -53,7 +51,7 @@ public struct Tool<Context> {
 public struct ToolDefinition: Codable, Sendable {
     public let type: ToolType
     public let function: FunctionDefinition
-    
+
     public init(type: ToolType = .function, function: FunctionDefinition) {
         self.type = type
         self.function = function
@@ -62,7 +60,7 @@ public struct ToolDefinition: Codable, Sendable {
 
 /// Type of tool
 public enum ToolType: String, Codable, Sendable {
-    case function = "function"
+    case function
 }
 
 /// Function definition for a tool
@@ -71,13 +69,13 @@ public struct FunctionDefinition: Codable, Sendable {
     public let description: String
     public let parameters: ToolParameters
     public let strict: Bool?
-    
+
     public init(
         name: String,
         description: String,
         parameters: ToolParameters,
-        strict: Bool? = nil
-    ) {
+        strict: Bool? = nil)
+    {
         self.name = name
         self.description = description
         self.parameters = parameters
@@ -93,30 +91,29 @@ public struct ToolParameters: Codable, Sendable {
     public let properties: [String: ParameterSchema]
     public let required: [String]
     public let additionalProperties: Bool
-    
+
     public init(
         type: String = "object",
         properties: [String: ParameterSchema] = [:],
         required: [String] = [],
-        additionalProperties: Bool = false
-    ) {
+        additionalProperties: Bool = false)
+    {
         self.type = type
         self.properties = properties
         self.required = required
         self.additionalProperties = additionalProperties
     }
-    
+
     /// Create parameters from a dictionary of property definitions
     public static func object(
         properties: [String: ParameterSchema],
-        required: [String] = []
-    ) -> ToolParameters {
+        required: [String] = []) -> ToolParameters
+    {
         ToolParameters(
             type: "object",
             properties: properties,
             required: required,
-            additionalProperties: false
-        )
+            additionalProperties: false)
     }
 }
 
@@ -130,7 +127,7 @@ public struct ParameterSchema: Codable, Sendable {
     public let minimum: Double?
     public let maximum: Double?
     public let pattern: String?
-    
+
     public init(
         type: ParameterType,
         description: String? = nil,
@@ -139,8 +136,8 @@ public struct ParameterSchema: Codable, Sendable {
         properties: [String: ParameterSchema]? = nil,
         minimum: Double? = nil,
         maximum: Double? = nil,
-        pattern: String? = nil
-    ) {
+        pattern: String? = nil)
+    {
         self.type = type
         self.description = description
         self.enumValues = enumValues
@@ -150,36 +147,44 @@ public struct ParameterSchema: Codable, Sendable {
         self.maximum = maximum
         self.pattern = pattern
     }
-    
+
     // Convenience initializers
     public static func string(description: String? = nil, pattern: String? = nil) -> ParameterSchema {
         ParameterSchema(type: .string, description: description, pattern: pattern)
     }
-    
-    public static func number(description: String? = nil, minimum: Double? = nil, maximum: Double? = nil) -> ParameterSchema {
+
+    public static func number(
+        description: String? = nil,
+        minimum: Double? = nil,
+        maximum: Double? = nil) -> ParameterSchema
+    {
         ParameterSchema(type: .number, description: description, minimum: minimum, maximum: maximum)
     }
-    
-    public static func integer(description: String? = nil, minimum: Double? = nil, maximum: Double? = nil) -> ParameterSchema {
+
+    public static func integer(
+        description: String? = nil,
+        minimum: Double? = nil,
+        maximum: Double? = nil) -> ParameterSchema
+    {
         ParameterSchema(type: .integer, description: description, minimum: minimum, maximum: maximum)
     }
-    
+
     public static func boolean(description: String? = nil) -> ParameterSchema {
         ParameterSchema(type: .boolean, description: description)
     }
-    
+
     public static func array(of items: ParameterSchema, description: String? = nil) -> ParameterSchema {
         ParameterSchema(type: .array, description: description, items: items)
     }
-    
+
     public static func object(properties: [String: ParameterSchema], description: String? = nil) -> ParameterSchema {
         ParameterSchema(type: .object, description: description, properties: properties)
     }
-    
+
     public static func enumeration(_ values: [String], description: String? = nil) -> ParameterSchema {
         ParameterSchema(type: .string, description: description, enumValues: values)
     }
-    
+
     // Custom coding keys
     enum CodingKeys: String, CodingKey {
         case type, description
@@ -191,13 +196,13 @@ public struct ParameterSchema: Codable, Sendable {
 
 /// Parameter types
 public enum ParameterType: String, Codable, Sendable {
-    case string = "string"
-    case number = "number"
-    case integer = "integer"
-    case boolean = "boolean"
-    case array = "array"
-    case object = "object"
-    case null = "null"
+    case string
+    case number
+    case integer
+    case boolean
+    case array
+    case object
+    case null
 }
 
 // MARK: - Tool Input/Output
@@ -208,7 +213,7 @@ public enum ToolInput {
     case dictionary([String: Any])
     case array([Any])
     case null
-    
+
     /// Parse from a JSON string
     public init(jsonString: String) throws {
         // Handle empty string as empty dictionary
@@ -216,13 +221,13 @@ public enum ToolInput {
             self = .dictionary([:])
             return
         }
-        
+
         guard let data = jsonString.data(using: .utf8) else {
             throw ToolError.invalidInput("Invalid JSON string")
         }
-        
+
         let parsed = try JSONSerialization.jsonObject(with: data)
-        
+
         if let dict = parsed as? [String: Any] {
             self = .dictionary(dict)
         } else if let array = parsed as? [Any] {
@@ -233,21 +238,22 @@ public enum ToolInput {
             self = .null
         }
     }
-    
+
     /// Get value for a specific key (for dictionary inputs)
     public func value<T>(for key: String) -> T? {
-        guard case .dictionary(let dict) = self else { return nil }
+        guard case let .dictionary(dict) = self else { return nil }
         return dict[key] as? T
     }
-    
+
     /// Get the raw string value
     public var stringValue: String? {
         switch self {
-        case .string(let str):
+        case let .string(str):
             return str
         case .dictionary, .array:
             if let data = try? JSONSerialization.data(withJSONObject: rawValue),
-               let str = String(data: data, encoding: .utf8) {
+               let str = String(data: data, encoding: .utf8)
+            {
                 return str
             }
             return nil
@@ -255,18 +261,18 @@ public enum ToolInput {
             return nil
         }
     }
-    
+
     /// Get the raw value
     public var rawValue: Any {
         switch self {
-        case .string(let str):
-            return str
-        case .dictionary(let dict):
-            return dict
-        case .array(let array):
-            return array
+        case let .string(str):
+            str
+        case let .dictionary(dict):
+            dict
+        case let .array(array):
+            array
         case .null:
-            return NSNull()
+            NSNull()
         }
     }
 }
@@ -280,21 +286,21 @@ public enum ToolOutput: Codable, Sendable {
     case array([ToolOutput])
     case null
     case error(message: String, code: String? = nil)
-    
+
     // MARK: - Codable Implementation
-    
+
     private enum CodingKeys: String, CodingKey {
         case type, value, message, code
     }
-    
+
     private enum OutputType: String, Codable {
         case string, number, boolean, object, array, null, error
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(OutputType.self, forKey: .type)
-        
+
         switch type {
         case .string:
             let value = try container.decode(String.self, forKey: .value)
@@ -319,46 +325,46 @@ public enum ToolOutput: Codable, Sendable {
             self = .error(message: message, code: code)
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
+
         switch self {
-        case .string(let value):
+        case let .string(value):
             try container.encode(OutputType.string, forKey: .type)
             try container.encode(value, forKey: .value)
-        case .number(let value):
+        case let .number(value):
             try container.encode(OutputType.number, forKey: .type)
             try container.encode(value, forKey: .value)
-        case .boolean(let value):
+        case let .boolean(value):
             try container.encode(OutputType.boolean, forKey: .type)
             try container.encode(value, forKey: .value)
-        case .object(let value):
+        case let .object(value):
             try container.encode(OutputType.object, forKey: .type)
             try container.encode(value, forKey: .value)
-        case .array(let value):
+        case let .array(value):
             try container.encode(OutputType.array, forKey: .type)
             try container.encode(value, forKey: .value)
         case .null:
             try container.encode(OutputType.null, forKey: .type)
-        case .error(let message, let code):
+        case let .error(message, code):
             try container.encode(OutputType.error, forKey: .type)
             try container.encode(message, forKey: .message)
             try container.encodeIfPresent(code, forKey: .code)
         }
     }
-    
+
     // MARK: - Conversion Methods
-    
+
     /// Convert to JSON string for the model
     public func toJSONString() throws -> String {
         switch self {
-        case .string(let str):
+        case let .string(str):
             return str // Return string directly for text output
-        case .error(let message, let code):
+        case let .error(message, code):
             // Special handling for errors to match expected format
             var errorDict: [String: ToolOutput] = ["error": .string(message)]
-            if let code = code {
+            if let code {
                 errorDict["error_code"] = .string(code)
             }
             let data = try JSONEncoder().encode(ToolOutput.object(errorDict))
@@ -377,11 +383,11 @@ public enum ToolOutput: Codable, Sendable {
             return string
         }
     }
-    
+
     /// Convert to a dictionary representation (for compatibility)
     public func toDictionary() -> [String: Any]? {
         switch self {
-        case .object(let dict):
+        case let .object(dict):
             var result: [String: Any] = [:]
             for (key, value) in dict {
                 if let converted = value.toAny() {
@@ -393,17 +399,17 @@ public enum ToolOutput: Codable, Sendable {
             return nil
         }
     }
-    
+
     /// Convert to Any (for legacy compatibility)
     private func toAny() -> Any? {
         switch self {
-        case .string(let value):
+        case let .string(value):
             return value
-        case .number(let value):
+        case let .number(value):
             return value
-        case .boolean(let value):
+        case let .boolean(value):
             return value
-        case .object(let dict):
+        case let .object(dict):
             var result: [String: Any] = [:]
             for (key, value) in dict {
                 if let converted = value.toAny() {
@@ -411,11 +417,11 @@ public enum ToolOutput: Codable, Sendable {
                 }
             }
             return result
-        case .array(let array):
+        case let .array(array):
             return array.compactMap { $0.toAny() }
         case .null:
             return NSNull()
-        case .error(let message, _):
+        case let .error(message, _):
             return ["error": message]
         }
     }
@@ -428,7 +434,7 @@ extension ToolOutput {
     public static func dictionary(_ builder: () -> [String: ToolOutput]) -> ToolOutput {
         .object(builder())
     }
-    
+
     /// Create a dictionary/object output from key-value pairs
     public static func dictionary(_ pairs: (String, ToolOutput)...) -> ToolOutput {
         var dict: [String: ToolOutput] = [:]
@@ -437,39 +443,39 @@ extension ToolOutput {
         }
         return .object(dict)
     }
-    
+
     /// Create from a Swift dictionary with automatic type conversion
     public static func from(_ dict: [String: Any]) -> ToolOutput {
         var result: [String: ToolOutput] = [:]
         for (key, value) in dict {
-            result[key] = from(value)
+            result[key] = self.from(value)
         }
         return .object(result)
     }
-    
+
     /// Create from any Swift value with automatic type conversion
     public static func from(_ value: Any) -> ToolOutput {
         switch value {
         case let str as String:
-            return .string(str)
+            .string(str)
         case let num as Int:
-            return .number(Double(num))
+            .number(Double(num))
         case let num as Double:
-            return .number(num)
+            .number(num)
         case let bool as Bool:
-            return .boolean(bool)
+            .boolean(bool)
         case let dict as [String: Any]:
-            return from(dict)
+            self.from(dict)
         case let array as [Any]:
-            return .array(array.map { from($0) })
+            .array(array.map { self.from($0) })
         case is NSNull:
-            return .null
+            .null
         default:
             // Fallback to string representation
-            return .string(String(describing: value))
+            .string(String(describing: value))
         }
     }
-    
+
     /// Convenience method for success results
     public static func success(_ message: String, metadata: (String, ToolOutput)...) -> ToolOutput {
         var dict: [String: ToolOutput] = ["result": .string(message)]
@@ -489,19 +495,19 @@ public enum ToolError: Error, LocalizedError {
     case serializationFailed
     case contextMissing
     case toolNotFound(String)
-    
+
     public var errorDescription: String? {
         switch self {
-        case .invalidInput(let message):
-            return "Invalid tool input: \(message)"
-        case .executionFailed(let message):
-            return "Tool execution failed: \(message)"
+        case let .invalidInput(message):
+            "Invalid tool input: \(message)"
+        case let .executionFailed(message):
+            "Tool execution failed: \(message)"
         case .serializationFailed:
-            return "Failed to serialize tool output"
+            "Failed to serialize tool output"
         case .contextMissing:
-            return "Required context is missing"
-        case .toolNotFound(let name):
-            return "Tool not found: \(name)"
+            "Required context is missing"
+        case let .toolNotFound(name):
+            "Tool not found: \(name)"
         }
     }
 }
@@ -511,19 +517,19 @@ public enum ToolError: Error, LocalizedError {
 /// Box type for recursive data structures
 public final class Box<T: Codable & Sendable>: Codable, Sendable {
     public let value: T
-    
+
     public init(_ value: T) {
         self.value = value
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        value = try container.decode(T.self)
+        self.value = try container.decode(T.self)
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        try container.encode(value)
+        try container.encode(self.value)
     }
 }
 
@@ -533,57 +539,57 @@ public final class Box<T: Codable & Sendable>: Codable, Sendable {
 public struct ToolBuilder<Context> {
     private var name: String = ""
     private var description: String = ""
-    private var parameters: ToolParameters = ToolParameters()
+    private var parameters: ToolParameters = .init()
     private var strict: Bool = true
     private var execute: ((ToolInput, Context) async throws -> ToolOutput)?
-    
+
     public init() {}
-    
+
     public func withName(_ name: String) -> ToolBuilder<Context> {
         var builder = self
         builder.name = name
         return builder
     }
-    
+
     public func withDescription(_ description: String) -> ToolBuilder<Context> {
         var builder = self
         builder.description = description
         return builder
     }
-    
+
     public func withParameters(_ parameters: ToolParameters) -> ToolBuilder<Context> {
         var builder = self
         builder.parameters = parameters
         return builder
     }
-    
+
     public func withStrict(_ strict: Bool) -> ToolBuilder<Context> {
         var builder = self
         builder.strict = strict
         return builder
     }
-    
-    public func withExecution(_ execute: @escaping (ToolInput, Context) async throws -> ToolOutput) -> ToolBuilder<Context> {
+
+    public func withExecution(_ execute: @escaping (ToolInput, Context) async throws -> ToolOutput)
+    -> ToolBuilder<Context> {
         var builder = self
         builder.execute = execute
         return builder
     }
-    
+
     public func build() throws -> Tool<Context> {
-        guard !name.isEmpty else {
+        guard !self.name.isEmpty else {
             throw ToolError.invalidInput("Tool name is required")
         }
-        
-        guard let execute = execute else {
+
+        guard let execute else {
             throw ToolError.invalidInput("Tool execution function is required")
         }
-        
+
         return Tool(
-            name: name,
-            description: description,
-            parameters: parameters,
-            strict: strict,
-            execute: execute
-        )
+            name: self.name,
+            description: self.description,
+            parameters: self.parameters,
+            strict: self.strict,
+            execute: execute)
     }
 }

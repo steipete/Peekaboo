@@ -1,12 +1,11 @@
-import Testing
 import CoreGraphics
+import Testing
 @testable import PeekabooCore
 
 @Suite("FocusInfo Tests")
 struct FocusInfoTests {
-    
     @Test("FocusInfo initialization")
-    func testFocusInfoInitialization() {
+    func focusInfoInitialization() {
         let elementInfo = ElementInfo(
             role: "AXTextField",
             title: "Email Address",
@@ -15,24 +14,22 @@ struct FocusInfoTests {
             isEnabled: true,
             isVisible: true,
             subrole: nil,
-            description: "Enter your email address"
-        )
-        
+            description: "Enter your email address")
+
         let focusInfo = FocusInfo(
             app: "Mail",
             bundleId: "com.apple.mail",
             processId: 1234,
-            element: elementInfo
-        )
-        
+            element: elementInfo)
+
         #expect(focusInfo.app == "Mail")
         #expect(focusInfo.bundleId == "com.apple.mail")
         #expect(focusInfo.processId == 1234)
         #expect(focusInfo.element.role == "AXTextField")
     }
-    
+
     @Test("ElementInfo text input detection")
-    func testElementInfoTextInputDetection() {
+    func elementInfoTextInputDetection() {
         // Text field should be detected as text input
         let textField = ElementInfo(
             role: "AXTextField",
@@ -40,12 +37,11 @@ struct FocusInfoTests {
             value: "",
             bounds: CGRect(x: 0, y: 0, width: 100, height: 30),
             isEnabled: true,
-            isVisible: true
-        )
-        
+            isVisible: true)
+
         #expect(textField.isTextInput == true)
         #expect(textField.canAcceptKeyboardInput == true)
-        
+
         // Text area should be detected as text input
         let textArea = ElementInfo(
             role: "AXTextArea",
@@ -53,12 +49,11 @@ struct FocusInfoTests {
             value: "",
             bounds: CGRect(x: 0, y: 0, width: 200, height: 100),
             isEnabled: true,
-            isVisible: true
-        )
-        
+            isVisible: true)
+
         #expect(textArea.isTextInput == true)
         #expect(textArea.canAcceptKeyboardInput == true)
-        
+
         // Search field should be detected as text input
         let searchField = ElementInfo(
             role: "AXSearchField",
@@ -66,12 +61,11 @@ struct FocusInfoTests {
             value: "",
             bounds: CGRect(x: 0, y: 0, width: 150, height: 25),
             isEnabled: true,
-            isVisible: true
-        )
-        
+            isVisible: true)
+
         #expect(searchField.isTextInput == true)
         #expect(searchField.canAcceptKeyboardInput == true)
-        
+
         // Secure text field should be detected as text input
         let passwordField = ElementInfo(
             role: "AXSecureTextField",
@@ -79,15 +73,14 @@ struct FocusInfoTests {
             value: "",
             bounds: CGRect(x: 0, y: 0, width: 150, height: 25),
             isEnabled: true,
-            isVisible: true
-        )
-        
+            isVisible: true)
+
         #expect(passwordField.isTextInput == true)
         #expect(passwordField.canAcceptKeyboardInput == true)
     }
-    
+
     @Test("ElementInfo non-text input detection")
-    func testElementInfoNonTextInputDetection() {
+    func elementInfoNonTextInputDetection() {
         // Button should not be text input but can accept keyboard input
         let button = ElementInfo(
             role: "AXButton",
@@ -95,12 +88,11 @@ struct FocusInfoTests {
             value: nil,
             bounds: CGRect(x: 0, y: 0, width: 80, height: 30),
             isEnabled: true,
-            isVisible: true
-        )
-        
+            isVisible: true)
+
         #expect(button.isTextInput == false)
         #expect(button.canAcceptKeyboardInput == true) // Buttons can accept keyboard (spacebar, enter)
-        
+
         // Static text should not accept keyboard input
         let staticText = ElementInfo(
             role: "AXStaticText",
@@ -108,12 +100,11 @@ struct FocusInfoTests {
             value: "Some text",
             bounds: CGRect(x: 0, y: 0, width: 100, height: 20),
             isEnabled: true,
-            isVisible: true
-        )
-        
+            isVisible: true)
+
         #expect(staticText.isTextInput == false)
         #expect(staticText.canAcceptKeyboardInput == false)
-        
+
         // Image should not accept keyboard input
         let image = ElementInfo(
             role: "AXImage",
@@ -121,15 +112,14 @@ struct FocusInfoTests {
             value: nil,
             bounds: CGRect(x: 0, y: 0, width: 50, height: 50),
             isEnabled: true,
-            isVisible: true
-        )
-        
+            isVisible: true)
+
         #expect(image.isTextInput == false)
         #expect(image.canAcceptKeyboardInput == false)
     }
-    
+
     @Test("ElementInfo disabled state")
-    func testElementInfoDisabledState() {
+    func elementInfoDisabledState() {
         // Disabled text field should not accept keyboard input
         let disabledTextField = ElementInfo(
             role: "AXTextField",
@@ -137,12 +127,11 @@ struct FocusInfoTests {
             value: "",
             bounds: CGRect(x: 0, y: 0, width: 100, height: 25),
             isEnabled: false,
-            isVisible: true
-        )
-        
+            isVisible: true)
+
         #expect(disabledTextField.isTextInput == true) // Still a text input by type
         #expect(disabledTextField.canAcceptKeyboardInput == false) // But can't accept input when disabled
-        
+
         // Disabled button should not accept keyboard input
         let disabledButton = ElementInfo(
             role: "AXButton",
@@ -150,14 +139,13 @@ struct FocusInfoTests {
             value: nil,
             bounds: CGRect(x: 0, y: 0, width: 80, height: 30),
             isEnabled: false,
-            isVisible: true
-        )
-        
+            isVisible: true)
+
         #expect(disabledButton.canAcceptKeyboardInput == false)
     }
-    
+
     @Test("ElementInfo web content detection")
-    func testElementInfoWebContentDetection() {
+    func elementInfoWebContentDetection() {
         // Editable web content should be detected as text input
         let editableWebArea = ElementInfo(
             role: "AXWebArea",
@@ -166,12 +154,11 @@ struct FocusInfoTests {
             bounds: CGRect(x: 0, y: 0, width: 400, height: 200),
             isEnabled: true,
             isVisible: true,
-            subrole: "AXContentEditable"
-        )
-        
+            subrole: "AXContentEditable")
+
         #expect(editableWebArea.isTextInput == true)
         #expect(editableWebArea.canAcceptKeyboardInput == true)
-        
+
         // Regular web area should not be text input
         let regularWebArea = ElementInfo(
             role: "AXWebArea",
@@ -179,82 +166,76 @@ struct FocusInfoTests {
             value: nil,
             bounds: CGRect(x: 0, y: 0, width: 800, height: 600),
             isEnabled: true,
-            isVisible: true
-        )
-        
+            isVisible: true)
+
         #expect(regularWebArea.isTextInput == false)
-        #expect(regularWebArea.canAcceptKeyboardInput == true) // Web areas can still accept keyboard input for navigation
+        #expect(regularWebArea
+            .canAcceptKeyboardInput == true) // Web areas can still accept keyboard input for navigation
     }
-    
+
     @Test("ElementInfo type descriptions")
-    func testElementInfoTypeDescriptions() {
+    func elementInfoTypeDescriptions() {
         let textField = ElementInfo(
             role: "AXTextField",
             title: "Name",
             value: "",
             bounds: .zero,
             isEnabled: true,
-            isVisible: true
-        )
+            isVisible: true)
         #expect(textField.typeDescription == "text field")
-        
+
         let button = ElementInfo(
             role: "AXButton",
             title: "Submit",
             value: nil,
             bounds: .zero,
             isEnabled: true,
-            isVisible: true
-        )
+            isVisible: true)
         #expect(button.typeDescription == "button")
-        
+
         let searchField = ElementInfo(
             role: "AXSearchField",
             title: "Search",
             value: "",
             bounds: .zero,
             isEnabled: true,
-            isVisible: true
-        )
+            isVisible: true)
         #expect(searchField.typeDescription == "search field")
-        
+
         let customRole = ElementInfo(
             role: "AXCustomElement",
             title: "Custom",
             value: nil,
             bounds: .zero,
             isEnabled: true,
-            isVisible: true
-        )
+            isVisible: true)
         #expect(customRole.typeDescription == "customelement")
     }
-    
+
     @Test("FocusInfo convenience properties")
-    func testFocusInfoConvenienceProperties() {
+    func focusInfoConvenienceProperties() {
         let textFieldElement = ElementInfo(
             role: "AXTextField",
             title: "Email",
             value: "test@example.com",
             bounds: CGRect(x: 100, y: 50, width: 200, height: 25),
             isEnabled: true,
-            isVisible: true
-        )
-        
+            isVisible: true)
+
         let focusInfo = FocusInfo(
             app: "Safari",
             bundleId: "com.apple.Safari",
             processId: 1234,
-            element: textFieldElement
-        )
-        
+            element: textFieldElement)
+
         #expect(focusInfo.isTextInput == true)
         #expect(focusInfo.canAcceptKeyboardInput == true)
         #expect(focusInfo.humanDescription.contains("Email"))
         #expect(focusInfo.humanDescription.contains("Safari"))
     }
-    
+
     @Test("FocusInfo dictionary conversion")
-    func testFocusInfoDictionaryConversion() {
+    func focusInfoDictionaryConversion() {
         let elementInfo = ElementInfo(
             role: "AXTextField",
             title: "Username",
@@ -263,22 +244,20 @@ struct FocusInfoTests {
             isEnabled: true,
             isVisible: true,
             subrole: nil,
-            description: "Enter username"
-        )
-        
+            description: "Enter username")
+
         let focusInfo = FocusInfo(
             app: "LoginApp",
             bundleId: "com.example.loginapp",
             processId: 5678,
-            element: elementInfo
-        )
-        
+            element: elementInfo)
+
         let dict = focusInfo.toDictionary()
-        
+
         #expect(dict["app"] as? String == "LoginApp")
         #expect(dict["bundleId"] as? String == "com.example.loginapp")
         #expect(dict["processId"] as? Int == 5678)
-        
+
         let elementDict = dict["element"] as? [String: Any]
         #expect(elementDict != nil)
         #expect(elementDict?["role"] as? String == "AXTextField")
@@ -289,7 +268,7 @@ struct FocusInfoTests {
         #expect(elementDict?["isTextInput"] as? Bool == true)
         #expect(elementDict?["canAcceptKeyboardInput"] as? Bool == true)
         #expect(elementDict?["typeDescription"] as? String == "text field")
-        
+
         let boundsDict = elementDict?["bounds"] as? [String: Any]
         #expect(boundsDict != nil)
         #expect(boundsDict?["x"] as? CGFloat == 50)
@@ -297,9 +276,9 @@ struct FocusInfoTests {
         #expect(boundsDict?["width"] as? CGFloat == 150)
         #expect(boundsDict?["height"] as? CGFloat == 30)
     }
-    
+
     @Test("ElementInfo dictionary conversion")
-    func testElementInfoDictionaryConversion() {
+    func elementInfoDictionaryConversion() {
         let elementInfo = ElementInfo(
             role: "AXButton",
             title: "Cancel",
@@ -308,11 +287,10 @@ struct FocusInfoTests {
             isEnabled: false,
             isVisible: true,
             subrole: "AXCloseButton",
-            description: "Cancel the operation"
-        )
-        
+            description: "Cancel the operation")
+
         let dict = elementInfo.toDictionary()
-        
+
         #expect(dict["role"] as? String == "AXButton")
         #expect(dict["title"] as? String == "Cancel")
         #expect(dict["value"] == nil)

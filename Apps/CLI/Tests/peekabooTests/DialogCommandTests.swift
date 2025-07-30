@@ -1,7 +1,7 @@
 import Foundation
+import PeekabooCore
 import Testing
 @testable import peekaboo
-import PeekabooCore
 
 @Suite("Dialog Command  Tests", .serialized)
 struct DialogCommandTests {
@@ -91,7 +91,7 @@ struct DialogCommandTests {
     func dialogServiceIntegration() {
         // Verify that PeekabooServices includes the dialog service
         let services = PeekabooServices.shared
-        let _ = services.dialogs // This should compile without errors
+        _ = services.dialogs // This should compile without errors
     }
 }
 
@@ -100,7 +100,8 @@ struct DialogCommandTests {
 @Suite(
     "Dialog Command  Integration Tests",
     .serialized,
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+)
 struct DialogCommandIntegrationTests {
     @Test("List active dialogs with ")
     func listActiveDialogs() async throws {
@@ -114,7 +115,7 @@ struct DialogCommandIntegrationTests {
             let value: String
             let placeholder: String
         }
-        
+
         struct DialogListResult: Codable {
             let title: String
             let role: String
@@ -122,9 +123,12 @@ struct DialogCommandIntegrationTests {
             let textFields: [TextField]
             let textElements: [String]
         }
-        
+
         // Try to decode as success response first
-        if let response = try? JSONDecoder().decode(CodableJSONResponse<DialogListResult>.self, from: output.data(using: .utf8)!) {
+        if let response = try? JSONDecoder().decode(
+            CodableJSONResponse<DialogListResult>.self,
+            from: output.data(using: .utf8)!
+        ) {
             if response.success {
                 #expect(!response.data.title.isEmpty)
                 #expect(!response.data.buttons.isEmpty)
@@ -181,8 +185,11 @@ struct DialogCommandIntegrationTests {
             let method: String
             let button: String?
         }
-        
-        if let response = try? JSONDecoder().decode(CodableJSONResponse<DialogDismissResult>.self, from: output.data(using: .utf8)!) {
+
+        if let response = try? JSONDecoder().decode(
+            CodableJSONResponse<DialogDismissResult>.self,
+            from: output.data(using: .utf8)!
+        ) {
             if response.success {
                 #expect(response.data.method == "escape")
             }
@@ -205,9 +212,12 @@ struct DialogCommandIntegrationTests {
             let name: String?
             let buttonClicked: String
         }
-        
+
         // Try to decode as success response first
-        if let response = try? JSONDecoder().decode(CodableJSONResponse<FileDialogResult>.self, from: output.data(using: .utf8)!) {
+        if let response = try? JSONDecoder().decode(
+            CodableJSONResponse<FileDialogResult>.self,
+            from: output.data(using: .utf8)!
+        ) {
             if response.success {
                 #expect(response.data.action == "file_dialog")
                 #expect(response.data.path == "/tmp")

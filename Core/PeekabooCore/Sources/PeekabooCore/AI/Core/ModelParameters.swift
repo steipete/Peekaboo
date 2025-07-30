@@ -5,7 +5,7 @@ import Foundation
 /// Type-safe representation of additional model parameters
 public struct ModelParameters: Codable, Sendable {
     private let storage: [String: Value]
-    
+
     /// Supported parameter value types
     public enum Value: Codable, Sendable {
         case string(String)
@@ -14,12 +14,12 @@ public struct ModelParameters: Codable, Sendable {
         case bool(Bool)
         case dictionary([String: Value])
         case array([Value])
-        
+
         // MARK: - Codable
-        
+
         public init(from decoder: Decoder) throws {
             let container = try decoder.singleValueContainer()
-            
+
             if let intValue = try? container.decode(Int.self) {
                 self = .int(intValue)
             } else if let doubleValue = try? container.decode(Double.self) {
@@ -35,55 +35,54 @@ public struct ModelParameters: Codable, Sendable {
             } else {
                 throw DecodingError.dataCorruptedError(
                     in: container,
-                    debugDescription: "Unable to decode ModelParameters.Value"
-                )
+                    debugDescription: "Unable to decode ModelParameters.Value")
             }
         }
-        
+
         public func encode(to encoder: Encoder) throws {
             var container = encoder.singleValueContainer()
-            
+
             switch self {
-            case .string(let value):
+            case let .string(value):
                 try container.encode(value)
-            case .int(let value):
+            case let .int(value):
                 try container.encode(value)
-            case .double(let value):
+            case let .double(value):
                 try container.encode(value)
-            case .bool(let value):
+            case let .bool(value):
                 try container.encode(value)
-            case .dictionary(let value):
+            case let .dictionary(value):
                 try container.encode(value)
-            case .array(let value):
+            case let .array(value):
                 try container.encode(value)
             }
         }
-        
+
         /// Convert to raw value for JSON serialization
         public var rawValue: Any {
             switch self {
-            case .string(let value):
-                return value
-            case .int(let value):
-                return value
-            case .double(let value):
-                return value
-            case .bool(let value):
-                return value
-            case .dictionary(let dict):
-                return dict.mapValues { $0.rawValue }
-            case .array(let array):
-                return array.map { $0.rawValue }
+            case let .string(value):
+                value
+            case let .int(value):
+                value
+            case let .double(value):
+                value
+            case let .bool(value):
+                value
+            case let .dictionary(dict):
+                dict.mapValues { $0.rawValue }
+            case let .array(array):
+                array.map(\.rawValue)
             }
         }
     }
-    
+
     // MARK: - Initialization
-    
+
     public init(_ storage: [String: Value] = [:]) {
         self.storage = storage
     }
-    
+
     /// Initialize from a dictionary of raw values
     public init(from rawValues: [String: Any]) {
         var convertedStorage: [String: Value] = [:]
@@ -94,7 +93,7 @@ public struct ModelParameters: Codable, Sendable {
         }
         self.storage = convertedStorage
     }
-    
+
     /// Convert any value to our Value enum
     private static func convertToValue(_ value: Any) -> Value? {
         switch value {
@@ -115,92 +114,90 @@ public struct ModelParameters: Codable, Sendable {
             }
             return .dictionary(converted)
         case let array as [Any]:
-            let converted = array.compactMap { convertToValue($0) }
+            let converted = array.compactMap { self.convertToValue($0) }
             return .array(converted)
         default:
             return nil
         }
     }
-    
+
     // MARK: - Access Methods
-    
-    public subscript(key: String) -> Value? {
-        get { storage[key] }
-    }
-    
+
+    public subscript(key: String) -> Value? { self.storage[key] }
+
     public func string(_ key: String) -> String? {
-        guard case .string(let value) = storage[key] else { return nil }
+        guard case let .string(value) = storage[key] else { return nil }
         return value
     }
-    
+
     public func int(_ key: String) -> Int? {
-        guard case .int(let value) = storage[key] else { return nil }
+        guard case let .int(value) = storage[key] else { return nil }
         return value
     }
-    
+
     public func double(_ key: String) -> Double? {
-        guard case .double(let value) = storage[key] else { return nil }
+        guard case let .double(value) = storage[key] else { return nil }
         return value
     }
-    
+
     public func bool(_ key: String) -> Bool? {
-        guard case .bool(let value) = storage[key] else { return nil }
+        guard case let .bool(value) = storage[key] else { return nil }
         return value
     }
-    
+
     /// Get the raw dictionary for JSON serialization
     public var rawDictionary: [String: Any] {
-        storage.mapValues { $0.rawValue }
+        self.storage.mapValues { $0.rawValue }
     }
-    
+
     /// Check if empty
     public var isEmpty: Bool {
-        storage.isEmpty
+        self.storage.isEmpty
     }
-    
+
     // MARK: - Builder Methods
-    
+
     public func with(_ key: String, value: String) -> ModelParameters {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .string(value)
         return ModelParameters(newStorage)
     }
-    
+
     public func with(_ key: String, value: Int) -> ModelParameters {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .int(value)
         return ModelParameters(newStorage)
     }
-    
+
     public func with(_ key: String, value: Double) -> ModelParameters {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .double(value)
         return ModelParameters(newStorage)
     }
-    
+
     public func with(_ key: String, value: Bool) -> ModelParameters {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .bool(value)
         return ModelParameters(newStorage)
     }
-    
+
     public func with(_ key: String, value: [String: Any]) -> ModelParameters {
         guard let converted = Self.convertToValue(value) else { return self }
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = converted
         return ModelParameters(newStorage)
     }
-    
+
     // MARK: - Codable
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         self.storage = try container.decode([String: Value].self)
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        try container.encode(storage)
+        try container.encode(self.storage)
     }
 }
 
@@ -210,14 +207,14 @@ extension ModelParameters {
     /// Create parameters for OpenAI o3/o4 models
     public static func o3Parameters(
         reasoningEffort: String = "medium",
-        maxCompletionTokens: Int = 32768
-    ) -> ModelParameters {
+        maxCompletionTokens: Int = 32768) -> ModelParameters
+    {
         ModelParameters()
             .with("reasoning_effort", value: reasoningEffort)
             .with("max_completion_tokens", value: maxCompletionTokens)
             .with("reasoning", value: ["summary": "detailed"])
     }
-    
+
     /// Create parameters with API type
     public static func withAPIType(_ apiType: String) -> ModelParameters {
         ModelParameters().with("apiType", value: apiType)

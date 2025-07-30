@@ -5,14 +5,14 @@ import PeekabooCore
 class SessionCache {
     let sessionId: String
     private let sessionManager: SessionManager
-    
+
     // Type aliases for compatibility
     typealias UIAutomationSession = PeekabooCore.UIAutomationSession
     typealias UIElement = PeekabooCore.UIElement
-    
+
     init(sessionId: String? = nil, createIfNeeded: Bool = true) throws {
         self.sessionManager = SessionManager()
-        
+
         if let id = sessionId {
             self.sessionId = id
         } else if createIfNeeded {
@@ -29,23 +29,23 @@ class SessionCache {
             self.sessionId = latest
         }
     }
-    
+
     func save(_ data: UIAutomationSession) async throws {
-        try await sessionManager.saveSession(sessionId: sessionId, data: data)
+        try await self.sessionManager.saveSession(sessionId: self.sessionId, data: data)
     }
-    
+
     func load() async throws -> UIAutomationSession? {
-        return try await sessionManager.loadSession(sessionId: sessionId)
+        try await self.sessionManager.loadSession(sessionId: self.sessionId)
     }
-    
+
     func clear() async throws {
-        try await sessionManager.deleteSession(sessionId: sessionId)
+        try await self.sessionManager.deleteSession(sessionId: self.sessionId)
     }
-    
+
     func getSessionPaths() async -> (raw: String, annotated: String, map: String) {
         let baseDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".peekaboo/session/\(sessionId)")
-        
+            .appendingPathComponent(".peekaboo/session/\(self.sessionId)")
+
         return (
             raw: baseDir.appendingPathComponent("raw.png").path,
             annotated: baseDir.appendingPathComponent("annotated.png").path,
@@ -55,11 +55,11 @@ class SessionCache {
 }
 
 // Extension to make SessionManager sync-compatible for tests
-private extension SessionManager {
-    func listSessionsSync() throws -> [String] {
+extension SessionManager {
+    fileprivate func listSessionsSync() throws -> [String] {
         let semaphore = DispatchSemaphore(value: 0)
         var result: Result<[String], Error>?
-        
+
         Task {
             do {
                 let sessions = try await self.listSessions()
@@ -69,13 +69,13 @@ private extension SessionManager {
             }
             semaphore.signal()
         }
-        
+
         semaphore.wait()
-        
+
         switch result {
-        case .success(let sessions):
+        case let .success(sessions):
             return sessions
-        case .failure(let error):
+        case let .failure(error):
             throw error
         case nil:
             throw SessionError.corruptedData

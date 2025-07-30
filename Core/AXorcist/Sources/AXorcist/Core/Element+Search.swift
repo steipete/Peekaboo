@@ -14,29 +14,29 @@ import Foundation
 public struct ElementSearchOptions {
     /// Maximum depth to search (0 = unlimited)
     public var maxDepth: Int = 0
-    
+
     /// Whether to search case-insensitively (default: true)
     public var caseInsensitive: Bool = true
-    
+
     /// Whether to search only visible elements
     public var visibleOnly: Bool = false
-    
+
     /// Whether to search only enabled elements
     public var enabledOnly: Bool = false
-    
+
     /// Roles to include in search (empty = all roles)
     public var includeRoles: Set<String> = []
-    
+
     /// Roles to exclude from search
     public var excludeRoles: Set<String> = []
-    
+
     public init() {}
 }
 
 // MARK: - Element Search Extensions
 
 public extension Element {
-    
+
     /// Search for elements matching a query string
     /// - Parameters:
     ///   - query: The search query to match against element properties
@@ -48,7 +48,7 @@ public extension Element {
         searchElementsRecursively(matching: query, options: options, currentDepth: 0, results: &results)
         return results
     }
-    
+
     /// Find the first element matching a query string
     /// - Parameters:
     ///   - query: The search query to match against element properties
@@ -58,7 +58,7 @@ public extension Element {
     func findElement(matching query: String, options: ElementSearchOptions = ElementSearchOptions()) -> Element? {
         return findElementRecursively(matching: query, options: options, currentDepth: 0)
     }
-    
+
     /// Search for elements by role
     /// - Parameters:
     ///   - role: The role to search for (e.g., "AXButton", "AXTextField")
@@ -70,7 +70,7 @@ public extension Element {
         searchElementsByRoleRecursively(role: role, options: options, currentDepth: 0, results: &results)
         return results
     }
-    
+
     /// Check if element matches a search query
     /// - Parameters:
     ///   - query: The search query to match against
@@ -85,7 +85,7 @@ public extension Element {
         if options.enabledOnly && (isEnabled() == false) {
             return false
         }
-        
+
         // Check role filters
         if let role = role() {
             if !options.includeRoles.isEmpty && !options.includeRoles.contains(role) {
@@ -95,10 +95,10 @@ public extension Element {
                 return false
             }
         }
-        
+
         // Prepare query for comparison
         let searchQuery = options.caseInsensitive ? query.lowercased() : query
-        
+
         // Check various text properties
         let properties = [
             title(),
@@ -110,7 +110,7 @@ public extension Element {
             help(),
             identifier()
         ]
-        
+
         for property in properties {
             if let text = property {
                 let compareText = options.caseInsensitive ? text.lowercased() : text
@@ -119,12 +119,12 @@ public extension Element {
                 }
             }
         }
-        
+
         return false
     }
-    
+
     // MARK: - Private Search Methods
-    
+
     @MainActor
     private func searchElementsRecursively(
         matching query: String,
@@ -136,12 +136,12 @@ public extension Element {
         if options.maxDepth > 0 && currentDepth > options.maxDepth {
             return
         }
-        
+
         // Check if current element matches
         if matches(query: query, options: options) {
             results.append(self)
         }
-        
+
         // Search children
         if let children = children() {
             for child in children {
@@ -154,7 +154,7 @@ public extension Element {
             }
         }
     }
-    
+
     @MainActor
     private func findElementRecursively(
         matching query: String,
@@ -165,12 +165,12 @@ public extension Element {
         if options.maxDepth > 0 && currentDepth > options.maxDepth {
             return nil
         }
-        
+
         // Check if current element matches
         if matches(query: query, options: options) {
             return self
         }
-        
+
         // Search children
         if let children = children() {
             for child in children {
@@ -183,10 +183,10 @@ public extension Element {
                 }
             }
         }
-        
+
         return nil
     }
-    
+
     @MainActor
     private func searchElementsByRoleRecursively(
         role: String,
@@ -198,7 +198,7 @@ public extension Element {
         if options.maxDepth > 0 && currentDepth > options.maxDepth {
             return
         }
-        
+
         // Check visibility and enabled state if required
         if options.visibleOnly && (isHidden() == true) {
             return
@@ -206,12 +206,12 @@ public extension Element {
         if options.enabledOnly && (isEnabled() == false) {
             return
         }
-        
+
         // Check if current element has the specified role
         if self.role() == role {
             results.append(self)
         }
-        
+
         // Search children
         if let children = children() {
             for child in children {
@@ -229,32 +229,32 @@ public extension Element {
 // MARK: - Convenience Methods
 
 public extension Element {
-    
+
     /// Find all buttons in the element hierarchy
     @MainActor
     func findAllButtons() -> [Element] {
         return searchElements(byRole: "AXButton")
     }
-    
+
     /// Find all text fields in the element hierarchy
     @MainActor
     func findAllTextFields() -> [Element] {
         return searchElements(byRole: "AXTextField")
     }
-    
+
     /// Find all links in the element hierarchy
     @MainActor
     func findAllLinks() -> [Element] {
         return searchElements(byRole: "AXLink")
     }
-    
+
     /// Find element by identifier
     @MainActor
     func findElement(byIdentifier identifier: String) -> Element? {
         if self.identifier() == identifier {
             return self
         }
-        
+
         if let children = children() {
             for child in children {
                 if let found = child.findElement(byIdentifier: identifier) {
@@ -262,7 +262,7 @@ public extension Element {
                 }
             }
         }
-        
+
         return nil
     }
 }

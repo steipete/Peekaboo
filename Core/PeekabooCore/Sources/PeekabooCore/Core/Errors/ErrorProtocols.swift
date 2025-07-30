@@ -21,48 +21,48 @@ public enum ErrorCategory: String, Sendable {
 public protocol PeekabooErrorProtocol: LocalizedError, Sendable {
     /// The category this error belongs to
     var category: ErrorCategory { get }
-    
+
     /// Whether this error can potentially be recovered from
     var isRecoverable: Bool { get }
-    
+
     /// Suggested action for the user to resolve this error
     var suggestedAction: String? { get }
-    
+
     /// Additional context about the error
     var context: [String: String] { get }
-    
+
     /// Unique error code for structured responses
     var errorCode: String { get }
 }
 
 // MARK: - Default Implementations
 
-public extension PeekabooErrorProtocol {
-    var isRecoverable: Bool {
+extension PeekabooErrorProtocol {
+    public var isRecoverable: Bool {
         switch category {
         case .permissions, .configuration, .network:
-            return true
+            true
         case .automation, .ai, .io, .session, .validation, .unknown:
-            return false
+            false
         }
     }
-    
-    var suggestedAction: String? {
+
+    public var suggestedAction: String? {
         switch category {
         case .permissions:
-            return "Please grant the required permissions in System Settings"
+            "Please grant the required permissions in System Settings"
         case .configuration:
-            return "Please check your configuration settings"
+            "Please check your configuration settings"
         case .network:
-            return "Please check your internet connection and try again"
+            "Please check your internet connection and try again"
         case .ai:
-            return "Please verify your API key and model settings"
+            "Please verify your API key and model settings"
         default:
-            return nil
+            nil
         }
     }
-    
-    var context: [String: String] {
+
+    public var context: [String: String] {
         [:]
     }
 }
@@ -73,13 +73,13 @@ public extension PeekabooErrorProtocol {
 public protocol RecoverableError: PeekabooErrorProtocol {
     /// Attempt to recover from this error
     func attemptRecovery() async throws
-    
+
     /// Maximum number of recovery attempts
     var maxRecoveryAttempts: Int { get }
 }
 
-public extension RecoverableError {
-    var maxRecoveryAttempts: Int { 3 }
+extension RecoverableError {
+    public var maxRecoveryAttempts: Int { 3 }
 }
 
 // MARK: - Network Error Protocol
@@ -88,24 +88,24 @@ public extension RecoverableError {
 public protocol NetworkError: PeekabooErrorProtocol {
     /// The URL that failed
     var failedURL: URL? { get }
-    
+
     /// HTTP status code if applicable
     var statusCode: Int? { get }
-    
+
     /// Whether this is a temporary failure
     var isTemporary: Bool { get }
 }
 
-public extension NetworkError {
-    var category: ErrorCategory { .network }
-    
-    var isTemporary: Bool {
+extension NetworkError {
+    public var category: ErrorCategory { .network }
+
+    public var isTemporary: Bool {
         guard let code = statusCode else { return true }
         return code >= 500 || code == 408 || code == 429
     }
-    
-    var isRecoverable: Bool {
-        isTemporary
+
+    public var isRecoverable: Bool {
+        self.isTemporary
     }
 }
 
@@ -115,17 +115,17 @@ public extension NetworkError {
 public protocol ValidationError: PeekabooErrorProtocol {
     /// The field that failed validation
     var fieldName: String { get }
-    
+
     /// The validation rule that failed
     var failedRule: String { get }
-    
+
     /// The invalid value if available
     var invalidValue: String? { get }
 }
 
-public extension ValidationError {
-    var category: ErrorCategory { .validation }
-    var isRecoverable: Bool { false }
+extension ValidationError {
+    public var category: ErrorCategory { .validation }
+    public var isRecoverable: Bool { false }
 }
 
 // MARK: - Error Context Builder
@@ -133,27 +133,27 @@ public extension ValidationError {
 /// Builder for creating error context dictionaries
 public struct ErrorContextBuilder {
     private var context: [String: String] = [:]
-    
+
     public init() {}
-    
+
     public func with(_ key: String, _ value: String?) -> ErrorContextBuilder {
         var builder = self
-        if let value = value {
+        if let value {
             builder.context[key] = value
         }
         return builder
     }
-    
+
     public func with(_ key: String, _ value: Any?) -> ErrorContextBuilder {
         var builder = self
-        if let value = value {
+        if let value {
             builder.context[key] = String(describing: value)
         }
         return builder
     }
-    
+
     public func build() -> [String: String] {
-        context
+        self.context
     }
 }
 
@@ -162,43 +162,42 @@ public struct ErrorContextBuilder {
 /// Manages error recovery attempts
 public actor ErrorRecoveryManager {
     private var recoveryAttempts: [String: Int] = [:]
-    
+
     public init() {}
-    
+
     /// Attempt to recover from an error
-    public func attemptRecovery<E: RecoverableError>(for error: E) async throws {
+    public func attemptRecovery(for error: some RecoverableError) async throws {
         let errorKey = "\(type(of: error))_\(error.errorCode)"
-        let attempts = recoveryAttempts[errorKey] ?? 0
-        
+        let attempts = self.recoveryAttempts[errorKey] ?? 0
+
         guard attempts < error.maxRecoveryAttempts else {
             throw ErrorRecoveryFailure(
                 originalError: error,
                 attempts: attempts,
-                reason: "Maximum recovery attempts exceeded"
-            )
+                reason: "Maximum recovery attempts exceeded")
         }
-        
-        recoveryAttempts[errorKey] = attempts + 1
-        
+
+        self.recoveryAttempts[errorKey] = attempts + 1
+
         do {
             try await error.attemptRecovery()
             // Reset attempts on success
-            recoveryAttempts[errorKey] = 0
+            self.recoveryAttempts[errorKey] = 0
         } catch {
             // Preserve attempt count for next try
             throw error
         }
     }
-    
+
     /// Reset recovery attempts for a specific error
-    public func resetAttempts<E: PeekabooErrorProtocol>(for error: E) {
+    public func resetAttempts(for error: some PeekabooErrorProtocol) {
         let errorKey = "\(type(of: error))_\(error.errorCode)"
-        recoveryAttempts.removeValue(forKey: errorKey)
+        self.recoveryAttempts.removeValue(forKey: errorKey)
     }
-    
+
     /// Reset all recovery attempts
     public func resetAllAttempts() {
-        recoveryAttempts.removeAll()
+        self.recoveryAttempts.removeAll()
     }
 }
 
@@ -209,31 +208,31 @@ public struct ErrorRecoveryFailure: PeekabooErrorProtocol {
     public let originalError: any RecoverableError
     public let attempts: Int
     public let reason: String
-    
+
     public var errorDescription: String? {
-        "Failed to recover from \(originalError.localizedDescription) after \(attempts) attempts: \(reason)"
+        "Failed to recover from \(self.originalError.localizedDescription) after \(self.attempts) attempts: \(self.reason)"
     }
-    
+
     public var category: ErrorCategory {
-        originalError.category
+        self.originalError.category
     }
-    
+
     public var isRecoverable: Bool {
         false
     }
-    
+
     public var suggestedAction: String? {
-        originalError.suggestedAction
+        self.originalError.suggestedAction
     }
-    
+
     public var context: [String: String] {
-        var ctx = originalError.context
-        ctx["recovery_attempts"] = String(attempts)
-        ctx["recovery_failure_reason"] = reason
+        var ctx = self.originalError.context
+        ctx["recovery_attempts"] = String(self.attempts)
+        ctx["recovery_failure_reason"] = self.reason
         return ctx
     }
-    
+
     public var errorCode: String {
-        "recovery_failed_\(originalError.errorCode)"
+        "recovery_failed_\(self.originalError.errorCode)"
     }
 }

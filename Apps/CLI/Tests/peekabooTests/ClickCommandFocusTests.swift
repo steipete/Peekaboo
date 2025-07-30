@@ -4,7 +4,6 @@ import Testing
 
 @Suite("Click Command Focus Tests", .serialized)
 struct ClickCommandFocusTests {
-    
     // Helper function to run peekaboo commands
     private func runPeekabooCommand(_ arguments: [String]) async throws -> String {
         let projectRoot = URL(fileURLWithPath: #file)
@@ -13,33 +12,34 @@ struct ClickCommandFocusTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
         process.currentDirectoryURL = projectRoot
         process.arguments = ["run", "peekaboo"] + arguments
-        
+
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
-        
+
         try process.run()
         process.waitUntilExit()
-        
+
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         guard let output = String(data: data, encoding: .utf8) else {
             throw ProcessError(message: "Failed to decode output")
         }
-        
+
         guard process.terminationStatus == 0 else {
-            throw ProcessError(message: "Process failed with exit code: \(process.terminationStatus)\nOutput: \(output)")
+            throw ProcessError(message: "Process failed with exit code: \(process.terminationStatus)\nOutput: \(output)"
+            )
         }
-        
+
         return output
     }
-    
+
     // MARK: - Focus Options in Click Command
-    
+
     @Test("click command accepts all focus options")
     func clickAcceptsFocusOptions() async throws {
         // Test that all focus options are accepted without error
@@ -50,23 +50,23 @@ struct ClickCommandFocusTests {
             "--space-switch",
             "--bring-to-current-space"
         ]
-        
+
         // Create a basic click command with all options
         var args = ["click", "100", "100", "--json-output"]
-        args.append(contentsOf: focusOptions.flatMap { [$0] }.enumerated().compactMap { index, arg in
+        args.append(contentsOf: focusOptions.flatMap { [$0] }.enumerated().compactMap { _, arg in
             // Add values for options that need them
             if arg == "--focus-timeout" { return ["--focus-timeout", "3.0"] }
             if arg == "--focus-retry-count" { return ["--focus-retry-count", "5"] }
             return [arg]
-        }.flatMap { $0 })
-        
+        }.flatMap(\.self))
+
         let output = try await runPeekabooCommand(args)
         let data = try JSONDecoder().decode(JSONResponse.self, from: output.data(using: .utf8)!)
-        
+
         // Command should be valid (may fail due to no element at position)
         #expect(data.success == true || data.error != nil)
     }
-    
+
     @Test("click with session uses window focus")
     func clickWithSessionFocus() async throws {
         // Create session
@@ -75,7 +75,7 @@ struct ClickCommandFocusTests {
             "--app", "Finder",
             "--json-output"
         ])
-        
+
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
         guard seeData.success,
               let sessionId = seeData.data?.session_id,
@@ -84,25 +84,25 @@ struct ClickCommandFocusTests {
             // Skip test if no Finder windows
             return
         }
-        
+
         // Find a clickable element
         let clickableRoles = ["AXButton", "AXCheckBox", "AXRadioButton"]
         guard let clickable = elements.first(where: { clickableRoles.contains($0.role) }) else {
             // No clickable elements found
             return
         }
-        
+
         // Click with session should auto-focus
         let clickOutput = try await runPeekabooCommand([
             "click", clickable.role.lowercased().replacingOccurrences(of: "ax", with: ""),
             "--session", sessionId,
             "--json-output"
         ])
-        
+
         let clickData = try JSONDecoder().decode(ClickResponse.self, from: clickOutput.data(using: .utf8)!)
         #expect(clickData.success == true || clickData.error != nil)
     }
-    
+
     @Test("click with Space switch option")
     func clickWithSpaceSwitch() async throws {
         // Test click with Space switching enabled
@@ -111,12 +111,12 @@ struct ClickCommandFocusTests {
             "--space-switch",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(ClickResponse.self, from: output.data(using: .utf8)!)
         // Should handle Space switch option
         #expect(data.success == true || data.error != nil)
     }
-    
+
     @Test("click with bring to current Space")
     func clickBringToCurrentSpace() async throws {
         // Test click with bring-to-current-space option
@@ -125,14 +125,14 @@ struct ClickCommandFocusTests {
             "--bring-to-current-space",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(ClickResponse.self, from: output.data(using: .utf8)!)
         // Should handle bring-to-current-space option
         #expect(data.success == true || data.error != nil)
     }
-    
+
     // MARK: - Performance Tests
-    
+
     @Test("click with session is faster than without")
     func clickSessionPerformance() async throws {
         // Create session
@@ -141,37 +141,37 @@ struct ClickCommandFocusTests {
             "--app", "Finder",
             "--json-output"
         ])
-        
+
         let seeData = try JSONDecoder().decode(SeeResponse.self, from: seeOutput.data(using: .utf8)!)
         guard seeData.success,
               let sessionId = seeData.data?.session_id else {
             return
         }
-        
+
         // Time click with session
         let sessionStart = Date()
-        _ = try await runPeekabooCommand([
+        _ = try await self.runPeekabooCommand([
             "click", "100", "100",
             "--session", sessionId,
             "--json-output"
         ])
         let sessionDuration = Date().timeIntervalSince(sessionStart)
-        
+
         // Time click without session
         let noSessionStart = Date()
-        _ = try await runPeekabooCommand([
+        _ = try await self.runPeekabooCommand([
             "click", "100", "100",
             "--json-output"
         ])
         let noSessionDuration = Date().timeIntervalSince(noSessionStart)
-        
+
         // Session-based click should generally be faster
         // But we can't guarantee this in all test environments
         print("Click with session: \(sessionDuration)s, without: \(noSessionDuration)s")
     }
-    
+
     // MARK: - Error Cases
-    
+
     @Test("click with invalid session ID")
     func clickInvalidSession() async throws {
         let output = try await runPeekabooCommand([
@@ -179,13 +179,14 @@ struct ClickCommandFocusTests {
             "--session", "invalid-session-id",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(ClickResponse.self, from: output.data(using: .utf8)!)
         #expect(data.success == false)
-        #expect(data.error?.contains("session") == true || 
-                data.error?.contains("not found") == true)
+        #expect(data.error?.contains("session") == true ||
+            data.error?.contains("not found") == true
+        )
     }
-    
+
     @Test("click with conflicting focus options")
     func clickConflictingFocusOptions() async throws {
         // Test mutually exclusive options
@@ -195,7 +196,7 @@ struct ClickCommandFocusTests {
             "--bring-to-current-space",
             "--json-output"
         ])
-        
+
         let data = try JSONDecoder().decode(ClickResponse.self, from: output.data(using: .utf8)!)
         // Should handle conflicting options gracefully
         #expect(data.success == true || data.error != nil)

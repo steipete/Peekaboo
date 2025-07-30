@@ -14,7 +14,8 @@ struct WaitForElementTests {
             role: "AXButton",
             title: "Save",
             label: "Save Document",
-            value: nil)
+            value: nil
+        )
 
         #expect(locator.role == "AXButton")
         #expect(locator.title == "Save")
@@ -35,7 +36,8 @@ struct WaitForElementTests {
             label: nil,
             value: nil,
             frame: CGRect(x: 100, y: 100, width: 80, height: 30),
-            isActionable: true)
+            isActionable: true
+        )
 
         let sessionData = SessionCache.UIAutomationSession(
             version: SessionCache.UIAutomationSession.currentVersion,
@@ -44,7 +46,8 @@ struct WaitForElementTests {
             uiMap: ["B1": element],
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window")
+            windowTitle: "Test Window"
+        )
 
         try await sessionCache.save(sessionData)
 
@@ -126,7 +129,8 @@ struct WaitForElementTests {
             uiMap: elements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Save Dialog")
+            windowTitle: "Save Dialog"
+        )
 
         try await sessionCache.save(sessionData)
 
@@ -176,7 +180,8 @@ struct WaitForElementTests {
             label: nil,
             value: nil,
             frame: CGRect(x: 100, y: 100, width: 80, height: 30),
-            isActionable: true)
+            isActionable: true
+        )
 
         let sessionData = SessionCache.UIAutomationSession(
             version: SessionCache.UIAutomationSession.currentVersion,
@@ -185,7 +190,8 @@ struct WaitForElementTests {
             uiMap: ["B1": testElement],
             lastUpdateTime: Date(),
             applicationName: "NonExistentApp",
-            windowTitle: nil)
+            windowTitle: nil
+        )
 
         try await sessionCache.save(sessionData)
 
@@ -232,7 +238,8 @@ struct WaitForElementTests {
             uiMap: elements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: nil)
+            windowTitle: nil
+        )
 
         try await sessionCache.save(sessionData)
 

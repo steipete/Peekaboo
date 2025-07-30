@@ -11,11 +11,11 @@ import Foundation
 // Create a custom error type that wraps AXError
 public struct AccessibilitySystemError: Error, LocalizedError {
     public let axError: AXError
-    
+
     public init(_ axError: AXError) {
         self.axError = axError
     }
-    
+
     public var errorDescription: String? {
         switch axError {
         case .success:
@@ -85,7 +85,7 @@ extension AXError {
             .unknownAXError(self)
         }
     }
-    
+
     /// Provides a localized description for AXError
     public var localizedDescription: String {
         AccessibilitySystemError(self).errorDescription ?? "Unknown AXError: \(self.rawValue)"

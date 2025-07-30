@@ -23,13 +23,14 @@ struct ImageAnalysisData: Codable {
     let text: String
 }
 
-struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable,
+ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "image",
         abstract: "Capture screenshots",
         discussion: """
         Captures screenshots of applications, windows, or the entire screen.
-        
+
         EXAMPLES:
           peekaboo image --app Safari                    # Capture Safari window
           peekaboo image --pid 12345                     # Capture by process ID
@@ -37,15 +38,16 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
           peekaboo image --mode screen                   # Capture entire screen
           peekaboo image --app Finder --window-index 0   # Capture specific window
           peekaboo image --app Safari --analyze "What is shown?"  # Capture and analyze with AI
-          
+
         OUTPUT:
           Screenshots are saved to ~/Desktop by default, or use --path to specify location.
           Use --format jpg for smaller file sizes.
-        """)
+        """
+    )
 
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345' for process ID")
     var app: String?
-    
+
     @Option(name: .long, help: "Target application by process ID")
     var pid: Int32?
 
@@ -69,7 +71,8 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
 
     @Option(
         name: .long,
-        help: ArgumentHelp("Window focus behavior: auto, foreground, or background", valueName: "focus"))
+        help: ArgumentHelp("Window focus behavior: auto, foreground, or background", valueName: "focus")
+    )
     var captureFocus: CaptureFocus = .auto
 
     @Flag(name: .long, help: "Output results in JSON format for scripting")
@@ -120,7 +123,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
             let appIdentifier = try self.resolveApplicationIdentifier()
             results = try await self.captureApplicationWindow(appIdentifier)
         case .multi:
-            if app != nil || pid != nil {
+            if self.app != nil || self.pid != nil {
                 let appIdentifier = try self.resolveApplicationIdentifier()
                 results = try await self.captureAllApplicationWindows(appIdentifier)
             } else {
@@ -148,7 +151,8 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: self.format.mimeType)]
+            mime_type: self.format.mimeType
+        )]
     }
 
     private func captureApplicationWindow(_ appIdentifier: String) async throws -> [SavedFile] {
@@ -165,24 +169,25 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
 
         Logger.shared.debug("Starting window capture...")
         let captureStart = Date()
-        
+
         // Add timeout to window capture
         let captureTask = Task {
             try await PeekabooServices.shared.screenCapture.captureWindow(
                 appIdentifier: appIdentifier,
-                windowIndex: self.windowIndex)
+                windowIndex: self.windowIndex
+            )
         }
-        
+
         let timeoutTask = Task {
             try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
             captureTask.cancel()
         }
-        
+
         do {
             let result = try await captureTask.value
             timeoutTask.cancel()
             Logger.shared.debug("Window capture completed (took \(Date().timeIntervalSince(captureStart))s)")
-            return try await processCapture(result, appIdentifier: appIdentifier)
+            return try await self.processCapture(result, appIdentifier: appIdentifier)
         } catch {
             timeoutTask.cancel()
             if captureTask.isCancelled {
@@ -192,7 +197,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
             throw error
         }
     }
-    
+
     private func processCapture(_ result: CaptureResult, appIdentifier: String) async throws -> [SavedFile] {
         let savedPath = try saveImage(result.imageData, name: appIdentifier)
 
@@ -202,7 +207,8 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
             window_title: result.metadata.windowInfo?.title,
             window_id: UInt32(result.metadata.windowInfo?.windowID ?? 0),
             window_index: self.windowIndex,
-            mime_type: self.format.mimeType)]
+            mime_type: self.format.mimeType
+        )]
     }
 
     private func captureAllApplicationWindows(_ appIdentifier: String) async throws -> [SavedFile] {
@@ -217,7 +223,8 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
 
             let result = try await PeekabooServices.shared.screenCapture.captureWindow(
                 appIdentifier: appIdentifier,
-                windowIndex: index)
+                windowIndex: index
+            )
 
             let savedPath = try saveImage(result.imageData, name: "\(appIdentifier)_\(index)")
 
@@ -227,7 +234,8 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
                 window_title: window.title,
                 window_id: UInt32(window.windowID),
                 window_index: index,
-                mime_type: self.format.mimeType))
+                mime_type: self.format.mimeType
+            ))
         }
 
         return savedFiles
@@ -245,7 +253,8 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
             window_title: result.metadata.windowInfo?.title,
             window_id: UInt32(result.metadata.windowInfo?.windowID ?? 0),
             window_index: 0,
-            mime_type: self.format.mimeType)]
+            mime_type: self.format.mimeType
+        )]
     }
 
     private func saveImage(_ data: Data, name: String) throws -> String {
@@ -285,7 +294,7 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
 
     private func analyzeImage(at path: String, with prompt: String) async throws -> ImageAnalysisData {
         // For now, just return placeholder data since AI provider is broken
-        return ImageAnalysisData(
+        ImageAnalysisData(
             provider: "unavailable",
             model: "unavailable",
             text: "AI analysis is temporarily unavailable"
@@ -305,7 +314,8 @@ struct ImageCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand,
     private func outputResultsWithAnalysis(_ savedFiles: [SavedFile], analysis: ImageAnalysisData) {
         let data = ImageCaptureWithAnalysisData(
             saved_files: savedFiles,
-            analysis: analysis)
+            analysis: analysis
+        )
         output(data) {
             for file in savedFiles {
                 print(file.path)

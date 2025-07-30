@@ -1,5 +1,5 @@
-import Foundation
 import CoreGraphics
+import Foundation
 
 // MARK: - Tool Result Builders
 
@@ -7,20 +7,20 @@ extension ToolOutput {
     /// Create a success result with convenient syntax
     public static func success(
         _ output: String,
-        metadata: (String, String)...
-    ) -> ToolOutput {
+        metadata: (String, String)...) -> ToolOutput
+    {
         var result: [String: ToolOutput] = ["result": .string(output)]
         for (key, value) in metadata {
             result[key] = .string(value)
         }
         return .object(result)
     }
-    
+
     /// Create a success result with metadata dictionary
     public static func success(
         _ output: String,
-        metadata: [String: String] = [:]
-    ) -> ToolOutput {
+        metadata: [String: String] = [:]) -> ToolOutput
+    {
         var result: [String: ToolOutput] = ["result": .string(output)]
         for (key, value) in metadata {
             result[key] = .string(value)
@@ -28,7 +28,6 @@ extension ToolOutput {
         return .object(result)
     }
 }
-
 
 // MARK: - Tool Creation Helpers
 
@@ -39,8 +38,8 @@ extension PeekabooAgentService {
         name: String,
         description: String,
         parameters: ToolParameters,
-        handler: @escaping (ToolParameterParser, PeekabooServices) async throws -> ToolOutput
-    ) -> Tool<PeekabooServices> {
+        handler: @escaping (ToolParameterParser, PeekabooServices) async throws -> ToolOutput) -> Tool<PeekabooServices>
+    {
         Tool(
             name: name,
             description: description,
@@ -53,17 +52,15 @@ extension PeekabooAgentService {
                 } catch {
                     return await self.handleToolError(error, for: name, in: context)
                 }
-            }
-        )
+            })
     }
-    
-    
+
     /// Create a simple tool with no parameters
     func createSimpleTool(
         name: String,
         description: String,
-        handler: @escaping (PeekabooServices) async throws -> ToolOutput
-    ) -> Tool<PeekabooServices> {
+        handler: @escaping (PeekabooServices) async throws -> ToolOutput) -> Tool<PeekabooServices>
+    {
         Tool(
             name: name,
             description: description,
@@ -75,8 +72,7 @@ extension PeekabooAgentService {
                 } catch {
                     return await self.handleToolError(error, for: name, in: context)
                 }
-            }
-        )
+            })
     }
 }
 
@@ -88,8 +84,8 @@ extension PeekabooAgentService {
     func performWindowOperation(
         appName: String?,
         context: PeekabooServices,
-        operation: (ServiceWindowInfo) async throws -> ToolOutput
-    ) async throws -> ToolOutput {
+        operation: (ServiceWindowInfo) async throws -> ToolOutput) async throws -> ToolOutput
+    {
         // Get all windows from all applications
         let appsOutput = try await context.applications.listApplications()
         var windows: [ServiceWindowInfo] = []
@@ -97,9 +93,9 @@ extension PeekabooAgentService {
             let appWindows = try await context.windows.listWindows(target: .application(app.name))
             windows.append(contentsOf: appWindows)
         }
-        
+
         let targetWindow: ServiceWindowInfo
-        if let appName = appName {
+        if let appName {
             // We need to match windows by the app name
             // Since ServiceWindowInfo doesn't have applicationName, we need to filter differently
             let matchingWindows = try await context.windows.listWindows(target: .application(appName))
@@ -114,25 +110,26 @@ extension PeekabooAgentService {
             }
             targetWindow = window
         }
-        
+
         return try await operation(targetWindow)
     }
-    
+
     /// Common pattern for app-based operations
     func performAppOperation(
         appName: String,
         context: PeekabooServices,
-        operation: (ServiceApplicationInfo) async throws -> ToolOutput
-    ) async throws -> ToolOutput {
+        operation: (ServiceApplicationInfo) async throws -> ToolOutput) async throws -> ToolOutput
+    {
         let appsOutput = try await context.applications.listApplications()
-        
-        guard let app = appsOutput.data.applications.first(where: { $0.name.lowercased() == appName.lowercased() }) else {
+
+        guard let app = appsOutput.data.applications.first(where: { $0.name.lowercased() == appName.lowercased() })
+        else {
             throw PeekabooError.appNotFound(appName)
         }
-        
+
         return try await operation(app)
     }
-    
+
     // Note: Element finding is implemented in ElementTools.swift using detectElements
     // The findElement approach was removed in favor of detecting all elements
     // and searching through them, which provides more flexibility and information

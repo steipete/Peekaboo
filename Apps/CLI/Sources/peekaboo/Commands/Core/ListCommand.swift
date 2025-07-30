@@ -33,7 +33,8 @@ struct ListCommand: AsyncParsableCommand {
           menubar       List all menu bar items (status icons)
         """,
         subcommands: [AppsSubcommand.self, WindowsSubcommand.self, PermissionsSubcommand.self, MenuBarSubcommand.self],
-        defaultSubcommand: AppsSubcommand.self)
+        defaultSubcommand: AppsSubcommand.self
+    )
 
     func run() async throws {
         // Root command doesn't do anything, subcommands handle everything
@@ -49,7 +50,8 @@ struct AppsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
         Lists all running applications using the ApplicationService from PeekabooCore.
         Applications are sorted by name and include process IDs, bundle identifiers,
         and activation status.
-        """)
+        """
+    )
 
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
@@ -64,9 +66,9 @@ struct AppsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
             // Get applications from the service
             let output = try await PeekabooServices.shared.applications.listApplications()
 
-            if jsonOutput {
+            if self.jsonOutput {
                 // Output full UnifiedToolOutput as JSON
-                print(try output.toJSON())
+                try print(output.toJSON())
             } else {
                 // Use CLIFormatter for human-readable output
                 print(CLIFormatter.format(output))
@@ -82,18 +84,20 @@ struct AppsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
 }
 
 /// Subcommand for listing windows of a specific application using PeekabooServices.shared.
-struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional {
+struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+ApplicationResolvablePositional {
     static let configuration = CommandConfiguration(
         commandName: "windows",
         abstract: "List all windows for a specific application",
         discussion: """
         Lists all windows for the specified application using PeekabooCore PeekabooServices.shared.
         Windows are listed in z-order (frontmost first) with optional details.
-        """)
+        """
+    )
 
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String
-    
+
     @Option(name: .long, help: "Target application by process ID")
     var pid: Int32?
 
@@ -112,17 +116,17 @@ struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
 
             // Resolve application identifier
             let appIdentifier = try self.resolveApplicationIdentifier()
-            
+
             // Find the target application using the service
             // Get windows for the app using the service
             let output = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
 
-            if jsonOutput {
+            if self.jsonOutput {
                 // For JSON output, include window details if requested
-                if includeDetails != nil {
+                if self.includeDetails != nil {
                     // Parse include details options
                     let detailOptions = self.parseIncludeDetails()
-                    
+
                     // Create modified output with filtered window data
                     let modifiedWindows = output.data.windows.map { window in
                         // Create new window with filtered data
@@ -139,7 +143,7 @@ struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
                             spaceName: window.spaceName
                         )
                     }
-                    
+
                     let modifiedData = ServiceWindowListData(
                         windows: modifiedWindows,
                         targetApplication: output.data.targetApplication
@@ -149,9 +153,9 @@ struct WindowsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
                         summary: output.summary,
                         metadata: output.metadata
                     )
-                    print(try filteredOutput.toJSON())
+                    try print(filteredOutput.toJSON())
                 } else {
-                    print(try output.toJSON())
+                    try print(output.toJSON())
                 }
             } else {
                 // Use CLIFormatter for human-readable output
@@ -192,7 +196,8 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
         discussion: """
         Checks system permissions using PeekabooCore PeekabooServices.shared.
         Verifies Screen Recording (required) and Accessibility (optional) permissions.
-        """)
+        """
+    )
 
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
@@ -206,7 +211,8 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
 
         let permissions = PermissionStatus(
             screenRecording: screenRecording,
-            accessibility: accessibility)
+            accessibility: accessibility
+        )
 
         let data = PermissionStatusData(permissions: permissions)
 
@@ -229,35 +235,36 @@ struct MenuBarSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
         Lists all menu bar items (status icons) currently visible in the macOS menu bar.
         This includes system items like Wi-Fi, Battery, Time Machine, and third-party
         application status items.
-        """)
-    
+        """
+    )
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     mutating func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             // Use the enhanced menu service to get menu bar items
             let menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
-            
+
             struct MenuBarListResult: Codable {
                 let count: Int
                 let items: [MenuBarItem]
-                
+
                 struct MenuBarItem: Codable {
                     let name: String
                     let appName: String
                     let position: Position
                     let visible: Bool
-                    
+
                     struct Position: Codable {
                         let x: Int
                         let y: Int
                     }
                 }
             }
-            
+
             let items = menuExtras.map { extra in
                 MenuBarListResult.MenuBarItem(
                     name: extra.title,
@@ -269,9 +276,9 @@ struct MenuBarSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
                     visible: extra.isVisible
                 )
             }
-            
+
             let outputData = MenuBarListResult(count: menuExtras.count, items: items)
-            
+
             output(outputData) {
                 if menuExtras.isEmpty {
                     print("No menu bar items found.")
@@ -279,7 +286,7 @@ struct MenuBarSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
                 } else {
                     print("Menu Bar Items (\(menuExtras.count) total):")
                     print(String(repeating: "=", count: 50))
-                    
+
                     for (index, extra) in menuExtras.enumerated() {
                         print("\n\(index + 1). \(extra.title)")
                         print("   Position: x=\(Int(extra.position.x)), y=\(Int(extra.position.y))")
@@ -292,6 +299,6 @@ struct MenuBarSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
             throw ExitCode(1)
         }
     }
-    
+
     // Error handling is provided by ErrorHandlingCommand protocol
 }

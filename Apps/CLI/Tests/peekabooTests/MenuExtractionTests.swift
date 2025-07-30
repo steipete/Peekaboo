@@ -79,8 +79,7 @@ struct MenuExtractionTests {
             if let menuStructure = menus?["menu_structure"] as? [[String: Any]] {
                 // Find File menu
                 if let fileMenu = menuStructure.first(where: { $0["title"] as? String == "File" }),
-                   let items = fileMenu["items"] as? [[String: Any]]
-                {
+                   let items = fileMenu["items"] as? [[String: Any]] {
                     // Check for New shortcut
                     if let newItem = items.first(where: { $0["title"] as? String == "New" }) {
                         #expect(newItem["shortcut"] as? String == "⌘N")
@@ -159,8 +158,7 @@ struct MenuExtractionTests {
             if let menuStructure = menus?["menu_structure"] as? [[String: Any]] {
                 // Find View menu
                 if let viewMenu = menuStructure.first(where: { $0["title"] as? String == "View" }),
-                   let items = viewMenu["items"] as? [[String: Any]]
-                {
+                   let items = viewMenu["items"] as? [[String: Any]] {
                     // Look for submenu items
                     var hasSubmenu = false
                     for item in items {

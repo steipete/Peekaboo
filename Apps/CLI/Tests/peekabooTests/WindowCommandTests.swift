@@ -50,7 +50,8 @@ struct WindowCommandTests {
             } catch {
                 // Expected to fail
                 #expect(error.localizedDescription.contains("--app must be specified") ||
-                    error.localizedDescription.contains("Exit status: 1"))
+                    error.localizedDescription.contains("Exit status: 1")
+                )
             }
         }
     }
@@ -63,7 +64,8 @@ struct WindowCommandTests {
         } catch {
             // Expected to fail - missing required x and y
             #expect(error.localizedDescription.contains("Missing expected argument") ||
-                error.localizedDescription.contains("Exit status: 64"))
+                error.localizedDescription.contains("Exit status: 64")
+            )
         }
     }
 
@@ -75,7 +77,8 @@ struct WindowCommandTests {
         } catch {
             // Expected to fail - missing required width and height
             #expect(error.localizedDescription.contains("Missing expected argument") ||
-                error.localizedDescription.contains("Exit status: 64"))
+                error.localizedDescription.contains("Exit status: 64")
+            )
         }
     }
 
@@ -96,7 +99,8 @@ struct WindowCommandTests {
         } catch {
             // Expected to fail - missing required width and height
             #expect(error.localizedDescription.contains("Missing expected argument") ||
-                error.localizedDescription.contains("Exit status: 64"))
+                error.localizedDescription.contains("Exit status: 64")
+            )
         }
     }
 
@@ -194,8 +198,7 @@ struct WindowCommandLocalIntegrationTests {
         #expect(data.success == true)
 
         if let responseData = data.data?.value as? [String: Any],
-           let newBounds = responseData["new_bounds"] as? [String: Any]
-        {
+           let newBounds = responseData["new_bounds"] as? [String: Any] {
             #expect(newBounds["x"] as? Int == 200)
             #expect(newBounds["y"] as? Int == 200)
         }

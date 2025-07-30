@@ -6,15 +6,15 @@ struct InspectorWindow: View {
     @Environment(PeekabooSettings.self) private var settings
     @Environment(Permissions.self) private var permissions
     @StateObject private var overlayManager = OverlayManager()
-    
+
     var body: some View {
         InspectorView()
-            .environmentObject(overlayManager)
+            .environmentObject(self.overlayManager)
             .frame(minWidth: 400, minHeight: 600)
             .onAppear {
                 // Check permissions when window appears
                 Task {
-                    await permissions.check()
+                    await self.permissions.check()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenWindow.inspector"))) { _ in

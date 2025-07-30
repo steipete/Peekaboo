@@ -27,7 +27,8 @@ struct RunCommand: AsyncParsableCommand {
 
             Each step in the script corresponds to a Peekaboo command
             (see, click, type, scroll, etc.) with its parameters.
-        """)
+        """
+    )
 
     @Argument(help: "Path to the script file (.peekaboo.json)")
     var scriptPath: String
@@ -59,7 +60,8 @@ struct RunCommand: AsyncParsableCommand {
             let results = try await services.process.executeScript(
                 script,
                 failFast: !self.noFailFast,
-                verbose: self.verbose)
+                verbose: self.verbose
+            )
 
             // Prepare output
             let output = ScriptExecutionResult(
@@ -70,7 +72,8 @@ struct RunCommand: AsyncParsableCommand {
                 completedSteps: results.count { $0.success },
                 failedSteps: results.count { !$0.success },
                 executionTime: Date().timeIntervalSince(startTime),
-                steps: results)
+                steps: results
+            )
 
             // Write output
             if let outputPath = self.output {
@@ -126,7 +129,7 @@ struct RunCommand: AsyncParsableCommand {
     }
 }
 
-// MARK: -  Output Model
+// MARK: - Output Model
 
 struct ScriptExecutionResult: Codable {
     let success: Bool

@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 struct MainWindow: View {
     @Environment(PeekabooSettings.self) private var settings
@@ -37,8 +37,13 @@ struct MainWindow: View {
                 self.chatView
             }
         }
-        .frame(minWidth: 600, idealWidth: 800, maxWidth: 1200,
-               minHeight: 400, idealHeight: 600, maxHeight: 800)
+        .frame(
+            minWidth: 600,
+            idealWidth: 800,
+            maxWidth: 1200,
+            minHeight: 400,
+            idealHeight: 600,
+            maxHeight: 800)
         .background(Color(NSColor.windowBackgroundColor))
         .task {
             await self.permissions.check()
@@ -61,7 +66,7 @@ struct MainWindow: View {
 
             Text("Peekaboo")
                 .font(.headline)
-            
+
             if let session = sessionStore.currentSession {
                 Text("•")
                     .foregroundColor(.secondary)
@@ -71,35 +76,35 @@ struct MainWindow: View {
             }
 
             Spacer()
-            
+
             // Recording indicator
-            if isRecording {
+            if self.isRecording {
                 HStack(spacing: 4) {
                     Circle()
                         .fill(Color.red)
                         .frame(width: 8, height: 8)
                         .symbolEffect(.pulse, options: .repeating)
-                    
+
                     if let startTime = recordingStartTime {
-                        Text(timeIntervalString(from: startTime))
+                        Text(self.timeIntervalString(from: startTime))
                             .font(.caption)
                             .monospacedDigit()
                     }
                 }
             }
-            
+
             // Session list button
             Button {
-                showSessionList.toggle()
+                self.showSessionList.toggle()
             } label: {
                 Image(systemName: "list.bullet")
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
             .help("Show sessions")
-            .popover(isPresented: $showSessionList) {
+            .popover(isPresented: self.$showSessionList) {
                 SessionListPopover()
-                    .environment(sessionStore)
+                    .environment(self.sessionStore)
                     .frame(width: 300, height: 400)
             }
 
@@ -274,14 +279,14 @@ struct MainWindow: View {
         Task {
             self.isProcessing = true
             defer { isProcessing = false }
-            
+
             // Start recording if not already
-            if !isRecording {
-                startRecording()
+            if !self.isRecording {
+                self.startRecording()
             }
 
             do {
-                try await agent.executeTask(trimmedInput)
+                try await self.agent.executeTask(trimmedInput)
                 self.errorMessage = nil
             } catch {
                 self.errorMessage = error.localizedDescription
@@ -291,22 +296,23 @@ struct MainWindow: View {
             self.inputText = ""
         }
     }
-    
+
     private func startRecording() {
-        isRecording = true
-        recordingStartTime = Date()
-        
+        self.isRecording = true
+        self.recordingStartTime = Date()
+
         // Create new session if needed
-        if sessionStore.currentSession == nil {
-            _ = sessionStore.createSession(title: "Recording \(Date().formatted(date: .abbreviated, time: .shortened))")
+        if self.sessionStore.currentSession == nil {
+            _ = self.sessionStore
+                .createSession(title: "Recording \(Date().formatted(date: .abbreviated, time: .shortened))")
         }
     }
-    
+
     private func stopRecording() {
-        isRecording = false
-        recordingStartTime = nil
+        self.isRecording = false
+        self.recordingStartTime = nil
     }
-    
+
     private func timeIntervalString(from startTime: Date) -> String {
         let interval = Date().timeIntervalSince(startTime)
         let minutes = Int(interval) / 60
@@ -392,24 +398,24 @@ struct MessageRow: View {
 struct SessionListPopover: View {
     @Environment(SessionStore.self) private var sessionStore
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 Text("Sessions")
                     .font(.headline)
                 Spacer()
-                Button(action: { dismiss() }) {
+                Button(action: { self.dismiss() }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
             }
             .padding()
-            
+
             Divider()
-            
-            if sessionStore.sessions.isEmpty {
+
+            if self.sessionStore.sessions.isEmpty {
                 VStack {
                     Image(systemName: "tray")
                         .font(.largeTitle)
@@ -419,28 +425,28 @@ struct SessionListPopover: View {
                 }
                 .frame(maxHeight: .infinity)
             } else {
-                List(sessionStore.sessions) { session in
+                List(self.sessionStore.sessions) { session in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(session.title)
                                 .font(.body)
                                 .lineLimit(1)
-                            
+
                             Text("\(session.messages.count) messages")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        
+
                         Spacer()
-                        
+
                         Image(systemName: "chevron.right")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        sessionStore.selectSession(session)
-                        dismiss()
+                        self.sessionStore.selectSession(session)
+                        self.dismiss()
                     }
                 }
                 .listStyle(.plain)

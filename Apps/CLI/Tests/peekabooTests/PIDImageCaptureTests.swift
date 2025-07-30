@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import peekaboo
 
 @Suite("PID Image Capture Tests", .serialized)
@@ -173,7 +173,8 @@ struct PIDImageCaptureTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: "image/png")
+            mime_type: "image/png"
+        )
 
         let captureData = ImageCaptureData(saved_files: [savedFile])
 
@@ -182,6 +183,7 @@ struct PIDImageCaptureTests {
             data: captureData,
             messages: ["Captured windows for PID: \(targetPID)"],
             debugLogs: [],
-            error: nil)
+            error: nil
+        )
     }
 }

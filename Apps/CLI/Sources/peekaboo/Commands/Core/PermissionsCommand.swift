@@ -55,7 +55,8 @@ struct PermissionsCommand: AsyncParsableCommand {
         EXIT STATUS:
           0  All required permissions granted
           1  Missing required permissions
-        """)
+        """
+    )
 
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
@@ -70,7 +71,8 @@ struct PermissionsCommand: AsyncParsableCommand {
         // Create permission status
         let permissions = PermissionStatus(
             screenRecording: screenRecording,
-            accessibility: accessibility)
+            accessibility: accessibility
+        )
 
         if self.jsonOutput {
             let data = PermissionStatusData(permissions: permissions)

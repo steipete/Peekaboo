@@ -14,21 +14,21 @@ import PeekabooCore
 final class Permissions {
     private let permissionsService = ObservablePermissionsService()
     private let logger = Logger(subsystem: "com.peekaboo.peekaboo", category: "Permissions")
-    
+
     var screenRecordingStatus: ObservablePermissionsService.PermissionState {
-        permissionsService.screenRecordingStatus
+        self.permissionsService.screenRecordingStatus
     }
-    
+
     var accessibilityStatus: ObservablePermissionsService.PermissionState {
-        permissionsService.accessibilityStatus
+        self.permissionsService.accessibilityStatus
     }
-    
+
     var appleScriptStatus: ObservablePermissionsService.PermissionState {
-        permissionsService.appleScriptStatus
+        self.permissionsService.appleScriptStatus
     }
 
     var hasAllPermissions: Bool {
-        permissionsService.hasAllPermissions
+        self.permissionsService.hasAllPermissions
     }
 
     init() {
@@ -36,40 +36,42 @@ final class Permissions {
     }
 
     func check() async {
-        logger.info("Checking all permissions...")
-        permissionsService.checkPermissions()
-        logger.info("Permission check complete - Accessibility: \(String(describing: self.accessibilityStatus)), Screen Recording: \(String(describing: self.screenRecordingStatus))")
+        self.logger.info("Checking all permissions...")
+        self.permissionsService.checkPermissions()
+        self.logger
+            .info(
+                "Permission check complete - Accessibility: \(String(describing: self.accessibilityStatus)), Screen Recording: \(String(describing: self.screenRecordingStatus))")
     }
 
     func requestScreenRecording() {
         do {
-            try permissionsService.requestScreenRecording()
+            try self.permissionsService.requestScreenRecording()
         } catch {
-            logger.error("Failed to request screen recording permission: \(error)")
+            self.logger.error("Failed to request screen recording permission: \(error)")
         }
     }
 
     func requestAccessibility() {
         do {
-            try permissionsService.requestAccessibility()
+            try self.permissionsService.requestAccessibility()
         } catch {
-            logger.error("Failed to request accessibility permission: \(error)")
+            self.logger.error("Failed to request accessibility permission: \(error)")
         }
     }
 
     func requestAppleScript() {
         do {
-            try permissionsService.requestAppleScript()
+            try self.permissionsService.requestAppleScript()
         } catch {
-            logger.error("Failed to request AppleScript permission: \(error)")
+            self.logger.error("Failed to request AppleScript permission: \(error)")
         }
     }
 
     func startMonitoring() {
-        permissionsService.startMonitoring()
+        self.permissionsService.startMonitoring()
     }
 
     func stopMonitoring() {
-        permissionsService.stopMonitoring()
+        self.permissionsService.stopMonitoring()
     }
 }

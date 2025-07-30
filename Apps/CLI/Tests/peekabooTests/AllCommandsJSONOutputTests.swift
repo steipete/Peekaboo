@@ -96,7 +96,8 @@ struct AllCommandsJSONOutputTests {
 
         #expect(
             missingJSONOutputCommands.isEmpty,
-            "Commands missing --json-output flag: \(missingJSONOutputCommands.joined(separator: ", "))")
+            "Commands missing --json-output flag: \(missingJSONOutputCommands.joined(separator: ", "))"
+        )
     }
 
     @Test("Commands produce valid JSON with --json-output")
@@ -150,7 +151,8 @@ struct AllCommandsJSONOutputTests {
 
         #expect(
             invalidJSONCommands.isEmpty,
-            "Commands producing invalid JSON: \(invalidJSONCommands.joined(separator: "\n"))")
+            "Commands producing invalid JSON: \(invalidJSONCommands.joined(separator: "\n"))"
+        )
     }
 
     @Test("JSON output follows consistent schema")
@@ -183,12 +185,14 @@ struct AllCommandsJSONOutputTests {
                 let hasOtherFields = json.keys.count > 1
                 #expect(
                     hasData || hasOtherFields,
-                    "Successful JSON responses should contain data or other result fields")
+                    "Successful JSON responses should contain data or other result fields"
+                )
             } else {
                 // Failed responses should have error
                 #expect(
                     json["error"] != nil,
-                    "Failed JSON responses should contain 'error' field")
+                    "Failed JSON responses should contain 'error' field"
+                )
 
                 if let error = json["error"] as? [String: Any] {
                     #expect(error["message"] != nil, "Error should contain 'message'")
@@ -261,7 +265,8 @@ struct AllCommandsJSONOutputTests {
 
         #expect(
             nonJSONErrors.isEmpty,
-            "Commands not producing JSON errors: \(nonJSONErrors.joined(separator: "\n"))")
+            "Commands not producing JSON errors: \(nonJSONErrors.joined(separator: "\n"))"
+        )
     }
 
     @Test("Subcommands properly inherit JSON output")
@@ -303,6 +308,7 @@ struct AllCommandsJSONOutputTests {
 
         #expect(
             failedSubcommands.isEmpty,
-            "Subcommands not accepting --json-output: \(failedSubcommands.joined(separator: ", "))")
+            "Subcommands not accepting --json-output: \(failedSubcommands.joined(separator: ", "))"
+        )
     }
 }

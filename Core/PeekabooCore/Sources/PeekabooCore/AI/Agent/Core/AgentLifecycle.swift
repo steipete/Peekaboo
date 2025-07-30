@@ -22,70 +22,70 @@ public protocol AgentLifecycleHandler: Actor {
 public actor ConsoleLifecycleHandler: AgentLifecycleHandler {
     private let verbose: Bool
     private let includeTimestamps: Bool
-    
+
     public init(verbose: Bool = false, includeTimestamps: Bool = true) {
         self.verbose = verbose
         self.includeTimestamps = includeTimestamps
     }
-    
+
     public func handle(event: AgentLifecycleEvent) async {
-        let timestamp = includeTimestamps ? "[\(formatTimestamp())] " : ""
-        
+        let timestamp = self.includeTimestamps ? "[\(self.formatTimestamp())] " : ""
+
         switch event {
-        case .agentStarted(let agent, let context):
+        case let .agentStarted(agent, context):
             print("\(timestamp)🚀 Agent '\(agent)' started")
-            if let context = context, verbose {
+            if let context, verbose {
                 print("   Context: \(context)")
             }
-            
-        case .agentEnded(let agent, let output):
+
+        case let .agentEnded(agent, output):
             print("\(timestamp)✅ Agent '\(agent)' completed")
-            if let output = output, verbose {
+            if let output, verbose {
                 print("   Output: \(output.prefix(100))...")
             }
-            
-        case .toolStarted(let name, let arguments):
-            if verbose {
+
+        case let .toolStarted(name, arguments):
+            if self.verbose {
                 print("\(timestamp)🔧 Tool '\(name)' started")
                 print("   Args: \(arguments)")
             }
-            
-        case .toolEnded(let name, let result, let success):
-            if verbose {
+
+        case let .toolEnded(name, result, success):
+            if self.verbose {
                 let icon = success ? "✓" : "✗"
                 print("\(timestamp)🔧 Tool '\(name)' \(icon)")
                 if !success {
                     print("   Result: \(result)")
                 }
             }
-            
-        case .handoffStarted(let from, let to, let reason):
+
+        case let .handoffStarted(from, to, reason):
             print("\(timestamp)🤝 Handoff: '\(from)' → '\(to)'")
-            if let reason = reason {
+            if let reason {
                 print("   Reason: \(reason)")
             }
-            
-        case .handoffCompleted(let from, let to):
+
+        case let .handoffCompleted(from, to):
             print("\(timestamp)🤝 Handoff completed: '\(from)' → '\(to)'")
-            
-        case .iterationStarted(let number):
-            if verbose {
+
+        case let .iterationStarted(number):
+            if self.verbose {
                 print("\(timestamp)🔄 Iteration \(number) started")
             }
-            
-        case .iterationCompleted(let number):
-            if verbose {
+
+        case let .iterationCompleted(number):
+            if self.verbose {
                 print("\(timestamp)🔄 Iteration \(number) completed")
             }
-            
-        case .errorOccurred(let error, let context):
+
+        case let .errorOccurred(error, context):
             print("\(timestamp)❌ Error: \(error.localizedDescription)")
-            if let context = context {
+            if let context {
                 print("   Context: \(context)")
             }
         }
     }
-    
+
     private func formatTimestamp() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss.SSS"
@@ -108,95 +108,95 @@ public actor MetricsLifecycleHandler: AgentLifecycleHandler {
         public var executionTimes: [String: [TimeInterval]] = [:]
         public var toolExecutionTimes: [String: [TimeInterval]] = [:]
     }
-    
+
     private var metrics = Metrics()
     private var executionStarts: [String: Date] = [:]
     private var toolStarts: [String: Date] = [:]
-    
+
     public init() {}
-    
+
     public func handle(event: AgentLifecycleEvent) async {
         switch event {
-        case .agentStarted(let agent, _):
-            metrics.totalExecutions += 1
-            executionStarts[agent] = Date()
-            
-        case .agentEnded(let agent, _):
+        case let .agentStarted(agent, _):
+            self.metrics.totalExecutions += 1
+            self.executionStarts[agent] = Date()
+
+        case let .agentEnded(agent, _):
             if let startTime = executionStarts[agent] {
                 let duration = Date().timeIntervalSince(startTime)
-                if metrics.executionTimes[agent] == nil {
-                    metrics.executionTimes[agent] = []
+                if self.metrics.executionTimes[agent] == nil {
+                    self.metrics.executionTimes[agent] = []
                 }
-                metrics.executionTimes[agent]?.append(duration)
-                executionStarts.removeValue(forKey: agent)
-                metrics.successfulExecutions += 1
+                self.metrics.executionTimes[agent]?.append(duration)
+                self.executionStarts.removeValue(forKey: agent)
+                self.metrics.successfulExecutions += 1
             }
-            
-        case .toolStarted(let name, _):
-            metrics.totalToolCalls += 1
-            toolStarts[name] = Date()
-            
-        case .toolEnded(let name, _, let success):
+
+        case let .toolStarted(name, _):
+            self.metrics.totalToolCalls += 1
+            self.toolStarts[name] = Date()
+
+        case let .toolEnded(name, _, success):
             if let startTime = toolStarts[name] {
                 let duration = Date().timeIntervalSince(startTime)
-                if metrics.toolExecutionTimes[name] == nil {
-                    metrics.toolExecutionTimes[name] = []
+                if self.metrics.toolExecutionTimes[name] == nil {
+                    self.metrics.toolExecutionTimes[name] = []
                 }
-                metrics.toolExecutionTimes[name]?.append(duration)
-                toolStarts.removeValue(forKey: name)
-                
+                self.metrics.toolExecutionTimes[name]?.append(duration)
+                self.toolStarts.removeValue(forKey: name)
+
                 if success {
-                    metrics.successfulToolCalls += 1
+                    self.metrics.successfulToolCalls += 1
                 } else {
-                    metrics.failedToolCalls += 1
+                    self.metrics.failedToolCalls += 1
                 }
             }
-            
+
         case .handoffStarted:
-            metrics.totalHandoffs += 1
-            
+            self.metrics.totalHandoffs += 1
+
         case .iterationStarted:
-            metrics.totalIterations += 1
-            
+            self.metrics.totalIterations += 1
+
         case .errorOccurred:
-            metrics.totalErrors += 1
-            
+            self.metrics.totalErrors += 1
+
         default:
             break
         }
     }
-    
+
     public func getMetrics() -> Metrics {
-        return metrics
+        self.metrics
     }
-    
+
     public func reset() {
-        metrics = Metrics()
-        executionStarts.removeAll()
-        toolStarts.removeAll()
+        self.metrics = Metrics()
+        self.executionStarts.removeAll()
+        self.toolStarts.removeAll()
     }
 }
 
 /// Manager for lifecycle handlers
 public actor LifecycleManager {
     private var handlers: [any AgentLifecycleHandler] = []
-    
+
     public init(handlers: [any AgentLifecycleHandler] = []) {
         self.handlers = handlers
     }
-    
+
     public func addHandler(_ handler: any AgentLifecycleHandler) {
-        handlers.append(handler)
+        self.handlers.append(handler)
     }
-    
+
     public func removeAllHandlers() {
-        handlers.removeAll()
+        self.handlers.removeAll()
     }
-    
+
     public func emit(_ event: AgentLifecycleEvent) async {
         // Emit to all handlers concurrently
         await withTaskGroup(of: Void.self) { group in
-            for handler in handlers {
+            for handler in self.handlers {
                 group.addTask {
                     await handler.handle(event: event)
                 }

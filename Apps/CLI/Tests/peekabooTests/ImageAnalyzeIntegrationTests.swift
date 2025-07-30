@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import peekaboo
 
 @Suite("ImageCommand Analyze Integration Tests", .serialized, .tags(.imageCapture, .imageAnalysis, .integration))
@@ -40,7 +40,8 @@ struct ImageAnalyzeIntegrationTests {
             analysisText: "This is a test window",
             modelUsed: "test/model",
             durationSeconds: 1.5,
-            imagePath: "/tmp/test.png")
+            imagePath: "/tmp/test.png"
+        )
 
         #expect(result.analysisText == "This is a test window")
         #expect(result.modelUsed == "test/model")
@@ -116,13 +117,15 @@ struct ImageAnalyzeIntegrationTests {
             window_title: "Test Window",
             window_id: 123,
             window_index: 0,
-            mime_type: "image/png")
+            mime_type: "image/png"
+        )
 
         let analysisResult = AnalysisResult(
             analysisText: "This is a test analysis",
             modelUsed: "test/model",
             durationSeconds: 2.5,
-            imagePath: "/tmp/test.png")
+            imagePath: "/tmp/test.png"
+        )
 
         // Create the expected structure
         let enrichedData: [String: Any] = [

@@ -27,8 +27,9 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Image(systemName: self
-                            .screenRecordingPermission ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(self.screenRecordingPermission ? .green : .red)
+                            .screenRecordingPermission ? "checkmark.circle.fill" : "xmark.circle.fill"
+                        )
+                        .foregroundColor(self.screenRecordingPermission ? .green : .red)
                         Text("Screen Recording")
                         Spacer()
                         Button("Check") {
@@ -183,7 +184,8 @@ struct TestPatternView: View {
             LinearGradient(
                 colors: [.red, .yellow, .green, .blue, .purple],
                 startPoint: .topLeading,
-                endPoint: .bottomTrailing)
+                endPoint: .bottomTrailing
+            )
         case let .text(string):
             Text(string)
                 .font(.largeTitle)

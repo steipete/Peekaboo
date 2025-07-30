@@ -30,7 +30,8 @@ struct SleepCommandTests {
         let result = SleepResult(
             success: true,
             requested_duration: 1000,
-            actual_duration: 1001)
+            actual_duration: 1001
+        )
 
         #expect(result.success == true)
         #expect(result.requested_duration == 1000)
@@ -61,8 +62,8 @@ struct SleepCommandTests {
     }
 
     @Test("Duration formatting converts milliseconds to seconds accurately", arguments: zip(
-        [100, 500, 1000, 1500, 10000],  // milliseconds
-        [0.1, 0.5, 1.0, 1.5, 10.0]      // expected seconds
+        [100, 500, 1000, 1500, 10000], // milliseconds
+        [0.1, 0.5, 1.0, 1.5, 10.0] // expected seconds
     ))
     func durationFormatting(milliseconds: Int, expectedSeconds: Double) {
         let seconds = Double(milliseconds) / 1000.0

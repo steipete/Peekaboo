@@ -1,7 +1,7 @@
 import Foundation
 import Observation
-import ServiceManagement
 import PeekabooCore
+import ServiceManagement
 
 /// Application settings and preferences manager.
 ///
@@ -11,50 +11,50 @@ import PeekabooCore
 final class PeekabooSettings {
     // Reference to ConfigurationManager
     private let configManager = ConfigurationManager.shared
-    
+
     // API Configuration - Now synced with config.json
     var selectedProvider: String = "anthropic" {
-        didSet { 
+        didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var openAIAPIKey: String = "" {
-        didSet { 
+        didSet {
             self.save()
-            self.saveAPIKeyToCredentials("OPENAI_API_KEY", openAIAPIKey)
+            self.saveAPIKeyToCredentials("OPENAI_API_KEY", self.openAIAPIKey)
         }
     }
-    
+
     var anthropicAPIKey: String = "" {
-        didSet { 
+        didSet {
             self.save()
-            self.saveAPIKeyToCredentials("ANTHROPIC_API_KEY", anthropicAPIKey)
+            self.saveAPIKeyToCredentials("ANTHROPIC_API_KEY", self.anthropicAPIKey)
         }
     }
-    
+
     var ollamaBaseURL: String = "http://localhost:11434" {
         didSet { self.save() }
     }
 
     var selectedModel: String = "claude-opus-4-20250514" {
-        didSet { 
+        didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     // Vision model override
     var useCustomVisionModel: Bool = false {
-        didSet { 
+        didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var customVisionModel: String = "gpt-4o" {
-        didSet { 
+        didSet {
             self.save()
             self.updateConfigFile()
         }
@@ -63,7 +63,7 @@ final class PeekabooSettings {
     var temperature: Double = 0.7 {
         didSet {
             let clamped = max(0, min(1, temperature))
-            if temperature != clamped {
+            if self.temperature != clamped {
                 self.temperature = clamped
             } else {
                 self.save()
@@ -75,7 +75,7 @@ final class PeekabooSettings {
     var maxTokens: Int = 16384 {
         didSet {
             let clamped = max(1, min(128_000, maxTokens))
-            if maxTokens != clamped {
+            if self.maxTokens != clamped {
                 self.maxTokens = clamped
             } else {
                 self.save()
@@ -90,7 +90,7 @@ final class PeekabooSettings {
     }
 
     var showInDock: Bool = true {
-        didSet { 
+        didSet {
             self.save()
             // Update dock visibility when preference changes
             Task { @MainActor in
@@ -100,11 +100,11 @@ final class PeekabooSettings {
     }
 
     var launchAtLogin: Bool = false {
-        didSet { 
+        didSet {
             self.save()
             // Update launch at login status
             do {
-                if launchAtLogin {
+                if self.launchAtLogin {
                     try SMAppService.mainApp.register()
                 } else {
                     try SMAppService.mainApp.unregister()
@@ -112,7 +112,7 @@ final class PeekabooSettings {
             } catch {
                 print("Failed to update launch at login: \(error)")
                 // Revert the change if it failed
-                self.launchAtLogin = !launchAtLogin
+                self.launchAtLogin = !self.launchAtLogin
             }
         }
     }
@@ -136,15 +136,15 @@ final class PeekabooSettings {
 
     // Computed Properties
     var hasValidAPIKey: Bool {
-        switch selectedProvider {
+        switch self.selectedProvider {
         case "openai":
-            return !openAIAPIKey.isEmpty
+            !self.openAIAPIKey.isEmpty
         case "anthropic":
-            return !anthropicAPIKey.isEmpty
+            !self.anthropicAPIKey.isEmpty
         case "ollama":
-            return true // Ollama doesn't require API key
+            true // Ollama doesn't require API key
         default:
-            return false
+            false
         }
     }
 
@@ -163,16 +163,15 @@ final class PeekabooSettings {
         self.openAIAPIKey = self.userDefaults.string(forKey: "\(self.keyPrefix)openAIAPIKey") ?? ""
         self.anthropicAPIKey = self.userDefaults.string(forKey: "\(self.keyPrefix)anthropicAPIKey") ?? ""
         self.ollamaBaseURL = self.userDefaults.string(forKey: "\(self.keyPrefix)ollamaBaseURL") ?? "http://localhost:11434"
-        
+
         // Set default model based on provider
         let defaultProvider = self.selectedProvider
-        let defaultModel: String
-        if defaultProvider == "openai" {
-            defaultModel = "gpt-4.1"
+        let defaultModel = if defaultProvider == "openai" {
+            "gpt-4.1"
         } else if defaultProvider == "anthropic" {
-            defaultModel = "claude-opus-4-20250514"
+            "claude-opus-4-20250514"
         } else {
-            defaultModel = "llava:latest"
+            "llava:latest"
         }
         self.selectedModel = self.userDefaults.string(forKey: "\(self.keyPrefix)selectedModel") ?? defaultModel
         self.useCustomVisionModel = self.userDefaults.bool(forKey: "\(self.keyPrefix)useCustomVisionModel")
@@ -239,136 +238,135 @@ final class PeekabooSettings {
 
     private func loadFromPeekabooConfig() {
         // Use ConfigurationManager to load from config.json
-        _ = configManager.loadConfiguration()
-        
+        _ = self.configManager.loadConfiguration()
+
         // Load API keys through ConfigurationManager (checks env vars, then credentials file)
         if let openAIKey = configManager.getOpenAIAPIKey(), !openAIKey.isEmpty {
             self.openAIAPIKey = openAIKey
         }
-        
+
         if let anthropicKey = configManager.getAnthropicAPIKey(), !anthropicKey.isEmpty {
             self.anthropicAPIKey = anthropicKey
         }
-        
+
         // Load provider and model from config
-        let selectedProvider = configManager.getSelectedProvider()
+        let selectedProvider = self.configManager.getSelectedProvider()
         if !selectedProvider.isEmpty {
             self.selectedProvider = selectedProvider
         }
-        
+
         // Load agent settings from config
         if let model = configManager.getAgentModel() {
             self.selectedModel = model
         }
-        
-        let configTemp = configManager.getAgentTemperature()
+
+        let configTemp = self.configManager.getAgentTemperature()
         if configTemp != 0.7 { // Only update if not default
             self.temperature = configTemp
         }
-        
-        let configTokens = configManager.getAgentMaxTokens()
+
+        let configTokens = self.configManager.getAgentMaxTokens()
         if configTokens != 16384 { // Only update if not default
             self.maxTokens = configTokens
         }
-        
+
         // Load Ollama base URL
-        let ollamaURL = configManager.getOllamaBaseURL()
+        let ollamaURL = self.configManager.getOllamaBaseURL()
         if ollamaURL != "http://localhost:11434" {
             self.ollamaBaseURL = ollamaURL
         }
     }
-    
+
     private func migrateSettingsIfNeeded() {
         // Check if we've already migrated
         let migrationKey = "\(keyPrefix)migratedToConfigJson"
-        guard !userDefaults.bool(forKey: migrationKey) else { return }
-        
+        guard !self.userDefaults.bool(forKey: migrationKey) else { return }
+
         // Migrate settings from UserDefaults to config.json
         do {
-            try configManager.updateConfiguration { config in
+            try self.configManager.updateConfiguration { config in
                 // Ensure structures exist
                 if config.agent == nil {
                     config.agent = Configuration.AgentConfig()
                 }
-                
+
                 // Migrate agent settings
                 config.agent?.defaultModel = self.selectedModel
                 config.agent?.temperature = self.temperature
                 config.agent?.maxTokens = self.maxTokens
-                
+
                 // Update AI providers if needed
                 if config.aiProviders == nil {
                     config.aiProviders = Configuration.AIProviderConfig()
                 }
-                
+
                 // Build providers string based on selected provider and model
-                let providerString: String
-                switch self.selectedProvider {
+                let providerString = switch self.selectedProvider {
                 case "openai":
-                    providerString = "openai/\(self.selectedModel)"
+                    "openai/\(self.selectedModel)"
                 case "anthropic":
-                    providerString = "anthropic/\(self.selectedModel)"
+                    "anthropic/\(self.selectedModel)"
                 case "ollama":
-                    providerString = "ollama/\(self.selectedModel)"
+                    "ollama/\(self.selectedModel)"
                 default:
-                    providerString = "anthropic/claude-opus-4-20250514"
+                    "anthropic/claude-opus-4-20250514"
                 }
-                
+
                 // Set providers string with fallbacks
                 config.aiProviders?.providers = "\(providerString),ollama/llava:latest"
-                
+
                 // Set Ollama base URL if custom
                 if self.ollamaBaseURL != "http://localhost:11434" {
                     config.aiProviders?.ollamaBaseUrl = self.ollamaBaseURL
                 }
             }
-            
+
             // Mark as migrated
-            userDefaults.set(true, forKey: migrationKey)
-            
+            self.userDefaults.set(true, forKey: migrationKey)
+
             print("Successfully migrated settings to config.json")
         } catch {
             print("Failed to migrate settings to config.json: \(error)")
         }
     }
-    
+
     private func updateConfigFile() {
         do {
-            try configManager.updateConfiguration { config in
+            try self.configManager.updateConfiguration { config in
                 // Ensure structures exist
                 if config.agent == nil {
                     config.agent = Configuration.AgentConfig()
                 }
-                
+
                 // Update agent settings
                 config.agent?.defaultModel = self.selectedModel
                 config.agent?.temperature = self.temperature
                 config.agent?.maxTokens = self.maxTokens
-                
+
                 // Update AI providers
                 if config.aiProviders == nil {
                     config.aiProviders = Configuration.AIProviderConfig()
                 }
-                
+
                 // Build providers string based on selected provider and model
-                let providerString: String
-                switch self.selectedProvider {
+                let providerString = switch self.selectedProvider {
                 case "openai":
-                    providerString = "openai/\(self.selectedModel)"
+                    "openai/\(self.selectedModel)"
                 case "anthropic":
-                    providerString = "anthropic/\(self.selectedModel)"
+                    "anthropic/\(self.selectedModel)"
                 case "ollama":
-                    providerString = "ollama/\(self.selectedModel)"
+                    "ollama/\(self.selectedModel)"
                 default:
-                    providerString = "anthropic/claude-opus-4-20250514"
+                    "anthropic/claude-opus-4-20250514"
                 }
-                
+
                 // Update providers string
                 if let currentProviders = config.aiProviders?.providers {
                     // Replace the first provider while keeping fallbacks
-                    let providers = currentProviders.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+                    let providers = currentProviders.split(separator: ",")
+                        .map { String($0).trimmingCharacters(in: .whitespaces) }
                     var newProviders = [providerString]
-                    
+
                     // Add other providers that aren't the same type
                     for provider in providers.dropFirst() {
                         let providerType = provider.split(separator: "/").first.map(String.init) ?? ""
@@ -376,17 +374,17 @@ final class PeekabooSettings {
                             newProviders.append(provider)
                         }
                     }
-                    
+
                     // Ensure we have a fallback
-                    if newProviders.count == 1 && !providerString.starts(with: "ollama/") {
+                    if newProviders.count == 1, !providerString.starts(with: "ollama/") {
                         newProviders.append("ollama/llava:latest")
                     }
-                    
+
                     config.aiProviders?.providers = newProviders.joined(separator: ",")
                 } else {
                     config.aiProviders?.providers = "\(providerString),ollama/llava:latest"
                 }
-                
+
                 // Update Ollama base URL if custom
                 if self.ollamaBaseURL != "http://localhost:11434" {
                     config.aiProviders?.ollamaBaseUrl = self.ollamaBaseURL
@@ -396,7 +394,7 @@ final class PeekabooSettings {
             print("Failed to update config.json: \(error)")
         }
     }
-    
+
     @MainActor
     private func saveAPIKeyToCredentials(_ key: String, _ value: String) {
         do {
@@ -404,8 +402,8 @@ final class PeekabooSettings {
                 // Don't save empty keys
                 return
             }
-            try configManager.setCredential(key: key, value: value)
-            
+            try self.configManager.setCredential(key: key, value: value)
+
             // Refresh the agent service to pick up new API keys
             PeekabooServices.shared.refreshAgentService()
         } catch {

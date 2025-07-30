@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import peekaboo
 
 @Suite("Clean Command Simple Tests")
@@ -69,7 +69,8 @@ struct CleanCommandSimpleTests {
             bytesFreed: 3072,
             sessionDetails: sessionDetails,
             dryRun: false,
-            executionTime: 1.5)
+            executionTime: 1.5
+        )
 
         #expect(result.sessionsRemoved == 2)
         #expect(result.bytesFreed == 3072)

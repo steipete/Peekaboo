@@ -1,6 +1,6 @@
+import AVFoundation
 import Foundation
 import Observation
-import AVFoundation
 
 /// Provides speech-to-text capabilities for voice-driven automation.
 ///
@@ -61,7 +61,7 @@ final class SpeechRecognizer: NSObject {
         guard let recorder = audioRecorder else {
             throw SpeechError.notInitialized
         }
-        
+
         guard self.isAvailable else {
             throw SpeechError.notAuthorized
         }
@@ -71,30 +71,30 @@ final class SpeechRecognizer: NSObject {
         // Reset transcript
         self.transcript = ""
         self.error = nil
-        
+
         // Start recording
         try recorder.startRecording()
         self.isListening = true
-        
+
         // Observe recorder state
         Task {
-            await observeRecorderState()
+            await self.observeRecorderState()
         }
     }
 
     func stopListening() {
         guard self.isListening else { return }
-        
-        audioRecorder?.stopRecording()
+
+        self.audioRecorder?.stopRecording()
         self.isListening = false
     }
-    
+
     private func observeRecorderState() async {
         guard let recorder = audioRecorder else { return }
-        
+
         // Wait a bit for transcription to complete
         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-        
+
         // Update transcript from recorder
         self.transcript = recorder.transcript
         self.error = recorder.error

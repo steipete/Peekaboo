@@ -8,7 +8,7 @@ public protocol ProcessServiceProtocol: Sendable {
     /// - Returns: The loaded script structure
     /// - Throws: ProcessServiceError if the script cannot be loaded or is invalid
     func loadScript(from path: String) async throws -> PeekabooScript
-    
+
     /// Execute a Peekaboo script
     /// - Parameters:
     ///   - script: The script to execute
@@ -19,9 +19,8 @@ public protocol ProcessServiceProtocol: Sendable {
     func executeScript(
         _ script: PeekabooScript,
         failFast: Bool,
-        verbose: Bool
-    ) async throws -> [StepResult]
-    
+        verbose: Bool) async throws -> [StepResult]
+
     /// Execute a single step from a script
     /// - Parameters:
     ///   - step: The step to execute
@@ -30,15 +29,14 @@ public protocol ProcessServiceProtocol: Sendable {
     /// - Throws: ProcessServiceError if the step fails
     func executeStep(
         _ step: ScriptStep,
-        sessionId: String?
-    ) async throws -> StepExecutionResult
+        sessionId: String?) async throws -> StepExecutionResult
 }
 
 /// Script structure for Peekaboo automation
 public struct PeekabooScript: Codable, Sendable {
     public let description: String?
     public let steps: [ScriptStep]
-    
+
     public init(description: String?, steps: [ScriptStep]) {
         self.description = description
         self.steps = steps
@@ -51,13 +49,13 @@ public struct ScriptStep: Codable, Sendable {
     public let comment: String?
     public let command: String
     public let params: ProcessCommandParameters?
-    
+
     public init(
         stepId: String,
         comment: String?,
         command: String,
-        params: ProcessCommandParameters?
-    ) {
+        params: ProcessCommandParameters?)
+    {
         self.stepId = stepId
         self.comment = comment
         self.command = command
@@ -74,7 +72,7 @@ public struct StepResult: Codable, Sendable {
     public let output: ProcessCommandOutput?
     public let error: String?
     public let executionTime: TimeInterval
-    
+
     public init(
         stepId: String,
         stepNumber: Int,
@@ -82,8 +80,8 @@ public struct StepResult: Codable, Sendable {
         success: Bool,
         output: ProcessCommandOutput?,
         error: String?,
-        executionTime: TimeInterval
-    ) {
+        executionTime: TimeInterval)
+    {
         self.stepId = stepId
         self.stepNumber = stepNumber
         self.command = command
@@ -98,7 +96,7 @@ public struct StepResult: Codable, Sendable {
 public struct StepExecutionResult: Sendable {
     public let output: ProcessCommandOutput?
     public let sessionId: String?
-    
+
     public init(output: ProcessCommandOutput?, sessionId: String?) {
         self.output = output
         self.sessionId = sessionId

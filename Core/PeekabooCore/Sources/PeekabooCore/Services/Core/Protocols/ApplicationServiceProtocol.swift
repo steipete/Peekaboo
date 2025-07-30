@@ -1,6 +1,6 @@
-import Foundation
-import CoreGraphics
 import AppKit
+import CoreGraphics
+import Foundation
 
 /// Protocol defining application and window management operations
 @MainActor
@@ -8,54 +8,54 @@ public protocol ApplicationServiceProtocol: Sendable {
     /// List all running applications
     /// - Returns: UnifiedToolOutput containing application information
     func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData>
-    
+
     /// Find an application by name or bundle ID
     /// - Parameter identifier: Application name or bundle ID (supports fuzzy matching)
     /// - Returns: Application information if found
     func findApplication(identifier: String) async throws -> ServiceApplicationInfo
-    
+
     /// List all windows for a specific application
     /// - Parameter appIdentifier: Application name or bundle ID
     /// - Returns: UnifiedToolOutput containing window information
     func listWindows(for appIdentifier: String) async throws -> UnifiedToolOutput<ServiceWindowListData>
-    
+
     /// Get information about the frontmost application
     /// - Returns: Application information
     func getFrontmostApplication() async throws -> ServiceApplicationInfo
-    
+
     /// Check if an application is running
     /// - Parameter identifier: Application name or bundle ID
     /// - Returns: True if the application is running
     func isApplicationRunning(identifier: String) async -> Bool
-    
+
     /// Launch an application
     /// - Parameter identifier: Application name or bundle ID
     /// - Returns: Application information after launch
     func launchApplication(identifier: String) async throws -> ServiceApplicationInfo
-    
+
     /// Activate (bring to front) an application
     /// - Parameter identifier: Application name or bundle ID
     func activateApplication(identifier: String) async throws
-    
+
     /// Quit an application
     /// - Parameters:
     ///   - identifier: Application name or bundle ID
     ///   - force: Force quit without saving
     /// - Returns: True if the application was successfully quit
     func quitApplication(identifier: String, force: Bool) async throws -> Bool
-    
+
     /// Hide an application
     /// - Parameter identifier: Application name or bundle ID
     func hideApplication(identifier: String) async throws
-    
+
     /// Unhide an application
     /// - Parameter identifier: Application name or bundle ID
     func unhideApplication(identifier: String) async throws
-    
+
     /// Hide all other applications
     /// - Parameter identifier: Application to keep visible
     func hideOtherApplications(identifier: String) async throws
-    
+
     /// Show all hidden applications
     func showAllApplications() async throws
 }
@@ -64,25 +64,25 @@ public protocol ApplicationServiceProtocol: Sendable {
 public struct ServiceApplicationInfo: Sendable, Codable, Equatable {
     /// Process identifier
     public let processIdentifier: Int32
-    
+
     /// Bundle identifier (e.g., "com.apple.Safari")
     public let bundleIdentifier: String?
-    
+
     /// Application name
     public let name: String
-    
+
     /// Path to the application bundle
     public let bundlePath: String?
-    
+
     /// Whether the application is currently active (frontmost)
     public let isActive: Bool
-    
+
     /// Whether the application is hidden
     public let isHidden: Bool
-    
+
     /// Number of windows
     public var windowCount: Int
-    
+
     public init(
         processIdentifier: Int32,
         bundleIdentifier: String?,
@@ -90,8 +90,8 @@ public struct ServiceApplicationInfo: Sendable, Codable, Equatable {
         bundlePath: String? = nil,
         isActive: Bool = false,
         isHidden: Bool = false,
-        windowCount: Int = 0
-    ) {
+        windowCount: Int = 0)
+    {
         self.processIdentifier = processIdentifier
         self.bundleIdentifier = bundleIdentifier
         self.name = name
@@ -106,42 +106,42 @@ public struct ServiceApplicationInfo: Sendable, Codable, Equatable {
 public struct ServiceWindowInfo: Sendable, Codable, Equatable {
     /// Window identifier
     public let windowID: Int
-    
+
     /// Window title
     public let title: String
-    
+
     /// Window bounds in screen coordinates
     public let bounds: CGRect
-    
+
     /// Whether the window is minimized
     public let isMinimized: Bool
-    
+
     /// Whether the window is the main window
     public let isMainWindow: Bool
-    
+
     /// Window level (z-order)
     public let windowLevel: Int
-    
+
     /// Alpha value (transparency)
     public let alpha: CGFloat
-    
+
     /// Window index within the application (0 = frontmost)
     public let index: Int
-    
+
     /// Space (virtual desktop) ID this window belongs to
     public let spaceID: UInt64?
-    
+
     /// Human-readable name of the Space (if available)
     public let spaceName: String?
-    
+
     /// Whether the window is off-screen
     public var isOffScreen: Bool {
         // Check if window is off any visible screen
-        return !NSScreen.screens.contains { screen in
-            screen.frame.intersects(bounds)
+        !NSScreen.screens.contains { screen in
+            screen.frame.intersects(self.bounds)
         }
     }
-    
+
     public init(
         windowID: Int,
         title: String,
@@ -152,8 +152,8 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
         alpha: CGFloat = 1.0,
         index: Int = 0,
         spaceID: UInt64? = nil,
-        spaceName: String? = nil
-    ) {
+        spaceName: String? = nil)
+    {
         self.windowID = windowID
         self.title = title
         self.bounds = bounds

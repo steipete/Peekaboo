@@ -7,7 +7,8 @@ import PeekabooCore
 
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
-struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
+struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable,
+ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "see",
         abstract: "Capture screen and map UI elements",
@@ -27,11 +28,12 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             OUTPUT:
               Returns a session ID that can be used with click, type, and other
               interaction commands. Also outputs the screenshot path and UI analysis.
-        """)
+        """
+    )
 
     @Option(help: "Application name to capture")
     var app: String?
-    
+
     @Option(name: .long, help: "Target application by process ID")
     var pid: Int32?
 
@@ -94,7 +96,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                 Logger.shared.operationStart("generate_annotations")
                 annotatedPath = try await self.generateAnnotatedScreenshot(
                     sessionId: captureResult.sessionId,
-                    originalPath: captureResult.screenshotPath)
+                    originalPath: captureResult.screenshotPath
+                )
                 Logger.shared.operationComplete("generate_annotations", metadata: [
                     "annotatedPath": annotatedPath ?? "none",
                 ])
@@ -106,7 +109,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                 Logger.shared.operationStart("ai_analysis", metadata: ["prompt": prompt])
                 analysisResult = try await self.performAnalysis(
                     imagePath: captureResult.screenshotPath,
-                    prompt: prompt)
+                    prompt: prompt
+                )
                 Logger.shared.operationComplete("ai_analysis", success: analysisResult != nil)
             }
 
@@ -118,30 +122,32 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             ])
 
             if self.jsonOutput {
-                await outputJSONResults(
+                await self.outputJSONResults(
                     sessionId: captureResult.sessionId,
                     screenshotPath: captureResult.screenshotPath,
                     annotatedPath: annotatedPath,
                     metadata: captureResult.metadata,
                     elements: captureResult.elements,
                     analysisResult: analysisResult,
-                    executionTime: executionTime)
+                    executionTime: executionTime
+                )
             } else {
-                await outputTextResults(
+                await self.outputTextResults(
                     sessionId: captureResult.sessionId,
                     screenshotPath: captureResult.screenshotPath,
                     annotatedPath: annotatedPath,
                     metadata: captureResult.metadata,
                     elements: captureResult.elements,
                     analysisResult: analysisResult,
-                    executionTime: executionTime)
+                    executionTime: executionTime
+                )
             }
 
         } catch {
             Logger.shared.operationComplete("see_command", success: false, metadata: [
                 "error": error.localizedDescription,
             ])
-            self.handleError(error)  // Use protocol's error handling
+            self.handleError(error) // Use protocol's error handling
             throw ExitCode.failure
         }
     }
@@ -155,7 +161,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
         Logger.shared.verbose(
             "Determined capture mode",
             category: "Capture",
-            metadata: ["mode": effectiveMode.rawValue])
+            metadata: ["mode": effectiveMode.rawValue]
+        )
 
         // Capture screenshot based on mode
         let captureResult: CaptureResult
@@ -168,7 +175,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             Logger.shared.stopTimer("screen_capture")
 
         case .window:
-            if app != nil || pid != nil {
+            if self.app != nil || self.pid != nil {
                 let appIdentifier = try self.resolveApplicationIdentifier()
                 Logger.shared.verbose("Initiating window capture", category: "Capture", metadata: [
                     "app": appIdentifier,
@@ -180,31 +187,40 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                     Logger.shared.verbose(
                         "Searching for window with title",
                         category: "WindowSearch",
-                        metadata: ["title": title])
+                        metadata: ["title": title]
+                    )
                     let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
-                    Logger.shared.verbose("Found windows", category: "WindowSearch", metadata: ["count": windowsOutput.data.windows.count])
+                    Logger.shared.verbose(
+                        "Found windows",
+                        category: "WindowSearch",
+                        metadata: ["count": windowsOutput.data.windows.count]
+                    )
 
                     if let windowIndex = windowsOutput.data.windows.firstIndex(where: { $0.title.contains(title) }) {
                         Logger.shared.verbose(
                             "Window found at index",
                             category: "WindowSearch",
-                            metadata: ["index": windowIndex])
+                            metadata: ["index": windowIndex]
+                        )
                         Logger.shared.startTimer("window_capture")
                         captureResult = try await PeekabooServices.shared.screenCapture.captureWindow(
                             appIdentifier: appIdentifier,
-                            windowIndex: windowIndex)
+                            windowIndex: windowIndex
+                        )
                         Logger.shared.stopTimer("window_capture")
                     } else {
                         Logger.shared.error(
                             "Window not found with title",
                             category: "WindowSearch",
-                            metadata: ["title": title])
+                            metadata: ["title": title]
+                        )
                         throw CaptureError.windowNotFound
                     }
                 } else {
                     captureResult = try await PeekabooServices.shared.screenCapture.captureWindow(
                         appIdentifier: appIdentifier,
-                        windowIndex: nil)
+                        windowIndex: nil
+                    )
                 }
             } else {
                 throw ValidationError("--app or --pid is required for window mode")
@@ -222,31 +238,36 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
         let windowContext = WindowContext(
             applicationName: captureResult.metadata.applicationInfo?.name,
             windowTitle: captureResult.metadata.windowInfo?.title,
-            windowBounds: captureResult.metadata.windowInfo?.bounds)
+            windowBounds: captureResult.metadata.windowInfo?.bounds
+        )
 
         // Detect UI elements with window context
         let detectionResult = try await PeekabooServices.shared.automation.detectElements(
             in: captureResult.imageData,
             sessionId: nil,
-            windowContext: windowContext)
+            windowContext: windowContext
+        )
 
         // Update the result with the correct screenshot path
         let resultWithPath = ElementDetectionResult(
             sessionId: detectionResult.sessionId,
             screenshotPath: outputPath,
             elements: detectionResult.elements,
-            metadata: detectionResult.metadata)
+            metadata: detectionResult.metadata
+        )
 
         // Store the result in session
         try await PeekabooServices.shared.sessions.storeDetectionResult(
             sessionId: detectionResult.sessionId,
-            result: resultWithPath)
+            result: resultWithPath
+        )
 
         return CaptureAndDetectionResult(
             sessionId: detectionResult.sessionId,
             screenshotPath: outputPath,
             elements: detectionResult.elements,
-            metadata: detectionResult.metadata)
+            metadata: detectionResult.metadata
+        )
     }
 
     private func saveScreenshot(_ imageData: Data) throws -> String {
@@ -265,7 +286,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
         let directory = (outputPath as NSString).deletingLastPathComponent
         try FileManager.default.createDirectory(
             atPath: directory,
-            withIntermediateDirectories: true)
+            withIntermediateDirectories: true
+        )
 
         // Save the image
         try imageData.write(to: URL(fileURLWithPath: outputPath))
@@ -276,8 +298,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
 
     private func generateAnnotatedScreenshot(
         sessionId: String,
-        originalPath: String) async throws -> String
-    {
+        originalPath: String
+    ) async throws -> String {
         // Get detection result from session
         guard let detectionResult = try await PeekabooServices.shared.sessions.getDetectionResult(sessionId: sessionId)
         else {
@@ -307,7 +329,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             isPlanar: false,
             colorSpaceName: .calibratedRGB,
             bytesPerRow: 0,
-            bitsPerPixel: 0)
+            bitsPerPixel: 0
+        )
         else {
             throw CaptureError.captureFailure("Failed to create bitmap representation")
         }
@@ -343,20 +366,23 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
         ]
 
         // Draw UI elements
-        let enabledElements = detectionResult.elements.all.filter { $0.isEnabled }
-        Logger.shared.verbose("Drawing \(enabledElements.count) enabled elements out of \(detectionResult.elements.all.count) total")
+        let enabledElements = detectionResult.elements.all.filter(\.isEnabled)
+        Logger.shared
+            .verbose(
+                "Drawing \(enabledElements.count) enabled elements out of \(detectionResult.elements.all.count) total"
+            )
         Logger.shared.verbose("Image size: \(imageSize)")
-        
+
         // Calculate window origin from element bounds if we have elements
         var windowOrigin = CGPoint.zero
         if !detectionResult.elements.all.isEmpty {
             // Find the leftmost and topmost element to estimate window origin
-            let minX = detectionResult.elements.all.map { $0.bounds.minX }.min() ?? 0
-            let minY = detectionResult.elements.all.map { $0.bounds.minY }.min() ?? 0
+            let minX = detectionResult.elements.all.map(\.bounds.minX).min() ?? 0
+            let minY = detectionResult.elements.all.map(\.bounds.minY).min() ?? 0
             windowOrigin = CGPoint(x: minX, y: minY)
             Logger.shared.verbose("Estimated window origin from elements: \(windowOrigin)")
         }
-        
+
         // Convert all element bounds to window-relative coordinates and flip Y
         var elementRects: [(element: DetectedElement, rect: NSRect)] = []
         for element in enabledElements {
@@ -366,22 +392,26 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                 width: element.bounds.width,
                 height: element.bounds.height
             )
-            
+
             let rect = NSRect(
                 x: elementFrame.origin.x,
                 y: imageSize.height - elementFrame.origin.y - elementFrame.height, // Flip Y coordinate
                 width: elementFrame.width,
-                height: elementFrame.height)
-            
+                height: elementFrame.height
+            )
+
             elementRects.append((element: element, rect: rect))
         }
-        
+
         // Draw elements and calculate label positions
         var labelPositions: [(rect: NSRect, connection: NSPoint?, element: DetectedElement)] = []
-        
+
         for (element, rect) in elementRects {
-            Logger.shared.verbose("Drawing element: \(element.id), type: \(element.type), original bounds: \(element.bounds), window rect: \(rect)")
-            
+            Logger.shared
+                .verbose(
+                    "Drawing element: \(element.id), type: \(element.type), original bounds: \(element.bounds), window rect: \(rect)"
+                )
+
             // Get color for element type
             let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
 
@@ -399,42 +429,49 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             let textSize = idString.size()
             let labelPadding: CGFloat = 4
             let labelSize = NSSize(width: textSize.width + labelPadding * 2, height: textSize.height + labelPadding)
-            
+
             // Smart label placement
             let labelSpacing: CGFloat = 4
-            var labelRect: NSRect? = nil
-            var connectionPoint: NSPoint? = nil
-            
+            var labelRect: NSRect?
+            var connectionPoint: NSPoint?
+
             // Try positions in order: above, right, left, below, inside
             let positions = [
                 // Above
-                NSRect(x: rect.midX - labelSize.width / 2, 
-                      y: rect.maxY + labelSpacing, 
-                      width: labelSize.width, 
-                      height: labelSize.height),
+                NSRect(
+                    x: rect.midX - labelSize.width / 2,
+                    y: rect.maxY + labelSpacing,
+                    width: labelSize.width,
+                    height: labelSize.height
+                ),
                 // Right
-                NSRect(x: rect.maxX + labelSpacing, 
-                      y: rect.midY - labelSize.height / 2, 
-                      width: labelSize.width, 
-                      height: labelSize.height),
+                NSRect(
+                    x: rect.maxX + labelSpacing,
+                    y: rect.midY - labelSize.height / 2,
+                    width: labelSize.width,
+                    height: labelSize.height
+                ),
                 // Left
-                NSRect(x: rect.minX - labelSize.width - labelSpacing, 
-                      y: rect.midY - labelSize.height / 2, 
-                      width: labelSize.width, 
-                      height: labelSize.height),
+                NSRect(
+                    x: rect.minX - labelSize.width - labelSpacing,
+                    y: rect.midY - labelSize.height / 2,
+                    width: labelSize.width,
+                    height: labelSize.height
+                ),
                 // Below
-                NSRect(x: rect.midX - labelSize.width / 2, 
-                      y: rect.minY - labelSize.height - labelSpacing, 
-                      width: labelSize.width, 
-                      height: labelSize.height),
+                NSRect(
+                    x: rect.midX - labelSize.width / 2,
+                    y: rect.minY - labelSize.height - labelSpacing,
+                    width: labelSize.width,
+                    height: labelSize.height
+                ),
             ]
-            
+
             // Check each position
             for (index, candidateRect) in positions.enumerated() {
                 // Check if position is within image bounds
                 if candidateRect.minX >= 0 && candidateRect.maxX <= imageSize.width &&
-                   candidateRect.minY >= 0 && candidateRect.maxY <= imageSize.height {
-                    
+                    candidateRect.minY >= 0 && candidateRect.maxY <= imageSize.height {
                     // Check if it overlaps with any other element
                     var overlaps = false
                     for (otherElement, otherRect) in elementRects {
@@ -443,7 +480,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                             break
                         }
                     }
-                    
+
                     // Check if it overlaps with already placed labels
                     for (existingLabel, _, _) in labelPositions {
                         if candidateRect.intersects(existingLabel) {
@@ -451,7 +488,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                             break
                         }
                     }
-                    
+
                     if !overlaps {
                         labelRect = candidateRect
                         // Set connection point based on position
@@ -471,17 +508,33 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                     }
                 }
             }
-            
+
             // If no external position works, place inside (top-left with minimal overlap)
             if labelRect == nil {
                 // Try different corners inside the element
                 let insidePositions = [
-                    NSRect(x: rect.minX + 2, y: rect.maxY - labelSize.height - 2, width: labelSize.width, height: labelSize.height), // Top-left
-                    NSRect(x: rect.maxX - labelSize.width - 2, y: rect.maxY - labelSize.height - 2, width: labelSize.width, height: labelSize.height), // Top-right
-                    NSRect(x: rect.minX + 2, y: rect.minY + 2, width: labelSize.width, height: labelSize.height), // Bottom-left
-                    NSRect(x: rect.maxX - labelSize.width - 2, y: rect.minY + 2, width: labelSize.width, height: labelSize.height), // Bottom-right
+                    NSRect(
+                        x: rect.minX + 2,
+                        y: rect.maxY - labelSize.height - 2,
+                        width: labelSize.width,
+                        height: labelSize.height
+                    ), // Top-left
+                    NSRect(
+                        x: rect.maxX - labelSize.width - 2,
+                        y: rect.maxY - labelSize.height - 2,
+                        width: labelSize.width,
+                        height: labelSize.height
+                    ), // Top-right
+                    NSRect(x: rect.minX + 2, y: rect.minY + 2, width: labelSize.width, height: labelSize.height),
+                    // Bottom-left
+                    NSRect(
+                        x: rect.maxX - labelSize.width - 2,
+                        y: rect.minY + 2,
+                        width: labelSize.width,
+                        height: labelSize.height
+                    ), // Bottom-right
                 ]
-                
+
                 // Pick the first one that fits
                 for candidateRect in insidePositions {
                     if rect.contains(candidateRect) {
@@ -490,7 +543,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                         break
                     }
                 }
-                
+
                 // Ultimate fallback - center of element
                 if labelRect == nil {
                     labelRect = NSRect(
@@ -501,12 +554,12 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                     )
                 }
             }
-            
+
             if let finalLabelRect = labelRect {
                 labelPositions.append((rect: finalLabelRect, connection: connectionPoint, element: element))
             }
         }
-        
+
         // Draw all labels and connection lines
         for (labelRect, connectionPoint, element) in labelPositions {
             // Draw connection line if label is outside
@@ -514,29 +567,29 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                 NSColor.black.withAlphaComponent(0.6).setStroke()
                 let linePath = NSBezierPath()
                 linePath.lineWidth = 1
-                
+
                 // Draw line from connection point to nearest edge of label
                 linePath.move(to: connection)
-                
+
                 // Find the closest point on label rectangle to the connection point
                 let closestX = max(labelRect.minX, min(connection.x, labelRect.maxX))
                 let closestY = max(labelRect.minY, min(connection.y, labelRect.maxY))
                 linePath.line(to: NSPoint(x: closestX, y: closestY))
-                
+
                 linePath.stroke()
             }
-            
+
             // Draw label background
             NSColor.black.withAlphaComponent(0.85).setFill()
             NSBezierPath(roundedRect: labelRect, xRadius: 2, yRadius: 2).fill()
-            
+
             // Draw label border (same color as element)
             let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
             color.setStroke()
             let borderPath = NSBezierPath(roundedRect: labelRect, xRadius: 2, yRadius: 2)
             borderPath.lineWidth = 1
             borderPath.stroke()
-            
+
             // Draw label text
             let idString = NSAttributedString(string: element.id, attributes: textAttributes)
             idString.draw(at: NSPoint(x: labelRect.origin.x + 4, y: labelRect.origin.y + 2))
@@ -563,7 +616,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
 
     private func performAnalysis(imagePath: String, prompt: String) async throws -> String {
         // For now, just return a placeholder since AI provider is broken
-        return "AI analysis is temporarily unavailable"
+        "AI analysis is temporarily unavailable"
     }
 
     private func determineMode() -> CaptureMode {
@@ -588,8 +641,8 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
         metadata: DetectionMetadata,
         elements: DetectedElements,
         analysisResult: String?,
-        executionTime: TimeInterval) async
-    {
+        executionTime: TimeInterval
+    ) async {
         // Build UI element summaries
         let uiElements: [UIElementSummary] = elements.all.map { element in
             UIElementSummary(
@@ -599,16 +652,18 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                 label: element.label,
                 identifier: element.attributes["identifier"],
                 is_actionable: element.isEnabled,
-                keyboard_shortcut: element.attributes["keyboardShortcut"])
+                keyboard_shortcut: element.attributes["keyboardShortcut"]
+            )
         }
 
         // Build session paths
         let sessionPaths = SessionPaths(
             raw: screenshotPath,
             annotated: annotatedPath ?? screenshotPath,
-            map: PeekabooServices.shared.sessions.getSessionStoragePath() + "/\(sessionId)/map.json")
+            map: PeekabooServices.shared.sessions.getSessionStoragePath() + "/\(sessionId)/map.json"
+        )
 
-        let output = SeeResult(
+        let output = await SeeResult(
             session_id: sessionId,
             screenshot_raw: sessionPaths.raw,
             screenshot_annotated: sessionPaths.annotated,
@@ -617,12 +672,12 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             window_title: metadata.windowContext?.windowTitle,
             is_dialog: metadata.isDialog,
             element_count: metadata.elementCount,
-            interactable_count: elements.all.count(where: { $0.isEnabled }),
+            interactable_count: elements.all.count { $0.isEnabled },
             capture_mode: self.determineMode().rawValue,
             analysis_result: analysisResult,
             execution_time: executionTime,
             ui_elements: uiElements,
-            menu_bar: await getMenuBarItemsSummary()
+            menu_bar: self.getMenuBarItemsSummary()
         )
 
         outputSuccessCodable(data: output)
@@ -632,14 +687,14 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
     private func getMenuBarItemsSummary() async -> MenuBarSummary {
         // Get menu bar items from service
         var menuExtras: [MenuExtraInfo] = []
-        
+
         do {
             menuExtras = try await PeekabooServices.shared.menu.listMenuExtras()
         } catch {
             // If there's an error, just return empty array
             menuExtras = []
         }
-        
+
         // Group items into menu categories
         // For now, we'll create a simplified view showing each menu bar item as a "menu"
         let menus = menuExtras.map { extra in
@@ -656,10 +711,10 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
                 ]
             )
         }
-        
+
         return MenuBarSummary(menus: menus)
     }
-    
+
     @MainActor
     private func outputTextResults(
         sessionId: String,
@@ -668,14 +723,15 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
         metadata: DetectionMetadata,
         elements: DetectedElements,
         analysisResult: String?,
-        executionTime: TimeInterval) async
-    {
+        executionTime: TimeInterval
+    ) async {
         let sessionPaths = SessionPaths(
             raw: screenshotPath,
             annotated: annotatedPath ?? screenshotPath,
-            map: PeekabooServices.shared.sessions.getSessionStoragePath() + "/\(sessionId)/map.json")
+            map: PeekabooServices.shared.sessions.getSessionStoragePath() + "/\(sessionId)/map.json"
+        )
 
-        let interactableCount = elements.all.count(where: { $0.isEnabled })
+        let interactableCount = elements.all.count { $0.isEnabled }
 
         print("✅ Screenshot captured successfully")
         print("📍 Session ID: \(sessionId)")
@@ -694,7 +750,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             let icon = metadata.isDialog ? "🗨️" : "🪟"
             print("\(icon) \(windowType): \(window)")
         }
-        
+
         // Show menu bar items
         // Get menu bar items from service
         let menuExtras: [MenuExtraInfo]
@@ -704,7 +760,7 @@ struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, O
             // If there's an error, just return empty array
             menuExtras = []
         }
-        
+
         if !menuExtras.isEmpty {
             print("📊 Menu Bar Items: \(menuExtras.count)")
             for item in menuExtras.prefix(10) { // Show first 10

@@ -9,7 +9,8 @@ struct AgentIntegrationTests {
 
     @Test(
         "Agent can execute simple TextEdit task",
-        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
+        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
+    )
     func agentTextEditTask() async throws {
         guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
             throw TestError.missingAPIKey
@@ -58,7 +59,8 @@ struct AgentIntegrationTests {
 
     @Test(
         "Agent handles window automation",
-        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
+        .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
+    )
     func agentWindowAutomation() async throws {
         guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
             throw TestError.missingAPIKey

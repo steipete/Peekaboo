@@ -92,7 +92,11 @@ struct AppCommandTests {
 
 // MARK: - App Command Integration Tests
 
-@Suite("App Command Integration Tests", .serialized, .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+@Suite(
+    "App Command Integration Tests",
+    .serialized,
+    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+)
 struct AppCommandIntegrationTests {
     @Test("Launch application")
     func launchApp() async throws {
@@ -110,8 +114,11 @@ struct AppCommandIntegrationTests {
             let pid: Int32
             let is_ready: Bool
         }
-        
-        let response = try JSONDecoder().decode(CodableJSONResponse<LaunchResult>.self, from: output.data(using: .utf8)!)
+
+        let response = try JSONDecoder().decode(
+            CodableJSONResponse<LaunchResult>.self,
+            from: output.data(using: .utf8)!
+        )
         #expect(response.success == true)
         #expect(response.data.action == "launch")
         #expect(response.data.app_name == "TextEdit")
@@ -179,13 +186,13 @@ struct AppCommandIntegrationTests {
             let pid: Int32
             let terminated: Bool
         }
-        
+
         struct QuitResult: Codable {
             let action: String
             let force: Bool
             let results: [AppQuitInfo]
         }
-        
+
         let response = try JSONDecoder().decode(CodableJSONResponse<QuitResult>.self, from: output.data(using: .utf8)!)
         // App might not be running
         if response.success {
@@ -202,7 +209,10 @@ struct AppCommandIntegrationTests {
             "--json-output",
         ])
 
-        let response = try JSONDecoder().decode(CodableJSONResponse<[String: String]>.self, from: output.data(using: .utf8)!)
+        let response = try JSONDecoder().decode(
+            CodableJSONResponse<[String: String]>.self,
+            from: output.data(using: .utf8)!
+        )
         if response.success {
             #expect(response.data["action"] == "hide")
         }

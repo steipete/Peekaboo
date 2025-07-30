@@ -1,6 +1,6 @@
 import AppKit
-@testable import AXorcist
 import XCTest
+@testable import AXorcist
 
 // MARK: - Query Command Tests
 

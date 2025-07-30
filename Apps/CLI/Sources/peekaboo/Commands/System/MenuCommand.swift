@@ -38,18 +38,20 @@ struct MenuCommand: AsyncParsableCommand {
             ClickExtraSubcommand.self,
             ListSubcommand.self,
             ListAllSubcommand.self,
-        ])
+        ]
+    )
 
     // MARK: - Click Menu Item
 
     struct ClickSubcommand: AsyncParsableCommand, ApplicationResolvablePositional {
         static let configuration = CommandConfiguration(
             commandName: "click",
-            abstract: "Click a menu item")
+            abstract: "Click a menu item"
+        )
 
         @Option(help: "Target application by name, bundle ID, or 'PID:12345'")
         var app: String
-        
+
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
 
@@ -61,7 +63,7 @@ struct MenuCommand: AsyncParsableCommand {
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
-        
+
         @OptionGroup var focusOptions: FocusOptions
 
         mutating func run() async throws {
@@ -78,13 +80,13 @@ struct MenuCommand: AsyncParsableCommand {
 
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
-                
+
                 // Ensure application is focused before menu interaction
                 try await self.ensureFocused(
                     applicationName: appIdentifier,
-                    options: focusOptions
+                    options: self.focusOptions
                 )
-                
+
                 // If using --item, search recursively; if using --path, use exact path
                 if let itemName = self.item {
                     // Use recursive search for --item parameter
@@ -99,14 +101,15 @@ struct MenuCommand: AsyncParsableCommand {
 
                 // Determine what was clicked for output
                 let clickedPath = self.path ?? self.item!
-                
+
                 // Output result
                 if self.jsonOutput {
                     let data = MenuClickResult(
                         action: "menu_click",
                         app: appInfo.name,
                         menu_path: clickedPath,
-                        clicked_item: clickedPath)
+                        clicked_item: clickedPath
+                    )
                     outputSuccessCodable(data: data)
                 } else {
                     print("✓ Clicked menu item: \(clickedPath)")
@@ -142,7 +145,8 @@ struct MenuCommand: AsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: errorCode,
-                    details: "Failed to click menu item")
+                    details: "Failed to click menu item"
+                )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
@@ -153,7 +157,8 @@ struct MenuCommand: AsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: .APP_NOT_FOUND,
-                    details: "Application not found")
+                    details: "Application not found"
+                )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
@@ -164,7 +169,8 @@ struct MenuCommand: AsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu operation failed")
+                    details: "Menu operation failed"
+                )
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
             }
@@ -176,7 +182,8 @@ struct MenuCommand: AsyncParsableCommand {
     struct ClickExtraSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "click-extra",
-            abstract: "Click a system menu extra (status bar item)")
+            abstract: "Click a system menu extra (status bar item)"
+        )
 
         @Option(help: "Title of the menu extra (e.g., 'WiFi', 'Bluetooth')")
         var title: String
@@ -186,7 +193,7 @@ struct MenuCommand: AsyncParsableCommand {
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
-        
+
         @OptionGroup var focusOptions: FocusOptions
 
         mutating func run() async throws {
@@ -198,7 +205,7 @@ struct MenuCommand: AsyncParsableCommand {
 
                 // If an item was specified, we would need to click it after the menu appears
                 // This would require additional service functionality
-                if item != nil {
+                if self.item != nil {
                     // Wait for menu to appear
                     try await Task.sleep(nanoseconds: 200_000_000) // 200ms
 
@@ -208,7 +215,8 @@ struct MenuCommand: AsyncParsableCommand {
                     // For now, we just warn that this is not fully implemented.
                     fputs(
                         "Warning: Clicking menu items within menu extras is not yet implemented\n",
-                        stderr)
+                        stderr
+                    )
                 }
 
                 // Output result
@@ -216,7 +224,8 @@ struct MenuCommand: AsyncParsableCommand {
                     let data = MenuExtraClickResult(
                         action: "menu_extra_click",
                         menu_extra: title,
-                        clicked_item: item ?? self.title)
+                        clicked_item: item ?? self.title
+                    )
                     outputSuccessCodable(data: data)
                 } else {
                     if let clickedItem = item {
@@ -253,7 +262,8 @@ struct MenuCommand: AsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: errorCode,
-                    details: "Failed to click menu extra")
+                    details: "Failed to click menu extra"
+                )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
@@ -264,7 +274,8 @@ struct MenuCommand: AsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu extra operation failed")
+                    details: "Menu extra operation failed"
+                )
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
             }
@@ -276,11 +287,12 @@ struct MenuCommand: AsyncParsableCommand {
     struct ListSubcommand: AsyncParsableCommand, ApplicationResolvablePositional {
         static let configuration = CommandConfiguration(
             commandName: "list",
-            abstract: "List all menu items for an application")
+            abstract: "List all menu items for an application"
+        )
 
         @Option(help: "Target application by name, bundle ID, or 'PID:12345'")
         var app: String
-        
+
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
 
@@ -289,7 +301,7 @@ struct MenuCommand: AsyncParsableCommand {
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
-        
+
         @OptionGroup var focusOptions: FocusOptions
 
         mutating func run() async throws {
@@ -297,13 +309,13 @@ struct MenuCommand: AsyncParsableCommand {
 
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
-                
+
                 // Ensure application is focused before listing menus
                 try await self.ensureFocused(
                     applicationName: appIdentifier,
-                    options: focusOptions
+                    options: self.focusOptions
                 )
-                
+
                 // Get menu structure from service
                 let menuStructure = try await PeekabooServices.shared.menu.listMenus(for: appIdentifier)
 
@@ -316,7 +328,8 @@ struct MenuCommand: AsyncParsableCommand {
                     let data = MenuListData(
                         app: menuStructure.application.name,
                         bundle_id: menuStructure.application.bundleIdentifier,
-                        menu_structure: self.convertMenusToTyped(filteredMenus))
+                        menu_structure: self.convertMenusToTyped(filteredMenus)
+                    )
                     outputSuccessCodable(data: data)
                 } else {
                     print("Menu structure for \(menuStructure.application.name):")
@@ -356,7 +369,8 @@ struct MenuCommand: AsyncParsableCommand {
                     isChecked: item.isChecked,
                     isSeparator: item.isSeparator,
                     submenu: filteredSubmenu,
-                    path: item.path)
+                    path: item.path
+                )
             }
         }
 
@@ -427,7 +441,8 @@ struct MenuCommand: AsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: .APP_NOT_FOUND,
-                    details: "Application not found")
+                    details: "Application not found"
+                )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
@@ -451,7 +466,8 @@ struct MenuCommand: AsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: errorCode,
-                    details: "Failed to list menus")
+                    details: "Failed to list menus"
+                )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
@@ -462,7 +478,8 @@ struct MenuCommand: AsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu list operation failed")
+                    details: "Menu list operation failed"
+                )
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
             }
@@ -474,7 +491,8 @@ struct MenuCommand: AsyncParsableCommand {
     struct ListAllSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list-all",
-            abstract: "List all menu bar items system-wide (including status items)")
+            abstract: "List all menu bar items system-wide (including status items)"
+        )
 
         @Flag(help: "Include disabled menu items")
         var includeDisabled = false
@@ -484,7 +502,7 @@ struct MenuCommand: AsyncParsableCommand {
 
         @Flag(help: "Include item frames (pixel positions)")
         var includeFrames = false
-        
+
         @OptionGroup var focusOptions: FocusOptions
 
         mutating func run() async throws {
@@ -505,7 +523,7 @@ struct MenuCommand: AsyncParsableCommand {
                 if self.jsonOutput {
                     struct MenuAllResult: Codable {
                         let apps: [AppMenuInfo]
-                        
+
                         struct AppMenuInfo: Codable {
                             let appName: String
                             let bundleId: String
@@ -513,13 +531,13 @@ struct MenuCommand: AsyncParsableCommand {
                             let menus: [MenuData]
                             let statusItems: [StatusItem]?
                         }
-                        
+
                         struct StatusItem: Codable {
                             let type: String
                             let title: String
                             let enabled: Bool
                             let frame: Frame?
-                            
+
                             struct Frame: Codable {
                                 let x: Double
                                 let y: Double
@@ -528,7 +546,7 @@ struct MenuCommand: AsyncParsableCommand {
                             }
                         }
                     }
-                    
+
                     let statusItems = menuExtras.map { extra in
                         MenuAllResult.StatusItem(
                             type: "status_item",
@@ -542,7 +560,7 @@ struct MenuCommand: AsyncParsableCommand {
                             ) : nil
                         )
                     }
-                    
+
                     let appInfo = MenuAllResult.AppMenuInfo(
                         appName: frontmostMenus.application.name,
                         bundleId: frontmostMenus.application.bundleIdentifier ?? "unknown",
@@ -550,7 +568,7 @@ struct MenuCommand: AsyncParsableCommand {
                         menus: self.convertMenusToTyped(filteredMenus),
                         statusItems: statusItems.isEmpty ? nil : statusItems
                     )
-                    
+
                     let outputData = MenuAllResult(apps: [appInfo])
                     outputSuccessCodable(data: outputData)
                 } else {
@@ -598,7 +616,8 @@ struct MenuCommand: AsyncParsableCommand {
                     isChecked: item.isChecked,
                     isSeparator: item.isSeparator,
                     submenu: filteredSubmenu,
-                    path: item.path)
+                    path: item.path
+                )
             }
         }
 
@@ -682,7 +701,8 @@ struct MenuCommand: AsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: errorCode,
-                    details: "Failed to list menus")
+                    details: "Failed to list menus"
+                )
             } else {
                 fputs("❌ \(error.localizedDescription)\n", stderr)
             }
@@ -693,7 +713,8 @@ struct MenuCommand: AsyncParsableCommand {
                 outputError(
                     message: error.localizedDescription,
                     code: .UNKNOWN_ERROR,
-                    details: "Menu list operation failed")
+                    details: "Menu list operation failed"
+                )
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
             }
@@ -737,4 +758,3 @@ struct MenuItemData: Codable {
     let separator: Bool?
     let items: [MenuItemData]?
 }
-

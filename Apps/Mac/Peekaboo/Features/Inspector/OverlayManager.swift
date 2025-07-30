@@ -543,20 +543,19 @@ class OverlayManager: ObservableObject {
         NSAnimationContext.endGrouping()
         self.overlayWindows.removeAll()
     }
-    
+
     // MARK: - Animation Window Management
-    
+
     /// Creates an animation window at the specified rect
     func createAnimationWindow(at rect: CGRect, ignoresMouse: Bool = true) -> (UUID, NSWindow) {
         let animationID = UUID()
-        
+
         let window = NSWindow(
             contentRect: rect,
             styleMask: [.borderless],
             backing: .buffered,
-            defer: false
-        )
-        
+            defer: false)
+
         window.isOpaque = false
         window.backgroundColor = .clear
         window.level = .floating
@@ -565,62 +564,62 @@ class OverlayManager: ObservableObject {
         window.isReleasedWhenClosed = false
         window.hasShadow = false
         window.animationBehavior = .none
-        
-        animationWindows[animationID] = window
-        
-        logger.debug("Created animation window \(animationID.uuidString) at \(rect)")
-        
+
+        self.animationWindows[animationID] = window
+
+        self.logger.debug("Created animation window \(animationID.uuidString) at \(rect)")
+
         return (animationID, window)
     }
-    
+
     /// Shows an animation window with SwiftUI content
-    func showAnimation<Content: View>(
+    func showAnimation(
         at rect: CGRect,
-        content: Content,
+        content: some View,
         duration: TimeInterval,
-        fadeOut: Bool = true
-    ) -> UUID {
-        let (animationID, window) = createAnimationWindow(at: rect)
-        
+        fadeOut: Bool = true) -> UUID
+    {
+        let (animationID, window) = self.createAnimationWindow(at: rect)
+
         // Set up the SwiftUI content
         let hostingView = NSHostingView(rootView: content)
         window.contentView = hostingView
-        
+
         // Show the window
         window.orderFront(nil)
-        
+
         // Schedule cleanup
-        scheduleAnimationCleanup(animationID: animationID, window: window, duration: duration, fadeOut: fadeOut)
-        
+        self.scheduleAnimationCleanup(animationID: animationID, window: window, duration: duration, fadeOut: fadeOut)
+
         return animationID
     }
-    
+
     /// Removes an animation window immediately
     func removeAnimationWindow(_ animationID: UUID) {
         // Cancel any pending cleanup timer
-        animationCleanupTimers[animationID]?.invalidate()
-        animationCleanupTimers.removeValue(forKey: animationID)
-        
+        self.animationCleanupTimers[animationID]?.invalidate()
+        self.animationCleanupTimers.removeValue(forKey: animationID)
+
         // Remove the window
         if let window = animationWindows[animationID] {
             window.orderOut(nil)
             window.close()
-            animationWindows.removeValue(forKey: animationID)
-            
-            logger.debug("Removed animation window \(animationID.uuidString)")
+            self.animationWindows.removeValue(forKey: animationID)
+
+            self.logger.debug("Removed animation window \(animationID.uuidString)")
         }
     }
-    
+
     /// Schedules automatic cleanup of an animation window
     private func scheduleAnimationCleanup(
         animationID: UUID,
         window: NSWindow,
         duration: TimeInterval,
-        fadeOut: Bool
-    ) {
+        fadeOut: Bool)
+    {
         let cleanupTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
-            guard let self = self else { return }
-            
+            guard let self else { return }
+
             if fadeOut {
                 // Fade out animation
                 NSAnimationContext.runAnimationGroup({ context in
@@ -634,25 +633,25 @@ class OverlayManager: ObservableObject {
                 self.removeAnimationWindow(animationID)
             }
         }
-        
-        animationCleanupTimers[animationID] = cleanupTimer
+
+        self.animationCleanupTimers[animationID] = cleanupTimer
     }
-    
+
     /// Removes all animation windows
     func removeAllAnimationWindows() {
-        logger.debug("Removing all \(animationWindows.count) animation windows")
-        
+        self.logger.debug("Removing all \(self.animationWindows.count) animation windows")
+
         // Cancel all timers
-        for timer in animationCleanupTimers.values {
+        for timer in self.animationCleanupTimers.values {
             timer.invalidate()
         }
-        animationCleanupTimers.removeAll()
-        
+        self.animationCleanupTimers.removeAll()
+
         // Close all windows
-        for (id, window) in animationWindows {
+        for (id, window) in self.animationWindows {
             window.orderOut(nil)
             window.close()
         }
-        animationWindows.removeAll()
+        self.animationWindows.removeAll()
     }
 }

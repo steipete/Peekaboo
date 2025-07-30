@@ -1,5 +1,5 @@
-import Foundation
 import CoreGraphics
+import Foundation
 
 // MARK: - Application & Window Models
 
@@ -13,14 +13,14 @@ public struct ApplicationInfo: Codable, Sendable {
     public let pid: Int32
     public let is_active: Bool
     public let window_count: Int
-    
+
     public init(
         app_name: String,
         bundle_id: String,
         pid: Int32,
         is_active: Bool,
-        window_count: Int
-    ) {
+        window_count: Int)
+    {
         self.app_name = app_name
         self.bundle_id = bundle_id
         self.pid = pid
@@ -35,7 +35,7 @@ public struct ApplicationInfo: Codable, Sendable {
 /// all running applications on the system.
 public struct ApplicationListData: Codable, Sendable {
     public let applications: [ApplicationInfo]
-    
+
     public init(applications: [ApplicationInfo]) {
         self.applications = applications
     }
@@ -51,14 +51,14 @@ public struct WindowInfo: Codable, Sendable {
     public let window_index: Int?
     public let bounds: WindowBounds?
     public let is_on_screen: Bool?
-    
+
     public init(
         window_title: String,
         window_id: UInt32? = nil,
         window_index: Int? = nil,
         bounds: WindowBounds? = nil,
-        is_on_screen: Bool? = nil
-    ) {
+        is_on_screen: Bool? = nil)
+    {
         self.window_title = window_title
         self.window_id = window_id
         self.window_index = window_index
@@ -76,7 +76,7 @@ public struct WindowBounds: Codable, Sendable {
     public let y: Int
     public let width: Int
     public let height: Int
-    
+
     public init(x: Int, y: Int, width: Int, height: Int) {
         self.x = x
         self.y = y
@@ -93,12 +93,12 @@ public struct TargetApplicationInfo: Codable, Sendable {
     public let app_name: String
     public let bundle_id: String?
     public let pid: Int32
-    
+
     public init(
         app_name: String,
         bundle_id: String? = nil,
-        pid: Int32
-    ) {
+        pid: Int32)
+    {
         self.app_name = app_name
         self.bundle_id = bundle_id
         self.pid = pid
@@ -112,11 +112,11 @@ public struct TargetApplicationInfo: Codable, Sendable {
 public struct WindowListData: Codable, Sendable {
     public let windows: [WindowInfo]
     public let target_application_info: TargetApplicationInfo
-    
+
     public init(
         windows: [WindowInfo],
-        target_application_info: TargetApplicationInfo
-    ) {
+        target_application_info: TargetApplicationInfo)
+    {
         self.windows = windows
         self.target_application_info = target_application_info
     }
@@ -144,4 +144,3 @@ public enum WindowDetailOption: String, CaseIterable, Codable, Sendable {
     case bounds
     case ids
 }
-

@@ -22,7 +22,8 @@ struct CleanCommand: AsyncParsableCommand {
               - raw.png: Original screenshot
               - annotated.png: Screenshot with UI markers (if generated)
               - map.json: UI element mapping data
-        """)
+        """
+    )
 
     @Flag(help: "Remove all session data")
     var allSessions = false
@@ -59,7 +60,8 @@ struct CleanCommand: AsyncParsableCommand {
             } else if let sessionId = session {
                 result = try await PeekabooServices.shared.files.cleanSpecificSession(
                     sessionId: sessionId,
-                    dryRun: self.dryRun)
+                    dryRun: self.dryRun
+                )
             } else {
                 throw ValidationError("No cleanup option specified")
             }
@@ -77,7 +79,7 @@ struct CleanCommand: AsyncParsableCommand {
                     let dryRun: Bool
                     let executionTime: TimeInterval
                 }
-                
+
                 let outputData = CleanResultWithTime(
                     sessionsRemoved: result.sessionsRemoved,
                     bytesFreed: result.bytesFreed,

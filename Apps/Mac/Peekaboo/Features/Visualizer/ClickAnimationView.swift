@@ -5,20 +5,19 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 /// A view that displays ripple animations for different click types
 struct ClickAnimationView: View {
-    
     // MARK: - Properties
-    
+
     /// Type of click
     let clickType: ClickType
-    
+
     /// Animation speed multiplier
     let animationSpeed: Double
-    
+
     /// Animation state
     @State private var rippleScale: CGFloat = 0.1
     @State private var rippleOpacity: Double = 1.0
@@ -26,101 +25,100 @@ struct ClickAnimationView: View {
     @State private var secondRippleOpacity: Double = 1.0
     @State private var labelOpacity: Double = 0
     @State private var labelScale: CGFloat = 0.8
-    
+
     /// Colors for different click types
     private var rippleColor: Color {
-        switch clickType {
+        switch self.clickType {
         case .single:
-            return Color.blue
+            Color.blue
         case .double:
-            return Color.purple
+            Color.purple
         case .right:
-            return Color.orange
+            Color.orange
         }
     }
-    
+
     /// Label text for the click type
     private var clickLabel: String {
-        switch clickType {
+        switch self.clickType {
         case .single:
-            return "Click"
+            "Click"
         case .double:
-            return "Double Click"
+            "Double Click"
         case .right:
-            return "Right Click"
+            "Right Click"
         }
     }
-    
+
     // MARK: - Body
-    
+
     var body: some View {
         ZStack {
             // Primary ripple
             Circle()
-                .stroke(rippleColor, lineWidth: 3)
-                .scaleEffect(rippleScale)
-                .opacity(rippleOpacity)
-            
+                .stroke(self.rippleColor, lineWidth: 3)
+                .scaleEffect(self.rippleScale)
+                .opacity(self.rippleOpacity)
+
             // Secondary ripple for double-click
-            if clickType == .double {
+            if self.clickType == .double {
                 Circle()
-                    .stroke(rippleColor, lineWidth: 2)
-                    .scaleEffect(secondRippleScale)
-                    .opacity(secondRippleOpacity)
+                    .stroke(self.rippleColor, lineWidth: 2)
+                    .scaleEffect(self.secondRippleScale)
+                    .opacity(self.secondRippleOpacity)
             }
-            
+
             // Click type label
-            Text(clickLabel)
+            Text(self.clickLabel)
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundColor(rippleColor)
+                .foregroundColor(self.rippleColor)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.white.opacity(0.9))
-                )
-                .scaleEffect(labelScale)
-                .opacity(labelOpacity)
+                        .fill(Color.white.opacity(0.9)))
+                .scaleEffect(self.labelScale)
+                .opacity(self.labelOpacity)
                 .offset(y: 30)
         }
         .frame(width: 200, height: 200)
         .onAppear {
-            startAnimation()
+            self.startAnimation()
         }
     }
-    
+
     // MARK: - Methods
-    
+
     private func startAnimation() {
-        let duration = 0.5 * animationSpeed
-        
+        let duration = 0.5 * self.animationSpeed
+
         // Primary ripple animation
         withAnimation(.easeOut(duration: duration)) {
-            rippleScale = 2.0
-            rippleOpacity = 0
+            self.rippleScale = 2.0
+            self.rippleOpacity = 0
         }
-        
+
         // Secondary ripple for double-click (delayed)
-        if clickType == .double {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15 * animationSpeed) {
+        if self.clickType == .double {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15 * self.animationSpeed) {
                 withAnimation(.easeOut(duration: duration)) {
-                    secondRippleScale = 2.0
-                    secondRippleOpacity = 0
+                    self.secondRippleScale = 2.0
+                    self.secondRippleOpacity = 0
                 }
             }
         }
-        
+
         // Label animation
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            labelScale = 1.0
-            labelOpacity = 1.0
+            self.labelScale = 1.0
+            self.labelOpacity = 1.0
         }
-        
+
         // Fade out label
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3 * animationSpeed) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3 * self.animationSpeed) {
             withAnimation(.easeOut(duration: 0.2)) {
-                labelOpacity = 0
+                self.labelOpacity = 0
             }
         }
     }

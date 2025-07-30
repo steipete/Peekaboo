@@ -5,15 +5,15 @@ import Foundation
 /// Type-safe metadata for agent sessions
 public struct SessionMetadata: Codable, Sendable {
     private let storage: [String: MetadataValue]
-    
+
     public init() {
         self.storage = [:]
     }
-    
+
     private init(storage: [String: MetadataValue]) {
         self.storage = storage
     }
-    
+
     /// Metadata value types
     public enum MetadataValue: Codable, Sendable {
         case string(String)
@@ -24,22 +24,22 @@ public struct SessionMetadata: Codable, Sendable {
         case data(Data)
         case array([MetadataValue])
         case dictionary([String: MetadataValue])
-        
+
         // MARK: - Codable
-        
+
         private enum CodingKeys: String, CodingKey {
             case type
             case value
         }
-        
+
         private enum ValueType: String, Codable {
             case string, int, double, bool, date, data, array, dictionary
         }
-        
+
         public init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             let type = try container.decode(ValueType.self, forKey: .type)
-            
+
             switch type {
             case .string:
                 let value = try container.decode(String.self, forKey: .value)
@@ -67,214 +67,214 @@ public struct SessionMetadata: Codable, Sendable {
                 self = .dictionary(value)
             }
         }
-        
+
         public func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
-            
+
             switch self {
-            case .string(let value):
+            case let .string(value):
                 try container.encode(ValueType.string, forKey: .type)
                 try container.encode(value, forKey: .value)
-            case .int(let value):
+            case let .int(value):
                 try container.encode(ValueType.int, forKey: .type)
                 try container.encode(value, forKey: .value)
-            case .double(let value):
+            case let .double(value):
                 try container.encode(ValueType.double, forKey: .type)
                 try container.encode(value, forKey: .value)
-            case .bool(let value):
+            case let .bool(value):
                 try container.encode(ValueType.bool, forKey: .type)
                 try container.encode(value, forKey: .value)
-            case .date(let value):
+            case let .date(value):
                 try container.encode(ValueType.date, forKey: .type)
                 try container.encode(value, forKey: .value)
-            case .data(let value):
+            case let .data(value):
                 try container.encode(ValueType.data, forKey: .type)
                 try container.encode(value, forKey: .value)
-            case .array(let value):
+            case let .array(value):
                 try container.encode(ValueType.array, forKey: .type)
                 try container.encode(value, forKey: .value)
-            case .dictionary(let value):
+            case let .dictionary(value):
                 try container.encode(ValueType.dictionary, forKey: .type)
                 try container.encode(value, forKey: .value)
             }
         }
     }
-    
+
     // MARK: - Builder Methods
-    
+
     /// Add a string value
     public func with(_ key: String, value: String) -> SessionMetadata {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .string(value)
         return SessionMetadata(storage: newStorage)
     }
-    
+
     /// Add an integer value
     public func with(_ key: String, value: Int) -> SessionMetadata {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .int(value)
         return SessionMetadata(storage: newStorage)
     }
-    
+
     /// Add a double value
     public func with(_ key: String, value: Double) -> SessionMetadata {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .double(value)
         return SessionMetadata(storage: newStorage)
     }
-    
+
     /// Add a boolean value
     public func with(_ key: String, value: Bool) -> SessionMetadata {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .bool(value)
         return SessionMetadata(storage: newStorage)
     }
-    
+
     /// Add a date value
     public func with(_ key: String, value: Date) -> SessionMetadata {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .date(value)
         return SessionMetadata(storage: newStorage)
     }
-    
+
     /// Add a data value
     public func with(_ key: String, value: Data) -> SessionMetadata {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .data(value)
         return SessionMetadata(storage: newStorage)
     }
-    
+
     /// Add an array value
     public func with(_ key: String, value: [MetadataValue]) -> SessionMetadata {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .array(value)
         return SessionMetadata(storage: newStorage)
     }
-    
+
     /// Add a dictionary value
     public func with(_ key: String, value: [String: MetadataValue]) -> SessionMetadata {
-        var newStorage = storage
+        var newStorage = self.storage
         newStorage[key] = .dictionary(value)
         return SessionMetadata(storage: newStorage)
     }
-    
+
     // MARK: - Accessors
-    
+
     /// Get all keys
     public var keys: [String] {
-        Array(storage.keys)
+        Array(self.storage.keys)
     }
-    
+
     /// Check if empty
     public var isEmpty: Bool {
-        storage.isEmpty
+        self.storage.isEmpty
     }
-    
+
     /// Get count
     public var count: Int {
-        storage.count
+        self.storage.count
     }
-    
+
     /// Access raw value
     public subscript(key: String) -> MetadataValue? {
-        storage[key]
+        self.storage[key]
     }
-    
+
     /// Get string value
     public func string(_ key: String) -> String? {
         guard let value = storage[key] else { return nil }
-        if case .string(let str) = value {
+        if case let .string(str) = value {
             return str
         }
         return nil
     }
-    
+
     /// Get int value
     public func int(_ key: String) -> Int? {
         guard let value = storage[key] else { return nil }
-        if case .int(let num) = value {
+        if case let .int(num) = value {
             return num
         }
         return nil
     }
-    
+
     /// Get double value
     public func double(_ key: String) -> Double? {
         guard let value = storage[key] else { return nil }
-        if case .double(let num) = value {
+        if case let .double(num) = value {
             return num
         }
         return nil
     }
-    
+
     /// Get bool value
     public func bool(_ key: String) -> Bool? {
         guard let value = storage[key] else { return nil }
-        if case .bool(let flag) = value {
+        if case let .bool(flag) = value {
             return flag
         }
         return nil
     }
-    
+
     /// Get date value
     public func date(_ key: String) -> Date? {
         guard let value = storage[key] else { return nil }
-        if case .date(let date) = value {
+        if case let .date(date) = value {
             return date
         }
         return nil
     }
-    
+
     /// Get data value
     public func data(_ key: String) -> Data? {
         guard let value = storage[key] else { return nil }
-        if case .data(let data) = value {
+        if case let .data(data) = value {
             return data
         }
         return nil
     }
-    
+
     /// Get array value
     public func array(_ key: String) -> [MetadataValue]? {
         guard let value = storage[key] else { return nil }
-        if case .array(let arr) = value {
+        if case let .array(arr) = value {
             return arr
         }
         return nil
     }
-    
+
     /// Get dictionary value
     public func dictionary(_ key: String) -> [String: MetadataValue]? {
         guard let value = storage[key] else { return nil }
-        if case .dictionary(let dict) = value {
+        if case let .dictionary(dict) = value {
             return dict
         }
         return nil
     }
-    
+
     // MARK: - Conversion from [String: Any]
-    
+
     /// Initialize from untyped dictionary (for migration)
     public init(from dictionary: [String: Any]) {
         var newStorage: [String: MetadataValue] = [:]
-        
+
         for (key, value) in dictionary {
             if let metadataValue = MetadataValue(from: value) {
                 newStorage[key] = metadataValue
             }
         }
-        
+
         self.storage = newStorage
     }
-    
+
     /// Convert to untyped dictionary (for legacy compatibility if needed)
     public func toDictionary() -> [String: Any] {
         var result: [String: Any] = [:]
-        
-        for (key, value) in storage {
+
+        for (key, value) in self.storage {
             result[key] = value.toAny()
         }
-        
+
         return result
     }
 }
@@ -318,26 +318,26 @@ extension SessionMetadata.MetadataValue {
             return nil
         }
     }
-    
+
     /// Convert to Any (for legacy compatibility)
     func toAny() -> Any {
         switch self {
-        case .string(let value):
-            return value
-        case .int(let value):
-            return value
-        case .double(let value):
-            return value
-        case .bool(let value):
-            return value
-        case .date(let value):
-            return value
-        case .data(let value):
-            return value
-        case .array(let values):
-            return values.map { $0.toAny() }
-        case .dictionary(let dict):
-            return dict.mapValues { $0.toAny() }
+        case let .string(value):
+            value
+        case let .int(value):
+            value
+        case let .double(value):
+            value
+        case let .bool(value):
+            value
+        case let .date(value):
+            value
+        case let .data(value):
+            value
+        case let .array(values):
+            values.map { $0.toAny() }
+        case let .dictionary(dict):
+            dict.mapValues { $0.toAny() }
         }
     }
 }

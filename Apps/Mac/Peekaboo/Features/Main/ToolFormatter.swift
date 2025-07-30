@@ -4,7 +4,6 @@ import PeekabooCore
 /// Formats tool executions to match CLI's compact output format
 @MainActor
 struct ToolFormatter {
-    
     /// Format keyboard shortcuts with proper symbols
     static func formatKeyboardShortcut(_ keys: String) -> String {
         keys.replacingOccurrences(of: "cmd", with: "⌘")
@@ -18,24 +17,25 @@ struct ToolFormatter {
             .replacingOccurrences(of: ",", with: "")
             .replacingOccurrences(of: "+", with: "")
     }
-    
+
     /// Format duration with clock symbol
     static func formatDuration(_ duration: TimeInterval?) -> String {
-        guard let duration = duration else { return "" }
+        guard let duration else { return "" }
         return " ⌖ " + PeekabooCore.formatDuration(duration)
     }
-    
+
     /// Get compact summary of what the tool will do based on arguments
     static func compactToolSummary(toolName: String, arguments: String) -> String {
         guard let tool = PeekabooTool(from: toolName) else {
             return toolName.replacingOccurrences(of: "_", with: " ").capitalized
         }
-        
+
         guard let data = arguments.data(using: .utf8),
-              let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+              let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
             return toolName
         }
-        
+
         switch tool {
         case .see:
             var parts: [String] = []
@@ -50,26 +50,25 @@ struct ToolFormatter {
                 parts.append("and analyze")
             }
             return "Capture \(parts.joined(separator: " "))"
-            
+
         case .screenshot:
-            let target: String
-            if let mode = args["mode"] as? String {
-                target = mode == "window" ? "active window" : mode
+            let target: String = if let mode = args["mode"] as? String {
+                mode == "window" ? "active window" : mode
             } else if let app = args["app"] as? String {
-                target = app
+                app
             } else {
-                target = "full screen"
+                "full screen"
             }
             return "Screenshot \(target)"
-            
+
         case .windowCapture:
             let target = (args["appName"] as? String) ?? "active window"
             return "Capture \(target)"
-            
+
         case .click:
             if let target = args["target"] as? String {
                 // Check if it's an element ID (like B7, O6, etc.) or text
-                if target.count <= 3 && target.range(of: "^[A-Z]\\d+$", options: .regularExpression) != nil {
+                if target.count <= 3, target.range(of: "^[A-Z]\\d+$", options: .regularExpression) != nil {
                     return "Click element \(target)"
                 } else {
                     return "Click '\(target)'"
@@ -80,13 +79,13 @@ struct ToolFormatter {
                 return "Click at (\(x), \(y))"
             }
             return "Click"
-            
+
         case .type:
             if let text = args["text"] as? String {
                 return "Type '\(text)'"
             }
             return "Type text"
-            
+
         case .scroll:
             if let direction = args["direction"] as? String {
                 if let amount = args["amount"] as? Int {
@@ -95,13 +94,13 @@ struct ToolFormatter {
                 return "Scroll \(direction)"
             }
             return "Scroll"
-            
+
         case .focusWindow:
             let app = (args["appName"] as? String) ?? "active window"
             return "Focus \(app)"
-            
+
         case .resizeWindow:
-            var parts: [String] = ["Resize"]
+            var parts = ["Resize"]
             if let app = args["appName"] as? String {
                 parts.append(app)
             }
@@ -109,45 +108,45 @@ struct ToolFormatter {
                 parts.append("to \(width)×\(height)")
             }
             return parts.joined(separator: " ")
-            
+
         case .launchApp:
             let app = (args["appName"] as? String) ?? "application"
             return "Launch \(app)"
-            
+
         case .hotkey:
             if let keys = args["keys"] as? String {
-                let formatted = formatKeyboardShortcut(keys)
+                let formatted = self.formatKeyboardShortcut(keys)
                 return "Press \(formatted)"
             }
             return "Press hotkey"
-            
+
         case .shell:
-            var parts: [String] = ["Run"]
+            var parts = ["Run"]
             if let command = args["command"] as? String {
                 parts.append("'\(command)'")
             } else {
                 parts.append("command")
             }
-            
+
             // Only show timeout if different from default (30s)
             if let timeout = args["timeout"] as? Double, timeout != 30.0 {
                 parts.append("(timeout: \(Int(timeout))s)")
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .menuClick:
             if let menuPath = args["menuPath"] as? String {
                 return "Click menu '\(menuPath)'"
             }
             return "Click menu item"
-            
+
         case .listWindows:
             if let app = args["appName"] as? String {
                 return "List windows for \(app)"
             }
             return "List all windows"
-            
+
         case .findElement:
             if let text = args["text"] as? String {
                 let truncated = text.count > 30 ? String(text.prefix(30)) + "..." : text
@@ -159,19 +158,19 @@ struct ToolFormatter {
                 return "Find '\(truncated)'"
             }
             return "Find UI element"
-            
+
         case .listApps:
             return "List running applications"
-            
+
         case .listElements:
             if let type = args["type"] as? String {
                 return "List \(type) elements"
             }
             return "List UI elements"
-            
+
         case .focused:
             return "Get focused element"
-            
+
         case .listMenus:
             if let app = args["app"] as? String {
                 return "List menus for \(app)"
@@ -179,13 +178,12 @@ struct ToolFormatter {
                 return "List menus for \(appName)"
             }
             return "List menu structure"
-            
-            
+
         case .listDock:
             return "List dock items"
-            
+
         case .dialogClick:
-            var parts: [String] = ["Click"]
+            var parts = ["Click"]
             if let button = args["button"] as? String {
                 parts.append("'\(button)'")
             } else {
@@ -195,7 +193,7 @@ struct ToolFormatter {
                 parts.append("in \(window)")
             }
             return parts.joined(separator: " ")
-            
+
         case .dialogInput:
             var parts: [String] = []
             if let text = args["text"] as? String {
@@ -208,18 +206,18 @@ struct ToolFormatter {
                 parts.append("in '\(field)'")
             }
             return parts.joined(separator: " ")
-            
+
         case .listSpaces:
             return "List Mission Control spaces"
-            
+
         case .switchSpace:
             if let to = args["to"] as? Int {
                 return "Switch to space \(to)"
             }
             return "Switch space"
-            
+
         case .moveWindowToSpace:
-            var parts: [String] = ["Move"]
+            var parts = ["Move"]
             if let app = args["app"] as? String {
                 parts.append(app)
             }
@@ -227,7 +225,7 @@ struct ToolFormatter {
                 parts.append("to space \(to)")
             }
             return parts.joined(separator: " ")
-            
+
         case .wait:
             if let seconds = args["seconds"] as? Double {
                 return "Wait \(seconds)s"
@@ -235,7 +233,7 @@ struct ToolFormatter {
                 return "Wait \(seconds)s"
             }
             return "Wait 1s"
-            
+
         case .dockLaunch:
             if let app = args["appName"] as? String {
                 return "Launch \(app) from dock"
@@ -243,66 +241,70 @@ struct ToolFormatter {
                 return "Launch \(app) from dock"
             }
             return "Launch dock item"
-            
+
         case .taskCompleted:
             return "Task completed"
-            
+
         case .needMoreInformation:
             return "Need more information"
-            
+
         case .drag:
             return "Drag element"
-            
+
         case .swipe:
             return "Swipe gesture"
         }
     }
-    
+
     /// Get summary of tool result
     static func toolResultSummary(toolName: String, result: String?) -> String? {
         guard let tool = PeekabooTool(from: toolName) else {
             return nil
         }
-        
-        guard let result = result,
+
+        guard let result,
               let data = result.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
             return nil
         }
-        
+
         // Handle wrapped results {"type": "object", "value": {...}}
-        let actualResult: [String: Any]
-        if json["type"] as? String == "object", let value = json["value"] as? [String: Any] {
-            actualResult = value
+        let actualResult: [String: Any] = if json["type"] as? String == "object",
+                                             let value = json["value"] as? [String: Any]
+        {
+            value
         } else {
-            actualResult = json
+            json
         }
-        
+
         switch tool {
         case .launchApp:
-            var parts: [String] = ["Launched"]
-            
+            var parts = ["Launched"]
+
             // Check for app name in various possible locations
             if let app = actualResult["app"] as? String {
                 parts.append(app)
             } else if let appWrapper = actualResult["app"] as? [String: Any],
-                     let appName = appWrapper["value"] as? String {
+                      let appName = appWrapper["value"] as? String
+            {
                 parts.append(appName)
             } else if let metadata = actualResult["metadata"] as? [String: Any],
-                     let app = metadata["app"] as? String {
+                      let app = metadata["app"] as? String
+            {
                 parts.append(app)
             }
-            
+
             // Add bundle ID if available
             if let bundleId = actualResult["bundleId"] as? String {
                 parts.append("(\(bundleId))")
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .click:
             var parts: [String] = []
-            
+
             // Get click type
             var clickType = "Clicked"
             if let type = actualResult["type"] as? String {
@@ -313,10 +315,10 @@ struct ToolFormatter {
                 }
             }
             parts.append(clickType)
-            
+
             // Get what was clicked
             if let element = actualResult["element"] as? String {
-                if element.count <= 3 && element.range(of: "^[A-Z]\\d+$", options: .regularExpression) != nil {
+                if element.count <= 3, element.range(of: "^[A-Z]\\d+$", options: .regularExpression) != nil {
                     parts.append("element \(element)")
                 } else {
                     parts.append("'\(element)'")
@@ -328,30 +330,32 @@ struct ToolFormatter {
             } else if let x = actualResult["x"], let y = actualResult["y"] {
                 parts.append("at (\(x), \(y))")
             }
-            
+
             // Add app context if available
             if let app = actualResult["app"] as? String {
                 parts.append("in \(app)")
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .listApps:
             // Check for count value first (tool result format)
             if let countValue = actualResult["count"] as? [String: Any],
-               let count = countValue["value"] as? String {
+               let count = countValue["value"] as? String
+            {
                 return "Found \(count) apps"
             }
             // Check nested structure
             else if let data = actualResult["data"] as? [String: Any],
-               let apps = data["applications"] as? [[String: Any]] {
+                    let apps = data["applications"] as? [[String: Any]]
+            {
                 return "Found \(apps.count) apps"
             }
             // Fallback to direct structure
             else if let apps = actualResult["apps"] as? [[String: Any]] {
                 return "Found \(apps.count) apps"
             }
-            
+
         case .listDock:
             // Check for totalCount directly in result
             if let totalCount = actualResult["totalCount"] as? String {
@@ -359,16 +363,17 @@ struct ToolFormatter {
             }
             // Check for wrapped totalCount
             else if let totalCountWrapper = actualResult["totalCount"] as? [String: Any],
-                    let value = totalCountWrapper["value"] {
+                    let value = totalCountWrapper["value"]
+            {
                 return "Found \(value) items"
             }
             // Fallback to items array
             else if let items = actualResult["items"] as? [[String: Any]] {
                 return "Found \(items.count) items"
             }
-            
+
         case .see:
-            var parts: [String] = ["Captured"]
+            var parts = ["Captured"]
             if let elementCounts = actualResult["elementCounts"] as? [String: Int] {
                 let counts = elementCounts.compactMap { key, value in
                     value > 0 ? "\(value) \(key)" : nil
@@ -378,18 +383,18 @@ struct ToolFormatter {
                 }
             }
             return parts.joined(separator: " ")
-            
+
         case .type:
             if let typed = actualResult["typed"] as? String {
                 return "Typed '\(typed)'"
             }
-            
+
         case .hotkey:
-            var parts: [String] = ["Pressed"]
-            
+            var parts = ["Pressed"]
+
             // Get the keys that were pressed
             if let keys = actualResult["keys"] as? String {
-                let formatted = formatKeyboardShortcut(keys)
+                let formatted = self.formatKeyboardShortcut(keys)
                 parts.append(formatted)
             } else if let key = actualResult["key"] as? String {
                 var keyParts: [String] = []
@@ -407,18 +412,18 @@ struct ToolFormatter {
                     }
                 }
                 keyParts.append(key)
-                parts.append(keyParts.joined(separator: ""))
+                parts.append(keyParts.joined())
             }
-            
+
             // Add app context if available
             if let app = actualResult["app"] as? String {
                 parts.append("in \(app)")
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .screenshot:
-            var parts: [String] = ["Screenshot"]
+            var parts = ["Screenshot"]
             if let path = actualResult["path"] as? String {
                 parts.append("saved to \(path)")
             }
@@ -426,7 +431,7 @@ struct ToolFormatter {
                 parts.append("of \(app)")
             }
             return parts.joined(separator: " ")
-            
+
         case .windowCapture:
             var parts: [String] = []
             if let captured = actualResult["captured"] as? Bool, captured {
@@ -436,10 +441,10 @@ struct ToolFormatter {
                 }
             }
             return parts.joined(separator: " ")
-            
+
         case .shell:
             var parts: [String] = []
-            
+
             // Check exit code
             if let exitCode = actualResult["exitCode"] as? Int {
                 if exitCode == 0 {
@@ -448,17 +453,17 @@ struct ToolFormatter {
                     parts.append("Command failed (exit code: \(exitCode))")
                 }
             }
-            
+
             // Add command if available
             if let command = actualResult["command"] as? String {
                 let truncated = command.count > 50 ? String(command.prefix(50)) + "..." : command
                 parts.append("- '\(truncated)'")
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .scroll:
-            var parts: [String] = ["Scrolled"]
+            var parts = ["Scrolled"]
             if let direction = actualResult["direction"] as? String {
                 parts.append(direction)
             }
@@ -469,88 +474,90 @@ struct ToolFormatter {
                 parts.append("in \(app)")
             }
             return parts.joined(separator: " ")
-            
+
         case .menuClick:
-            var parts: [String] = ["Clicked"]
-            
+            var parts = ["Clicked"]
+
             // Get the menu path
             if let menuPath = actualResult["menuPath"] as? String {
                 parts.append("'\(menuPath)'")
             } else if let path = actualResult["path"] as? String {
                 parts.append("'\(path)'")
             }
-            
+
             // Add app if available
             if let app = actualResult["app"] as? String {
                 parts.append("in \(app)")
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .dialogClick:
-            var parts: [String] = ["Clicked"]
-            
+            var parts = ["Clicked"]
+
             if let button = actualResult["button"] as? String {
                 parts.append("'\(button)'")
             }
-            
+
             if let window = actualResult["window"] as? String {
                 parts.append("in \(window)")
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .dialogInput:
-            var parts: [String] = ["Entered"]
-            
+            var parts = ["Entered"]
+
             if let text = actualResult["text"] as? String {
                 let truncated = text.count > 30 ? String(text.prefix(30)) + "..." : text
                 parts.append("'\(truncated)'")
             }
-            
+
             if let field = actualResult["field"] as? String {
                 parts.append("in \(field)")
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .findElement:
             var parts: [String] = []
-            
+
             // Check if found
             var found = false
             if let f = actualResult["found"] as? Bool {
                 found = f
             } else if let foundWrapper = actualResult["found"] as? [String: Any],
-                      let foundValue = foundWrapper["value"] as? Bool {
+                      let foundValue = foundWrapper["value"] as? Bool
+            {
                 found = foundValue
             }
-            
+
             if found {
                 parts.append("Found")
-                
+
                 // Get element details
                 if let element = actualResult["element"] as? String {
                     parts.append("'\(element)'")
                 } else if let elementWrapper = actualResult["element"] as? [String: Any],
-                          let elementValue = elementWrapper["value"] as? String {
+                          let elementValue = elementWrapper["value"] as? String
+                {
                     parts.append("'\(elementValue)'")
                 } else if let text = actualResult["text"] as? String {
                     parts.append("'\(text)'")
                 }
-                
+
                 // Add element type if available
                 if let type = actualResult["type"] as? String {
                     parts.append("(\(type))")
                 }
-                
+
                 // Add location if available
                 if let elementId = actualResult["elementId"] as? String {
                     parts.append("as \(elementId)")
                 }
             } else {
                 parts.append("Not found")
-                
+
                 // Add what was searched for
                 if let query = actualResult["query"] as? String {
                     parts.append("'\(query)'")
@@ -558,9 +565,9 @@ struct ToolFormatter {
                     parts.append("'\(text)'")
                 }
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .focused:
             if let label = actualResult["label"] as? String {
                 if let app = actualResult["app"] as? String {
@@ -574,35 +581,35 @@ struct ToolFormatter {
                 return elementType
             }
             return "Focused element"
-            
+
         case .resizeWindow:
-            var parts: [String] = ["Resized"]
-            
+            var parts = ["Resized"]
+
             if let app = actualResult["app"] as? String {
                 parts.append(app)
             }
-            
+
             if let width = actualResult["width"], let height = actualResult["height"] {
                 parts.append("to \(width)×\(height)")
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .focusWindow:
-            var parts: [String] = ["Focused"]
-            
+            var parts = ["Focused"]
+
             if let app = actualResult["app"] as? String {
                 parts.append(app)
             } else if let appName = actualResult["appName"] as? String {
                 parts.append(appName)
             }
-            
+
             if let title = actualResult["windowTitle"] as? String {
                 parts.append("- \(title)")
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .listWindows:
             // Check for count
             if let count = actualResult["count"] as? Int {
@@ -617,7 +624,7 @@ struct ToolFormatter {
                 return "Found \(windows.count) windows"
             }
             return "Listed windows"
-            
+
         case .listElements:
             if let count = actualResult["count"] as? Int {
                 if let type = actualResult["type"] as? String {
@@ -631,7 +638,7 @@ struct ToolFormatter {
                 return "Found \(elements.count) elements"
             }
             return "Listed elements"
-            
+
         case .listMenus:
             if let app = actualResult["app"] as? String {
                 if let menuCount = actualResult["menuCount"] as? Int {
@@ -640,7 +647,7 @@ struct ToolFormatter {
                 return "Listed menus for \(app)"
             }
             return "Listed menus"
-            
+
         case .listSpaces:
             if let spaces = actualResult["spaces"] as? [[String: Any]] {
                 return "Found \(spaces.count) spaces"
@@ -648,7 +655,7 @@ struct ToolFormatter {
                 return "Found \(count) spaces"
             }
             return "Listed spaces"
-            
+
         case .switchSpace:
             if let to = actualResult["to"] as? Int {
                 return "Switched to space \(to)"
@@ -656,26 +663,26 @@ struct ToolFormatter {
                 return "Switched to space \(space)"
             }
             return "Switched space"
-            
+
         case .moveWindowToSpace:
-            var parts: [String] = ["Moved"]
-            
+            var parts = ["Moved"]
+
             if let app = actualResult["app"] as? String {
                 parts.append(app)
             }
-            
+
             if let to = actualResult["to"] as? Int {
                 parts.append("to space \(to)")
             } else if let space = actualResult["space"] as? Int {
                 parts.append("to space \(space)")
             }
-            
+
             if let followed = actualResult["followed"] as? Bool, followed {
                 parts.append("(followed)")
             }
-            
+
             return parts.joined(separator: " ")
-            
+
         case .wait:
             if let seconds = actualResult["seconds"] as? Double {
                 return "Waited \(seconds)s"
@@ -683,26 +690,26 @@ struct ToolFormatter {
                 return "Waited \(seconds)s"
             }
             return "Waited"
-            
+
         case .dockLaunch:
-            var parts: [String] = ["Launched"]
-            
+            var parts = ["Launched"]
+
             if let app = actualResult["app"] as? String {
                 parts.append(app)
             } else if let appName = actualResult["appName"] as? String {
                 parts.append(appName)
             }
-            
+
             parts.append("from dock")
             return parts.joined(separator: " ")
-            
+
         default:
             // For other tools, check if there's a success message
             if let success = actualResult["success"] as? Bool, success {
                 return "Completed successfully"
             }
         }
-        
+
         return nil
     }
 }

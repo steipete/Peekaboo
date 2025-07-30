@@ -139,7 +139,7 @@ public enum AXPermissionHelpers {
             final class TimerBox: @unchecked Sendable {
                 var timer: Timer?
                 var lastState: Bool
-                
+
                 init(initialState: Bool) {
                     self.lastState = initialState
                 }

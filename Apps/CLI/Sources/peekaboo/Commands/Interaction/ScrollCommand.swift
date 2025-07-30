@@ -28,7 +28,8 @@ struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
             AMOUNT:
               The number of scroll "lines" or "ticks" to perform.
               Each tick is equivalent to one notch on a physical mouse wheel.
-        """)
+        """
+    )
 
     @Option(help: "Scroll direction: up, down, left, or right")
     var direction: String
@@ -50,10 +51,10 @@ struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
-    
+
     @Option(name: .long, help: "Target application to focus before scrolling")
     var app: String?
-    
+
     @OptionGroup var focusOptions: FocusOptions
 
     mutating func run() async throws {
@@ -76,12 +77,12 @@ struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
             } else {
                 nil
             }
-            
+
             // Ensure window is focused before scrolling
             try await self.ensureFocused(
                 sessionId: sessionId,
-                applicationName: app,
-                options: focusOptions
+                applicationName: self.app,
+                options: self.focusOptions
             )
 
             // Perform scroll using the service
@@ -91,7 +92,8 @@ struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
                 target: self.on,
                 smooth: self.smooth,
                 delay: self.delay,
-                sessionId: sessionId)
+                sessionId: sessionId
+            )
 
             // Calculate total ticks for output
             let totalTicks = self.smooth ? self.amount * 3 : self.amount
@@ -102,11 +104,11 @@ struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
                 if let activeSessionId = sessionId,
                    let detectionResult = try? await PeekabooServices.shared.sessions
                        .getDetectionResult(sessionId: activeSessionId),
-                       let element = detectionResult.elements.findById(elementId)
-                {
+                       let element = detectionResult.elements.findById(elementId) {
                     CGPoint(
                         x: element.bounds.midX,
-                        y: element.bounds.midY)
+                        y: element.bounds.midY
+                    )
                 } else {
                     // Fallback to zero if element not found (scroll still happened though)
                     .zero
@@ -124,7 +126,8 @@ struct ScrollCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
                     amount: amount,
                     location: ["x": scrollLocation.x, "y": scrollLocation.y],
                     totalTicks: totalTicks,
-                    executionTime: Date().timeIntervalSince(startTime))
+                    executionTime: Date().timeIntervalSince(startTime)
+                )
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Scroll completed")

@@ -11,7 +11,7 @@ struct GrokPropertySchema: Codable, Sendable {
     let maximum: Double?
     let pattern: String?
     let required: [String]?
-    
+
     init(
         type: String,
         description: String? = nil,
@@ -21,8 +21,8 @@ struct GrokPropertySchema: Codable, Sendable {
         minimum: Double? = nil,
         maximum: Double? = nil,
         pattern: String? = nil,
-        required: [String]? = nil
-    ) {
+        required: [String]? = nil)
+    {
         self.type = type
         self.description = description
         self.enum = enumValues
@@ -33,7 +33,7 @@ struct GrokPropertySchema: Codable, Sendable {
         self.pattern = pattern
         self.required = required
     }
-    
+
     /// Create from a ParameterSchema
     init(from schema: ParameterSchema) {
         self.type = schema.type.rawValue
@@ -52,11 +52,11 @@ struct GrokPropertySchema: Codable, Sendable {
 extension ToolParameters {
     func toGrokParameters() -> (type: String, properties: [String: GrokPropertySchema], required: [String]) {
         var grokProperties: [String: GrokPropertySchema] = [:]
-        
+
         for (key, schema) in properties {
             grokProperties[key] = GrokPropertySchema(from: schema)
         }
-        
+
         return (type: type, properties: grokProperties, required: required)
     }
 }

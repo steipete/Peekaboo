@@ -35,32 +35,26 @@ struct GeneralSettingsView: View {
         Form {
             Section {
                 Toggle("Launch at login", isOn: Binding(
-                    get: { settings.launchAtLogin },
-                    set: { settings.launchAtLogin = $0 }
-                ))
+                    get: { self.settings.launchAtLogin },
+                    set: { self.settings.launchAtLogin = $0 }))
                 Toggle("Show in Dock", isOn: Binding(
-                    get: { settings.showInDock },
-                    set: { settings.showInDock = $0 }
-                ))
+                    get: { self.settings.showInDock },
+                    set: { self.settings.showInDock = $0 }))
                 Toggle("Keep window on top", isOn: Binding(
-                    get: { settings.alwaysOnTop },
-                    set: { settings.alwaysOnTop = $0 }
-                ))
+                    get: { self.settings.alwaysOnTop },
+                    set: { self.settings.alwaysOnTop = $0 }))
             }
 
             Section("Features") {
                 Toggle("Enable voice activation", isOn: Binding(
-                    get: { settings.voiceActivationEnabled },
-                    set: { settings.voiceActivationEnabled = $0 }
-                ))
+                    get: { self.settings.voiceActivationEnabled },
+                    set: { self.settings.voiceActivationEnabled = $0 }))
                 Toggle("Enable haptic feedback", isOn: Binding(
-                    get: { settings.hapticFeedbackEnabled },
-                    set: { settings.hapticFeedbackEnabled = $0 }
-                ))
+                    get: { self.settings.hapticFeedbackEnabled },
+                    set: { self.settings.hapticFeedbackEnabled = $0 }))
                 Toggle("Enable sound effects", isOn: Binding(
-                    get: { settings.soundEffectsEnabled },
-                    set: { settings.soundEffectsEnabled = $0 }
-                ))
+                    get: { self.settings.soundEffectsEnabled },
+                    set: { self.settings.soundEffectsEnabled = $0 }))
             }
         }
         .formStyle(.grouped)
@@ -84,21 +78,21 @@ struct AISettingsView: View {
                 ("gpt-4o-mini", "GPT-4o mini"),
                 ("o3", "o3"),
                 ("o3-pro", "o3 pro"),
-                ("o4-mini", "o4-mini")
+                ("o4-mini", "o4-mini"),
             ]),
             ("anthropic", [
                 ("claude-opus-4-20250514", "Claude Opus 4"),
                 ("claude-sonnet-4-20250514", "Claude Sonnet 4"),
                 ("claude-3-5-haiku", "Claude 3.5 Haiku"),
-                ("claude-3-5-sonnet", "Claude 3.5 Sonnet")
+                ("claude-3-5-sonnet", "Claude 3.5 Sonnet"),
             ]),
             ("ollama", [
                 ("llava:latest", "LLaVA"),
-                ("llama3.2-vision:latest", "Llama 3.2 Vision")
-            ])
+                ("llama3.2-vision:latest", "Llama 3.2 Vision"),
+            ]),
         ]
     }
-    
+
     private var modelDescriptions: [String: String] {
         [
             // OpenAI models
@@ -116,7 +110,7 @@ struct AISettingsView: View {
             "claude-3-5-sonnet": "Balanced model with computer use capabilities for automation tasks.",
             // Ollama models
             "llava:latest": "Open-source multimodal model that runs locally. Good for privacy-conscious users and offline usage.",
-            "llama3.2-vision:latest": "Meta's latest vision-capable model with strong performance on visual understanding tasks."
+            "llama3.2-vision:latest": "Meta's latest vision-capable model with strong performance on visual understanding tasks.",
         ]
     }
 
@@ -128,38 +122,37 @@ struct AISettingsView: View {
                     HStack {
                         Text("Model")
                             .frame(width: 80, alignment: .trailing)
-                        
+
                         Picker("", selection: Binding(
-                            get: { settings.selectedModel },
+                            get: { self.settings.selectedModel },
                             set: { newModel in
-                                settings.selectedModel = newModel
+                                self.settings.selectedModel = newModel
                                 // Update provider based on model selection
-                                for (provider, models) in allModels {
+                                for (provider, models) in self.allModels {
                                     if models.contains(where: { $0.id == newModel }) {
-                                        settings.selectedProvider = provider
+                                        self.settings.selectedProvider = provider
                                         break
                                     }
                                 }
-                            }
-                        )) {
-                            ForEach(allModels, id: \.provider) { provider, models in
-                                Section(header: Text(provider.capitalized)) {
-                                    ForEach(models, id: \.id) { model in
-                                        Text(model.name).tag(model.id)
+                            })) {
+                                ForEach(self.allModels, id: \.provider) { provider, models in
+                                    Section(header: Text(provider.capitalized)) {
+                                        ForEach(models, id: \.id) { model in
+                                            Text(model.name).tag(model.id)
+                                        }
                                     }
                                 }
                             }
-                        }
-                        .pickerStyle(.menu)
-                        .frame(width: 200)
+                            .pickerStyle(.menu)
+                                .frame(width: 200)
                     }
-                    
+
                     // Model description
                     if let description = modelDescriptions[settings.selectedModel] {
                         HStack {
                             Spacer()
                                 .frame(width: 88)
-                            
+
                             Text(description)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -169,7 +162,7 @@ struct AISettingsView: View {
                     }
                 }
             }
-            
+
             // Provider-specific configuration - Always show all blocks
             Section("OpenAI Configuration") {
                 // API Key
@@ -179,15 +172,13 @@ struct AISettingsView: View {
 
                     if self.showingOpenAIKey {
                         TextField("sk-...", text: Binding(
-                            get: { settings.openAIAPIKey },
-                            set: { settings.openAIAPIKey = $0 }
-                        ))
+                            get: { self.settings.openAIAPIKey },
+                            set: { self.settings.openAIAPIKey = $0 }))
                             .textFieldStyle(.roundedBorder)
                     } else {
                         SecureField("sk-...", text: Binding(
-                            get: { settings.openAIAPIKey },
-                            set: { settings.openAIAPIKey = $0 }
-                        ))
+                            get: { self.settings.openAIAPIKey },
+                            set: { self.settings.openAIAPIKey = $0 }))
                             .textFieldStyle(.roundedBorder)
                     }
 
@@ -199,7 +190,7 @@ struct AISettingsView: View {
                     .buttonStyle(.plain)
                 }
             }
-            
+
             Section("Anthropic Configuration") {
                 // API Key
                 HStack {
@@ -208,15 +199,13 @@ struct AISettingsView: View {
 
                     if self.showingAnthropicKey {
                         TextField("sk-ant-...", text: Binding(
-                            get: { settings.anthropicAPIKey },
-                            set: { settings.anthropicAPIKey = $0 }
-                        ))
+                            get: { self.settings.anthropicAPIKey },
+                            set: { self.settings.anthropicAPIKey = $0 }))
                             .textFieldStyle(.roundedBorder)
                     } else {
                         SecureField("sk-ant-...", text: Binding(
-                            get: { settings.anthropicAPIKey },
-                            set: { settings.anthropicAPIKey = $0 }
-                        ))
+                            get: { self.settings.anthropicAPIKey },
+                            set: { self.settings.anthropicAPIKey = $0 }))
                             .textFieldStyle(.roundedBorder)
                     }
 
@@ -228,7 +217,7 @@ struct AISettingsView: View {
                     .buttonStyle(.plain)
                 }
             }
-            
+
             Section("Ollama Configuration") {
                 // Base URL
                 HStack {
@@ -236,12 +225,11 @@ struct AISettingsView: View {
                         .frame(width: 80, alignment: .trailing)
 
                     TextField("http://localhost:11434", text: Binding(
-                        get: { settings.ollamaBaseURL },
-                        set: { settings.ollamaBaseURL = $0 }
-                    ))
+                        get: { self.settings.ollamaBaseURL },
+                        set: { self.settings.ollamaBaseURL = $0 }))
                         .textFieldStyle(.roundedBorder)
                 }
-                
+
                 // Connection status
                 HStack {
                     Spacer()
@@ -259,9 +247,8 @@ struct AISettingsView: View {
                         .frame(width: 80, alignment: .trailing)
 
                     Slider(value: Binding(
-                        get: { settings.temperature },
-                        set: { settings.temperature = $0 }
-                    ), in: 0...1, step: 0.1)
+                        get: { self.settings.temperature },
+                        set: { self.settings.temperature = $0 }), in: 0...1, step: 0.1)
 
                     Text(String(format: "%.1f", self.settings.temperature))
                         .monospacedDigit()
@@ -274,9 +261,8 @@ struct AISettingsView: View {
                         .frame(width: 80, alignment: .trailing)
 
                     TextField("", value: Binding(
-                        get: { settings.maxTokens },
-                        set: { settings.maxTokens = $0 }
-                    ), format: .number)
+                        get: { self.settings.maxTokens },
+                        set: { self.settings.maxTokens = $0 }), format: .number)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 100)
 
@@ -285,26 +271,26 @@ struct AISettingsView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            
+
             // Vision Model Override
             Section("Vision Model Override") {
                 Toggle(isOn: Binding(
-                    get: { settings.useCustomVisionModel },
-                    set: { settings.useCustomVisionModel = $0 }
-                )) {
+                    get: { self.settings.useCustomVisionModel },
+                    set: { self.settings.useCustomVisionModel = $0 }))
+                {
                     Text("Use custom model for vision tasks")
                 }
-                
-                if settings.useCustomVisionModel {
+
+                if self.settings.useCustomVisionModel {
                     HStack {
                         Text("Vision Model")
                             .frame(width: 80, alignment: .trailing)
-                        
+
                         Picker("", selection: Binding(
-                            get: { settings.customVisionModel },
-                            set: { settings.customVisionModel = $0 }
-                        )) {
-                            ForEach(allModels, id: \.provider) { provider, models in
+                            get: { self.settings.customVisionModel },
+                            set: { self.settings.customVisionModel = $0 }))
+                        {
+                            ForEach(self.allModels, id: \.provider) { provider, models in
                                 Section(header: Text(provider.capitalized)) {
                                     ForEach(models, id: \.id) { model in
                                         Text(model.name).tag(model.id)
@@ -315,8 +301,9 @@ struct AISettingsView: View {
                         .pickerStyle(.menu)
                         .frame(width: 200)
                     }
-                    
-                    Text("When enabled, this model will be used for all vision-related tasks like screenshots and image analysis, regardless of the primary model selection.")
+
+                    Text(
+                        "When enabled, this model will be used for all vision-related tasks like screenshots and image analysis, regardless of the primary model selection.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .padding(.leading, 88)
@@ -328,9 +315,9 @@ struct AISettingsView: View {
                 Section {
                     HStack {
                         Spacer()
-                        if settings.selectedProvider == "openai" {
+                        if self.settings.selectedProvider == "openai" {
                             Link("View API Usage", destination: URL(string: "https://platform.openai.com/usage")!)
-                        } else if settings.selectedProvider == "anthropic" {
+                        } else if self.settings.selectedProvider == "anthropic" {
                             Link("View API Usage", destination: URL(string: "https://console.anthropic.com/usage")!)
                         }
                         Spacer()
@@ -364,14 +351,14 @@ struct ShortcutsSettingsView: View {
 
                     Button(self.recordingShortcut ? "Recording..." : "Record") {
                         self.recordingShortcut = true
-                        
+
                         // Set up event monitor for shortcut recording
                         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
                             guard self.recordingShortcut else { return event }
-                            
+
                             // Capture the key combination
                             let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
-                            if !modifiers.isEmpty && event.charactersIgnoringModifiers != nil {
+                            if !modifiers.isEmpty, event.charactersIgnoringModifiers != nil {
                                 // Convert NSEvent.ModifierFlags to string representation
                                 var shortcutParts: [String] = []
                                 if modifiers.contains(.command) { shortcutParts.append("⌘") }
@@ -379,17 +366,17 @@ struct ShortcutsSettingsView: View {
                                 if modifiers.contains(.option) { shortcutParts.append("⌥") }
                                 if modifiers.contains(.shift) { shortcutParts.append("⇧") }
                                 shortcutParts.append(event.charactersIgnoringModifiers!.uppercased())
-                                
+
                                 // Update the shortcut in settings
                                 self.settings.globalShortcut = shortcutParts.joined()
-                                
+
                                 self.recordingShortcut = false
                                 return nil // Consume the event
                             }
-                            
+
                             return event
                         }
-                        
+
                         // Stop recording after 5 seconds
                         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                             self.recordingShortcut = false

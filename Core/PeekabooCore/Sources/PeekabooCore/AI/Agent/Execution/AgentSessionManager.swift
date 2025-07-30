@@ -8,160 +8,156 @@ public actor AgentSessionManager {
     private let fileManager = FileManager.default
     private let encoder = JSONCoding.encoder
     private let decoder = JSONCoding.decoder
-    
+
     /// Session cache to avoid repeated disk reads
     private var sessionCache: [String: AgentSession] = [:]
-    
+
     public init(directory: URL? = nil) {
         // Default to ~/.peekaboo/agent/sessions/
-        if let directory = directory {
+        if let directory {
             self.sessionDirectory = directory
         } else {
-            let homeDirectory = fileManager.homeDirectoryForCurrentUser
+            let homeDirectory = self.fileManager.homeDirectoryForCurrentUser
             self.sessionDirectory = homeDirectory
                 .appendingPathComponent(".peekaboo")
                 .appendingPathComponent("agent")
                 .appendingPathComponent("sessions")
         }
-        
+
         // JSONCoding.encoder and decoder already have appropriate configuration
-        
+
         // Ensure directory exists
-        try? fileManager.createDirectory(
-            at: sessionDirectory,
+        try? self.fileManager.createDirectory(
+            at: self.sessionDirectory,
             withIntermediateDirectories: true,
-            attributes: nil
-        )
+            attributes: nil)
     }
-    
+
     // MARK: - Public Methods
-    
+
     /// Save a session
     public func saveSession(
         id: String,
         messages: [Message],
-        metadata: SessionMetadata? = nil
-    ) throws {
+        metadata: SessionMetadata? = nil) throws
+    {
         let session = AgentSession(
             id: id,
             messages: messages,
             metadata: metadata,
             createdAt: sessionCache[id]?.createdAt ?? Date(),
-            updatedAt: Date()
-        )
-        
+            updatedAt: Date())
+
         // Update cache
-        sessionCache[id] = session
-        
+        self.sessionCache[id] = session
+
         // Save to disk
-        let url = sessionURL(for: id)
+        let url = self.sessionURL(for: id)
         let data = try encoder.encode(session)
         try data.write(to: url)
     }
-    
+
     /// Load a session
     public func loadSession(id: String) throws -> AgentSession? {
         // Check cache first
         if let cached = sessionCache[id] {
             return cached
         }
-        
+
         // Load from disk
-        let url = sessionURL(for: id)
-        guard fileManager.fileExists(atPath: url.path) else {
+        let url = self.sessionURL(for: id)
+        guard self.fileManager.fileExists(atPath: url.path) else {
             return nil
         }
-        
+
         let data = try Data(contentsOf: url)
         let session = try decoder.decode(AgentSession.self, from: data)
-        
+
         // Update cache
-        sessionCache[id] = session
-        
+        self.sessionCache[id] = session
+
         return session
     }
-    
+
     /// Delete a session
     public func deleteSession(id: String) throws {
         // Remove from cache
-        sessionCache.removeValue(forKey: id)
-        
+        self.sessionCache.removeValue(forKey: id)
+
         // Remove from disk
-        let url = sessionURL(for: id)
-        if fileManager.fileExists(atPath: url.path) {
-            try fileManager.removeItem(at: url)
+        let url = self.sessionURL(for: id)
+        if self.fileManager.fileExists(atPath: url.path) {
+            try self.fileManager.removeItem(at: url)
         }
     }
-    
+
     /// List all sessions
     public func listSessions() throws -> [SessionSummary] {
         let contents = try fileManager.contentsOfDirectory(
-            at: sessionDirectory,
+            at: self.sessionDirectory,
             includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey],
-            options: .skipsHiddenFiles
-        )
-        
+            options: .skipsHiddenFiles)
+
         var summaries: [SessionSummary] = []
-        
+
         for url in contents where url.pathExtension == "json" {
             let sessionId = url.deletingPathExtension().lastPathComponent
-            
+
             if let session = try? loadSession(id: sessionId) {
                 summaries.append(SessionSummary(
                     id: session.id,
                     createdAt: session.createdAt,
                     updatedAt: session.updatedAt,
                     messageCount: session.messages.count,
-                    metadata: session.metadata
-                ))
+                    metadata: session.metadata))
             }
         }
-        
+
         // Sort by updated date, newest first
         summaries.sort { $0.updatedAt > $1.updatedAt }
-        
+
         return summaries
     }
-    
+
     /// Clean up old sessions (older than 30 days)
     public func cleanOldSessions(daysToKeep: Int = 30) throws {
         let cutoffDate = Date().addingTimeInterval(-Double(daysToKeep * 24 * 60 * 60))
-        
+
         let contents = try fileManager.contentsOfDirectory(
-            at: sessionDirectory,
+            at: self.sessionDirectory,
             includingPropertiesForKeys: [.contentModificationDateKey],
-            options: .skipsHiddenFiles
-        )
-        
+            options: .skipsHiddenFiles)
+
         for url in contents where url.pathExtension == "json" {
-            if let modificationDate = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
-               modificationDate < cutoffDate {
+            if let modificationDate = try? url.resourceValues(forKeys: [.contentModificationDateKey])
+                .contentModificationDate,
+                modificationDate < cutoffDate
+            {
                 try fileManager.removeItem(at: url)
             }
         }
     }
-    
+
     /// Clear all sessions
     public func clearAllSessions() throws {
         // Clear cache
-        sessionCache.removeAll()
-        
+        self.sessionCache.removeAll()
+
         // Clear disk
         let contents = try fileManager.contentsOfDirectory(
-            at: sessionDirectory,
+            at: self.sessionDirectory,
             includingPropertiesForKeys: nil,
-            options: .skipsHiddenFiles
-        )
-        
+            options: .skipsHiddenFiles)
+
         for url in contents where url.pathExtension == "json" {
             try fileManager.removeItem(at: url)
         }
     }
-    
+
     // MARK: - Private Methods
-    
+
     private func sessionURL(for id: String) -> URL {
-        sessionDirectory.appendingPathComponent("\(id).json")
+        self.sessionDirectory.appendingPathComponent("\(id).json")
     }
 }
 
@@ -174,20 +170,6 @@ public struct AgentSession: Codable, Sendable {
     public let metadata: SessionMetadata?
     public let createdAt: Date
     public let updatedAt: Date
-    
-    init(
-        id: String,
-        messages: [Message],
-        metadata: SessionMetadata?,
-        createdAt: Date,
-        updatedAt: Date
-    ) {
-        self.id = id
-        self.messages = messages
-        self.metadata = metadata
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
-    }
 }
 
 /// Summary of a session for listing
@@ -204,13 +186,13 @@ public struct SessionSummary: Sendable {
 extension AgentSession {
     /// Get the last user message
     public var lastUserMessage: String? {
-        for message in messages.reversed() {
-            if case .user(_, let content) = message {
+        for message in self.messages.reversed() {
+            if case let .user(_, content) = message {
                 switch content {
-                case .text(let text):
+                case let .text(text):
                     return text
-                case .multimodal(let parts):
-                    return parts.compactMap { $0.text }.first
+                case let .multimodal(parts):
+                    return parts.compactMap(\.text).first
                 default:
                     continue
                 }
@@ -218,13 +200,13 @@ extension AgentSession {
         }
         return nil
     }
-    
+
     /// Get the last assistant response
     public var lastAssistantResponse: String? {
-        for message in messages.reversed() {
-            if case .assistant(_, let content, _) = message {
+        for message in self.messages.reversed() {
+            if case let .assistant(_, content, _) = message {
                 return content.compactMap { content in
-                    if case .outputText(let text) = content {
+                    if case let .outputText(text) = content {
                         return text
                     }
                     return nil
@@ -233,11 +215,11 @@ extension AgentSession {
         }
         return nil
     }
-    
+
     /// Check if session has any tool calls
     public var hasToolCalls: Bool {
-        messages.contains { message in
-            if case .assistant(_, let content, _) = message {
+        self.messages.contains { message in
+            if case let .assistant(_, content, _) = message {
                 return content.contains { content in
                     if case .toolCall = content {
                         return true

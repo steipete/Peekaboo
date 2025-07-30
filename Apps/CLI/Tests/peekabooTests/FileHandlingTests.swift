@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import peekaboo
 
 @Suite("File Handling Tests")
@@ -50,7 +50,8 @@ struct FileHandlingTests {
             let filename = FileNameGenerator.generateFileName(
                 appName: "Safari",
                 windowIndex: 0,
-                format: .png)
+                format: .png
+            )
 
             #expect(filename.hasPrefix("Safari_window_0_"))
             #expect(filename.hasSuffix(".png"))
@@ -67,7 +68,12 @@ struct FileHandlingTests {
         }
 
         @Test("Saves images in different formats with correct magic numbers", arguments: [
-            (format: ImageFormat.png, filename: "test.png", magicNumbers: Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]), magicLength: 8),
+            (
+                format: ImageFormat.png,
+                filename: "test.png",
+                magicNumbers: Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+                magicLength: 8
+            ),
             (format: ImageFormat.jpg, filename: "test.jpg", magicNumbers: Data([0xFF, 0xD8, 0xFF]), magicLength: 3)
         ])
         func saveImageFormats(format: ImageFormat, filename: String, magicNumbers: Data, magicLength: Int) throws {
@@ -122,7 +128,8 @@ struct FileHandlingTests {
                 bitsPerComponent: 8,
                 bytesPerRow: 4 * width,
                 space: colorSpace,
-                bitmapInfo: bitmapInfo.rawValue)!
+                bitmapInfo: bitmapInfo.rawValue
+            )!
 
             // Draw a simple red rectangle
             context.setFillColor(red: 1, green: 0, blue: 0, alpha: 1)
@@ -149,7 +156,8 @@ struct FileHandlingTests {
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: filePath,
                 fileName: fileName,
-                isSingleCapture: true)
+                isSingleCapture: true
+            )
 
             #expect(resolved == filePath)
         }
@@ -161,7 +169,8 @@ struct FileHandlingTests {
 
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: dirPath,
-                fileName: fileName)
+                fileName: fileName
+            )
 
             #expect(resolved == "\(dirPath)/\(fileName)")
         }
@@ -172,7 +181,8 @@ struct FileHandlingTests {
 
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: nil,
-                fileName: fileName)
+                fileName: fileName
+            )
 
             // Should use default save path
             let defaultPath = peekaboo.ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
@@ -187,7 +197,8 @@ struct FileHandlingTests {
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: filePath,
                 fileName: fileName,
-                isSingleCapture: false)
+                isSingleCapture: false
+            )
 
             // Should append screen info to filename
             #expect(resolved.contains("_1_20250101_120000"))
@@ -202,7 +213,8 @@ struct FileHandlingTests {
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: filePath,
                 fileName: fileName,
-                isSingleCapture: false)
+                isSingleCapture: false
+            )
 
             // Should append window info to filename
             #expect(resolved.contains("_Safari_window_0_20250101_120000"))
@@ -219,7 +231,8 @@ struct FileHandlingTests {
             let resolved = OutputPathResolver.getOutputPath(
                 basePath: pathTraversal,
                 fileName: fileName,
-                isSingleCapture: true)
+                isSingleCapture: true
+            )
 
             #expect(resolved == pathTraversal)
         }

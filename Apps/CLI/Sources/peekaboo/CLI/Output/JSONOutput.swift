@@ -30,8 +30,8 @@ struct JSONResponse: Codable {
         success: Bool,
         messages: [String]? = nil,
         debugLogs: [String] = [],
-        error: ErrorInfo? = nil)
-    {
+        error: ErrorInfo? = nil
+    ) {
         self.success = success
         self.messages = messages
         self.debug_logs = debugLogs
@@ -122,7 +122,8 @@ func outputJSON(_ response: JSONResponse) {
 func outputSuccessCodable(data: some Codable, messages: [String]? = nil) {
     let debugLogs = Logger.shared.getDebugLogs()
     let response = CodableJSONResponse(
-        success: true, data: data, messages: messages, debug_logs: debugLogs)
+        success: true, data: data, messages: messages, debug_logs: debugLogs
+    )
     outputJSONCodable(response)
 }
 

@@ -84,7 +84,11 @@ struct DragCommandTests {
 
 // MARK: - Drag Command Integration Tests
 
-@Suite("Drag Command Integration Tests", .serialized, .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+@Suite(
+    "Drag Command Integration Tests",
+    .serialized,
+    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+)
 struct DragCommandIntegrationTests {
     @Test("Drag between coordinates")
     func dragBetweenCoordinates() async throws {

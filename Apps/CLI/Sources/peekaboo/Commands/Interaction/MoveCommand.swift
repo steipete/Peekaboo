@@ -28,7 +28,8 @@ struct MoveCommand: AsyncParsableCommand {
             ELEMENT TARGETING:
               When targeting elements, the cursor moves to the element's center.
               Use element IDs from 'see' output for precise targeting.
-        """)
+        """
+    )
 
     @Argument(help: "Coordinates as x,y (e.g., 100,200)")
     var coordinates: String?
@@ -123,11 +124,13 @@ struct MoveCommand: AsyncParsableCommand {
                 let waitResult = try await PeekabooServices.shared.automation.waitForElement(
                     target: .query(query),
                     timeout: 5.0,
-                    sessionId: activeSessionId)
+                    sessionId: activeSessionId
+                )
 
                 guard waitResult.found, let element = waitResult.element else {
                     throw PeekabooError.elementNotFound(
-                        "No element found matching '\(query)'")
+                        "No element found matching '\(query)'"
+                    )
                 }
 
                 targetLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
@@ -148,13 +151,15 @@ struct MoveCommand: AsyncParsableCommand {
             let currentLocation = CGEvent(source: nil)?.location ?? CGPoint.zero
             let distance = hypot(
                 targetLocation.x - currentLocation.x,
-                targetLocation.y - currentLocation.y)
+                targetLocation.y - currentLocation.y
+            )
 
             // Perform the movement
             try await PeekabooServices.shared.automation.moveMouse(
                 to: targetLocation,
                 duration: moveDuration,
-                steps: self.smooth ? self.steps : 1)
+                steps: self.smooth ? self.steps : 1
+            )
 
             // Output results
             if self.jsonOutput {
@@ -166,7 +171,8 @@ struct MoveCommand: AsyncParsableCommand {
                     distance: distance,
                     duration: moveDuration,
                     smooth: smooth,
-                    executionTime: Date().timeIntervalSince(startTime))
+                    executionTime: Date().timeIntervalSince(startTime)
+                )
                 outputSuccessCodable(data: result)
             } else {
                 print("✅ Mouse moved successfully")
@@ -221,7 +227,8 @@ struct MoveCommand: AsyncParsableCommand {
 
             outputError(
                 message: error.localizedDescription,
-                code: errorCode)
+                code: errorCode
+            )
         } else {
             var localStandardErrorStream = FileHandleTextOutputStream(FileHandle.standardError)
             print("Error: \(error.localizedDescription)", to: &localStandardErrorStream)
@@ -249,8 +256,8 @@ struct MoveResult: Codable {
         distance: Double,
         duration: Int,
         smooth: Bool,
-        executionTime: TimeInterval)
-    {
+        executionTime: TimeInterval
+    ) {
         self.success = success
         self.targetLocation = ["x": targetLocation.x, "y": targetLocation.y]
         self.targetDescription = targetDescription

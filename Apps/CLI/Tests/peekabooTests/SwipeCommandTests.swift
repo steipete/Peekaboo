@@ -106,7 +106,8 @@ struct SwipeCommandTests {
             toLocation: ["x": 300.0, "y": 400.0],
             distance: 282.84, // sqrt((300-100)² + (400-200)²)
             duration: 500,
-            executionTime: 0.52)
+            executionTime: 0.52
+        )
 
         #expect(result.success == true)
         #expect(result.fromLocation["x"] == 100.0)
@@ -142,7 +143,8 @@ struct SwipeCommandTests {
         } else {
             #expect(parts
                 .count != 2 || (parts.count >= 1 && Double(parts[0]) == nil) ||
-                (parts.count >= 2 && Double(parts[1]) == nil))
+                (parts.count >= 2 && Double(parts[1]) == nil)
+            )
         }
     }
 

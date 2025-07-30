@@ -6,7 +6,7 @@ import Foundation
 public enum AgentEvent: Sendable {
     case started(task: String)
     case assistantMessage(content: String)
-    case thinkingMessage(content: String)  // New case for thinking/reasoning content
+    case thinkingMessage(content: String) // New case for thinking/reasoning content
     case toolCallStarted(name: String, arguments: String)
     case toolCallCompleted(name: String, result: String)
     case error(message: String)
@@ -28,10 +28,9 @@ extension AgentEventDelegate {
     func agentDidStart() async {
         self.agentDidEmitEvent(.started(task: ""))
     }
-    
+
     /// Helper method for backward compatibility
     func agentDidReceiveChunk(_ chunk: String) async {
         self.agentDidEmitEvent(.assistantMessage(content: chunk))
     }
-    
 }

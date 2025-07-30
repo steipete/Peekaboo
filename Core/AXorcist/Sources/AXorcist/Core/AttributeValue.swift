@@ -24,12 +24,12 @@ public enum AttributeValue: Codable, Sendable, Equatable {
     case array([AttributeValue])
     case dictionary([String: AttributeValue])
     case null
-    
+
     // MARK: - Coding
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if container.decodeNil() {
             self = .null
         } else if let bool = try? container.decode(Bool.self) {
@@ -51,10 +51,10 @@ public enum AttributeValue: Codable, Sendable, Equatable {
             )
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        
+
         switch self {
         case .null:
             try container.encodeNil()
@@ -82,37 +82,37 @@ public extension AttributeValue {
         if case .string(let value) = self { return value }
         return nil
     }
-    
+
     /// Extracts the boolean value if this is a bool, otherwise returns nil
     var boolValue: Bool? {
         if case .bool(let value) = self { return value }
         return nil
     }
-    
+
     /// Extracts the integer value if this is an int, otherwise returns nil
     var intValue: Int? {
         if case .int(let value) = self { return value }
         return nil
     }
-    
+
     /// Extracts the double value if this is a double, otherwise returns nil
     var doubleValue: Double? {
         if case .double(let value) = self { return value }
         return nil
     }
-    
+
     /// Extracts the array value if this is an array, otherwise returns nil
     var arrayValue: [AttributeValue]? {
         if case .array(let value) = self { return value }
         return nil
     }
-    
+
     /// Extracts the dictionary value if this is a dictionary, otherwise returns nil
     var dictionaryValue: [String: AttributeValue]? {
         if case .dictionary(let value) = self { return value }
         return nil
     }
-    
+
     /// Returns true if this is a null value
     var isNull: Bool {
         if case .null = self { return true }
@@ -129,7 +129,7 @@ public extension AttributeValue {
             self = .null
             return
         }
-        
+
         switch value {
         case let string as String:
             self = .string(string)
@@ -166,7 +166,7 @@ public extension AttributeValue {
             }
         }
     }
-    
+
     /// Converts the AttributeValue back to its underlying Any representation
     var anyValue: Any? {
         switch self {

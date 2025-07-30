@@ -38,7 +38,7 @@ public struct AgentSystemPrompt {
         4. After launching, use 'list_windows' again to verify the window exists
         5. Use 'focus_window' to bring windows to the front before operations
         6. Ensure windows are ready before attempting resize/move operations
-        
+
         **Window Resizing and Positioning:**
         - To resize the current/active window: Use 'resize_window' with 'frontmost: true'
         - To maximize a window: Use 'resize_window' with 'preset: "maximize"'

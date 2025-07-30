@@ -1,13 +1,12 @@
-import Foundation
-import CoreGraphics
 import AXorcist
+import CoreGraphics
+import Foundation
 
 // MARK: - Dock Tools
 
 /// Dock interaction tools for launching apps and listing dock items
 @available(macOS 14.0, *)
 extension PeekabooAgentService {
-    
     /// Create the dock launch tool
     func createDockLaunchTool() -> Tool<PeekabooServices> {
         createTool(
@@ -15,33 +14,34 @@ extension PeekabooAgentService {
             description: "Launch an application from the Dock",
             parameters: .object(
                 properties: [
-                    "name": ParameterSchema.string(description: "Application name as it appears in the Dock")
+                    "name": ParameterSchema.string(description: "Application name as it appears in the Dock"),
                 ],
-                required: ["name"]
-            ),
+                required: ["name"]),
             handler: { params, context in
                 let appName = try params.string("name")
-                
+
                 // Check if app was already running before clicking
                 let appsBeforeLaunchOutput = try await context.applications.listApplications()
-                let wasRunning = appsBeforeLaunchOutput.data.applications.contains { 
-                    $0.name.lowercased() == appName.lowercased() 
+                let wasRunning = appsBeforeLaunchOutput.data.applications.contains {
+                    $0.name.lowercased() == appName.lowercased()
                 }
-                
+
                 let startTime = Date()
                 try await context.dock.launchFromDock(appName: appName)
-                
+
                 // Wait a moment for launch
                 try await Task.sleep(nanoseconds: TimeInterval.mediumDelay.nanoseconds)
-                
+
                 // Verify launch and get window info
                 let appsAfterLaunchOutput = try await context.applications.listApplications()
-                if let launchedApp = appsAfterLaunchOutput.data.applications.first(where: { $0.name.lowercased() == appName.lowercased() }) {
+                if let launchedApp = appsAfterLaunchOutput.data.applications
+                    .first(where: { $0.name.lowercased() == appName.lowercased() })
+                {
                     let duration = Date().timeIntervalSince(startTime)
-                    
+
                     // Get window information
                     let windows = try await context.windows.listWindows(target: .application(launchedApp.name))
-                    
+
                     var output: String
                     if wasRunning {
                         output = "Activated \(launchedApp.name) from Dock (already running"
@@ -62,16 +62,15 @@ extension PeekabooAgentService {
                             output += ", opened \(windows.count) windows)"
                         }
                     }
-                    
+
                     return .success(
                         output,
                         metadata: [
                             "app": launchedApp.name,
                             "wasRunning": String(wasRunning),
                             "windowCount": String(windows.count),
-                            "duration": String(format: "%.2fs", duration)
-                        ]
-                    )
+                            "duration": String(format: "%.2fs", duration),
+                        ])
                 } else {
                     let duration = Date().timeIntervalSince(startTime)
                     return .success(
@@ -79,14 +78,12 @@ extension PeekabooAgentService {
                         metadata: [
                             "app": appName,
                             "wasRunning": String(wasRunning),
-                            "duration": String(format: "%.2fs", duration)
-                        ]
-                    )
+                            "duration": String(format: "%.2fs", duration),
+                        ])
                 }
-            }
-        )
+            })
     }
-    
+
     /// Create the list dock tool
     func createListDockTool() -> Tool<PeekabooServices> {
         createTool(
@@ -96,41 +93,38 @@ extension PeekabooAgentService {
                 properties: [
                     "section": ParameterSchema.enumeration(
                         ["apps", "recent", "all"],
-                        description: "Dock section to list (default: all)"
-                    )
+                        description: "Dock section to list (default: all)"),
                 ],
-                required: []
-            ),
+                required: []),
             handler: { params, context in
                 let section = params.string("section", default: "all") ?? "all"
-                
+
                 let startTime = Date()
                 let dockItems = try await context.dock.listDockItems(includeAll: true)
                 let duration = Date().timeIntervalSince(startTime)
-                
+
                 if dockItems.isEmpty {
                     return .success("No items found in Dock")
                 }
-                
+
                 // Filter by section if requested
-                let filteredItems: [DockItem]
-                switch section {
+                let filteredItems: [DockItem] = switch section {
                 case "apps":
-                    filteredItems = dockItems.filter { $0.itemType == .application }
+                    dockItems.filter { $0.itemType == .application }
                 case "recent":
                     // Recent items are typically folders
-                    filteredItems = dockItems.filter { $0.itemType == .folder }
+                    dockItems.filter { $0.itemType == .folder }
                 default:
-                    filteredItems = dockItems
+                    dockItems
                 }
-                
+
                 // Group by type and count
                 let grouped = Dictionary(grouping: filteredItems) { $0.itemType }
                 let appCount = grouped[.application]?.count ?? 0
-                let runningCount = grouped[.application]?.filter { $0.isRunning == true }.count ?? 0
+                let runningCount = grouped[.application]?.count(where: { $0.isRunning == true }) ?? 0
                 let folderCount = grouped[.folder]?.count ?? 0
                 let otherCount = grouped[.unknown]?.count ?? 0
-                
+
                 // Create summary
                 var summary = "Listed \(filteredItems.count) Dock items"
                 if section == "all" {
@@ -152,10 +146,10 @@ extension PeekabooAgentService {
                         summary += ": " + details.joined(separator: ", ")
                     }
                 }
-                
+
                 // Format output
                 var output = "Dock items:\n\n"
-                
+
                 // Show applications
                 if let apps = grouped[.application], !apps.isEmpty {
                     output += "Applications:\n"
@@ -168,7 +162,7 @@ extension PeekabooAgentService {
                     }
                     output += "\n"
                 }
-                
+
                 // Show folders (which may include recent items)
                 if let folders = grouped[.folder], !folders.isEmpty {
                     output += "Folders:\n"
@@ -177,7 +171,7 @@ extension PeekabooAgentService {
                     }
                     output += "\n"
                 }
-                
+
                 // Show other items
                 if let other = grouped[.unknown], !other.isEmpty {
                     output += "Other:\n"
@@ -185,7 +179,7 @@ extension PeekabooAgentService {
                         output += "  • \(item.title)\n"
                     }
                 }
-                
+
                 return .success(
                     output.trimmingCharacters(in: .whitespacesAndNewlines),
                     metadata: [
@@ -195,10 +189,8 @@ extension PeekabooAgentService {
                         "folderCount": String(folderCount),
                         "section": section,
                         "duration": String(format: "%.2fs", duration),
-                        "summary": summary
-                    ]
-                )
-            }
-        )
+                        "summary": summary,
+                    ])
+            })
     }
 }

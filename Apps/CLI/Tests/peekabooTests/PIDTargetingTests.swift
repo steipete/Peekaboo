@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 
 @Suite("PID Targeting Tests", .serialized)
 struct PIDTargetingTests {
@@ -9,7 +9,8 @@ struct PIDTargetingTests {
     func findByValidPID() async throws {
         // Get any running application
         let runningApps = NSWorkspace.shared.runningApplications
-        guard let testApp = runningApps.first(where: { $0.localizedName != nil && $0.activationPolicy != .prohibited }) else {
+        guard let testApp = runningApps.first(where: { $0.localizedName != nil && $0.activationPolicy != .prohibited })
+        else {
             Issue.record("No running applications found for testing")
             return
         }
@@ -18,7 +19,7 @@ struct PIDTargetingTests {
         let identifier = "PID:\(pid)"
 
         let applicationService = await MainActor.run { ApplicationService() }
-        
+
         do {
             let foundApp = try await applicationService.findApplication(identifier: identifier)
             #expect(foundApp.processIdentifier == pid)
@@ -63,14 +64,15 @@ struct PIDTargetingTests {
     func caseSensitivePIDPrefix() async throws {
         // Get any running application
         let runningApps = NSWorkspace.shared.runningApplications
-        guard let testApp = runningApps.first(where: { $0.localizedName != nil && $0.activationPolicy != .prohibited }) else {
+        guard let testApp = runningApps.first(where: { $0.localizedName != nil && $0.activationPolicy != .prohibited })
+        else {
             Issue.record("No running applications found for testing")
             return
         }
 
         let pid = testApp.processIdentifier
         let applicationService = await MainActor.run { ApplicationService() }
-        
+
         // ApplicationService expects exact "PID:" prefix
         let validIdentifier = "PID:\(pid)"
         let invalidVariations = ["pid:\(pid)", "Pid:\(pid)", "pId:\(pid)"]
@@ -118,11 +120,11 @@ struct PIDTargetingTests {
             Issue.record("Failed to find Finder by PID: \(error)")
         }
     }
-    
+
     @Test("Find application by bundle ID")
     func findByBundleID() async throws {
         let applicationService = await MainActor.run { ApplicationService() }
-        
+
         // Try to find Finder by bundle ID
         do {
             let foundApp = try await applicationService.findApplication(identifier: "com.apple.finder")
@@ -132,11 +134,11 @@ struct PIDTargetingTests {
             Issue.record("Failed to find Finder by bundle ID: \(error)")
         }
     }
-    
+
     @Test("Find application by name")
     func findByName() async throws {
         let applicationService = await MainActor.run { ApplicationService() }
-        
+
         // Try to find Finder by name (case-insensitive)
         for name in ["Finder", "finder", "FINDER"] {
             do {

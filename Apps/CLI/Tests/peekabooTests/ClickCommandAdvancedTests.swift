@@ -1,8 +1,8 @@
 import ArgumentParser
 import CoreGraphics
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import peekaboo
 
 @Suite("ClickCommand Advanced Tests")
@@ -101,7 +101,7 @@ struct ClickCommandAdvancedTests {
             waitTime: 1.5,
             executionTime: 2.0
         )
-        
+
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         let data = try encoder.encode(resultData)
@@ -109,13 +109,13 @@ struct ClickCommandAdvancedTests {
 
         let success = json?["success"] as? Bool
         #expect(success == true)
-        
+
         let clickedElement = json?["clickedElement"] as? String
         #expect(clickedElement == "AXButton: Save")
-        
+
         let waitTime = json?["waitTime"] as? Double
         #expect(waitTime == 1.5)
-        
+
         let executionTime = json?["executionTime"] as? Double
         #expect(executionTime == 2.0)
 
@@ -137,7 +137,7 @@ struct ClickCommandAdvancedTests {
     }
 
     @Test("Mutually exclusive options validation")
-    func testMutuallyExclusiveOptions() throws {
+    func mutuallyExclusiveOptions() throws {
         // Can't have both --on and --coords
         do {
             _ = try ClickCommand.parse(["--on", "button", "--coords", "100,200"])
@@ -148,7 +148,7 @@ struct ClickCommandAdvancedTests {
     }
 
     @Test("Find element by text in session")
-    func testFindElementByText() throws {
+    func findElementByText() throws {
         // Create mock session data using the correct types
         let metadata = DetectionMetadata(
             detectionTime: 0.5,
@@ -156,7 +156,7 @@ struct ClickCommandAdvancedTests {
             method: "mock",
             warnings: []
         )
-        
+
         let testData = ElementDetectionResult(
             sessionId: "test123",
             screenshotPath: "/tmp/test.png",
@@ -194,7 +194,7 @@ struct ClickCommandAdvancedTests {
     }
 
     @Test("Wait time calculations")
-    func testWaitTimeCalculations() {
+    func waitTimeCalculations() {
         // Default wait time
         let defaultWait = 5000
         #expect(defaultWait == 5000) // 5 seconds in milliseconds
@@ -205,7 +205,7 @@ struct ClickCommandAdvancedTests {
     }
 
     @Test("Click types are handled correctly")
-    func testClickTypes() {
+    func clickTypes() {
         // Single click
         let singleClick = ClickType.single
         #expect(singleClick.rawValue == "single")

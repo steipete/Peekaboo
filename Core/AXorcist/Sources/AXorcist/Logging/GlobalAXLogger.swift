@@ -6,7 +6,7 @@ import os // For OSLog specific configurations if ever needed directly.
 // public struct AXLogEntry: Codable, Identifiable, Sendable { ... }
 
 @MainActor
-public class GlobalAXLogger: Sendable {
+public class GlobalAXLogger {
     // MARK: Lifecycle
 
     private init() {
@@ -256,7 +256,7 @@ public func axFatalLog(
 
 nonisolated
 public func axGetLogEntries() -> [AXLogEntry] {
-    return []  // Return empty for now to avoid concurrency issues
+    return [] // Return empty for now to avoid concurrency issues
 }
 
 nonisolated
@@ -268,7 +268,7 @@ public func axClearLogs() {
 
 nonisolated
 public func axGetLogsAsStrings(format: AXLogOutputFormat = .text) -> [String] {
-    return []  // Return empty for now to avoid concurrency issues
+    return [] // Return empty for now to avoid concurrency issues
 }
 
 // Assuming AXLogEntry and its formattedForTextBasedOutput() method are defined elsewhere

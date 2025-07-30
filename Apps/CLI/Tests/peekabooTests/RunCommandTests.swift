@@ -1,7 +1,7 @@
-import Foundation
-import Testing
-import PeekabooCore
 import AXorcist
+import Foundation
+import PeekabooCore
+import Testing
 @testable import peekaboo
 
 @Suite("RunCommand Tests", .serialized)
@@ -44,22 +44,26 @@ struct RunCommandTests {
                 stepId: "step1",
                 comment: "Capture Safari UI",
                 command: "see",
-                params: ["app": "Safari"]),
+                params: ["app": "Safari"]
+            ),
             TestScriptStep(
                 stepId: "step2",
                 comment: "Click login button",
                 command: "click",
-                params: ["query": "Login"]),
+                params: ["query": "Login"]
+            ),
             TestScriptStep(
                 stepId: "step3",
                 comment: nil,
                 command: "type",
-                params: ["text": "user@example.com", "on": "T1"]),
+                params: ["text": "user@example.com", "on": "T1"]
+            ),
         ]
 
         let script = TestPeekabooScript(
             description: "Automates the login flow",
-            steps: steps)
+            steps: steps
+        )
 
         #expect(script.description == "Automates the login flow")
         #expect(script.steps.count == 3)
@@ -79,7 +83,8 @@ struct RunCommandTests {
                 success: true,
                 output: AnyCodable(["success": true]),
                 error: nil,
-                executionTime: 1.5),
+                executionTime: 1.5
+            ),
             StepResult(
                 stepId: "step2",
                 stepNumber: 2,
@@ -87,7 +92,8 @@ struct RunCommandTests {
                 success: false,
                 output: nil,
                 error: "Element not found",
-                executionTime: 2.0),
+                executionTime: 2.0
+            ),
         ]
 
         let result = ScriptExecutionResult(
@@ -98,7 +104,8 @@ struct RunCommandTests {
             completedSteps: 1,
             failedSteps: 1,
             executionTime: 12.5,
-            steps: stepResults)
+            steps: stepResults
+        )
 
         #expect(result.success == false)
         #expect(result.scriptPath == "/tmp/test.peekaboo.json")

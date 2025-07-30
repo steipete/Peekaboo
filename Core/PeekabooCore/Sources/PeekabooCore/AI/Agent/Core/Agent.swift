@@ -6,22 +6,22 @@ import Foundation
 public final class PeekabooAgent<Context>: @unchecked Sendable {
     /// Unique name of the agent
     public let name: String
-    
+
     /// Instructions that guide the agent's behavior
     public let instructions: String
-    
+
     /// Tools available to the agent
     public private(set) var tools: [Tool<Context>]
-    
+
     /// Model settings for the agent
     public var modelSettings: ModelSettings
-    
+
     /// Optional description of the agent
     public let description: String?
-    
+
     /// Optional metadata for the agent
     public let metadata: [String: Any]?
-    
+
     /// Create a new agent
     public init(
         name: String,
@@ -29,8 +29,8 @@ public final class PeekabooAgent<Context>: @unchecked Sendable {
         tools: [Tool<Context>] = [],
         modelSettings: ModelSettings = .default,
         description: String? = nil,
-        metadata: [String: Any]? = nil
-    ) {
+        metadata: [String: Any]? = nil)
+    {
         self.name = name
         self.instructions = instructions
         self.tools = tools
@@ -38,87 +38,86 @@ public final class PeekabooAgent<Context>: @unchecked Sendable {
         self.description = description
         self.metadata = metadata
     }
-    
+
     // MARK: - Tool Management
-    
+
     /// Add a tool to the agent
     @discardableResult
     public func addTool(_ tool: Tool<Context>) -> Self {
-        tools.append(tool)
+        self.tools.append(tool)
         return self
     }
-    
+
     /// Add multiple tools to the agent
     @discardableResult
     public func addTools(_ tools: [Tool<Context>]) -> Self {
         self.tools.append(contentsOf: tools)
         return self
     }
-    
+
     /// Remove a tool by name
     @discardableResult
     public func removeTool(named name: String) -> Self {
-        tools.removeAll { $0.name == name }
+        self.tools.removeAll { $0.name == name }
         return self
     }
-    
+
     /// Find a tool by name
     public func tool(named name: String) -> Tool<Context>? {
-        tools.first { $0.name == name }
+        self.tools.first { $0.name == name }
     }
-    
+
     /// Check if agent has a specific tool
     public func hasTool(named name: String) -> Bool {
-        tools.contains { $0.name == name }
+        self.tools.contains { $0.name == name }
     }
-    
+
     // MARK: - Configuration
-    
+
     /// Update model settings
     @discardableResult
     public func withModelSettings(_ settings: ModelSettings) -> Self {
         self.modelSettings = settings
         return self
     }
-    
+
     /// Create a copy of this agent
     public func clone() -> PeekabooAgent<Context> {
         PeekabooAgent(
-            name: name,
-            instructions: instructions,
-            tools: tools,
-            modelSettings: modelSettings,
-            description: description,
-            metadata: metadata
-        )
+            name: self.name,
+            instructions: self.instructions,
+            tools: self.tools,
+            modelSettings: self.modelSettings,
+            description: self.description,
+            metadata: self.metadata)
     }
-    
+
     // MARK: - System Prompt Generation
-    
+
     /// Generate the system prompt for the model
     public func generateSystemPrompt() -> String {
-        var prompt = instructions
-        
+        var prompt = self.instructions
+
         // Add tool descriptions if available
-        if !tools.isEmpty {
+        if !self.tools.isEmpty {
             prompt += "\n\n## Available Tools\n\n"
             prompt += "You have access to the following tools:\n\n"
-            
-            for tool in tools {
+
+            for tool in self.tools {
                 prompt += "### \(tool.name)\n"
                 if !tool.description.isEmpty {
                     prompt += "\(tool.description)\n"
                 }
                 prompt += "\n"
             }
-            
+
             prompt += """
-            
+
             When you need to use a tool, call it with the appropriate parameters. 
             The system will execute the tool and provide you with the results.
             """
         }
-        
+
         return prompt
     }
 }
@@ -133,68 +132,67 @@ public struct AgentBuilder<Context> {
     private var modelSettings: ModelSettings = .default
     private var description: String?
     private var metadata: [String: Any]?
-    
+
     public init() {}
-    
+
     public func withName(_ name: String) -> AgentBuilder {
         var builder = self
         builder.name = name
         return builder
     }
-    
+
     public func withInstructions(_ instructions: String) -> AgentBuilder {
         var builder = self
         builder.instructions = instructions
         return builder
     }
-    
+
     public func withTools(_ tools: [Tool<Context>]) -> AgentBuilder {
         var builder = self
         builder.tools = tools
         return builder
     }
-    
+
     public func withTool(_ tool: Tool<Context>) -> AgentBuilder {
         var builder = self
         builder.tools.append(tool)
         return builder
     }
-    
+
     public func withModelSettings(_ settings: ModelSettings) -> AgentBuilder {
         var builder = self
         builder.modelSettings = settings
         return builder
     }
-    
+
     public func withDescription(_ description: String) -> AgentBuilder {
         var builder = self
         builder.description = description
         return builder
     }
-    
+
     public func withMetadata(_ metadata: [String: Any]) -> AgentBuilder {
         var builder = self
         builder.metadata = metadata
         return builder
     }
-    
+
     public func build() throws -> PeekabooAgent<Context> {
-        guard !name.isEmpty else {
+        guard !self.name.isEmpty else {
             throw AgentError.invalidConfiguration("Agent name is required")
         }
-        
-        guard !instructions.isEmpty else {
+
+        guard !self.instructions.isEmpty else {
             throw AgentError.invalidConfiguration("Agent instructions are required")
         }
-        
+
         return PeekabooAgent(
-            name: name,
-            instructions: instructions,
-            tools: tools,
-            modelSettings: modelSettings,
-            description: description,
-            metadata: metadata
-        )
+            name: self.name,
+            instructions: self.instructions,
+            tools: self.tools,
+            modelSettings: self.modelSettings,
+            description: self.description,
+            metadata: self.metadata)
     }
 }
 
@@ -205,15 +203,15 @@ public enum AgentError: Error, LocalizedError {
     case invalidConfiguration(String)
     case toolNotFound(String)
     case executionFailed(String)
-    
+
     public var errorDescription: String? {
         switch self {
-        case .invalidConfiguration(let message):
-            return "Invalid agent configuration: \(message)"
-        case .toolNotFound(let name):
-            return "Tool not found: \(name)"
-        case .executionFailed(let message):
-            return "Agent execution failed: \(message)"
+        case let .invalidConfiguration(message):
+            "Invalid agent configuration: \(message)"
+        case let .toolNotFound(name):
+            "Tool not found: \(name)"
+        case let .executionFailed(message):
+            "Agent execution failed: \(message)"
         }
     }
 }
@@ -223,17 +221,17 @@ public enum AgentError: Error, LocalizedError {
 extension PeekabooAgent {
     /// Get all tool definitions for the model
     public var toolDefinitions: [ToolDefinition] {
-        tools.map { $0.toToolDefinition() }
+        self.tools.map { $0.toToolDefinition() }
     }
-    
+
     /// Check if the agent has any tools
     public var hasTools: Bool {
-        !tools.isEmpty
+        !self.tools.isEmpty
     }
-    
+
     /// Get tool count
     public var toolCount: Int {
-        tools.count
+        self.tools.count
     }
 }
 
@@ -244,22 +242,21 @@ extension PeekabooAgent {
     public static func assistant(
         name: String = "Assistant",
         tools: [Tool<Context>] = [],
-        modelSettings: ModelSettings = .default
-    ) -> PeekabooAgent<Context> {
+        modelSettings: ModelSettings = .default) -> PeekabooAgent<Context>
+    {
         PeekabooAgent(
             name: name,
             instructions: "You are a helpful AI assistant. Answer questions accurately and assist with tasks to the best of your ability.",
             tools: tools,
-            modelSettings: modelSettings
-        )
+            modelSettings: modelSettings)
     }
-    
+
     /// Create a code assistant agent
     public static func codeAssistant(
         name: String = "Code Assistant",
         tools: [Tool<Context>] = [],
-        modelSettings: ModelSettings = .default
-    ) -> PeekabooAgent<Context> {
+        modelSettings: ModelSettings = .default) -> PeekabooAgent<Context>
+    {
         PeekabooAgent(
             name: name,
             instructions: """
@@ -269,11 +266,10 @@ extension PeekabooAgent {
             - Explaining code concepts
             - Suggesting best practices
             - Code reviews and improvements
-            
+
             Always provide clear explanations and consider edge cases.
             """,
             tools: tools,
-            modelSettings: modelSettings
-        )
+            modelSettings: modelSettings)
     }
 }

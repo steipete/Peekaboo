@@ -1,20 +1,21 @@
 import Foundation
 
 // Simple debug logging check
-fileprivate var isDebugLoggingEnabled: Bool {
+private var isDebugLoggingEnabled: Bool {
     // Check if verbose mode is enabled via log level
     if let logLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
         return logLevel == "debug" || logLevel == "trace"
     }
     // Check if agent is in verbose mode
-    if ProcessInfo.processInfo.arguments.contains("-v") || 
-       ProcessInfo.processInfo.arguments.contains("--verbose") {
+    if ProcessInfo.processInfo.arguments.contains("-v") ||
+        ProcessInfo.processInfo.arguments.contains("--verbose")
+    {
         return true
     }
     return false
 }
 
-fileprivate func aiDebugPrint(_ message: String) {
+private func aiDebugPrint(_ message: String) {
     if isDebugLoggingEnabled {
         print(message)
     }
@@ -103,27 +104,32 @@ public struct OpenAITool: Codable, Sendable {
         self.type = type
         self.function = function
     }
-    
+
     // Nested types to match OpenAI API structure
     public struct Function: Codable, Sendable {
         public let name: String
         public let description: String
         public let parameters: Parameters
-        
+
         public init(name: String, description: String, parameters: Parameters) {
             self.name = name
             self.description = description
             self.parameters = parameters
         }
     }
-    
+
     public struct Parameters: Codable, Sendable {
         public let type: String
         public let properties: [String: PropertySchema]
         public let required: [String]
         public let additionalProperties: Bool?
-        
-        public init(type: String = "object", properties: [String: PropertySchema] = [:], required: [String] = [], additionalProperties: Bool? = nil) {
+
+        public init(
+            type: String = "object",
+            properties: [String: PropertySchema] = [:],
+            required: [String] = [],
+            additionalProperties: Bool? = nil)
+        {
             self.type = type
             self.properties = properties
             self.required = required
@@ -142,7 +148,7 @@ public struct PropertySchema: Codable, Sendable {
     public let minimum: Double?
     public let maximum: Double?
     public let pattern: String?
-    
+
     public init(
         type: String,
         description: String? = nil,
@@ -151,8 +157,8 @@ public struct PropertySchema: Codable, Sendable {
         properties: [String: PropertySchema]? = nil,
         minimum: Double? = nil,
         maximum: Double? = nil,
-        pattern: String? = nil
-    ) {
+        pattern: String? = nil)
+    {
         self.type = type
         self.description = description
         self.enum = enumValues
@@ -175,7 +181,7 @@ public struct OpenAIStreamChunk: Decodable {
     public let item: ItemData?
     public let itemId: String?
     public let text: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case type, delta
         case outputIndex = "output_index"
@@ -183,46 +189,46 @@ public struct OpenAIStreamChunk: Decodable {
         case itemId = "item_id"
         case text
     }
-    
+
     public struct ResponseData: Decodable {
         public let id: String?
         public let model: String?
         public let output: [OutputData]?
         public let usage: UsageData?
     }
-    
+
     public struct OutputData: Decodable {
         public let type: String?
         public let index: Int?
         public let item: ItemData?
     }
-    
+
     public struct ItemData: Decodable {
         public let id: String?
         public let type: String?
         public let name: String?
         public let arguments: String?
         public let output: String?
-        
+
         // For tool calls
         public let functionCall: FunctionCallData?
-        
+
         enum CodingKeys: String, CodingKey {
             case id, type, name, arguments, output
             case functionCall = "function_call"
         }
     }
-    
+
     public struct FunctionCallData: Decodable {
         public let name: String?
         public let arguments: String?
     }
-    
+
     public struct UsageData: Decodable {
         public let inputTokens: Int?
         public let outputTokens: Int?
         public let totalTokens: Int?
-        
+
         enum CodingKeys: String, CodingKey {
             case inputTokens = "input_tokens"
             case outputTokens = "output_tokens"
@@ -235,16 +241,16 @@ public struct OpenAIStreamChunk: Decodable {
 
 struct AnyEncodable: Encodable {
     let value: Any
-    
+
     init(_ value: Any) {
         self.value = value
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        
+
         // Check numeric types before Bool to prevent 0/1 being encoded as false/true
-        switch value {
+        switch self.value {
         case let int as Int:
             try container.encode(int)
         case let double as Double:
@@ -258,32 +264,34 @@ struct AnyEncodable: Encodable {
         case let dict as [String: Any]:
             try container.encode(dict.mapValues { AnyEncodable($0) })
         default:
-            let context = EncodingError.Context(codingPath: container.codingPath, debugDescription: "Cannot encode value of type \(type(of: value))")
-            throw EncodingError.invalidValue(value, context)
+            let context = EncodingError.Context(
+                codingPath: container.codingPath,
+                debugDescription: "Cannot encode value of type \(type(of: self.value))")
+            throw EncodingError.invalidValue(self.value, context)
         }
     }
 }
 
 struct AnyDecodable: Decodable {
     let value: Any
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if let intValue = try? container.decode(Int.self) {
-            value = intValue
+            self.value = intValue
         } else if let doubleValue = try? container.decode(Double.self) {
-            value = doubleValue
+            self.value = doubleValue
         } else if let boolValue = try? container.decode(Bool.self) {
-            value = boolValue
+            self.value = boolValue
         } else if let stringValue = try? container.decode(String.self) {
-            value = stringValue
+            self.value = stringValue
         } else if let arrayValue = try? container.decode([AnyDecodable].self) {
-            value = arrayValue.map { $0.value }
+            self.value = arrayValue.map(\.value)
         } else if let dictValue = try? container.decode([String: AnyDecodable].self) {
-            value = dictValue.mapValues { $0.value }
+            self.value = dictValue.mapValues { $0.value }
         } else {
-            value = NSNull()
+            self.value = NSNull()
         }
     }
 }
@@ -309,7 +317,13 @@ public struct AssistantRequest: Codable, Sendable {
     public let instructions: String
     public let tools: [OpenAITool]
 
-    public init(model: String, name: String? = nil, description: String? = nil, instructions: String, tools: [OpenAITool]) {
+    public init(
+        model: String,
+        name: String? = nil,
+        description: String? = nil,
+        instructions: String,
+        tools: [OpenAITool])
+    {
         self.model = model
         self.name = name
         self.description = description
@@ -324,7 +338,7 @@ public struct AssistantRequest: Codable, Sendable {
 public struct OpenAIReasoning: Codable, Sendable {
     public let effort: String
     public let summary: String?
-    
+
     public init(effort: String, summary: String? = nil) {
         self.effort = effort
         self.summary = summary
@@ -336,7 +350,7 @@ public struct OpenAIReasoning: Codable, Sendable {
 /// OpenAI Responses Request (for o3 models)
 public struct OpenAIResponsesRequest: Codable, Sendable {
     public let model: String
-    public let input: [OpenAIMessage]  // Note: 'input' instead of 'messages'
+    public let input: [OpenAIMessage] // Note: 'input' instead of 'messages'
     public let tools: [OpenAIResponsesTool]?
     public let toolChoice: String?
     public let temperature: Double?
@@ -345,7 +359,7 @@ public struct OpenAIResponsesRequest: Codable, Sendable {
     public let maxOutputTokens: Int?
     public let reasoningEffort: String?
     public let reasoning: OpenAIReasoning?
-    
+
     enum CodingKeys: String, CodingKey {
         case model
         case input
@@ -358,7 +372,7 @@ public struct OpenAIResponsesRequest: Codable, Sendable {
         case reasoningEffort = "reasoning_effort"
         case reasoning
     }
-    
+
     public init(
         model: String,
         input: [OpenAIMessage],
@@ -369,8 +383,8 @@ public struct OpenAIResponsesRequest: Codable, Sendable {
         stream: Bool? = nil,
         maxOutputTokens: Int? = nil,
         reasoningEffort: String? = nil,
-        reasoning: OpenAIReasoning? = nil
-    ) {
+        reasoning: OpenAIReasoning? = nil)
+    {
         self.model = model
         self.input = input
         self.tools = tools
@@ -391,20 +405,20 @@ public struct OpenAIMessage: Codable, Sendable {
     public let name: String?
     public let toolCalls: [OpenAIToolCall]?
     public let toolCallId: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case role, content, name
         case toolCalls = "tool_calls"
         case toolCallId = "tool_call_id"
     }
-    
+
     public init(
         role: String,
         content: OpenAIMessageContentUnion? = nil,
         name: String? = nil,
         toolCalls: [OpenAIToolCall]? = nil,
-        toolCallId: String? = nil
-    ) {
+        toolCallId: String? = nil)
+    {
         self.role = role
         self.content = content
         self.name = name
@@ -417,10 +431,10 @@ public struct OpenAIMessage: Codable, Sendable {
 public enum OpenAIMessageContentUnion: Codable, Sendable {
     case string(String)
     case array([OpenAIMessageContentPart])
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if let str = try? container.decode(String.self) {
             self = .string(str)
         } else if let array = try? container.decode([OpenAIMessageContentPart].self) {
@@ -429,14 +443,14 @@ public enum OpenAIMessageContentUnion: Codable, Sendable {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid message content")
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        
+
         switch self {
-        case .string(let str):
+        case let .string(str):
             try container.encode(str)
-        case .array(let array):
+        case let .array(array):
             try container.encode(array)
         }
     }
@@ -447,7 +461,7 @@ public struct OpenAIMessageContentPart: Codable, Sendable {
     public let type: String
     public let text: String?
     public let imageUrl: OpenAIImageUrl?
-    
+
     enum CodingKeys: String, CodingKey {
         case type, text
         case imageUrl = "image_url"
@@ -465,7 +479,7 @@ public struct OpenAIToolCall: Codable, Sendable {
     public let id: String
     public let type: String
     public let function: OpenAIFunctionCall
-    
+
     public init(id: String, type: String = "function", function: OpenAIFunctionCall) {
         self.id = id
         self.type = type
@@ -480,7 +494,7 @@ public struct OpenAIUsage: Codable, Sendable {
     public let totalTokens: Int
     public let promptTokensDetails: OpenAITokenDetails?
     public let completionTokensDetails: OpenAITokenDetails?
-    
+
     enum CodingKeys: String, CodingKey {
         case promptTokens = "prompt_tokens"
         case completionTokens = "completion_tokens"
@@ -497,7 +511,7 @@ public struct OpenAITokenDetails: Codable, Sendable {
     public let reasoningTokens: Int?
     public let acceptedPredictionTokens: Int?
     public let rejectedPredictionTokens: Int?
-    
+
     enum CodingKeys: String, CodingKey {
         case cachedTokens = "cached_tokens"
         case audioTokens = "audio_tokens"
@@ -524,18 +538,19 @@ public struct OpenAIFunctionCallDelta: Codable, Sendable {
 /// Error response
 public struct OpenAIErrorResponse: Codable, Sendable, APIErrorResponse {
     public let error: OpenAIError
-    
+
     // MARK: - APIErrorResponse conformance
+
     public var message: String {
-        error.error.message
+        self.error.error.message
     }
-    
+
     public var code: String? {
-        error.error.code
+        self.error.error.code
     }
-    
+
     public var type: String? {
-        error.error.type
+        self.error.error.type
     }
 }
 
@@ -545,10 +560,10 @@ public struct OpenAIErrorResponse: Codable, Sendable, APIErrorResponse {
 public enum OpenAIToolChoice: Codable, Sendable {
     case string(String)
     case object(OpenAIToolChoiceObject)
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if let str = try? container.decode(String.self) {
             self = .string(str)
         } else if let obj = try? container.decode(OpenAIToolChoiceObject.self) {
@@ -557,14 +572,14 @@ public enum OpenAIToolChoice: Codable, Sendable {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid tool choice")
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        
+
         switch self {
-        case .string(let str):
+        case let .string(str):
             try container.encode(str)
-        case .object(let obj):
+        case let .object(obj):
             try container.encode(obj)
         }
     }
@@ -574,7 +589,7 @@ public enum OpenAIToolChoice: Codable, Sendable {
 public struct OpenAIToolChoiceObject: Codable, Sendable {
     public let type: String
     public let function: [String: String]
-    
+
     public init(type: String, function: [String: String]) {
         self.type = type
         self.function = function
@@ -587,12 +602,12 @@ public struct OpenAIToolChoiceObject: Codable, Sendable {
 public struct OpenAIResponseFormat: Codable, Sendable {
     public let type: String
     public let jsonSchema: OpenAIJSONSchema?
-    
+
     enum CodingKeys: String, CodingKey {
         case type
         case jsonSchema = "json_schema"
     }
-    
+
     public init(type: String, jsonSchema: OpenAIJSONSchema? = nil) {
         self.type = type
         self.jsonSchema = jsonSchema
@@ -608,8 +623,14 @@ public struct OpenAIResponsesTool: Codable, Sendable {
     public let description: String
     public let parameters: OpenAITool.Parameters
     public let strict: Bool?
-    
-    public init(type: String = "function", name: String, description: String, parameters: OpenAITool.Parameters, strict: Bool? = nil) {
+
+    public init(
+        type: String = "function",
+        name: String,
+        description: String,
+        parameters: OpenAITool.Parameters,
+        strict: Bool? = nil)
+    {
         self.type = type
         self.name = name
         self.description = description
@@ -623,7 +644,7 @@ public struct OpenAIJSONSchema: Codable, Sendable {
     public let name: String
     public let strict: Bool
     public let schema: OpenAIJSONSchemaDefinition
-    
+
     public init(name: String, strict: Bool, schema: OpenAIJSONSchemaDefinition) {
         self.name = name
         self.strict = strict
@@ -638,7 +659,7 @@ public struct OpenAIJSONSchemaDefinition: Codable, Sendable {
     public let required: [String]?
     public let items: Box<OpenAIJSONSchemaDefinition>?
     public let additionalProperties: Bool?
-    
+
     public struct Property: Codable, Sendable {
         public let type: String
         public let description: String?
@@ -647,14 +668,14 @@ public struct OpenAIJSONSchemaDefinition: Codable, Sendable {
         public let properties: [String: Property]?
         public let required: [String]?
     }
-    
+
     public init(
         type: String,
         properties: [String: Property]? = nil,
         required: [String]? = nil,
         items: OpenAIJSONSchemaDefinition? = nil,
-        additionalProperties: Bool? = nil
-    ) {
+        additionalProperties: Bool? = nil)
+    {
         self.type = type
         self.properties = properties
         self.required = required
@@ -677,7 +698,7 @@ public struct OpenAIResponsesResponse: Codable, Sendable {
     public let usage: OpenAIUsage?
     public let serviceTier: String?
     public let systemFingerprint: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case id, object, created, model, choices, usage
         case serviceTier = "service_tier"
@@ -690,7 +711,7 @@ public struct OpenAIResponsesChoice: Codable, Sendable {
     public let index: Int
     public let message: OpenAIResponsesMessage
     public let finishReason: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case index, message
         case finishReason = "finish_reason"
@@ -704,7 +725,7 @@ public struct OpenAIResponsesMessage: Codable, Sendable {
     public let toolCalls: [OpenAIToolCall]?
     public let refusal: String?
     public let reasoningContent: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case role, content, refusal
         case toolCalls = "tool_calls"
@@ -724,8 +745,8 @@ public struct OpenAIResponsesChunk: Codable, Sendable {
     public let delta: String?
     public let item: OpenAIResponsesEventItem?
     public let part: OpenAIResponsesEventPart?
-    public let text: String?  // For response.output_text.done event
-    
+    public let text: String? // For response.output_text.done event
+
     enum CodingKeys: String, CodingKey {
         case type
         case sequenceNumber = "sequence_number"
@@ -759,7 +780,7 @@ public struct OpenAIResponsesEventItem: Codable, Sendable {
     public let summary: [String]?
     public let name: String? // For function_call items
     public let callId: String? // For function_call items
-    
+
     enum CodingKeys: String, CodingKey {
         case id, type, status, content, role, summary, name
         case callId = "call_id"
@@ -777,4 +798,3 @@ public struct OpenAIResponsesEventPart: Codable, Sendable {
     public let type: String
     public let text: String?
 }
-

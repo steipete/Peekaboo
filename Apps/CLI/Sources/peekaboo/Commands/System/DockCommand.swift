@@ -32,14 +32,16 @@ struct DockCommand: AsyncParsableCommand {
             HideSubcommand.self,
             ShowSubcommand.self,
             ListSubcommand.self,
-        ])
+        ]
+    )
 
     // MARK: - Launch from Dock
 
     struct LaunchSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "launch",
-            abstract: "Launch an application from the Dock")
+            abstract: "Launch an application from the Dock"
+        )
 
         @Argument(help: "Application name in the Dock")
         var app: String
@@ -67,7 +69,7 @@ struct DockCommand: AsyncParsableCommand {
                         let action: String
                         let app: String
                     }
-                    
+
                     let outputData = DockLaunchResult(
                         action: "dock_launch",
                         app: dockItem.title
@@ -92,7 +94,8 @@ struct DockCommand: AsyncParsableCommand {
     struct RightClickSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "right-click",
-            abstract: "Right-click a Dock item and optionally select from menu")
+            abstract: "Right-click a Dock item and optionally select from menu"
+        )
 
         @Option(help: "Application name in the Dock")
         var app: String
@@ -124,7 +127,7 @@ struct DockCommand: AsyncParsableCommand {
                         let app: String
                         let selectedItem: String
                     }
-                    
+
                     let outputData = DockRightClickResult(
                         action: "dock_right_click",
                         app: dockItem.title,
@@ -154,7 +157,8 @@ struct DockCommand: AsyncParsableCommand {
     struct HideSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "hide",
-            abstract: "Hide the Dock")
+            abstract: "Hide the Dock"
+        )
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
@@ -174,7 +178,7 @@ struct DockCommand: AsyncParsableCommand {
                     struct DockHideResult: Codable {
                         let action: String
                     }
-                    
+
                     let outputData = DockHideResult(action: "dock_hide")
                     outputSuccessCodable(data: outputData)
                 } else {
@@ -195,7 +199,8 @@ struct DockCommand: AsyncParsableCommand {
     struct ShowSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
-            abstract: "Show the Dock")
+            abstract: "Show the Dock"
+        )
 
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
@@ -215,7 +220,7 @@ struct DockCommand: AsyncParsableCommand {
                     struct DockShowResult: Codable {
                         let action: String
                     }
-                    
+
                     let outputData = DockShowResult(action: "dock_show")
                     outputSuccessCodable(data: outputData)
                 } else {
@@ -236,7 +241,8 @@ struct DockCommand: AsyncParsableCommand {
     struct ListSubcommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "list",
-            abstract: "List all Dock items")
+            abstract: "List all Dock items"
+        )
 
         @Flag(help: "Include separators and spacers")
         var includeAll = false
@@ -260,7 +266,7 @@ struct DockCommand: AsyncParsableCommand {
                     struct DockListResult: Codable {
                         let dockItems: [DockItemInfo]
                         let count: Int
-                        
+
                         struct DockItemInfo: Codable {
                             let index: Int
                             let title: String
@@ -269,7 +275,7 @@ struct DockCommand: AsyncParsableCommand {
                             let bundleId: String?
                         }
                     }
-                    
+
                     let items = dockItems.map { item in
                         DockListResult.DockItemInfo(
                             index: item.index,
@@ -279,7 +285,7 @@ struct DockCommand: AsyncParsableCommand {
                             bundleId: item.bundleIdentifier
                         )
                     }
-                    
+
                     let outputData = DockListResult(
                         dockItems: items,
                         count: items.count
@@ -331,7 +337,9 @@ private func handleDockServiceError(_ error: DockError, jsonOutput: Bool) {
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: errorCode))
+                code: errorCode
+            )
+        )
         outputJSON(response)
     } else {
         fputs("❌ \(error.localizedDescription)\n", stderr)

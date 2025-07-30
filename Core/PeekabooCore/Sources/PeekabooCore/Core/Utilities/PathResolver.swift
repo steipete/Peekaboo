@@ -2,32 +2,31 @@ import Foundation
 
 /// Utility for resolving and validating file paths
 public struct PathResolver: Sendable {
-    
     // macOS filename limit is 255 bytes (not characters)
     private static let maxFilenameLength = 255
     private static let safetyBuffer = 10
-    
+
     /// Expand tilde and resolve relative paths
     public static func expandPath(_ path: String) -> String {
-        return (path as NSString).expandingTildeInPath
+        (path as NSString).expandingTildeInPath
     }
-    
+
     /// Validate a path for security issues
     public static func validatePath(_ path: String) throws {
         // Check for path traversal attempts
         if path.contains("../") || path.contains("..\\") {
             throw PeekabooError.invalidInput("Path traversal detected: \(path)")
         }
-        
+
         // Check for system-sensitive paths
         let sensitivePathPrefixes = ["/etc/", "/usr/", "/bin/", "/sbin/", "/System/", "/Library/System/"]
         let normalizedPath = (path as NSString).standardizingPath
-        
+
         for prefix in sensitivePathPrefixes where normalizedPath.hasPrefix(prefix) {
             throw PeekabooError.invalidInput("Path points to system directory: \(path)")
         }
     }
-    
+
     /// Create parent directory if needed
     public static func createParentDirectoryIfNeeded(for path: String) throws {
         let parentDir = (path as NSString).deletingLastPathComponent
@@ -35,43 +34,41 @@ public struct PathResolver: Sendable {
             try FileManager.default.createDirectory(
                 atPath: parentDir,
                 withIntermediateDirectories: true,
-                attributes: nil
-            )
+                attributes: nil)
         }
     }
-    
+
     /// Create directory path
     public static func createDirectory(at path: String) throws {
         try FileManager.default.createDirectory(
             atPath: path,
             withIntermediateDirectories: true,
-            attributes: nil
-        )
+            attributes: nil)
     }
-    
+
     /// Check if path exists
     public static func pathExists(_ path: String) -> Bool {
-        return FileManager.default.fileExists(atPath: path)
+        FileManager.default.fileExists(atPath: path)
     }
-    
+
     /// Check if path is a directory
     public static func isDirectory(_ path: String) -> Bool {
         var isDir: ObjCBool = false
         return FileManager.default.fileExists(atPath: path, isDirectory: &isDir) && isDir.boolValue
     }
-    
+
     /// Safely combine filename components while respecting filesystem limits
     public static func safeCombineFilename(
         directory: String,
         baseName: String,
         suffix: String,
-        extension fileExtension: String
-    ) -> String {
+        extension fileExtension: String) -> String
+    {
         // Calculate maximum allowed length for the base name
         let suffixLength = suffix.utf8.count
         let extensionLength = fileExtension.utf8.count + 1 // +1 for the dot
-        let maxBaseNameLength = maxFilenameLength - suffixLength - extensionLength - safetyBuffer
-        
+        let maxBaseNameLength = self.maxFilenameLength - suffixLength - extensionLength - self.safetyBuffer
+
         // Ensure maxBaseNameLength is not negative
         guard maxBaseNameLength > 0 else {
             // If there's no room for the base name, use a minimal name
@@ -79,23 +76,23 @@ public struct PathResolver: Sendable {
             let finalFilename = "\(minimalName)\(suffix).\(fileExtension)"
             return "\(directory)/\(finalFilename)"
         }
-        
+
         // Truncate base name if necessary
         var truncatedBaseName = baseName
         if truncatedBaseName.utf8.count > maxBaseNameLength {
-            truncatedBaseName = truncateToValidUTF8(truncatedBaseName, maxLength: maxBaseNameLength)
+            truncatedBaseName = self.truncateToValidUTF8(truncatedBaseName, maxLength: maxBaseNameLength)
         }
-        
+
         // Combine the parts
         let finalFilename = "\(truncatedBaseName)\(suffix).\(fileExtension)"
         return "\(directory)/\(finalFilename)"
     }
-    
+
     /// Truncate string to valid UTF-8 sequence
     private static func truncateToValidUTF8(_ string: String, maxLength: Int) -> String {
         let data = string.data(using: .utf8)!
         var truncatedData = data.prefix(maxLength)
-        
+
         // Try to create a string from the truncated data
         // If it fails, reduce the size until we get a valid UTF-8 sequence
         while !truncatedData.isEmpty {
@@ -105,7 +102,7 @@ public struct PathResolver: Sendable {
             // Remove one byte and try again
             truncatedData = truncatedData.dropLast()
         }
-        
+
         return ""
     }
 }

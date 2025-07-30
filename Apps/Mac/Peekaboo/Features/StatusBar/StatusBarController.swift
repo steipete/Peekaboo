@@ -1,7 +1,7 @@
 import AppKit
-import SwiftUI
 import os.log
 import PeekabooCore
+import SwiftUI
 
 /// Controls the Peekaboo status bar item and popover interface.
 ///
@@ -58,18 +58,18 @@ final class StatusBarController: NSObject {
         button.target = self
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
     }
-    
+
     private func setupAnimationController() {
         // Pass agent reference to animation controller
-        animationController.setAgent(agent)
-        
+        self.animationController.setAgent(self.agent)
+
         // Set up callback to update icon when animation renders new frame
-        animationController.onIconUpdateNeeded = { [weak self] icon in
+        self.animationController.onIconUpdateNeeded = { [weak self] icon in
             self?.statusItem.button?.image = icon
         }
-        
+
         // Force initial render
-        animationController.forceRender()
+        self.animationController.forceRender()
     }
 
     private func setupPopover() {
@@ -106,9 +106,9 @@ final class StatusBarController: NSObject {
                 .environment(self.agent)
                 .environment(self.sessionStore)
                 .environment(self.speechRecognizer)
-            
+
             self.popover.contentViewController = NSHostingController(rootView: contentView)
-            
+
             guard let button = statusItem.button else { return }
             self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
 
@@ -149,7 +149,7 @@ final class StatusBarController: NSObject {
             title: "Inspector",
             action: #selector(self.openInspector),
             keyEquivalent: "i").with { $0.keyEquivalentModifierMask = [.command, .shift] })
-        
+
         menu.addItem(NSMenuItem(
             title: "Settings...",
             action: #selector(self.openSettings),
@@ -173,7 +173,7 @@ final class StatusBarController: NSObject {
         menu.addItem(quitItem)
 
         // Configure menu items (except quit which needs NSApp as target)
-        menu.items.forEach { item in
+        for item in menu.items {
             if item.action != #selector(NSApplication.terminate(_:)) {
                 item.target = self
             }
@@ -190,37 +190,35 @@ final class StatusBarController: NSObject {
     @objc private func openSession(_ sender: NSMenuItem) {
         guard let sessionId = sender.representedObject as? String,
               let session = sessionStore.sessions.first(where: { $0.id == sessionId }) else { return }
-        
+
         // Open session detail window
         NSApp.activate(ignoringOtherApps: true)
-        
+
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
-            defer: false
-        )
-        
+            defer: false)
+
         window.title = session.title
         window.center()
         window.contentView = NSHostingView(
             rootView: SessionMainWindow()
-                .environment(sessionStore)
-                .environment(agent)
-                .environment(speechRecognizer)
-                .environment(permissions)
-                .environment(settings)
-        )
-        
+                .environment(self.sessionStore)
+                .environment(self.agent)
+                .environment(self.speechRecognizer)
+                .environment(self.permissions)
+                .environment(self.settings))
+
         window.makeKeyAndOrderFront(nil)
     }
 
     @objc private func openMainWindow() {
         self.logger.info("openMainWindow action triggered from menu")
-        
+
         // First ensure the app is active
         NSApp.activate(ignoringOtherApps: true)
-        
+
         // Post notification to open main window
         self.logger.info("Posting OpenWindow.main notification")
         NotificationCenter.default.post(name: Notification.Name("OpenWindow.main"), object: nil)
@@ -229,13 +227,13 @@ final class StatusBarController: NSObject {
     @objc private func openSettings() {
         SettingsOpener.openSettings()
     }
-    
+
     @objc private func openInspector() {
         self.logger.info("openInspector action triggered from menu")
-        
+
         // First ensure the app is active
         NSApp.activate(ignoringOtherApps: true)
-        
+
         // Post notification to open inspector window
         self.logger.info("Posting OpenWindow.inspector notification")
         NotificationCenter.default.post(name: Notification.Name("OpenWindow.inspector"), object: nil)
@@ -257,7 +255,7 @@ final class StatusBarController: NSObject {
             Task { @MainActor in
                 // Update animation state based on agent processing
                 self.animationController.updateAnimationState()
-                
+
                 // If popover is shown and agent state changed, refresh its content
                 if self.popover.isShown {
                     // Delay slightly to ensure all state updates are propagated
@@ -265,22 +263,21 @@ final class StatusBarController: NSObject {
                         self.refreshPopoverContent()
                     }
                 }
-                
+
                 self.observeAgentState() // Continue observing
             }
         }
     }
-    
+
     private func refreshPopoverContent() {
         let contentView = MenuBarStatusView()
             .environment(self.agent)
             .environment(self.sessionStore)
             .environment(self.speechRecognizer)
-        
+
         self.popover.contentViewController = NSHostingController(rootView: contentView)
     }
 }
-
 
 // MARK: - NSMenuItem Extension
 

@@ -7,7 +7,7 @@ public enum StandardErrorCode: String, Sendable {
     // Permission errors
     case screenRecordingPermissionDenied = "PERMISSION_DENIED_SCREEN_RECORDING"
     case accessibilityPermissionDenied = "PERMISSION_DENIED_ACCESSIBILITY"
-    
+
     // Not found errors
     case applicationNotFound = "APP_NOT_FOUND"
     case windowNotFound = "WINDOW_NOT_FOUND"
@@ -15,25 +15,25 @@ public enum StandardErrorCode: String, Sendable {
     case sessionNotFound = "SESSION_NOT_FOUND"
     case fileNotFound = "FILE_NOT_FOUND"
     case menuNotFound = "MENU_NOT_FOUND"
-    
+
     // Operation errors
     case captureFailed = "CAPTURE_FAILED"
     case interactionFailed = "INTERACTION_FAILED"
     case timeout = "TIMEOUT"
     case cancelled = "CANCELLED"
-    
+
     // Input errors
     case invalidInput = "INVALID_INPUT"
     case invalidCoordinates = "INVALID_COORDINATES"
     case invalidDisplayIndex = "INVALID_DISPLAY_INDEX"
     case invalidWindowIndex = "INVALID_WINDOW_INDEX"
     case ambiguousAppIdentifier = "AMBIGUOUS_APP_IDENTIFIER"
-    
+
     // System errors
     case fileIOError = "FILE_IO_ERROR"
     case configurationError = "CONFIGURATION_ERROR"
     case unknownError = "UNKNOWN_ERROR"
-    
+
     // AI errors
     case aiProviderUnavailable = "AI_PROVIDER_UNAVAILABLE"
     case aiAnalysisFailed = "AI_ANALYSIS_FAILED"
@@ -59,19 +59,19 @@ extension StandardizedError {
 /// Helper for building error context
 public struct ErrorContext {
     private var items: [String: String] = [:]
-    
+
     public init() {}
-    
+
     public mutating func add(_ key: String, _ value: String) {
-        items[key] = value
+        self.items[key] = value
     }
-    
+
     public mutating func add(_ key: String, _ value: Any) {
-        items[key] = String(describing: value)
+        self.items[key] = String(describing: value)
     }
-    
+
     public func build() -> [String: String] {
-        items
+        self.items
     }
 }
 
@@ -83,24 +83,24 @@ public typealias OperationError = PeekabooError
 // MARK: - Error Conversion
 
 /// Convert various error types to standardized errors
-public struct ErrorStandardizer {
+public enum ErrorStandardizer {
     public static func standardize(_ error: Error) -> StandardizedError {
         // If already standardized, return as-is
         if let standardized = error as? StandardizedError {
             return standardized
         }
-        
+
         // Convert known error types
         switch error {
         case let peekabooError as PeekabooError:
             return peekabooError
         case let nsError as NSError:
-            return standardizeNSError(nsError)
+            return self.standardizeNSError(nsError)
         default:
             return PeekabooError.operationError(message: error.localizedDescription)
         }
     }
-    
+
     private static func standardizeNSError(_ error: NSError) -> StandardizedError {
         // Handle common Cocoa errors
         switch error.domain {
@@ -112,30 +112,30 @@ public struct ErrorStandardizer {
         default:
             break
         }
-        
+
         return PeekabooError.operationError(message: error.localizedDescription)
     }
 }
 
 // MARK: - Error Recovery Suggestions
 
-public extension StandardizedError {
-    var recoverySuggestion: String? {
+extension StandardizedError {
+    public var recoverySuggestion: String? {
         switch code {
         case .screenRecordingPermissionDenied:
-            return "Grant Screen Recording permission in System Settings"
+            "Grant Screen Recording permission in System Settings"
         case .accessibilityPermissionDenied:
-            return "Grant Accessibility permission in System Settings"
+            "Grant Accessibility permission in System Settings"
         case .applicationNotFound:
-            return "Ensure the application is installed and running"
+            "Ensure the application is installed and running"
         case .windowNotFound:
-            return "Check that the application has open windows"
+            "Check that the application has open windows"
         case .timeout:
-            return "Try the operation again or increase the timeout"
+            "Try the operation again or increase the timeout"
         case .ambiguousAppIdentifier:
-            return "Use a more specific application name or bundle ID"
+            "Use a more specific application name or bundle ID"
         default:
-            return nil
+            nil
         }
     }
 }

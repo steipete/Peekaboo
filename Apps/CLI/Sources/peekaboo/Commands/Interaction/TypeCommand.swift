@@ -32,7 +32,8 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
             FOCUS MANAGEMENT:
               The command assumes an element is already focused.
               Use 'click' to focus an input field first.
-        """)
+        """
+    )
 
     @Argument(help: "Text to type")
     var text: String?
@@ -60,10 +61,10 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
-    
+
     @Option(name: .long, help: "Target application to focus before typing")
     var app: String?
-    
+
     @OptionGroup var focusOptions: FocusOptions
 
     mutating func run() async throws {
@@ -104,26 +105,27 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
             guard !actions.isEmpty else {
                 throw ArgumentParser.ValidationError("No input specified. Provide text or key flags.")
             }
-            
+
             // Get session if available
             let sessionId: String? = if let providedSession = session {
                 providedSession
             } else {
                 await PeekabooServices.shared.sessions.getMostRecentSession()
             }
-            
+
             // Ensure window is focused before typing
             try await self.ensureFocused(
                 sessionId: sessionId,
-                applicationName: app,
-                options: focusOptions
+                applicationName: self.app,
+                options: self.focusOptions
             )
 
             // Execute type actions using the service
             let typeResult = try await PeekabooServices.shared.automation.typeActions(
                 actions,
                 typingDelay: self.delay,
-                sessionId: self.session)
+                sessionId: self.session
+            )
 
             // Output results
             let result = TypeCommandResult(
@@ -131,8 +133,9 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                 typedText: text,
                 keyPresses: typeResult.keyPresses,
                 totalCharacters: typeResult.totalCharacters,
-                executionTime: Date().timeIntervalSince(startTime))
-            
+                executionTime: Date().timeIntervalSince(startTime)
+            )
+
             output(result) {
                 print("✅ Typing completed")
                 if let typed = text {

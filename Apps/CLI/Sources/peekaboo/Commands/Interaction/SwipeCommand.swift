@@ -37,7 +37,8 @@ struct SwipeCommand: AsyncParsableCommand {
           The swipe includes a configurable duration to control the
           speed of the drag gesture.
         """,
-        version: "2.0.0")
+        version: "2.0.0"
+    )
 
     @Option(help: "Source element ID")
     var from: String?
@@ -74,14 +75,16 @@ struct SwipeCommand: AsyncParsableCommand {
             // Validate inputs
             guard self.from != nil || self.fromCoords != nil, self.to != nil || self.toCoords != nil else {
                 throw ArgumentParser.ValidationError(
-                    "Must specify both source (--from or --from-coords) and destination (--to or --to-coords)")
+                    "Must specify both source (--from or --from-coords) and destination (--to or --to-coords)"
+                )
             }
 
             // Note: Right-button swipe is not supported in the current implementation
             if self.rightButton {
                 throw ArgumentParser
                     .ValidationError(
-                        "Right-button swipe is not currently supported. Please use the standard swipe command for right-button gestures.")
+                        "Right-button swipe is not currently supported. Please use the standard swipe command for right-button gestures."
+                    )
             }
 
             // Determine session ID - use provided or get most recent
@@ -97,21 +100,24 @@ struct SwipeCommand: AsyncParsableCommand {
                 coords: fromCoords,
                 sessionId: sessionId,
                 description: "from",
-                waitTimeout: 5.0)
+                waitTimeout: 5.0
+            )
 
             let destPoint = try await resolvePoint(
                 elementId: to,
                 coords: toCoords,
                 sessionId: sessionId,
                 description: "to",
-                waitTimeout: 5.0)
+                waitTimeout: 5.0
+            )
 
             // Perform swipe using UIAutomationService
             try await PeekabooServices.shared.automation.swipe(
                 from: sourcePoint,
                 to: destPoint,
                 duration: self.duration,
-                steps: self.steps)
+                steps: self.steps
+            )
 
             // Calculate distance for output
             let distance = sqrt(pow(destPoint.x - sourcePoint.x, 2) + pow(destPoint.y - sourcePoint.y, 2))
@@ -127,7 +133,8 @@ struct SwipeCommand: AsyncParsableCommand {
                     toLocation: ["x": destPoint.x, "y": destPoint.y],
                     distance: distance,
                     duration: self.duration,
-                    executionTime: Date().timeIntervalSince(startTime))
+                    executionTime: Date().timeIntervalSince(startTime)
+                )
                 outputSuccessCodable(data: output)
             } else {
                 print("✅ Swipe completed")
@@ -149,8 +156,8 @@ struct SwipeCommand: AsyncParsableCommand {
         coords: String?,
         sessionId: String?,
         description: String,
-        waitTimeout: TimeInterval) async throws -> CGPoint
-    {
+        waitTimeout: TimeInterval
+    ) async throws -> CGPoint {
         if let coordString = coords {
             // Parse coordinates
             let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -167,7 +174,8 @@ struct SwipeCommand: AsyncParsableCommand {
             let waitResult = try await PeekabooServices.shared.automation.waitForElement(
                 target: target,
                 timeout: waitTimeout,
-                sessionId: activeSessionId)
+                sessionId: activeSessionId
+            )
 
             if !waitResult.found {
                 throw PeekabooError.elementNotFound("Element with ID '\(element)' not found")
@@ -180,7 +188,8 @@ struct SwipeCommand: AsyncParsableCommand {
             // Return center of element
             return CGPoint(
                 x: foundElement.bounds.origin.x + foundElement.bounds.width / 2,
-                y: foundElement.bounds.origin.y + foundElement.bounds.height / 2)
+                y: foundElement.bounds.origin.y + foundElement.bounds.height / 2
+            )
         } else if elementId != nil {
             throw ValidationError("Session ID required when using element IDs")
         } else {

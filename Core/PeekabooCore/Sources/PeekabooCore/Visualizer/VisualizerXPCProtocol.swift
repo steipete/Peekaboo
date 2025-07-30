@@ -5,41 +5,40 @@
 //  Created by Peekaboo on 2025-01-30.
 //
 
-import Foundation
 import CoreGraphics
+import Foundation
 
 /// Protocol defining the XPC interface for visual feedback communication
 /// between the CLI/MCP and the Peekaboo.app
 @objc public protocol VisualizerXPCProtocol: NSObjectProtocol {
-    
     // MARK: - Screenshot Feedback
-    
+
     /// Shows a camera flash effect for screenshot capture
     /// - Parameters:
     ///   - rect: The area that was captured
     ///   - reply: Callback with success status
     func showScreenshotFlash(in rect: CGRect, reply: @escaping (Bool) -> Void)
-    
+
     // MARK: - Click Feedback
-    
+
     /// Shows click feedback animation
     /// - Parameters:
     ///   - point: The location of the click
     ///   - type: Type of click ("single", "double", "right")
     ///   - reply: Callback with success status
     func showClickFeedback(at point: CGPoint, type: String, reply: @escaping (Bool) -> Void)
-    
+
     // MARK: - Typing Feedback
-    
+
     /// Shows typing feedback with keyboard visualization
     /// - Parameters:
     ///   - keys: Array of keys being typed
     ///   - duration: Duration to show the keyboard
     ///   - reply: Callback with success status
     func showTypingFeedback(keys: [String], duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    
+
     // MARK: - Scroll Feedback
-    
+
     /// Shows scroll direction indicators
     /// - Parameters:
     ///   - point: Location where scroll occurs
@@ -47,82 +46,98 @@ import CoreGraphics
     ///   - amount: Number of scroll units
     ///   - reply: Callback with success status
     func showScrollFeedback(at point: CGPoint, direction: String, amount: Int, reply: @escaping (Bool) -> Void)
-    
+
     // MARK: - Mouse Movement
-    
+
     /// Shows mouse movement trail
     /// - Parameters:
     ///   - fromPoint: Starting point
     ///   - toPoint: Ending point
     ///   - duration: Animation duration
     ///   - reply: Callback with success status
-    func showMouseMovement(from fromPoint: CGPoint, to toPoint: CGPoint, duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    
+    func showMouseMovement(
+        from fromPoint: CGPoint,
+        to toPoint: CGPoint,
+        duration: TimeInterval,
+        reply: @escaping (Bool) -> Void)
+
     // MARK: - Swipe/Drag
-    
+
     /// Shows swipe or drag gesture visualization
     /// - Parameters:
     ///   - fromPoint: Starting point
     ///   - toPoint: Ending point
     ///   - duration: Gesture duration
     ///   - reply: Callback with success status
-    func showSwipeGesture(from fromPoint: CGPoint, to toPoint: CGPoint, duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    
+    func showSwipeGesture(
+        from fromPoint: CGPoint,
+        to toPoint: CGPoint,
+        duration: TimeInterval,
+        reply: @escaping (Bool) -> Void)
+
     // MARK: - Hotkey Display
-    
+
     /// Shows hotkey combination display
     /// - Parameters:
     ///   - keys: Array of keys in the combination
     ///   - duration: Display duration
     ///   - reply: Callback with success status
     func showHotkeyDisplay(keys: [String], duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    
+
     // MARK: - App Lifecycle
-    
+
     /// Shows app launch animation
     /// - Parameters:
     ///   - appName: Name of the app being launched
     ///   - iconPath: Optional path to app icon
     ///   - reply: Callback with success status
     func showAppLaunch(appName: String, iconPath: String?, reply: @escaping (Bool) -> Void)
-    
+
     /// Shows app quit animation
     /// - Parameters:
     ///   - appName: Name of the app being quit
     ///   - iconPath: Optional path to app icon
     ///   - reply: Callback with success status
     func showAppQuit(appName: String, iconPath: String?, reply: @escaping (Bool) -> Void)
-    
+
     // MARK: - Window Operations
-    
+
     /// Shows window operation feedback
     /// - Parameters:
     ///   - operation: Type of operation ("move", "resize", "minimize", "close")
     ///   - windowRect: Current or target window rectangle
     ///   - duration: Animation duration
     ///   - reply: Callback with success status
-    func showWindowOperation(operation: String, windowRect: CGRect, duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    
+    func showWindowOperation(
+        operation: String,
+        windowRect: CGRect,
+        duration: TimeInterval,
+        reply: @escaping (Bool) -> Void)
+
     // MARK: - Menu Navigation
-    
+
     /// Shows menu navigation path
     /// - Parameters:
     ///   - menuPath: Array of menu items in the path
     ///   - reply: Callback with success status
     func showMenuNavigation(menuPath: [String], reply: @escaping (Bool) -> Void)
-    
+
     // MARK: - Dialog Interactions
-    
+
     /// Shows dialog interaction feedback
     /// - Parameters:
     ///   - elementType: Type of element ("button", "textfield", "checkbox")
     ///   - elementRect: Rectangle of the element
     ///   - action: Action performed ("click", "focus", "type")
     ///   - reply: Callback with success status
-    func showDialogInteraction(elementType: String, elementRect: CGRect, action: String, reply: @escaping (Bool) -> Void)
-    
+    func showDialogInteraction(
+        elementType: String,
+        elementRect: CGRect,
+        action: String,
+        reply: @escaping (Bool) -> Void)
+
     // MARK: - Space Switching
-    
+
     /// Shows space switching animation
     /// - Parameters:
     ///   - fromSpace: Source space index
@@ -130,22 +145,22 @@ import CoreGraphics
     ///   - direction: Animation direction ("left", "right")
     ///   - reply: Callback with success status
     func showSpaceSwitch(from fromSpace: Int, to toSpace: Int, direction: String, reply: @escaping (Bool) -> Void)
-    
+
     // MARK: - Element Detection
-    
+
     /// Shows detected UI elements with overlays
     /// - Parameters:
     ///   - elements: Dictionary of element IDs to their rectangles
     ///   - duration: Display duration
     ///   - reply: Callback with success status
     func showElementDetection(elements: [String: CGRect], duration: TimeInterval, reply: @escaping (Bool) -> Void)
-    
+
     // MARK: - Configuration
-    
+
     /// Checks if visual feedback is enabled
     /// - Parameter reply: Callback with enabled status
     func isVisualFeedbackEnabled(reply: @escaping (Bool) -> Void)
-    
+
     /// Updates visual feedback settings
     /// - Parameters:
     ///   - settings: Dictionary of setting keys and values
@@ -157,10 +172,10 @@ import CoreGraphics
 public let VisualizerXPCServiceName = "boo.peekaboo.visualizer"
 
 /// Notification names for visualizer events
-public extension Notification.Name {
-    static let visualizerConnected = Notification.Name("boo.peekaboo.visualizer.connected")
-    static let visualizerDisconnected = Notification.Name("boo.peekaboo.visualizer.disconnected")
-    static let visualizerSettingsChanged = Notification.Name("boo.peekaboo.visualizer.settingsChanged")
+extension Notification.Name {
+    public static let visualizerConnected = Notification.Name("boo.peekaboo.visualizer.connected")
+    public static let visualizerDisconnected = Notification.Name("boo.peekaboo.visualizer.disconnected")
+    public static let visualizerSettingsChanged = Notification.Name("boo.peekaboo.visualizer.settingsChanged")
 }
 
 /// Error types for visualizer operations
@@ -169,29 +184,29 @@ public enum VisualizerError: Error, LocalizedError {
     case appNotRunning
     case animationFailed(String)
     case invalidParameter(String)
-    
+
     public var errorDescription: String? {
         switch self {
         case .notConnected:
-            return "Visualizer XPC service is not connected"
+            "Visualizer XPC service is not connected"
         case .appNotRunning:
-            return "Peekaboo.app is not running"
-        case .animationFailed(let reason):
-            return "Animation failed: \(reason)"
-        case .invalidParameter(let param):
-            return "Invalid parameter: \(param)"
+            "Peekaboo.app is not running"
+        case let .animationFailed(reason):
+            "Animation failed: \(reason)"
+        case let .invalidParameter(param):
+            "Invalid parameter: \(param)"
         }
     }
 }
 
 /// Settings keys for visual feedback configuration
-public struct VisualizerSettings {
+public enum VisualizerSettings {
     public static let enabledKey = "visualFeedbackEnabled"
     public static let animationSpeedKey = "animationSpeed"
     public static let effectIntensityKey = "effectIntensity"
     public static let soundEffectsKey = "soundEffectsEnabled"
     public static let reduceMotionKey = "respectReduceMotion"
-    
+
     // Per-action toggles
     public static let screenshotFlashKey = "screenshotFlashEnabled"
     public static let clickAnimationKey = "clickAnimationEnabled"

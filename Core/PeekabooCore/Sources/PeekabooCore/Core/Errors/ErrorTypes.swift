@@ -114,11 +114,11 @@ public enum CaptureError: Error, LocalizedError, Sendable {
         case .invalidCaptureArea:
             return "Invalid capture area specified."
         case let .invalidDisplayIndex(index, count):
-            return "Invalid display index \(index). Available displays: 0-\(count-1)."
+            return "Invalid display index \(index). Available displays: 0-\(count - 1)."
         case let .ambiguousAppIdentifier(identifier, candidates):
             return "Multiple applications match '\(identifier)': \(candidates)."
         case let .invalidWindowIndex(index, count):
-            return "Invalid window index \(index). Available windows: 0-\(count-1)."
+            return "Invalid window index \(index). Available windows: 0-\(count - 1)."
         case let .captureFailed(message):
             return "Capture failed: \(message)"
         case .imageConversionFailed:
@@ -166,7 +166,7 @@ public struct CommandResult: Codable, Sendable {
     public let success: Bool
     public let output: String?
     public let error: String?
-    
+
     public init(success: Bool, output: String? = nil, error: String? = nil) {
         self.success = success
         self.output = output

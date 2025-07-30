@@ -1,6 +1,6 @@
+import PeekabooCore
 import SwiftUI
 import UniformTypeIdentifiers
-import PeekabooCore
 
 struct SessionMainWindow: View {
     @Environment(PeekabooSettings.self) private var settings
@@ -8,27 +8,26 @@ struct SessionMainWindow: View {
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SpeechRecognizer.self) private var speechRecognizer
     @Environment(Permissions.self) private var permissions
-    
+
     @State private var selectedSessionId: String?
     @State private var searchText = ""
-    
+
     var body: some View {
         NavigationSplitView {
             SessionSidebar(
-                selectedSessionId: $selectedSessionId,
-                searchText: $searchText
-            )
-            .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
+                selectedSessionId: self.$selectedSessionId,
+                searchText: self.$searchText)
+                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
         } detail: {
-            SessionDetailContainer(selectedSessionId: selectedSessionId)
+            SessionDetailContainer(selectedSessionId: self.selectedSessionId)
                 .toolbar(removing: .sidebarToggle)
         }
         .navigationTitle("Peekaboo Sessions")
         .onAppear {
-            selectedSessionId = sessionStore.currentSession?.id
+            self.selectedSessionId = self.sessionStore.currentSession?.id
         }
-        .onChange(of: sessionStore.currentSession?.id) { _, newId in
-            selectedSessionId = newId
+        .onChange(of: self.sessionStore.currentSession?.id) { _, newId in
+            self.selectedSessionId = newId
         }
     }
 }
@@ -38,12 +37,13 @@ struct SessionMainWindow: View {
 struct SessionDetailContainer: View {
     @Environment(SessionStore.self) private var sessionStore
     @Environment(PeekabooAgent.self) private var agent
-    
+
     let selectedSessionId: String?
-    
+
     var body: some View {
         if let sessionId = selectedSessionId,
-           let session = sessionStore.sessions.first(where: { $0.id == sessionId }) {
+           let session = sessionStore.sessions.first(where: { $0.id == sessionId })
+        {
             SessionChatView(session: session)
         } else if let currentSession = sessionStore.currentSession {
             SessionChatView(session: currentSession)
@@ -58,34 +58,34 @@ struct SessionDetailContainer: View {
 struct SessionSidebar: View {
     @Environment(SessionStore.self) private var sessionStore
     @Environment(PeekabooAgent.self) private var agent
-    
+
     @Binding var selectedSessionId: String?
     @Binding var searchText: String
-    
+
     private var filteredSessions: [ConversationSession] {
-        if searchText.isEmpty {
-            return sessionStore.sessions
+        if self.searchText.isEmpty {
+            self.sessionStore.sessions
         } else {
-            return sessionStore.sessions.filter { session in
-                session.title.localizedCaseInsensitiveContains(searchText) ||
-                session.summary.localizedCaseInsensitiveContains(searchText) ||
-                session.messages.contains { message in
-                    message.content.localizedCaseInsensitiveContains(searchText)
-                }
+            self.sessionStore.sessions.filter { session in
+                session.title.localizedCaseInsensitiveContains(self.searchText) ||
+                    session.summary.localizedCaseInsensitiveContains(self.searchText) ||
+                    session.messages.contains { message in
+                        message.content.localizedCaseInsensitiveContains(self.searchText)
+                    }
             }
         }
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack {
                 Text("Sessions")
                     .font(.headline)
-                
+
                 Spacer()
-                
-                Button(action: createNewSession) {
+
+                Button(action: self.createNewSession) {
                     Image(systemName: "plus")
                 }
                 .buttonStyle(.plain)
@@ -93,15 +93,15 @@ struct SessionSidebar: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-            
+
             // Search
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
-                TextField("Search sessions...", text: $searchText)
+                TextField("Search sessions...", text: self.$searchText)
                     .textFieldStyle(.plain)
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
+                if !self.searchText.isEmpty {
+                    Button(action: { self.searchText = "" }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.secondary)
                     }
@@ -113,37 +113,36 @@ struct SessionSidebar: View {
             .cornerRadius(6)
             .padding(.horizontal)
             .padding(.bottom, 8)
-            
+
             Divider()
-            
+
             // Session list
-            List(filteredSessions, selection: $selectedSessionId) { session in
+            List(self.filteredSessions, selection: self.$selectedSessionId) { session in
                 SessionRow(
                     session: session,
-                    isActive: agent.currentSession?.id == session.id,
-                    onDelete: { deleteSession(session) }
-                )
-                .tag(session.id)
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        deleteSession(session)
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+                    isActive: self.agent.currentSession?.id == session.id,
+                    onDelete: { self.deleteSession(session) })
+                    .tag(session.id)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            self.deleteSession(session)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .tint(.red)
                     }
-                    .tint(.red)
-                }
-                .contextMenu {
-                    Button("Delete") {
-                        deleteSession(session)
+                    .contextMenu {
+                        Button("Delete") {
+                            self.deleteSession(session)
+                        }
+                        Button("Duplicate") {
+                            self.duplicateSession(session)
+                        }
+                        Divider()
+                        Button("Export...") {
+                            self.exportSession(session)
+                        }
                     }
-                    Button("Duplicate") {
-                        duplicateSession(session)
-                    }
-                    Divider()
-                    Button("Export...") {
-                        exportSession(session)
-                    }
-                }
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
@@ -156,53 +155,54 @@ struct SessionSidebar: View {
                 // Delete the currently selected session
                 if let selectedId = selectedSessionId,
                    let session = sessionStore.sessions.first(where: { $0.id == selectedId }),
-                   session.id != agent.currentSession?.id {
-                    deleteSession(session)
+                   session.id != agent.currentSession?.id
+                {
+                    self.deleteSession(session)
                 }
             }
         }
     }
-    
+
     private func createNewSession() {
-        let newSession = sessionStore.createSession(title: "New Session")
-        selectedSessionId = newSession.id
+        let newSession = self.sessionStore.createSession(title: "New Session")
+        self.selectedSessionId = newSession.id
     }
-    
+
     private func deleteSession(_ session: ConversationSession) {
         // Don't delete active session
-        guard session.id != agent.currentSession?.id else { return }
-        
-        sessionStore.sessions.removeAll { $0.id == session.id }
-        sessionStore.saveSessions()
-        
-        if selectedSessionId == session.id {
-            selectedSessionId = nil
+        guard session.id != self.agent.currentSession?.id else { return }
+
+        self.sessionStore.sessions.removeAll { $0.id == session.id }
+        self.sessionStore.saveSessions()
+
+        if self.selectedSessionId == session.id {
+            self.selectedSessionId = nil
         }
     }
-    
+
     private func duplicateSession(_ session: ConversationSession) {
         var newSession = ConversationSession(title: "\(session.title) (Copy)")
         newSession.messages = session.messages
         newSession.summary = session.summary
-        
-        sessionStore.sessions.insert(newSession, at: 0)
-        sessionStore.saveSessions()
-        
-        selectedSessionId = newSession.id
+
+        self.sessionStore.sessions.insert(newSession, at: 0)
+        self.sessionStore.saveSessions()
+
+        self.selectedSessionId = newSession.id
     }
-    
+
     private func exportSession(_ session: ConversationSession) {
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [.json]
         savePanel.nameFieldStringValue = "\(session.title).json"
-        
+
         savePanel.begin { response in
             guard response == .OK else { return }
-            
+
             // Capture URL on main thread before Task
             Task { @MainActor in
                 guard let url = savePanel.url else { return }
-                
+
                 do {
                     let encoder = JSONEncoder()
                     encoder.dateEncodingStrategy = .iso8601
@@ -224,27 +224,27 @@ struct SessionRow: View {
     let isActive: Bool
     let onDelete: () -> Void
     @State private var isHovering = false
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(session.title)
+                Text(self.session.title)
                     .font(.body)
-                    .fontWeight(isActive ? .semibold : .regular)
+                    .fontWeight(self.isActive ? .semibold : .regular)
                     .lineLimit(1)
-                
-                if isActive {
+
+                if self.isActive {
                     Image(systemName: "circle.fill")
                         .font(.system(size: 8))
                         .foregroundColor(.green)
                         .symbolEffect(.pulse, options: .repeating)
                 }
-                
+
                 Spacer()
-                
+
                 // Delete button on hover
-                if isHovering && !isActive {
-                    Button(action: onDelete) {
+                if self.isHovering, !self.isActive {
+                    Button(action: self.onDelete) {
                         Image(systemName: "trash")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -253,31 +253,31 @@ struct SessionRow: View {
                     .help("Delete session")
                 }
             }
-            
+
             HStack {
-                Text(session.startTime, style: .relative)
+                Text(self.session.startTime, style: .relative)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
-                if !session.messages.isEmpty {
+
+                if !self.session.messages.isEmpty {
                     Text("•")
                         .foregroundColor(.secondary)
-                    Text("\(session.messages.count) messages")
+                    Text("\(self.session.messages.count) messages")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
-                if !session.modelName.isEmpty {
+
+                if !self.session.modelName.isEmpty {
                     Text("•")
                         .foregroundColor(.secondary)
-                    Text(formatModelName(session.modelName))
+                    Text(formatModelName(self.session.modelName))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            
-            if !session.summary.isEmpty {
-                Text(session.summary)
+
+            if !self.session.summary.isEmpty {
+                Text(self.session.summary)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
@@ -286,7 +286,7 @@ struct SessionRow: View {
         }
         .padding(.vertical, 4)
         .onHover { hovering in
-            isHovering = hovering
+            self.isHovering = hovering
         }
     }
 }
@@ -296,20 +296,20 @@ struct SessionRow: View {
 private func formatModelName(_ model: String) -> String {
     // Shorten common model names for display
     switch model {
-    case "gpt-4.1": return "GPT-4.1"
-    case "gpt-4.1-mini": return "GPT-4.1 mini"
-    case "gpt-4o": return "GPT-4o"
-    case "gpt-4o-mini": return "GPT-4o mini"
-    case "o3": return "o3"
-    case "o3-pro": return "o3 pro"
-    case "o4-mini": return "o4-mini"
-    case "claude-opus-4-20250514": return "Claude Opus 4"
-    case "claude-sonnet-4-20250514": return "Claude Sonnet 4"
-    case "claude-3-5-haiku": return "Claude 3.5 Haiku"
-    case "claude-3-5-sonnet": return "Claude 3.5 Sonnet"
-    case "llava:latest": return "LLaVA"
-    case "llama3.2-vision:latest": return "Llama 3.2"
-    default: return model
+    case "gpt-4.1": "GPT-4.1"
+    case "gpt-4.1-mini": "GPT-4.1 mini"
+    case "gpt-4o": "GPT-4o"
+    case "gpt-4o-mini": "GPT-4o mini"
+    case "o3": "o3"
+    case "o3-pro": "o3 pro"
+    case "o4-mini": "o4-mini"
+    case "claude-opus-4-20250514": "Claude Opus 4"
+    case "claude-sonnet-4-20250514": "Claude Sonnet 4"
+    case "claude-3-5-haiku": "Claude 3.5 Haiku"
+    case "claude-3-5-sonnet": "Claude 3.5 Sonnet"
+    case "llava:latest": "LLaVA"
+    case "llama3.2-vision:latest": "Llama 3.2"
+    default: model
     }
 }
 
@@ -319,51 +319,50 @@ struct SessionChatView: View {
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
     @Environment(SpeechRecognizer.self) private var speechRecognizer
-    
+
     let session: ConversationSession
     @State private var inputText = ""
     @State private var isProcessing = false
     @State private var inputMode: InputMode = .text
     @State private var hasConnectionError = false
-    
+
     enum InputMode {
         case text
         case voice
     }
-    
+
     private var isCurrentSession: Bool {
-        session.id == agent.currentSession?.id
+        self.session.id == self.agent.currentSession?.id
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
             SessionChatHeader(
-                session: session,
-                isActive: isCurrentSession && agent.isProcessing
-            )
-            
+                session: self.session,
+                isActive: self.isCurrentSession && self.agent.isProcessing)
+
             Divider()
-            
+
             // Messages
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
-                        ForEach(session.messages) { message in
+                        ForEach(self.session.messages) { message in
                             DetailedMessageRow(message: message)
                                 .id(message.id)
                         }
-                        
+
                         // Show progress indicator for active session
-                        if isCurrentSession && agent.isProcessing {
-                            ProgressIndicatorView(agent: agent)
+                        if self.isCurrentSession, self.agent.isProcessing {
+                            ProgressIndicatorView(agent: self.agent)
                                 .id("progress")
                                 .padding(.top, 8)
                         }
                     }
                     .padding()
                 }
-                .onChange(of: session.messages.count) { _, _ in
+                .onChange(of: self.session.messages.count) { _, _ in
                     // Auto-scroll to bottom on new messages
                     if let lastMessage = session.messages.last {
                         withAnimation {
@@ -372,40 +371,40 @@ struct SessionChatView: View {
                     }
                 }
             }
-            
+
             // Input area (only for current session)
-            if isCurrentSession {
+            if self.isCurrentSession {
                 Divider()
-                
+
                 // Connection error banner
-                if hasConnectionError {
+                if self.hasConnectionError {
                     HStack {
                         Image(systemName: "wifi.slash")
                             .foregroundColor(.red)
-                        
+
                         Text("Connection lost. Messages will be queued.")
                             .font(.caption)
                             .foregroundColor(.red)
-                        
+
                         Spacer()
-                        
+
                         Button("Retry") {
                             // Clear error state and retry connection
-                            hasConnectionError = false
-                            
+                            self.hasConnectionError = false
+
                             // Retry the last failed task if available
                             if let lastTask = agent.lastTask {
                                 Task {
-                                    isProcessing = true
+                                    self.isProcessing = true
                                     defer { isProcessing = false }
-                                    
+
                                     // Re-execute the last task
                                     do {
-                                        try await agent.executeTask(lastTask)
-                                        hasConnectionError = false
+                                        try await self.agent.executeTask(lastTask)
+                                        self.hasConnectionError = false
                                     } catch {
                                         // Error persists
-                                        hasConnectionError = true
+                                        self.hasConnectionError = true
                                     }
                                 }
                             }
@@ -416,38 +415,38 @@ struct SessionChatView: View {
                     .padding(.horizontal)
                     .padding(.vertical, 8)
                     .background(Color.red.opacity(0.1))
-                    
+
                     Divider()
                 }
-                
-                if inputMode == .text {
-                    textInputArea
+
+                if self.inputMode == .text {
+                    self.textInputArea
                 } else {
-                    voiceInputArea
+                    self.voiceInputArea
                 }
             }
         }
     }
-    
+
     private var textInputArea: some View {
         HStack(spacing: 8) {
-            TextField(placeholderText, text: $inputText)
+            TextField(self.placeholderText, text: self.$inputText)
                 .textFieldStyle(.plain)
                 .font(.body)
                 .onSubmit {
-                    submitInput()
+                    self.submitInput()
                 }
-            
-            Button(action: { inputMode = .voice }) {
+
+            Button(action: { self.inputMode = .voice }) {
                 Image(systemName: "mic")
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
-            
-            if agent.isProcessing && isCurrentSession {
+
+            if self.agent.isProcessing, self.isCurrentSession {
                 // Show stop button during execution
-                Button(action: { 
-                    agent.cancelCurrentTask()
+                Button(action: {
+                    self.agent.cancelCurrentTask()
                 }) {
                     Image(systemName: "stop.circle.fill")
                         .font(.title2)
@@ -456,54 +455,54 @@ struct SessionChatView: View {
                 .buttonStyle(.plain)
                 .help("Cancel current task")
             }
-            
-            Button(action: submitInput) {
+
+            Button(action: self.submitInput) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.title2)
-                    .foregroundColor(inputText.isEmpty ? .secondary : .accentColor)
+                    .foregroundColor(self.inputText.isEmpty ? .secondary : .accentColor)
             }
             .buttonStyle(.plain)
-            .disabled(inputText.isEmpty)
+            .disabled(self.inputText.isEmpty)
         }
         .padding(12)
     }
-    
+
     private var placeholderText: String {
-        if agent.isProcessing && isCurrentSession {
-            return "Ask a follow-up question..."
+        if self.agent.isProcessing, self.isCurrentSession {
+            "Ask a follow-up question..."
         } else {
-            return "Ask Peekaboo..."
+            "Ask Peekaboo..."
         }
     }
-    
+
     private var voiceInputArea: some View {
         VStack(spacing: 12) {
-            if speechRecognizer.isListening {
-                Text(speechRecognizer.transcript.isEmpty ? "Listening..." : speechRecognizer.transcript)
+            if self.speechRecognizer.isListening {
+                Text(self.speechRecognizer.transcript.isEmpty ? "Listening..." : self.speechRecognizer.transcript)
                     .font(.body)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
             }
-            
+
             HStack {
-                Button(action: { inputMode = .text }) {
+                Button(action: { self.inputMode = .text }) {
                     Image(systemName: "keyboard")
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
-                
+
                 Spacer()
-                
-                Button(action: toggleVoiceRecording) {
-                    Image(systemName: speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
+
+                Button(action: self.toggleVoiceRecording) {
+                    Image(systemName: self.speechRecognizer.isListening ? "stop.circle.fill" : "mic.circle.fill")
                         .font(.system(size: 48))
-                        .foregroundColor(speechRecognizer.isListening ? .red : .accentColor)
+                        .foregroundColor(self.speechRecognizer.isListening ? .red : .accentColor)
                 }
                 .buttonStyle(.plain)
-                
+
                 Spacer()
-                
+
                 // Placeholder to balance the layout
                 Color.clear
                     .frame(width: 30, height: 30)
@@ -512,25 +511,24 @@ struct SessionChatView: View {
         .padding()
         .frame(height: 100)
     }
-    
+
     private func submitInput() {
-        let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedInput = self.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedInput.isEmpty else { return }
-        
+
         // Clear input immediately
-        inputText = ""
-        
-        if agent.isProcessing && isCurrentSession {
+        self.inputText = ""
+
+        if self.agent.isProcessing, self.isCurrentSession {
             // During execution, just add as a follow-up message
-            sessionStore.addMessage(
+            self.sessionStore.addMessage(
                 ConversationMessage(role: .user, content: trimmedInput),
-                to: session
-            )
-            
+                to: self.session)
+
             // Start a new execution with the follow-up
             Task {
                 do {
-                    try await agent.executeTask(trimmedInput)
+                    try await self.agent.executeTask(trimmedInput)
                 } catch {
                     print("Failed to execute follow-up: \(error)")
                 }
@@ -538,16 +536,16 @@ struct SessionChatView: View {
         } else {
             // Normal execution
             Task {
-                isProcessing = true
+                self.isProcessing = true
                 defer { isProcessing = false }
-                
+
                 do {
-                    try await agent.executeTask(trimmedInput)
+                    try await self.agent.executeTask(trimmedInput)
                 } catch {
                     // Check if it's a connection error
                     let errorMessage = error.localizedDescription
                     if errorMessage.contains("network") || errorMessage.contains("connection") {
-                        hasConnectionError = true
+                        self.hasConnectionError = true
                     }
                     // Error is already added to session by agent
                     print("Task error: \(errorMessage)")
@@ -555,22 +553,22 @@ struct SessionChatView: View {
             }
         }
     }
-    
+
     private func toggleVoiceRecording() {
-        if speechRecognizer.isListening {
+        if self.speechRecognizer.isListening {
             // Stop and submit
-            speechRecognizer.stopListening()
-            
-            let transcript = speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            self.speechRecognizer.stopListening()
+
+            let transcript = self.speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
             if !transcript.isEmpty {
-                inputText = transcript
-                submitInput()
+                self.inputText = transcript
+                self.submitInput()
             }
         } else {
             // Start listening
             Task {
                 do {
-                    try speechRecognizer.startListening()
+                    try self.speechRecognizer.startListening()
                 } catch {
                     print("Speech recognition error: \(error)")
                 }
@@ -584,53 +582,53 @@ struct SessionChatView: View {
 struct SessionChatHeader: View {
     let session: ConversationSession
     let isActive: Bool
-    
+
     @Environment(PeekabooAgent.self) private var agent
     @State private var showDebugInfo = false
-    
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(session.title)
+                        Text(self.session.title)
                             .font(.headline)
-                        
-                        if isActive {
+
+                        if self.isActive {
                             Image(systemName: "circle.fill")
                                 .font(.system(size: 8))
                                 .foregroundColor(.green)
                                 .symbolEffect(.pulse, options: .repeating)
                         }
                     }
-                    
+
                     HStack(spacing: 4) {
-                        if !session.modelName.isEmpty {
-                            Text(formatModelName(session.modelName))
+                        if !self.session.modelName.isEmpty {
+                            Text(formatModelName(self.session.modelName))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        
-                        if isActive && agent.isProcessing {
+
+                        if self.isActive, self.agent.isProcessing {
                             Text("•")
                                 .foregroundColor(.secondary)
-                            
+
                             // Show current tool or thinking status
                             if let currentTool = agent.currentTool {
                                 Text("\(PeekabooAgent.iconForTool(currentTool)) \(currentTool)")
                                     .font(.caption)
                                     .foregroundColor(.blue)
-                                
+
                                 if let args = agent.currentToolArgs, !args.isEmpty {
                                     Text(args)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                         .lineLimit(1)
                                 }
-                            } else if agent.isThinking {
+                            } else if self.agent.isThinking {
                                 AnimatedThinkingIndicator()
-                            } else if !agent.currentTask.isEmpty {
-                                Text(agent.currentTask)
+                            } else if !self.agent.currentTask.isEmpty {
+                                Text(self.agent.currentTask)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                     .lineLimit(1)
@@ -638,35 +636,35 @@ struct SessionChatHeader: View {
                         }
                     }
                 }
-                
+
                 Spacer()
-                
+
                 // Debug toggle
-                Button(action: { showDebugInfo.toggle() }) {
-                    Label("Debug", systemImage: showDebugInfo ? "info.circle.fill" : "info.circle")
+                Button(action: { self.showDebugInfo.toggle() }) {
+                    Label("Debug", systemImage: self.showDebugInfo ? "info.circle.fill" : "info.circle")
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
-                
-                if isActive && agent.isProcessing {
-                    Button(action: { 
-                        agent.cancelCurrentTask()
+
+                if self.isActive, self.agent.isProcessing {
+                    Button(action: {
+                        self.agent.cancelCurrentTask()
                     }) {
                         Label("Cancel", systemImage: "stop.circle")
                             .foregroundColor(.red)
                     }
                     .buttonStyle(.plain)
                 }
-                
-                Text(session.startTime, format: .dateTime)
+
+                Text(self.session.startTime, format: .dateTime)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
             .padding()
-            
-            if showDebugInfo {
+
+            if self.showDebugInfo {
                 Divider()
-                SessionDebugInfo(session: session)
+                SessionDebugInfo(session: self.session)
                     .padding()
                     .background(Color(NSColor.controlBackgroundColor))
             }
@@ -678,24 +676,24 @@ struct SessionChatHeader: View {
 
 struct EmptySessionView: View {
     @Environment(SessionStore.self) private var sessionStore
-    
+
     var body: some View {
         VStack(spacing: 20) {
             Image("ghost.idle")
                 .resizable()
                 .frame(width: 80, height: 80)
                 .opacity(0.5)
-            
+
             Text("No Session Selected")
                 .font(.title2)
                 .foregroundColor(.secondary)
-            
+
             Text("Select a session from the sidebar or create a new one")
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-            
-            Button(action: { _ = sessionStore.createSession(title: "New Session") }) {
+
+            Button(action: { _ = self.sessionStore.createSession(title: "New Session") }) {
                 Label("New Session", systemImage: "plus.circle")
             }
             .buttonStyle(.borderedProminent)
@@ -714,26 +712,25 @@ struct DetailedMessageRow: View {
     @State private var selectedImage: NSImage?
     @Environment(PeekabooAgent.self) private var agent
     @Environment(SessionStore.self) private var sessionStore
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Message header
             HStack(alignment: .top, spacing: 12) {
                 // Avatar or Tool Icon
-                if isToolMessage {
+                if self.isToolMessage {
                     // For tool messages, show the tool icon in the avatar position
-                    let toolName = extractToolName(from: message.content)
-                    let toolStatus = determineToolStatus(from: message)
-                    
+                    let toolName = self.extractToolName(from: self.message.content)
+                    let toolStatus = self.determineToolStatus(from: self.message)
+
                     EnhancedToolIcon(
                         toolName: toolName,
-                        status: toolStatus
-                    )
-                    .font(.system(size: 20))  // Larger icon
-                    .frame(width: 32, height: 32)
-                    .background(Color.blue.opacity(0.1))
-                    .clipShape(Circle())
-                } else if isThinkingMessage {
+                        status: toolStatus)
+                        .font(.system(size: 20)) // Larger icon
+                        .frame(width: 32, height: 32)
+                        .background(Color.blue.opacity(0.1))
+                        .clipShape(Circle())
+                } else if self.isThinkingMessage {
                     // Special thinking icon with animation
                     ZStack {
                         Image(systemName: "brain")
@@ -742,7 +739,7 @@ struct DetailedMessageRow: View {
                             .frame(width: 32, height: 32)
                             .background(Color.purple.opacity(0.1))
                             .clipShape(Circle())
-                        
+
                         // Animated thinking indicator
                         Circle()
                             .stroke(Color.purple, lineWidth: 2)
@@ -751,46 +748,45 @@ struct DetailedMessageRow: View {
                             .animation(
                                 Animation.linear(duration: 2)
                                     .repeatForever(autoreverses: false),
-                                value: true
-                            )
+                                value: true)
                     }
                 } else {
                     ZStack {
-                        Image(systemName: iconName)
+                        Image(systemName: self.iconName)
                             .font(.title3)
-                            .foregroundColor(iconColor)
+                            .foregroundColor(self.iconColor)
                             .frame(width: 32, height: 32)
-                            .background(iconColor.opacity(0.1))
+                            .background(self.iconColor.opacity(0.1))
                             .clipShape(Circle())
                     }
                 }
-                
+
                 // Content
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(roleTitle)
+                        Text(self.roleTitle)
                             .font(.subheadline)
                             .fontWeight(.medium)
-                        
-                        if isErrorMessage {
+
+                        if self.isErrorMessage {
                             Label("Error", systemImage: "exclamationmark.triangle.fill")
                                 .font(.caption)
                                 .foregroundColor(.red)
-                        } else if isWarningMessage {
+                        } else if self.isWarningMessage {
                             Label("Cancelled", systemImage: "xmark.circle.fill")
                                 .font(.caption)
                                 .foregroundColor(.orange)
                         }
-                        
-                        Text(message.timestamp, style: .time)
+
+                        Text(self.message.timestamp, style: .time)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        
+
                         Spacer()
-                        
+
                         // Retry button for error messages
-                        if isErrorMessage && !agent.isProcessing {
-                            Button(action: retryLastTask) {
+                        if self.isErrorMessage, !self.agent.isProcessing {
+                            Button(action: self.retryLastTask) {
                                 Label("Retry", systemImage: "arrow.clockwise")
                                     .font(.caption)
                                     .foregroundColor(.white)
@@ -802,75 +798,77 @@ struct DetailedMessageRow: View {
                             .buttonStyle(.plain)
                             .help("Retry the failed task")
                         }
-                        
-                        if !message.toolCalls.isEmpty {
-                            Button(action: { isExpanded.toggle() }) {
-                                Label("\(message.toolCalls.count) tools", 
-                                      systemImage: isExpanded ? "chevron.down.circle.fill" : "chevron.right.circle")
+
+                        if !self.message.toolCalls.isEmpty {
+                            Button(action: { self.isExpanded.toggle() }) {
+                                Label(
+                                    "\(self.message.toolCalls.count) tools",
+                                    systemImage: self
+                                        .isExpanded ? "chevron.down.circle.fill" : "chevron.right.circle")
                                     .font(.caption)
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    
-                    if isThinkingMessage {
+
+                    if self.isThinkingMessage {
                         // Show the actual thinking content, removing the 🤔 emoji
-                        Text(message.content.replacingOccurrences(of: "🤔 ", with: ""))
+                        Text(self.message.content.replacingOccurrences(of: "🤔 ", with: ""))
                             .font(.system(.body))
                             .foregroundColor(.purple)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
-                    } else if isErrorMessage {
-                        Text(message.content)
+                    } else if self.isErrorMessage {
+                        Text(self.message.content)
                             .foregroundColor(.red)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
-                    } else if isWarningMessage {
-                        Text(message.content)
+                    } else if self.isWarningMessage {
+                        Text(self.message.content)
                             .foregroundColor(.orange)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
-                    } else if isToolMessage {
+                    } else if self.isToolMessage {
                         // Show tool execution details without inline icon (icon is in avatar position)
                         if let toolCall = message.toolCalls.first {
                             let isRunning = toolCall.result == "Running..."
-                            let content = message.content
+                            let content = self.message.content
                                 .replacingOccurrences(of: "🔧 ", with: "")
                                 .replacingOccurrences(of: "✅ ", with: "")
                                 .replacingOccurrences(of: "❌ ", with: "")
-                            
+
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(content)
                                         .font(.system(.body, design: .rounded))
                                         .fontWeight(.medium)
                                         .foregroundColor(.primary)
-                                    
-                                    if !isRunning && toolCall.result != "Running..." {
+
+                                    if !isRunning, toolCall.result != "Running..." {
                                         // Show result summary if available
-                                        let toolName = extractToolName(from: message.content)
+                                        let toolName = self.extractToolName(from: self.message.content)
                                         if let resultSummary = ToolFormatter.toolResultSummary(
                                             toolName: toolName,
-                                            result: toolCall.result
-                                        ) {
+                                            result: toolCall.result)
+                                        {
                                             Text(resultSummary)
                                                 .font(.caption)
                                                 .foregroundColor(.secondary)
                                         }
                                     }
                                 }
-                                
+
                                 Spacer()
-                                
+
                                 if isRunning {
-                                    TimeIntervalText(startTime: message.timestamp)
+                                    TimeIntervalText(startTime: self.message.timestamp)
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }
                             }
                             .textSelection(.enabled)
                         } else {
-                            Text(message.content
+                            Text(self.message.content
                                 .replacingOccurrences(of: "🔧 ", with: "")
                                 .replacingOccurrences(of: "✅ ", with: "")
                                 .replacingOccurrences(of: "❌ ", with: ""))
@@ -879,31 +877,30 @@ struct DetailedMessageRow: View {
                                 .foregroundColor(.primary)
                                 .textSelection(.enabled)
                         }
-                    } else if message.role == .assistant {
+                    } else if self.message.role == .assistant {
                         // Render assistant messages as Markdown
                         if let attributedString = try? AttributedString(
                             markdown: message.content,
                             options: AttributedString.MarkdownParsingOptions(
                                 allowsExtendedAttributes: true,
-                                interpretedSyntax: .inlineOnlyPreservingWhitespace
-                            )
-                        ) {
+                                interpretedSyntax: .inlineOnlyPreservingWhitespace))
+                        {
                             Text(attributedString)
                                 .textSelection(.enabled)
                                 .fixedSize(horizontal: false, vertical: true)
                         } else {
-                            Text(message.content)
+                            Text(self.message.content)
                                 .textSelection(.enabled)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     } else {
-                        Text(message.content)
+                        Text(self.message.content)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    
+
                     // Show active tool executions
-                    if message.role == .assistant && hasRunningTools {
+                    if self.message.role == .assistant, self.hasRunningTools {
                         HStack(spacing: 4) {
                             ProgressView()
                                 .scaleEffect(0.7)
@@ -915,20 +912,20 @@ struct DetailedMessageRow: View {
                     }
                 }
             }
-            
+
             // Expanded tool calls - show details directly without nested expansion
-            if isExpanded && !message.toolCalls.isEmpty {
+            if self.isExpanded, !self.message.toolCalls.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(message.toolCalls) { toolCall in
+                    ForEach(self.message.toolCalls) { toolCall in
                         VStack(alignment: .leading, spacing: 8) {
                             // Arguments
-                            if !toolCall.arguments.isEmpty && toolCall.arguments != "{}" {
+                            if !toolCall.arguments.isEmpty, toolCall.arguments != "{}" {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Arguments")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
-                                    
-                                    Text(formatJSON(toolCall.arguments))
+
+                                    Text(self.formatJSON(toolCall.arguments))
                                         .font(.system(.caption, design: .monospaced))
                                         .textSelection(.enabled)
                                         .padding(8)
@@ -936,22 +933,22 @@ struct DetailedMessageRow: View {
                                         .cornerRadius(4)
                                 }
                             }
-                            
+
                             // Result
-                            if !toolCall.result.isEmpty && toolCall.result != "Running..." {
+                            if !toolCall.result.isEmpty, toolCall.result != "Running..." {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Result")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
-                                    
+
                                     // Check if result contains image data
                                     if toolCall.name.contains("image") || toolCall.name.contains("screenshot"),
                                        let imageData = extractImageData(from: toolCall.result),
-                                       let image = NSImage(data: imageData) {
-                                        
-                                        Button(action: { 
-                                            selectedImage = image
-                                            showingImageInspector = true
+                                       let image = NSImage(data: imageData)
+                                    {
+                                        Button(action: {
+                                            self.selectedImage = image
+                                            self.showingImageInspector = true
                                         }) {
                                             Image(nsImage: image)
                                                 .resizable()
@@ -960,8 +957,7 @@ struct DetailedMessageRow: View {
                                                 .cornerRadius(8)
                                                 .overlay(
                                                     RoundedRectangle(cornerRadius: 8)
-                                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                                                )
+                                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1))
                                         }
                                         .buttonStyle(.plain)
                                         .help("Click to inspect image")
@@ -983,89 +979,92 @@ struct DetailedMessageRow: View {
             }
         }
         .padding()
-        .background(backgroundForMessage)
+        .background(self.backgroundForMessage)
         .cornerRadius(8)
-        .sheet(isPresented: $showingImageInspector) {
+        .sheet(isPresented: self.$showingImageInspector) {
             if let image = selectedImage {
                 ImageInspectorView(image: image)
             }
         }
     }
-    
+
     private var isThinkingMessage: Bool {
-        message.role == .system && message.content.contains("🤔")
+        self.message.role == .system && self.message.content.contains("🤔")
     }
-    
+
     private var isErrorMessage: Bool {
-        message.role == .system && message.content.contains("❌")
+        self.message.role == .system && self.message.content.contains("❌")
     }
-    
+
     private var isWarningMessage: Bool {
-        message.role == .system && message.content.contains("⚠️")
+        self.message.role == .system && self.message.content.contains("⚠️")
     }
-    
+
     private var isToolMessage: Bool {
-        message.role == .system && (message.content.contains("🔧") || message.content.contains("✅") || message.content.contains("❌"))
+        self.message
+            .role == .system &&
+            (self.message.content.contains("🔧") || self.message.content.contains("✅") || self.message.content
+                .contains("❌"))
     }
-    
+
     private var hasRunningTools: Bool {
-        message.toolCalls.contains { $0.result == "Running..." }
+        self.message.toolCalls.contains { $0.result == "Running..." }
     }
-    
+
     private var backgroundForMessage: Color {
-        if isErrorMessage {
-            return Color.red.opacity(0.1)
-        } else if isWarningMessage {
-            return Color.orange.opacity(0.1)
-        } else if isThinkingMessage {
-            return Color.purple.opacity(0.05)
-        } else if isToolMessage {
-            return Color.blue.opacity(0.05)
+        if self.isErrorMessage {
+            Color.red.opacity(0.1)
+        } else if self.isWarningMessage {
+            Color.orange.opacity(0.1)
+        } else if self.isThinkingMessage {
+            Color.purple.opacity(0.05)
+        } else if self.isToolMessage {
+            Color.blue.opacity(0.05)
         } else {
-            return Color(NSColor.controlBackgroundColor).opacity(0.3)
+            Color(NSColor.controlBackgroundColor).opacity(0.3)
         }
     }
-    
+
     private var iconName: String {
-        switch message.role {
-        case .user: return "person.fill"
-        case .assistant: return "sparkles"
-        case .system: return "gear"
+        switch self.message.role {
+        case .user: "person.fill"
+        case .assistant: "sparkles"
+        case .system: "gear"
         }
     }
-    
+
     private var iconColor: Color {
-        if isToolMessage {
+        if self.isToolMessage {
             return .purple
         }
-        switch message.role {
+        switch self.message.role {
         case .user: return .blue
         case .assistant: return .green
         case .system: return .orange
         }
     }
-    
+
     private var roleTitle: String {
-        switch message.role {
-        case .user: return "User"
-        case .assistant: return "Assistant"
-        case .system: return "System"
+        switch self.message.role {
+        case .user: "User"
+        case .assistant: "Assistant"
+        case .system: "System"
         }
     }
-    
+
     private func extractToolName(from content: String) -> String {
         // Format is "🔧 toolname: args" or "✅ toolname: args" or "❌ toolname: args"
         let cleaned = content
             .replacingOccurrences(of: "🔧 ", with: "")
             .replacingOccurrences(of: "✅ ", with: "")
             .replacingOccurrences(of: "❌ ", with: "")
-        
+
         if let colonIndex = cleaned.firstIndex(of: ":") {
             return String(cleaned[..<colonIndex]).trimmingCharacters(in: .whitespaces)
         }
         return ""
     }
-    
+
     private func determineToolStatus(from message: ConversationMessage) -> ToolExecutionStatus {
         // First check if we have a tool call with a result
         if let toolCall = message.toolCalls.first {
@@ -1083,16 +1082,16 @@ struct DetailedMessageRow: View {
                 }
             }
         }
-        
+
         // Check the agent's tool execution history for the actual status
-        let toolName = extractToolName(from: message.content)
+        let toolName = self.extractToolName(from: message.content)
         if !toolName.isEmpty {
             // Find the most recent execution of this tool
             if let execution = agent.toolExecutionHistory.last(where: { $0.toolName == toolName }) {
                 return execution.status
             }
         }
-        
+
         // Fallback to checking message content for status indicators
         if message.content.contains("✅") {
             return .completed
@@ -1101,55 +1100,59 @@ struct DetailedMessageRow: View {
         } else if message.content.contains("⚠️") {
             return .cancelled
         }
-        
+
         // Default to running for tool messages without clear status
         return .running
     }
-    
+
     private func formatJSON(_ json: String) -> String {
         guard let data = json.data(using: .utf8),
               let jsonObject = try? JSONSerialization.jsonObject(with: data),
-              let formattedData = try? JSONSerialization.data(withJSONObject: jsonObject, options: [.prettyPrinted, .sortedKeys]),
-              let formattedString = String(data: formattedData, encoding: .utf8) else {
+              let formattedData = try? JSONSerialization.data(
+                  withJSONObject: jsonObject,
+                  options: [.prettyPrinted, .sortedKeys]),
+              let formattedString = String(data: formattedData, encoding: .utf8)
+        else {
             return json
         }
         return formattedString
     }
-    
+
     private func extractImageData(from result: String) -> Data? {
         // Try to extract base64 image data from result
         if let data = result.data(using: .utf8),
            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let screenshotData = json["screenshot_data"] as? String,
-           let imageData = Data(base64Encoded: screenshotData) {
+           let imageData = Data(base64Encoded: screenshotData)
+        {
             return imageData
         }
         return nil
     }
-    
+
     private func retryLastTask() {
         // Find the session containing this message
         guard let session = sessionStore.sessions.first(where: { session in
             session.messages.contains(where: { $0.id == message.id })
         }) else { return }
-        
+
         // Find the error message index
         guard let errorIndex = session.messages.firstIndex(where: { $0.id == message.id }),
               errorIndex > 0 else { return }
-        
+
         // Look backwards for the last user message
         for i in stride(from: errorIndex - 1, through: 0, by: -1) {
             let msg = session.messages[i]
             if msg.role == .user {
                 // Make this the current session if it isn't already
-                if sessionStore.currentSession?.id != session.id {
-                    sessionStore.selectSession(session)
+                if self.sessionStore.currentSession?.id != session.id {
+                    self.sessionStore.selectSession(session)
                 }
-                
+
                 // Re-execute the last user task
                 Task {
                     do {
-                        try await agent.executeTask(msg.content)
+                        try await self.agent.executeTask(msg.content)
                     } catch {
                         print("Retry failed: \(error)")
                     }
@@ -1166,39 +1169,38 @@ struct DetailedToolCallView: View {
     let toolCall: ConversationToolCall
     let onImageTap: (NSImage) -> Void
     @State private var isExpanded = false
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Tool header
             HStack {
                 AnimatedToolIcon(
-                    toolName: toolCall.name,
-                    isRunning: false
-                )
-                
-                Text(toolCall.name)
+                    toolName: self.toolCall.name,
+                    isRunning: false)
+
+                Text(self.toolCall.name)
                     .font(.subheadline)
                     .fontWeight(.medium)
-                
+
                 Spacer()
-                
-                Button(action: { isExpanded.toggle() }) {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+
+                Button(action: { self.isExpanded.toggle() }) {
+                    Image(systemName: self.isExpanded ? "chevron.down" : "chevron.right")
                         .font(.caption)
                 }
                 .buttonStyle(.plain)
             }
-            
-            if isExpanded {
+
+            if self.isExpanded {
                 VStack(alignment: .leading, spacing: 8) {
                     // Arguments
-                    if !toolCall.arguments.isEmpty {
+                    if !self.toolCall.arguments.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Arguments")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            
-                            Text(formatJSON(toolCall.arguments))
+
+                            Text(self.formatJSON(self.toolCall.arguments))
                                 .font(.system(.caption, design: .monospaced))
                                 .textSelection(.enabled)
                                 .padding(8)
@@ -1206,20 +1208,20 @@ struct DetailedToolCallView: View {
                                 .cornerRadius(4)
                         }
                     }
-                    
+
                     // Result
-                    if !toolCall.result.isEmpty {
+                    if !self.toolCall.result.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Result")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            
+
                             // Check if result contains image data
-                            if toolCall.name.contains("image") || toolCall.name.contains("screenshot"),
+                            if self.toolCall.name.contains("image") || self.toolCall.name.contains("screenshot"),
                                let imageData = extractImageData(from: toolCall.result),
-                               let image = NSImage(data: imageData) {
-                                
-                                Button(action: { onImageTap(image) }) {
+                               let image = NSImage(data: imageData)
+                            {
+                                Button(action: { self.onImageTap(image) }) {
                                     Image(nsImage: image)
                                         .resizable()
                                         .aspectRatio(contentMode: .fit)
@@ -1227,14 +1229,13 @@ struct DetailedToolCallView: View {
                                         .cornerRadius(8)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 8)
-                                                .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                                        )
+                                                .stroke(Color.secondary.opacity(0.3), lineWidth: 1))
                                 }
                                 .buttonStyle(.plain)
                                 .help("Click to inspect image")
-                                
+
                             } else {
-                                Text(toolCall.result)
+                                Text(self.toolCall.result)
                                     .font(.system(.caption, design: .monospaced))
                                     .textSelection(.enabled)
                                     .lineLimit(10)
@@ -1251,21 +1252,22 @@ struct DetailedToolCallView: View {
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(6)
     }
-    
+
     private func formatJSON(_ string: String) -> String {
         guard let data = string.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data),
               let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted),
-              let prettyString = String(data: prettyData, encoding: .utf8) else {
+              let prettyString = String(data: prettyData, encoding: .utf8)
+        else {
             return string
         }
         return prettyString
     }
-    
+
     private func extractImageData(from result: String) -> Data? {
         // This is a placeholder - implement based on how images are returned
         // Could be base64 encoded, file path, etc.
-        return nil
+        nil
     }
 }
 
@@ -1273,42 +1275,42 @@ struct DetailedToolCallView: View {
 
 struct SessionDebugInfo: View {
     let session: ConversationSession
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Session ID", systemImage: "number")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
-                Text(session.id)
+
+                Text(self.session.id)
                     .font(.system(.caption, design: .monospaced))
                     .textSelection(.enabled)
             }
-            
+
             HStack {
                 Label("Messages", systemImage: "message")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
-                Text("\(session.messages.count)")
+
+                Text("\(self.session.messages.count)")
                     .font(.caption)
             }
-            
+
             HStack {
                 Label("Tool Calls", systemImage: "wrench.and.screwdriver")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
-                Text("\(session.messages.flatMap { $0.toolCalls }.count)")
+
+                Text("\(self.session.messages.flatMap(\.toolCalls).count)")
                     .font(.caption)
             }
-            
+
             HStack {
                 Label("Duration", systemImage: "clock")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 if let lastMessage = session.messages.last {
                     Text(lastMessage.timestamp, style: .relative)
                         .font(.caption)
@@ -1330,69 +1332,68 @@ struct ImageInspectorView: View {
     @State private var zoomLevel: CGFloat = 1.0
     @State private var imageOffset = CGSize.zero
     @State private var showPixelGrid = false
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Toolbar
             HStack {
                 Text("Image Inspector")
                     .font(.headline)
-                
+
                 Spacer()
-                
-                Text("\(Int(image.size.width))×\(Int(image.size.height))")
+
+                Text("\(Int(self.image.size.width))×\(Int(self.image.size.height))")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 Button("Done") {
-                    dismiss()
+                    self.dismiss()
                 }
             }
             .padding()
             .background(Color(NSColor.windowBackgroundColor))
-            
+
             Divider()
-            
+
             // Image viewer
             GeometryReader { geometry in
-                Image(nsImage: image)
+                Image(nsImage: self.image)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .scaleEffect(zoomLevel)
-                    .offset(imageOffset)
+                    .scaleEffect(self.zoomLevel)
+                    .offset(self.imageOffset)
                     .frame(width: geometry.size.width, height: geometry.size.height)
                     .background(Color.black)
                     .onTapGesture(count: 2) {
                         withAnimation {
-                            zoomLevel = zoomLevel == 1.0 ? 2.0 : 1.0
-                            imageOffset = .zero
+                            self.zoomLevel = self.zoomLevel == 1.0 ? 2.0 : 1.0
+                            self.imageOffset = .zero
                         }
                     }
                     .gesture(
                         DragGesture()
                             .onChanged { value in
-                                imageOffset = value.translation
-                            }
-                    )
+                                self.imageOffset = value.translation
+                            })
             }
-            
+
             // Controls
             HStack {
-                Button(action: { zoomLevel = max(0.25, zoomLevel - 0.25) }) {
+                Button(action: { self.zoomLevel = max(0.25, self.zoomLevel - 0.25) }) {
                     Image(systemName: "minus.magnifyingglass")
                 }
-                
-                Slider(value: $zoomLevel, in: 0.25...4.0)
+
+                Slider(value: self.$zoomLevel, in: 0.25...4.0)
                     .frame(width: 200)
-                
-                Button(action: { zoomLevel = min(4.0, zoomLevel + 0.25) }) {
+
+                Button(action: { self.zoomLevel = min(4.0, self.zoomLevel + 0.25) }) {
                     Image(systemName: "plus.magnifyingglass")
                 }
-                
+
                 Divider()
                     .frame(height: 20)
-                
-                Toggle("Pixel Grid", isOn: $showPixelGrid)
+
+                Toggle("Pixel Grid", isOn: self.$showPixelGrid)
                     .toggleStyle(.checkbox)
             }
             .padding()
@@ -1412,8 +1413,7 @@ struct AnimatedThinkingDots: View {
             .symbolEffect(
                 .variableColor
                     .iterative
-                    .hideInactiveLayers
-            )
+                    .hideInactiveLayers)
     }
 }
 
@@ -1423,15 +1423,14 @@ struct AnimatedThinkingIndicator: View {
             Text("Thinking")
                 .font(.caption)
                 .foregroundColor(.secondary)
-            
+
             Image(systemName: "ellipsis")
                 .foregroundStyle(.blue)
                 .font(.caption.bold())
                 .symbolEffect(
                     .variableColor
                         .iterative
-                        .hideInactiveLayers
-                )
+                        .hideInactiveLayers)
         }
     }
 }
@@ -1441,27 +1440,27 @@ struct AnimatedThinkingIndicator: View {
 struct ProgressIndicatorView: View {
     @Environment(PeekabooAgent.self) private var agent
     @State private var animationPhase = 0.0
-    
+
     init(agent: PeekabooAgent) {
         // Just for interface consistency
     }
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // Animated icon
             if let currentTool = agent.currentTool {
                 Text(PeekabooAgent.iconForTool(currentTool))
                     .font(.title2)
-                    .scaleEffect(1 + sin(animationPhase) * 0.1)
-                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: animationPhase)
-            } else if agent.isThinking {
+                    .scaleEffect(1 + sin(self.animationPhase) * 0.1)
+                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: self.animationPhase)
+            } else if self.agent.isThinking {
                 AnimatedThinkingDots()
             } else {
                 ProgressView()
                     .progressViewStyle(.circular)
                     .scaleEffect(0.8)
             }
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 // Primary status
                 if let currentTool = agent.currentTool {
@@ -1470,7 +1469,7 @@ struct ProgressIndicatorView: View {
                             .font(.system(.body, design: .rounded))
                             .fontWeight(.medium)
                             .foregroundColor(.primary)
-                        
+
                         if let args = agent.currentToolArgs, !args.isEmpty {
                             Text("•")
                                 .foregroundColor(.secondary)
@@ -1480,7 +1479,7 @@ struct ProgressIndicatorView: View {
                                 .lineLimit(1)
                         }
                     }
-                } else if agent.isThinking {
+                } else if self.agent.isThinking {
                     AnimatedThinkingIndicator()
                         .font(.system(.body, design: .rounded))
                 } else {
@@ -1488,16 +1487,16 @@ struct ProgressIndicatorView: View {
                         .font(.system(.body))
                         .foregroundColor(.secondary)
                 }
-                
+
                 // Task context
-                if !agent.currentTask.isEmpty && agent.currentTool == nil {
-                    Text(agent.currentTask)
+                if !self.agent.currentTask.isEmpty, self.agent.currentTool == nil {
+                    Text(self.agent.currentTask)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
                 }
             }
-            
+
             Spacer()
         }
         .padding(.horizontal, 16)
@@ -1505,7 +1504,7 @@ struct ProgressIndicatorView: View {
         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
         .cornerRadius(8)
         .onAppear {
-            animationPhase = 1
+            self.animationPhase = 1
         }
     }
 }

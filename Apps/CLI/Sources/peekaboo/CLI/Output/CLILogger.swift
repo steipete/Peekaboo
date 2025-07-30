@@ -90,7 +90,7 @@ final class Logger: @unchecked Sendable {
         let metadataString: String? = metadata.flatMap { dict in
             dict.isEmpty ? nil : dict.map { "\($0.key)=\($0.value)" }.joined(separator: ", ")
         }
-        
+
         self.queue.async(flags: .barrier) { [metadataString] in
             guard level >= self.minimumLogLevel || (level == .verbose && self.verboseMode) else { return }
 
@@ -171,7 +171,8 @@ final class Logger: @unchecked Sendable {
                     .verbose,
                     "Timer '\(name)' completed",
                     category: "Performance",
-                    metadata: ["duration_ms": durationMs])
+                    metadata: ["duration_ms": durationMs]
+                )
             }
         }
     }

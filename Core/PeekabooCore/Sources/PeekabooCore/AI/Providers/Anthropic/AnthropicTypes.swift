@@ -5,7 +5,7 @@ import Foundation
 /// Cache control configuration
 public struct AnthropicCacheControl: Codable, Sendable {
     public let type: String // "ephemeral"
-    
+
     public init(type: String = "ephemeral") {
         self.type = type
     }
@@ -15,11 +15,11 @@ public struct AnthropicCacheControl: Codable, Sendable {
 public enum AnthropicSystemContent: Codable, Sendable {
     case string(String)
     case array([AnthropicSystemBlock])
-    
+
     // Custom encoding/decoding
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if let stringValue = try? container.decode(String.self) {
             self = .string(stringValue)
         } else if let arrayValue = try? container.decode([AnthropicSystemBlock].self) {
@@ -29,18 +29,16 @@ public enum AnthropicSystemContent: Codable, Sendable {
                 AnthropicSystemContent.self,
                 DecodingError.Context(
                     codingPath: decoder.codingPath,
-                    debugDescription: "Expected String or Array of system blocks"
-                )
-            )
+                    debugDescription: "Expected String or Array of system blocks"))
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
-        case .string(let value):
+        case let .string(value):
             try container.encode(value)
-        case .array(let blocks):
+        case let .array(blocks):
             try container.encode(blocks)
         }
     }
@@ -51,12 +49,12 @@ public struct AnthropicSystemBlock: Codable, Sendable {
     public let type: String // "text"
     public let text: String
     public let cacheControl: AnthropicCacheControl?
-    
+
     enum CodingKeys: String, CodingKey {
         case type, text
         case cacheControl = "cache_control"
     }
-    
+
     public init(type: String = "text", text: String, cacheControl: AnthropicCacheControl? = nil) {
         self.type = type
         self.text = text
@@ -68,40 +66,40 @@ public struct AnthropicSystemBlock: Codable, Sendable {
 public struct AnthropicRequest: Codable, Sendable {
     /// ID of the model to use (e.g., "claude-3-opus-20240229")
     public let model: String
-    
+
     /// Input messages
     public let messages: [AnthropicMessage]
-    
+
     /// System prompt (separate from messages)
     public let system: AnthropicSystemContent?
-    
+
     /// Maximum number of tokens to generate
     public let maxTokens: Int
-    
+
     /// Temperature for randomness (0.0 to 1.0)
     public let temperature: Double?
-    
+
     /// Top-p sampling parameter
     public let topP: Double?
-    
+
     /// Top-k sampling parameter
     public let topK: Int?
-    
+
     /// Whether to stream the response
     public let stream: Bool?
-    
+
     /// Stop sequences
     public let stopSequences: [String]?
-    
+
     /// Available tools
     public let tools: [AnthropicTool]?
-    
+
     /// Tool choice configuration
     public let toolChoice: AnthropicToolChoice?
-    
+
     /// Metadata about the request
     public let metadata: AnthropicMetadata?
-    
+
     enum CodingKeys: String, CodingKey {
         case model, messages, system
         case maxTokens = "max_tokens"
@@ -120,10 +118,10 @@ public struct AnthropicRequest: Codable, Sendable {
 public struct AnthropicMessage: Codable, Sendable {
     /// Role of the message sender
     public let role: AnthropicRole
-    
+
     /// Content of the message
     public let content: AnthropicContent
-    
+
     public init(role: AnthropicRole, content: AnthropicContent) {
         self.role = role
         self.content = content
@@ -140,11 +138,11 @@ public enum AnthropicRole: String, Codable, Sendable {
 public enum AnthropicContent: Codable, Sendable {
     case string(String)
     case array([AnthropicContentBlock])
-    
+
     // Custom encoding/decoding
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if let stringValue = try? container.decode(String.self) {
             self = .string(stringValue)
         } else if let arrayValue = try? container.decode([AnthropicContentBlock].self) {
@@ -154,18 +152,16 @@ public enum AnthropicContent: Codable, Sendable {
                 AnthropicContent.self,
                 DecodingError.Context(
                     codingPath: decoder.codingPath,
-                    debugDescription: "Expected String or Array of content blocks"
-                )
-            )
+                    debugDescription: "Expected String or Array of content blocks"))
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
-        case .string(let value):
+        case let .string(value):
             try container.encode(value)
-        case .array(let blocks):
+        case let .array(blocks):
             try container.encode(blocks)
         }
     }
@@ -174,26 +170,26 @@ public enum AnthropicContent: Codable, Sendable {
 /// Content block for multimodal messages
 public struct AnthropicContentBlock: Codable, Sendable {
     public let type: String
-    
+
     // Text content
     public let text: String?
-    
+
     // Image content
     public let source: AnthropicImageSource?
-    
+
     // Tool use content
     public let id: String?
     public let name: String?
     public let input: [String: AnthropicInputValue]?
-    
+
     // Tool result content
     public let toolUseId: String?
     public let content: AnthropicContent?
     public let isError: Bool?
-    
+
     // Cache control
     public let cacheControl: AnthropicCacheControl?
-    
+
     enum CodingKeys: String, CodingKey {
         case type, text, source, id, name, input
         case toolUseId = "tool_use_id"
@@ -208,7 +204,7 @@ public struct AnthropicImageSource: Codable, Sendable {
     public let type: String // "base64"
     public let mediaType: String // "image/jpeg", "image/png", etc.
     public let data: String // base64 encoded image data
-    
+
     enum CodingKeys: String, CodingKey {
         case type
         case mediaType = "media_type"
@@ -224,14 +220,19 @@ public struct AnthropicTool: Codable, Sendable {
     public let description: String
     public let inputSchema: AnthropicJSONSchema
     public let cacheControl: AnthropicCacheControl?
-    
+
     enum CodingKeys: String, CodingKey {
         case name, description
         case inputSchema = "input_schema"
         case cacheControl = "cache_control"
     }
-    
-    public init(name: String, description: String, inputSchema: AnthropicJSONSchema, cacheControl: AnthropicCacheControl? = nil) {
+
+    public init(
+        name: String,
+        description: String,
+        inputSchema: AnthropicJSONSchema,
+        cacheControl: AnthropicCacheControl? = nil)
+    {
         self.name = name
         self.description = description
         self.inputSchema = inputSchema
@@ -245,8 +246,13 @@ public struct AnthropicJSONSchema: Codable, Sendable {
     public let properties: [String: AnthropicPropertySchema]?
     public let required: [String]?
     public let description: String?
-    
-    public init(type: String = "object", properties: [String: AnthropicPropertySchema]? = nil, required: [String]? = nil, description: String? = nil) {
+
+    public init(
+        type: String = "object",
+        properties: [String: AnthropicPropertySchema]? = nil,
+        required: [String]? = nil,
+        description: String? = nil)
+    {
         self.type = type
         self.properties = properties
         self.required = required
@@ -259,16 +265,16 @@ public enum AnthropicToolChoice: Codable, Sendable {
     case auto
     case any
     case tool(name: String)
-    
+
     // Custom encoding/decoding
     enum CodingKeys: String, CodingKey {
         case type, name
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(String.self, forKey: .type)
-        
+
         switch type {
         case "auto":
             self = .auto
@@ -281,20 +287,19 @@ public enum AnthropicToolChoice: Codable, Sendable {
             throw DecodingError.dataCorruptedError(
                 forKey: .type,
                 in: container,
-                debugDescription: "Unknown tool choice type: \(type)"
-            )
+                debugDescription: "Unknown tool choice type: \(type)")
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        
+
         switch self {
         case .auto:
             try container.encode("auto", forKey: .type)
         case .any:
             try container.encode("any", forKey: .type)
-        case .tool(let name):
+        case let .tool(name):
             try container.encode("tool", forKey: .type)
             try container.encode(name, forKey: .name)
         }
@@ -304,7 +309,7 @@ public enum AnthropicToolChoice: Codable, Sendable {
 /// Metadata for requests
 public struct AnthropicMetadata: Codable, Sendable {
     public let userId: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
     }
@@ -322,7 +327,7 @@ public struct AnthropicResponse: Codable, Sendable {
     public let stopReason: String?
     public let stopSequence: String?
     public let usage: AnthropicUsage
-    
+
     enum CodingKeys: String, CodingKey {
         case id, type, role, content, model
         case stopReason = "stop_reason"
@@ -335,7 +340,7 @@ public struct AnthropicResponse: Codable, Sendable {
 public struct AnthropicUsage: Codable, Sendable {
     public let inputTokens: Int
     public let outputTokens: Int
-    
+
     enum CodingKeys: String, CodingKey {
         case inputTokens = "input_tokens"
         case outputTokens = "output_tokens"
@@ -347,25 +352,25 @@ public struct AnthropicUsage: Codable, Sendable {
 /// Server-sent event for streaming
 public struct AnthropicStreamEvent: Codable, Sendable {
     public let type: String
-    
+
     // Common fields
     public let index: Int?
     public let delta: AnthropicDelta?
-    
+
     // Message start
     public let message: AnthropicStreamMessage?
-    
+
     // Content block start
     public let contentBlock: AnthropicContentBlock?
-    
+
     // Message complete
     public let usage: AnthropicUsage?
     public let stopReason: String?
     public let stopSequence: String?
-    
+
     // Error
     public let error: AnthropicError?
-    
+
     enum CodingKeys: String, CodingKey {
         case type, index, delta, message
         case contentBlock = "content_block"
@@ -384,7 +389,7 @@ public struct AnthropicStreamMessage: Codable, Sendable {
     public let content: [AnthropicContentBlock]
     public let model: String
     public let usage: AnthropicUsage
-    
+
     enum CodingKeys: String, CodingKey {
         case id, type, role, content, model, usage
     }
@@ -394,15 +399,15 @@ public struct AnthropicStreamMessage: Codable, Sendable {
 public struct AnthropicDelta: Codable, Sendable {
     // Text delta
     public let text: String?
-    
+
     // Message delta fields
     public let stopReason: String?
     public let stopSequence: String?
-    
+
     // Tool use delta
     public let type: String?
     public let partialJson: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case text
         case stopReason = "stop_reason"
@@ -417,18 +422,19 @@ public struct AnthropicDelta: Codable, Sendable {
 /// Anthropic error response
 public struct AnthropicErrorResponse: Codable, Sendable, APIErrorResponse {
     public let error: AnthropicError
-    
+
     // MARK: - APIErrorResponse conformance
+
     public var message: String {
-        error.message
+        self.error.message
     }
-    
+
     public var code: String? {
         nil // Anthropic doesn't provide error codes
     }
-    
+
     public var type: String? {
-        error.type
+        self.error.type
     }
 }
 
@@ -453,30 +459,31 @@ extension AnthropicContentBlock {
             toolUseId: nil,
             content: nil,
             isError: nil,
-            cacheControl: cacheControl
-        )
+            cacheControl: cacheControl)
     }
-    
+
     /// Create an image content block
-    public static func image(base64: String, mediaType: String, cacheControl: AnthropicCacheControl? = nil) -> AnthropicContentBlock {
+    public static func image(
+        base64: String,
+        mediaType: String,
+        cacheControl: AnthropicCacheControl? = nil) -> AnthropicContentBlock
+    {
         AnthropicContentBlock(
             type: "image",
             text: nil,
             source: AnthropicImageSource(
                 type: "base64",
                 mediaType: mediaType,
-                data: base64
-            ),
+                data: base64),
             id: nil,
             name: nil,
             input: nil,
             toolUseId: nil,
             content: nil,
             isError: nil,
-            cacheControl: cacheControl
-        )
+            cacheControl: cacheControl)
     }
-    
+
     /// Create a tool use content block
     public static func toolUse(id: String, name: String, input: [String: Any]) -> AnthropicContentBlock {
         AnthropicContentBlock(
@@ -489,10 +496,9 @@ extension AnthropicContentBlock {
             toolUseId: nil,
             content: nil,
             isError: nil,
-            cacheControl: nil
-        )
+            cacheControl: nil)
     }
-    
+
     /// Create a tool result content block
     public static func toolResult(toolUseId: String, content: String, isError: Bool = false) -> AnthropicContentBlock {
         AnthropicContentBlock(
@@ -505,7 +511,6 @@ extension AnthropicContentBlock {
             toolUseId: toolUseId,
             content: .string(content),
             isError: isError,
-            cacheControl: nil
-        )
+            cacheControl: nil)
     }
 }

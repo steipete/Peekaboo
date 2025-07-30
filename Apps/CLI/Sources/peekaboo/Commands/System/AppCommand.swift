@@ -27,7 +27,7 @@ struct AppCommand: AsyncParsableCommand {
           # Switch between applications
           peekaboo app switch --to Terminal
           peekaboo app switch --cycle  # Cmd+Tab equivalent
-          
+
           # Relaunch applications
           peekaboo app relaunch Safari
           peekaboo app relaunch "Visual Studio Code" --wait 3 --wait-until-ready
@@ -40,14 +40,16 @@ struct AppCommand: AsyncParsableCommand {
             UnhideSubcommand.self,
             SwitchSubcommand.self,
             ListSubcommand.self,
-        ])
+        ]
+    )
 
     // MARK: - Launch Application
 
     struct LaunchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
         static let configuration = CommandConfiguration(
             commandName: "launch",
-            abstract: "Launch an application")
+            abstract: "Launch an application"
+        )
 
         @Argument(help: "Application name or path")
         var app: String
@@ -63,7 +65,7 @@ struct AppCommand: AsyncParsableCommand {
 
         func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
-            Logger.shared.verbose("Launching application: \(app)")
+            Logger.shared.verbose("Launching application: \(self.app)")
 
             do {
                 let launchedApp: NSRunningApplication
@@ -73,27 +75,27 @@ struct AppCommand: AsyncParsableCommand {
                     guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) else {
                         throw NotFoundError.application("Bundle ID: \(bundleId)")
                     }
-                    launchedApp = try await launchApplication(at: url, name: bundleId)
+                    launchedApp = try await self.launchApplication(at: url, name: bundleId)
                 } else {
                     // Try to find app by name
                     if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app) {
                         // It's actually a bundle ID
-                        launchedApp = try await launchApplication(at: url, name: app)
+                        launchedApp = try await self.launchApplication(at: url, name: self.app)
                     } else if let url = findApplicationByName(app) {
                         // Found by name
-                        launchedApp = try await launchApplication(at: url, name: app)
-                    } else if app.contains("/") {
+                        launchedApp = try await self.launchApplication(at: url, name: self.app)
+                    } else if self.app.contains("/") {
                         // It's a path
                         let url = URL(fileURLWithPath: app)
-                        launchedApp = try await launchApplication(at: url, name: app)
+                        launchedApp = try await self.launchApplication(at: url, name: self.app)
                     } else {
-                        throw NotFoundError.application(app)
+                        throw NotFoundError.application(self.app)
                     }
                 }
 
                 // Wait until ready if requested
-                if waitUntilReady {
-                    try await waitForApplicationReady(launchedApp)
+                if self.waitUntilReady {
+                    try await self.waitForApplicationReady(launchedApp)
                 }
 
                 struct LaunchResult: Codable {
@@ -103,17 +105,17 @@ struct AppCommand: AsyncParsableCommand {
                     let pid: Int32
                     let is_ready: Bool
                 }
-                
+
                 let data = LaunchResult(
                     action: "launch",
-                    app_name: launchedApp.localizedName ?? app,
+                    app_name: launchedApp.localizedName ?? self.app,
                     bundle_id: launchedApp.bundleIdentifier ?? "unknown",
                     pid: launchedApp.processIdentifier,
                     is_ready: launchedApp.isFinishedLaunching
                 )
 
                 output(data) {
-                    print("✓ Launched \(launchedApp.localizedName ?? app) (PID: \(launchedApp.processIdentifier))")
+                    print("✓ Launched \(launchedApp.localizedName ?? self.app) (PID: \(launchedApp.processIdentifier))")
                 }
 
             } catch {
@@ -123,7 +125,7 @@ struct AppCommand: AsyncParsableCommand {
         }
 
         private func findApplicationByName(_ name: String) -> URL? {
-            let _ = NSWorkspace.shared
+            _ = NSWorkspace.shared
             // Check common application directories
             let searchPaths = [
                 "/Applications",
@@ -166,14 +168,16 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Quit Application
 
-    struct QuitSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable, ApplicationResolver {
+    struct QuitSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable,
+    ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "quit",
-            abstract: "Quit one or more applications")
+            abstract: "Quit one or more applications"
+        )
 
         @Option(help: "Application to quit")
         var app: String?
-        
+
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
 
@@ -195,25 +199,28 @@ struct AppCommand: AsyncParsableCommand {
             do {
                 var quitApps: [(String, NSRunningApplication)] = []
 
-                if all {
+                if self.all {
                     // Get all apps except system/excluded ones
-                    let excluded = Set((except ?? "").split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) })
+                    let excluded = Set((except ?? "").split(separator: ",")
+                        .map { String($0).trimmingCharacters(in: .whitespaces) }
+                    )
                     let systemApps = Set(["Finder", "Dock", "SystemUIServer", "WindowServer"])
-                    
+
                     let runningApps = NSWorkspace.shared.runningApplications
                     for runningApp in runningApps {
                         guard let name = runningApp.localizedName,
                               runningApp.activationPolicy == .regular,
                               !systemApps.contains(name),
                               !excluded.contains(name) else { continue }
-                        
+
                         quitApps.append((name, runningApp))
                     }
                 } else if let appName = app {
                     // Find specific app
                     let appInfo = try await resolveApplication(appName)
                     let runningApps = NSWorkspace.shared.runningApplications
-                    if let runningApp = runningApps.first(where: { $0.processIdentifier == appInfo.processIdentifier }) {
+                    if let runningApp = runningApps
+                        .first(where: { $0.processIdentifier == appInfo.processIdentifier }) {
                         quitApps.append((appInfo.name, runningApp))
                     } else {
                         throw NotFoundError.application(appName)
@@ -228,23 +235,29 @@ struct AppCommand: AsyncParsableCommand {
                     let pid: Int32
                     let success: Bool
                 }
-                
+
                 var results: [AppQuitInfo] = []
                 for (name, runningApp) in quitApps {
-                    let success = force ? runningApp.forceTerminate() : runningApp.terminate()
+                    let success = self.force ? runningApp.forceTerminate() : runningApp.terminate()
                     results.append(AppQuitInfo(
                         app_name: name,
                         pid: runningApp.processIdentifier,
                         success: success
                     ))
-                    
+
                     // Log additional debug info when quit fails
-                    if !success && !jsonOutput {
+                    if !success && !self.jsonOutput {
                         // Check if app might be in a modal state or have unsaved changes
-                        if !force {
-                            Logger.shared.debug("Quit failed for \(name) (PID: \(runningApp.processIdentifier)). The app may have unsaved changes or be showing a dialog. Try --force to force quit.")
+                        if !self.force {
+                            Logger.shared
+                                .debug(
+                                    "Quit failed for \(name) (PID: \(runningApp.processIdentifier)). The app may have unsaved changes or be showing a dialog. Try --force to force quit."
+                                )
                         } else {
-                            Logger.shared.debug("Force quit failed for \(name) (PID: \(runningApp.processIdentifier)). The app may be unresponsive or protected.")
+                            Logger.shared
+                                .debug(
+                                    "Force quit failed for \(name) (PID: \(runningApp.processIdentifier)). The app may be unresponsive or protected."
+                                )
                         }
                     }
                 }
@@ -254,7 +267,7 @@ struct AppCommand: AsyncParsableCommand {
                     let force: Bool
                     let results: [AppQuitInfo]
                 }
-                
+
                 let data = QuitResult(
                     action: "quit",
                     force: force,
@@ -267,8 +280,10 @@ struct AppCommand: AsyncParsableCommand {
                             print("✓ Quit \(result.app_name)")
                         } else {
                             print("✗ Failed to quit \(result.app_name) (PID: \(result.pid))")
-                            if !force {
-                                print("  💡 Tip: The app may have unsaved changes or be showing a dialog. Try --force to force quit.")
+                            if !self.force {
+                                print(
+                                    "  💡 Tip: The app may have unsaved changes or be showing a dialog. Try --force to force quit."
+                                )
                             }
                         }
                     }
@@ -283,14 +298,16 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Hide Application
 
-    struct HideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional, ApplicationResolver {
+    struct HideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+    ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "hide",
-            abstract: "Hide an application")
+            abstract: "Hide an application"
+        )
 
         @Option(help: "Application to hide")
         var app: String
-        
+
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
 
@@ -303,7 +320,7 @@ struct AppCommand: AsyncParsableCommand {
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
                 let appInfo = try await resolveApplication(appIdentifier)
-                
+
                 await MainActor.run {
                     let element = Element(AXUIElementCreateApplication(appInfo.processIdentifier))
                     _ = element.hideApplication()
@@ -328,14 +345,16 @@ struct AppCommand: AsyncParsableCommand {
 
     // MARK: - Unhide Application
 
-    struct UnhideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional, ApplicationResolver {
+    struct UnhideSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+    ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "unhide",
-            abstract: "Show a hidden application")
+            abstract: "Show a hidden application"
+        )
 
         @Option(help: "Application to unhide")
         var app: String
-        
+
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
 
@@ -351,16 +370,17 @@ struct AppCommand: AsyncParsableCommand {
             do {
                 let appIdentifier = try self.resolveApplicationIdentifier()
                 let appInfo = try await resolveApplication(appIdentifier)
-                
+
                 await MainActor.run {
                     let element = Element(AXUIElementCreateApplication(appInfo.processIdentifier))
                     _ = element.unhideApplication()
                 }
 
                 // Activate if requested
-                if activate {
+                if self.activate {
                     let runningApps = NSWorkspace.shared.runningApplications
-                    if let runningApp = runningApps.first(where: { $0.processIdentifier == appInfo.processIdentifier }) {
+                    if let runningApp = runningApps
+                        .first(where: { $0.processIdentifier == appInfo.processIdentifier }) {
                         runningApp.activate()
                     }
                 }
@@ -371,12 +391,12 @@ struct AppCommand: AsyncParsableCommand {
                     let bundle_id: String
                     let activated: Bool
                 }
-                
+
                 let data = UnhideResult(
                     action: "unhide",
                     app_name: appInfo.name,
                     bundle_id: appInfo.bundleIdentifier ?? "unknown",
-                    activated: activate
+                    activated: self.activate
                 )
 
                 output(data) {
@@ -395,7 +415,8 @@ struct AppCommand: AsyncParsableCommand {
     struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "switch",
-            abstract: "Switch to another application")
+            abstract: "Switch to another application"
+        )
 
         @Option(help: "Switch to this application")
         var to: String?
@@ -410,53 +431,54 @@ struct AppCommand: AsyncParsableCommand {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
 
             do {
-                if cycle {
+                if self.cycle {
                     // Simulate Cmd+Tab
                     let source = CGEventSource(stateID: .hidSystemState)
                     let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x30, keyDown: true) // Tab
                     let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x30, keyDown: false)
-                    
+
                     keyDown?.flags = .maskCommand
                     keyUp?.flags = .maskCommand
-                    
+
                     keyDown?.post(tap: .cghidEventTap)
                     keyUp?.post(tap: .cghidEventTap)
-                    
+
                     struct CycleResult: Codable {
                         let action: String
                         let success: Bool
                     }
-                    
+
                     let data = CycleResult(action: "cycle", success: true)
-                    
+
                     output(data) {
                         print("✓ Cycled to next application")
                     }
                 } else if let targetApp = to {
                     let appInfo = try await resolveApplication(targetApp)
-                    
+
                     // Find and activate the app
                     let runningApps = NSWorkspace.shared.runningApplications
-                    guard let runningApp = runningApps.first(where: { $0.processIdentifier == appInfo.processIdentifier }) else {
+                    guard let runningApp = runningApps
+                        .first(where: { $0.processIdentifier == appInfo.processIdentifier }) else {
                         throw NotFoundError.application(targetApp)
                     }
-                    
+
                     let success = runningApp.activate()
-                    
+
                     struct SwitchResult: Codable {
                         let action: String
                         let app_name: String
                         let bundle_id: String
                         let success: Bool
                     }
-                    
+
                     let data = SwitchResult(
                         action: "switch",
                         app_name: appInfo.name,
                         bundle_id: appInfo.bundleIdentifier ?? "unknown",
                         success: success
                     )
-                    
+
                     output(data) {
                         print("✓ Switched to \(appInfo.name)")
                     }
@@ -476,7 +498,8 @@ struct AppCommand: AsyncParsableCommand {
     struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
         static let configuration = CommandConfiguration(
             commandName: "list",
-            abstract: "List running applications")
+            abstract: "List running applications"
+        )
 
         @Flag(help: "Include hidden apps")
         var includeHidden = false
@@ -492,11 +515,11 @@ struct AppCommand: AsyncParsableCommand {
 
             do {
                 let appsOutput = try await PeekabooServices.shared.applications.listApplications()
-                
+
                 // Filter based on flags
                 let filtered = appsOutput.data.applications.filter { app in
-                    if !includeHidden && app.isHidden { return false }
-                    if !includeBackground && app.name.isEmpty { return false }
+                    if !self.includeHidden && app.isHidden { return false }
+                    if !self.includeBackground && app.name.isEmpty { return false }
                     return true
                 }
 
@@ -507,12 +530,12 @@ struct AppCommand: AsyncParsableCommand {
                     let is_active: Bool
                     let is_hidden: Bool
                 }
-                
+
                 struct ListResult: Codable {
                     let count: Int
                     let apps: [AppInfo]
                 }
-                
+
                 let data = ListResult(
                     count: filtered.count,
                     apps: filtered.map { app in
@@ -542,73 +565,78 @@ struct AppCommand: AsyncParsableCommand {
             }
         }
     }
-    
+
     // MARK: - Relaunch Application
-    
-    struct RelaunchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional, ApplicationResolver {
+
+    struct RelaunchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable,
+    ApplicationResolvablePositional, ApplicationResolver {
         static let configuration = CommandConfiguration(
             commandName: "relaunch",
-            abstract: "Quit and relaunch an application")
-        
+            abstract: "Quit and relaunch an application"
+        )
+
         @Argument(help: "Application name, bundle ID, or 'PID:12345' for process ID")
         var app: String
-        
+
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
-        
+
         @Option(help: "Wait time in seconds between quit and launch (default: 2)")
         var wait: TimeInterval = 2.0
-        
+
         @Flag(help: "Force quit (doesn't save changes)")
         var force = false
-        
+
         @Flag(help: "Wait until the app is ready after launch")
         var waitUntilReady = false
-        
+
         @Flag(help: "Output in JSON format")
         var jsonOutput = false
-        
+
         func run() async throws {
             Logger.shared.setJsonOutputMode(self.jsonOutput)
-            
+
             do {
                 // Find the application first
                 let appIdentifier = try self.resolveApplicationIdentifier()
                 let appInfo = try await resolveApplication(appIdentifier)
                 let originalPID = appInfo.processIdentifier
-                
+
                 // Step 1: Quit the app
                 let runningApps = NSWorkspace.shared.runningApplications
                 guard let runningApp = runningApps.first(where: { $0.processIdentifier == originalPID }) else {
-                    throw NotFoundError.application(app)
+                    throw NotFoundError.application(self.app)
                 }
-                
-                let quitSuccess = force ? runningApp.forceTerminate() : runningApp.terminate()
-                
+
+                let quitSuccess = self.force ? runningApp.forceTerminate() : runningApp.terminate()
+
                 if !quitSuccess {
-                    throw PeekabooError.commandFailed("Failed to quit \(appInfo.name) (PID: \(originalPID)). The app may have unsaved changes.")
+                    throw PeekabooError
+                        .commandFailed(
+                            "Failed to quit \(appInfo.name) (PID: \(originalPID)). The app may have unsaved changes."
+                        )
                 }
-                
+
                 // Wait for the app to actually terminate
                 var terminateWaitTime = 0.0
                 while runningApp.isTerminated == false && terminateWaitTime < 5.0 {
                     try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                     terminateWaitTime += 0.1
                 }
-                
+
                 if !runningApp.isTerminated {
                     throw PeekabooError.timeout("App \(appInfo.name) did not terminate within 5 seconds")
                 }
-                
+
                 // Step 2: Wait the specified duration
-                if wait > 0 {
-                    try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+                if self.wait > 0 {
+                    try await Task.sleep(nanoseconds: UInt64(self.wait * 1_000_000_000))
                 }
-                
+
                 // Step 3: Launch the app
                 let workspace = NSWorkspace.shared
                 let newApp: NSRunningApplication?
-                
+
                 if let bundleId = appInfo.bundleIdentifier {
                     let config = NSWorkspace.OpenConfiguration()
                     config.activates = true
@@ -625,20 +653,20 @@ struct AppCommand: AsyncParsableCommand {
                 } else {
                     throw PeekabooError.commandFailed("No bundle ID or path available to relaunch \(appInfo.name)")
                 }
-                
+
                 guard let launchedApp = newApp else {
                     throw PeekabooError.commandFailed("Failed to launch application")
                 }
-                
+
                 // Wait until ready if requested
-                if waitUntilReady {
+                if self.waitUntilReady {
                     var readyWaitTime = 0.0
                     while !launchedApp.isFinishedLaunching && readyWaitTime < 10.0 {
                         try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                         readyWaitTime += 0.1
                     }
                 }
-                
+
                 struct RelaunchResult: Codable {
                     let action: String
                     let app_name: String
@@ -649,26 +677,26 @@ struct AppCommand: AsyncParsableCommand {
                     let wait_time: TimeInterval
                     let launch_success: Bool
                 }
-                
+
                 let data = RelaunchResult(
                     action: "relaunch",
                     app_name: appInfo.name,
                     old_pid: originalPID,
                     new_pid: launchedApp.processIdentifier,
                     bundle_id: appInfo.bundleIdentifier,
-                    quit_forced: force,
-                    wait_time: wait,
-                    launch_success: launchedApp.isFinishedLaunching || !waitUntilReady
+                    quit_forced: self.force,
+                    wait_time: self.wait,
+                    launch_success: launchedApp.isFinishedLaunching || !self.waitUntilReady
                 )
-                
+
                 output(data) {
                     print("✓ Relaunched \(appInfo.name)")
                     print("  Old PID: \(originalPID) → New PID: \(launchedApp.processIdentifier)")
-                    if waitUntilReady {
+                    if self.waitUntilReady {
                         print("  Status: \(launchedApp.isFinishedLaunching ? "Ready" : "Launching...")")
                     }
                 }
-                
+
             } catch {
                 handleError(error)
                 throw ExitCode(1)

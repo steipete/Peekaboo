@@ -21,7 +21,7 @@ struct ElementOverlay: View {
 
     var body: some View {
         // Debug: Log element info to understand positioning
-        let _ = {
+        _ = {
             if self.element.elementID.hasPrefix("B") || self.element.elementID.hasPrefix("C") || self.element.elementID
                 .hasPrefix("Peekaboo")
             {

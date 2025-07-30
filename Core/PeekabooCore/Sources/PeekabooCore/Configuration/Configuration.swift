@@ -11,13 +11,13 @@ public struct Configuration: Codable {
     public var defaults: DefaultsConfig?
     public var logging: LoggingConfig?
     public var agent: AgentConfig?
-    
+
     public init(
         aiProviders: AIProviderConfig? = nil,
         defaults: DefaultsConfig? = nil,
         logging: LoggingConfig? = nil,
-        agent: AgentConfig? = nil
-    ) {
+        agent: AgentConfig? = nil)
+    {
         self.aiProviders = aiProviders
         self.defaults = defaults
         self.logging = logging
@@ -33,13 +33,13 @@ public struct Configuration: Codable {
         public var openaiApiKey: String?
         public var anthropicApiKey: String?
         public var ollamaBaseUrl: String?
-        
+
         public init(
             providers: String? = nil,
             openaiApiKey: String? = nil,
             anthropicApiKey: String? = nil,
-            ollamaBaseUrl: String? = nil
-        ) {
+            ollamaBaseUrl: String? = nil)
+        {
             self.providers = providers
             self.openaiApiKey = openaiApiKey
             self.anthropicApiKey = anthropicApiKey
@@ -56,13 +56,13 @@ public struct Configuration: Codable {
         public var imageFormat: String?
         public var captureMode: String?
         public var captureFocus: String?
-        
+
         public init(
             savePath: String? = nil,
             imageFormat: String? = nil,
             captureMode: String? = nil,
-            captureFocus: String? = nil
-        ) {
+            captureFocus: String? = nil)
+        {
             self.savePath = savePath
             self.imageFormat = imageFormat
             self.captureMode = captureMode
@@ -77,13 +77,13 @@ public struct Configuration: Codable {
     public struct LoggingConfig: Codable {
         public var level: String?
         public var path: String?
-        
+
         public init(level: String? = nil, path: String? = nil) {
             self.level = level
             self.path = path
         }
     }
-    
+
     /// Agent configuration for AI-powered automation.
     ///
     /// Controls default settings for the Peekaboo agent, including the AI model
@@ -94,14 +94,14 @@ public struct Configuration: Codable {
         public var showThoughts: Bool?
         public var temperature: Double?
         public var maxTokens: Int?
-        
+
         public init(
             defaultModel: String? = nil,
             maxSteps: Int? = nil,
             showThoughts: Bool? = nil,
             temperature: Double? = nil,
-            maxTokens: Int? = nil
-        ) {
+            maxTokens: Int? = nil)
+        {
             self.defaultModel = defaultModel
             self.maxSteps = maxSteps
             self.showThoughts = showThoughts

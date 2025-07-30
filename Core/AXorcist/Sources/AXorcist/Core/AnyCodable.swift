@@ -85,9 +85,9 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
             }
         }
     }
-    
+
     // MARK: - Equatable Implementation
-    
+
     public static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
         // Handle nil marker case
         if lhs.value is (), rhs.value is () {
@@ -96,7 +96,7 @@ public struct AnyCodable: Codable, @unchecked Sendable, Equatable {
         if lhs.value is () || rhs.value is () {
             return false
         }
-        
+
         // Compare based on type
         switch (lhs.value, rhs.value) {
         case let (lhsBool as Bool, rhsBool as Bool):

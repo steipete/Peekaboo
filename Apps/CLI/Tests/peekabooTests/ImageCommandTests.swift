@@ -1,8 +1,8 @@
 // swiftlint:disable file_length
 import ArgumentParser
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import peekaboo
 
 @Suite("ImageCommand Tests", .serialized, .tags(.imageCapture, .unit))
@@ -188,7 +188,8 @@ struct ImageCommandTests {
             (args: ["--mode", "screen", "--format", "png"], mode: CaptureMode.screen, format: ImageFormat.png),
             (args: ["--mode", "window", "--format", "jpg"], mode: CaptureMode.window, format: ImageFormat.jpg),
             (args: ["--mode", "multi", "--json-output"], mode: CaptureMode.multi, format: ImageFormat.png),
-        ])
+        ]
+    )
     func commandCombinations(args: [String], mode: CaptureMode, format: ImageFormat) throws {
         let command = try ImageCommand.parse(args)
         #expect(command.mode == mode)
@@ -201,20 +202,25 @@ struct ImageCommandTests {
             (
                 args: ["--mode", "screen", "--analyze", "What is on screen?"],
                 mode: CaptureMode.screen,
-                prompt: "What is on screen?"),
+                prompt: "What is on screen?"
+            ),
             (
                 args: ["--mode", "window", "--analyze", "Describe this window"],
                 mode: CaptureMode.window,
-                prompt: "Describe this window"),
+                prompt: "Describe this window"
+            ),
             (
                 args: ["--mode", "multi", "--analyze", "Compare windows"],
                 mode: CaptureMode.multi,
-                prompt: "Compare windows"),
+                prompt: "Compare windows"
+            ),
             (
                 args: ["--mode", "frontmost", "--analyze", "What app is this?"],
                 mode: CaptureMode.frontmost,
-                prompt: "What app is this?"),
-        ])
+                prompt: "What app is this?"
+            ),
+        ]
+    )
     func analyzeWithDifferentModes(args: [String], mode: CaptureMode, prompt: String) throws {
         let command = try ImageCommand.parse(args)
         #expect(command.mode == mode)
@@ -228,7 +234,8 @@ struct ImageCommandTests {
             ["--format", "bmp"],
             ["--capture-focus", "neither"],
             ["--screen-index", "abc"],
-        ])
+        ]
+    )
     func invalidArguments(args: [String]) {
         #expect(throws: (any Error).self) {
             _ = try ImageCommand.parse(args)
@@ -245,7 +252,8 @@ struct ImageCommandTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: "image/png")
+            mime_type: "image/png"
+        )
 
         #expect(savedFile.path == "/tmp/screenshot.png")
         #expect(savedFile.item_label == "Screen 1")
@@ -260,7 +268,8 @@ struct ImageCommandTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: "image/png")
+            mime_type: "image/png"
+        )
 
         let captureData = ImageCaptureData(saved_files: [savedFile])
 
@@ -338,7 +347,8 @@ struct ImageCommandTests {
 
     @Test(
         "Screen index boundary values",
-        arguments: [0, 1, 99, 9999])
+        arguments: [0, 1, 99, 9999]
+    )
     func screenIndexBoundaries(index: Int) throws {
         let command = try ImageCommand.parse(["--screen-index", String(index)])
         #expect(command.screenIndex == index)
@@ -346,7 +356,8 @@ struct ImageCommandTests {
 
     @Test(
         "Window index boundary values",
-        arguments: [0, 1, 10, 9999])
+        arguments: [0, 1, 10, 9999]
+    )
     func windowIndexBoundaries(index: Int) throws {
         let command = try ImageCommand.parse(["--window-index", String(index)])
         #expect(command.windowIndex == index)
@@ -422,7 +433,8 @@ struct ImageCommandPathHandlingTests {
             basePath: "/tmp/my-screenshot.png",
             fileName: fileName,
             screenIndex: 0,
-            isSingleCapture: true)
+            isSingleCapture: true
+        )
 
         #expect(result == "/tmp/my-screenshot.png")
     }
@@ -435,7 +447,8 @@ struct ImageCommandPathHandlingTests {
             basePath: "/tmp/screenshot.png",
             fileName: fileName,
             screenIndex: nil,
-            isSingleCapture: false)
+            isSingleCapture: false
+        )
 
         #expect(result == "/tmp/screenshot_1_20250608_120000.png")
     }
@@ -464,7 +477,8 @@ struct ImageCommandPathHandlingTests {
             "/tmp/picture.jpeg",
             "/tmp/screen.PNG",
             "/tmp/capture.JPG"
-        ])
+        ]
+    )
     func variousFileExtensions(path: String) {
         let fileName = "screen_1_20250608_120000.png"
         let result = OutputPathResolver.determineOutputPath(basePath: path, fileName: fileName)
@@ -486,7 +500,8 @@ struct ImageCommandPathHandlingTests {
             ("/tmp/.hidden", true), // Hidden file
             ("/tmp/.hidden/", false), // Hidden directory
             ("file.tar.gz", true) // Multiple extensions
-        ])
+        ]
+    )
     func edgeCasePaths(path: String, expectedAsFile: Bool) {
         let isLikelyFile = path.contains(".") && !path.hasSuffix("/")
         #expect(isLikelyFile == expectedAsFile, "Path '\(path)' detection failed")
@@ -522,7 +537,8 @@ struct ImageCommandPathHandlingTests {
                 basePath: path,
                 fileName: fileName,
                 screenIndex: 0,
-                isSingleCapture: true)
+                isSingleCapture: true
+            )
 
             // For single screen, should use exact path
             #expect(result == path, "Failed for special path: \(path)")
@@ -543,7 +559,8 @@ struct ImageCommandPathHandlingTests {
                 basePath: path,
                 fileName: fileName,
                 screenIndex: 0,
-                isSingleCapture: true)
+                isSingleCapture: true
+            )
 
             #expect(result == path, "Should return exact path for nested file: \(path)")
 
@@ -631,7 +648,8 @@ struct ImageCommandErrorHandlingTests {
 
         #expect(noUnderlyingMessage.contains("Failed to write capture file to path: /tmp/test.png."))
         #expect(noUnderlyingMessage
-            .contains("This may be due to insufficient permissions, missing directory, or disk space issues"))
+            .contains("This may be due to insufficient permissions, missing directory, or disk space issues")
+        )
     }
 
     @Test("Error message formatting consistency", .tags(.fast))
@@ -672,7 +690,8 @@ struct ImageCommandErrorHandlingTests {
         let fileName = "screen_1_20250608_120001.png"
         let result = OutputPathResolver.determineOutputPath(
             basePath: "/tmp/test-path-creation/file.png",
-            fileName: fileName)
+            fileName: fileName
+        )
 
         // Should return the intended path even if directory creation might fail
         #expect(result == "/tmp/test-path-creation/file_1_20250608_120001.png")
@@ -770,7 +789,8 @@ struct ImageCommandAdvancedTests {
             (app: "Safari", title: "Home", index: nil),
             (app: "Finder", title: nil, index: 0),
             (app: "Terminal", title: nil, index: nil)
-        ])
+        ]
+    )
     func windowSpecifierCombinations(app: String, title: String?, index: Int?) throws {
         var args = ["--app", app]
 
@@ -796,7 +816,8 @@ struct ImageCommandAdvancedTests {
             "/tmp/test.png",
             "./relative/path.png",
             "/path with spaces/image.png",
-        ])
+        ]
+    )
     func pathExpansion(path: String) throws {
         let command = try ImageCommand.parse(["--path", path])
         #expect(command.path == path)
@@ -884,7 +905,8 @@ struct ImageCommandAdvancedTests {
             (["--window-title", "Test"], true),
             (["--screen-index", "0"], true),
             (["--window-index", "0"], true)
-        ])
+        ]
+    )
     func commandOptionCombinations(args: [String], shouldParse: Bool) {
         do {
             _ = try ImageCommand.parse(args)

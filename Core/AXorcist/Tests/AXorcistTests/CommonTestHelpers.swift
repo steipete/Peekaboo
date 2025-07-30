@@ -1,6 +1,6 @@
 @preconcurrency import AppKit
-@testable import AXorcist
 import XCTest
+@testable import AXorcist
 
 
 // Result struct for AXORC commands
@@ -429,32 +429,32 @@ enum TestError: Error, CustomStringConvertible {
 
 var productsDirectory: URL {
     #if os(macOS)
-        for bundle in Bundle.allBundles where bundle.bundlePath.hasSuffix(".xctest") {
-            return bundle.bundleURL.deletingLastPathComponent()
-        }
+    for bundle in Bundle.allBundles where bundle.bundlePath.hasSuffix(".xctest") {
+        return bundle.bundleURL.deletingLastPathComponent()
+    }
 
-        let currentFileURL = URL(fileURLWithPath: #filePath)
-        let packageRootPath = currentFileURL.deletingLastPathComponent().deletingLastPathComponent()
-            .deletingLastPathComponent()
+    let currentFileURL = URL(fileURLWithPath: #filePath)
+    let packageRootPath = currentFileURL.deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent()
 
-        let buildPathsToTry = [
-            packageRootPath.appendingPathComponent(".build/debug"),
-            packageRootPath.appendingPathComponent(".build/arm64-apple-macosx/debug"),
-            packageRootPath.appendingPathComponent(".build/x86_64-apple-macosx/debug"),
-        ]
+    let buildPathsToTry = [
+        packageRootPath.appendingPathComponent(".build/debug"),
+        packageRootPath.appendingPathComponent(".build/arm64-apple-macosx/debug"),
+        packageRootPath.appendingPathComponent(".build/x86_64-apple-macosx/debug"),
+    ]
 
-        let fileManager = FileManager.default
-        for path in buildPathsToTry where fileManager.fileExists(atPath: path.appendingPathComponent("axorc").path) {
-            return path
-        }
+    let fileManager = FileManager.default
+    for path in buildPathsToTry where fileManager.fileExists(atPath: path.appendingPathComponent("axorc").path) {
+        return path
+    }
 
-        let searchedPaths = buildPathsToTry.map(\.path).joined(separator: ", ")
-        fatalError(
-            "couldn't find the products directory via Bundle or SPM fallback. " +
-                "Package root guessed as: \(packageRootPath.path). " +
-                "Searched paths: \(searchedPaths)"
-        )
+    let searchedPaths = buildPathsToTry.map(\.path).joined(separator: ", ")
+    fatalError(
+        "couldn't find the products directory via Bundle or SPM fallback. " +
+            "Package root guessed as: \(packageRootPath.path). " +
+            "Searched paths: \(searchedPaths)"
+    )
     #else
-        return Bundle.main.bundleURL
+    return Bundle.main.bundleURL
     #endif
 }

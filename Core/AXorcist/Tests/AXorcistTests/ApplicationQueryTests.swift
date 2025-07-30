@@ -1,14 +1,14 @@
 import AppKit
-@testable import AXorcist
 import XCTest
+@testable import AXorcist
 
 // Helper type for decoding arbitrary JSON values
 struct AnyDecodable: Decodable {
     let value: Any
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if let bool = try? container.decode(Bool.self) {
             value = bool
         } else if let int = try? container.decode(Int.self) {
@@ -65,16 +65,16 @@ class ApplicationQueryTests: XCTestCase {
         struct ApplicationQueryResponse: Decodable {
             let success: Bool
             let data: [String: [[String: Any]]]
-            
+
             enum CodingKeys: String, CodingKey {
                 case success
                 case data
             }
-            
+
             init(from decoder: Decoder) throws {
                 let container = try decoder.container(keyedBy: CodingKeys.self)
                 success = try container.decode(Bool.self, forKey: .success)
-                
+
                 // Decode data as dictionary with array of dictionaries
                 let dataContainer = try container.decode([String: [[String: AnyDecodable]]].self, forKey: .data)
                 var dataDict: [String: [[String: Any]]] = [:]
@@ -90,7 +90,7 @@ class ApplicationQueryTests: XCTestCase {
                 data = dataDict
             }
         }
-        
+
         let response = try JSONDecoder().decode(ApplicationQueryResponse.self, from: responseData)
 
         XCTAssertEqual(response.success, true)
@@ -155,7 +155,7 @@ class ApplicationQueryTests: XCTestCase {
 
             for window in elements {
                 if let attrs = window["attributes"] as? [String: Any] {
-                    XCTAssertEqual(attrs["AXRole"] as? String , "AXWindow")
+                    XCTAssertEqual(attrs["AXRole"] as? String, "AXWindow")
                     XCTAssertNotNil(attrs["AXTitle"], "Window should have title")
                 }
             }

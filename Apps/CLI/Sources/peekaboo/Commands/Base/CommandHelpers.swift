@@ -44,12 +44,12 @@ extension Attribute where T == String {
 func findApplication(identifier: String) async throws -> (app: Element, runningApp: NSRunningApplication) {
     // Use PeekabooServices to find the application
     let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: identifier)
-    
+
     // Get the NSRunningApplication
     guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
         throw PeekabooError.appNotFound(identifier)
     }
-    
+
     let element = Element(AXUIElementCreateApplication(runningApp.processIdentifier))
     return (app: element, runningApp: runningApp)
 }

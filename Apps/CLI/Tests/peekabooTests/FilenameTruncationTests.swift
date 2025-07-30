@@ -15,7 +15,8 @@ struct FilenameTruncationTests {
         let result = OutputPathResolver.determineOutputPath(
             basePath: longPath,
             fileName: windowFileName,
-            screenIndex: nil)
+            screenIndex: nil
+        )
 
         // Extract just the filename from the result
         let resultFilename = URL(fileURLWithPath: result).lastPathComponent
@@ -41,13 +42,15 @@ struct FilenameTruncationTests {
             basePath: longPath,
             fileName: screenFileName,
             screenIndex: nil,
-            isSingleCapture: false)
+            isSingleCapture: false
+        )
 
         let resultFilename = URL(fileURLWithPath: result).lastPathComponent
 
         #expect(
             resultFilename.utf8.count <= 255,
-            "Filename with multibyte chars should be truncated to stay within 255 byte limit")
+            "Filename with multibyte chars should be truncated to stay within 255 byte limit"
+        )
         #expect(resultFilename.hasSuffix("_1_20250610_120000.png"), "Should preserve screen metadata")
 
         // Verify the filename was actually truncated
@@ -65,13 +68,15 @@ struct FilenameTruncationTests {
         let result = OutputPathResolver.determineOutputPath(
             basePath: normalPath,
             fileName: windowFileName,
-            screenIndex: nil)
+            screenIndex: nil
+        )
 
         let resultFilename = URL(fileURLWithPath: result).lastPathComponent
 
         #expect(
             resultFilename == "MyScreenshot_Finder_window_0_20250610_120000.png",
-            "Short filenames should not be truncated")
+            "Short filenames should not be truncated"
+        )
     }
 
     @Test("Handles edge case at exactly 255 bytes")
@@ -90,7 +95,8 @@ struct FilenameTruncationTests {
         let result = OutputPathResolver.determineOutputPath(
             basePath: exactPath,
             fileName: windowFileName,
-            screenIndex: nil)
+            screenIndex: nil
+        )
 
         let resultFilename = URL(fileURLWithPath: result).lastPathComponent
 
@@ -107,11 +113,13 @@ struct FilenameTruncationTests {
         let result = OutputPathResolver.determineOutputPath(
             basePath: directoryPath,
             fileName: veryLongFileName,
-            screenIndex: nil)
+            screenIndex: nil
+        )
 
         #expect(
             result == "/tmp/screenshots/\(veryLongFileName)",
-            "Directory paths should append filename without truncation")
+            "Directory paths should append filename without truncation"
+        )
 
         // Note: The actual file writing would fail if the filename is too long,
         // but OutputPathResolver doesn't truncate in directory mode
@@ -125,7 +133,8 @@ struct FilenameTruncationTests {
         let screenFileName = "screen_2_20250610_120000.png"
         let result = OutputPathResolver.determineOutputPathWithFallback(
             basePath: longPath,
-            fileName: screenFileName)
+            fileName: screenFileName
+        )
 
         let resultFilename = URL(fileURLWithPath: result).lastPathComponent
 
@@ -145,7 +154,8 @@ struct FilenameTruncationTests {
         let result = OutputPathResolver.determineOutputPath(
             basePath: complexPath,
             fileName: windowFileName,
-            screenIndex: nil)
+            screenIndex: nil
+        )
 
         let resultFilename = URL(fileURLWithPath: result).lastPathComponent
 
@@ -173,14 +183,16 @@ struct FilenameTruncationTests {
         let result = OutputPathResolver.determineOutputPath(
             basePath: longPath,
             fileName: windowFileName,
-            screenIndex: nil)
+            screenIndex: nil
+        )
 
         let resultFilename = URL(fileURLWithPath: result).lastPathComponent
 
         #expect(resultFilename.utf8.count <= 255, "Extremely long filename should be truncated")
         #expect(
             resultFilename.contains("_SuperLongAppName_window_0_20250610_120000"),
-            "Should preserve window metadata")
+            "Should preserve window metadata"
+        )
         #expect(resultFilename.hasSuffix(".png"), "Should preserve extension")
 
         // Verify truncation actually happened
@@ -197,7 +209,8 @@ struct FilenameTruncationTests {
             basePath: simplePath,
             fileName: windowFileName,
             screenIndex: nil,
-            isSingleCapture: true)
+            isSingleCapture: true
+        )
 
         #expect(result == simplePath, "Single capture should use the provided path as-is")
     }
@@ -212,11 +225,13 @@ struct FilenameTruncationTests {
             basePath: basePath,
             fileName: windowFileName1,
             screenIndex: nil,
-            isSingleCapture: false)
+            isSingleCapture: false
+        )
 
         #expect(
             result1 == "/tmp/capture_Safari_window_0_20250610_120000.png",
-            "Multiple captures should append window metadata")
+            "Multiple captures should append window metadata"
+        )
 
         // Test screen capture with multiple screens
         let screenFileName = "screen_1_20250610_120000.png"
@@ -224,11 +239,13 @@ struct FilenameTruncationTests {
             basePath: basePath,
             fileName: screenFileName,
             screenIndex: nil,
-            isSingleCapture: false)
+            isSingleCapture: false
+        )
 
         #expect(
             result2 == "/tmp/capture_1_20250610_120000.png",
-            "Multiple screen captures should append screen metadata")
+            "Multiple screen captures should append screen metadata"
+        )
     }
 
     @Test("Single capture with very long filename doesn't add metadata")
@@ -241,7 +258,8 @@ struct FilenameTruncationTests {
             basePath: longPath,
             fileName: windowFileName,
             screenIndex: nil,
-            isSingleCapture: true)
+            isSingleCapture: true
+        )
 
         #expect(result == longPath, "Single capture should not modify even very long filenames")
 
@@ -260,22 +278,26 @@ struct FilenameTruncationTests {
             basePath: directoryPath,
             fileName: windowFileName,
             screenIndex: nil,
-            isSingleCapture: true)
+            isSingleCapture: true
+        )
 
         #expect(
             singleResult == "/tmp/screenshots/Chrome_window_0_20250610_120000.png",
-            "Directory paths should always append the generated filename")
+            "Directory paths should always append the generated filename"
+        )
 
         // Test multiple capture with directory
         let multiResult = OutputPathResolver.determineOutputPath(
             basePath: directoryPath,
             fileName: windowFileName,
             screenIndex: nil,
-            isSingleCapture: false)
+            isSingleCapture: false
+        )
 
         #expect(
             multiResult == singleResult,
-            "Directory behavior should be the same for single and multiple captures")
+            "Directory behavior should be the same for single and multiple captures"
+        )
     }
 }
 

@@ -10,7 +10,7 @@ func formatJSON(_ jsonString: String, indent: String = "   ") -> String? {
           let prettyString = String(data: prettyData, encoding: .utf8) else {
         return nil
     }
-    
+
     // Add indentation to each line
     return prettyString
         .split(separator: "\n")

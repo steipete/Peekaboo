@@ -1,45 +1,44 @@
+import CoreGraphics
 import Foundation
 import Testing
-import CoreGraphics
 @testable import peekaboo
 @testable import PeekabooCore
 
 @Suite("SeeCommand Annotation Integration Tests", .serialized, .disabled("Requires local environment"))
 struct SeeCommandAnnotationIntegrationTests {
-    
     @Test("Annotation correctly places elements on Safari window")
     @available(*, message: "Run with RUN_LOCAL_TESTS=true")
-    func testSafariAnnotationPlacement() async throws {
+    func safariAnnotationPlacement() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             return
         }
-        
+
         var command = SeeCommand()
         command.app = "Safari"
         command.annotate = true
         command.path = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-safari-annotation.png")
             .path
-        
+
         // Execute the command
         try await command.run()
-        
+
         // Verify annotated file was created
         let annotatedPath = (command.path! as NSString).deletingPathExtension + "_annotated.png"
         #expect(FileManager.default.fileExists(atPath: annotatedPath))
-        
+
         // Clean up
         try? FileManager.default.removeItem(atPath: command.path!)
         try? FileManager.default.removeItem(atPath: annotatedPath)
     }
-    
+
     @Test("Elements detected from correct window, not overlay")
     @available(*, message: "Run with RUN_LOCAL_TESTS=true")
-    func testCorrectWindowDetection() async throws {
+    func correctWindowDetection() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             return
         }
-        
+
         // First capture without window title (might get overlay)
         var command1 = SeeCommand()
         command1.app = "Safari"
@@ -48,10 +47,10 @@ struct SeeCommandAnnotationIntegrationTests {
         command1.path = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-no-window-title.png")
             .path
-        
+
         // Execute and capture stdout (would need actual implementation)
         try await command1.run()
-        
+
         // For testing purposes, we'd need to read the actual JSON output
         // This is a placeholder - real implementation would capture stdout
         let result1 = SeeResult(
@@ -69,7 +68,7 @@ struct SeeCommandAnnotationIntegrationTests {
             ui_elements: [],
             menu_bar: nil
         )
-        
+
         // Now capture with specific window title
         var command2 = SeeCommand()
         command2.app = "Safari"
@@ -79,9 +78,9 @@ struct SeeCommandAnnotationIntegrationTests {
         command2.path = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-with-window-title.png")
             .path
-        
+
         try await command2.run()
-        
+
         // Placeholder for testing
         let result2 = SeeResult(
             session_id: "test2",
@@ -98,28 +97,30 @@ struct SeeCommandAnnotationIntegrationTests {
             ui_elements: [],
             menu_bar: nil
         )
-        
+
         // With window title, we should get consistent window detection
         #expect(result2.window_title == "Start Page")
-        
+
         // Clean up
         try? FileManager.default.removeItem(atPath: command1.path!)
-        try? FileManager.default.removeItem(atPath: (command1.path! as NSString).deletingPathExtension + "_annotated.png")
+        try? FileManager.default
+            .removeItem(atPath: (command1.path! as NSString).deletingPathExtension + "_annotated.png")
         try? FileManager.default.removeItem(atPath: command2.path!)
-        try? FileManager.default.removeItem(atPath: (command2.path! as NSString).deletingPathExtension + "_annotated.png")
+        try? FileManager.default
+            .removeItem(atPath: (command2.path! as NSString).deletingPathExtension + "_annotated.png")
     }
-    
+
     @Test("Window bounds affect element coordinate transformation")
     @available(*, message: "Run with RUN_LOCAL_TESTS=true")
-    func testWindowBoundsTransformation() async throws {
+    func windowBoundsTransformation() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             return
         }
-        
+
         // Create a command that will use enhanced detection
         let services = PeekabooServices.shared
         let imageData = Data() // Mock data for this test
-        
+
         // Test with explicit window bounds
         let windowBounds = CGRect(x: 100, y: 50, width: 1024, height: 768)
         let windowContext = WindowContext(
@@ -127,14 +128,14 @@ struct SeeCommandAnnotationIntegrationTests {
             windowTitle: "Test Window",
             windowBounds: windowBounds
         )
-        
+
         if let uiService = services.automation as? UIAutomationService {
             let result = try await uiService.detectElements(
                 in: imageData,
                 sessionId: nil,
                 windowContext: windowContext
             )
-            
+
             // All element bounds should be window-relative
             for element in result.elements.all {
                 // Bounds should be within window dimensions
@@ -143,85 +144,112 @@ struct SeeCommandAnnotationIntegrationTests {
             }
         }
     }
-    
+
     @Test("Annotation handles multiple element types")
-    func testMultipleElementTypes() throws {
+    func multipleElementTypes() throws {
         // Create a variety of elements
         let elements = DetectedElements(
             buttons: [
-                DetectedElement(id: "B1", type: .button, label: "Save", value: nil,
-                              bounds: CGRect(x: 10, y: 10, width: 80, height: 30),
-                              isEnabled: true, isSelected: nil, attributes: [:])
+                DetectedElement(
+                    id: "B1",
+                    type: .button,
+                    label: "Save",
+                    value: nil,
+                    bounds: CGRect(x: 10, y: 10, width: 80, height: 30),
+                    isEnabled: true,
+                    isSelected: nil,
+                    attributes: [:]
+                )
             ],
             textFields: [
-                DetectedElement(id: "T1", type: .textField, label: "Name", value: "John",
-                              bounds: CGRect(x: 100, y: 10, width: 200, height: 30),
-                              isEnabled: true, isSelected: nil, attributes: [:])
+                DetectedElement(
+                    id: "T1",
+                    type: .textField,
+                    label: "Name",
+                    value: "John",
+                    bounds: CGRect(x: 100, y: 10, width: 200, height: 30),
+                    isEnabled: true,
+                    isSelected: nil,
+                    attributes: [:]
+                )
             ],
             links: [
-                DetectedElement(id: "L1", type: .link, label: "Click here", value: nil,
-                              bounds: CGRect(x: 10, y: 50, width: 100, height: 20),
-                              isEnabled: true, isSelected: nil, attributes: [:])
+                DetectedElement(
+                    id: "L1",
+                    type: .link,
+                    label: "Click here",
+                    value: nil,
+                    bounds: CGRect(x: 10, y: 50, width: 100, height: 20),
+                    isEnabled: true,
+                    isSelected: nil,
+                    attributes: [:]
+                )
             ],
             images: [],
             groups: [
-                DetectedElement(id: "G1", type: .group, label: nil, value: nil,
-                              bounds: CGRect(x: 10, y: 80, width: 300, height: 200),
-                              isEnabled: true, isSelected: nil, attributes: [:])
+                DetectedElement(
+                    id: "G1",
+                    type: .group,
+                    label: nil,
+                    value: nil,
+                    bounds: CGRect(x: 10, y: 80, width: 300, height: 200),
+                    isEnabled: true,
+                    isSelected: nil,
+                    attributes: [:]
+                )
             ],
             sliders: [],
             checkboxes: [],
             menus: [],
             other: []
         )
-        
+
         // Verify all elements are counted
         #expect(elements.all.count == 4)
-        
+
         // Verify ID prefixes match element types
         #expect(elements.buttons.first?.id.hasPrefix("B") == true)
         #expect(elements.textFields.first?.id.hasPrefix("T") == true)
         #expect(elements.links.first?.id.hasPrefix("L") == true)
         #expect(elements.groups.first?.id.hasPrefix("G") == true)
     }
-    
+
     @Test("Annotation file size is reasonable")
     @available(*, message: "Run with RUN_LOCAL_TESTS=true")
-    func testAnnotationFileSize() async throws {
+    func annotationFileSize() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             return
         }
-        
+
         var command = SeeCommand()
         command.app = "Safari"
         command.path = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-size.png")
             .path
-        
+
         // First capture without annotation
         try await command.run()
-        
+
         let originalSize = try FileManager.default.attributesOfItem(atPath: command.path!)[.size] as! Int
-        
+
         // Now with annotation
         command.annotate = true
         command.path = FileManager.default.temporaryDirectory
             .appendingPathComponent("test-size-annotated.png")
             .path
-        
+
         try await command.run()
-        
+
         let annotatedPath = (command.path! as NSString).deletingPathExtension + "_annotated.png"
         let annotatedSize = try FileManager.default.attributesOfItem(atPath: annotatedPath)[.size] as! Int
-        
+
         // Annotated file should exist but not be unreasonably large
         // Annotations add overlays but shouldn't double the file size
         #expect(annotatedSize > 0)
         #expect(annotatedSize < originalSize * 2)
-        
+
         // Clean up
         try? FileManager.default.removeItem(atPath: command.path!)
         try? FileManager.default.removeItem(atPath: annotatedPath)
     }
 }
-

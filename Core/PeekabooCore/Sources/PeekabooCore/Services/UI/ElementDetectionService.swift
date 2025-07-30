@@ -1,142 +1,150 @@
-import Foundation
-import CoreGraphics
-@preconcurrency import AXorcist
 import AppKit
+@preconcurrency import AXorcist
+import CoreGraphics
+import Foundation
 import os.log
 
 /// Service for detecting UI elements in screenshots and applications
 @MainActor
-public final class ElementDetectionService: Sendable {
-    
+public final class ElementDetectionService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ElementDetectionService")
     private let sessionManager: SessionManagerProtocol
-    
+
     public init(sessionManager: SessionManagerProtocol? = nil) {
         self.sessionManager = sessionManager ?? SessionManager()
     }
-    
+
     /// Detect UI elements in a screenshot
-    public func detectElements(in imageData: Data, sessionId: String?, windowContext: WindowContext?) async throws -> ElementDetectionResult {
-        logger.info("Starting element detection")
-        
+    public func detectElements(
+        in imageData: Data,
+        sessionId: String?,
+        windowContext: WindowContext?) async throws -> ElementDetectionResult
+    {
+        self.logger.info("Starting element detection")
+
         // Get the frontmost application or specified one
         let targetApp: NSRunningApplication
         if let appName = windowContext?.applicationName {
-            logger.debug("Looking for application: \(appName)")
+            self.logger.debug("Looking for application: \(appName)")
             let apps = NSWorkspace.shared.runningApplications.filter { app in
                 app.localizedName?.localizedCaseInsensitiveContains(appName) == true ||
-                app.bundleIdentifier?.localizedCaseInsensitiveContains(appName) == true
+                    app.bundleIdentifier?.localizedCaseInsensitiveContains(appName) == true
             }
-            
+
             guard let app = apps.first else {
-                logger.error("Application not found: \(appName)")
+                self.logger.error("Application not found: \(appName)")
                 throw PeekabooError.appNotFound(appName)
             }
             targetApp = app
         } else {
             guard let app = NSWorkspace.shared.frontmostApplication else {
-                logger.error("No frontmost application")
+                self.logger.error("No frontmost application")
                 throw PeekabooError.operationError(message: "No frontmost application")
             }
             targetApp = app
         }
-        
-        logger.debug("Target application: \(targetApp.localizedName ?? "Unknown") (PID: \(targetApp.processIdentifier))")
-        
+
+        self.logger
+            .debug("Target application: \(targetApp.localizedName ?? "Unknown") (PID: \(targetApp.processIdentifier))")
+
         // Create AX element for the application
         let axApp = AXUIElementCreateApplication(targetApp.processIdentifier)
         let appElement = Element(axApp)
-        
+
         // Find the target window
         let allWindows = appElement.windows() ?? []
-        logger.debug("Found \(allWindows.count) windows for \(targetApp.localizedName ?? "app")")
-        
+        self.logger.debug("Found \(allWindows.count) windows for \(targetApp.localizedName ?? "app")")
+
         // Check for dialogs if no regular windows
         var targetWindow: Element?
         var isDialog = false
-        
+
         // First, look for the specific window if a title is provided
         if let windowTitle = windowContext?.windowTitle {
-            logger.debug("Looking for window with title: \(windowTitle)")
+            self.logger.debug("Looking for window with title: \(windowTitle)")
             targetWindow = allWindows.first { window in
                 window.title()?.localizedCaseInsensitiveContains(windowTitle) == true
             }
         }
-        
+
         // Always check all windows to detect dialogs
-        logger.debug("Checking \(allWindows.count) windows for dialog characteristics")
-        
+        self.logger.debug("Checking \(allWindows.count) windows for dialog characteristics")
+
         for window in allWindows {
             let title = window.title() ?? ""
             let subrole = window.subrole() ?? ""
             let isMain = window.isMain() ?? false
-            
-            logger.debug("Window: '\(title)', subrole: '\(subrole)', isMain: \(isMain)")
-            
+
+            self.logger.debug("Window: '\(title)', subrole: '\(subrole)', isMain: \(isMain)")
+
             // Check if this is a file dialog based on title and characteristics
-            let isFileDialog = title == "Open" || 
-                             title == "Save" || 
-                             title.hasPrefix("Save As") ||
-                             title == "Export" ||
-                             title == "Import"
-            
+            let isFileDialog = title == "Open" ||
+                title == "Save" ||
+                title.hasPrefix("Save As") ||
+                title == "Export" ||
+                title == "Import"
+
             // Also check for traditional dialog subroles
-            let isDialogSubrole = subrole == "AXDialog" || 
-                                subrole == "AXSystemDialog" || 
-                                subrole == "AXSheet"
-            
+            let isDialogSubrole = subrole == "AXDialog" ||
+                subrole == "AXSystemDialog" ||
+                subrole == "AXSheet"
+
             if isFileDialog || isDialogSubrole {
                 // If we already have a target window and it matches this dialog, mark it as dialog
                 if let target = targetWindow, target.title() == window.title() {
                     isDialog = true
-                    logger.info("🗨️ Target window is a dialog: '\(title)' (subrole: \(subrole), isFileDialog: \(isFileDialog))")
+                    self.logger
+                        .info(
+                            "🗨️ Target window is a dialog: '\(title)' (subrole: \(subrole), isFileDialog: \(isFileDialog))")
                 }
                 // If we don't have a target window yet, use this dialog
                 else if targetWindow == nil {
                     targetWindow = window
                     isDialog = true
-                    logger.info("🗨️ Using dialog window: '\(title)' (subrole: \(subrole), isFileDialog: \(isFileDialog))")
+                    self.logger
+                        .info("🗨️ Using dialog window: '\(title)' (subrole: \(subrole), isFileDialog: \(isFileDialog))")
                 }
             }
         }
-        
+
         // If no window found yet, try to find main window
         if targetWindow == nil {
             targetWindow = allWindows.first { $0.isMain() == true }
         }
-        
+
         // Fall back to any window
         if targetWindow == nil {
             targetWindow = allWindows.first
         }
-        
+
         guard let window = targetWindow else {
             // Provide detailed error message
             let appName = targetApp.localizedName ?? "Unknown app"
-            
+
             if !targetApp.isActive {
-                logger.error("App '\(appName)' is not active")
+                self.logger.error("App '\(appName)' is not active")
                 throw PeekabooError.windowNotFound(criteria: "App '\(appName)' is running but not active")
             } else if allWindows.isEmpty {
-                logger.error("App '\(appName)' has no windows")
-                throw PeekabooError.windowNotFound(criteria: "App '\(appName)' is running but has no windows or dialogs")
+                self.logger.error("App '\(appName)' has no windows")
+                throw PeekabooError
+                    .windowNotFound(criteria: "App '\(appName)' is running but has no windows or dialogs")
             } else {
-                logger.error("No suitable window found for app '\(appName)'")
+                self.logger.error("No suitable window found for app '\(appName)'")
                 throw PeekabooError.windowNotFound(criteria: "No accessible window found for '\(appName)'")
             }
         }
-        
+
         let windowType = isDialog ? "dialog" : "window"
-        logger.debug("Found \(windowType): \(window.title() ?? "Untitled")")
-        
+        self.logger.debug("Found \(windowType): \(window.title() ?? "Untitled")")
+
         // Detect elements in window
         var detectedElements: [DetectedElement] = []
         var elementIdMap: [String: DetectedElement] = [:]
-        
+
         // Process UI elements recursively
         func processElement(_ element: Element, parentId: String? = nil, depth: Int = 0) {
             guard depth < 20 else { return }
-            
+
             // Get element properties
             let frame = element.frame() ?? .zero
             let role = element.role() ?? "Unknown"
@@ -147,35 +155,37 @@ public final class ElementDetectionService: Sendable {
             let help = element.help()
             let roleDescription = element.roleDescription()
             let identifier = element.identifier()
-            
+
             // Debug logging for button label issues
             if role.lowercased() == "axbutton" {
-                logger.debug("🔍 Button debug - title: '\(title ?? "nil")', label: '\(label ?? "nil")', value: '\(value ?? "nil")', roleDescription: '\(roleDescription ?? "nil")', description: '\(description ?? "nil")', identifier: '\(identifier ?? "nil")'")
+                self.logger
+                    .debug(
+                        "🔍 Button debug - title: '\(title ?? "nil")', label: '\(label ?? "nil")', value: '\(value ?? "nil")', roleDescription: '\(roleDescription ?? "nil")', description: '\(description ?? "nil")', identifier: '\(identifier ?? "nil")'")
             }
             let isEnabled = element.isEnabled() ?? false
-            
+
             // Skip elements outside window bounds or too small
-            guard frame.width > 5 && frame.height > 5 else { return }
-            
+            guard frame.width > 5, frame.height > 5 else { return }
+
             // Generate unique ID
             let elementId = "elem_\(detectedElements.count)"
-            
+
             // Map role to ElementType
-            let elementType = mapRoleToElementType(role)
-            
+            let elementType = self.mapRoleToElementType(role)
+
             // Check if actionable
-            let isActionable = isElementActionable(element, role: role)
-            
+            let isActionable = self.isElementActionable(element, role: role)
+
             // Extract keyboard shortcut if available
-            let keyboardShortcut = extractKeyboardShortcut(element)
-            
+            let keyboardShortcut = self.extractKeyboardShortcut(element)
+
             // Enhanced label extraction for SwiftUI compatibility
             var effectiveLabel = label ?? title ?? value ?? roleDescription
-            
+
             // Special handling for SwiftUI buttons
-            if role.lowercased() == "axbutton" && effectiveLabel == "button" {
+            if role.lowercased() == "axbutton", effectiveLabel == "button" {
                 // Try description as it might contain the actual button text
-                if let desc = description, !desc.isEmpty && desc != "button" {
+                if let desc = description, !desc.isEmpty, desc != "button" {
                     effectiveLabel = desc
                 }
                 // Try identifier which might be set via .accessibilityIdentifier()
@@ -189,7 +199,7 @@ public final class ElementDetectionService: Sendable {
                     effectiveLabel = cleaned
                 }
             }
-            
+
             // Create detected element
             let detectedElement = DetectedElement(
                 id: elementId,
@@ -207,13 +217,11 @@ public final class ElementDetectionService: Sendable {
                     roleDescription: roleDescription,
                     identifier: identifier,
                     isActionable: isActionable,
-                    keyboardShortcut: keyboardShortcut
-                )
-            )
-            
+                    keyboardShortcut: keyboardShortcut))
+
             detectedElements.append(detectedElement)
             elementIdMap[elementId] = detectedElement
-            
+
             // Process children
             if let children = element.children() {
                 for child in children {
@@ -221,23 +229,23 @@ public final class ElementDetectionService: Sendable {
                 }
             }
         }
-        
+
         // Start processing from window
         processElement(window)
-        
+
         // Also process menu bar if it's the frontmost app
         var menuBarElements: [DetectedElement] = []
         if targetApp.isActive, let menuBar = appElement.menuBar() {
-            processMenuBar(menuBar, elements: &menuBarElements, elementIdMap: &elementIdMap)
+            self.processMenuBar(menuBar, elements: &menuBarElements, elementIdMap: &elementIdMap)
         }
-        
+
         // Combine all elements
         detectedElements.append(contentsOf: menuBarElements)
-        
+
         // Note: Parent-child relationships are not directly supported in the protocol's DetectedElement struct
-        
-        logger.info("Detected \(detectedElements.count) elements")
-        
+
+        self.logger.info("Detected \(detectedElements.count) elements")
+
         // Create result
         let detectedElementsCollection = DetectedElements(
             buttons: detectedElements.filter { $0.type == .button },
@@ -249,109 +257,108 @@ public final class ElementDetectionService: Sendable {
             checkboxes: detectedElements.filter { $0.type == .checkbox },
             menus: detectedElements.filter { $0.type == .menu },
             other: detectedElements.filter { element in
-                ![ElementType.button, .textField, .link, .image, .group, .slider, .checkbox, .menu].contains(element.type)
-            }
-        )
-        
+                ![ElementType.button, .textField, .link, .image, .group, .slider, .checkbox, .menu]
+                    .contains(element.type)
+            })
+
         let metadata = DetectionMetadata(
             detectionTime: 0.0, // Would need to track actual time
             elementCount: detectedElements.count,
             method: "AXorcist",
             warnings: [],
             windowContext: windowContext,
-            isDialog: isDialog
-        )
-        
+            isDialog: isDialog)
+
         let result = ElementDetectionResult(
             sessionId: sessionId ?? UUID().uuidString,
             screenshotPath: "", // Would need to save screenshot
             elements: detectedElementsCollection,
-            metadata: metadata
-        )
-        
+            metadata: metadata)
+
         // Store in session if provided
-        if let sessionId = sessionId {
-            try await sessionManager.storeDetectionResult(sessionId: sessionId, result: result)
+        if let sessionId {
+            try await self.sessionManager.storeDetectionResult(sessionId: sessionId, result: result)
         }
-        
+
         return result
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private func mapRoleToElementType(_ role: String) -> ElementType {
         switch role.lowercased() {
         case "axbutton", "axpopupbutton":
-            return .button
+            .button
         case "axtextfield", "axtextarea", "axsearchfield":
-            return .textField
+            .textField
         case "axlink", "axweblink":
-            return .link
+            .link
         case "aximage":
-            return .image
+            .image
         case "axstatictext", "axtext":
-            return .other // text not in protocol
+            .other // text not in protocol
         case "axcheckbox":
-            return .checkbox
+            .checkbox
         case "axradiobutton":
-            return .checkbox // Use checkbox for radio buttons
+            .checkbox // Use checkbox for radio buttons
         case "axcombobox":
-            return .other // Not in protocol
+            .other // Not in protocol
         case "axslider":
-            return .slider
+            .slider
         case "axmenu":
-            return .menu
+            .menu
         case "axmenuitem":
-            return .other // menuItem not in protocol
+            .other // menuItem not in protocol
         case "axtab":
-            return .other // Not in protocol
+            .other // Not in protocol
         case "axtable":
-            return .other // Not in protocol
+            .other // Not in protocol
         case "axlist":
-            return .other // Not in protocol
+            .other // Not in protocol
         case "axgroup":
-            return .group
+            .group
         case "axtoolbar":
-            return .other // Not in protocol
+            .other // Not in protocol
         case "axwindow":
-            return .other // Not in protocol
+            .other // Not in protocol
         default:
-            return .other
+            .other
         }
     }
-    
+
     private func isElementActionable(_ element: Element, role: String) -> Bool {
         // Check if element has press action
         if let actions = element.supportedActions(), actions.contains("AXPress") {
             return true
         }
-        
+
         // Check by role
         let actionableRoles = [
             "axbutton", "axpopupbutton", "axtextfield", "axlink",
             "axcheckbox", "axradiobutton", "axmenuitem", "axcombobox",
-            "axslider", "axtab"
+            "axslider", "axtab",
         ]
-        
+
         return actionableRoles.contains(role.lowercased())
     }
-    
+
     @MainActor
     private func extractKeyboardShortcut(_ element: Element) -> String? {
         // Use the new keyboardShortcut() method from AXorcist
         if let shortcut = element.keyboardShortcut() {
             return shortcut
         }
-        
+
         // Fallback: For some elements, check description which may contain shortcuts
         if let description = element.descriptionText(),
-           description.contains("⌘") || description.contains("⌥") || description.contains("⌃") {
+           description.contains("⌘") || description.contains("⌥") || description.contains("⌃")
+        {
             return description
         }
-        
+
         return nil
     }
-    
+
     private func createElementAttributes(
         role: String,
         title: String?,
@@ -360,29 +367,33 @@ public final class ElementDetectionService: Sendable {
         roleDescription: String?,
         identifier: String?,
         isActionable: Bool,
-        keyboardShortcut: String?
-    ) -> [String: String] {
+        keyboardShortcut: String?) -> [String: String]
+    {
         var attributes: [String: String] = [:]
-        
+
         attributes["role"] = role
-        if let title = title { attributes["title"] = title }
-        if let description = description { attributes["description"] = description }
-        if let help = help { attributes["help"] = help }
-        if let roleDescription = roleDescription { attributes["roleDescription"] = roleDescription }
-        if let identifier = identifier { attributes["identifier"] = identifier }
+        if let title { attributes["title"] = title }
+        if let description { attributes["description"] = description }
+        if let help { attributes["help"] = help }
+        if let roleDescription { attributes["roleDescription"] = roleDescription }
+        if let identifier { attributes["identifier"] = identifier }
         if isActionable { attributes["isActionable"] = "true" }
         if let shortcut = keyboardShortcut { attributes["keyboardShortcut"] = shortcut }
-        
+
         return attributes
     }
-    
-    private func processMenuBar(_ menuBar: Element, elements: inout [DetectedElement], elementIdMap: inout [String: DetectedElement]) {
+
+    private func processMenuBar(
+        _ menuBar: Element,
+        elements: inout [DetectedElement],
+        elementIdMap: inout [String: DetectedElement])
+    {
         guard let menus = menuBar.children() else { return }
-        
+
         for menu in menus {
             let menuId = "menu_\(elements.count)"
             let menuFrame = menu.frame() ?? .zero
-            
+
             let menuElement = DetectedElement(
                 id: menuId,
                 type: .menu,
@@ -391,25 +402,29 @@ public final class ElementDetectionService: Sendable {
                 bounds: menuFrame,
                 isEnabled: menu.isEnabled() ?? true,
                 isSelected: nil,
-                attributes: ["role": "AXMenu"]
-            )
-            
+                attributes: ["role": "AXMenu"])
+
             elements.append(menuElement)
             elementIdMap[menuId] = menuElement
-            
+
             // Process menu items if menu is open
             if let menuItems = menu.children() {
-                processMenuItems(menuItems, parentId: menuId, elements: &elements, elementIdMap: &elementIdMap)
+                self.processMenuItems(menuItems, parentId: menuId, elements: &elements, elementIdMap: &elementIdMap)
             }
         }
     }
-    
+
     @MainActor
-    private func processMenuItems(_ items: [Element], parentId: String, elements: inout [DetectedElement], elementIdMap: inout [String: DetectedElement]) {
+    private func processMenuItems(
+        _ items: [Element],
+        parentId: String,
+        elements: inout [DetectedElement],
+        elementIdMap: inout [String: DetectedElement])
+    {
         for item in items {
             let itemId = "menuitem_\(elements.count)"
             let itemFrame = item.frame() ?? .zero
-            
+
             let menuItemElement = DetectedElement(
                 id: itemId,
                 type: .other, // menuItem not in protocol
@@ -418,31 +433,30 @@ public final class ElementDetectionService: Sendable {
                 bounds: itemFrame,
                 isEnabled: item.isEnabled() ?? true,
                 isSelected: nil,
-                attributes: createMenuItemAttributes(item)
-            )
-            
+                attributes: self.createMenuItemAttributes(item))
+
             elements.append(menuItemElement)
             elementIdMap[itemId] = menuItemElement
-            
+
             // Note: Parent-child relationships not supported in protocol
-            
+
             // Process submenu items
             if let submenu = item.children(), !submenu.isEmpty {
-                processMenuItems(submenu, parentId: itemId, elements: &elements, elementIdMap: &elementIdMap)
+                self.processMenuItems(submenu, parentId: itemId, elements: &elements, elementIdMap: &elementIdMap)
             }
         }
     }
-    
+
     @MainActor
     private func createMenuItemAttributes(_ item: Element) -> [String: String] {
-        var attributes: [String: String] = ["role": "AXMenuItem"]
-        
+        var attributes = ["role": "AXMenuItem"]
+
         if let title = item.title() { attributes["title"] = title }
         if let shortcut = extractKeyboardShortcut(item) { attributes["keyboardShortcut"] = shortcut }
         if item.isEnabled() == false { attributes["isEnabled"] = "false" }
-        
+
         // Note: Check for special menu item types like checkmarks not implemented yet
-        
+
         return attributes
     }
 }

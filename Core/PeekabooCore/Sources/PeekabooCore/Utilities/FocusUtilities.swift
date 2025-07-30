@@ -64,7 +64,7 @@ public struct DefaultFocusOptions: FocusOptionsProtocol, Sendable {
     public let focusRetryCount: Int? = 3
     public let spaceSwitch: Bool = true
     public let bringToCurrentSpace: Bool = false
-    
+
     public init() {}
 }
 
@@ -74,47 +74,47 @@ public struct FocusOptions: ParsableArguments, FocusOptionsProtocol, Sendable {
     public init() {}
     @Flag(name: .long, help: "Disable automatic focus before interaction (not recommended)")
     public var noAutoFocus = false
-    
+
     @Option(name: .long, help: "Timeout for focus operations in seconds")
     public var focusTimeout: TimeInterval?
-    
+
     @Option(name: .long, help: "Number of retries for focus operations")
     public var focusRetryCount: Int?
-    
+
     @Flag(name: .long, help: "Switch to window's Space if on different Space")
     public var spaceSwitch = false
-    
+
     @Flag(name: .long, help: "Bring window to current Space instead of switching")
     public var bringToCurrentSpace = false
-    
-    public var autoFocus: Bool { !noAutoFocus }
+
+    public var autoFocus: Bool { !self.noAutoFocus }
 }
 
 // MARK: - Focus Command Extension
 
-public extension AsyncParsableCommand {
+extension AsyncParsableCommand {
     /// Ensure the target window is focused before executing a command
     @MainActor
-    func ensureFocused(
+    public func ensureFocused(
         sessionId: String? = nil,
         windowID: CGWindowID? = nil,
         applicationName: String? = nil,
         windowTitle: String? = nil,
-        options: FocusOptionsProtocol = DefaultFocusOptions()
-    ) async throws {
+        options: FocusOptionsProtocol = DefaultFocusOptions()) async throws
+    {
         // Skip if auto-focus is disabled
         guard options.autoFocus else {
             // Auto-focus disabled, skipping focus check
             return
         }
-        
+
         // Determine target window
         let targetWindow: CGWindowID?
-        
-        if let windowID = windowID {
+
+        if let windowID {
             // Explicit window ID provided
             targetWindow = windowID
-        } else if let sessionId = sessionId {
+        } else if let sessionId {
             // Try to get window ID from session
             let session = try await PeekabooServices.shared.sessions.getUIAutomationSession(sessionId: sessionId)
             targetWindow = session?.windowID
@@ -126,8 +126,7 @@ public extension AsyncParsableCommand {
                         let focusService = FocusManagementService()
                         let windowID = try await focusService.findBestWindow(
                             applicationName: appName,
-                            windowTitle: windowTitle
-                        )
+                            windowTitle: windowTitle)
                         continuation.resume(returning: windowID)
                     } catch {
                         continuation.resume(throwing: error)
@@ -139,7 +138,7 @@ public extension AsyncParsableCommand {
             // No focus target specified
             return
         }
-        
+
         // Focus the window if we found one
         if let windowID = targetWindow {
             // Capture values before Task to avoid data races
@@ -147,7 +146,7 @@ public extension AsyncParsableCommand {
             let retryCount = options.focusRetryCount ?? 3
             let switchSpace = options.spaceSwitch
             let bringToCurrentSpace = options.bringToCurrentSpace
-            
+
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 Task { @MainActor in
                     do {
@@ -156,8 +155,7 @@ public extension AsyncParsableCommand {
                             timeout: timeout,
                             retryCount: retryCount,
                             switchSpace: switchSpace,
-                            bringToCurrentSpace: bringToCurrentSpace
-                        )
+                            bringToCurrentSpace: bringToCurrentSpace)
                         try await focusService.focusWindow(windowID: windowID, options: focusOptions)
                         continuation.resume()
                     } catch {
@@ -175,122 +173,121 @@ public extension AsyncParsableCommand {
 public final class FocusManagementService {
     private let windowIdentityService = WindowIdentityService()
     private let spaceService = SpaceManagementService()
-    
+
     public init() {}
-    
+
     public struct FocusOptions {
         public let timeout: TimeInterval
         public let retryCount: Int
         public let switchSpace: Bool
         public let bringToCurrentSpace: Bool
-        
+
         public init(
             timeout: TimeInterval = 5.0,
             retryCount: Int = 3,
             switchSpace: Bool = true,
-            bringToCurrentSpace: Bool = false
-        ) {
+            bringToCurrentSpace: Bool = false)
+        {
             self.timeout = timeout
             self.retryCount = retryCount
             self.switchSpace = switchSpace
             self.bringToCurrentSpace = bringToCurrentSpace
         }
     }
-    
+
     // MARK: - Window Finding
-    
+
     /// Find the best window match for the given criteria
     public func findBestWindow(
         applicationName: String,
-        windowTitle: String? = nil
-    ) async throws -> CGWindowID? {
+        windowTitle: String? = nil) async throws -> CGWindowID?
+    {
         // Find the application
         let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: applicationName)
-        
+
         guard let app = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
             throw FocusError.applicationNotRunning(applicationName)
         }
-        
+
         // Get all windows for the app
-        let windows = windowIdentityService.getWindows(for: app)
-        
+        let windows = self.windowIdentityService.getWindows(for: app)
+
         guard !windows.isEmpty else {
             throw FocusError.noWindowsFound(applicationName)
         }
-        
+
         // If window title specified, try to find a match
         if let title = windowTitle {
-            if let matchingWindow = windows.first(where: { 
-                $0.title?.localizedCaseInsensitiveContains(title) == true 
+            if let matchingWindow = windows.first(where: {
+                $0.title?.localizedCaseInsensitiveContains(title) == true
             }) {
                 return matchingWindow.windowID
             }
             // If no match found, fall through to get frontmost
         }
-        
+
         // Return the frontmost window (first in list)
         return windows.first?.windowID
     }
-    
+
     // MARK: - Focus Operations
-    
+
     /// Focus a window by its CGWindowID
     public func focusWindow(windowID: CGWindowID, options: FocusOptions = FocusOptions()) async throws {
         // Attempting to focus window
-        
+
         // Verify window exists
-        guard windowIdentityService.windowExists(windowID: windowID) else {
+        guard self.windowIdentityService.windowExists(windowID: windowID) else {
             throw FocusError.windowNotFound(windowID)
         }
-        
+
         // Handle Space switching if needed
         if options.switchSpace || options.bringToCurrentSpace {
-            try await handleSpaceFocus(windowID: windowID, bringToCurrentSpace: options.bringToCurrentSpace)
+            try await self.handleSpaceFocus(windowID: windowID, bringToCurrentSpace: options.bringToCurrentSpace)
         }
-        
+
         // Find the window's AXUIElement
         guard let (windowElement, app) = windowIdentityService.findWindow(byID: windowID) else {
             throw FocusError.axElementNotFound(windowID)
         }
-        
+
         // Activate the application
         if !app.isActive {
             app.activate()
-            
+
             // Wait for activation
-            try await waitForCondition(
+            try await self.waitForCondition(
                 timeout: 2.0,
                 interval: 0.1,
-                condition: { app.isActive }
-            )
+                condition: { app.isActive })
         }
-        
+
         // Focus the window
-        try await focusWindowElement(windowElement, windowID: windowID, options: options)
+        try await self.focusWindowElement(windowElement, windowID: windowID, options: options)
     }
-    
+
     // MARK: - Private Helpers
-    
+
     private func handleSpaceFocus(windowID: CGWindowID, bringToCurrentSpace: Bool) async throws {
         if bringToCurrentSpace {
             // Move window to current Space
-            try spaceService.moveWindowToCurrentSpace(windowID: windowID)
+            try self.spaceService.moveWindowToCurrentSpace(windowID: windowID)
         } else {
             // Switch to window's Space
-            try await spaceService.switchToWindowSpace(windowID: windowID)
+            try await self.spaceService.switchToWindowSpace(windowID: windowID)
         }
-        
+
         // Give macOS time to complete the Space transition
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5s
     }
-    
+
     private func focusWindowElement(
         _ windowElement: Element,
         windowID: CGWindowID,
-        options: FocusOptions
-    ) async throws {
+        options: FocusOptions) async throws
+    {
         var lastError: Error?
-        
+
         for attempt in 1...options.retryCount {
             // Try to focus the window
             // Try to raise the window
@@ -301,66 +298,66 @@ public final class FocusManagementService {
                 // Note: Setting main window through AX API requires finding parent app
                 // This is handled by the activate() call above
             }
-            
+
             // Verify focus
             do {
-                try await verifyWindowFocus(windowElement, windowID: windowID, timeout: options.timeout)
-                
+                try await self.verifyWindowFocus(windowElement, windowID: windowID, timeout: options.timeout)
+
                 // Successfully focused window
                 return
             } catch {
                 lastError = error
                 // Focus attempt failed: \(error.localizedDescription)
-                
+
                 if attempt < options.retryCount {
                     try await Task.sleep(nanoseconds: 500_000_000) // 0.5s between retries
                 }
             }
         }
-        
+
         throw lastError ?? FocusError.focusVerificationFailed(windowID)
     }
-    
+
     private func verifyWindowFocus(
         _ windowElement: Element,
         windowID: CGWindowID,
-        timeout: TimeInterval
-    ) async throws {
+        timeout: TimeInterval) async throws
+    {
         let startTime = Date()
-        
+
         while Date().timeIntervalSince(startTime) < timeout {
             // Check if window is main/focused
             // We check the main attribute directly
             if let isMain = windowElement.isMain(), isMain {
-                
                 // Also verify it's not minimized
                 if let isMinimized = windowElement.isMinimized(),
-                   !isMinimized {
+                   !isMinimized
+                {
                     return // Success
                 }
             }
-            
+
             // Wait before next check
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1s
         }
-        
+
         throw FocusError.focusVerificationTimeout(windowID)
     }
-    
+
     private func waitForCondition(
         timeout: TimeInterval,
         interval: TimeInterval,
-        condition: () -> Bool
-    ) async throws {
+        condition: () -> Bool) async throws
+    {
         let startTime = Date()
-        
+
         while Date().timeIntervalSince(startTime) < timeout {
             if condition() {
                 return
             }
             try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
         }
-        
+
         throw FocusError.timeoutWaitingForCondition
     }
 }
@@ -375,23 +372,23 @@ public enum FocusError: LocalizedError {
     case focusVerificationFailed(CGWindowID)
     case focusVerificationTimeout(CGWindowID)
     case timeoutWaitingForCondition
-    
+
     public var errorDescription: String? {
         switch self {
-        case .applicationNotRunning(let name):
-            return "Application '\(name)' is not running"
-        case .noWindowsFound(let name):
-            return "No windows found for application '\(name)'"
-        case .windowNotFound(let id):
-            return "Window with ID \(id) not found"
-        case .axElementNotFound(let id):
-            return "Could not find accessibility element for window ID \(id)"
-        case .focusVerificationFailed(let id):
-            return "Failed to verify focus for window ID \(id)"
-        case .focusVerificationTimeout(let id):
-            return "Timeout while verifying focus for window ID \(id)"
+        case let .applicationNotRunning(name):
+            "Application '\(name)' is not running"
+        case let .noWindowsFound(name):
+            "No windows found for application '\(name)'"
+        case let .windowNotFound(id):
+            "Window with ID \(id) not found"
+        case let .axElementNotFound(id):
+            "Could not find accessibility element for window ID \(id)"
+        case let .focusVerificationFailed(id):
+            "Failed to verify focus for window ID \(id)"
+        case let .focusVerificationTimeout(id):
+            "Timeout while verifying focus for window ID \(id)"
         case .timeoutWaitingForCondition:
-            return "Timeout while waiting for condition"
+            "Timeout while waiting for condition"
         }
     }
 }

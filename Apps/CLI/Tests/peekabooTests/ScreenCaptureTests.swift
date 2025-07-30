@@ -47,7 +47,8 @@ struct ScreenCaptureTests {
 
         @Test(
             "Fails with invalid display ID",
-            .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+            .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+        )
         func failsWithInvalidDisplayID() async throws {
             let invalidDisplayID: CGDirectDisplayID = 999_999
             let outputPath = self.tempDir.appendingPathComponent("invalid.png").path
@@ -90,7 +91,8 @@ struct ScreenCaptureTests {
 
         @Test(
             "Fails with invalid window ID",
-            .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+            .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+        )
         func failsWithInvalidWindowID() async throws {
             // Create a fake window data with invalid ID
             let invalidWindow = WindowData(
@@ -98,7 +100,8 @@ struct ScreenCaptureTests {
                 title: "Invalid Window",
                 bounds: CGRect(x: 0, y: 0, width: 100, height: 100),
                 isOnScreen: false,
-                windowIndex: 0)
+                windowIndex: 0
+            )
             let outputPath = self.tempDir.appendingPathComponent("invalid-window.png").path
 
             await #expect(throws: CaptureError.self) {

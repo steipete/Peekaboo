@@ -1,15 +1,16 @@
 import AppKit
 import CoreGraphics
+import PeekabooCore
 import ScreenCaptureKit
 import Testing
-import PeekabooCore
 @testable import peekaboo
 
 @Suite(
     "Screenshot Validation Tests",
     .serialized,
     .tags(.localOnly, .screenshot, .integration),
-    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"))
+    .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
+)
 struct ScreenshotValidationTests {
     // MARK: - Image Analysis Tests
 
@@ -221,7 +222,8 @@ struct ScreenshotValidationTests {
             contentRect: NSRect(x: 100, y: 100, width: 400, height: 300),
             styleMask: [.titled, .closable],
             backing: .buffered,
-            defer: false)
+            defer: false
+        )
 
         window.title = "Peekaboo Test Window"
         window.isReleasedWhenClosed = false
@@ -263,8 +265,8 @@ struct ScreenshotValidationTests {
     private func captureWindowToFile(
         windowID: CGWindowID,
         path: String,
-        format: ImageFormat) async throws -> ImageCaptureData
-    {
+        format: ImageFormat
+    ) async throws -> ImageCaptureData {
         // Use modern ScreenCaptureKit API instead of deprecated CGWindowListCreateImage
         let image = try await captureWindowWithScreenCaptureKit(windowID: windowID)
 
@@ -279,7 +281,8 @@ struct ScreenshotValidationTests {
                 window_title: nil,
                 window_id: nil,
                 window_index: nil,
-                mime_type: format == .png ? "image/png" : "image/jpeg"),
+                mime_type: format == .png ? "image/png" : "image/jpeg"
+            ),
         ])
     }
 
@@ -304,14 +307,15 @@ struct ScreenshotValidationTests {
         // Capture the image
         return try await SCScreenshotManager.captureImage(
             contentFilter: filter,
-            configuration: configuration)
+            configuration: configuration
+        )
     }
 
     private func captureDisplayToFile(
         displayID: CGDirectDisplayID,
         path: String,
-        format: ImageFormat) async throws -> ImageCaptureData
-    {
+        format: ImageFormat
+    ) async throws -> ImageCaptureData {
         let availableContent = try await SCShareableContent.current
 
         guard let scDisplay = availableContent.displays.first(where: { $0.displayID == displayID }) else {
@@ -327,7 +331,8 @@ struct ScreenshotValidationTests {
 
         let image = try await SCScreenshotManager.captureImage(
             contentFilter: filter,
-            configuration: configuration)
+            configuration: configuration
+        )
 
         let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
         try self.saveImage(nsImage, to: path, format: format)
@@ -339,7 +344,8 @@ struct ScreenshotValidationTests {
                 window_title: nil,
                 window_id: nil,
                 window_index: nil,
-                mime_type: format == .png ? "image/png" : "image/jpeg"),
+                mime_type: format == .png ? "image/png" : "image/jpeg"
+            ),
         ])
     }
 

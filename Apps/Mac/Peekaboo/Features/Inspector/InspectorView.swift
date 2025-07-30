@@ -1,6 +1,6 @@
 import AppKit
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 struct InspectorView: View {
     @EnvironmentObject var overlayManager: OverlayManager
@@ -13,7 +13,7 @@ struct InspectorView: View {
 
             Divider()
 
-            if permissions.accessibilityStatus != PermissionStatus.authorized {
+            if self.permissions.accessibilityStatus != PermissionStatus.authorized {
                 self.permissionDeniedView
             } else {
                 self.mainContent
@@ -23,15 +23,15 @@ struct InspectorView: View {
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             Task {
-                await permissions.check()
+                await self.permissions.check()
             }
-            permissions.startMonitoring()
+            self.permissions.startMonitoring()
             // Populate applications list on startup
-            overlayManager.refreshAllApplications()
+            self.overlayManager.refreshAllApplications()
             self.openOverlayWindow()
         }
         .onDisappear {
-            permissions.stopMonitoring()
+            self.permissions.stopMonitoring()
         }
     }
 
@@ -323,12 +323,12 @@ struct InspectorView: View {
             VStack(spacing: 12) {
                 Button("Open System Settings") {
                     Task {
-                        permissions.requestAccessibility()
+                        self.permissions.requestAccessibility()
                     }
                 }
                 .buttonStyle(.borderedProminent)
 
-                if permissions.accessibilityStatus == .notDetermined {
+                if self.permissions.accessibilityStatus == .notDetermined {
                     HStack {
                         ProgressView()
                             .scaleEffect(0.7)
@@ -346,7 +346,6 @@ struct InspectorView: View {
         }
         .padding()
     }
-
 
     private func openOverlayWindow() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

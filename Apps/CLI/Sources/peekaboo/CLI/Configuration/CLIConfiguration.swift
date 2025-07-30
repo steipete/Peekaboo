@@ -106,12 +106,13 @@ final class ConfigurationManager: @unchecked Sendable {
         cliValue: T?,
         envVar: String?,
         configValue: T?,
-        defaultValue: T) -> T
-    {
+        defaultValue: T
+    ) -> T {
         self.coreManager.getValue(
             cliValue: cliValue,
             envVar: envVar,
             configValue: configValue,
-            defaultValue: defaultValue)
+            defaultValue: defaultValue
+        )
     }
 }

@@ -6,7 +6,7 @@ extension Tag {
     @Tag static var unit: Self
     @Tag static var integration: Self
     @Tag static var regression: Self
-    
+
     // Feature areas
     @Tag static var permissions: Self
     @Tag static var applicationFinder: Self
@@ -22,13 +22,13 @@ extension Tag {
     @Tag static var imageAnalysis: Self
     @Tag static var formats: Self
     @Tag static var multiDisplay: Self
-    
+
     // Performance & reliability
     @Tag static var performance: Self
     @Tag static var concurrency: Self
     @Tag static var memory: Self
     @Tag static var flaky: Self
-    
+
     // Execution environment
     @Tag static var localOnly: Self
     @Tag static var ciOnly: Self

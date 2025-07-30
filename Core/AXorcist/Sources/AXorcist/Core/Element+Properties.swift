@@ -342,34 +342,34 @@ public extension Element {
 @MainActor
 public func example_dumpFocusedElementToString() {
     #if DEBUG
-        GlobalAXLogger.shared.log(AXLogEntry(
-            level: .info,
-            message: "Attempting to dump focused element AX properties to string:"
-        ))
-        var outputString = "Focused Element Details:\n"
-        if AXIsProcessTrustedWithOptions(nil) { // nil means check current process
-            var focusedCF: CFTypeRef?
-            let systemWideElement = AXUIElementCreateSystemWide()
+    GlobalAXLogger.shared.log(AXLogEntry(
+        level: .info,
+        message: "Attempting to dump focused element AX properties to string:"
+    ))
+    var outputString = "Focused Element Details:\n"
+    if AXIsProcessTrustedWithOptions(nil) { // nil means check current process
+        var focusedCF: CFTypeRef?
+        let systemWideElement = AXUIElementCreateSystemWide()
 
-            if AXUIElementCopyAttributeValue(systemWideElement, kAXFocusedUIElementAttribute as CFString, &focusedCF) ==
-                .success
-            {
-                if let focusedAXUIEl = focusedCF as! AXUIElement? { // Safely cast to AXUIElement
-                    let focusedElement = Element(focusedAXUIEl) // Create an Element instance
-                    outputString += "Successfully obtained focused element. Dumping details:\n"
-                    outputString += focusedElement.dump() // Call the updated dump method, added await
-                } else {
-                    outputString += "Focused element is nil (no element has focus, or could not be cast).\n"
-                }
+        if AXUIElementCopyAttributeValue(systemWideElement, kAXFocusedUIElementAttribute as CFString, &focusedCF) ==
+            .success
+        {
+            if let focusedAXUIEl = focusedCF as! AXUIElement? { // Safely cast to AXUIElement
+                let focusedElement = Element(focusedAXUIEl) // Create an Element instance
+                outputString += "Successfully obtained focused element. Dumping details:\n"
+                outputString += focusedElement.dump() // Call the updated dump method, added await
             } else {
-                outputString += "Failed to get the focused UI element from system wide element.\n"
+                outputString += "Focused element is nil (no element has focus, or could not be cast).\n"
             }
         } else {
-            outputString += "AXPermissions: Process is not trusted. Please enable Accessibility for this application.\n"
+            outputString += "Failed to get the focused UI element from system wide element.\n"
         }
-        GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: outputString))
+    } else {
+        outputString += "AXPermissions: Process is not trusted. Please enable Accessibility for this application.\n"
+    }
+    GlobalAXLogger.shared.log(AXLogEntry(level: .info, message: outputString))
     #else
-        // print("example_dumpFocusedElementToString is only available in DEBUG builds.")
+    // print("example_dumpFocusedElementToString is only available in DEBUG builds.")
     #endif
 }
 

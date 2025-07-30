@@ -13,14 +13,14 @@ private func runPeekabooCommand(_ args: [String]) async throws -> String {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: ".build/debug/peekaboo")
     process.arguments = args
-    
+
     let pipe = Pipe()
     process.standardOutput = pipe
     process.standardError = pipe
-    
+
     try process.run()
     process.waitUntilExit()
-    
+
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
     return String(data: data, encoding: .utf8) ?? ""
 }
@@ -111,8 +111,7 @@ struct AgentMenuTests {
                 if step.tool == "menu",
                    let args = step.arguments,
                    let jsonData = try? JSONSerialization.data(withJSONObject: args),
-                   let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                {
+                   let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                     return parsed["subcommand"] as? String == "click" ||
                         parsed["path"] as? String == "View > Scientific" ||
                         parsed["item"] as? String == "Scientific"
@@ -162,8 +161,7 @@ struct AgentMenuTests {
                 if step.tool == "menu" {
                     if let args = step.arguments,
                        let jsonData = try? JSONSerialization.data(withJSONObject: args),
-                       let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                    {
+                       let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                         if parsed["subcommand"] as? String == "list" {
                             foundDiscovery = true
                         } else if parsed["subcommand"] as? String == "click", foundDiscovery {

@@ -28,7 +28,8 @@ struct HotkeyCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
               Function: f1-f12
 
             The keys are pressed in the order given and released in reverse order.
-        """)
+        """
+    )
 
     @Option(help: "Keys to press (comma-separated or space-separated)")
     var keys: String
@@ -41,7 +42,7 @@ struct HotkeyCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
 
     @Flag(help: "Output in JSON format")
     var jsonOutput = false
-    
+
     @OptionGroup var focusOptions: FocusOptions
 
     mutating func run() async throws {
@@ -64,34 +65,36 @@ struct HotkeyCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatta
 
             // Convert key names to comma-separated format for the service
             let keysString = keyNames.joined(separator: ",")
-            
+
             // Get session if available
             let sessionId: String? = if let providedSession = session {
                 providedSession
             } else {
                 await PeekabooServices.shared.sessions.getMostRecentSession()
             }
-            
+
             // Ensure window is focused before pressing hotkey (if we have a session and auto-focus is enabled)
-            if let sessionId = sessionId {
+            if let sessionId {
                 try await self.ensureFocused(
                     sessionId: sessionId,
-                    options: focusOptions
+                    options: self.focusOptions
                 )
             }
 
             // Perform hotkey using the automation service
             try await PeekabooServices.shared.automation.hotkey(
                 keys: keysString,
-                holdDuration: self.holdDuration)
+                holdDuration: self.holdDuration
+            )
 
             // Output results
             let result = HotkeyResult(
                 success: true,
                 keys: keyNames,
                 keyCount: keyNames.count,
-                executionTime: Date().timeIntervalSince(startTime))
-                
+                executionTime: Date().timeIntervalSince(startTime)
+            )
+
             output(result) {
                 print("✅ Hotkey pressed")
                 print("🎹 Keys: \(keyNames.joined(separator: " + "))")

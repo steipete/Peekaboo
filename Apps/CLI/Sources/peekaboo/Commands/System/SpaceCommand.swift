@@ -42,7 +42,8 @@ struct SpaceCommand: AsyncParsableCommand {
             ListSubcommand.self,
             SwitchSubcommand.self,
             MoveWindowSubcommand.self,
-        ])
+        ]
+    )
 }
 
 // MARK: - List Spaces
@@ -50,97 +51,98 @@ struct SpaceCommand: AsyncParsableCommand {
 struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List all Spaces and their windows")
-    
+        abstract: "List all Spaces and their windows"
+    )
+
     @Flag(name: .long, help: "Include detailed window information")
     var detailed = false
-    
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     @MainActor
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         let spaceService = SpaceManagementService()
         let spaces = spaceService.getAllSpaces()
-        
+
         if self.jsonOutput {
-                let data = SpaceListData(
-                    spaces: spaces.map { space in
-                        SpaceData(
-                            id: space.id,
-                            type: space.type.rawValue,
-                            is_active: space.isActive,
-                            display_id: space.displayID
-                        )
-                    }
-                )
-                outputSuccessCodable(data: data)
-            } else {
-                print("Spaces:")
-                
-                // If detailed, collect all windows and their Space assignments
-                var windowsBySpace: [UInt64: [(app: String, window: ServiceWindowInfo)]] = [:]
-                
-                if self.detailed {
-                    // Get all running applications
-                    let appService = ApplicationService()
-                    let appListResult = try await appService.listApplications()
-                    
-                    // Iterate through all applications to get their windows
-                    for app in appListResult.data.applications {
-                        // Skip apps without windows
-                        guard app.windowCount > 0 else { continue }
-                        
-                        do {
-                            // Get windows for this application
-                            let windowsResult = try await appService.listWindows(for: app.name)
-                            
-                            // For each window, find which Space it's on
-                            for window in windowsResult.data.windows {
-                                let windowID = CGWindowID(window.windowID)
-                                let windowSpaces = spaceService.getSpacesForWindow(windowID: windowID)
-                                
-                                // Add window to each Space it appears on
-                                for space in windowSpaces {
-                                    if windowsBySpace[space.id] == nil {
-                                        windowsBySpace[space.id] = []
-                                    }
-                                    windowsBySpace[space.id]?.append((app: app.name, window: window))
+            let data = SpaceListData(
+                spaces: spaces.map { space in
+                    SpaceData(
+                        id: space.id,
+                        type: space.type.rawValue,
+                        is_active: space.isActive,
+                        display_id: space.displayID
+                    )
+                }
+            )
+            outputSuccessCodable(data: data)
+        } else {
+            print("Spaces:")
+
+            // If detailed, collect all windows and their Space assignments
+            var windowsBySpace: [UInt64: [(app: String, window: ServiceWindowInfo)]] = [:]
+
+            if self.detailed {
+                // Get all running applications
+                let appService = ApplicationService()
+                let appListResult = try await appService.listApplications()
+
+                // Iterate through all applications to get their windows
+                for app in appListResult.data.applications {
+                    // Skip apps without windows
+                    guard app.windowCount > 0 else { continue }
+
+                    do {
+                        // Get windows for this application
+                        let windowsResult = try await appService.listWindows(for: app.name)
+
+                        // For each window, find which Space it's on
+                        for window in windowsResult.data.windows {
+                            let windowID = CGWindowID(window.windowID)
+                            let windowSpaces = spaceService.getSpacesForWindow(windowID: windowID)
+
+                            // Add window to each Space it appears on
+                            for space in windowSpaces {
+                                if windowsBySpace[space.id] == nil {
+                                    windowsBySpace[space.id] = []
                                 }
+                                windowsBySpace[space.id]?.append((app: app.name, window: window))
                             }
-                        } catch {
-                            // Skip applications we can't access
-                            continue
                         }
+                    } catch {
+                        // Skip applications we can't access
+                        continue
                     }
-                }
-                
-                // Display Spaces with their windows
-                for (index, space) in spaces.enumerated() {
-                    let marker = space.isActive ? "→" : " "
-                    let displayInfo = space.displayID.map { " (Display \($0))" } ?? ""
-                    print("\(marker) Space \(index + 1) [ID: \(space.id), Type: \(space.type.rawValue)\(displayInfo)]")
-                    
-                    if self.detailed {
-                        // Display windows for this Space
-                        if let windows = windowsBySpace[space.id], !windows.isEmpty {
-                            for (app, window) in windows {
-                                let title = window.title.isEmpty ? "[Untitled]" : window.title
-                                let minimized = window.isMinimized ? " [MINIMIZED]" : ""
-                                print("    • \(app): \(title)\(minimized)")
-                            }
-                        } else {
-                            print("    (No windows)")
-                        }
-                    }
-                }
-                
-                if spaces.isEmpty {
-                    print("No Spaces found (this may indicate an API issue)")
                 }
             }
+
+            // Display Spaces with their windows
+            for (index, space) in spaces.enumerated() {
+                let marker = space.isActive ? "→" : " "
+                let displayInfo = space.displayID.map { " (Display \($0))" } ?? ""
+                print("\(marker) Space \(index + 1) [ID: \(space.id), Type: \(space.type.rawValue)\(displayInfo)]")
+
+                if self.detailed {
+                    // Display windows for this Space
+                    if let windows = windowsBySpace[space.id], !windows.isEmpty {
+                        for (app, window) in windows {
+                            let title = window.title.isEmpty ? "[Untitled]" : window.title
+                            let minimized = window.isMinimized ? " [MINIMIZED]" : ""
+                            print("    • \(app): \(title)\(minimized)")
+                        }
+                    } else {
+                        print("    (No windows)")
+                    }
+                }
+            }
+
+            if spaces.isEmpty {
+                print("No Spaces found (this may indicate an API issue)")
+            }
+        }
     }
 }
 
@@ -149,30 +151,31 @@ struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
 struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "switch",
-        abstract: "Switch to a different Space")
-    
+        abstract: "Switch to a different Space"
+    )
+
     @Option(name: .long, help: "Space number to switch to (1-based)")
     var to: Int
-    
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             let spaceService = await MainActor.run { SpaceManagementService() }
             let spaces = await MainActor.run { spaceService.getAllSpaces() }
-            
+
             // Convert 1-based index to actual Space
             guard self.to > 0 && self.to <= spaces.count else {
                 throw ValidationError("Invalid Space number. Available: 1-\(spaces.count)")
             }
-            
+
             let targetSpace = spaces[self.to - 1]
-            
+
             try await spaceService.switchToSpace(targetSpace.id)
-            
+
             if self.jsonOutput {
                 let data = SpaceActionResult(
                     action: "switch",
@@ -184,7 +187,7 @@ struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
             } else {
                 print("✓ Switched to Space \(self.to)")
             }
-            
+
         } catch {
             handleError(error)
             throw ExitCode(1)
@@ -197,72 +200,73 @@ struct SwitchSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
 struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "move-window",
-        abstract: "Move a window to a different Space")
-    
+        abstract: "Move a window to a different Space"
+    )
+
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
-    
+
     @Option(name: .long, help: "Target application by process ID")
     var pid: Int32?
-    
+
     @Option(name: .long, help: "Target window by title (partial match supported)")
     var windowTitle: String?
-    
+
     @Option(name: .long, help: "Target window by index (0-based, frontmost is 0)")
     var windowIndex: Int?
-    
+
     @Option(name: .long, help: "Space number to move window to (1-based)")
     var to: Int?
-    
+
     @Flag(name: .long, help: "Move window to current Space")
     var toCurrent = false
-    
+
     @Flag(name: .long, help: "Switch to the target Space after moving")
     var follow = false
-    
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             // Validate inputs
             let appIdentifier = try self.resolveApplicationIdentifier()
-            
+
             guard self.to != nil || self.toCurrent else {
                 throw ValidationError("Must specify either --to or --to-current")
             }
-            
+
             guard !(self.to != nil && self.toCurrent) else {
                 throw ValidationError("Cannot specify both --to and --to-current")
             }
-            
+
             // Create window identification options
             var windowOptions = WindowIdentificationOptions()
             windowOptions.app = appIdentifier
             windowOptions.windowTitle = self.windowTitle
             windowOptions.windowIndex = self.windowIndex
-            
+
             // Get window info
             let target = try windowOptions.toWindowTarget()
             let windows = try await PeekabooServices.shared.windows.listWindows(target: target)
             let windowInfo = windowOptions.selectWindow(from: windows)
-            
+
             guard let info = windowInfo else {
                 throw NotFoundError.window(app: appIdentifier)
             }
-            
+
             let windowID = CGWindowID(info.windowID)
-            
+
             let spaceService = await MainActor.run { SpaceManagementService() }
-            
+
             if self.toCurrent {
                 // Move to current Space
                 try await MainActor.run {
                     try spaceService.moveWindowToCurrentSpace(windowID: windowID)
                 }
-                
+
                 if self.jsonOutput {
                     let data = WindowSpaceActionResult(
                         action: "move-window",
@@ -278,24 +282,24 @@ struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
                 } else {
                     print("✓ Moved window '\(info.title)' to current Space")
                 }
-                
+
             } else if let spaceNum = self.to {
                 // Move to specific Space
                 let spaces = await MainActor.run { spaceService.getAllSpaces() }
-                
+
                 guard spaceNum > 0 && spaceNum <= spaces.count else {
                     throw ValidationError("Invalid Space number. Available: 1-\(spaces.count)")
                 }
-                
+
                 let targetSpace = spaces[spaceNum - 1]
                 try await MainActor.run {
                     try spaceService.moveWindowToSpace(windowID: windowID, spaceID: targetSpace.id)
                 }
-                
+
                 if self.follow {
                     try await spaceService.switchToSpace(targetSpace.id)
                 }
-                
+
                 if self.jsonOutput {
                     let data = WindowSpaceActionResult(
                         action: "move-window",
@@ -316,7 +320,7 @@ struct MoveWindowSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
                     print(message)
                 }
             }
-            
+
         } catch {
             handleError(error)
             throw ExitCode(1)

@@ -8,7 +8,7 @@
 import ApplicationServices
 import Foundation
 #if canImport(AppKit)
-    import AppKit
+import AppKit
 #endif
 
 public extension AXUIElement {
@@ -49,13 +49,13 @@ public extension AXUIElement {
     /// Returns the frontmost application using NSWorkspace
     static func frontmostApplication() -> AXUIElement? {
         #if canImport(AppKit)
-            guard let app = NSWorkspace.shared.frontmostApplication else {
-                return nil
-            }
-            return AXUIElement.application(pid: app.processIdentifier)
+        guard let app = NSWorkspace.shared.frontmostApplication else {
+            return nil
+        }
+        return AXUIElement.application(pid: app.processIdentifier)
         #else
-            // Fallback to focused application on non-AppKit platforms
-            return focusedApplication()
+        // Fallback to focused application on non-AppKit platforms
+        return focusedApplication()
         #endif
     }
 

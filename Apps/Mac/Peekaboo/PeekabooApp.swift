@@ -12,7 +12,7 @@ struct PeekabooApp: App {
     @State private var settings = PeekabooSettings()
     @State private var sessionStore = SessionStore()
     @State private var permissions = Permissions()
-    
+
     // Dependencies that need the core state
     @State private var speechRecognizer: SpeechRecognizer?
     @State private var agent: PeekabooAgent?
@@ -24,30 +24,30 @@ struct PeekabooApp: App {
             HiddenWindowView()
                 .task {
                     // Initialize dependencies if needed
-                    if speechRecognizer == nil {
-                        speechRecognizer = SpeechRecognizer(settings: settings)
+                    if self.speechRecognizer == nil {
+                        self.speechRecognizer = SpeechRecognizer(settings: self.settings)
                     }
-                    if agent == nil {
-                        agent = PeekabooAgent(settings: settings, sessionStore: sessionStore)
+                    if self.agent == nil {
+                        self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
                     }
-                    
+
                     // Set up window opening handler
-                    appDelegate.windowOpener = { windowId in
+                    self.appDelegate.windowOpener = { windowId in
                         Task { @MainActor in
-                            openWindow(id: windowId)
+                            self.openWindow(id: windowId)
                         }
                     }
-                    
+
                     // Connect app delegate to state
-                    appDelegate.connectToState(
-                        settings: settings,
-                        sessionStore: sessionStore,
-                        permissions: permissions,
-                        speechRecognizer: speechRecognizer!,
-                        agent: agent!)
-                    
+                    self.appDelegate.connectToState(
+                        settings: self.settings,
+                        sessionStore: self.sessionStore,
+                        permissions: self.permissions,
+                        speechRecognizer: self.speechRecognizer!,
+                        agent: self.agent!)
+
                     // Check permissions
-                    await permissions.check()
+                    await self.permissions.check()
                 }
         }
         .windowResizability(.contentSize)
@@ -58,11 +58,11 @@ struct PeekabooApp: App {
         // Main window - Powerful debugging and development interface
         WindowGroup("Peekaboo Sessions", id: "main") {
             SessionMainWindow()
-                .environment(settings)
-                .environment(sessionStore)
-                .environment(permissions)
-                .environment(speechRecognizer ?? SpeechRecognizer(settings: settings))
-                .environment(agent ?? PeekabooAgent(settings: settings, sessionStore: sessionStore))
+                .environment(self.settings)
+                .environment(self.sessionStore)
+                .environment(self.permissions)
+                .environment(self.speechRecognizer ?? SpeechRecognizer(settings: self.settings))
+                .environment(self.agent ?? PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore))
                 .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenWindow.main"))) { _ in
                     // Window will automatically open when this notification is received
                     DispatchQueue.main.async {
@@ -91,7 +91,7 @@ struct PeekabooApp: App {
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 450, height: 700)
-        
+
         // Settings scene
         Settings {
             SettingsWindow()
@@ -99,7 +99,6 @@ struct PeekabooApp: App {
                 .environment(self.permissions)
         }
     }
-
 }
 
 // MARK: - App Delegate
@@ -116,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var permissions: Permissions?
     private var speechRecognizer: SpeechRecognizer?
     private var agent: PeekabooAgent?
-    
+
     // Visualizer components
     private var overlayManager: OverlayManager?
     private var visualizerCoordinator: VisualizerCoordinator?
@@ -124,22 +123,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         self.logger.info("Peekaboo launching... (Poltergeist test)")
-        
+
         // Initialize dock icon manager (it will set the activation policy based on settings) - Test!
         // Don't set activation policy here - let DockIconManager handle it
-        
+
         // Initialize visualizer components
         overlayManager = OverlayManager()
-        if let overlayManager = overlayManager {
-            visualizerCoordinator = VisualizerCoordinator(overlayManager: overlayManager)
-            
+        if let overlayManager {
+            self.visualizerCoordinator = VisualizerCoordinator(overlayManager: overlayManager)
+
             if let coordinator = visualizerCoordinator {
-                visualizerXPCService = VisualizerXPCService(visualizerCoordinator: coordinator)
-                visualizerXPCService?.start()
-                logger.info("Visualizer XPC service started")
+                self.visualizerXPCService = VisualizerXPCService(visualizerCoordinator: coordinator)
+                self.visualizerXPCService?.start()
+                self.logger.info("Visualizer XPC service started")
             }
         }
-        
+
         // Status bar will be created after state is connected
     }
 
@@ -163,7 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             permissions: permissions,
             speechRecognizer: speechRecognizer,
             settings: settings)
-        
+
         // Connect dock icon manager to settings
         DockIconManager.shared.connectToSettings(settings)
 
@@ -184,33 +183,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func showMainWindow() {
         self.logger.info("showMainWindow called")
-        
+
         // Ensure dock icon is visible
         DockIconManager.shared.temporarilyShowDock()
-        
+
         // Activate the app first
         NSApp.activate(ignoringOtherApps: true)
-        
+
         // Find or create the main window
         DispatchQueue.main.async {
             self.logger.info("Looking for existing main window...")
-            
+
             // First try to find an existing main window by identifier
             if let existingWindow = NSApp.windows.first(where: { $0.identifier?.rawValue == "main" }) {
                 self.logger.info("Found existing main window by identifier, bringing to front")
                 existingWindow.makeKeyAndOrderFront(nil)
                 return
             }
-            
+
             // Also check by title as fallback
             if let existingWindow = NSApp.windows.first(where: { $0.title == "Peekaboo Sessions" }) {
                 self.logger.info("Found existing main window by title, bringing to front")
                 existingWindow.makeKeyAndOrderFront(nil)
                 return
             }
-            
+
             self.logger.info("No existing main window found, creating new one")
-            
+
             // Use the window opener if available
             if let opener = self.windowOpener {
                 self.logger.info("Using windowOpener to create main window")
@@ -226,17 +225,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func showSettings() {
         SettingsOpener.openSettings()
     }
-    
+
     func showInspector() {
         self.openWindow(id: "inspector")
     }
 
     private func openWindow(id: String) {
         self.logger.info("openWindow called with id: \(id)")
-        
-        // Ensure dock icon is visible  
+
+        // Ensure dock icon is visible
         DockIconManager.shared.temporarilyShowDock()
-        
+
         // Use the window opener if available
         if let opener = self.windowOpener {
             self.logger.info("Using windowOpener to open window: \(id)")
@@ -246,7 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Post notification as fallback
             NotificationCenter.default.post(name: Notification.Name("OpenWindow.\(id)"), object: nil)
         }
-        
+
         // Activate the app
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -271,4 +270,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 }
+
 // Test comment to trigger build - Wed Jul 30 02:14:41 CEST 2025

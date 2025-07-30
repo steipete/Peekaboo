@@ -25,7 +25,7 @@ let package = Package(
             path: "Peekaboo",
             exclude: ["PeekabooApp.swift", "Info.plist"],
             resources: [
-                .process("Assets.xcassets")
+                .process("Assets.xcassets"),
             ]),
         .testTarget(
             name: "PeekabooTests",

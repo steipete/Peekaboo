@@ -9,12 +9,12 @@ public enum AnthropicInputValue: Codable, Sendable {
     case array([AnthropicInputValue])
     case object([String: AnthropicInputValue])
     case null
-    
+
     // MARK: - Codable
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if container.decodeNil() {
             self = .null
         } else if let string = try? container.decode(String.self) {
@@ -33,30 +33,30 @@ public enum AnthropicInputValue: Codable, Sendable {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode AnthropicInputValue")
         }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        
+
         switch self {
-        case .string(let value):
+        case let .string(value):
             try container.encode(value)
-        case .int(let value):
+        case let .int(value):
             try container.encode(value)
-        case .double(let value):
+        case let .double(value):
             try container.encode(value)
-        case .bool(let value):
+        case let .bool(value):
             try container.encode(value)
-        case .array(let values):
+        case let .array(values):
             try container.encode(values)
-        case .object(let dict):
+        case let .object(dict):
             try container.encode(dict)
         case .null:
             try container.encodeNil()
         }
     }
-    
+
     // MARK: - Conversion
-    
+
     /// Convert from Any value (for migration)
     public init?(from value: Any) {
         switch value {
@@ -91,24 +91,24 @@ public enum AnthropicInputValue: Codable, Sendable {
             return nil
         }
     }
-    
+
     /// Convert to Any (for JSON serialization)
     public func toAny() -> Any {
         switch self {
-        case .string(let value):
-            return value
-        case .int(let value):
-            return value
-        case .double(let value):
-            return value
-        case .bool(let value):
-            return value
-        case .array(let values):
-            return values.map { $0.toAny() }
-        case .object(let dict):
-            return dict.mapValues { $0.toAny() }
+        case let .string(value):
+            value
+        case let .int(value):
+            value
+        case let .double(value):
+            value
+        case let .bool(value):
+            value
+        case let .array(values):
+            values.map { $0.toAny() }
+        case let .object(dict):
+            dict.mapValues { $0.toAny() }
         case .null:
-            return NSNull()
+            NSNull()
         }
     }
 }
@@ -121,15 +121,15 @@ public struct AnthropicPropertySchema: Codable, Sendable {
     public let items: Box<AnthropicPropertySchema>?
     public let properties: [String: AnthropicPropertySchema]?
     public let required: [String]?
-    
+
     public init(
         type: String,
         description: String? = nil,
         enum enumValues: [String]? = nil,
         items: AnthropicPropertySchema? = nil,
         properties: [String: AnthropicPropertySchema]? = nil,
-        required: [String]? = nil
-    ) {
+        required: [String]? = nil)
+    {
         self.type = type
         self.description = description
         self.enum = enumValues

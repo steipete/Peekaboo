@@ -62,7 +62,8 @@ struct SeeCommandTests {
             label: nil,
             identifier: nil,
             is_actionable: true,
-            keyboard_shortcut: nil)
+            keyboard_shortcut: nil
+        )
 
         let result = SeeResult(
             session_id: "test-123",
@@ -77,7 +78,8 @@ struct SeeCommandTests {
             analysis_result: nil,
             execution_time: 1.5,
             ui_elements: [element],
-            menu_bar: nil)
+            menu_bar: nil
+        )
 
         #expect(result.session_id == "test-123")
         #expect(result.screenshot_raw == "/tmp/screenshot.png")

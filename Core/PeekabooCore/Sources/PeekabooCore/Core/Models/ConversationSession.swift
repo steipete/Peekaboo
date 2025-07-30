@@ -10,15 +10,15 @@ public struct ConversationSession: Identifiable, Codable, Sendable {
     public let startTime: Date
     public var summary: String
     public var modelName: String
-    
+
     public init(
         id: String? = nil,
         title: String,
         messages: [ConversationMessage] = [],
         startTime: Date = Date(),
         summary: String = "",
-        modelName: String = ""
-    ) {
+        modelName: String = "")
+    {
         self.id = id ?? "session_\(UUID().uuidString)"
         self.title = title
         self.messages = messages
@@ -35,14 +35,14 @@ public struct ConversationMessage: Identifiable, Codable, Sendable {
     public let content: String
     public let timestamp: Date
     public var toolCalls: [ConversationToolCall]
-    
+
     public init(
         id: UUID = UUID(),
         role: MessageRole,
         content: String,
         timestamp: Date = Date(),
-        toolCalls: [ConversationToolCall] = []
-    ) {
+        toolCalls: [ConversationToolCall] = [])
+    {
         self.id = id
         self.role = role
         self.content = content
@@ -64,13 +64,13 @@ public struct ConversationToolCall: Identifiable, Codable, Sendable {
     public let name: String
     public let arguments: String
     public var result: String
-    
+
     public init(
         id: String? = nil,
         name: String,
         arguments: String,
-        result: String = ""
-    ) {
+        result: String = "")
+    {
         self.id = id ?? UUID().uuidString
         self.name = name
         self.arguments = arguments
@@ -84,28 +84,28 @@ public struct ConversationToolCall: Identifiable, Codable, Sendable {
 public protocol ConversationSessionStorageProtocol: Sendable {
     /// All stored sessions
     var sessions: [ConversationSession] { get async }
-    
+
     /// Currently active session
     var currentSession: ConversationSession? { get async }
-    
+
     /// Create a new session
     func createSession(title: String, modelName: String) async -> ConversationSession
-    
+
     /// Add a message to a session
     func addMessage(_ message: ConversationMessage, to session: ConversationSession) async
-    
+
     /// Update the summary of a session
     func updateSummary(_ summary: String, for session: ConversationSession) async
-    
+
     /// Update the last message in a session
     func updateLastMessage(_ message: ConversationMessage, in session: ConversationSession) async
-    
+
     /// Select a session as current
     func selectSession(_ session: ConversationSession) async
-    
+
     /// Save all sessions to persistent storage
     func saveSessions() async throws
-    
+
     /// Load sessions from persistent storage
     func loadSessions() async throws
 }
@@ -120,7 +120,7 @@ public struct ConversationSessionSummary: Identifiable, Sendable {
     public let messageCount: Int
     public let lastMessageTime: Date?
     public let modelName: String
-    
+
     public init(from session: ConversationSession) {
         self.id = session.id
         self.title = session.title

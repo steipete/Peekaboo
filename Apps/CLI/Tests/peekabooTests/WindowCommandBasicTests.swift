@@ -25,7 +25,10 @@ struct WindowCommandBasicTests {
         // Each subcommand should have one of these names
         for subcommand in subcommands {
             let config = subcommand.configuration
-            #expect(subcommandNames.contains(config.commandName ?? ""), "Unexpected subcommand: \(config.commandName ?? "")")
+            #expect(
+                subcommandNames.contains(config.commandName ?? ""),
+                "Unexpected subcommand: \(config.commandName ?? "")"
+            )
         }
     }
 
@@ -52,7 +55,8 @@ struct WindowCommandBasicTests {
                     "width": Int(bounds.width),
                     "height": Int(bounds.height),
                 ],
-            ]))
+            ])
+        )
 
         #expect(successJSON.success == true)
         #expect(successJSON.error == nil)
@@ -63,7 +67,9 @@ struct WindowCommandBasicTests {
             error: ErrorInfo(
                 message: "Failed to move window",
                 code: ErrorCode.WINDOW_MANIPULATION_ERROR,
-                details: "app: TestApp, reason: Window not found"))
+                details: "app: TestApp, reason: Window not found"
+            )
+        )
 
         #expect(errorJSON.success == false)
         #expect(errorJSON.error?.code == "WINDOW_MANIPULATION_ERROR")
@@ -78,7 +84,8 @@ struct WindowCommandErrorHandlingTests {
         let error = ErrorInfo(
             message: "Application 'NonExistentApp' not found",
             code: ErrorCode.APP_NOT_FOUND,
-            details: "requested_app: NonExistentApp")
+            details: "requested_app: NonExistentApp"
+        )
 
         #expect(error.code == "APP_NOT_FOUND")
         #expect(error.message.contains("NonExistentApp"))
@@ -89,7 +96,8 @@ struct WindowCommandErrorHandlingTests {
         let error = ErrorInfo(
             message: "No window found with title 'NonExistent'",
             code: ErrorCode.WINDOW_NOT_FOUND,
-            details: "app: Finder, window_title: NonExistent")
+            details: "app: Finder, window_title: NonExistent"
+        )
 
         #expect(error.code == "WINDOW_NOT_FOUND")
         #expect(error.message.contains("NonExistent"))
@@ -100,7 +108,8 @@ struct WindowCommandErrorHandlingTests {
         let error = ErrorInfo(
             message: "Accessibility permission is required for window manipulation",
             code: ErrorCode.PERMISSION_ERROR_ACCESSIBILITY,
-            details: "operation: minimize")
+            details: "operation: minimize"
+        )
 
         #expect(error.code == "PERMISSION_ERROR_ACCESSIBILITY")
         #expect(error.message.contains("Accessibility"))

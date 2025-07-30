@@ -1,10 +1,10 @@
-import Foundation
 import CoreGraphics
+import Foundation
 
 /// UI automation session data for storing screen state and element information
 public struct UIAutomationSession: Codable, Sendable {
     public static let currentVersion = 6
-    
+
     public let version: Int
     public var screenshotPath: String?
     public var annotatedPath: String?
@@ -17,7 +17,7 @@ public struct UIAutomationSession: Codable, Sendable {
     public var windowID: CGWindowID?
     public var windowAXIdentifier: String?
     public var lastFocusTime: Date?
-    
+
     public init(
         version: Int = UIAutomationSession.currentVersion,
         screenshotPath: String? = nil,
@@ -30,8 +30,8 @@ public struct UIAutomationSession: Codable, Sendable {
         menuBar: MenuBarData? = nil,
         windowID: CGWindowID? = nil,
         windowAXIdentifier: String? = nil,
-        lastFocusTime: Date? = nil
-    ) {
+        lastFocusTime: Date? = nil)
+    {
         self.version = version
         self.screenshotPath = screenshotPath
         self.annotatedPath = annotatedPath
@@ -64,7 +64,7 @@ public struct UIElement: Codable, Sendable {
     public let parentId: String?
     public let children: [String]
     public let keyboardShortcut: String?
-    
+
     public init(
         id: String,
         elementId: String,
@@ -80,8 +80,8 @@ public struct UIElement: Codable, Sendable {
         isActionable: Bool,
         parentId: String? = nil,
         children: [String] = [],
-        keyboardShortcut: String? = nil
-    ) {
+        keyboardShortcut: String? = nil)
+    {
         self.id = id
         self.elementId = elementId
         self.role = role
@@ -103,37 +103,37 @@ public struct UIElement: Codable, Sendable {
 /// Menu bar information
 public struct MenuBarData: Codable, Sendable {
     public let menus: [Menu]
-    
+
     public init(menus: [Menu]) {
         self.menus = menus
     }
-    
+
     public struct Menu: Codable, Sendable {
         public let title: String
         public let items: [MenuItem]
         public let enabled: Bool
-        
+
         public init(title: String, items: [MenuItem], enabled: Bool) {
             self.title = title
             self.items = items
             self.enabled = enabled
         }
     }
-    
+
     public struct MenuItem: Codable, Sendable {
         public let title: String
         public let enabled: Bool
         public let hasSubmenu: Bool
         public let keyboardShortcut: String?
         public let items: [MenuItem]?
-        
+
         public init(
             title: String,
             enabled: Bool,
             hasSubmenu: Bool,
             keyboardShortcut: String? = nil,
-            items: [MenuItem]? = nil
-        ) {
+            items: [MenuItem]? = nil)
+        {
             self.title = title
             self.enabled = enabled
             self.hasSubmenu = hasSubmenu
@@ -150,19 +150,19 @@ public enum SessionError: LocalizedError, Sendable {
     case versionMismatch(found: Int, expected: Int)
     case corruptedData
     case storageError(String)
-    
+
     public var errorDescription: String? {
         switch self {
         case .sessionNotFound:
-            return "Session not found or expired"
+            "Session not found or expired"
         case .noValidSessionFound:
-            return "No valid session found. Create a new session first."
-        case .versionMismatch(let found, let expected):
-            return "Session version mismatch (found: \(found), expected: \(expected))"
+            "No valid session found. Create a new session first."
+        case let .versionMismatch(found, expected):
+            "Session version mismatch (found: \(found), expected: \(expected))"
         case .corruptedData:
-            return "Session data is corrupted"
-        case .storageError(let reason):
-            return "Storage error: \(reason)"
+            "Session data is corrupted"
+        case let .storageError(reason):
+            "Storage error: \(reason)"
         }
     }
 }

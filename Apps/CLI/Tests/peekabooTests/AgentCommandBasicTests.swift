@@ -44,12 +44,13 @@ struct AgentCommandBasicTests {
             summary: "Task completed",
             success: true
         )
-        
+
         // Use the generic AgentJSONResponse from AgentTypes
         let successResponse = peekaboo.AgentJSONResponse(
             success: true,
             data: testResult,
-            error: nil)
+            error: nil
+        )
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
@@ -111,10 +112,10 @@ struct AgentCommandBasicTests {
         // Test invalid JSON
         let result = try await executor.executeFunction(
             name: "peekaboo_see",
-            arguments: "invalid json")
+            arguments: "invalid json"
+        )
 
         #expect(result.contains("\"success\":false"))
         #expect(result.contains("INVALID_ARGS"))
     }
-
 }

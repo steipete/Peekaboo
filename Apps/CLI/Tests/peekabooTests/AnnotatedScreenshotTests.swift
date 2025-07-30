@@ -22,7 +22,8 @@ struct AnnotatedScreenshotTests {
             uiMap: uiElements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window")
+            windowTitle: "Test Window"
+        )
 
         try await sessionCache.save(sessionData)
 
@@ -85,7 +86,8 @@ struct AnnotatedScreenshotTests {
                 label: nil,
                 value: nil,
                 frame: CGRect(x: 100, y: 100, width: 100, height: 40),
-                isActionable: true)
+                isActionable: true
+            )
         }
 
         let sessionData = SessionCache.UIAutomationSession(
@@ -95,7 +97,8 @@ struct AnnotatedScreenshotTests {
             uiMap: elements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window")
+            windowTitle: "Test Window"
+        )
 
         try await sessionCache.save(sessionData)
 
@@ -158,7 +161,8 @@ struct AnnotatedScreenshotTests {
             uiMap: elements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window")
+            windowTitle: "Test Window"
+        )
 
         try await sessionCache.save(sessionData)
 
@@ -218,7 +222,8 @@ struct AnnotatedScreenshotTests {
             uiMap: elements,
             lastUpdateTime: Date(),
             applicationName: "TestApp",
-            windowTitle: "Test Window")
+            windowTitle: "Test Window"
+        )
 
         try await sessionCache.save(sessionData)
 
@@ -255,7 +260,8 @@ struct AnnotatedScreenshotTests {
             lastUpdateTime: Date(),
             applicationName: "TestApp",
             windowTitle: "Test Window",
-            windowBounds: testWindowBounds)
+            windowBounds: testWindowBounds
+        )
 
         try await sessionCache.save(sessionData)
 
@@ -322,7 +328,8 @@ struct AnnotatedScreenshotTests {
         let transformed = buttons.map { button in
             CGPoint(
                 x: button.origin.x - windowBounds.origin.x,
-                y: button.origin.y - windowBounds.origin.y)
+                y: button.origin.y - windowBounds.origin.y
+            )
         }
 
         // Verify spacing is preserved
@@ -347,7 +354,8 @@ struct AnnotatedScreenshotTests {
         // Should transform to (0, 0) in window coordinates
         let relativeCoords = CGPoint(
             x: element.origin.x - windowBounds.origin.x,
-            y: element.origin.y - windowBounds.origin.y)
+            y: element.origin.y - windowBounds.origin.y
+        )
 
         #expect(relativeCoords.x == 0)
         #expect(relativeCoords.y == 0)
@@ -414,7 +422,8 @@ struct AnnotatedScreenshotTests {
             x: elementScreenCoords.origin.x - windowBounds.origin.x,
             y: elementScreenCoords.origin.y - windowBounds.origin.y,
             width: elementScreenCoords.width,
-            height: elementScreenCoords.height)
+            height: elementScreenCoords.height
+        )
 
         #expect(windowRelativeCoords.origin.x == 100) // 300 - 200
         #expect(windowRelativeCoords.origin.y == 100) // 200 - 100
@@ -440,11 +449,13 @@ struct AnnotatedScreenshotTests {
         // Transform to window-relative
         let boldRelative = CGPoint(
             x: boldButton.origin.x - windowBounds.origin.x,
-            y: boldButton.origin.y - windowBounds.origin.y)
+            y: boldButton.origin.y - windowBounds.origin.y
+        )
 
         let italicRelative = CGPoint(
             x: italicButton.origin.x - windowBounds.origin.x,
-            y: italicButton.origin.y - windowBounds.origin.y)
+            y: italicButton.origin.y - windowBounds.origin.y
+        )
 
         // Verify buttons are within window bounds
         #expect(boldRelative.x >= 0 && boldRelative.x < windowBounds.width)
@@ -479,7 +490,8 @@ struct AnnotatedScreenshotTests {
             x: (width - textSize.width) / 2,
             y: height - 50,
             width: textSize.width,
-            height: textSize.height)
+            height: textSize.height
+        )
         text.draw(in: textRect, withAttributes: attributes)
 
         image.unlockFocus()

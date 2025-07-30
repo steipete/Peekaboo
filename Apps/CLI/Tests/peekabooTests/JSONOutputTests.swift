@@ -80,7 +80,8 @@ struct JSONOutputTests {
             bundle_id: "com.test.app",
             pid: 1234,
             is_active: true,
-            window_count: 2)
+            window_count: 2
+        )
 
         // Test encoding through AnyCodable instead
         let anyCodable = AnyCodable(appInfo)
@@ -105,7 +106,8 @@ struct JSONOutputTests {
                 bundle_id: "com.apple.finder",
                 pid: 123,
                 is_active: true,
-                window_count: 1),
+                window_count: 1
+            ),
         ])
 
         // Test JSON serialization directly without capturing stdout
@@ -126,7 +128,8 @@ struct JSONOutputTests {
             success: true,
             data: testData,
             messages: nil,
-            debug_logs: [])
+            debug_logs: []
+        )
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(response)
@@ -143,13 +146,15 @@ struct JSONOutputTests {
         let errorInfo = ErrorInfo(
             message: "Test error message",
             code: .APP_NOT_FOUND,
-            details: "Additional error details")
+            details: "Additional error details"
+        )
 
         let response = JSONResponse(
             success: false,
             data: nil,
             messages: nil,
-            error: errorInfo)
+            error: errorInfo
+        )
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(response)
@@ -198,7 +203,8 @@ struct JSONOutputTests {
                 bundle_id: "com.test.app\(index)",
                 pid: Int32(1000 + index),
                 is_active: index.isMultiple(of: 2),
-                window_count: index % 10)
+                window_count: index % 10
+            )
             largeAppList.append(appInfo)
         }
 
@@ -224,7 +230,8 @@ struct JSONOutputTests {
                             bundle_id: "com.test.app\(index)",
                             pid: Int32(1000 + index),
                             is_active: true,
-                            window_count: 1)
+                            window_count: 1
+                        )
 
                         // Test encoding through AnyCodable instead
                         let anyCodable = AnyCodable(appInfo)
@@ -254,7 +261,8 @@ struct JSONOutputTests {
                 bundle_id: "com.test",
                 pid: 123,
                 is_active: true,
-                window_count: 1)
+                window_count: 1
+            )
 
             do {
                 let encoded = try JSONEncoder().encode(data)
@@ -302,7 +310,8 @@ struct JSONOutputFormatValidationTests {
             success: true,
             data: testData,
             messages: nil,
-            debug_logs: [])
+            debug_logs: []
+        )
 
         let encoder = JSONEncoder()
         // Properties are already in snake_case, no conversion needed
@@ -324,7 +333,8 @@ struct JSONOutputFormatValidationTests {
             bundle_id: "com.test.app",
             pid: 1234,
             is_active: true,
-            window_count: 2)
+            window_count: 2
+        )
 
         let encoder = JSONEncoder()
         // Properties are already in snake_case, no conversion needed
@@ -354,7 +364,8 @@ struct JSONOutputFormatValidationTests {
                 window_id: UInt32(1000 + index),
                 window_index: index,
                 bounds: WindowBounds(x: index * 10, y: index * 10, width: 800, height: 600),
-                is_on_screen: index.isMultiple(of: 2))
+                is_on_screen: index.isMultiple(of: 2)
+            )
             windows.append(window)
         }
 
@@ -363,7 +374,9 @@ struct JSONOutputFormatValidationTests {
             target_application_info: TargetApplicationInfo(
                 app_name: "Test App",
                 bundle_id: "com.test.app",
-                pid: 1234))
+                pid: 1234
+            )
+        )
 
         let startTime = CFAbsoluteTimeGetCurrent()
         let encoded = try JSONEncoder().encode(windowData)
@@ -410,7 +423,8 @@ struct JSONOutputFormatValidationTests {
             window_id: 12345,
             window_index: 0,
             bounds: bounds,
-            is_on_screen: true)
+            is_on_screen: true
+        )
 
         // Encode to JSON
         let encoder = JSONEncoder()

@@ -64,7 +64,8 @@ struct WindowCommand: AsyncParsableCommand {
             SetBoundsSubcommand.self,
             FocusSubcommand.self,
             WindowListSubcommand.self,
-        ])
+        ]
+    )
 }
 
 // MARK: - Common Options
@@ -72,7 +73,7 @@ struct WindowCommand: AsyncParsableCommand {
 struct WindowIdentificationOptions: ParsableArguments, ApplicationResolvable {
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
-    
+
     @Option(name: .long, help: "Target application by process ID")
     var pid: Int32?
 
@@ -92,7 +93,7 @@ struct WindowIdentificationOptions: ParsableArguments, ApplicationResolvable {
     /// Convert to WindowTarget for service layer
     func toWindowTarget() throws -> WindowTarget {
         let appIdentifier = try self.resolveApplicationIdentifier()
-        
+
         if let index = windowIndex {
             return .index(app: appIdentifier, index: index)
         } else if self.windowTitle != nil {
@@ -112,14 +113,15 @@ private func createWindowActionResult(
     action: String,
     success: Bool,
     windowInfo: ServiceWindowInfo?,
-    appName: String? = nil) -> WindowActionResult
-{
+    appName: String? = nil
+) -> WindowActionResult {
     let bounds: WindowBounds? = if let windowInfo {
         WindowBounds(
             x: Int(windowInfo.bounds.origin.x),
             y: Int(windowInfo.bounds.origin.y),
             width: Int(windowInfo.bounds.size.width),
-            height: Int(windowInfo.bounds.size.height))
+            height: Int(windowInfo.bounds.size.height)
+        )
     } else {
         nil
     }
@@ -129,47 +131,50 @@ private func createWindowActionResult(
         success: success,
         app_name: appName ?? "Unknown",
         window_title: windowInfo?.title,
-        new_bounds: bounds)
+        new_bounds: bounds
+    )
 }
-
 
 // MARK: - Subcommands
 
 struct CloseSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "close",
-        abstract: "Close a window")
-    
+        abstract: "Close a window"
+    )
+
     @OptionGroup var windowOptions: WindowIdentificationOptions
-    
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             try self.windowOptions.validate()
             let target = self.windowOptions.createTarget()
-            
+
             // Get window info before action
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows
+                .listWindows(target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
-            
+
             // Perform the action
             try await PeekabooServices.shared.windows.closeWindow(target: target)
-            
+
             let data = createWindowActionResult(
                 action: "close",
                 success: true,
                 windowInfo: windowInfo,
-                appName: appName)
-            
+                appName: appName
+            )
+
             output(data) {
                 print("Successfully closed window '\(windowInfo?.title ?? "Untitled")' of \(appName)")
             }
-            
+
         } catch {
             handleError(error)
             throw ExitCode(1)
@@ -180,38 +185,41 @@ struct CloseSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
 struct MinimizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "minimize",
-        abstract: "Minimize a window to the Dock")
-    
+        abstract: "Minimize a window to the Dock"
+    )
+
     @OptionGroup var windowOptions: WindowIdentificationOptions
-    
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             try self.windowOptions.validate()
             let target = self.windowOptions.createTarget()
-            
+
             // Get window info before action
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows
+                .listWindows(target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
-            
+
             // Perform the action
             try await PeekabooServices.shared.windows.minimizeWindow(target: target)
-            
+
             let data = createWindowActionResult(
                 action: "minimize",
                 success: true,
                 windowInfo: windowInfo,
-                appName: appName)
-            
+                appName: appName
+            )
+
             output(data) {
                 print("Successfully minimized window '\(windowInfo?.title ?? "Untitled")' of \(appName)")
             }
-            
+
         } catch {
             handleError(error)
             throw ExitCode(1)
@@ -222,38 +230,41 @@ struct MinimizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFor
 struct MaximizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "maximize",
-        abstract: "Maximize a window (full screen)")
-    
+        abstract: "Maximize a window (full screen)"
+    )
+
     @OptionGroup var windowOptions: WindowIdentificationOptions
-    
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             try self.windowOptions.validate()
             let target = self.windowOptions.createTarget()
-            
+
             // Get window info before action
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows
+                .listWindows(target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
-            
+
             // Perform the action
             try await PeekabooServices.shared.windows.maximizeWindow(target: target)
-            
+
             let data = createWindowActionResult(
                 action: "maximize",
                 success: true,
                 windowInfo: windowInfo,
-                appName: appName)
-            
+                appName: appName
+            )
+
             output(data) {
                 print("Successfully maximized window '\(windowInfo?.title ?? "Untitled")' of \(appName)")
             }
-            
+
         } catch {
             handleError(error)
             throw ExitCode(1)
@@ -267,47 +278,49 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
         abstract: "Bring a window to the foreground",
         discussion: """
         Focus brings a window to the foreground and activates its application.
-        
+
         Space Support:
         By default, if the window is on a different Space (virtual desktop),
         the focus command will switch to that Space. You can control this
         behavior with the --space-switch and --move-here options.
-        
+
         Examples:
         peekaboo window focus --app Safari
         peekaboo window focus --app "Visual Studio Code" --window-title "main.swift"
         peekaboo window focus --app Terminal --no-space-switch
         peekaboo window focus --app Finder --move-here
-        """)
-    
+        """
+    )
+
     @OptionGroup var windowOptions: WindowIdentificationOptions
     @OptionGroup var focusOptions: FocusOptions
-    
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     func run() async throws {
         logger.debug("FocusSubcommand.run() called")
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             logger.debug("About to validate window options")
             try self.windowOptions.validate()
             logger.debug("Window options validated")
             let target = self.windowOptions.createTarget()
             logger.debug("Target created: \(target)")
-            
+
             // Get window info before action
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows
+                .listWindows(target: self.windowOptions.toWindowTarget())
             logger.debug("Found \(windows.count) windows")
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
-            
+
             // Check if we found any windows
             guard !windows.isEmpty else {
                 throw PeekabooError.windowNotFound(criteria: "No windows found for \(appName)")
             }
-            
+
             // Use enhanced focus with space support
             if let windowID = windowInfo?.windowID {
                 try await ensureFocused(
@@ -320,13 +333,14 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
                 // Fallback to regular focus if no window ID
                 try await PeekabooServices.shared.windows.focusWindow(target: target)
             }
-            
+
             let data = createWindowActionResult(
                 action: "focus",
                 success: true,
                 windowInfo: windowInfo,
-                appName: appName)
-            
+                appName: appName
+            )
+
             output(data) {
                 var message = "Successfully focused window '\(windowInfo?.title ?? "Untitled")' of \(appName)"
                 if self.focusOptions.bringToCurrentSpace {
@@ -334,7 +348,7 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
                 }
                 print(message)
             }
-            
+
         } catch {
             handleError(error)
             throw ExitCode(1)
@@ -347,35 +361,37 @@ struct FocusSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormat
 struct MoveSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "move",
-        abstract: "Move a window to a new position")
-    
+        abstract: "Move a window to a new position"
+    )
+
     @OptionGroup var windowOptions: WindowIdentificationOptions
-    
+
     @Option(name: .short, help: "New X coordinate")
     var x: Int
-    
+
     @Option(name: .short, help: "New Y coordinate")
     var y: Int
-    
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             try self.windowOptions.validate()
             let target = self.windowOptions.createTarget()
-            
+
             // Get window info
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows
+                .listWindows(target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
-            
+
             // Move the window
             let newOrigin = CGPoint(x: x, y: y)
             try await PeekabooServices.shared.windows.moveWindow(target: target, to: newOrigin)
-            
+
             // Create result with new bounds
             let updatedInfo = windowInfo.map { info in
                 ServiceWindowInfo(
@@ -389,17 +405,18 @@ struct MoveSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
                     index: info.index
                 )
             }
-            
+
             let data = createWindowActionResult(
                 action: "move",
                 success: true,
                 windowInfo: updatedInfo,
-                appName: appName)
-            
+                appName: appName
+            )
+
             output(data) {
-                print("Successfully moved window '\(windowInfo?.title ?? "Untitled")' to (\(x), \(y))")
+                print("Successfully moved window '\(windowInfo?.title ?? "Untitled")' to (\(self.x), \(self.y))")
             }
-            
+
         } catch {
             handleError(error)
             throw ExitCode(1)
@@ -412,48 +429,52 @@ struct MoveSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
 struct ResizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "resize",
-        abstract: "Resize a window")
-    
+        abstract: "Resize a window"
+    )
+
     @OptionGroup var windowOptions: WindowIdentificationOptions
-    
+
     @Option(name: .short, help: "New width")
     var width: Int
-    
+
     @Option(name: .long, help: "New height")
     var height: Int
-    
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             try self.windowOptions.validate()
             let target = self.windowOptions.createTarget()
-            
+
             // Get window info
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows
+                .listWindows(target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
-            
+
             // Resize the window
             let newSize = CGSize(width: width, height: height)
             try await PeekabooServices.shared.windows.resizeWindow(target: target, to: newSize)
-            
+
             // We'll pass the original windowInfo as-is since window service would have updated it
             // (In a real implementation, we'd refetch window info after resize)
-            
+
             let data = createWindowActionResult(
                 action: "resize",
                 success: true,
                 windowInfo: windowInfo,
-                appName: appName)
-            
+                appName: appName
+            )
+
             output(data) {
-                print("Successfully resized window '\(windowInfo?.title ?? "Untitled")' to \(width)x\(height)")
+                print("Successfully resized window '\(windowInfo?.title ?? "Untitled")' to \(self.width)x\(self.height)"
+                )
             }
-            
+
         } catch {
             handleError(error)
             throw ExitCode(1)
@@ -466,54 +487,59 @@ struct ResizeSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForma
 struct SetBoundsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
     static let configuration = CommandConfiguration(
         commandName: "set-bounds",
-        abstract: "Set window position and size in one operation")
-    
+        abstract: "Set window position and size in one operation"
+    )
+
     @OptionGroup var windowOptions: WindowIdentificationOptions
-    
+
     @Option(name: .short, help: "New X coordinate")
     var x: Int
-    
+
     @Option(name: .short, help: "New Y coordinate")
     var y: Int
-    
+
     @Option(name: .short, help: "New width")
     var width: Int
-    
+
     @Option(name: .long, help: "New height")
     var height: Int
-    
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             try self.windowOptions.validate()
             let target = self.windowOptions.createTarget()
-            
+
             // Get window info
-            let windows = try await PeekabooServices.shared.windows.listWindows(target: try self.windowOptions.toWindowTarget())
+            let windows = try await PeekabooServices.shared.windows
+                .listWindows(target: self.windowOptions.toWindowTarget())
             let windowInfo = self.windowOptions.selectWindow(from: windows)
             let appName = self.windowOptions.app ?? "Unknown"
-            
+
             // Set bounds
             let newBounds = CGRect(x: x, y: y, width: width, height: height)
             try await PeekabooServices.shared.windows.setWindowBounds(target: target, bounds: newBounds)
-            
+
             // We'll pass the original windowInfo as-is since window service would have updated it
             // (In a real implementation, we'd refetch window info after set-bounds)
-            
+
             let data = createWindowActionResult(
                 action: "set-bounds",
                 success: true,
                 windowInfo: windowInfo,
-                appName: appName)
-            
+                appName: appName
+            )
+
             output(data) {
-                print("Successfully set window '\(windowInfo?.title ?? "Untitled")' bounds to (\(x), \(y)) \(width)x\(height)")
+                print(
+                    "Successfully set window '\(windowInfo?.title ?? "Untitled")' bounds to (\(self.x), \(self.y)) \(self.width)x\(self.height)"
+                )
             }
-            
+
         } catch {
             handleError(error)
             throw ExitCode(1)
@@ -526,31 +552,32 @@ struct SetBoundsSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFo
 struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable, ApplicationResolvable {
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List windows for an application")
-    
+        abstract: "List windows for an application"
+    )
+
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
     var app: String?
-    
+
     @Option(name: .long, help: "Target application by process ID")
     var pid: Int32?
-    
+
     @Flag(name: .long, help: "Output results in JSON format")
     var jsonOutput = false
-    
+
     @Flag(name: .long, help: "Group windows by Space (virtual desktop)")
     var groupBySpace = false
-    
+
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             let appIdentifier = try self.resolveApplicationIdentifier()
             // First find the application to get its info
             let appInfo = try await PeekabooServices.shared.applications.findApplication(identifier: appIdentifier)
-            
+
             let target = WindowTarget.application(appIdentifier)
             let windows = try await PeekabooServices.shared.windows.listWindows(target: target)
-            
+
             // Convert ServiceWindowInfo to WindowInfo for consistency
             let windowInfos = windows.enumerated().map { index, window in
                 WindowInfo(
@@ -566,7 +593,7 @@ struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
                     is_on_screen: !window.isMinimized
                 )
             }
-            
+
             // Use PeekabooCore's WindowListData
             let data = WindowListData(
                 windows: windowInfos,
@@ -576,14 +603,14 @@ struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
                     pid: appInfo.processIdentifier
                 )
             )
-            
+
             output(data) {
                 print("\(data.target_application_info.app_name) has \(data.windows.count) window(s):")
-                
+
                 if self.groupBySpace {
                     // Group windows by space
                     var windowsBySpace: [UInt64?: [(window: ServiceWindowInfo, index: Int)]] = [:]
-                    
+
                     for (index, window) in windows.enumerated() {
                         let spaceID = window.spaceID
                         if windowsBySpace[spaceID] == nil {
@@ -591,26 +618,26 @@ struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
                         }
                         windowsBySpace[spaceID]?.append((window, index))
                     }
-                    
+
                     // Sort spaces by ID (nil first for windows not on any space)
-                    let sortedSpaces = windowsBySpace.keys.sorted { (a, b) in
+                    let sortedSpaces = windowsBySpace.keys.sorted { a, b in
                         switch (a, b) {
-                        case (nil, nil): return false
-                        case (nil, _): return true
-                        case (_, nil): return false
-                        case let (a?, b?): return a < b
+                        case (nil, nil): false
+                        case (nil, _): true
+                        case (_, nil): false
+                        case let (a?, b?): a < b
                         }
                     }
-                    
+
                     // Print grouped windows
                     for spaceID in sortedSpaces {
-                        if let spaceID = spaceID {
+                        if let spaceID {
                             let spaceName = windowsBySpace[spaceID]?.first?.window.spaceName ?? "Space \(spaceID)"
                             print("\n  Space: \(spaceName) [ID: \(spaceID)]")
                         } else {
                             print("\n  No Space:")
                         }
-                        
+
                         for (window, index) in windowsBySpace[spaceID] ?? [] {
                             let status = window.isMinimized ? " [minimized]" : ""
                             print("    [\(index)] \"\(window.title)\"\(status)")
@@ -631,7 +658,7 @@ struct WindowListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputF
                     }
                 }
             }
-            
+
         } catch {
             handleError(error)
             throw ExitCode(1)

@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import peekaboo
 
 @Suite("ScrollCommand Tests", .serialized)
@@ -69,7 +69,8 @@ struct ScrollCommandTests {
             amount: 5,
             location: ["x": 500.0, "y": 300.0],
             totalTicks: 5,
-            executionTime: 0.15)
+            executionTime: 0.15
+        )
 
         #expect(result.success == true)
         #expect(result.direction == "down")

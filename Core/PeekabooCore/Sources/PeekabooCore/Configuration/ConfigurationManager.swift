@@ -15,12 +15,12 @@ import Foundation
 /// in a credentials file with restricted permissions.
 public final class ConfigurationManager: @unchecked Sendable {
     public static let shared = ConfigurationManager()
-    
+
     /// Base directory for all Peekaboo configuration
     public static var baseDir: String {
         NSString(string: "~/.peekaboo").expandingTildeInPath
     }
-    
+
     /// Legacy configuration directory (for migration)
     public static var legacyConfigDir: String {
         NSString(string: "~/.config/peekaboo").expandingTildeInPath
@@ -30,12 +30,12 @@ public final class ConfigurationManager: @unchecked Sendable {
     public static var configPath: String {
         "\(baseDir)/config.json"
     }
-    
+
     /// Legacy configuration file path (for migration)
     public static var legacyConfigPath: String {
         "\(legacyConfigDir)/config.json"
     }
-    
+
     /// Credentials file path
     public static var credentialsPath: String {
         "\(baseDir)/credentials"
@@ -43,63 +43,62 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Loaded configuration
     private var configuration: Configuration?
-    
+
     /// Cached credentials
     private var credentials: [String: String] = [:]
-    
+
     private init() {
         // Load configuration on init, but don't crash if it fails
-        _ = loadConfiguration()
+        _ = self.loadConfiguration()
     }
-    
+
     /// Migrate from legacy configuration if needed
     public func migrateIfNeeded() throws {
         let fileManager = FileManager.default
-        
+
         // Check if legacy config exists but new config doesn't
-        if fileManager.fileExists(atPath: Self.legacyConfigPath) && 
-           !fileManager.fileExists(atPath: Self.configPath) {
-            
+        if fileManager.fileExists(atPath: Self.legacyConfigPath),
+           !fileManager.fileExists(atPath: Self.configPath)
+        {
             // Create new base directory
             try fileManager.createDirectory(
                 atPath: Self.baseDir,
                 withIntermediateDirectories: true,
-                attributes: [.posixPermissions: 0o700]
-            )
-            
+                attributes: [.posixPermissions: 0o700])
+
             // Copy config file
             try fileManager.copyItem(
                 atPath: Self.legacyConfigPath,
-                toPath: Self.configPath
-            )
-            
+                toPath: Self.configPath)
+
             // Load the config to extract any API keys
             if let config = loadConfigurationFromPath(Self.configPath) {
                 var credentialsToSave: [String: String] = [:]
-                
+
                 // Extract OpenAI API key if it's hardcoded (not an env var reference)
                 if let apiKey = config.aiProviders?.openaiApiKey,
                    !apiKey.hasPrefix("${"),
-                   !apiKey.isEmpty {
+                   !apiKey.isEmpty
+                {
                     credentialsToSave["OPENAI_API_KEY"] = apiKey
                 }
-                
+
                 // Save credentials if any were found
                 if !credentialsToSave.isEmpty {
-                    try saveCredentials(credentialsToSave)
-                    
+                    try self.saveCredentials(credentialsToSave)
+
                     // Remove hardcoded API key from config and update it
                     var updatedConfig = config
                     if updatedConfig.aiProviders?.openaiApiKey != nil {
                         updatedConfig.aiProviders?.openaiApiKey = nil
                     }
-                    
+
                     // Save updated config without hardcoded credentials
                     let data = try JSONCoding.encoder.encode(updatedConfig)
                     try data.write(to: URL(fileURLWithPath: Self.configPath), options: .atomic)
                 }
             }
-            
+
             print("✅ Migrated configuration from \(Self.legacyConfigPath) to \(Self.configPath)")
         }
     }
@@ -107,26 +106,26 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// Load configuration from file
     public func loadConfiguration() -> Configuration? {
         // Try migration first
-        try? migrateIfNeeded()
-        
+        try? self.migrateIfNeeded()
+
         // Load credentials
-        loadCredentials()
-        
+        self.loadCredentials()
+
         // Load configuration
-        configuration = loadConfigurationFromPath(Self.configPath)
-        return configuration
+        self.configuration = self.loadConfigurationFromPath(Self.configPath)
+        return self.configuration
     }
-    
+
     /// Get the current configuration.
     ///
     /// Returns the loaded configuration or loads it if not already loaded.
     public func getConfiguration() -> Configuration? {
-        if configuration == nil {
-            _ = loadConfiguration()
+        if self.configuration == nil {
+            _ = self.loadConfiguration()
         }
-        return configuration
+        return self.configuration
     }
-    
+
     /// Load configuration from a specific path
     private func loadConfigurationFromPath(_ configPath: String) -> Configuration? {
         guard FileManager.default.fileExists(atPath: configPath) else {
@@ -134,7 +133,7 @@ public final class ConfigurationManager: @unchecked Sendable {
         }
 
         var expandedJSON = ""
-        
+
         do {
             let data = try Data(contentsOf: URL(fileURLWithPath: configPath))
             let jsonString = String(data: data, encoding: .utf8) ?? ""
@@ -154,23 +153,27 @@ public final class ConfigurationManager: @unchecked Sendable {
         } catch let error as DecodingError {
             // Provide more detailed error information for JSON decoding errors
             switch error {
-            case .keyNotFound(let key, let context):
-                print("Warning: JSON key not found '\(key.stringValue)' at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
-            case .typeMismatch(let type, let context):
-                print("Warning: Type mismatch for type '\(type)' at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
-            case .valueNotFound(let type, let context):
-                print("Warning: Value not found for type '\(type)' at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
-            case .dataCorrupted(let context):
-                print("Warning: Data corrupted at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+            case let .keyNotFound(key, context):
+                print(
+                    "Warning: JSON key not found '\(key.stringValue)' at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+            case let .typeMismatch(type, context):
+                print(
+                    "Warning: Type mismatch for type '\(type)' at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+            case let .valueNotFound(type, context):
+                print(
+                    "Warning: Value not found for type '\(type)' at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+            case let .dataCorrupted(context):
+                print(
+                    "Warning: Data corrupted at path: \(context.codingPath.map(\.stringValue).joined(separator: "."))")
                 if let underlyingError = context.underlyingError {
                     print("Underlying error: \(underlyingError)")
                 }
             @unknown default:
                 print("Warning: Unknown decoding error: \(error)")
             }
-            
+
             // For debugging, print the cleaned JSON
-            if expandedJSON.count < 5000 {  // Only print if reasonably sized
+            if expandedJSON.count < 5000 { // Only print if reasonably sized
                 print("Cleaned JSON that failed to parse:")
                 print(expandedJSON)
             }
@@ -180,28 +183,29 @@ public final class ConfigurationManager: @unchecked Sendable {
 
         return nil
     }
-    
+
     /// Load credentials from file
     private func loadCredentials() {
         guard FileManager.default.fileExists(atPath: Self.credentialsPath) else {
             return
         }
-        
+
         do {
             let contents = try String(contentsOfFile: Self.credentialsPath)
             let lines = contents.components(separatedBy: .newlines)
-            
+
             for line in lines {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if trimmed.isEmpty || trimmed.hasPrefix("#") {
                     continue
                 }
-                
+
                 if let equalIndex = trimmed.firstIndex(of: "=") {
                     let key = String(trimmed[..<equalIndex]).trimmingCharacters(in: .whitespaces)
-                    let value = String(trimmed[trimmed.index(after: equalIndex)...]).trimmingCharacters(in: .whitespaces)
-                    if !key.isEmpty && !value.isEmpty {
-                        credentials[key] = value
+                    let value = String(trimmed[trimmed.index(after: equalIndex)...])
+                        .trimmingCharacters(in: .whitespaces)
+                    if !key.isEmpty, !value.isEmpty {
+                        self.credentials[key] = value
                     }
                 }
             }
@@ -209,45 +213,42 @@ public final class ConfigurationManager: @unchecked Sendable {
             // Silently ignore credential loading errors
         }
     }
-    
+
     /// Save credentials to file with proper permissions
     public func saveCredentials(_ newCredentials: [String: String]) throws {
         // Merge with existing credentials
         for (key, value) in newCredentials {
-            credentials[key] = value
+            self.credentials[key] = value
         }
-        
+
         // Create directory if needed
         try FileManager.default.createDirectory(
             atPath: Self.baseDir,
             withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o700]
-        )
-        
+            attributes: [.posixPermissions: 0o700])
+
         // Build credentials file content
         var lines: [String] = []
         lines.append("# Peekaboo credentials file")
         lines.append("# This file contains sensitive API keys and should not be shared")
         lines.append("")
-        
-        for (key, value) in credentials.sorted(by: { $0.key < $1.key }) {
+
+        for (key, value) in self.credentials.sorted(by: { $0.key < $1.key }) {
             lines.append("\(key)=\(value)")
         }
-        
+
         let content = lines.joined(separator: "\n")
-        
+
         // Write file with restricted permissions
         try content.write(
             to: URL(fileURLWithPath: Self.credentialsPath),
             atomically: true,
-            encoding: .utf8
-        )
-        
+            encoding: .utf8)
+
         // Set file permissions to 600 (readable/writable by owner only)
         try FileManager.default.setAttributes(
             [.posixPermissions: 0o600],
-            ofItemAtPath: Self.credentialsPath
-        )
+            ofItemAtPath: Self.credentialsPath)
     }
 
     /// Strip comments from JSONC content
@@ -426,7 +427,7 @@ public final class ConfigurationManager: @unchecked Sendable {
         if let envValue = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
             return envValue
         }
-        
+
         // 2. Credentials file
         if let credValue = credentials["OPENAI_API_KEY"] {
             return credValue
@@ -439,14 +440,14 @@ public final class ConfigurationManager: @unchecked Sendable {
 
         return nil
     }
-    
+
     /// Get Anthropic API key with proper precedence
     public func getAnthropicAPIKey() -> String? {
         // 1. Environment variable (highest priority)
         if let envValue = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] {
             return envValue
         }
-        
+
         // 2. Credentials file
         if let credValue = credentials["ANTHROPIC_API_KEY"] {
             return credValue
@@ -501,13 +502,12 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// Create default configuration file
     public func createDefaultConfiguration() throws {
         let configPath = Self.configPath
-        
+
         // Create directory with proper permissions
         try FileManager.default.createDirectory(
             atPath: Self.baseDir,
             withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o700]
-        )
+            attributes: [.posixPermissions: 0o700])
 
         let defaultConfig = """
         {
@@ -517,7 +517,7 @@ public final class ConfigurationManager: @unchecked Sendable {
             // Format: "provider/model,provider/model"
             // Supported providers: openai, anthropic, ollama
             "providers": "anthropic/claude-opus-4-20250514,openai/gpt-4.1,ollama/llava:latest",
-            
+
             // NOTE: API keys should be stored in ~/.peekaboo/credentials
             // or set as environment variables, not in this file
 
@@ -552,7 +552,7 @@ public final class ConfigurationManager: @unchecked Sendable {
         """
 
         try defaultConfig.write(to: URL(fileURLWithPath: configPath), atomically: true, encoding: .utf8)
-        
+
         // Create a sample credentials file if it doesn't exist
         if !FileManager.default.fileExists(atPath: Self.credentialsPath) {
             let sampleCredentials = """
@@ -563,84 +563,79 @@ public final class ConfigurationManager: @unchecked Sendable {
             # OPENAI_API_KEY=sk-...
             # ANTHROPIC_API_KEY=sk-ant-...
             """
-            
+
             try sampleCredentials.write(
                 to: URL(fileURLWithPath: Self.credentialsPath),
                 atomically: true,
-                encoding: .utf8
-            )
-            
+                encoding: .utf8)
+
             // Set proper permissions
             try FileManager.default.setAttributes(
                 [.posixPermissions: 0o600],
-                ofItemAtPath: Self.credentialsPath
-            )
+                ofItemAtPath: Self.credentialsPath)
         }
     }
-    
+
     /// Set or update a credential
     public func setCredential(key: String, value: String) throws {
         // Load existing credentials first
-        loadCredentials()
-        
+        self.loadCredentials()
+
         // Update
-        try saveCredentials([key: value])
+        try self.saveCredentials([key: value])
     }
-    
+
     /// Get selected AI provider
     public func getSelectedProvider() -> String {
         // Extract provider from providers string (e.g., "anthropic/model" -> "anthropic")
-        let providers = getAIProviders()
+        let providers = self.getAIProviders()
         return AIProviderParser.parseFirst(providers)?.provider ?? "anthropic"
     }
-    
+
     /// Get agent model
     public func getAgentModel() -> String? {
-        configuration?.agent?.defaultModel
+        self.configuration?.agent?.defaultModel
     }
-    
+
     /// Get agent temperature
     public func getAgentTemperature() -> Double {
-        getValue(
+        self.getValue(
             cliValue: nil as Double?,
             envVar: nil,
-            configValue: configuration?.agent?.temperature,
-            defaultValue: 0.7
-        )
+            configValue: self.configuration?.agent?.temperature,
+            defaultValue: 0.7)
     }
-    
+
     /// Get agent max tokens
     public func getAgentMaxTokens() -> Int {
-        getValue(
+        self.getValue(
             cliValue: nil as Int?,
             envVar: nil,
-            configValue: configuration?.agent?.maxTokens,
-            defaultValue: 16384
-        )
+            configValue: self.configuration?.agent?.maxTokens,
+            defaultValue: 16384)
     }
-    
+
     /// Update configuration file with new values
     public func updateConfiguration(_ updates: (inout Configuration) -> Void) throws {
         // Load current configuration or create new one
-        var config = configuration ?? Configuration()
-        
+        var config = self.configuration ?? Configuration()
+
         // Apply updates
         updates(&config)
-        
+
         // Save updated configuration
         let data = try JSONCoding.encoder.encode(config)
-        
+
         // Create directory if needed
         try FileManager.default.createDirectory(
             atPath: Self.baseDir,
             withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o700]
-        )
-        
+            attributes: [.posixPermissions: 0o700])
+
         // Write file
         try data.write(to: URL(fileURLWithPath: Self.configPath), options: .atomic)
-        
+
         // Reload configuration
-        configuration = config
+        self.configuration = config
     }
 }

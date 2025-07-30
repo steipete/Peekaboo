@@ -1,6 +1,6 @@
-@testable import AXorcist
 import Foundation
 import XCTest
+@testable import AXorcist
 
 // MARK: - Ping Command Tests
 

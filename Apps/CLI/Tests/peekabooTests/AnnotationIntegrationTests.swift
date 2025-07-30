@@ -36,7 +36,8 @@ struct AnnotationIntegrationTests {
             applicationName: "AnnotationTest",
             windowTitle: "Test Window",
             suggestedName: "test",
-            windowBounds: CGRect(x: 200, y: 300, width: 600, height: 400))
+            windowBounds: CGRect(x: 200, y: 300, width: 600, height: 400)
+        )
 
         // Verify window bounds are captured
         #expect(captureResult.windowBounds != nil)
@@ -112,13 +113,13 @@ struct AnnotationIntegrationTests {
         let annotatedImage = try await drawAnnotations(
             on: testImage,
             elements: testElements,
-            windowBounds: CGRect(x: 0, y: 0, width: 800, height: 600))
+            windowBounds: CGRect(x: 0, y: 0, width: 800, height: 600)
+        )
 
         // Save for manual inspection if needed
         if let tiffData = annotatedImage.tiffRepresentation,
            let bitmap = NSBitmapImageRep(data: tiffData),
-           let pngData = bitmap.representation(using: .png, properties: [:])
-        {
+           let pngData = bitmap.representation(using: .png, properties: [:]) {
             try pngData.write(to: URL(fileURLWithPath: "/tmp/test-overlay-accuracy.png"))
         }
 
@@ -134,7 +135,8 @@ struct AnnotationIntegrationTests {
             contentRect: NSRect(x: position.x, y: position.y, width: 600, height: 400),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
-            defer: false)
+            defer: false
+        )
         window.title = "Annotation Test Window"
         window.makeKeyAndOrderFront(nil)
         return window
@@ -174,8 +176,8 @@ struct AnnotationIntegrationTests {
     private func drawAnnotations(
         on image: NSImage,
         elements: [String: SessionCache.UIAutomationSession.UIElement],
-        windowBounds: CGRect?) async throws -> NSImage
-    {
+        windowBounds: CGRect?
+    ) async throws -> NSImage {
         let annotatedImage = NSImage(size: image.size)
         annotatedImage.lockFocus()
 
@@ -204,7 +206,8 @@ struct AnnotationIntegrationTests {
                 x: elementFrame.origin.x,
                 y: image.size.height - elementFrame.origin.y - elementFrame.height,
                 width: elementFrame.width,
-                height: elementFrame.height)
+                height: elementFrame.height
+            )
 
             // Draw overlay
             NSColor.systemBlue.withAlphaComponent(0.3).setFill()
@@ -228,7 +231,8 @@ struct AnnotationIntegrationTests {
                 x: drawRect.origin.x + 4,
                 y: drawRect.origin.y + drawRect.height - labelSize.height - 4,
                 width: labelSize.width + 8,
-                height: labelSize.height + 4)
+                height: labelSize.height + 4
+            )
 
             NSColor.black.withAlphaComponent(0.8).setFill()
             NSBezierPath(roundedRect: labelRect, xRadius: 3, yRadius: 3).fill()

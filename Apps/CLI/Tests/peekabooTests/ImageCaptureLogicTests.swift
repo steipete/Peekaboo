@@ -1,8 +1,8 @@
 // swiftlint:disable file_length
 import AppKit
 import Foundation
-import Testing
 import PeekabooCore
+import Testing
 @testable import peekaboo
 
 @Suite("Image Capture Logic Tests", .tags(.imageCapture, .unit))
@@ -139,7 +139,8 @@ struct ImageCaptureLogicTests {
 
     @Test(
         "Screen index edge cases",
-        arguments: [-1, 0, 1, 5, 99])
+        arguments: [-1, 0, 1, 5, 99]
+    )
     func screenIndexEdgeCases(index: Int) throws {
         do {
             let command = try ImageCommand.parse([
@@ -241,7 +242,8 @@ struct ImageCaptureLogicTests {
             window_title: nil,
             window_id: nil,
             window_index: nil,
-            mime_type: "image/png")
+            mime_type: "image/png"
+        )
 
         #expect(savedFile.path == "/tmp/screen-0.png")
         #expect(savedFile.item_label == "Display 1 (Index 0)")
@@ -259,7 +261,8 @@ struct ImageCaptureLogicTests {
             window_title: "Main Window",
             window_id: 12345,
             window_index: 0,
-            mime_type: "image/jpeg")
+            mime_type: "image/jpeg"
+        )
 
         #expect(savedFile.path == "/tmp/safari-main.jpg")
         #expect(savedFile.item_label == "Safari")
@@ -492,39 +495,48 @@ struct AdvancedImageCaptureLogicTests {
             TestScenario(
                 args: ["--mode", "screen"],
                 shouldBeReady: true,
-                description: "Basic screen capture"),
+                description: "Basic screen capture"
+            ),
             TestScenario(
                 args: ["--mode", "screen", "--screen-index", "0"],
                 shouldBeReady: true,
-                description: "Screen with index"),
+                description: "Screen with index"
+            ),
             TestScenario(
                 args: ["--mode", "window", "--app", "Finder"],
                 shouldBeReady: true,
-                description: "Basic window capture"),
+                description: "Basic window capture"
+            ),
             TestScenario(
                 args: ["--mode", "window", "--app", "Safari", "--window-title", "Main"],
                 shouldBeReady: true,
-                description: "Window with title"),
+                description: "Window with title"
+            ),
             TestScenario(
                 args: ["--mode", "window", "--app", "Terminal", "--window-index", "0"],
                 shouldBeReady: true,
-                description: "Window with index"),
+                description: "Window with index"
+            ),
             TestScenario(
                 args: ["--mode", "multi"],
                 shouldBeReady: true,
-                description: "Multi-screen capture"),
+                description: "Multi-screen capture"
+            ),
             TestScenario(
                 args: ["--mode", "multi", "--app", "Xcode"],
                 shouldBeReady: true,
-                description: "Multi-window capture"),
+                description: "Multi-window capture"
+            ),
             TestScenario(
                 args: ["--app", "Finder"],
                 shouldBeReady: true,
-                description: "Implicit window mode"),
+                description: "Implicit window mode"
+            ),
             TestScenario(
                 args: [],
                 shouldBeReady: true,
-                description: "Default screen capture"),
+                description: "Default screen capture"
+            ),
         ]
     }
 }
