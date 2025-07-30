@@ -63,7 +63,9 @@ const MOCK_TEMP_DIR = "/tmp";
 const MOCK_TEMP_IMAGE_DIR = "/tmp/peekaboo-img-XXXXXX";
 const MOCK_SAVED_FILE_PATH = "/tmp/peekaboo-img-XXXXXX/capture.png";
 
-describe("Image Tool", () => {
+// Image tests disabled by default to prevent unintended screen captures
+// These tests can capture screenshots of any application when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("[full] Image Tool", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFsRm.mockResolvedValue(undefined);

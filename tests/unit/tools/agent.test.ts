@@ -18,7 +18,9 @@ const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<
 const mockLogger = pino({ level: "silent" });
 const mockContext: ToolContext = { logger: mockLogger };
 
-describe("Agent Tool", () => {
+// Agent tests disabled by default to prevent unintended system interactions
+// These tests can perform arbitrary actions on your system when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("Agent Tool [full]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Remove any existing OPENAI_API_KEY mock

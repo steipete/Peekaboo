@@ -5,7 +5,9 @@ import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
 vi.mock("../../../Server/src/utils/peekaboo-cli");
 
-describe("click tool", () => {
+// Click tests disabled by default to prevent unintended UI interactions
+// These tests can click on any UI element when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("click tool [full]", () => {
   let mockContext: ToolContext;
   let mockExecuteSwiftCli: ReturnType<typeof vi.fn>;
 

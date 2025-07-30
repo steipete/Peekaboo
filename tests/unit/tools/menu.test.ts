@@ -18,7 +18,9 @@ const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<
 const mockLogger = pino({ level: "silent" });
 const mockContext: ToolContext = { logger: mockLogger };
 
-describe("Menu Tool", () => {
+// Menu tests disabled by default to prevent unintended menu interactions
+// These tests can click on any menu item in any application when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("Menu Tool [full]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

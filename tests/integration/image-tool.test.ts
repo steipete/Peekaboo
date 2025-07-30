@@ -59,7 +59,9 @@ import { SwiftCliResponse } from "../../Server/src/types";
 // Conditionally skip Swift-dependent tests on non-macOS platforms
 const describeSwiftTests = globalThis.shouldSkipSwiftTests ? describe.skip : describe;
 
-describeSwiftTests("Image Tool Integration Tests", () => {
+// Image tool integration tests disabled by default to prevent unintended screen captures
+// These tests capture screenshots of applications when run in full mode
+describeSwiftTests.skipIf(globalThis.shouldSkipFullTests)("[full] Image Tool Integration Tests", () => {
   let tempDir: string;
 
   beforeAll(async () => {

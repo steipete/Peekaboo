@@ -7,7 +7,9 @@ import * as fs from "fs/promises";
 vi.mock("../../../Server/src/utils/peekaboo-cli");
 vi.mock("fs/promises");
 
-describe("run tool", () => {
+// Run tests disabled by default to prevent unintended automation script execution
+// These tests can execute arbitrary automation scripts when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("[full] run tool", () => {
   let mockContext: ToolContext;
   let mockExecuteSwiftCli: ReturnType<typeof vi.fn>;
   let mockReadFile: ReturnType<typeof vi.fn>;

@@ -6,7 +6,9 @@ import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
 vi.mock("../../../Server/src/utils/peekaboo-cli");
 
-describe("scroll tool", () => {
+// Scroll tests disabled by default to prevent unintended UI scrolling
+// These tests can scroll content in any application when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("scroll tool [full]", () => {
   let mockContext: ToolContext;
   let mockExecuteSwiftCli: ReturnType<typeof vi.fn>;
 

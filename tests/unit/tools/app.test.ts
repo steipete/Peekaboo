@@ -18,7 +18,9 @@ const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<
 const mockLogger = pino({ level: "silent" });
 const mockContext: ToolContext = { logger: mockLogger };
 
-describe("App Tool", () => {
+// App tests disabled by default to prevent unintended application control
+// These tests can launch, quit, or manipulate any application when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("App Tool [full]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

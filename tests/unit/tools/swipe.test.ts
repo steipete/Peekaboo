@@ -5,7 +5,9 @@ import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
 vi.mock("../../../Server/src/utils/peekaboo-cli");
 
-describe("swipe tool", () => {
+// Swipe tests disabled by default to prevent unintended gesture input
+// These tests can perform swipe gestures on any UI element when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("swipe tool [full]", () => {
   let mockContext: ToolContext;
   let mockExecuteSwiftCli: ReturnType<typeof vi.fn>;
 

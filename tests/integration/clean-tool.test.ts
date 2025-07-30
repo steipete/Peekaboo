@@ -69,7 +69,9 @@ class JSONRPCClient {
   }
 }
 
-describe('clean tool integration', () => {
+// Clean tool integration tests disabled by default to prevent unintended filesystem modifications
+// These tests can delete session files and temporary data when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)('[full] clean tool integration', () => {
   let client: JSONRPCClient;
 
   beforeAll(async () => {

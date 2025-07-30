@@ -5,7 +5,9 @@ import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
 vi.mock("../../../Server/src/utils/peekaboo-cli");
 
-describe("type tool", () => {
+// Type tests disabled by default to prevent unintended text input
+// These tests can type text into any application when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("[full] type tool", () => {
   let mockContext: ToolContext;
   let mockExecuteSwiftCli: ReturnType<typeof vi.fn>;
 

@@ -7,7 +7,9 @@ import { promisify } from "util";
 
 const exec = promisify(require("child_process").exec);
 
-describe("See Command Integration Tests", () => {
+// See command integration tests disabled by default to prevent unintended screen captures
+// These tests capture screenshots of applications when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("[full] See Command Integration Tests", () => {
   const peekabooPath = join(__dirname, "../../peekaboo");
   let testSessionIds: string[] = [];
 

@@ -5,7 +5,9 @@ import * as peekabooCliModule from "../../../Server/src/utils/peekaboo-cli";
 
 vi.mock("../../../Server/src/utils/peekaboo-cli");
 
-describe("hotkey tool", () => {
+// Hotkey tests disabled by default to prevent unintended keyboard shortcuts
+// These tests can trigger system-wide keyboard shortcuts when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("hotkey tool [full]", () => {
   let mockContext: ToolContext;
   let mockExecuteSwiftCli: ReturnType<typeof vi.fn>;
 

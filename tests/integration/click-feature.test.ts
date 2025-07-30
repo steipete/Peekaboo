@@ -6,7 +6,9 @@ import * as fs from 'fs';
 const PEEKABOO_PATH = path.join(__dirname, '../../peekaboo');
 const TEST_TIMEOUT = 30000; // 30 seconds
 
-describe('Click Feature Integration Tests', () => {
+// Click integration tests disabled by default to prevent unintended UI interactions
+// These tests actually click on UI elements and interact with TextEdit when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)('[full] Click Feature Integration Tests', () => {
   let sessionId: string;
   let textEditAvailable = false;
 

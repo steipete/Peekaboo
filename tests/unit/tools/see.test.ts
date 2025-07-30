@@ -7,7 +7,9 @@ import * as imageSummaryModule from "../../../Server/src/utils/image-summary";
 vi.mock("../../../Server/src/utils/peekaboo-cli");
 vi.mock("../../../Server/src/utils/image-summary");
 
-describe("see tool", () => {
+// See tests disabled by default to prevent unintended screen captures
+// These tests can capture screenshots of your screen when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("[full] see tool", () => {
   let mockContext: ToolContext;
   let mockExecuteSwiftCli: ReturnType<typeof vi.fn>;
   let mockReadImageAsBase64: ReturnType<typeof vi.fn>;

@@ -18,7 +18,9 @@ const mockExecuteSwiftCli = executeSwiftCli as vi.MockedFunction<
 const mockLogger = pino({ level: "silent" });
 const mockContext: ToolContext = { logger: mockLogger };
 
-describe("Window Tool", () => {
+// Window tests disabled by default to prevent unintended window manipulation
+// These tests can move, resize, or close any window when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)("Window Tool [full]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

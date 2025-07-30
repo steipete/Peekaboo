@@ -7,7 +7,9 @@ vi.mock("../../../Server/src/utils/peekaboo-cli");
 
 const mockLogger = pino({ level: "silent" });
 
-describe('cleanToolHandler', () => {
+// Clean tests disabled by default to prevent unintended filesystem modifications
+// These tests can delete session files and temporary data when run in full mode
+describe.skipIf(globalThis.shouldSkipFullTests)('[full] cleanToolHandler', () => {
   const mockExecuteSwiftCli = vi.mocked(peekabooCliModule.executeSwiftCli);
   const mockContext = { logger: mockLogger };
 
