@@ -49,15 +49,6 @@ import os.log
 // Logger for window identity utilities
 private let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowIdentity")
 
-// MARK: - NSArray Extension for Swift compatibility
-
-extension NSArray {
-    /// Provides Swift's isEmpty property for NSArray
-    var isEmpty: Bool {
-        isEmpty
-    }
-}
-
 // MARK: - Private API Declaration
 
 /// Private API to extract CGWindowID from an AXUIElement
@@ -221,7 +212,7 @@ public final class WindowIdentityService {
         // and will return info only for that specific window
         let options: CGWindowListOption = [.optionIncludingWindow]
         if let windowList = CGWindowListCopyWindowInfo(options, windowID) as NSArray?,
-           !windowList.isEmpty
+           windowList.count > 0
         {
             return true
         }

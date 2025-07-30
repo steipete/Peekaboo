@@ -11,17 +11,20 @@ public struct Configuration: Codable {
     public var defaults: DefaultsConfig?
     public var logging: LoggingConfig?
     public var agent: AgentConfig?
+    public var visualizer: VisualizerConfig?
 
     public init(
         aiProviders: AIProviderConfig? = nil,
         defaults: DefaultsConfig? = nil,
         logging: LoggingConfig? = nil,
-        agent: AgentConfig? = nil)
+        agent: AgentConfig? = nil,
+        visualizer: VisualizerConfig? = nil)
     {
         self.aiProviders = aiProviders
         self.defaults = defaults
         self.logging = logging
         self.agent = agent
+        self.visualizer = visualizer
     }
 
     /// Configuration for AI vision providers.
@@ -107,6 +110,73 @@ public struct Configuration: Codable {
             self.showThoughts = showThoughts
             self.temperature = temperature
             self.maxTokens = maxTokens
+        }
+    }
+    
+    /// Visualizer configuration for animation and visual feedback.
+    ///
+    /// Controls visual feedback settings for UI automation operations,
+    /// including animations, effects, and individual feature toggles.
+    public struct VisualizerConfig: Codable {
+        public var enabled: Bool?
+        public var animationSpeed: Double?
+        public var effectIntensity: Double?
+        public var soundEnabled: Bool?
+        public var keyboardTheme: String?
+        
+        // Individual animation toggles
+        public var screenshotFlashEnabled: Bool?
+        public var clickAnimationEnabled: Bool?
+        public var typeAnimationEnabled: Bool?
+        public var scrollAnimationEnabled: Bool?
+        public var mouseTrailEnabled: Bool?
+        public var swipePathEnabled: Bool?
+        public var hotkeyOverlayEnabled: Bool?
+        public var appLifecycleEnabled: Bool?
+        public var windowOperationEnabled: Bool?
+        public var menuNavigationEnabled: Bool?
+        public var dialogInteractionEnabled: Bool?
+        public var spaceTransitionEnabled: Bool?
+        public var ghostEasterEggEnabled: Bool?
+        
+        public init(
+            enabled: Bool? = nil,
+            animationSpeed: Double? = nil,
+            effectIntensity: Double? = nil,
+            soundEnabled: Bool? = nil,
+            keyboardTheme: String? = nil,
+            screenshotFlashEnabled: Bool? = nil,
+            clickAnimationEnabled: Bool? = nil,
+            typeAnimationEnabled: Bool? = nil,
+            scrollAnimationEnabled: Bool? = nil,
+            mouseTrailEnabled: Bool? = nil,
+            swipePathEnabled: Bool? = nil,
+            hotkeyOverlayEnabled: Bool? = nil,
+            appLifecycleEnabled: Bool? = nil,
+            windowOperationEnabled: Bool? = nil,
+            menuNavigationEnabled: Bool? = nil,
+            dialogInteractionEnabled: Bool? = nil,
+            spaceTransitionEnabled: Bool? = nil,
+            ghostEasterEggEnabled: Bool? = nil)
+        {
+            self.enabled = enabled
+            self.animationSpeed = animationSpeed
+            self.effectIntensity = effectIntensity
+            self.soundEnabled = soundEnabled
+            self.keyboardTheme = keyboardTheme
+            self.screenshotFlashEnabled = screenshotFlashEnabled
+            self.clickAnimationEnabled = clickAnimationEnabled
+            self.typeAnimationEnabled = typeAnimationEnabled
+            self.scrollAnimationEnabled = scrollAnimationEnabled
+            self.mouseTrailEnabled = mouseTrailEnabled
+            self.swipePathEnabled = swipePathEnabled
+            self.hotkeyOverlayEnabled = hotkeyOverlayEnabled
+            self.appLifecycleEnabled = appLifecycleEnabled
+            self.windowOperationEnabled = windowOperationEnabled
+            self.menuNavigationEnabled = menuNavigationEnabled
+            self.dialogInteractionEnabled = dialogInteractionEnabled
+            self.spaceTransitionEnabled = spaceTransitionEnabled
+            self.ghostEasterEggEnabled = ghostEasterEggEnabled
         }
     }
 }

@@ -187,10 +187,16 @@ public final class ApplicationService: ApplicationServiceProtocol {
 
             self.logger
                 .debug(
-                    "Multiple matches found for '\(identifier, privacy: .public)': \(matches.compactMap(\.localizedName), privacy: .public)")
-            self.logger
-                .debug(
-                    "Selected: \(sortedMatches[0].localizedName ?? "Unknown", privacy: .public) (PID: \(sortedMatches[0].processIdentifier, privacy: .public), Bundle: \(sortedMatches[0].bundleIdentifier ?? "none", privacy: .public), Policy: \(sortedMatches[0].activationPolicy.rawValue, privacy: .public))")
+                    "Multiple matches found for '\(identifier, privacy: .public)': \(matches.compactMap { $0.localizedName }, privacy: .public)")
+            let selected = sortedMatches[0]
+            let selectedName = selected.localizedName ?? "Unknown"
+            let selectedBundle = selected.bundleIdentifier ?? "none"
+            let selectedPID = selected.processIdentifier
+            let selectedPolicy = selected.activationPolicy.rawValue
+            
+            // Break up the expression to help the compiler
+            let message = "Selected: \(selectedName) (PID: \(selectedPID), Bundle: \(selectedBundle), Policy: \(selectedPolicy))"
+            self.logger.debug("\(message, privacy: .public)")
 
             return self.createApplicationInfo(from: sortedMatches[0])
         }
