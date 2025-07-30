@@ -28,7 +28,7 @@ struct MenuBarStatusView: View {
 
             // Main content area - unified experience
             self.unifiedContentView
-                .frame(maxHeight: 350)
+                .frame(maxHeight: 500)
 
             Divider()
             

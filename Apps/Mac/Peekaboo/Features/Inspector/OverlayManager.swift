@@ -571,6 +571,43 @@ class OverlayManager: ObservableObject {
 
         return (animationID, window)
     }
+    
+    /// Creates a full-screen animation window that spans all displays
+    func createFullScreenAnimationWindow(ignoresMouse: Bool = true) -> (UUID, NSWindow) {
+        let animationID = UUID()
+        
+        // Calculate the combined bounds of all screens
+        var combinedRect = CGRect.zero
+        for screen in NSScreen.screens {
+            if combinedRect == .zero {
+                combinedRect = screen.frame
+            } else {
+                combinedRect = combinedRect.union(screen.frame)
+            }
+        }
+        
+        let window = NSWindow(
+            contentRect: combinedRect,
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false)
+        
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.maximumWindow)) - 1) // Just below maximum
+        window.ignoresMouseEvents = ignoresMouse
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
+        window.isReleasedWhenClosed = false
+        window.hasShadow = false
+        window.animationBehavior = .none
+        window.hidesOnDeactivate = false
+        
+        self.animationWindows[animationID] = window
+        
+        self.logger.debug("Created full-screen animation window \(animationID.uuidString) spanning \(combinedRect.debugDescription)")
+        
+        return (animationID, window)
+    }
 
     /// Shows an animation window with SwiftUI content
     func showAnimation(
@@ -579,10 +616,17 @@ class OverlayManager: ObservableObject {
         duration: TimeInterval,
         fadeOut: Bool = true) -> UUID
     {
-        let (animationID, window) = self.createAnimationWindow(at: rect)
+        // Create a full-screen window instead of rect-sized
+        let (animationID, window) = self.createFullScreenAnimationWindow()
 
+        // Wrap content in a positioned view
+        let positionedContent = PositionedAnimationView(
+            targetRect: rect,
+            content: content
+        )
+        
         // Set up the SwiftUI content
-        let hostingView = NSHostingView(rootView: content)
+        let hostingView = NSHostingView(rootView: positionedContent)
         window.contentView = hostingView
 
         // Show the window

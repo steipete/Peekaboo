@@ -39,6 +39,9 @@ final class PeekabooAgent {
 
     /// Whether agent is thinking (not executing tools)
     private(set) var isThinking = false
+    
+    /// Current thinking content
+    private(set) var currentThinkingContent: String?
 
     /// Tool execution history for current task
     private(set) var toolExecutionHistory: [ToolExecution] = []
@@ -114,6 +117,7 @@ final class PeekabooAgent {
             self.lastError = nil
             self.lastFailedTask = nil
             self.isThinking = true
+            self.currentThinkingContent = nil
             self.currentTool = nil
             self.currentToolArgs = nil
             self.toolExecutionHistory = []
@@ -585,6 +589,7 @@ final class PeekabooAgent {
             // Add thinking/planning message to session
             if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 self.isThinking = true
+                self.currentThinkingContent = content
                 self.currentTool = nil
                 self.currentToolArgs = nil
 
@@ -598,6 +603,7 @@ final class PeekabooAgent {
 
         case let .toolCallStarted(name, arguments):
             self.isThinking = false
+            self.currentThinkingContent = nil
             self.currentTool = name
             self.currentToolArgs = arguments
 
