@@ -155,6 +155,20 @@ import Foundation
     ///   - reply: Callback with success status
     func showElementDetection(elements: [String: CGRect], duration: TimeInterval, reply: @escaping (Bool) -> Void)
 
+    /// Shows annotated screenshot with UI element overlays
+    /// - Parameters:
+    ///   - imageData: The screenshot image data
+    ///   - elementData: Serialized array of detected elements
+    ///   - windowBounds: The window bounds for coordinate mapping
+    ///   - duration: Display duration
+    ///   - reply: Callback with success status
+    func showAnnotatedScreenshot(
+        imageData: Data,
+        elementData: Data,
+        windowBounds: CGRect,
+        duration: TimeInterval,
+        reply: @escaping (Bool) -> Void)
+
     // MARK: - Configuration
 
     /// Checks if visual feedback is enabled

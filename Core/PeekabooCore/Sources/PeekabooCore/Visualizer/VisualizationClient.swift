@@ -317,6 +317,47 @@ public final class VisualizationClient {
         }
     }
 
+    /// Shows annotated screenshot with UI element overlays
+    public func showAnnotatedScreenshot(
+        imageData: Data,
+        elements: [DetectedElement],
+        windowBounds: CGRect,
+        duration: TimeInterval = 3.0
+    ) async -> Bool {
+        logger.info("🎯 Client: Annotated screenshot requested with \(elements.count) elements")
+        
+        guard self.isConnected else {
+            logger.warning("🎯 Client: Not connected to visualizer service")
+            return false
+        }
+        
+        guard self.isEnabled else {
+            logger.info("🎯 Client: Visual feedback disabled")
+            return false
+        }
+        
+        // Serialize elements
+        do {
+            let encoder = JSONEncoder()
+            let elementData = try encoder.encode(elements)
+            
+            return await withCheckedContinuation { continuation in
+                self.remoteProxy?.showAnnotatedScreenshot(
+                    imageData: imageData,
+                    elementData: elementData,
+                    windowBounds: windowBounds,
+                    duration: duration
+                ) { success in
+                    self.logger.info("🎯 Client: Annotated screenshot result: \(success)")
+                    continuation.resume(returning: success)
+                }
+            }
+        } catch {
+            logger.error("🎯 Client: Failed to encode elements: \(error)")
+            return false
+        }
+    }
+
     // MARK: - Settings
 
     /// Updates visualizer settings
