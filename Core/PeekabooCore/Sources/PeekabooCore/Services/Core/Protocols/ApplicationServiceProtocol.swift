@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 
 /// Protocol defining application and window management operations
+@MainActor
 public protocol ApplicationServiceProtocol: Sendable {
     /// List all running applications
     /// - Returns: Array of application information

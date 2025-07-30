@@ -5,6 +5,7 @@ import CoreGraphics
 
 /// Service that integrates the new agent architecture with PeekabooCore services
 @available(macOS 14.0, *)
+@MainActor
 public final class PeekabooAgentService: AgentServiceProtocol {
     private let services: PeekabooServices
     private let modelProvider: ModelProvider

@@ -352,10 +352,8 @@ extension PeekabooAgentService {
                 required: []
             ),
             handler: { _, context in
-                let spaces = await MainActor.run {
-                    let spaceService = SpaceManagementService()
-                    return spaceService.getAllSpaces()
-                }
+                let spaceService = SpaceManagementService()
+                let spaces = spaceService.getAllSpaces()
                 
                 if spaces.isEmpty {
                     return .success("No Spaces found")
@@ -398,30 +396,21 @@ extension PeekabooAgentService {
                     throw PeekabooError.invalidInput("space_number is required")
                 }
                 
-                // Get space info on MainActor
-                let (spaceId, spaceCount) = await MainActor.run {
-                    let spaceService = SpaceManagementService()
-                    let spaces = spaceService.getAllSpaces()
-                    
-                    guard spaceNumber > 0 && spaceNumber <= spaces.count else {
-                        return (nil as CGSSpaceID?, spaces.count)
-                    }
-                    
-                    let targetSpace = spaces[spaceNumber - 1]
-                    return (targetSpace.id, spaces.count)
+                // Get space info
+                let spaceService = SpaceManagementService()
+                let spaces = spaceService.getAllSpaces()
+                
+                guard spaceNumber > 0 && spaceNumber <= spaces.count else {
+                    throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
                 }
                 
-                guard let spaceId = spaceId else {
-                    throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaceCount)")
-                }
+                let targetSpace = spaces[spaceNumber - 1]
+                let spaceId = targetSpace.id
+                let spaceCount = spaces.count
                 
                 // Switch to space
-                await MainActor.run {
-                    let spaceService = SpaceManagementService()
-                    _ = Task {
-                        try await spaceService.switchToSpace(spaceId)
-                    }
-                }
+                let spaceServiceForSwitch = SpaceManagementService()
+                try await spaceServiceForSwitch.switchToSpace(spaceId)
                 
                 // Give it time to switch
                 try? await Task.sleep(nanoseconds: 500_000_000)
@@ -457,26 +446,22 @@ extension PeekabooAgentService {
                 }
                 
                 if bringToCurrent {
-                    try await MainActor.run {
-                        let spaceService = SpaceManagementService()
-                        try spaceService.moveWindowToCurrentSpace(windowID: CGWindowID(windowId))
-                    }
+                    let spaceService = SpaceManagementService()
+                    try spaceService.moveWindowToCurrentSpace(windowID: CGWindowID(windowId))
                     return .success("Moved window to current Space")
                 } else {
                     guard let spaceNumber = spaceNumber else {
                         throw PeekabooError.invalidInput("Either space_number or bring_to_current must be specified")
                     }
                     
-                    try await MainActor.run {
-                        let spaceService = SpaceManagementService()
-                        let spaces = spaceService.getAllSpaces()
-                        guard spaceNumber > 0 && spaceNumber <= spaces.count else {
-                            throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
-                        }
-                        
-                        let targetSpace = spaces[spaceNumber - 1]
-                        try spaceService.moveWindowToSpace(windowID: CGWindowID(windowId), spaceID: targetSpace.id)
+                    let spaceService = SpaceManagementService()
+                    let spaces = spaceService.getAllSpaces()
+                    guard spaceNumber > 0 && spaceNumber <= spaces.count else {
+                        throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
                     }
+                    
+                    let targetSpace = spaces[spaceNumber - 1]
+                    try spaceService.moveWindowToSpace(windowID: CGWindowID(windowId), spaceID: targetSpace.id)
                     
                     return .success("Moved window to Space \(spaceNumber)")
                 }

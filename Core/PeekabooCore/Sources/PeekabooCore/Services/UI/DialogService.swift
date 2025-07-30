@@ -31,32 +31,30 @@ public final class DialogService: DialogServiceProtocol {
             logger.debug("Looking for window with title: \(title)")
         }
         
-        return try await MainActor.run {
-            let element = try findDialogElement(withTitle: windowTitle)
-            
-            let title = element.title() ?? "Untitled Dialog"
-            let role = element.role() ?? "Unknown"
-            let subrole = element.subrole()
-            
-            // Check if it's a file dialog
-            let isFileDialog = title.contains("Save") || title.contains("Open") || 
-                              title.contains("Export") || title.contains("Import")
-            
-            let position = element.position() ?? .zero
-            let size = element.size() ?? .zero
-            let bounds = CGRect(origin: position, size: size)
-            
-            let info = DialogInfo(
-                title: title,
-                role: role,
-                subrole: subrole,
-                isFileDialog: isFileDialog,
-                bounds: bounds
-            )
-            
-            logger.info("✅ Found dialog: \(title), file dialog: \(isFileDialog)")
-            return info
-        }
+        let element = try findDialogElement(withTitle: windowTitle)
+        
+        let title = element.title() ?? "Untitled Dialog"
+        let role = element.role() ?? "Unknown"
+        let subrole = element.subrole()
+        
+        // Check if it's a file dialog
+        let isFileDialog = title.contains("Save") || title.contains("Open") || 
+                          title.contains("Export") || title.contains("Import")
+        
+        let position = element.position() ?? .zero
+        let size = element.size() ?? .zero
+        let bounds = CGRect(origin: position, size: size)
+        
+        let info = DialogInfo(
+            title: title,
+            role: role,
+            subrole: subrole,
+            isFileDialog: isFileDialog,
+            bounds: bounds
+        )
+        
+        logger.info("✅ Found dialog: \(title), file dialog: \(isFileDialog)")
+        return info
     }
     
     public func clickButton(buttonText: String, windowTitle: String?) async throws -> DialogActionResult {
@@ -65,36 +63,34 @@ public final class DialogService: DialogServiceProtocol {
             logger.debug("In window: \(title)")
         }
         
-        return try await MainActor.run {
-            let dialog = try findDialogElement(withTitle: windowTitle)
-            
-            // Find buttons
-            let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
-            logger.debug("Found \(buttons.count) buttons in dialog")
-            
-            // Find target button (exact match or contains)
-            guard let targetButton = buttons.first(where: { btn in
-                btn.title() == buttonText || btn.title()?.contains(buttonText) == true
-            }) else {
-                throw PeekabooError.elementNotFound("\(buttonText)")
-            }
-            
-            // Click the button
-            logger.debug("Clicking button: \(targetButton.title() ?? buttonText)")
-            try targetButton.performAction(.press)
-            
-            let result = DialogActionResult(
-                success: true,
-                action: .clickButton,
-                details: [
-                    "button": targetButton.title() ?? buttonText,
-                    "window": dialog.title() ?? "Dialog"
-                ]
-            )
-            
-            logger.info("✅ Successfully clicked button: \(targetButton.title() ?? buttonText)")
-            return result
+        let dialog = try findDialogElement(withTitle: windowTitle)
+        
+        // Find buttons
+        let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
+        logger.debug("Found \(buttons.count) buttons in dialog")
+        
+        // Find target button (exact match or contains)
+        guard let targetButton = buttons.first(where: { btn in
+            btn.title() == buttonText || btn.title()?.contains(buttonText) == true
+        }) else {
+            throw PeekabooError.elementNotFound("\(buttonText)")
         }
+        
+        // Click the button
+        logger.debug("Clicking button: \(targetButton.title() ?? buttonText)")
+        try targetButton.performAction(.press)
+        
+        let result = DialogActionResult(
+            success: true,
+            action: .clickButton,
+            details: [
+                "button": targetButton.title() ?? buttonText,
+                "window": dialog.title() ?? "Dialog"
+            ]
+        )
+        
+        logger.info("✅ Successfully clicked button: \(targetButton.title() ?? buttonText)")
+        return result
     }
     
     public func enterText(text: String, fieldIdentifier: String?, clearExisting: Bool, windowTitle: String?) async throws -> DialogActionResult {
@@ -104,9 +100,7 @@ public final class DialogService: DialogServiceProtocol {
             logger.debug("Target field: \(identifier)")
         }
         
-        // Perform all operations within MainActor context
-        return try await MainActor.run {
-            let dialog = try findDialogElement(withTitle: windowTitle)
+        let dialog = try findDialogElement(withTitle: windowTitle)
             
             // Find text fields
             let textFields = collectTextFields(from: dialog)
@@ -181,9 +175,8 @@ public final class DialogService: DialogServiceProtocol {
                 ]
             )
             
-            logger.info("✅ Successfully entered text into field")
-            return result
-        }
+        logger.info("✅ Successfully entered text into field")
+        return result
     }
     
     public func handleFileDialog(path: String?, filename: String?, actionButton: String = "Save") async throws -> DialogActionResult {
@@ -196,9 +189,7 @@ public final class DialogService: DialogServiceProtocol {
         }
         logger.debug("Action button: \(actionButton)")
         
-        // Perform all operations within MainActor context
-        return try await MainActor.run {
-            let dialog = try findFileDialogElement()
+        let dialog = try findFileDialogElement()
             var details: [String: String] = [:]
             
             // Handle path navigation
@@ -273,22 +264,19 @@ public final class DialogService: DialogServiceProtocol {
                 details: details
             )
             
-            logger.info("✅ Successfully handled file dialog")
-            return result
-        }
+        logger.info("✅ Successfully handled file dialog")
+        return result
     }
     
     public func dismissDialog(force: Bool, windowTitle: String?) async throws -> DialogActionResult {
         logger.info("Dismissing dialog (force: \(force))")
         
         if force {
-            await MainActor.run {
-                logger.debug("Force dismissing with Escape key")
-                
-                // Press Escape
-                let escape = CGEvent(keyboardEventSource: nil, virtualKey: 0x35, keyDown: true) // Escape
-                escape?.post(tap: .cghidEventTap)
-            }
+            logger.debug("Force dismissing with Escape key")
+            
+            // Press Escape
+            let escape = CGEvent(keyboardEventSource: nil, virtualKey: 0x35, keyDown: true) // Escape
+            escape?.post(tap: .cghidEventTap)
             
             logger.info("✅ Dialog dismissed with Escape key")
             return DialogActionResult(
@@ -297,8 +285,7 @@ public final class DialogService: DialogServiceProtocol {
                 details: ["method": "escape"]
             )
         } else {
-            return try await MainActor.run {
-                logger.debug("Looking for dismiss button")
+            logger.debug("Looking for dismiss button")
                 
                 // Find and click dismiss button
                 let dialog = try findDialogElement(withTitle: windowTitle)
@@ -327,8 +314,7 @@ public final class DialogService: DialogServiceProtocol {
                 }
                 
                 logger.error("No dismiss button found in dialog")
-                throw PeekabooError.operationError(message: "No dismiss button found in dialog.")
-            }
+            throw PeekabooError.operationError(message: "No dismiss button found in dialog.")
         }
     }
     
@@ -341,9 +327,8 @@ public final class DialogService: DialogServiceProtocol {
         // Get dialog info first (this is already properly structured)
         let dialogInfo = try await findActiveDialog(windowTitle: windowTitle)
         
-        // Then collect all elements within MainActor context
-        return try await MainActor.run {
-            let dialog = try findDialogElement(withTitle: windowTitle)
+        // Collect all elements
+        let dialog = try findDialogElement(withTitle: windowTitle)
             
             // Collect buttons
             let axButtons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
@@ -404,9 +389,8 @@ public final class DialogService: DialogServiceProtocol {
                 otherElements: otherElements
             )
             
-            logger.info("✅ Listed \(buttons.count) buttons, \(textFields.count) fields, \(staticTexts.count) texts")
-            return elements
-        }
+        logger.info("✅ Listed \(buttons.count) buttons, \(textFields.count) fields, \(staticTexts.count) texts")
+        return elements
     }
     
     // MARK: - Private Helpers

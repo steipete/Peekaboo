@@ -203,38 +203,28 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         switch target {
         case .application(let appIdentifier):
             let app = try await applicationService.findApplication(identifier: appIdentifier)
-            return try await MainActor.run {
-                let window = try findFirstWindow(for: app)
-                return operation(window)
-            }
+            let window = try findFirstWindow(for: app)
+            return operation(window)
             
         case .title(let titleSubstring):
             let apps = try await applicationService.listApplications()
-            return try await MainActor.run {
-                let window = try findWindowByTitle(titleSubstring, in: apps)
-                return operation(window)
-            }
+            let window = try findWindowByTitle(titleSubstring, in: apps)
+            return operation(window)
             
         case .index(let appIdentifier, let index):
             let app = try await applicationService.findApplication(identifier: appIdentifier)
-            return try await MainActor.run {
-                let window = try findWindowByIndex(for: app, index: index)
-                return operation(window)
-            }
+            let window = try findWindowByIndex(for: app, index: index)
+            return operation(window)
             
         case .frontmost:
             let frontmostApp = try await applicationService.getFrontmostApplication()
-            return try await MainActor.run {
-                let window = try findFirstWindow(for: frontmostApp)
-                return operation(window)
-            }
+            let window = try findFirstWindow(for: frontmostApp)
+            return operation(window)
             
         case .windowId(let id):
             let apps = try await applicationService.listApplications()
-            return try await MainActor.run {
-                let window = try findWindowById(id, in: apps)
-                return operation(window)
-            }
+            let window = try findWindowById(id, in: apps)
+            return operation(window)
         }
     }
     

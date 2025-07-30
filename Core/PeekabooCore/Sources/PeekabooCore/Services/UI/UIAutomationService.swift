@@ -113,9 +113,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     
     public func hasAccessibilityPermission() async -> Bool {
         logger.debug("Checking accessibility permission")
-        return await MainActor.run {
-            AXIsProcessTrusted()
-        }
+        return AXIsProcessTrusted()
     }
     
     @MainActor
@@ -209,9 +207,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
                 }
                 
                 // Try direct AX search
-                let elementInfo = await MainActor.run { () -> (element: Element, frame: CGRect, label: String?)? in
-                    findElementByAccessibility(matching: query)
-                }
+                let elementInfo = findElementByAccessibility(matching: query)
                 
                 if elementInfo != nil {
                     let waitTime = Date().timeIntervalSince(startTime)

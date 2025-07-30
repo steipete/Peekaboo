@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 
 /// Protocol defining window management operations
+@MainActor
 public protocol WindowManagementServiceProtocol: Sendable {
     /// Close a window
     /// - Parameters:

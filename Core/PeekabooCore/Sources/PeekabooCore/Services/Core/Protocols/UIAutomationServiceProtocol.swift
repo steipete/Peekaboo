@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 
 /// Protocol defining UI automation operations
+@MainActor
 public protocol UIAutomationServiceProtocol: Sendable {
     /// Detect UI elements in a screenshot
     /// - Parameters:
@@ -88,7 +89,6 @@ public protocol UIAutomationServiceProtocol: Sendable {
     
     /// Get information about the currently focused UI element
     /// - Returns: Information about the focused element, or nil if no element has focus
-    @MainActor
     func getFocusedElement() -> UIFocusInfo?
 }
 

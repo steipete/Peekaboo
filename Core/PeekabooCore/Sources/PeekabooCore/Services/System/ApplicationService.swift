@@ -14,10 +14,8 @@ public final class ApplicationService: ApplicationServiceProtocol {
     public func listApplications() async throws -> [ServiceApplicationInfo] {
         logger.info("Listing all running applications")
         
-        // Ensure NSWorkspace call happens on main thread
-        let runningApps = await MainActor.run {
-            NSWorkspace.shared.runningApplications
-        }
+        // Get running applications
+        let runningApps = NSWorkspace.shared.runningApplications
         
         logger.debug("Found \(runningApps.count) running processes")
         
@@ -48,19 +46,15 @@ public final class ApplicationService: ApplicationServiceProtocol {
     public func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
         logger.info("Finding application with identifier: \(identifier, privacy: .public)")
         
-        // Ensure NSWorkspace call happens on main thread
-        let runningApps = await MainActor.run {
-            NSWorkspace.shared.runningApplications
-        }
+        // Get running applications
+        let runningApps = NSWorkspace.shared.runningApplications
         
         // Check for PID format first
         if identifier.hasPrefix("PID:") {
             let pidString = String(identifier.dropFirst(4))
             if let pid = Int32(pidString) {
-                // NSRunningApplication init must happen on main thread
-                let app = await MainActor.run {
-                    NSRunningApplication(processIdentifier: pid)
-                }
+                // Create NSRunningApplication
+                let app = NSRunningApplication(processIdentifier: pid)
                 if let app = app, !app.isTerminated {
                     logger.debug("Found app by PID: \(pid)")
                     return createApplicationInfo(from: app)
@@ -184,10 +178,8 @@ public final class ApplicationService: ApplicationServiceProtocol {
     public func getFrontmostApplication() async throws -> ServiceApplicationInfo {
         logger.info("Getting frontmost application")
         
-        // Ensure NSWorkspace call happens on main thread
-        guard let frontmostApp = await MainActor.run(body: {
-            NSWorkspace.shared.frontmostApplication
-        }) else {
+        // Get frontmost application
+        guard let frontmostApp = NSWorkspace.shared.frontmostApplication else {
             logger.error("No frontmost application found")
             throw PeekabooError.appNotFound("frontmost")
         }
@@ -223,9 +215,7 @@ public final class ApplicationService: ApplicationServiceProtocol {
         // Try to launch by bundle ID
         // Find the app URL
         let appURL: URL
-        if let url = await MainActor.run(body: {
-            NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier)
-        }) {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier) {
             logger.debug("Found app by bundle ID at: \(url.path)")
             appURL = url
         } else if let url = findApplicationByName(identifier) {
@@ -254,10 +244,8 @@ public final class ApplicationService: ApplicationServiceProtocol {
         logger.info("Activating application: \(identifier)")
         let app = try await findApplication(identifier: identifier)
         
-        // NSRunningApplication init must happen on main thread
-        let runningApp = await MainActor.run {
-            NSRunningApplication(processIdentifier: app.processIdentifier)
-        }
+        // Create NSRunningApplication
+        let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier)
         guard let runningApp = runningApp else {
             throw PeekabooError.operationError(
                 message: "Failed to activate application: Could not find running application process"
@@ -282,10 +270,8 @@ public final class ApplicationService: ApplicationServiceProtocol {
         logger.info("Quitting application: \(identifier) (force: \(force))")
         let app = try await findApplication(identifier: identifier)
         
-        // NSRunningApplication init must happen on main thread
-        let runningApp = await MainActor.run {
-            NSRunningApplication(processIdentifier: app.processIdentifier)
-        }
+        // Create NSRunningApplication
+        let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier)
         guard let runningApp = runningApp else {
             throw PeekabooError.appNotFound(identifier)
         }
@@ -319,14 +305,10 @@ public final class ApplicationService: ApplicationServiceProtocol {
             _ = error.asPeekabooError(context: "AX hide action failed for \(app.name)")
             // Fallback to NSRunningApplication method
             logger.debug("Using NSRunningApplication fallback")
-            // NSRunningApplication init must happen on main thread
-            let runningApp = await MainActor.run {
-                NSRunningApplication(processIdentifier: app.processIdentifier)
-            }
+            // Create NSRunningApplication and hide it
+            let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier)
             if let runningApp = runningApp {
-                await MainActor.run {
-                    runningApp.hide()
-                }
+                runningApp.hide()
                 logger.debug("Hidden via NSRunningApplication: \(app.name)")
             }
         }
@@ -347,14 +329,10 @@ public final class ApplicationService: ApplicationServiceProtocol {
             _ = error.asPeekabooError(context: "AX unhide action failed for \(app.name)")
             // Fallback to activating the app if unhide fails
             logger.debug("Using activate fallback")
-            // NSRunningApplication init must happen on main thread
-            let runningApp = await MainActor.run {
-                NSRunningApplication(processIdentifier: app.processIdentifier)
-            }
+            // Create NSRunningApplication and activate it
+            let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier)
             if let runningApp = runningApp {
-                await MainActor.run {
-                    runningApp.activate()
-                }
+                runningApp.activate()
                 logger.debug("Activated as fallback: \(app.name)")
             }
         }
@@ -376,19 +354,17 @@ public final class ApplicationService: ApplicationServiceProtocol {
             _ = error.asPeekabooError(context: "AX hide others action failed")
             // Fallback: hide each app individually
             logger.debug("Hiding apps individually")
-            let (_, hiddenCount) = await MainActor.run {
-                let apps = NSWorkspace.shared.runningApplications
-                var count = 0
+            let apps = NSWorkspace.shared.runningApplications
+            var hiddenCount = 0
                 for runningApp in apps {
                     if runningApp.processIdentifier != app.processIdentifier &&
                        runningApp.activationPolicy == .regular &&
                        runningApp.bundleIdentifier != "com.apple.finder" {
                         runningApp.hide()
-                        count += 1
+                        hiddenCount += 1
                     }
                 }
-                return (apps, count)
-            }
+            // Return value already computed
             logger.debug("Hidden \(hiddenCount) other applications")
         }
     }
@@ -406,17 +382,15 @@ public final class ApplicationService: ApplicationServiceProtocol {
             _ = error.asPeekabooError(context: "AX show all action failed")
             // Fallback: unhide each hidden app
             logger.debug("Unhiding apps individually")
-            let unhiddenCount = await MainActor.run {
-                let apps = NSWorkspace.shared.runningApplications
-                var count = 0
+            let apps = NSWorkspace.shared.runningApplications
+            var unhiddenCount = 0
                 for runningApp in apps {
                     if runningApp.isHidden && runningApp.activationPolicy == .regular {
                         runningApp.unhide()
-                        count += 1
+                        unhiddenCount += 1
                     }
                 }
-                return count
-            }
+            // Return value already computed
             logger.debug("Unhidden \(unhiddenCount) applications")
         }
     }
@@ -536,10 +510,8 @@ public final class ApplicationService: ApplicationServiceProtocol {
         var appInfo = try await findApplication(identifier: identifier)
         
         // Now query window count only for this specific app
-        let windowCount = await MainActor.run {
-            let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier)
-            return runningApp.map { getWindowCount(for: $0) } ?? 0
-        }
+        let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier)
+        let windowCount = runningApp.map { getWindowCount(for: $0) } ?? 0
         
         appInfo.windowCount = windowCount
         return appInfo

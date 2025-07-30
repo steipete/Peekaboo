@@ -22,19 +22,18 @@ public final class DockService: DockServiceProtocol {
     public init() {}
     
     public func listDockItems(includeAll: Bool = false) async throws -> [DockItem] {
-        return try await MainActor.run {
-            // Find Dock application
-            guard let dock = findDockApplication() else {
-                throw PeekabooError.operationError(message: "Dock application not found or not running.")
-            }
-            
-            // Get Dock items list
-            guard let dockList = dock.children()?.first(where: { $0.role() == "AXList" }) else {
-                throw PeekabooError.operationError(message: "Dock item list not found.")
-            }
-            
-            let dockElements = dockList.children() ?? []
-            var items: [DockItem] = []
+        // Find Dock application
+        guard let dock = findDockApplication() else {
+            throw PeekabooError.operationError(message: "Dock application not found or not running.")
+        }
+        
+        // Get Dock items list
+        guard let dockList = dock.children()?.first(where: { $0.role() == "AXList" }) else {
+            throw PeekabooError.operationError(message: "Dock item list not found.")
+        }
+        
+        let dockElements = dockList.children() ?? []
+        var items: [DockItem] = []
             
             for (index, element) in dockElements.enumerated() {
                 let role = element.role() ?? ""
@@ -94,21 +93,16 @@ public final class DockService: DockServiceProtocol {
                 items.append(item)
             }
             
-            return items
-        }
+        return items
     }
     
     public func launchFromDock(appName: String) async throws {
-        // Find the Dock item on MainActor
-        let dockElement = try await MainActor.run {
-            try findDockElement(appName: appName)
-        }
+        // Find the Dock item
+        let dockElement = try findDockElement(appName: appName)
         
         // Click the item to launch
         do {
-            _ = try await MainActor.run {
-                try dockElement.performAction(.press)
-            }
+            try dockElement.performAction(.press)
         } catch {
             throw PeekabooError.operationError(message: "Failed to launch '\(appName)' from Dock.")
         }
@@ -118,81 +112,75 @@ public final class DockService: DockServiceProtocol {
     }
     
     public func rightClickDockItem(appName: String, menuItem: String?) async throws {
-        // Find the Dock item and get position on MainActor
-        let (dockElement, center) = try await MainActor.run { () -> (Element, CGPoint) in
-            let element = try findDockElement(appName: appName)
-            
-            // Get item position and size
-            guard let position = element.position(),
-                  let size = element.size() else {
-                throw PeekabooError.operationError(message: "Could not determine Dock item position for '\(appName)'.")
-            }
-            
-            let centerPoint = CGPoint(
-                x: position.x + size.width / 2,
-                y: position.y + size.height / 2
-            )
-            
-            return (element, centerPoint)
+        // Find the Dock item and get position
+        let element = try findDockElement(appName: appName)
+        
+        // Get item position and size
+        guard let position = element.position(),
+              let size = element.size() else {
+            throw PeekabooError.operationError(message: "Could not determine Dock item position for '\(appName)'.")
         }
         
+        let center = CGPoint(
+            x: position.x + size.width / 2,
+            y: position.y + size.height / 2
+        )
+        
+        let dockElement = element
+        
         // Perform right-click
-        await MainActor.run {
-            let rightMouseDown = CGEvent(
-                mouseEventSource: nil,
-                mouseType: .rightMouseDown,
-                mouseCursorPosition: center,
-                mouseButton: .right
-            )
-            
-            let rightMouseUp = CGEvent(
-                mouseEventSource: nil,
-                mouseType: .rightMouseUp,
-                mouseCursorPosition: center,
-                mouseButton: .right
-            )
-            
-            rightMouseDown?.post(tap: .cghidEventTap)
-            usleep(50000) // 50ms
-            rightMouseUp?.post(tap: .cghidEventTap)
-        }
+        let rightMouseDown = CGEvent(
+            mouseEventSource: nil,
+            mouseType: .rightMouseDown,
+            mouseCursorPosition: center,
+            mouseButton: .right
+        )
+        
+        let rightMouseUp = CGEvent(
+            mouseEventSource: nil,
+            mouseType: .rightMouseUp,
+            mouseCursorPosition: center,
+            mouseButton: .right
+        )
+        
+        rightMouseDown?.post(tap: .cghidEventTap)
+        usleep(50000) // 50ms
+        rightMouseUp?.post(tap: .cghidEventTap)
         
         // If menu item specified, wait for menu and click it
         if let targetMenuItem = menuItem {
             // Wait for context menu to appear
             try await Task.sleep(nanoseconds: 300_000_000) // 300ms
             
-            // Find and click the menu item on MainActor
-            try await MainActor.run {
-                // Find the menu - it might be a child of the dock item or a system-wide menu
-                var menu: Element? = nil
-                
-                // First check if menu is a child of the dock item
-                if let childMenu = dockElement.children()?.first(where: { $0.role() == "AXMenu" }) {
-                    menu = childMenu
-                } else {
-                    // Look for system-wide menus that might have appeared
-                    let systemWide = Element.systemWide()
-                    if let systemMenus = systemWide.children()?.filter({ $0.role() == "AXMenu" }),
-                       let contextMenu = systemMenus.first {
-                        menu = contextMenu
-                    }
+            // Find and click the menu item
+            // Find the menu - it might be a child of the dock item or a system-wide menu
+            var menu: Element? = nil
+            
+            // First check if menu is a child of the dock item
+            if let childMenu = dockElement.children()?.first(where: { $0.role() == "AXMenu" }) {
+                menu = childMenu
+            } else {
+                // Look for system-wide menus that might have appeared
+                let systemWide = Element.systemWide()
+                if let systemMenus = systemWide.children()?.filter({ $0.role() == "AXMenu" }),
+                   let contextMenu = systemMenus.first {
+                    menu = contextMenu
+                }
+            }
+            
+            if let foundMenu = menu {
+                let menuItems = foundMenu.children() ?? []
+                guard let targetItem = menuItems.first(where: { item in
+                    item.title() == targetMenuItem ||
+                    item.title()?.contains(targetMenuItem) == true
+                }) else {
+                    throw PeekabooError.menuNotFound("\(targetMenuItem)")
                 }
                 
-                if let foundMenu = menu {
-                    let menuItems = foundMenu.children() ?? []
-                    guard let targetItem = menuItems.first(where: { item in
-                        item.title() == targetMenuItem ||
-                        item.title()?.contains(targetMenuItem) == true
-                    }) else {
-                        throw PeekabooError.menuNotFound("\(targetMenuItem)")
-                    }
-                    
-                    try targetItem.performAction(.press)
-                } else {
-                    // If we can't find the menu, throw an error
-                    throw PeekabooError.menuNotFound("\(appName)")
-                }
+                try targetItem.performAction(.press)
+            } else {
+                // If we can't find the menu, throw an error
+                throw PeekabooError.menuNotFound("\(appName)")
             }
         }
     }

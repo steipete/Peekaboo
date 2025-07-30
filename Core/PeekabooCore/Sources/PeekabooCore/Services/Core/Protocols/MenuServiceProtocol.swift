@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 
 /// Protocol defining menu interaction operations
+@MainActor
 public protocol MenuServiceProtocol: Sendable {
     /// List all menus and items for an application
     /// - Parameter appIdentifier: Application name or bundle ID

@@ -9,6 +9,7 @@ import AppKit
 private let USE_MODERN_SCREENCAPTURE_API = ProcessInfo.processInfo.environment["PEEKABOO_USE_MODERN_CAPTURE"] != "false"
 
 /// Default implementation of screen capture operations
+@MainActor
 public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     private let logger: CategoryLogger
     

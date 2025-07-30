@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 
 /// Protocol defining Dock interaction operations
+@MainActor
 public protocol DockServiceProtocol: Sendable {
     /// List all items in the Dock
     /// - Parameter includeAll: Include separators and spacers

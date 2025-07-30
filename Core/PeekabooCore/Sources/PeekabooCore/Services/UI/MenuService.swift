@@ -16,34 +16,32 @@ public final class MenuService: MenuServiceProtocol {
     public func listMenus(for appIdentifier: String) async throws -> MenuStructure {
         let appInfo = try await applicationService.findApplication(identifier: appIdentifier)
         
-        return try await MainActor.run {
-            // Get AX element for the application
-            let axApp = AXUIElementCreateApplication(appInfo.processIdentifier)
-            let appElement = Element(axApp)
-            
-            // Get menu bar
-            guard let menuBar = appElement.menuBar() else {
-                var context = ErrorContext()
-                context.add("application", appInfo.name)
-                throw NotFoundError(
-                    code: .menuNotFound,
-                    userMessage: "Menu bar not found for application '\(appInfo.name)'",
-                    context: context.build()
-                )
-            }
-            
-            // Collect all menus
-            var menus: [Menu] = []
-            
-            let topLevelMenus = menuBar.children() ?? []
-            for menuBarItem in topLevelMenus {
-                if let menu = extractMenu(from: menuBarItem, parentPath: "") {
-                    menus.append(menu)
-                }
-            }
-            
-            return MenuStructure(application: appInfo, menus: menus)
+        // Get AX element for the application
+        let axApp = AXUIElementCreateApplication(appInfo.processIdentifier)
+        let appElement = Element(axApp)
+        
+        // Get menu bar
+        guard let menuBar = appElement.menuBar() else {
+            var context = ErrorContext()
+            context.add("application", appInfo.name)
+            throw NotFoundError(
+                code: .menuNotFound,
+                userMessage: "Menu bar not found for application '\(appInfo.name)'",
+                context: context.build()
+            )
         }
+        
+        // Collect all menus
+        var menus: [Menu] = []
+        
+        let topLevelMenus = menuBar.children() ?? []
+        for menuBarItem in topLevelMenus {
+            if let menu = extractMenu(from: menuBarItem, parentPath: "") {
+                menus.append(menu)
+            }
+        }
+        
+        return MenuStructure(application: appInfo, menus: menus)
     }
     
     public func listFrontmostMenus() async throws -> MenuStructure {
@@ -57,89 +55,84 @@ public final class MenuService: MenuServiceProtocol {
         // Parse menu path
         let pathComponents = itemPath.split(separator: ">").map { $0.trimmingCharacters(in: .whitespaces) }
         
-        // Perform all menu operations within MainActor context
-        try await MainActor.run {
-            // Get AX element for the application
-            let axApp = AXUIElementCreateApplication(appInfo.processIdentifier)
-            let appElement = Element(axApp)
+        // Get AX element for the application
+        let axApp = AXUIElementCreateApplication(appInfo.processIdentifier)
+        let appElement = Element(axApp)
+        
+        guard let menuBar = appElement.menuBar() else {
+            var context = ErrorContext()
+            context.add("application", appInfo.name)
+            throw NotFoundError(
+                code: .menuNotFound,
+                userMessage: "Menu bar not found for application '\(appInfo.name)'",
+                context: context.build()
+            )
+        }
+        
+        // Navigate menu hierarchy
+        var currentElement: Element = menuBar
+        
+        for (index, component) in pathComponents.enumerated() {
+            // Get children of current menu
+            let children = currentElement.children() ?? []
             
-            guard let menuBar = appElement.menuBar() else {
+            // Find matching menu item
+            guard let menuItem = findMenuItem(named: component, in: children) else {
                 var context = ErrorContext()
+                context.add("menuItem", component)
+                context.add("path", itemPath)
                 context.add("application", appInfo.name)
                 throw NotFoundError(
                     code: .menuNotFound,
-                    userMessage: "Menu bar not found for application '\(appInfo.name)'",
+                    userMessage: "Menu item '\(component)' not found in path '\(itemPath)'",
                     context: context.build()
                 )
             }
             
-            // Navigate menu hierarchy
-            var currentElement: Element = menuBar
-            
-            for (index, component) in pathComponents.enumerated() {
-                // Get children of current menu
-                let children = currentElement.children() ?? []
+            // If this is the last component, click it
+            if index == pathComponents.count - 1 {
+                do {
+                    try menuItem.performAction(Attribute<String>("AXPress"))
+                } catch {
+                    throw OperationError.interactionFailed(
+                        action: "click menu item",
+                        reason: "Failed to click menu item '\(component)'"
+                    )
+                }
+            } else {
+                // Otherwise, open the submenu
+                do {
+                    try menuItem.performAction(Attribute<String>("AXPress"))
+                } catch {
+                    throw OperationError.interactionFailed(
+                        action: "open submenu",
+                        reason: "Failed to open submenu '\(component)'"
+                    )
+                }
                 
-                // Find matching menu item
-                guard let menuItem = findMenuItem(named: component, in: children) else {
+                // Wait for submenu to appear
+                if pathComponents.count > 1 {
+                    try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000)) // 50ms
+                }
+                
+                // Get the submenu
+                guard let submenuChildren = menuItem.children(),
+                      let submenu = submenuChildren.first else {
                     var context = ErrorContext()
-                    context.add("menuItem", component)
+                    context.add("submenu", component)
                     context.add("path", itemPath)
                     context.add("application", appInfo.name)
                     throw NotFoundError(
                         code: .menuNotFound,
-                        userMessage: "Menu item '\(component)' not found in path '\(itemPath)'",
+                        userMessage: "Submenu '\(component)' not found",
                         context: context.build()
                     )
                 }
                 
-                // If this is the last component, click it
-                if index == pathComponents.count - 1 {
-                    do {
-                        try menuItem.performAction(Attribute<String>("AXPress"))
-                    } catch {
-                        throw OperationError.interactionFailed(
-                            action: "click menu item",
-                            reason: "Failed to click menu item '\(component)'"
-                        )
-                    }
-                } else {
-                    // Otherwise, open the submenu
-                    do {
-                        try menuItem.performAction(Attribute<String>("AXPress"))
-                    } catch {
-                        throw OperationError.interactionFailed(
-                            action: "open submenu",
-                            reason: "Failed to open submenu '\(component)'"
-                        )
-                    }
-                    
-                    // Note: We can't use Task.sleep inside MainActor.run
-                    // The submenu should be available immediately after clicking
-                    
-                    // Get the submenu
-                    guard let submenuChildren = menuItem.children(),
-                          let submenu = submenuChildren.first else {
-                        var context = ErrorContext()
-                        context.add("submenu", component)
-                        context.add("path", itemPath)
-                        context.add("application", appInfo.name)
-                        throw NotFoundError(
-                            code: .menuNotFound,
-                            userMessage: "Submenu '\(component)' not found",
-                            context: context.build()
-                        )
-                    }
-                    
-                    currentElement = submenu
-                }
+                currentElement = submenu
             }
         }
         
-        // If we need a delay between menu operations, do it outside MainActor
-        if pathComponents.count > 1 {
-            try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000)) // 50ms
-        }
     }
     
     /// Click a menu item by searching for it recursively in the menu hierarchy
@@ -191,85 +184,81 @@ public final class MenuService: MenuServiceProtocol {
     }
     
     public func clickMenuExtra(title: String) async throws {
-        try await MainActor.run {
-            // Get system-wide element
-            let systemWide = Element.systemWide()
-            
-            // Find menu bar
-            guard let menuBar = systemWide.menuBar() else {
-                throw PeekabooError.operationError(message: "System menu bar not found")
-            }
-            
-            // Find menu extras (they're typically in a specific group)
-            let menuBarItems = menuBar.children() ?? []
-            
-            // Menu extras are usually in the last group
-            guard let menuExtrasGroup = menuBarItems.last(where: { $0.role() == "AXGroup" }) else {
-                var context = ErrorContext()
-                context.add("menuExtra", title)
-                throw NotFoundError(
-                    code: .menuNotFound,
-                    userMessage: "Menu extras group not found in system menu bar",
-                    context: context.build()
-                )
-            }
-            
-            // Find the specific menu extra
-            let extras = menuExtrasGroup.children() ?? []
-            guard let menuExtra = extras.first(where: { element in
-                element.title() == title ||
-                element.help() == title ||
-                element.descriptionText()?.contains(title) == true
-            }) else {
-                var context = ErrorContext()
-                context.add("menuExtra", title)
-                context.add("availableExtras", extras.count)
-                throw NotFoundError(
-                    code: .menuNotFound,
-                    userMessage: "Menu extra '\(title)' not found in system menu bar",
-                    context: context.build()
-                )
-            }
-            
-            // Click the menu extra with retry logic
-            do {
-                try menuExtra.performAction(.press)
-            } catch {
-                throw OperationError.interactionFailed(
-                    action: "click menu extra",
-                    reason: "Failed to click menu extra '\(title)'"
-                )
-            }
+        // Get system-wide element
+        let systemWide = Element.systemWide()
+        
+        // Find menu bar
+        guard let menuBar = systemWide.menuBar() else {
+            throw PeekabooError.operationError(message: "System menu bar not found")
+        }
+        
+        // Find menu extras (they're typically in a specific group)
+        let menuBarItems = menuBar.children() ?? []
+        
+        // Menu extras are usually in the last group
+        guard let menuExtrasGroup = menuBarItems.last(where: { $0.role() == "AXGroup" }) else {
+            var context = ErrorContext()
+            context.add("menuExtra", title)
+            throw NotFoundError(
+                code: .menuNotFound,
+                userMessage: "Menu extras group not found in system menu bar",
+                context: context.build()
+            )
+        }
+        
+        // Find the specific menu extra
+        let extras = menuExtrasGroup.children() ?? []
+        guard let menuExtra = extras.first(where: { element in
+            element.title() == title ||
+            element.help() == title ||
+            element.descriptionText()?.contains(title) == true
+        }) else {
+            var context = ErrorContext()
+            context.add("menuExtra", title)
+            context.add("availableExtras", extras.count)
+            throw NotFoundError(
+                code: .menuNotFound,
+                userMessage: "Menu extra '\(title)' not found in system menu bar",
+                context: context.build()
+            )
+        }
+        
+        // Click the menu extra with retry logic
+        do {
+            try menuExtra.performAction(.press)
+        } catch {
+            throw OperationError.interactionFailed(
+                action: "click menu extra",
+                reason: "Failed to click menu extra '\(title)'"
+            )
         }
     }
     
     public func listMenuExtras() async throws -> [MenuExtraInfo] {
-        return await MainActor.run {
-            var allExtras: [MenuExtraInfo] = []
-            
-            // First, try the window-based approach for comprehensive detection
-            let windowExtras = self.getMenuBarItemsViaWindows()
-            allExtras.append(contentsOf: windowExtras)
-            
-            // Then supplement with AX-based detection for any missed items
-            let axExtras = self.getMenuBarItemsViaAccessibility()
-            
-            // Merge results, avoiding duplicates based on position
-            for axExtra in axExtras {
-                let isDuplicate = allExtras.contains { extra in
-                    abs(extra.position.x - axExtra.position.x) < 5 &&
-                    abs(extra.position.y - axExtra.position.y) < 5
-                }
-                if !isDuplicate {
-                    allExtras.append(axExtra)
-                }
+        var allExtras: [MenuExtraInfo] = []
+        
+        // First, try the window-based approach for comprehensive detection
+        let windowExtras = self.getMenuBarItemsViaWindows()
+        allExtras.append(contentsOf: windowExtras)
+        
+        // Then supplement with AX-based detection for any missed items
+        let axExtras = self.getMenuBarItemsViaAccessibility()
+        
+        // Merge results, avoiding duplicates based on position
+        for axExtra in axExtras {
+            let isDuplicate = allExtras.contains { extra in
+                abs(extra.position.x - axExtra.position.x) < 5 &&
+                abs(extra.position.y - axExtra.position.y) < 5
             }
-            
-            // Sort by X position (left to right)
-            allExtras.sort { $0.position.x < $1.position.x }
-            
-            return allExtras
+            if !isDuplicate {
+                allExtras.append(axExtra)
+            }
         }
+        
+        // Sort by X position (left to right)
+        allExtras.sort { $0.position.x < $1.position.x }
+        
+        return allExtras
     }
     
     // MARK: - Private Helpers

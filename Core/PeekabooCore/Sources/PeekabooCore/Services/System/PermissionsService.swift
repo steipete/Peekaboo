@@ -5,6 +5,7 @@ import ScreenCaptureKit
 import os.log
 
 /// Service for checking and managing macOS system permissions
+@MainActor
 public final class PermissionsService: Sendable {
     
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "PermissionsService")

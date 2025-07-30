@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 
 /// Protocol defining screen capture operations
+@MainActor
 public protocol ScreenCaptureServiceProtocol: Sendable {
     /// Capture the entire screen or a specific display
     /// - Parameter displayIndex: Optional display index (0-based). If nil, captures main display

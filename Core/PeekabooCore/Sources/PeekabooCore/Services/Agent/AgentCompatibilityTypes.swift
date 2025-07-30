@@ -26,16 +26,12 @@ public protocol AgentEventDelegate: AnyObject {
 extension AgentEventDelegate {
     /// Helper method for backward compatibility
     func agentDidStart() async {
-        await MainActor.run {
-            self.agentDidEmitEvent(.started(task: ""))
-        }
+        self.agentDidEmitEvent(.started(task: ""))
     }
     
     /// Helper method for backward compatibility
     func agentDidReceiveChunk(_ chunk: String) async {
-        await MainActor.run {
-            self.agentDidEmitEvent(.assistantMessage(content: chunk))
-        }
+        self.agentDidEmitEvent(.assistantMessage(content: chunk))
     }
     
 }

@@ -4,7 +4,8 @@ import AXorcist
 
 /// Implementation of ProcessServiceProtocol for executing Peekaboo scripts
 @available(macOS 14.0, *)
-public actor ProcessService: ProcessServiceProtocol {
+@MainActor
+public final class ProcessService: ProcessServiceProtocol {
     private let applicationService: ApplicationServiceProtocol
     private let screenCaptureService: ScreenCaptureServiceProtocol
     private let sessionManager: SessionManagerProtocol

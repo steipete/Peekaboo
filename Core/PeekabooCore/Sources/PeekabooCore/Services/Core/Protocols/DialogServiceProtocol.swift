@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 
 /// Protocol defining dialog and alert management operations
+@MainActor
 public protocol DialogServiceProtocol: Sendable {
     /// Find and return information about the active dialog
     /// - Parameter windowTitle: Optional specific window title to target
