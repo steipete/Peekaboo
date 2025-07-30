@@ -567,7 +567,7 @@ class OverlayManager: ObservableObject {
 
         self.animationWindows[animationID] = window
 
-        self.logger.debug("Created animation window \(animationID.uuidString) at \(rect)")
+        self.logger.debug("Created animation window \(animationID.uuidString) at \(rect.debugDescription)")
 
         return (animationID, window)
     }

@@ -196,7 +196,7 @@ struct TypeAnimationView: View {
                 // Release the key
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                     withAnimation(.easeOut(duration: 0.05)) {
-                        self.pressedKeys.remove(key.lowercased())
+                        _ = self.pressedKeys.remove(key.lowercased())
                     }
                 }
 
