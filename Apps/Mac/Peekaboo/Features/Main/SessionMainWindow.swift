@@ -721,9 +721,39 @@ struct DetailedMessageRow: View {
             HStack(alignment: .top, spacing: 12) {
                 // Avatar or Tool Icon
                 if isToolMessage {
-                    // For tool messages, show empty space to align with other messages
-                    Color.clear
-                        .frame(width: 32, height: 32)
+                    // For tool messages, show the tool icon in the avatar position
+                    let toolName = extractToolName(from: message.content)
+                    let toolStatus = determineToolStatus(from: message)
+                    
+                    EnhancedToolIcon(
+                        toolName: toolName,
+                        status: toolStatus
+                    )
+                    .font(.system(size: 20))  // Larger icon
+                    .frame(width: 32, height: 32)
+                    .background(Color.blue.opacity(0.1))
+                    .clipShape(Circle())
+                } else if isThinkingMessage {
+                    // Special thinking icon with animation
+                    ZStack {
+                        Image(systemName: "brain")
+                            .font(.title3)
+                            .foregroundColor(.purple)
+                            .frame(width: 32, height: 32)
+                            .background(Color.purple.opacity(0.1))
+                            .clipShape(Circle())
+                        
+                        // Animated thinking indicator
+                        Circle()
+                            .stroke(Color.purple, lineWidth: 2)
+                            .frame(width: 36, height: 36)
+                            .rotationEffect(.degrees(360))
+                            .animation(
+                                Animation.linear(duration: 2)
+                                    .repeatForever(autoreverses: false),
+                                value: true
+                            )
+                    }
                 } else {
                     ZStack {
                         Image(systemName: iconName)
@@ -732,19 +762,6 @@ struct DetailedMessageRow: View {
                             .frame(width: 32, height: 32)
                             .background(iconColor.opacity(0.1))
                             .clipShape(Circle())
-                        
-                        // Animated thinking indicator
-                        if isThinkingMessage {
-                            Circle()
-                                .stroke(Color.purple, lineWidth: 2)
-                                .frame(width: 36, height: 36)
-                                .rotationEffect(.degrees(360))
-                                .animation(
-                                    Animation.linear(duration: 2)
-                                        .repeatForever(autoreverses: false),
-                                    value: true
-                                )
-                        }
                     }
                 }
                 
@@ -797,9 +814,10 @@ struct DetailedMessageRow: View {
                     }
                     
                     if isThinkingMessage {
+                        // Show the actual thinking content, removing the 🤔 emoji
                         Text(message.content.replacingOccurrences(of: "🤔 ", with: ""))
-                            .italic()
-                            .foregroundColor(.secondary)
+                            .font(.system(.body))
+                            .foregroundColor(.purple)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
                     } else if isErrorMessage {
@@ -813,26 +831,15 @@ struct DetailedMessageRow: View {
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
                     } else if isToolMessage {
-                        HStack(spacing: 8) {
-                            // Extract tool name from message content (format: "🔧 toolname: args")
-                            let toolName = extractToolName(from: message.content)
+                        // Show tool execution details without inline icon (icon is in avatar position)
+                        if let toolCall = message.toolCalls.first {
+                            let isRunning = toolCall.result == "Running..."
+                            let content = message.content
+                                .replacingOccurrences(of: "🔧 ", with: "")
+                                .replacingOccurrences(of: "✅ ", with: "")
+                                .replacingOccurrences(of: "❌ ", with: "")
                             
-                            // Show animated icon for the tool
-                            if !toolName.isEmpty {
-                                EnhancedToolIcon(
-                                    toolName: toolName,
-                                    status: determineToolStatus(from: message)
-                                )
-                            }
-                            
-                            // Show tool execution details
-                            if let toolCall = message.toolCalls.first {
-                                let isRunning = toolCall.result == "Running..."
-                                let content = message.content
-                                    .replacingOccurrences(of: "🔧 ", with: "")
-                                    .replacingOccurrences(of: "✅ ", with: "")
-                                    .replacingOccurrences(of: "❌ ", with: "")
-                                
+                            HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(content)
                                         .font(.system(.body, design: .rounded))
@@ -841,6 +848,7 @@ struct DetailedMessageRow: View {
                                     
                                     if !isRunning && toolCall.result != "Running..." {
                                         // Show result summary if available
+                                        let toolName = extractToolName(from: message.content)
                                         if let resultSummary = ToolFormatter.toolResultSummary(
                                             toolName: toolName,
                                             result: toolCall.result
@@ -859,16 +867,18 @@ struct DetailedMessageRow: View {
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }
-                            } else {
-                                Text(message.content.replacingOccurrences(of: "🔧 ", with: ""))
-                                    .font(.system(.body, design: .rounded))
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.primary)
-                                
-                                Spacer()
                             }
+                            .textSelection(.enabled)
+                        } else {
+                            Text(message.content
+                                .replacingOccurrences(of: "🔧 ", with: "")
+                                .replacingOccurrences(of: "✅ ", with: "")
+                                .replacingOccurrences(of: "❌ ", with: ""))
+                                .font(.system(.body, design: .rounded))
+                                .fontWeight(.medium)
+                                .foregroundColor(.primary)
+                                .textSelection(.enabled)
                         }
-                        .textSelection(.enabled)
                     } else if message.role == .assistant {
                         // Render assistant messages as Markdown
                         if let attributedString = try? AttributedString(
@@ -1004,17 +1014,33 @@ struct DetailedMessageRow: View {
     }
     
     private func determineToolStatus(from message: ConversationMessage) -> ToolExecutionStatus {
+        // First check if we have a tool call with a result
         if let toolCall = message.toolCalls.first {
             if toolCall.result == "Running..." {
                 return .running
-            } else if message.content.contains("✅") {
-                return .completed
-            } else if message.content.contains("❌") {
-                return .failed
+            }
+            // If there's a non-empty result, it's completed (unless it contains error indicators)
+            if !toolCall.result.isEmpty {
+                if message.content.contains("❌") {
+                    return .failed
+                } else if message.content.contains("⚠️") {
+                    return .cancelled
+                } else {
+                    return .completed
+                }
             }
         }
         
-        // Check message content for status indicators
+        // Check the agent's tool execution history for the actual status
+        let toolName = extractToolName(from: message.content)
+        if !toolName.isEmpty {
+            // Find the most recent execution of this tool
+            if let execution = agent.toolExecutionHistory.last(where: { $0.toolName == toolName }) {
+                return execution.status
+            }
+        }
+        
+        // Fallback to checking message content for status indicators
         if message.content.contains("✅") {
             return .completed
         } else if message.content.contains("❌") {
@@ -1023,6 +1049,7 @@ struct DetailedMessageRow: View {
             return .cancelled
         }
         
+        // Default to running for tool messages without clear status
         return .running
     }
     

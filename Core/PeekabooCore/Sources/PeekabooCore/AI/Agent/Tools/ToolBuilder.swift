@@ -56,6 +56,7 @@ extension PeekabooAgentService {
             description: description,
             parameters: parameters,
             execute: { params, context in
+                // Ensure all tool handlers run on the main thread to prevent AX API crashes
                 do {
                     let toolParams = try ToolParameterParser(params, toolName: name)
                     return try await handler(toolParams, context)
@@ -78,6 +79,7 @@ extension PeekabooAgentService {
             description: description,
             parameters: ToolParameters.object(properties: [:], required: []),
             execute: { _, context in
+                // Ensure all tool handlers run on the main thread to prevent AX API crashes
                 do {
                     return try await handler(context)
                 } catch {
