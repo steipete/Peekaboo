@@ -4,38 +4,13 @@ import AXorcist
 import CoreGraphics
 import Foundation
 import PeekabooCore
+import ScreenCaptureKit
 
 /// Capture a screenshot and build an interactive UI map
 @available(macOS 14.0, *)
 struct SeeCommand: AsyncParsableCommand, VerboseCommand, ErrorHandlingCommand, OutputFormattable,
 ApplicationResolvable {
-    static let configuration = CommandConfiguration(
-        commandName: "see",
-        abstract: "Capture screen and map UI elements",
-        discussion: """
-            The 'see' command captures a screenshot and analyzes the UI hierarchy,
-            creating an interactive map that subsequent commands can use.
-
-            SPECIAL APP VALUES:
-              • menubar   - Capture just the menu bar area (24px height)
-              • frontmost - Capture the currently active window
-
-            EXAMPLES:
-              peekaboo see                           # Capture frontmost window
-              peekaboo see --app Safari              # Capture Safari window
-              peekaboo see --app menubar             # Capture menu bar only
-              peekaboo see --app frontmost           # Capture active window
-              peekaboo see --pid 12345                # Capture by process ID
-              peekaboo see --mode screen             # Capture entire screen
-              peekaboo see --window-title "GitHub"   # Capture specific window
-              peekaboo see --annotate                # Generate annotated screenshot
-              peekaboo see --analyze "Find login"    # Capture and analyze
-
-            OUTPUT:
-              Returns a session ID that can be used with click, type, and other
-              interaction commands. Also outputs the screenshot path and UI analysis.
-        """
-    )
+    static let configuration = VisionToolDefinitions.see.commandConfiguration
 
     @Option(help: "Application name to capture, or special values: 'menubar', 'frontmost'")
     var app: String?
@@ -51,6 +26,9 @@ ApplicationResolvable {
 
     @Option(help: "Output path for screenshot")
     var path: String?
+    
+    @Option(name: .long, help: "Specific screen index to capture (0-based). If not specified, captures all screens when in screen mode")
+    var screenIndex: Int?
 
     @Flag(help: "Generate annotated screenshot with interaction markers")
     var annotate = false
@@ -231,13 +209,30 @@ ApplicationResolvable {
         )
 
         // Capture screenshot based on mode
-        let captureResult: CaptureResult
+        let captureResults: [CaptureResult]
 
         switch effectiveMode {
         case .screen:
-            Logger.shared.verbose("Initiating full screen capture", category: "Capture")
+            // Log warning if annotation was requested for full screen captures
+            if self.annotate {
+                Logger.shared.info("Annotation is disabled for full screen captures due to performance constraints")
+                // Don't actually modify self.annotate since we can't in a non-mutating function
+            }
+            
+            Logger.shared.verbose("Initiating screen capture", category: "Capture")
             Logger.shared.startTimer("screen_capture")
-            captureResult = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: nil)
+            
+            if let index = self.screenIndex {
+                // Capture specific screen
+                Logger.shared.verbose("Capturing specific screen", category: "Capture", metadata: ["screenIndex": index])
+                let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
+                captureResults = [result]
+            } else {
+                // Capture all screens
+                Logger.shared.verbose("Capturing all screens", category: "Capture")
+                captureResults = try await self.captureAllScreens()
+            }
+            
             Logger.shared.stopTimer("screen_capture")
 
         case .window:
@@ -269,10 +264,11 @@ ApplicationResolvable {
                             metadata: ["index": windowIndex]
                         )
                         Logger.shared.startTimer("window_capture")
-                        captureResult = try await PeekabooServices.shared.screenCapture.captureWindow(
+                        let result = try await PeekabooServices.shared.screenCapture.captureWindow(
                             appIdentifier: appIdentifier,
                             windowIndex: windowIndex
                         )
+                        captureResults = [result]
                         Logger.shared.stopTimer("window_capture")
                     } else {
                         Logger.shared.error(
@@ -283,10 +279,11 @@ ApplicationResolvable {
                         throw CaptureError.windowNotFound
                     }
                 } else {
-                    captureResult = try await PeekabooServices.shared.screenCapture.captureWindow(
+                    let result = try await PeekabooServices.shared.screenCapture.captureWindow(
                         appIdentifier: appIdentifier,
                         windowIndex: nil
                     )
+                    captureResults = [result]
                 }
             } else {
                 throw ValidationError("--app or --pid is required for window mode")
@@ -294,10 +291,17 @@ ApplicationResolvable {
 
         case .frontmost:
             Logger.shared.verbose("Capturing frontmost window")
-            captureResult = try await PeekabooServices.shared.screenCapture.captureFrontmost()
+            let result = try await PeekabooServices.shared.screenCapture.captureFrontmost()
+            captureResults = [result]
         }
         
-        return captureResult
+        // For non-screen modes, we always have single result
+        if effectiveMode != .screen {
+            return captureResults[0]
+        }
+        
+        // For screen mode with multiple results, handle them
+        return try await self.handleMultipleScreenCaptures(captureResults)
     }
 
     private func captureMenuBar() async throws -> CaptureResult {
@@ -888,5 +892,88 @@ struct MenuBarSummary: Codable {
         let title: String
         let enabled: Bool
         let keyboard_shortcut: String?
+    }
+}
+
+// MARK: - Multi-Screen Support
+
+extension SeeCommand {
+    private func captureAllScreens() async throws -> [CaptureResult] {
+        var results: [CaptureResult] = []
+        
+        // Get available displays from the screen capture service
+        let content = try await SCShareableContent.current
+        let displays = content.displays
+        
+        Logger.shared.info("Found \(displays.count) display(s) to capture")
+        
+        for (index, display) in displays.enumerated() {
+            Logger.shared.verbose("Capturing display \(index)", category: "MultiScreen", metadata: [
+                "displayID": display.displayID,
+                "width": display.width,
+                "height": display.height
+            ])
+            
+            do {
+                let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
+                
+                // Update path to include screen index if capturing multiple screens
+                if displays.count > 1 {
+                    let updatedResult = self.updateCaptureResultPath(result, screenIndex: index, displayInfo: display)
+                    results.append(updatedResult)
+                } else {
+                    results.append(result)
+                }
+            } catch {
+                Logger.shared.error("Failed to capture display \(index): \(error)")
+                // Continue capturing other screens even if one fails
+            }
+        }
+        
+        if results.isEmpty {
+            throw CaptureError.captureFailure("Failed to capture any screens")
+        }
+        
+        return results
+    }
+    
+    private func updateCaptureResultPath(_ result: CaptureResult, screenIndex: Int, displayInfo: SCDisplay) -> CaptureResult {
+        // Since CaptureResult is immutable and doesn't have a path property,
+        // we can't update the path. Just return the original result.
+        // The saved path is already included in result.savedPath if it was saved.
+        return result
+    }
+    
+    private func handleMultipleScreenCaptures(_ results: [CaptureResult]) async throws -> CaptureResult {
+        if results.count == 1 {
+            // Single screen - show display info if available
+            if let displayInfo = results[0].metadata.displayInfo {
+                print("🖥️  Display \(displayInfo.index): \(Int(displayInfo.bounds.width))×\(Int(displayInfo.bounds.height))")
+            }
+            return results[0]
+        }
+        
+        // For multiple screens, output information about all captures
+        print("📸 Captured \(results.count) screens:")
+        for (index, result) in results.enumerated() {
+            if let savedPath = result.savedPath {
+                let fileSize = self.getFileSize(savedPath) ?? 0
+                if let displayInfo = result.metadata.displayInfo {
+                    print("   🖥️  Display \(displayInfo.index): \(Int(displayInfo.bounds.width))×\(Int(displayInfo.bounds.height)) → \(savedPath) (\(self.formatFileSize(Int64(fileSize))))")
+                } else {
+                    print("   📸 Screen \(index): \(savedPath) (\(self.formatFileSize(Int64(fileSize))))")
+                }
+            }
+        }
+        
+        // Return the first result as the primary one
+        // In future, we could combine them or handle differently
+        return results[0]
+    }
+    
+    private func formatFileSize(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
     }
 }

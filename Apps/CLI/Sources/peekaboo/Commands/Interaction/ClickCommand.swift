@@ -7,45 +7,7 @@ import PeekabooCore
 /// Click on UI elements identified in the current session using intelligent element finding and smart waiting.
 @available(macOS 14.0, *)
 struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-    static let configuration = CommandConfiguration(
-        commandName: "click",
-        abstract: "Click on UI elements or coordinates",
-        discussion: """
-            The 'click' command interacts with UI elements captured by 'see'.
-            It supports intelligent element finding, actionability checks, and
-            automatic waiting for elements to become available.
-
-            FEATURES:
-              • Fuzzy matching - Partial text and case-insensitive search
-              • Smart waiting - Automatically waits for elements to appear
-              • Helpful errors - Clear guidance when elements aren't found
-              • Menu bar support - Works with menu bar items
-
-            EXAMPLES:
-              peekaboo click "Sign In"              # Click button with text
-              peekaboo click "sign"                 # Partial match (fuzzy)
-              peekaboo click --id element_42        # Click specific element ID
-              peekaboo click --coords 100,200       # Click at coordinates
-              peekaboo click "Submit" --wait-for 5000  # Wait up to 5s for element
-              peekaboo click "Menu" --double        # Double-click
-              peekaboo click "File" --right         # Right-click
-
-            ELEMENT MATCHING:
-              Elements are matched by searching text in:
-              - Title/Label content (case-insensitive)
-              - Value text (partial matching)
-              - Role descriptions
-
-              Use --id for precise element targeting from 'see' output.
-              
-            TROUBLESHOOTING:
-              If elements aren't found:
-              - Run 'peekaboo see' first to capture the UI
-              - Use 'peekaboo menubar list' for menu bar items
-              - Try partial text matching
-              - Increase --wait-for timeout
-        """
-    )
+    static let configuration = UIAutomationToolDefinitions.click.commandConfiguration
 
     @Argument(help: "Element text or query to click")
     var query: String?
