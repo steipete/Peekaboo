@@ -571,9 +571,9 @@ public final class ProcessService: ProcessServiceProtocol {
             windows = try await windowManagementService.listWindows(target: .application(appName))
         } else {
             // Get all windows from all applications
-            let apps = try await applicationService.listApplications()
+            let appsOutput = try await applicationService.listApplications()
             var allWindows: [ServiceWindowInfo] = []
-            for app in apps {
+            for app in appsOutput.data.applications {
                 let appWindows = try await windowManagementService.listWindows(target: .application(app.name))
                 allWindows.append(contentsOf: appWindows)
             }

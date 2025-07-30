@@ -1,12 +1,13 @@
 import Foundation
 import CoreGraphics
+import AppKit
 
 /// Protocol defining application and window management operations
 @MainActor
 public protocol ApplicationServiceProtocol: Sendable {
     /// List all running applications
-    /// - Returns: Array of application information
-    func listApplications() async throws -> [ServiceApplicationInfo]
+    /// - Returns: UnifiedToolOutput containing application information
+    func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData>
     
     /// Find an application by name or bundle ID
     /// - Parameter identifier: Application name or bundle ID (supports fuzzy matching)
@@ -15,8 +16,8 @@ public protocol ApplicationServiceProtocol: Sendable {
     
     /// List all windows for a specific application
     /// - Parameter appIdentifier: Application name or bundle ID
-    /// - Returns: Array of window information
-    func listWindows(for appIdentifier: String) async throws -> [ServiceWindowInfo]
+    /// - Returns: UnifiedToolOutput containing window information
+    func listWindows(for appIdentifier: String) async throws -> UnifiedToolOutput<ServiceWindowListData>
     
     /// Get information about the frontmost application
     /// - Returns: Application information
@@ -132,6 +133,14 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
     
     /// Human-readable name of the Space (if available)
     public let spaceName: String?
+    
+    /// Whether the window is off-screen
+    public var isOffScreen: Bool {
+        // Check if window is off any visible screen
+        return !NSScreen.screens.contains { screen in
+            screen.frame.intersects(bounds)
+        }
+    }
     
     public init(
         windowID: Int,

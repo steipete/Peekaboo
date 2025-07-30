@@ -136,16 +136,17 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     public func listWindows(target: WindowTarget) async throws -> [ServiceWindowInfo] {
         switch target {
         case .application(let appIdentifier):
-            return try await applicationService.listWindows(for: appIdentifier)
+            let output = try await applicationService.listWindows(for: appIdentifier)
+            return output.data.windows
             
         case .title(let titleSubstring):
             // List all windows and filter by title
-            let apps = try await applicationService.listApplications()
+            let appsOutput = try await applicationService.listApplications()
             var matchingWindows: [ServiceWindowInfo] = []
             
-            for app in apps {
-                let windows = try await applicationService.listWindows(for: app.name)
-                let filtered = windows.filter { window in
+            for app in appsOutput.data.applications {
+                let windowsOutput = try await applicationService.listWindows(for: app.name)
+                let filtered = windowsOutput.data.windows.filter { window in
                     window.title.localizedCaseInsensitiveContains(titleSubstring)
                 }
                 matchingWindows.append(contentsOf: filtered)
@@ -154,7 +155,8 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             return matchingWindows
             
         case .index(let app, let index):
-            let windows = try await applicationService.listWindows(for: app)
+            let windowsOutput = try await applicationService.listWindows(for: app)
+            let windows = windowsOutput.data.windows
             guard index >= 0 && index < windows.count else {
                 throw PeekabooError.invalidInput(
                     "windowIndex: Index \(index) is out of range. Available windows: 0-\(windows.count-1)"
@@ -164,16 +166,17 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             
         case .frontmost:
             let frontmostApp = try await applicationService.getFrontmostApplication()
-            let windows = try await applicationService.listWindows(for: frontmostApp.name)
+            let windowsOutput = try await applicationService.listWindows(for: frontmostApp.name)
+            let windows = windowsOutput.data.windows
             return windows.isEmpty ? [] : [windows[0]]
             
         case .windowId(let id):
             // Need to search all windows to find by ID
-            let apps = try await applicationService.listApplications()
+            let appsOutput = try await applicationService.listApplications()
             
-            for app in apps {
-                let windows = try await applicationService.listWindows(for: app.name)
-                if let window = windows.first(where: { $0.windowID == id }) {
+            for app in appsOutput.data.applications {
+                let windowsOutput = try await applicationService.listWindows(for: app.name)
+                if let window = windowsOutput.data.windows.first(where: { $0.windowID == id }) {
                     return [window]
                 }
             }
@@ -187,10 +190,10 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         let frontmostApp = try await applicationService.getFrontmostApplication()
         
         // Get its windows
-        let windows = try await applicationService.listWindows(for: frontmostApp.name)
+        let windowsOutput = try await applicationService.listWindows(for: frontmostApp.name)
         
         // The first window is typically the focused one
-        return windows.first
+        return windowsOutput.data.windows.first
     }
     
     // MARK: - Private Helpers
@@ -207,8 +210,8 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             return operation(window)
             
         case .title(let titleSubstring):
-            let apps = try await applicationService.listApplications()
-            let window = try findWindowByTitle(titleSubstring, in: apps)
+            let appsOutput = try await applicationService.listApplications()
+            let window = try findWindowByTitle(titleSubstring, in: appsOutput.data.applications)
             return operation(window)
             
         case .index(let appIdentifier, let index):
@@ -222,8 +225,8 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             return operation(window)
             
         case .windowId(let id):
-            let apps = try await applicationService.listApplications()
-            let window = try findWindowById(id, in: apps)
+            let appsOutput = try await applicationService.listApplications()
+            let window = try findWindowById(id, in: appsOutput.data.applications)
             return operation(window)
         }
     }

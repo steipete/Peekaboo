@@ -108,7 +108,7 @@ public final class SessionManager: SessionManagerProtocol {
                 label: uiElement.label ?? uiElement.title,
                 value: uiElement.value,
                 bounds: uiElement.frame,
-                isEnabled: true,
+                isEnabled: uiElement.isActionable,
                 attributes: uiElement.keyboardShortcut != nil ? ["keyboardShortcut": uiElement.keyboardShortcut!] : [:]
             )
             allElements.append(detectedElement)

@@ -101,9 +101,9 @@ extension PeekabooAgentService {
         operation: (ServiceWindowInfo) async throws -> ToolOutput
     ) async throws -> ToolOutput {
         // Get all windows from all applications
-        let apps = try await context.applications.listApplications()
+        let appsOutput = try await context.applications.listApplications()
         var windows: [ServiceWindowInfo] = []
-        for app in apps {
+        for app in appsOutput.data.applications {
             let appWindows = try await context.windows.listWindows(target: .application(app.name))
             windows.append(contentsOf: appWindows)
         }
@@ -134,9 +134,9 @@ extension PeekabooAgentService {
         context: PeekabooServices,
         operation: (ServiceApplicationInfo) async throws -> ToolOutput
     ) async throws -> ToolOutput {
-        let apps = try await context.applications.listApplications()
+        let appsOutput = try await context.applications.listApplications()
         
-        guard let app = apps.first(where: { $0.name.lowercased() == appName.lowercased() }) else {
+        guard let app = appsOutput.data.applications.first(where: { $0.name.lowercased() == appName.lowercased() }) else {
             throw PeekabooError.appNotFound(appName)
         }
         

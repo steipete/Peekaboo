@@ -11,7 +11,8 @@ public final class ApplicationService: ApplicationServiceProtocol {
     
     public init() {}
     
-    public func listApplications() async throws -> [ServiceApplicationInfo] {
+    public func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
+        let startTime = Date()
         logger.info("Listing all running applications")
         
         // Already on main thread due to @MainActor on class
@@ -45,7 +46,41 @@ public final class ApplicationService: ApplicationServiceProtocol {
         }
         
         logger.info("Returning \(filteredApps.count) visible applications")
-        return filteredApps
+        
+        // Find active app and calculate counts
+        let activeApp = filteredApps.first { $0.isActive }
+        let appsWithWindows = filteredApps.filter { $0.windowCount > 0 }
+        let totalWindows = filteredApps.reduce(0) { $0 + $1.windowCount }
+        
+        // Build highlights
+        var highlights: [UnifiedToolOutput<ServiceApplicationListData>.Summary.Highlight] = []
+        if let active = activeApp {
+            highlights.append(.init(
+                label: active.name,
+                value: "\(active.windowCount) window\(active.windowCount == 1 ? "" : "s")",
+                kind: .primary
+            ))
+        }
+        
+        return UnifiedToolOutput(
+            data: ServiceApplicationListData(applications: filteredApps),
+            summary: UnifiedToolOutput.Summary(
+                brief: "Found \(filteredApps.count) running application\(filteredApps.count == 1 ? "" : "s")",
+                detail: nil,
+                status: .success,
+                counts: [
+                    "applications": filteredApps.count,
+                    "appsWithWindows": appsWithWindows.count,
+                    "totalWindows": totalWindows
+                ],
+                highlights: highlights
+            ),
+            metadata: UnifiedToolOutput.Metadata(
+                duration: Date().timeIntervalSince(startTime),
+                warnings: [],
+                hints: ["Use app name or PID to target specific application"]
+            )
+        )
     }
     
     public func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
@@ -156,14 +191,26 @@ public final class ApplicationService: ApplicationServiceProtocol {
         throw NotFoundError.application(identifier)
     }
     
-    public func listWindows(for appIdentifier: String) async throws -> [ServiceWindowInfo] {
+    public func listWindows(for appIdentifier: String) async throws -> UnifiedToolOutput<ServiceWindowListData> {
+        let startTime = Date()
         logger.info("Listing windows for application: \(appIdentifier)")
         let app = try await findApplication(identifier: appIdentifier)
         
         // Defensive: Check if the app is still running before accessing AX
         guard NSRunningApplication(processIdentifier: app.processIdentifier)?.isTerminated == false else {
             logger.warning("Application \(app.name) appears to have terminated")
-            return []
+            return UnifiedToolOutput(
+                data: ServiceWindowListData(windows: [], targetApplication: app),
+                summary: UnifiedToolOutput.Summary(
+                    brief: "Application \(app.name) has no windows (app terminated)",
+                    status: .failed,
+                    counts: ["windows": 0]
+                ),
+                metadata: UnifiedToolOutput.Metadata(
+                    duration: Date().timeIntervalSince(startTime),
+                    warnings: ["Application appears to have terminated"]
+                )
+            )
         }
         
         // Get AX element for the application
@@ -173,7 +220,18 @@ public final class ApplicationService: ApplicationServiceProtocol {
         // Get windows with defensive coding
         guard let axWindows = appElement.windows() else {
             logger.debug("No windows found for \(app.name) - app may not have accessibility support")
-            return []
+            return UnifiedToolOutput(
+                data: ServiceWindowListData(windows: [], targetApplication: app),
+                summary: UnifiedToolOutput.Summary(
+                    brief: "No windows found for \(app.name)",
+                    status: .success,
+                    counts: ["windows": 0]
+                ),
+                metadata: UnifiedToolOutput.Metadata(
+                    duration: Date().timeIntervalSince(startTime),
+                    hints: ["Application may not have accessibility support or has no open windows"]
+                )
+            )
         }
         
         var windows: [ServiceWindowInfo] = []
@@ -184,7 +242,45 @@ public final class ApplicationService: ApplicationServiceProtocol {
         }
         
         logger.debug("Found \(windows.count) windows for \(app.name)")
-        return windows
+        
+        // Build highlights
+        var highlights: [UnifiedToolOutput<ServiceWindowListData>.Summary.Highlight] = []
+        let minimizedCount = windows.filter { $0.isMinimized }.count
+        let offScreenCount = windows.filter { $0.isOffScreen }.count
+        
+        if minimizedCount > 0 {
+            highlights.append(.init(
+                label: "Minimized",
+                value: "\(minimizedCount) window\(minimizedCount == 1 ? "" : "s")",
+                kind: .info
+            ))
+        }
+        
+        if offScreenCount > 0 {
+            highlights.append(.init(
+                label: "Off-screen",
+                value: "\(offScreenCount) window\(offScreenCount == 1 ? "" : "s")",
+                kind: .warning
+            ))
+        }
+        
+        return UnifiedToolOutput(
+            data: ServiceWindowListData(windows: windows, targetApplication: app),
+            summary: UnifiedToolOutput.Summary(
+                brief: "Found \(windows.count) window\(windows.count == 1 ? "" : "s") for \(app.name)",
+                status: .success,
+                counts: [
+                    "windows": windows.count,
+                    "minimized": minimizedCount,
+                    "offScreen": offScreenCount
+                ],
+                highlights: highlights
+            ),
+            metadata: UnifiedToolOutput.Metadata(
+                duration: Date().timeIntervalSince(startTime),
+                hints: ["Use window title or index to target specific window"]
+            )
+        )
     }
     
     public func getFrontmostApplication() async throws -> ServiceApplicationInfo {
