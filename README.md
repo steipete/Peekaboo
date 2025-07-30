@@ -43,6 +43,7 @@ Peekaboo bridges the gap between visual content on your screen and AI understand
 - **Menu bar extraction** (v3) - Discover all menus and keyboard shortcuts without clicking or opening menus
 - **Automatic session resolution** - Commands intelligently use the most recent session (no manual tracking!)
 - **Window and application management** with smart fuzzy matching
+- **Multi-screen support** - List which screen windows are on and move them between displays
 - **Privacy-first operation** with local AI options via Ollama
 - **Non-intrusive capture** without changing window focus
 - **Automation scripting** - Chain commands together for complex workflows
@@ -119,6 +120,11 @@ peekaboo window minimize --app Finder   # Minimize Finder window
 peekaboo window move --app TextEdit --x 100 --y 100
 peekaboo window resize --app Terminal --width 800 --height 600
 peekaboo window focus --app "Visual Studio Code"
+
+# Multi-Screen Support (v3)
+peekaboo window resize --app Safari --target-screen 1  # Move to screen 1
+peekaboo window move --app Terminal --screen-preset next  # Move to next screen
+peekaboo window resize --app Notes --preset left_half --target-screen 0
 
 # Space (Virtual Desktop) Management
 peekaboo space list                      # List all Spaces
@@ -993,6 +999,74 @@ await window({ action: "focus", app: "Safari", index: 0 })  // Focus first windo
 - **app** - Target by application name (fuzzy matching supported)
 - **title** - Target by window title (substring matching)
 - **index** - Target by index (0-based, front to back order)
+
+### 🖥️ Multi-Screen Support
+
+Peekaboo v3 includes comprehensive multi-screen support for window management across multiple displays. When listing windows, Peekaboo shows which screen each window is on, and provides powerful options for moving windows between screens.
+
+#### Screen Identification
+When listing windows, each window shows its screen location:
+```bash
+# Windows now show their screen in the output
+peekaboo list windows --app Safari
+# Output includes: "Screen: Built-in Display" or "Screen: External Display"
+```
+
+#### Moving Windows Between Screens
+
+**Using Screen Index (0-based):**
+```bash
+# Move window to specific screen by index
+peekaboo window resize --app Safari --target-screen 0    # Primary screen
+peekaboo window resize --app Terminal --target-screen 1  # Second screen
+peekaboo window resize --app Notes --target-screen 2     # Third screen
+```
+
+**Using Screen Presets:**
+```bash
+# Move to next/previous screen
+peekaboo window resize --app Safari --screen-preset next
+peekaboo window resize --app Terminal --screen-preset previous
+
+# Move to primary screen (with menu bar)
+peekaboo window resize --app Notes --screen-preset primary
+
+# Keep on same screen (useful with other resize options)
+peekaboo window resize --app TextEdit --screen-preset same --preset left_half
+```
+
+#### Combined Screen and Window Operations
+
+You can combine screen movement with window positioning:
+```bash
+# Move to screen 1 and maximize
+peekaboo window resize --app Safari --target-screen 1 --preset maximize
+
+# Move to next screen and position on left half
+peekaboo window resize --app Terminal --screen-preset next --preset left_half
+
+# Move to screen 0 at specific coordinates
+peekaboo window resize --app Notes --target-screen 0 --x 100 --y 100
+
+# Move to primary screen with custom size
+peekaboo window resize --app TextEdit --screen-preset primary --width 1200 --height 800
+```
+
+#### How It Works
+
+- **Unified Coordinate System**: macOS uses a single coordinate space across all screens
+- **Smart Positioning**: When moving windows between screens without explicit coordinates, windows maintain their relative position (e.g., a window at 25% from the left edge stays at 25% on the new screen)
+- **Screen Detection**: Windows are assigned to screens based on their center point
+- **0-Based Indexing**: Screens are indexed starting from 0, matching macOS's internal ordering
+
+#### Multi-Screen with AI Agent
+
+The AI agent understands multi-screen commands:
+```bash
+peekaboo agent "Move all Safari windows to the external display"
+peekaboo agent "Put Terminal on my second screen"
+peekaboo agent "Arrange windows with Safari on the left screen and Notes on the right"
+```
 
 ### 📋 The `menu` Tool
 
