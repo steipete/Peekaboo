@@ -8,6 +8,7 @@
 import Foundation
 import CoreGraphics
 import os
+import AppKit
 
 /// Client for communicating with the Peekaboo.app visualizer service
 @MainActor
@@ -121,6 +122,11 @@ public final class VisualizationClient {
     /// Shows screenshot flash animation
     public func showScreenshotFlash(in rect: CGRect) async -> Bool {
         guard isConnected, isEnabled else { return false }
+        
+        // Check screenshot-specific environment variable
+        if ProcessInfo.processInfo.environment["PEEKABOO_VISUAL_SCREENSHOTS"] == "false" {
+            return false
+        }
         
         return await withCheckedContinuation { continuation in
             remoteProxy?.showScreenshotFlash(in: rect) { success in
@@ -240,11 +246,11 @@ public final class VisualizationClient {
     }
     
     /// Shows dialog interaction feedback
-    public func showDialogInteraction(elementType: DialogElement, elementRect: CGRect, action: DialogAction) async -> Bool {
+    public func showDialogInteraction(element: String, elementRect: CGRect, action: String) async -> Bool {
         guard isConnected, isEnabled else { return false }
         
         return await withCheckedContinuation { continuation in
-            remoteProxy?.showDialogInteraction(elementType: elementType.rawValue, elementRect: elementRect, action: action.rawValue) { success in
+            remoteProxy?.showDialogInteraction(elementType: element, elementRect: elementRect, action: action) { success in
                 continuation.resume(returning: success)
             }
         }
@@ -330,51 +336,29 @@ public final class VisualizationClient {
         retryAttempt += 1
         let delay = TimeInterval(retryAttempt * 2) // Exponential backoff
         
-        logger.info("Scheduling connection retry #\(retryAttempt) in \(delay) seconds")
+        logger.info("Scheduling connection retry #\(self.retryAttempt) in \(delay) seconds")
         
         retryTimer?.invalidate()
         retryTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-            self?.connect()
+            Task { @MainActor in
+                self?.connect()
+            }
         }
     }
 }
 
 // MARK: - Supporting Types
 
-public enum ClickType: String {
-    case single = "single"
-    case double = "double"
-    case right = "right"
-}
-
-public enum ScrollDirection: String {
-    case up = "up"
-    case down = "down"
-    case left = "left"
-    case right = "right"
-}
-
 public enum WindowOperation: String {
     case move = "move"
     case resize = "resize"
     case minimize = "minimize"
     case close = "close"
-}
-
-public enum DialogElement: String {
-    case button = "button"
-    case textField = "textfield"
-    case checkbox = "checkbox"
-    case radioButton = "radio"
-    case dropdown = "dropdown"
-}
-
-public enum DialogAction: String {
-    case click = "click"
+    case maximize = "maximize"
+    case setBounds = "setBounds"
     case focus = "focus"
-    case type = "type"
-    case select = "select"
 }
+
 
 public enum SpaceDirection: String {
     case left = "left"

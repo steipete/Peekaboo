@@ -54,7 +54,7 @@ extension PeekabooAgentService {
                             var notFoundMessage = "No elements found matching '\(searchLabel)'"
                             notFoundMessage += " of type '\(elementType)'"
                             notFoundMessage += " in \(targetDescription)"
-                            return .failure(notFoundMessage, code: "ELEMENT_NOT_FOUND")
+                            return .error(message: notFoundMessage, code: "ELEMENT_NOT_FOUND")
                         }
                     }
                     
@@ -94,7 +94,7 @@ extension PeekabooAgentService {
                         notFoundMessage += " of type '\(elementType)'"
                     }
                     notFoundMessage += " in \(targetDescription)"
-                    return .failure(notFoundMessage, code: "ELEMENT_NOT_FOUND")
+                    return .error(message: notFoundMessage, code: "ELEMENT_NOT_FOUND")
                 }
             }
         )
@@ -210,7 +210,7 @@ extension PeekabooAgentService {
             handler: { context in
                 // Get focused element information
                 guard let focusInfo = context.automation.getFocusedElement() else {
-                    return .failure("No element is currently focused", code: "NO_FOCUSED_ELEMENT")
+                    return .error(message: "No element is currently focused", code: "NO_FOCUSED_ELEMENT")
                 }
                 
                 // Format the focused element information

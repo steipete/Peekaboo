@@ -636,7 +636,7 @@ extension PeekabooAgentService {
 // MARK: - Main Thread Timeout Utility
 
 @MainActor
-private func withMainThreadTimeout<T>(
+private func withMainThreadTimeout<T: Sendable>(
     seconds: TimeInterval,
     operation: @escaping () async throws -> T
 ) async throws -> T? {

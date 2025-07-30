@@ -41,7 +41,7 @@ extension PeekabooAgentService {
                 // Check if target is coordinates (e.g., "100,200")
                 if target.contains(","), let coordParts = target.split(separator: ",").map(String.init).map(Double.init) as? [Double], coordParts.count == 2 {
                     let coordinates = CGPoint(x: coordParts[0], y: coordParts[1])
-                    let clickType: ClickType = rightClick ? .right : (doubleClick ? .double : .single)
+                    let clickType = rightClick ? ClickType.right : (doubleClick ? ClickType.double : ClickType.single)
                     
                     try await context.automation.click(
                         target: .coordinates(coordinates),
@@ -69,7 +69,7 @@ extension PeekabooAgentService {
                 }
                 
                 // Try to click using the target as a query
-                let clickType: ClickType = rightClick ? .right : (doubleClick ? .double : .single)
+                let clickType = rightClick ? ClickType.right : (doubleClick ? ClickType.double : ClickType.single)
                 
                 try await context.automation.click(
                     target: .query(target),

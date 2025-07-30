@@ -24,9 +24,11 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
     // Visualizer client for visual feedback
     private let visualizerClient = VisualizationClient.shared
     
-    public init(sessionManager: SessionManagerProtocol? = nil) {
+    public init(sessionManager: SessionManagerProtocol? = nil, loggingService: LoggingServiceProtocol? = nil) {
         let manager = sessionManager ?? SessionManager()
         self.sessionManager = manager
+        
+        let logger = loggingService ?? LoggingService()
         
         // Initialize specialized services
         self.elementDetectionService = ElementDetectionService(sessionManager: manager)
@@ -35,7 +37,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
         self.scrollService = ScrollService(sessionManager: manager, clickService: nil)
         self.hotkeyService = HotkeyService()
         self.gestureService = GestureService()
-        self.screenCaptureService = ScreenCaptureService()
+        self.screenCaptureService = ScreenCaptureService(loggingService: logger)
         
         // Connect to visualizer if available
         visualizerClient.connect()
@@ -68,7 +70,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             if let sessionId = sessionId,
                let result = try? await sessionManager.getDetectionResult(sessionId: sessionId),
                let element = result.elements.findById(id) {
-                return CGPoint(x: element.rect.midX, y: element.rect.midY)
+                return CGPoint(x: element.bounds.midX, y: element.bounds.midY)
             }
         case .query:
             // For queries, we don't have easy access to the clicked element's position
@@ -405,10 +407,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             description = "of type '\(type)'"
         }
         
-        throw PeekabooError.elementNotFound(
-            type: "element \(description)",
-            in: appName ?? "screen"
-        )
+        throw PeekabooError.elementNotFound("element \(description) in \(appName ?? "screen")")
     }
 }
 
