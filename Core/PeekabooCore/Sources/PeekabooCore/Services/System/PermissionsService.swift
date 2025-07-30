@@ -37,6 +37,25 @@ public final class PermissionsService: Sendable {
         return hasPermission
     }
     
+    /// Check if AppleScript permission is granted
+    public func checkAppleScriptPermission() -> Bool {
+        logger.debug("Checking AppleScript permission")
+        
+        // Check if we have permission to send AppleEvents
+        // This checks permission for sending events to System Events
+        let targetBundleID = "com.apple.systemevents"
+        let hasPermission = AEDeterminePermissionToAutomateTarget(
+            nil,
+            targetBundleID as CFString,
+            AEEventClass(typeWildCard),
+            AEEventID(typeWildCard),
+            false
+        ) == .authorized
+        
+        logger.info("AppleScript permission: \(hasPermission)")
+        return hasPermission
+    }
+    
     /// Require Screen Recording permission, throwing if not granted
     public func requireScreenRecordingPermission() throws {
         logger.debug("Requiring screen recording permission")
@@ -57,16 +76,28 @@ public final class PermissionsService: Sendable {
         }
     }
     
+    /// Require AppleScript permission, throwing if not granted
+    public func requireAppleScriptPermission() throws {
+        logger.debug("Requiring AppleScript permission")
+        
+        if !checkAppleScriptPermission() {
+            logger.error("AppleScript permission denied")
+            throw CaptureError.appleScriptPermissionDenied
+        }
+    }
+    
     /// Check all permissions and return their status
     public func checkAllPermissions() -> PermissionsStatus {
         logger.debug("Checking all permissions")
         
         let screenRecording = checkScreenRecordingPermission()
         let accessibility = checkAccessibilityPermission()
+        let appleScript = checkAppleScriptPermission()
         
         return PermissionsStatus(
             screenRecording: screenRecording,
-            accessibility: accessibility
+            accessibility: accessibility,
+            appleScript: appleScript
         )
     }
 }
@@ -75,15 +106,23 @@ public final class PermissionsService: Sendable {
 public struct PermissionsStatus: Sendable {
     public let screenRecording: Bool
     public let accessibility: Bool
+    public let appleScript: Bool
+    
+    public init(screenRecording: Bool, accessibility: Bool, appleScript: Bool = false) {
+        self.screenRecording = screenRecording
+        self.accessibility = accessibility
+        self.appleScript = appleScript
+    }
     
     public var allGranted: Bool {
-        screenRecording && accessibility
+        screenRecording && accessibility && appleScript
     }
     
     public var missingPermissions: [String] {
         var missing: [String] = []
         if !screenRecording { missing.append("Screen Recording") }
         if !accessibility { missing.append("Accessibility") }
+        if !appleScript { missing.append("AppleScript") }
         return missing
     }
 }

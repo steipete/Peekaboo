@@ -23,8 +23,9 @@ final class Permissions {
         permissionsService.accessibilityStatus
     }
     
-    // Note: AppleScript permission is not supported by Core yet
-    var appleScriptStatus: ObservablePermissionsService.PermissionState = .notDetermined
+    var appleScriptStatus: ObservablePermissionsService.PermissionState {
+        permissionsService.appleScriptStatus
+    }
 
     var hasAllPermissions: Bool {
         permissionsService.hasAllPermissions
@@ -57,8 +58,11 @@ final class Permissions {
     }
 
     func requestAppleScript() {
-        // TODO: Add AppleScript support to ObservablePermissionsService
-        logger.warning("AppleScript permission request not yet supported in Core")
+        do {
+            try permissionsService.requestAppleScript()
+        } catch {
+            logger.error("Failed to request AppleScript permission: \(error)")
+        }
     }
 
     func startMonitoring() {

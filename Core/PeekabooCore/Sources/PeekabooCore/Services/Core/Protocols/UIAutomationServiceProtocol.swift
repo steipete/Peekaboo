@@ -380,3 +380,10 @@ public struct TypeResult: Sendable {
         self.keyPresses = keyPresses
     }
 }
+
+/// Criteria for searching UI elements
+public enum UIElementSearchCriteria: Sendable {
+    case label(String)
+    case identifier(String)
+    case type(String)
+}

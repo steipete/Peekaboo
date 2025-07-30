@@ -79,14 +79,61 @@ struct ListSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormatt
                 outputSuccessCodable(data: data)
             } else {
                 print("Spaces:")
+                
+                // If detailed, collect all windows and their Space assignments
+                var windowsBySpace: [UInt64: [(app: String, window: ServiceWindowInfo)]] = [:]
+                
+                if self.detailed {
+                    // Get all running applications
+                    let appService = ApplicationService()
+                    let appListResult = try await appService.listApplications()
+                    
+                    // Iterate through all applications to get their windows
+                    for app in appListResult.data.applications {
+                        // Skip apps without windows
+                        guard app.windowCount > 0 else { continue }
+                        
+                        do {
+                            // Get windows for this application
+                            let windowsResult = try await appService.listWindows(for: app.name)
+                            
+                            // For each window, find which Space it's on
+                            for window in windowsResult.data.windows {
+                                let windowID = CGWindowID(window.windowID)
+                                let windowSpaces = spaceService.getSpacesForWindow(windowID: windowID)
+                                
+                                // Add window to each Space it appears on
+                                for space in windowSpaces {
+                                    if windowsBySpace[space.id] == nil {
+                                        windowsBySpace[space.id] = []
+                                    }
+                                    windowsBySpace[space.id]?.append((app: app.name, window: window))
+                                }
+                            }
+                        } catch {
+                            // Skip applications we can't access
+                            continue
+                        }
+                    }
+                }
+                
+                // Display Spaces with their windows
                 for (index, space) in spaces.enumerated() {
                     let marker = space.isActive ? "→" : " "
                     let displayInfo = space.displayID.map { " (Display \($0))" } ?? ""
                     print("\(marker) Space \(index + 1) [ID: \(space.id), Type: \(space.type.rawValue)\(displayInfo)]")
                     
                     if self.detailed {
-                        // TODO: Add window listing for each Space
-                        // This would require iterating through all windows and checking their Space
+                        // Display windows for this Space
+                        if let windows = windowsBySpace[space.id], !windows.isEmpty {
+                            for (app, window) in windows {
+                                let title = window.title.isEmpty ? "[Untitled]" : window.title
+                                let minimized = window.isMinimized ? " [MINIMIZED]" : ""
+                                print("    • \(app): \(title)\(minimized)")
+                            }
+                        } else {
+                            print("    (No windows)")
+                        }
                     }
                 }
                 

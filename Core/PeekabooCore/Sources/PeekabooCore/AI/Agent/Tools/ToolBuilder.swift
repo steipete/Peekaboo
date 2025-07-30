@@ -1,16 +1,6 @@
 import Foundation
 import CoreGraphics
 
-// MARK: - Temporary Type Definitions
-// TODO: These should be properly defined in their respective modules
-
-/// Criteria for searching UI elements
-public enum UIElementSearchCriteria {
-    case label(String)
-    case identifier(String)
-    case type(String)
-}
-
 // MARK: - Tool Result Builders
 
 extension ToolOutput {

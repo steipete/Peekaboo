@@ -11,6 +11,7 @@ public enum CaptureError: Error, LocalizedError, Sendable {
     case noDisplaysFound
     case screenRecordingPermissionDenied
     case accessibilityPermissionDenied
+    case appleScriptPermissionDenied
     case invalidDisplayID
     case captureCreationFailed(Error?)
     case windowNotFound
@@ -45,6 +46,9 @@ public enum CaptureError: Error, LocalizedError, Sendable {
         case .accessibilityPermissionDenied:
             return "Accessibility permission is required for some operations. " +
                 "Please grant it in System Settings > Privacy & Security > Accessibility."
+        case .appleScriptPermissionDenied:
+            return "AppleScript permission is required for automation. " +
+                "Please grant it in System Settings > Privacy & Security > Automation."
         case .invalidDisplayID:
             return "Invalid display ID provided."
         case let .captureCreationFailed(underlyingError):
@@ -128,6 +132,7 @@ public enum CaptureError: Error, LocalizedError, Sendable {
         case .noDisplaysFound: 32
         case .screenRecordingPermissionDenied: 11
         case .accessibilityPermissionDenied: 12
+        case .appleScriptPermissionDenied: 33
         case .invalidDisplayID: 13
         case .captureCreationFailed: 14
         case .windowNotFound: 15

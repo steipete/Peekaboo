@@ -18,6 +18,7 @@ public final class ObservablePermissionsService {
     /// Individual permission states for UI binding
     public private(set) var screenRecordingStatus: PermissionState = .notDetermined
     public private(set) var accessibilityStatus: PermissionState = .notDetermined
+    public private(set) var appleScriptStatus: PermissionState = .notDetermined
     
     /// Timer for monitoring permission changes
     private var monitorTimer: Timer?
@@ -98,6 +99,11 @@ public final class ObservablePermissionsService {
         try core.requireAccessibilityPermission()
     }
     
+    /// Request AppleScript permission
+    public func requestAppleScript() throws {
+        try core.requireAppleScriptPermission()
+    }
+    
     /// Check if all permissions are granted
     public var hasAllPermissions: Bool {
         status.allGranted
@@ -113,6 +119,7 @@ public final class ObservablePermissionsService {
     private func updatePermissionStates() {
         screenRecordingStatus = status.screenRecording ? .authorized : .denied
         accessibilityStatus = status.accessibility ? .authorized : .denied
+        appleScriptStatus = status.appleScript ? .authorized : .denied
     }
     
     deinit {
@@ -135,11 +142,13 @@ public extension ObservablePermissionsService {
         public enum PermissionType: String, CaseIterable {
             case screenRecording
             case accessibility
+            case appleScript
             
             public var displayName: String {
                 switch self {
                 case .screenRecording: return "Screen Recording"
                 case .accessibility: return "Accessibility"
+                case .appleScript: return "AppleScript"
                 }
             }
             
@@ -149,6 +158,8 @@ public extension ObservablePermissionsService {
                     return "Required to capture screenshots and analyze screen content"
                 case .accessibility:
                     return "Required to interact with UI elements and send input events"
+                case .appleScript:
+                    return "Required to control applications and automate system tasks"
                 }
             }
             
@@ -158,6 +169,8 @@ public extension ObservablePermissionsService {
                     return "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
                 case .accessibility:
                     return "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+                case .appleScript:
+                    return "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
                 }
             }
         }
@@ -179,6 +192,13 @@ public extension ObservablePermissionsService {
                 displayName: PermissionInfo.PermissionType.accessibility.displayName,
                 explanation: PermissionInfo.PermissionType.accessibility.explanation,
                 settingsURL: URL(string: PermissionInfo.PermissionType.accessibility.settingsURLString)
+            ),
+            PermissionInfo(
+                type: .appleScript,
+                status: appleScriptStatus,
+                displayName: PermissionInfo.PermissionType.appleScript.displayName,
+                explanation: PermissionInfo.PermissionType.appleScript.explanation,
+                settingsURL: URL(string: PermissionInfo.PermissionType.appleScript.settingsURLString)
             )
         ]
     }

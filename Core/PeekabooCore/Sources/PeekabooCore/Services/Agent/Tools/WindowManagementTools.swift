@@ -88,10 +88,16 @@ extension PeekabooAgentService {
                     // This ensures all AX operations stay on the main thread
                     for app in regularApps {
                         do {
-                            // For now, skip timeout mechanism to ensure thread safety
-                            // TODO: Implement a main-thread-safe timeout mechanism
-                            let windowsOutput = try await context.applications.listWindows(for: app.name)
-                            windows.append(contentsOf: windowsOutput.data.windows)
+                            // Use a main-thread-safe timeout mechanism
+                            let windowsResult = try await withMainThreadTimeout(seconds: 5.0) {
+                                try await context.applications.listWindows(for: app.name)
+                            }
+                            
+                            if let windowsOutput = windowsResult {
+                                windows.append(contentsOf: windowsOutput.data.windows)
+                            } else {
+                                Self.logger.debug("Timeout getting windows for \(app.name)")
+                            }
                         } catch {
                             // Skip apps that fail
                             Self.logger.debug("Error getting windows for \(app.name): \(error)")
@@ -624,5 +630,40 @@ extension PeekabooAgentService {
                 }
             }
         )
+    }
+}
+
+// MARK: - Main Thread Timeout Utility
+
+@MainActor
+private func withMainThreadTimeout<T>(
+    seconds: TimeInterval,
+    operation: @escaping () async throws -> T
+) async throws -> T? {
+    // Create a task for the operation
+    let operationTask = Task { @MainActor in
+        try await operation()
+    }
+    
+    // Create a timeout task
+    let timeoutTask = Task { @MainActor in
+        try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        operationTask.cancel()
+    }
+    
+    // Wait for the operation to complete
+    do {
+        let result = try await operationTask.value
+        timeoutTask.cancel() // Cancel the timeout if operation succeeds
+        return result
+    } catch {
+        timeoutTask.cancel()
+        if operationTask.isCancelled {
+            // Operation was cancelled due to timeout
+            return nil
+        } else {
+            // Operation failed for another reason
+            throw error
+        }
     }
 }

@@ -436,26 +436,27 @@ extension PeekabooAgentService {
         }
     }
     
-    // TODO: Implement session management
-    /*
+    // MARK: - Session Management
+    
     /// List available sessions
-    public func listSessions() async throws -> [AgentSessionInfo] {
+    public func listSessions() async throws -> [SessionSummary] {
         return try await sessionManager.listSessions()
     }
     
     /// Get detailed session information
-    public func getSessionInfo(sessionId: String) async throws -> AgentSessionInfo? {
-        let sessions = try await sessionManager.listSessions()
-        return sessions.first { $0.id == sessionId }
+    public func getSessionInfo(sessionId: String) async throws -> AgentSession? {
+        return try await sessionManager.loadSession(id: sessionId)
     }
-    */
     
-    /*
     /// Delete a specific session
     public func deleteSession(sessionId: String) async throws {
-        try await sessionManager.deleteSession(sessionId)
+        try await sessionManager.deleteSession(id: sessionId)
     }
-    */
+    
+    /// Clear all sessions
+    public func clearAllSessions() async throws {
+        try await sessionManager.clearAllSessions()
+    }
 }
 
 // MARK: - Event Handler
