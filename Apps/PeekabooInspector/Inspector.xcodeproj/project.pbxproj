@@ -11,7 +11,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		7814F0DE2E1B0A20000995F8 /* PeekabooInspector.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PeekabooInspector.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7814F0DE2E1B0A20000995F8 /* Inspector.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Inspector.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -45,7 +45,7 @@
 		7814F0DF2E1B0A20000995F8 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				7814F0DE2E1B0A20000995F8 /* PeekabooInspector.app */,
+				7814F0DE2E1B0A20000995F8 /* Inspector.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -53,9 +53,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		7814F0DD2E1B0A20000995F8 /* PeekabooInspector */ = {
+		7814F0DD2E1B0A20000995F8 /* Inspector */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7814F0E92E1B0A22000995F8 /* Build configuration list for PBXNativeTarget "PeekabooInspector" */;
+			buildConfigurationList = 7814F0E92E1B0A22000995F8 /* Build configuration list for PBXNativeTarget "Inspector" */;
 			buildPhases = (
 				7814F0DA2E1B0A20000995F8 /* Sources */,
 				7814F0DB2E1B0A20000995F8 /* Frameworks */,
@@ -68,12 +68,12 @@
 			fileSystemSynchronizedGroups = (
 				7814F0E02E1B0A20000995F8 /* PeekabooInspector */,
 			);
-			name = PeekabooInspector;
+			name = Inspector;
 			packageProductDependencies = (
 				7814F0F02E1B0A80000995F8 /* AXorcist */,
 			);
 			productName = PeekabooInspector;
-			productReference = 7814F0DE2E1B0A20000995F8 /* PeekabooInspector.app */;
+			productReference = 7814F0DE2E1B0A20000995F8 /* Inspector.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -91,7 +91,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 7814F0D92E1B0A20000995F8 /* Build configuration list for PBXProject "PeekabooInspector" */;
+			buildConfigurationList = 7814F0D92E1B0A20000995F8 /* Build configuration list for PBXProject "Inspector" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -108,7 +108,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7814F0DD2E1B0A20000995F8 /* PeekabooInspector */,
+				7814F0DD2E1B0A20000995F8 /* Inspector */,
 			);
 		};
 /* End PBXProject section */
@@ -255,6 +255,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = PeekabooInspector/PeekabooInspector.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -282,6 +283,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = PeekabooInspector/PeekabooInspector.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -307,7 +309,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		7814F0D92E1B0A20000995F8 /* Build configuration list for PBXProject "PeekabooInspector" */ = {
+		7814F0D92E1B0A20000995F8 /* Build configuration list for PBXProject "Inspector" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7814F0E72E1B0A22000995F8 /* Debug */,
@@ -316,7 +318,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7814F0E92E1B0A22000995F8 /* Build configuration list for PBXNativeTarget "PeekabooInspector" */ = {
+		7814F0E92E1B0A22000995F8 /* Build configuration list for PBXNativeTarget "Inspector" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7814F0EA2E1B0A22000995F8 /* Debug */,

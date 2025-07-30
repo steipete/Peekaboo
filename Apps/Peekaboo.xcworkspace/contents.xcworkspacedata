@@ -11,6 +11,6 @@
       location = "group:Playground/Playground.xcodeproj">
    </FileRef>
    <FileRef
-      location = "group:PeekabooInspector/PeekabooInspector.xcodeproj">
+      location = "group:PeekabooInspector/Inspector.xcodeproj">
    </FileRef>
 </Workspace>
