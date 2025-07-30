@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import Dispatch
 import PeekabooCore
 
 // Temporary session info struct until PeekabooAgentService implements session management
@@ -169,6 +170,11 @@ struct AgentCommand: AsyncParsableCommand {
           peekaboo agent "Click on the login button and fill the form"
           peekaboo "Find the Terminal app and run 'ls -la'" # Direct invocation
           
+          # Audio input:
+          peekaboo agent --audio  # Record from microphone
+          peekaboo agent --audio-file recording.wav  # Use audio file
+          peekaboo agent --audio "summarize this"  # Record and process with task
+          
           # Resume sessions:
           peekaboo agent --resume "continue with the task"  # Resume most recent
           peekaboo agent --resume-session abc123 "do this next"  # Resume specific
@@ -180,6 +186,8 @@ struct AgentCommand: AsyncParsableCommand {
         3. Execute each step using Peekaboo commands
         4. Verify results with screenshots
         5. Retry if needed
+        
+        Audio input requires OpenAI API key for transcription via Whisper API.
         """)
 
     @Argument(help: "Natural language description of the task to perform (optional when using --resume)")
@@ -214,6 +222,15 @@ struct AgentCommand: AsyncParsableCommand {
     
     @Flag(name: .long, help: "Disable session caching (always create new session)")
     var noCache = false
+    
+    @Flag(name: .long, help: "Enable audio input mode (record from microphone)")
+    var audio = false
+    
+    @Option(name: .long, help: "Audio input file path (instead of microphone)")
+    var audioFile: String?
+    
+    @Flag(name: .long, help: "Use real-time audio streaming (OpenAI only)")
+    var realtime = false
     
     /// Computed property for output mode based on flags
     private var outputMode: OutputMode {
@@ -315,17 +332,94 @@ struct AgentCommand: AsyncParsableCommand {
             }
         }
         
-        // Regular execution requires task
-        guard let executionTask = task else {
-            if jsonOutput {
-                let error = ["success": false, "error": "Task argument is required"] as [String: Any]
-                let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
-                print(String(data: jsonData, encoding: .utf8) ?? "{}")
-            } else {
-                print("\(TerminalColor.red)Error: Task argument is required\(TerminalColor.reset)")
-                print("Usage: peekaboo agent \"<your-task>\"")
+        // Handle audio input
+        var executionTask: String
+        if audio || audioFile != nil {
+            if !jsonOutput && !quiet {
+                if let audioPath = audioFile {
+                    print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
+                } else {
+                    print("\(TerminalColor.cyan)🎙️ Starting audio recording... (Press Ctrl+C to stop)\(TerminalColor.reset)")
+                }
             }
-            return
+            
+            let audioService = services.audioInput
+            
+            do {
+                if let audioPath = audioFile {
+                    // Transcribe from file
+                    let url = URL(fileURLWithPath: audioPath)
+                    executionTask = try await audioService.transcribeAudioFile(url)
+                } else {
+                    // Record from microphone
+                    try await audioService.startRecording()
+                    
+                    // Create a continuation to handle the async signal
+                    let transcript = try await withTaskCancellationHandler {
+                        try await withCheckedThrowingContinuation { continuation in
+                            // Set up signal handler for Ctrl+C
+                            let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
+                            signalSource.setEventHandler {
+                                signalSource.cancel()
+                                Task { @MainActor in
+                                    do {
+                                        let transcript = try await audioService.stopRecording()
+                                        continuation.resume(returning: transcript)
+                                    } catch {
+                                        continuation.resume(throwing: error)
+                                    }
+                                }
+                            }
+                            signalSource.resume()
+                            
+                            // Also provide a way to stop recording after a timeout (optional)
+                            // This could be configured via a flag if needed
+                        }
+                    } onCancel: {
+                        Task { @MainActor in
+                            _ = try? await audioService.stopRecording()
+                        }
+                    }
+                    
+                    executionTask = transcript
+                }
+                
+                if !jsonOutput && !quiet {
+                    print("\(TerminalColor.green)✅ Transcription complete\(TerminalColor.reset)")
+                    print("\(TerminalColor.gray)Transcript: \(executionTask.prefix(100))...\(TerminalColor.reset)")
+                }
+                
+                // If we have both audio and a task, combine them
+                if let providedTask = task {
+                    executionTask = "\(providedTask)\n\nAudio transcript:\n\(executionTask)"
+                }
+                
+            } catch {
+                if jsonOutput {
+                    let errorObj = ["success": false, "error": "Audio processing failed: \(error.localizedDescription)"] as [String: Any]
+                    let jsonData = try JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted)
+                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
+                } else {
+                    print("\(TerminalColor.red)❌ Audio processing failed: \(error.localizedDescription)\(TerminalColor.reset)")
+                }
+                return
+            }
+        } else {
+            // Regular execution requires task
+            guard let providedTask = task else {
+                if jsonOutput {
+                    let error = ["success": false, "error": "Task argument is required"] as [String: Any]
+                    let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
+                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
+                } else {
+                    print("\(TerminalColor.red)Error: Task argument is required\(TerminalColor.reset)")
+                    print("Usage: peekaboo agent \"<your-task>\"")
+                    print("       peekaboo agent --audio")
+                    print("       peekaboo agent --audio-file recording.wav")
+                }
+                return
+            }
+            executionTask = providedTask
         }
         
         // Execute task

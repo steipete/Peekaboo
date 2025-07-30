@@ -327,6 +327,21 @@ public final class GrokModel: ModelInterface {
             
         case .file:
             throw ModelError.invalidConfiguration("File content not supported in Grok chat completions")
+            
+        case .audio(let audioContent):
+            // Grok doesn't support native audio, so we need to use the transcript
+            if let transcript = audioContent.transcript {
+                // Include metadata about the audio source
+                var text = transcript
+                if let duration = audioContent.duration {
+                    text = "[Audio transcript, duration: \(Int(duration))s] \(transcript)"
+                } else {
+                    text = "[Audio transcript] \(transcript)"
+                }
+                return GrokMessage(role: "user", content: .string(text), toolCalls: nil, toolCallId: nil)
+            } else {
+                throw ModelError.invalidConfiguration("Audio content must be transcribed before sending to Grok. Please ensure transcript is provided.")
+            }
         }
     }
     

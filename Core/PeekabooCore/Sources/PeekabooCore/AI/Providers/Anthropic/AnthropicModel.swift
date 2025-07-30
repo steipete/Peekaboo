@@ -464,6 +464,21 @@ public final class AnthropicModel: ModelInterface {
             
         case .file:
             throw PeekabooError.invalidInput(field: "content", reason: "File content not supported in Anthropic API")
+            
+        case .audio(let audioContent):
+            // Claude doesn't support native audio, so we need to use the transcript
+            if let transcript = audioContent.transcript {
+                // Include metadata about the audio source
+                var text = transcript
+                if let duration = audioContent.duration {
+                    text = "[Audio transcript, duration: \(Int(duration))s] \(transcript)"
+                } else {
+                    text = "[Audio transcript] \(transcript)"
+                }
+                return AnthropicMessage(role: .user, content: .string(text))
+            } else {
+                throw PeekabooError.invalidInput(field: "audio", reason: "Audio content must be transcribed before sending to Claude. Please ensure transcript is provided.")
+            }
         }
     }
     

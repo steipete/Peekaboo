@@ -71,4 +71,6 @@ else
         "$DEBUG_BINARY_PATH"
 fi
 
+echo "📦 Copying binary to project root..."
+cp "$DEBUG_BINARY_PATH" "$PROJECT_ROOT/peekaboo"
 echo "✅ Debug build complete"

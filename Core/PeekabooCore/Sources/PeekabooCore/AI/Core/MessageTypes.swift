@@ -112,6 +112,7 @@ public enum MessageContent: Codable, Sendable {
     case text(String)
     case image(ImageContent)
     case file(FileContent)
+    case audio(AudioContent)
     case multimodal([MessageContentPart])
     
     // Custom coding for enum
@@ -120,7 +121,7 @@ public enum MessageContent: Codable, Sendable {
     }
     
     enum ContentType: String, Codable {
-        case text, image, file, multimodal
+        case text, image, file, audio, multimodal
     }
     
     public init(from decoder: Decoder) throws {
@@ -137,6 +138,9 @@ public enum MessageContent: Codable, Sendable {
         case .file:
             let value = try container.decode(FileContent.self, forKey: .value)
             self = .file(value)
+        case .audio:
+            let value = try container.decode(AudioContent.self, forKey: .value)
+            self = .audio(value)
         case .multimodal:
             let value = try container.decode([MessageContentPart].self, forKey: .value)
             self = .multimodal(value)
@@ -155,6 +159,9 @@ public enum MessageContent: Codable, Sendable {
             try container.encode(value, forKey: .value)
         case .file(let value):
             try container.encode(ContentType.file, forKey: .type)
+            try container.encode(value, forKey: .value)
+        case .audio(let value):
+            try container.encode(ContentType.audio, forKey: .type)
             try container.encode(value, forKey: .value)
         case .multimodal(let value):
             try container.encode(ContentType.multimodal, forKey: .type)
@@ -190,6 +197,24 @@ public struct FileContent: Codable, Sendable {
         self.id = id
         self.url = url
         self.name = name
+    }
+}
+
+/// Audio content for messages
+public struct AudioContent: Codable, Sendable {
+    public let url: String?
+    public let base64: String?
+    public let transcript: String?
+    public let duration: TimeInterval?
+    public let mimeType: String?
+    
+    public init(url: String? = nil, base64: String? = nil, transcript: String? = nil, 
+                duration: TimeInterval? = nil, mimeType: String? = nil) {
+        self.url = url
+        self.base64 = base64
+        self.transcript = transcript
+        self.duration = duration
+        self.mimeType = mimeType
     }
 }
 

@@ -479,6 +479,21 @@ public final class OpenAIModel: ModelInterface {
             
         case .file:
             throw PeekabooError.invalidInput(field: "content", reason: "File content not supported in OpenAI chat completions")
+            
+        case .audio(let audioContent):
+            // For OpenAI, we can either use the transcript directly or potentially support native audio in the future
+            if let transcript = audioContent.transcript {
+                // Include metadata about the audio source
+                var text = transcript
+                if let duration = audioContent.duration {
+                    text = "[Audio transcript, duration: \(Int(duration))s] \(transcript)"
+                } else {
+                    text = "[Audio transcript] \(transcript)"
+                }
+                return OpenAIMessage(role: "user", content: .string(text))
+            } else {
+                throw PeekabooError.invalidInput(field: "audio", reason: "Audio content must be transcribed before sending to OpenAI. Please ensure transcript is provided.")
+            }
         }
     }
     

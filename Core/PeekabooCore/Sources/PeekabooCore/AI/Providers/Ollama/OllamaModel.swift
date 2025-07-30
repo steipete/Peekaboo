@@ -423,6 +423,21 @@ public final class OllamaModel: ModelInterface {
                     
                 case .file:
                     return nil // Ollama doesn't support file content
+                    
+                case .audio(let audioContent):
+                    // Ollama doesn't support native audio, so we need to use the transcript
+                    if let transcript = audioContent.transcript {
+                        // Include metadata about the audio source
+                        var text = transcript
+                        if let duration = audioContent.duration {
+                            text = "[Audio transcript, duration: \(Int(duration))s] \(transcript)"
+                        } else {
+                            text = "[Audio transcript] \(transcript)"
+                        }
+                        return OllamaMessage(role: "user", content: text, images: nil, toolCalls: nil)
+                    } else {
+                        return OllamaMessage(role: "user", content: "[Audio requires transcription for Ollama]", images: nil, toolCalls: nil)
+                    }
                 }
                 
             case .assistant(_, let content, _):

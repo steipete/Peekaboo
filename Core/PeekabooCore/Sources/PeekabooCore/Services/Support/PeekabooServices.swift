@@ -53,6 +53,9 @@ public final class PeekabooServices: @unchecked Sendable {
     /// Agent service for AI-powered automation
     public private(set) var agent: AgentServiceProtocol?
     
+    /// Audio input service for voice commands and audio transcription
+    public let audioInput: AudioInputServiceProtocol
+    
     /// Lock for thread-safe agent updates
     private let agentLock = NSLock()
     
@@ -121,6 +124,11 @@ public final class PeekabooServices: @unchecked Sendable {
         // Agent service will be initialized by createShared method
         self.agent = nil
         
+        // Audio input service needs AI service, so temporarily initialize with placeholder
+        // Will be properly initialized in createShared with actual AI service
+        self.audioInput = AudioInputService(aiService: PeekabooAIService())
+        logger.debug("✅ AudioInputService initialized (placeholder)")
+        
         logger.info("✨ PeekabooServices initialization complete")
     }
     
@@ -140,7 +148,8 @@ public final class PeekabooServices: @unchecked Sendable {
         process: ProcessServiceProtocol,
         permissions: PermissionsService? = nil,
         agent: AgentServiceProtocol? = nil,
-        configuration: ConfigurationManager? = nil
+        configuration: ConfigurationManager? = nil,
+        audioInput: AudioInputServiceProtocol? = nil
     ) {
         logger.info("🚀 Initializing PeekabooServices with custom implementations")
         self.logging = logging ?? LoggingService()
@@ -157,6 +166,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.permissions = permissions ?? PermissionsService()
         self.agent = agent
         self.configuration = configuration ?? ConfigurationManager.shared
+        self.audioInput = audioInput ?? AudioInputService(aiService: PeekabooAIService())
         
         logger.info("✨ PeekabooServices initialization complete (custom)")
     }
@@ -176,7 +186,8 @@ public final class PeekabooServices: @unchecked Sendable {
         process: ProcessServiceProtocol,
         permissions: PermissionsService,
         configuration: ConfigurationManager,
-        agent: AgentServiceProtocol?
+        agent: AgentServiceProtocol?,
+        audioInput: AudioInputServiceProtocol
     ) {
         self.logging = logging
         self.screenCapture = screenCapture
@@ -192,6 +203,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.permissions = permissions
         self.configuration = configuration
         self.agent = agent
+        self.audioInput = audioInput
     }
     
     /// Create the shared instance with proper initialization order
@@ -222,6 +234,11 @@ public final class PeekabooServices: @unchecked Sendable {
             dockService: dockSvc
         )
         
+        // Create AI service and audio service
+        let aiService = PeekabooAIService()
+        let audioInput = AudioInputService(aiService: aiService)
+        logger.debug("✅ AudioInputService initialized")
+        
         // Create services instance first
         let services = PeekabooServices(
             logging: logging,
@@ -237,7 +254,8 @@ public final class PeekabooServices: @unchecked Sendable {
             process: process,
             permissions: permissions,
             configuration: config,
-            agent: nil
+            agent: nil,
+            audioInput: audioInput
         )
         
         // Initialize ModelProvider with available API keys
@@ -320,7 +338,8 @@ public final class PeekabooServices: @unchecked Sendable {
             process: process,
             permissions: permissions,
             configuration: config,
-            agent: agent
+            agent: agent,
+            audioInput: audioInput
         )
     }
     
