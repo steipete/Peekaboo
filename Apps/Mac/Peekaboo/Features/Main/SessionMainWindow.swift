@@ -916,13 +916,66 @@ struct DetailedMessageRow: View {
                 }
             }
             
-            // Expanded tool calls
+            // Expanded tool calls - show details directly without nested expansion
             if isExpanded && !message.toolCalls.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(message.toolCalls) { toolCall in
-                        DetailedToolCallView(toolCall: toolCall) { image in
-                            selectedImage = image
-                            showingImageInspector = true
+                        VStack(alignment: .leading, spacing: 8) {
+                            // Arguments
+                            if !toolCall.arguments.isEmpty && toolCall.arguments != "{}" {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Arguments")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text(formatJSON(toolCall.arguments))
+                                        .font(.system(.caption, design: .monospaced))
+                                        .textSelection(.enabled)
+                                        .padding(8)
+                                        .background(Color(NSColor.textBackgroundColor))
+                                        .cornerRadius(4)
+                                }
+                            }
+                            
+                            // Result
+                            if !toolCall.result.isEmpty && toolCall.result != "Running..." {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Result")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    // Check if result contains image data
+                                    if toolCall.name.contains("image") || toolCall.name.contains("screenshot"),
+                                       let imageData = extractImageData(from: toolCall.result),
+                                       let image = NSImage(data: imageData) {
+                                        
+                                        Button(action: { 
+                                            selectedImage = image
+                                            showingImageInspector = true
+                                        }) {
+                                            Image(nsImage: image)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                                .frame(maxHeight: 200)
+                                                .cornerRadius(8)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 8)
+                                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                                                )
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help("Click to inspect image")
+                                    } else {
+                                        Text(toolCall.result)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textSelection(.enabled)
+                                            .lineLimit(10)
+                                            .padding(8)
+                                            .background(Color(NSColor.textBackgroundColor))
+                                            .cornerRadius(4)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1051,6 +1104,27 @@ struct DetailedMessageRow: View {
         
         // Default to running for tool messages without clear status
         return .running
+    }
+    
+    private func formatJSON(_ json: String) -> String {
+        guard let data = json.data(using: .utf8),
+              let jsonObject = try? JSONSerialization.jsonObject(with: data),
+              let formattedData = try? JSONSerialization.data(withJSONObject: jsonObject, options: [.prettyPrinted, .sortedKeys]),
+              let formattedString = String(data: formattedData, encoding: .utf8) else {
+            return json
+        }
+        return formattedString
+    }
+    
+    private func extractImageData(from result: String) -> Data? {
+        // Try to extract base64 image data from result
+        if let data = result.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let screenshotData = json["screenshot_data"] as? String,
+           let imageData = Data(base64Encoded: screenshotData) {
+            return imageData
+        }
+        return nil
     }
     
     private func retryLastTask() {

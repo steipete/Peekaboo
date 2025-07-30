@@ -278,15 +278,7 @@ final class PeekabooAgent {
     /// Cancel the current task
     public func cancelCurrentTask() {
         processingTask?.cancel()
-        
-        // Add cancellation notification to UI
-        if let currentSession = sessionStore.currentSession {
-            let cancelMessage = ConversationMessage(
-                role: .system,
-                content: "⚠️ Cancelling current task..."
-            )
-            sessionStore.addMessage(cancelMessage, to: currentSession)
-        }
+        // Don't add a message here - it will be added when the cancellation is actually handled
     }
     
     
@@ -304,37 +296,37 @@ final class PeekabooAgent {
                 toolExecutionHistory[index].result = message
             }
             
-        case .assistantMessage(let content):
+        case .assistantMessage(let delta):
             // Add assistant's message to session as it streams
-            if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                isThinking = false
-                currentTool = nil
-                currentToolArgs = nil
-                
-                // Add or update the assistant message in the session
-                if let currentSession = sessionStore.currentSession {
-                    // Check if we have a recent assistant message we're building
-                    if let sessionIndex = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }),
-                       sessionIndex < sessionStore.sessions.count,
-                       let lastMessage = sessionStore.sessions[sessionIndex].messages.last,
-                       lastMessage.role == .assistant,
-                       lastMessage.timestamp.timeIntervalSinceNow > -5.0 { // Within last 5 seconds
-                        // Update existing assistant message
-                        sessionStore.sessions[sessionIndex].messages[sessionStore.sessions[sessionIndex].messages.count - 1] = ConversationMessage(
-                            id: lastMessage.id,
-                            role: .assistant,
-                            content: content,
-                            timestamp: lastMessage.timestamp,
-                            toolCalls: lastMessage.toolCalls
-                        )
-                    } else {
-                        // Create new assistant message
-                        let assistantMessage = ConversationMessage(
-                            role: .assistant,
-                            content: content
-                        )
-                        sessionStore.addMessage(assistantMessage, to: currentSession)
-                    }
+            // Note: 'delta' contains only the incremental text chunk, not the full content
+            isThinking = false
+            currentTool = nil
+            currentToolArgs = nil
+            
+            // Add or update the assistant message in the session
+            if let currentSession = sessionStore.currentSession {
+                // Check if we have a recent assistant message we're building
+                if let sessionIndex = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }),
+                   sessionIndex < sessionStore.sessions.count,
+                   let lastMessage = sessionStore.sessions[sessionIndex].messages.last,
+                   lastMessage.role == .assistant,
+                   lastMessage.timestamp.timeIntervalSinceNow > -5.0 { // Within last 5 seconds
+                    // Append delta to existing message content
+                    let accumulatedContent = lastMessage.content + delta
+                    sessionStore.sessions[sessionIndex].messages[sessionStore.sessions[sessionIndex].messages.count - 1] = ConversationMessage(
+                        id: lastMessage.id,
+                        role: .assistant,
+                        content: accumulatedContent,
+                        timestamp: lastMessage.timestamp,
+                        toolCalls: lastMessage.toolCalls
+                    )
+                } else if !delta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    // Create new assistant message with the first delta
+                    let assistantMessage = ConversationMessage(
+                        role: .assistant,
+                        content: delta
+                    )
+                    sessionStore.addMessage(assistantMessage, to: currentSession)
                 }
             }
             

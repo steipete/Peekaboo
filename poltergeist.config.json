@@ -22,7 +22,7 @@
       "platform": "macos",
       "enabled": true,
       "buildCommand": "./scripts/build-mac-debug.sh",
-      "bundleId": "boo.peekaboo",
+      "bundleId": "boo.peekaboo.mac.debug",
       "statusFile": "/tmp/peekaboo-mac-build-status.json",
       "lockFile": "/tmp/peekaboo-mac-build.lock",
       "autoRelaunch": true,

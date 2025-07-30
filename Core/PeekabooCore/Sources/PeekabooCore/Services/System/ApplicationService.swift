@@ -56,13 +56,19 @@ public final class ApplicationService: ApplicationServiceProtocol {
         // Check for PID format first
         if identifier.hasPrefix("PID:") {
             let pidString = String(identifier.dropFirst(4))
-            if let pid = Int32(pidString),
-               let app = NSRunningApplication(processIdentifier: pid),
-               !app.isTerminated {
-                logger.debug("Found app by PID: \(pid)")
-                return createApplicationInfo(from: app)
+            if let pid = Int32(pidString) {
+                // NSRunningApplication init must happen on main thread
+                let app = await MainActor.run {
+                    NSRunningApplication(processIdentifier: pid)
+                }
+                if let app = app, !app.isTerminated {
+                    logger.debug("Found app by PID: \(pid)")
+                    return createApplicationInfo(from: app)
+                } else {
+                    throw PeekabooError.appNotFound("Process with PID \(pidString) not found or terminated")
+                }
             } else {
-                throw PeekabooError.appNotFound("Process with PID \(pidString) not found or terminated")
+                throw PeekabooError.appNotFound("Invalid PID format: \(pidString)")
             }
         }
         
@@ -248,7 +254,11 @@ public final class ApplicationService: ApplicationServiceProtocol {
         logger.info("Activating application: \(identifier)")
         let app = try await findApplication(identifier: identifier)
         
-        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+        // NSRunningApplication init must happen on main thread
+        let runningApp = await MainActor.run {
+            NSRunningApplication(processIdentifier: app.processIdentifier)
+        }
+        guard let runningApp = runningApp else {
             throw PeekabooError.operationError(
                 message: "Failed to activate application: Could not find running application process"
             )
@@ -272,7 +282,11 @@ public final class ApplicationService: ApplicationServiceProtocol {
         logger.info("Quitting application: \(identifier) (force: \(force))")
         let app = try await findApplication(identifier: identifier)
         
-        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+        // NSRunningApplication init must happen on main thread
+        let runningApp = await MainActor.run {
+            NSRunningApplication(processIdentifier: app.processIdentifier)
+        }
+        guard let runningApp = runningApp else {
             throw PeekabooError.appNotFound(identifier)
         }
         
@@ -305,8 +319,14 @@ public final class ApplicationService: ApplicationServiceProtocol {
             _ = error.asPeekabooError(context: "AX hide action failed for \(app.name)")
             // Fallback to NSRunningApplication method
             logger.debug("Using NSRunningApplication fallback")
-            if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
-                runningApp.hide()
+            // NSRunningApplication init must happen on main thread
+            let runningApp = await MainActor.run {
+                NSRunningApplication(processIdentifier: app.processIdentifier)
+            }
+            if let runningApp = runningApp {
+                await MainActor.run {
+                    runningApp.hide()
+                }
                 logger.debug("Hidden via NSRunningApplication: \(app.name)")
             }
         }
@@ -327,8 +347,14 @@ public final class ApplicationService: ApplicationServiceProtocol {
             _ = error.asPeekabooError(context: "AX unhide action failed for \(app.name)")
             // Fallback to activating the app if unhide fails
             logger.debug("Using activate fallback")
-            if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
-                runningApp.activate()
+            // NSRunningApplication init must happen on main thread
+            let runningApp = await MainActor.run {
+                NSRunningApplication(processIdentifier: app.processIdentifier)
+            }
+            if let runningApp = runningApp {
+                await MainActor.run {
+                    runningApp.activate()
+                }
                 logger.debug("Activated as fallback: \(app.name)")
             }
         }

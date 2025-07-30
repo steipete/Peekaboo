@@ -254,3 +254,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 }
+// Test comment to trigger build - Wed Jul 30 02:14:41 CEST 2025
