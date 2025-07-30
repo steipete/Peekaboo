@@ -72,14 +72,15 @@ If Poltergeist isn't running (rare), the wrapper will tell you to start it:
 npm run poltergeist:haunt
 ```
 
-## Poltergeist - Automatic CLI Rebuilding
+## Poltergeist - Automatic Swift Rebuilding
 
-**Poltergeist** is our automatic Swift CLI builder that watches source files and rebuilds when they change. It runs in the background and ensures the CLI binary is always up-to-date.
+**Poltergeist** is our automatic Swift builder that watches source files and rebuilds when they change. It runs in the background and ensures both the CLI binary and Mac app are always up-to-date.
 
 **Key Points:**
-- Only for CLI builds (use Xcode for Mac app)
+- Builds both CLI and Mac app targets automatically
 - Exit code 42 = build failed, fix immediately
-- Always use wrapper: `./scripts/peekaboo-wait.sh`
+- For CLI: Always use wrapper: `./scripts/peekaboo-wait.sh`
+- For Mac app: Poltergeist builds automatically, use Xcode for manual builds
 - See [Poltergeist repository](https://github.com/steipete/poltergeist) for full details
 
 ### CRITICAL INSTRUCTIONS FOR AI AGENTS
@@ -114,6 +115,7 @@ npm run poltergeist:haunt
 - `Core/PeekabooCore/**/*.swift`
 - `Core/AXorcist/**/*.swift`
 - `Apps/CLI/**/*.swift`
+- `Apps/Mac/**/*.swift`
 - All `Package.swift` files
 - Excludes auto-generated `Version.swift` to prevent infinite loops
 
@@ -250,7 +252,7 @@ This issue typically occurs when:
 
 #### Building the Mac App
 
-**IMPORTANT: Poltergeist does NOT build the Mac app! Use Xcode or xcodebuild for Mac app builds.**
+**Note: Poltergeist now builds the Mac app automatically! You can still use Xcode or xcodebuild for manual builds.**
 
 ```bash
 # Open in Xcode (recommended for development)
@@ -264,7 +266,7 @@ xcodebuild -workspace Apps/Peekaboo.xcworkspace -scheme Peekaboo -configuration 
   open ~/Library/Developer/Xcode/DerivedData/Peekaboo-*/Build/Products/Debug/Peekaboo.app
 ```
 
-#### Building the CLI (handled by Poltergeist)
+#### Building the CLI and Mac App (handled by Poltergeist)
 
 ```bash
 # Build TypeScript server
@@ -273,7 +275,10 @@ npm run build
 # Build Swift CLI only (usually not needed - Poltergeist does this)
 npm run build:swift
 
-# Build everything (Swift CLI + TypeScript)
+# Build Mac app only (usually not needed - Poltergeist does this)
+npm run build:mac
+
+# Build everything (Swift CLI + Mac app + TypeScript)
 npm run build:all
 
 # Build universal Swift binary with optimizations
@@ -281,6 +286,11 @@ npm run build:all
 ```
 
 **Note**: Swift builds can take 3-5 minutes on first build or clean builds due to dependency compilation. Subsequent incremental builds are much faster (10-30 seconds).
+
+**Important for AI Agents**: When running build or test commands, increase the Bash tool timeout beyond the default 2 minutes:
+- Use `timeout: 300000` (5 minutes) for `npm run build:swift` or `npm run build:all`
+- Use `timeout: 180000` (3 minutes) for `npm test` or test commands that include Swift compilation
+- The `prepublishOnly` hook in Server/package.json rebuilds Swift, so publishing may also need longer timeouts
 
 ### Running Tests
 
