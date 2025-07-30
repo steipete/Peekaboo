@@ -20,6 +20,13 @@ struct MainWindow: View {
         case text
         case voice
     }
+    
+    private var showErrorAlert: Binding<Bool> {
+        Binding(
+            get: { self.errorMessage != nil },
+            set: { if !$0 { self.errorMessage = nil } }
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,6 +60,13 @@ struct MainWindow: View {
             self.inputText = ""
             self.inputMode = .text
             // The text field will automatically focus when available
+        }
+        .alert("Error", isPresented: self.showErrorAlert) {
+            Button("OK") {
+                self.errorMessage = nil
+            }
+        } message: {
+            Text(self.errorMessage ?? "An error occurred")
         }
     }
 
@@ -256,6 +270,15 @@ struct MainWindow: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
+            
+            // Show error if present
+            if let error = speechRecognizer.error {
+                Text(error.localizedDescription)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
 
             Button {
                 self.toggleVoiceRecording()
@@ -331,12 +354,27 @@ struct MainWindow: View {
                 self.submitInput()
             }
         } else {
+            // Check if OpenAI API key is available for voice transcription
+            if self.settings.openAIAPIKey.isEmpty {
+                self.errorMessage = "Voice input requires an OpenAI API key for transcription. Please add your OpenAI API key in Settings."
+                // Switch back to text input
+                self.inputMode = .text
+                return
+            }
+            
             // Start listening
             Task {
                 do {
                     try self.speechRecognizer.startListening()
+                    
+                    // Monitor for errors during recording
+                    if let error = self.speechRecognizer.error {
+                        self.errorMessage = error.localizedDescription
+                        self.inputMode = .text // Switch back to text mode on error
+                    }
                 } catch {
                     self.errorMessage = error.localizedDescription
+                    self.inputMode = .text // Switch back to text mode on error
                 }
             }
         }

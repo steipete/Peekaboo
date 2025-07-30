@@ -66,34 +66,75 @@ struct ToolFormatter {
             return "Capture \(target)"
 
         case .click:
+            var parts = ["Click"]
+            
+            // Check for coordinates first (most specific)
+            if let coords = args["coords"] as? String {
+                parts.append("at \(coords)")
+            } else if let x = args["x"], let y = args["y"] {
+                parts.append("at (\(x), \(y))")
+            }
+            
+            // Then add element/target info
             if let target = args["target"] as? String {
                 // Check if it's an element ID (like B7, O6, etc.) or text
                 if target.count <= 3, target.range(of: "^[A-Z]\\d+$", options: .regularExpression) != nil {
-                    return "Click element \(target)"
+                    parts.append("element \(target)")
                 } else {
-                    return "Click '\(target)'"
+                    parts.append("'\(target)'")
                 }
             } else if let element = args["element"] as? String {
-                return "Click element \(element)"
-            } else if let x = args["x"], let y = args["y"] {
-                return "Click at (\(x), \(y))"
+                parts.append("element \(element)")
+            } else if let on = args["on"] as? String {
+                // Handle the 'on' parameter from newer see/click commands
+                parts.append("element \(on)")
             }
-            return "Click"
+            
+            return parts.joined(separator: " ")
 
         case .type:
+            var parts = ["Type"]
+            
             if let text = args["text"] as? String {
-                return "Type '\(text)'"
+                let truncated = text.count > 30 ? String(text.prefix(30)) + "..." : text
+                parts.append("'\(truncated)'")
             }
-            return "Type text"
+            
+            // Add element context
+            if let on = args["on"] as? String {
+                parts.append("in element \(on)")
+            }
+            
+            // Add modifiers
+            if let clear = args["clear"] as? Bool, clear {
+                parts.append("(clear first)")
+            }
+            if let pressReturn = args["press_return"] as? Bool, pressReturn {
+                parts.append("(+ return)")
+            }
+            
+            return parts.joined(separator: " ")
 
         case .scroll:
+            var parts = ["Scroll"]
+            
             if let direction = args["direction"] as? String {
-                if let amount = args["amount"] as? Int {
-                    return "Scroll \(direction) \(amount)px"
-                }
-                return "Scroll \(direction)"
+                parts.append(direction)
             }
-            return "Scroll"
+            
+            if let amount = args["amount"] as? Int {
+                parts.append("\(amount) line\(amount == 1 ? "" : "s")")
+            }
+            
+            if let on = args["on"] as? String {
+                parts.append("on element \(on)")
+            }
+            
+            if let smooth = args["smooth"] as? Bool, smooth {
+                parts.append("(smooth)")
+            }
+            
+            return parts.joined(separator: " ")
 
         case .focusWindow:
             let app = (args["appName"] as? String) ?? "active window"
@@ -249,10 +290,31 @@ struct ToolFormatter {
             return "Need more information"
 
         case .drag:
-            return "Drag element"
+            var parts = ["Drag"]
+            if let from = args["from"] as? String {
+                parts.append("from \(from)")
+            } else if let fromCoords = args["from_coords"] as? String {
+                parts.append("from \(fromCoords)")
+            }
+            if let to = args["to"] as? String {
+                parts.append("to \(to)")
+            } else if let toCoords = args["to_coords"] as? String {
+                parts.append("to \(toCoords)")
+            }
+            return parts.joined(separator: " ")
 
         case .swipe:
-            return "Swipe gesture"
+            var parts = ["Swipe"]
+            if let from = args["from"] as? String {
+                parts.append("from \(from)")
+            }
+            if let to = args["to"] as? String {
+                parts.append("to \(to)")
+            }
+            if let duration = args["duration"] as? Int {
+                parts.append("(\(duration)ms)")
+            }
+            return parts.joined(separator: " ")
         }
     }
 
@@ -316,19 +378,26 @@ struct ToolFormatter {
             }
             parts.append(clickType)
 
-            // Get what was clicked
+            // Get what was clicked - prioritize showing coordinates
+            var hasCoordinates = false
+            if let coords = actualResult["coords"] as? String {
+                parts.append("at \(coords)")
+                hasCoordinates = true
+            } else if let x = actualResult["x"], let y = actualResult["y"] {
+                parts.append("at (\(x), \(y))")
+                hasCoordinates = true
+            }
+            
+            // Add element/target info if available
             if let element = actualResult["element"] as? String {
                 if element.count <= 3, element.range(of: "^[A-Z]\\d+$", options: .regularExpression) != nil {
                     parts.append("element \(element)")
                 } else {
                     parts.append("'\(element)'")
                 }
-            } else if let target = actualResult["target"] as? String {
+            } else if let target = actualResult["target"] as? String, !hasCoordinates {
+                // Only show target if we don't already have coordinates
                 parts.append("'\(target)'")
-            } else if let coords = actualResult["coords"] as? String {
-                parts.append("at \(coords)")
-            } else if let x = actualResult["x"], let y = actualResult["y"] {
-                parts.append("at (\(x), \(y))")
             }
 
             // Add app context if available
@@ -339,22 +408,36 @@ struct ToolFormatter {
             return parts.joined(separator: " ")
 
         case .listApps:
+            var appCount: Int?
+            
             // Check for count value first (tool result format)
             if let countValue = actualResult["count"] as? [String: Any],
-               let count = countValue["value"] as? String
-            {
-                return "Found \(count) apps"
+               let count = countValue["value"] as? String,
+               let intCount = Int(count) {
+                appCount = intCount
+            }
+            // Direct count field
+            else if let count = actualResult["count"] as? Int {
+                appCount = count
             }
             // Check nested structure
             else if let data = actualResult["data"] as? [String: Any],
-                    let apps = data["applications"] as? [[String: Any]]
-            {
-                return "Found \(apps.count) apps"
+                    let apps = data["applications"] as? [[String: Any]] {
+                appCount = apps.count
             }
             // Fallback to direct structure
             else if let apps = actualResult["apps"] as? [[String: Any]] {
-                return "Found \(apps.count) apps"
+                appCount = apps.count
             }
+            // Check for applications array directly
+            else if let apps = actualResult["applications"] as? [[String: Any]] {
+                appCount = apps.count
+            }
+            
+            if let count = appCount {
+                return "Found \(count) running app\(count == 1 ? "" : "s")"
+            }
+            return "Listed applications"
 
         case .listDock:
             // Check for totalCount directly in result
@@ -374,6 +457,15 @@ struct ToolFormatter {
 
         case .see:
             var parts = ["Captured"]
+            
+            // Add app context if available
+            if let app = actualResult["app"] as? String {
+                parts.append(app)
+            } else if let appTarget = actualResult["app_target"] as? String {
+                parts.append(appTarget)
+            }
+            
+            // Add element counts if available
             if let elementCounts = actualResult["elementCounts"] as? [String: Int] {
                 let counts = elementCounts.compactMap { key, value in
                     value > 0 ? "\(value) \(key)" : nil
@@ -382,12 +474,39 @@ struct ToolFormatter {
                     parts.append("with \(counts.joined(separator: ", "))")
                 }
             }
+            
+            // Add session info if available
+            if let sessionId = actualResult["session"] as? String {
+                parts.append("(session: \(String(sessionId.prefix(8)))...)")
+            }
+            
             return parts.joined(separator: " ")
 
         case .type:
+            var parts = ["Typed"]
+            
             if let typed = actualResult["typed"] as? String {
-                return "Typed '\(typed)'"
+                parts.append("'\(typed)'")
+            } else if let text = actualResult["text"] as? String {
+                parts.append("'\(text)'")
             }
+            
+            // Add element context if available
+            if let element = actualResult["element"] as? String {
+                parts.append("in element \(element)")
+            } else if let on = actualResult["on"] as? String {
+                parts.append("in element \(on)")
+            }
+            
+            // Add clear/return info if available
+            if let cleared = actualResult["cleared"] as? Bool, cleared {
+                parts.append("(cleared field)")
+            }
+            if let pressedReturn = actualResult["pressedReturn"] as? Bool, pressedReturn {
+                parts.append("(pressed return)")
+            }
+            
+            return parts.joined(separator: " ")
 
         case .hotkey:
             var parts = ["Pressed"]
@@ -464,15 +583,36 @@ struct ToolFormatter {
 
         case .scroll:
             var parts = ["Scrolled"]
+            
+            // Direction
             if let direction = actualResult["direction"] as? String {
                 parts.append(direction)
             }
+            
+            // Amount with proper units
             if let amount = actualResult["amount"] as? Int {
-                parts.append("\(amount) pixels")
+                parts.append("\(amount) line\(amount == 1 ? "" : "s")")
+            } else if let pixels = actualResult["pixels"] as? Int {
+                parts.append("\(pixels) pixel\(pixels == 1 ? "" : "s")")
             }
+            
+            // Element context
+            if let element = actualResult["element"] as? String {
+                parts.append("on element \(element)")
+            } else if let on = actualResult["on"] as? String {
+                parts.append("on element \(on)")
+            }
+            
+            // App context
             if let app = actualResult["app"] as? String {
                 parts.append("in \(app)")
             }
+            
+            // Smooth scrolling indicator
+            if let smooth = actualResult["smooth"] as? Bool, smooth {
+                parts.append("(smooth)")
+            }
+            
             return parts.joined(separator: " ")
 
         case .menuClick:
@@ -611,18 +751,37 @@ struct ToolFormatter {
             return parts.joined(separator: " ")
 
         case .listWindows:
-            // Check for count
+            // Check for count in various formats
+            var windowCount: Int?
+            
+            // Direct count field
             if let count = actualResult["count"] as? Int {
-                if let app = actualResult["app"] as? String {
-                    return "Found \(count) windows for \(app)"
-                }
-                return "Found \(count) windows"
-            } else if let windows = actualResult["windows"] as? [[String: Any]] {
-                if let app = actualResult["app"] as? String {
-                    return "Found \(windows.count) windows for \(app)"
-                }
-                return "Found \(windows.count) windows"
+                windowCount = count
             }
+            // Wrapped count field
+            else if let countWrapper = actualResult["count"] as? [String: Any],
+                    let value = countWrapper["value"] as? Int {
+                windowCount = value
+            }
+            // Count from windows array
+            else if let windows = actualResult["windows"] as? [[String: Any]] {
+                windowCount = windows.count
+            }
+            // Count from data.windows array
+            else if let data = actualResult["data"] as? [String: Any],
+                    let windows = data["windows"] as? [[String: Any]] {
+                windowCount = windows.count
+            }
+            
+            if let count = windowCount {
+                if let app = actualResult["app"] as? String {
+                    return "Found \(count) window\(count == 1 ? "" : "s") for \(app)"
+                } else if let appName = actualResult["appName"] as? String {
+                    return "Found \(count) window\(count == 1 ? "" : "s") for \(appName)"
+                }
+                return "Found \(count) window\(count == 1 ? "" : "s")"
+            }
+            
             return "Listed windows"
 
         case .listElements:

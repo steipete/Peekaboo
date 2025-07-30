@@ -92,13 +92,24 @@ final class SpeechRecognizer: NSObject {
     private func observeRecorderState() async {
         guard let recorder = audioRecorder else { return }
 
-        // Wait a bit for transcription to complete
-        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-
-        // Update transcript from recorder
-        self.transcript = recorder.transcript
-        self.error = recorder.error
-        self.isAvailable = recorder.isAvailable
+        // Continue observing until recording stops
+        while self.isListening {
+            // Update transcript and error state from recorder
+            if recorder.transcript != self.transcript {
+                self.transcript = recorder.transcript
+            }
+            if let error = recorder.error {
+                self.error = error
+                self.isListening = false // Stop on error
+                break
+            }
+            
+            // Check recorder availability
+            self.isAvailable = recorder.isAvailable
+            
+            // Small delay to avoid tight loop
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        }
     }
 
     private func checkAuthorization() {

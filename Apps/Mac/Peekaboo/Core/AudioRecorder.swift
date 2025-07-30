@@ -110,8 +110,8 @@ final class AudioRecorder: NSObject {
 
     private func transcribeAudio(from url: URL) async {
         do {
-            // Check if OpenAI API key is available
-            guard self.settings.hasValidAPIKey else {
+            // Check if OpenAI API key is available (required for Whisper)
+            guard !self.settings.openAIAPIKey.isEmpty else {
                 throw AudioError.noAPIKey
             }
 
@@ -223,7 +223,7 @@ enum AudioError: LocalizedError {
         case .transcriptionFailed:
             "Failed to transcribe audio."
         case .noAPIKey:
-            "OpenAI API key is not configured."
+            "OpenAI API key is required for voice transcription. Please add your OpenAI API key in Settings."
         case let .apiError(message):
             "API Error: \(message)"
         }

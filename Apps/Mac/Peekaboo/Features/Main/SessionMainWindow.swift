@@ -1,6 +1,27 @@
+import Combine
 import PeekabooCore
 import SwiftUI
 import UniformTypeIdentifiers
+
+// MARK: - Visual Effect View for macOS
+
+struct VisualEffectView: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+    
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        return view
+    }
+    
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+    }
+}
 
 struct SessionMainWindow: View {
     @Environment(PeekabooSettings.self) private var settings
@@ -588,6 +609,7 @@ struct SessionChatHeader: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Main header content
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
@@ -661,14 +683,24 @@ struct SessionChatHeader: View {
                     .foregroundColor(.secondary)
             }
             .padding()
+            .background(showDebugInfo ? Color.clear : Color(NSColor.windowBackgroundColor))
 
             if self.showDebugInfo {
-                Divider()
-                SessionDebugInfo(session: self.session)
+                SessionDebugInfo(session: self.session, isActive: self.isActive)
                     .padding()
-                    .background(Color(NSColor.controlBackgroundColor))
+                    .padding(.top, -8) // Reduce gap between header and debug info
+                    .background(Color(NSColor.windowBackgroundColor))
             }
         }
+        .background(
+            showDebugInfo ?
+            // Extended white background with subtle material effect
+            ZStack {
+                Color(NSColor.windowBackgroundColor)
+                VisualEffectView(material: .headerView, blendingMode: .withinWindow)
+                    .opacity(0.5)
+            } : nil
+        )
     }
 }
 
@@ -1275,6 +1307,7 @@ struct DetailedToolCallView: View {
 
 struct SessionDebugInfo: View {
     let session: ConversationSession
+    let isActive: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1311,14 +1344,43 @@ struct SessionDebugInfo: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                if let lastMessage = session.messages.last {
-                    Text(lastMessage.timestamp, style: .relative)
-                        .font(.caption)
-                } else {
-                    Text("No messages")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                // Use TimeIntervalText for continuous updates
+                SessionDurationText(startTime: self.session.startTime)
+                    .font(.caption)
+            }
+        }
+    }
+}
+
+// MARK: - Session Duration Text
+
+struct SessionDurationText: View {
+    let startTime: Date
+    @State private var currentTime = Date()
+    
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    
+    var body: some View {
+        Text(formatDuration(self.currentTime.timeIntervalSince(self.startTime)))
+            .onReceive(self.timer) { _ in
+                self.currentTime = Date()
+            }
+    }
+    
+    private func formatDuration(_ interval: TimeInterval) -> String {
+        if interval < 60 {
+            return "\\(Int(interval))s"
+        } else if interval < 3600 {
+            let minutes = Int(interval) / 60
+            let seconds = Int(interval) % 60
+            return "\\(minutes)m \\(seconds)s"
+        } else {
+            let hours = Int(interval) / 3600
+            let minutes = (Int(interval) % 3600) / 60
+            if minutes > 0 {
+                return "\\(hours)h \\(minutes)m"
+            } else {
+                return "\\(hours)h"
             }
         }
     }
