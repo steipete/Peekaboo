@@ -215,9 +215,9 @@ struct PeekabooToolExecutorTests {
 
         // Test various error conditions
         let errorCases = [
-            (name: "click", args: """{"target": ""}"""), // Empty target
-            (name: "type", args: """{"text": null}"""), // Null text
-            (name: "window", args: """{"action": "invalid"}"""), // Invalid action
+            (name: "click", args: "{\"target\": \"\"}"), // Empty target
+            (name: "type", args: "{\"text\": null}"), // Null text
+            (name: "window", args: "{\"action\": \"invalid\"}"), // Invalid action
         ]
 
         for errorCase in errorCases {

@@ -16,6 +16,11 @@ struct SettingsWindow: View {
                 .tabItem {
                     Label("AI", systemImage: "brain")
                 }
+            
+            VisualizerSettingsView(settings: settings)
+                .tabItem {
+                    Label("Visualizer", systemImage: "sparkles")
+                }
 
             ShortcutsSettingsView()
                 .tabItem {

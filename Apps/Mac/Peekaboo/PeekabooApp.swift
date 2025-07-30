@@ -165,6 +165,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Connect dock icon manager to settings
         DockIconManager.shared.connectToSettings(settings)
+        
+        // Connect visualizer coordinator to settings
+        if let coordinator = visualizerCoordinator {
+            coordinator.connectSettings(settings)
+        }
 
         // Setup keyboard shortcuts
         self.setupKeyboardShortcuts()
