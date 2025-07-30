@@ -170,7 +170,7 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
     // Error handling is provided by ErrorHandlingCommand protocol
     
     /// Process text with escape sequences like \n, \t, etc.
-    private func processTextWithEscapes(_ text: String) -> [TypeAction] {
+    internal func processTextWithEscapes(_ text: String) -> [TypeAction] {
         var actions: [TypeAction] = []
         var currentText = ""
         var i = text.startIndex

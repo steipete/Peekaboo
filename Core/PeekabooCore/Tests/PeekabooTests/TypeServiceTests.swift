@@ -185,4 +185,110 @@ struct TypeServiceTests {
 
         #expect(result.keyPresses == actions.count)
     }
+    
+    @Test("New special keys")
+    func newSpecialKeys() async throws {
+        let service = TypeService()
+        
+        // Test newly added special keys
+        let newKeyActions: [TypeAction] = [
+            .key(.enter),          // Numeric keypad enter
+            .key(.forwardDelete),  // Forward delete (fn+delete)
+            .key(.capsLock),       // Caps lock
+            .key(.clear),          // Clear key
+            .key(.help),           // Help key
+            .key(.f1),             // Function keys
+            .key(.f2),
+            .key(.f5),
+            .key(.f10),
+            .key(.f12),
+        ]
+        
+        let result = try await service.typeActions(
+            newKeyActions,
+            typingDelay: 50,
+            sessionId: nil)
+        
+        #expect(result.keyPresses == newKeyActions.count)
+    }
+    
+    @Test("Escape sequences in text")
+    func escapeSequencesInText() async throws {
+        let service = TypeService()
+        
+        // Test escape sequences converted to TypeActions
+        // Note: The actual escape sequence processing happens in TypeCommand,
+        // but we can test that the service handles the resulting actions correctly
+        let actionsWithEscapes: [TypeAction] = [
+            .text("Line 1"),
+            .key(.return),  // \n
+            .text("Name:"),
+            .key(.tab),     // \t
+            .text("John"),
+            .key(.delete),  // \b
+            .text("Jane"),
+            .key(.escape),  // \e
+            .text("Path: C:"),
+            .text("\\"),    // Literal backslash
+            .text("data"),
+        ]
+        
+        let result = try await service.typeActions(
+            actionsWithEscapes,
+            typingDelay: 10,
+            sessionId: nil)
+        
+        #expect(result.totalCharacters > 0)
+        #expect(result.keyPresses > 0)
+    }
+    
+    @Test("Mixed text and special keys")
+    func mixedTextAndKeys() async throws {
+        let service = TypeService()
+        
+        // Test mixing text and various special keys
+        let mixedActions: [TypeAction] = [
+            .text("Username"),
+            .key(.tab),
+            .text("john.doe@example.com"),
+            .key(.tab),
+            .text("Password123"),
+            .key(.return),
+            .clear,
+            .text("New session"),
+            .key(.f1),  // Help
+            .key(.escape),
+        ]
+        
+        let result = try await service.typeActions(
+            mixedActions,
+            typingDelay: 20,
+            sessionId: nil)
+        
+        // Count expected key presses
+        let expectedKeyPresses = mixedActions.filter { action in
+            if case .key = action { return true }
+            if case .clear = action { return true }
+            return false
+        }.count
+        
+        #expect(result.keyPresses >= expectedKeyPresses)
+    }
+    
+    @Test("All function keys")
+    func allFunctionKeys() async throws {
+        let service = TypeService()
+        
+        // Test all function keys F1-F12
+        let functionKeyActions: [TypeAction] = (1...12).map { num in
+            .key(SpecialKey(rawValue: "f\(num)")!)
+        }
+        
+        let result = try await service.typeActions(
+            functionKeyActions,
+            typingDelay: 30,
+            sessionId: nil)
+        
+        #expect(result.keyPresses == 12)
+    }
 }

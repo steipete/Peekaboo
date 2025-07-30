@@ -18,16 +18,18 @@ public enum ToolRegistry {
         // UI Automation tools
         tools.append(UIAutomationToolDefinitions.click)
         tools.append(UIAutomationToolDefinitions.type)
+        tools.append(UIAutomationToolDefinitions.press)
         tools.append(UIAutomationToolDefinitions.scroll)
         tools.append(UIAutomationToolDefinitions.hotkey)
         
         // Window Management tools
-        tools.append(WindowManagementToolDefinitions.listWindows)
-        tools.append(WindowManagementToolDefinitions.focusWindow)
-        tools.append(WindowManagementToolDefinitions.resizeWindow)
-        tools.append(WindowManagementToolDefinitions.listSpaces)
-        tools.append(WindowManagementToolDefinitions.switchSpace)
-        tools.append(WindowManagementToolDefinitions.moveWindowToSpace)
+        // TODO: WindowManagementTools.swift needs to be refactored to use ToolDefinitions pattern
+        // tools.append(WindowManagementToolDefinitions.listWindows)
+        // tools.append(WindowManagementToolDefinitions.focusWindow)
+        // tools.append(WindowManagementToolDefinitions.resizeWindow)
+        // tools.append(WindowManagementToolDefinitions.listSpaces)
+        // tools.append(WindowManagementToolDefinitions.switchSpace)
+        // tools.append(WindowManagementToolDefinitions.moveWindowToSpace)
         
         // Application tools
         tools.append(ApplicationToolDefinitions.listApps)
