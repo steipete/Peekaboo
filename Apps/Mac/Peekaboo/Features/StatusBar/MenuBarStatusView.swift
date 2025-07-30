@@ -83,8 +83,12 @@ struct MenuBarStatusView: View {
                     if agent.isProcessing {
                         if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
                             HStack(spacing: 4) {
-                                AnimatedToolIcon(toolName: currentTool.toolName, isRunning: true)
-                                    .frame(width: 14, height: 14)
+                                EnhancedToolIcon(
+                                    toolName: currentTool.toolName,
+                                    status: .running
+                                )
+                                .font(.system(size: 12))
+                                .frame(width: 14, height: 14)
                                 Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -160,8 +164,14 @@ struct MenuBarStatusView: View {
                     // Show current running tool prominently
                     if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
                         HStack(spacing: 8) {
-                            AnimatedToolIcon(toolName: currentTool.toolName, isRunning: true)
-                                .frame(width: 16, height: 16)
+                            EnhancedToolIcon(
+                                toolName: currentTool.toolName,
+                                status: .running
+                            )
+                            .font(.system(size: 16))
+                            .frame(width: 20, height: 20)
+                            .background(Color.blue.opacity(0.1))
+                            .clipShape(Circle())
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
@@ -169,11 +179,10 @@ struct MenuBarStatusView: View {
                                     .foregroundColor(.primary)
                                     .lineLimit(1)
                                 
-                                if let duration = currentTool.duration {
-                                    Text(ToolFormatter.formatDuration(duration))
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
+                                // Show elapsed time for running tool
+                                TimeIntervalText(startTime: currentTool.timestamp)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
                             }
                             
                             Spacer()
@@ -194,8 +203,12 @@ struct MenuBarStatusView: View {
                     ForEach(agent.toolExecutionHistory.suffix(3).reversed()) { tool in
                         if tool.status != .running {
                             HStack(spacing: 6) {
-                                AnimatedToolIcon(toolName: tool.toolName, isRunning: false)
-                                    .frame(width: 12, height: 12)
+                                EnhancedToolIcon(
+                                    toolName: tool.toolName,
+                                    status: tool.status
+                                )
+                                .font(.system(size: 12))
+                                .frame(width: 14, height: 14)
                                 
                                 Text(ToolFormatter.compactToolSummary(toolName: tool.toolName, arguments: tool.arguments))
                                     .font(.caption2)
@@ -204,14 +217,12 @@ struct MenuBarStatusView: View {
                                 
                                 Spacer()
                                 
-                                if tool.status == .completed {
-                                    Image(systemName: "checkmark.circle.fill")
+                                // Duration for completed tools
+                                if let duration = tool.duration {
+                                    Text(ToolFormatter.formatDuration(duration))
                                         .font(.caption2)
-                                        .foregroundColor(.green)
-                                } else if tool.status == .failed {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.caption2)
-                                        .foregroundColor(.red)
+                                        .foregroundColor(.secondary)
+                                        .opacity(0.7)
                                 }
                             }
                             .padding(.horizontal)
@@ -233,17 +244,11 @@ struct MenuBarStatusView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         // Show all messages including system messages
                         ForEach(session.messages) { message in
-                            MessageRowCompact(message: message)
+                            MenuDetailedMessageRow(message: message)
                                 .id(message.id)
                         }
                         
-                        // Show thinking indicator if needed
-                        if let lastMessage = session.messages.last,
-                           lastMessage.role == .system,
-                           lastMessage.content.contains("🤔") {
-                            ThinkingIndicator()
-                                .padding(.horizontal)
-                        }
+                        // Thinking is now handled within MenuDetailedMessageRow
                         
                         // Show processing indicator if actively processing but no thinking message
                         if agent.isProcessing && !agent.isThinking {
@@ -355,8 +360,14 @@ struct MenuBarStatusView: View {
                     if agent.isProcessing {
                         HStack(spacing: 8) {
                             if let currentTool = agent.toolExecutionHistory.last(where: { $0.status == .running }) {
-                                AnimatedToolIcon(toolName: currentTool.toolName, isRunning: true)
-                                    .frame(width: 16, height: 16)
+                                EnhancedToolIcon(
+                                    toolName: currentTool.toolName,
+                                    status: .running
+                                )
+                                .font(.system(size: 16))
+                                .frame(width: 20, height: 20)
+                                .background(Color.blue.opacity(0.1))
+                                .clipShape(Circle())
                                 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(ToolFormatter.compactToolSummary(toolName: currentTool.toolName, arguments: currentTool.arguments))
@@ -364,11 +375,10 @@ struct MenuBarStatusView: View {
                                         .foregroundColor(.primary)
                                         .lineLimit(1)
                                     
-                                    if let duration = currentTool.duration {
-                                        Text(ToolFormatter.formatDuration(duration))
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
+                                    // Show elapsed time for running tool
+                                    TimeIntervalText(startTime: currentTool.timestamp)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
                                 }
                             } else {
                                 ProgressView()
@@ -428,17 +438,11 @@ struct MenuBarStatusView: View {
                                     .padding()
                                 } else {
                                     ForEach(session.messages) { message in
-                                        MessageRowCompact(message: message)
+                                        MenuDetailedMessageRow(message: message)
                                             .id(message.id)
                                     }
                                     
-                                    // Show thinking indicator if last message is thinking
-                                    if let lastMessage = session.messages.last,
-                                       lastMessage.role == .system,
-                                       lastMessage.content.contains("🤔") {
-                                        ThinkingIndicator()
-                                            .padding(.horizontal)
-                                    }
+                                    // Thinking is now handled within MenuDetailedMessageRow
                                 }
                             }
                             .padding()
@@ -743,164 +747,6 @@ struct MenuBarStatusView: View {
     }
 }
 
-// Thinking indicator view
-struct ThinkingIndicator: View {
-    @State private var animationOffset: CGFloat = 0
-    
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "brain")
-                .font(.caption)
-                .foregroundColor(.purple)
-                .symbolEffect(.pulse, options: .repeating)
-            
-            HStack(spacing: 2) {
-                ForEach(0..<3) { index in
-                    Circle()
-                        .fill(Color.purple)
-                        .frame(width: 4, height: 4)
-                        .offset(y: animationOffset)
-                        .animation(
-                            Animation.easeInOut(duration: 0.4)
-                                .repeatForever()
-                                .delay(Double(index) * 0.1),
-                            value: animationOffset
-                        )
-                }
-            }
-            
-            Text("Thinking...")
-                .font(.caption)
-                .foregroundColor(.purple)
-                .italic()
-        }
-        .padding(.vertical, 4)
-        .onAppear {
-            animationOffset = -3
-        }
-    }
-}
-
-// Compact message row for menu bar
-struct MessageRowCompact: View {
-    let message: ConversationMessage
-    
-    var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            // Role icon
-            Image(systemName: iconForRole)
-                .font(.caption)
-                .foregroundColor(colorForRole)
-                .frame(width: 16)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                if message.role == .system && message.content.contains("🤔") {
-                    // Special formatting for thinking messages
-                    Text(message.content.replacingOccurrences(of: "🤔 ", with: ""))
-                        .font(.caption)
-                        .italic()
-                        .foregroundColor(.secondary)
-                } else if message.role == .system && message.content.contains("❌") {
-                    // Error messages
-                    Text(message.content)
-                        .font(.caption)
-                        .foregroundColor(.red)
-                } else if message.role == .system && message.content.contains("⚠️") {
-                    // Warning/cancelled messages
-                    Text(message.content)
-                        .font(.caption)
-                        .foregroundColor(.orange)
-                } else if message.role == .system && message.content.contains("🔧") {
-                    // Tool execution messages
-                    Text(message.content)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                } else if message.role == .system && message.content.contains("✅") {
-                    // Success messages
-                    Text(message.content)
-                        .font(.caption)
-                        .foregroundColor(.green)
-                        .lineLimit(2)
-                } else if message.role == .assistant {
-                    // Render assistant messages as Markdown
-                    Text(try! AttributedString(
-                        markdown: message.content,
-                        options: AttributedString.MarkdownParsingOptions(
-                            allowsExtendedAttributes: true,
-                            interpretedSyntax: .inlineOnlyPreservingWhitespace
-                        )
-                    ))
-                    .font(.caption)
-                    .lineLimit(2)
-                } else {
-                    Text(message.content)
-                        .font(.caption)
-                        .lineLimit(2)
-                }
-                
-                // Show tool calls inline
-                ForEach(message.toolCalls) { toolCall in
-                    HStack(spacing: 4) {
-                        if toolCall.result == "Running..." {
-                            ProgressView()
-                                .scaleEffect(0.5)
-                                .frame(width: 10, height: 10)
-                        } else {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.caption2)
-                                .foregroundColor(.green)
-                        }
-                        
-                        Text(toolCall.name)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        
-                        if !toolCall.result.isEmpty && toolCall.result != "Running..." {
-                            Text("✓")
-                                .font(.caption2)
-                                .foregroundColor(.green)
-                        }
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(.thinMaterial)
-                    .cornerRadius(4)
-                }
-            }
-            
-            Spacer()
-        }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 8)
-        .background(backgroundForRole)
-        .cornerRadius(6)
-    }
-    
-    private var iconForRole: String {
-        switch message.role {
-        case .user: return "person.circle"
-        case .assistant: return "brain"
-        case .system: return "gear"
-        }
-    }
-    
-    private var colorForRole: Color {
-        switch message.role {
-        case .user: return .blue
-        case .assistant: return .green
-        case .system: return .orange
-        }
-    }
-    
-    private var backgroundForRole: Color {
-        switch message.role {
-        case .user: return Color.blue.opacity(0.1)
-        case .assistant: return Color.green.opacity(0.1)
-        case .system: return Color.orange.opacity(0.1)
-        }
-    }
-}
 
 // Compact session row for menu bar
 struct SessionRowCompact: View {
