@@ -1,12 +1,12 @@
 {
   "images" : [
     {
-      "filename" : "menubar_18.png",
+      "filename" : "peekaboo_menu_18.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "menubar-large-transparent.png",
+      "filename" : "peekaboo_menu_36.png",
       "idiom" : "universal",
       "scale" : "2x"
     },

@@ -287,9 +287,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Public Access
     
     /// Returns the visualizer coordinator for preview functionality
-    func getVisualizerCoordinator() -> VisualizerCoordinator? {
-        visualizerCoordinator
-    }
 }
 
 // Test comment to trigger build - Wed Jul 30 02:14:41 CEST 2025
