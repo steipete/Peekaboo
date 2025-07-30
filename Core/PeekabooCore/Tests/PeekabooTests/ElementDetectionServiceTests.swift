@@ -27,7 +27,8 @@ struct ElementDetectionServiceTests {
         do {
             let result = try await service.detectElements(
                 in: mockImageData,
-                sessionId: "test-session")
+                sessionId: "test-session",
+                windowContext: nil)
 
             #expect(result.sessionId == "test-session")
             #expect(result.metadata.elementCount >= 0)

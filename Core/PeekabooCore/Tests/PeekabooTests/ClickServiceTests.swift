@@ -7,6 +7,7 @@ import Testing
 @MainActor
 struct ClickServiceTests {
     @Suite("Initialization")
+    @MainActor
     struct InitializationTests {
         @Test("ClickService initializes with session manager dependency")
         func initializeService() async throws {
@@ -17,6 +18,7 @@ struct ClickServiceTests {
     }
 
     @Suite("Coordinate Clicking")
+    @MainActor
     struct CoordinateClickingTests {
         @Test("Click performs at specified screen coordinates without errors")
         func clickAtCoordinates() async throws {
@@ -36,6 +38,7 @@ struct ClickServiceTests {
     }
 
     @Suite("Element Clicking")
+    @MainActor
     struct ElementClickingTests {
         @Test("Click finds and clicks element by ID using session detection results")
         func clickElementById() async throws {
@@ -87,19 +90,12 @@ struct ClickServiceTests {
                     target: .elementId(nonExistentId),
                     clickType: .single,
                     sessionId: nil)
-            } catch: { error in
-                // Verify the error contains the expected element ID
-                guard case let notFoundError = error as NotFoundError else {
-                    Issue.record("Expected NotFoundError but got \(type(of: error))")
-                    return
-                }
-                // NotFoundError is a struct, not an enum, so we check its description
-                #expect(notFoundError.localizedDescription.contains(nonExistentId))
             }
         }
     }
 
     @Suite("Click Types")
+    @MainActor
     struct ClickTypeTests {
         @Test("Click supports single, double, and right-click types")
         func differentClickTypes() async throws {

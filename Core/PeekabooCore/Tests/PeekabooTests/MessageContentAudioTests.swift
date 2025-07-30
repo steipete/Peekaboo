@@ -8,7 +8,7 @@ struct MessageContentAudioTests {
     struct AudioContentTests {
         @Test("AudioContent initializes with all properties")
         func initializeAudioContent() {
-            let audioContent = MessageContent.AudioContent(
+            let audioContent = AudioContent(
                 url: "file:///tmp/audio.wav",
                 base64: "base64encodeddata",
                 transcript: "Hello world",
@@ -24,7 +24,7 @@ struct MessageContentAudioTests {
 
         @Test("AudioContent encodes and decodes correctly")
         func codableAudioContent() throws {
-            let original = MessageContent.AudioContent(
+            let original = AudioContent(
                 url: "file:///tmp/audio.wav",
                 base64: "base64encodeddata",
                 transcript: "Hello world",
@@ -35,7 +35,7 @@ struct MessageContentAudioTests {
             let data = try encoder.encode(original)
 
             let decoder = JSONDecoder()
-            let decoded = try decoder.decode(MessageContent.AudioContent.self, from: data)
+            let decoded = try decoder.decode(AudioContent.self, from: data)
 
             #expect(decoded.url == original.url)
             #expect(decoded.base64 == original.base64)
@@ -46,7 +46,7 @@ struct MessageContentAudioTests {
 
         @Test("AudioContent handles optional properties")
         func optionalProperties() throws {
-            let minimal = MessageContent.AudioContent(
+            let minimal = AudioContent(
                 url: nil,
                 base64: nil,
                 transcript: "Just a transcript",
@@ -64,7 +64,7 @@ struct MessageContentAudioTests {
             let data = try encoder.encode(minimal)
 
             let decoder = JSONDecoder()
-            let decoded = try decoder.decode(MessageContent.AudioContent.self, from: data)
+            let decoded = try decoder.decode(AudioContent.self, from: data)
 
             #expect(decoded.transcript == "Just a transcript")
         }
@@ -74,7 +74,7 @@ struct MessageContentAudioTests {
     struct MessageContentIntegrationTests {
         @Test("MessageContent audio case works correctly")
         func messageContentAudioCase() {
-            let audioContent = MessageContent.AudioContent(
+            let audioContent = AudioContent(
                 url: nil,
                 base64: nil,
                 transcript: "Test transcript",
@@ -97,7 +97,7 @@ struct MessageContentAudioTests {
         func multipleContentTypes() {
             let contents: [MessageContent] = [
                 .text("Hello"),
-                .audio(MessageContent.AudioContent(
+                .audio(AudioContent(
                     url: nil,
                     base64: nil,
                     transcript: "Audio message",
@@ -136,7 +136,7 @@ struct MessageContentAudioTests {
     struct AudioMetadataFormattingTests {
         @Test("Format audio transcript with duration")
         func formatWithDuration() {
-            let audioContent = MessageContent.AudioContent(
+            let audioContent = AudioContent(
                 url: nil,
                 base64: nil,
                 transcript: "Hello world",
@@ -154,7 +154,7 @@ struct MessageContentAudioTests {
 
         @Test("Format audio transcript without duration")
         func formatWithoutDuration() {
-            let audioContent = MessageContent.AudioContent(
+            let audioContent = AudioContent(
                 url: nil,
                 base64: nil,
                 transcript: "Hello world",

@@ -9,7 +9,8 @@ struct ScrollServiceTests {
     @Test("ScrollService initializes successfully with default configuration")
     func initializeService() async throws {
         let service = ScrollService()
-        #expect(service != nil)
+        // Service is initialized successfully
+        _ = service
     }
 
     @Test("Scroll executes in all four cardinal directions without errors")

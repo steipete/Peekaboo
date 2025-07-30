@@ -3,6 +3,7 @@ import Testing
 @testable import PeekabooCore
 
 @Suite("PermissionsService Tests", .tags(.permissions, .unit))
+@MainActor
 struct PermissionsServiceTests {
     let permissionsService = PermissionsService()
 
@@ -84,15 +85,20 @@ struct PermissionsServiceTests {
             }
         } else {
             // Should throw specific CaptureError when permission is denied
-            #expect(throws: CaptureError.self) {
+            do {
                 try permissionsService.requireScreenRecordingPermission()
-            } catch: { error in
-                guard case .screenRecordingPermissionDenied = error else {
-                    Issue.record("Expected screenRecordingPermissionDenied but got \(error)")
-                    return
+                Issue.record("Expected CaptureError.screenRecordingPermissionDenied but no error was thrown")
+            } catch let captureError as CaptureError {
+                // Should be screenRecordingPermissionDenied
+                switch captureError {
+                case .screenRecordingPermissionDenied:
+                    // Expected error - verify error message is helpful
+                    #expect(captureError.localizedDescription.contains("Screen recording permission"))
+                default:
+                    Issue.record("Expected CaptureError.screenRecordingPermissionDenied but got \(captureError)")
                 }
-                // Verify error message is helpful
-                #expect(error.localizedDescription.contains("Screen recording permission"))
+            } catch {
+                Issue.record("Expected CaptureError.screenRecordingPermissionDenied but got \(error)")
             }
         }
     }
@@ -108,15 +114,20 @@ struct PermissionsServiceTests {
             }
         } else {
             // Should throw specific CaptureError when permission is denied
-            #expect(throws: CaptureError.self) {
+            do {
                 try permissionsService.requireAccessibilityPermission()
-            } catch: { error in
-                guard case .accessibilityPermissionDenied = error else {
-                    Issue.record("Expected accessibilityPermissionDenied but got \(error)")
-                    return
+                Issue.record("Expected CaptureError.accessibilityPermissionDenied but no error was thrown")
+            } catch let captureError as CaptureError {
+                // Should be accessibilityPermissionDenied
+                switch captureError {
+                case .accessibilityPermissionDenied:
+                    // Expected error - verify error message is helpful
+                    #expect(captureError.localizedDescription.contains("Accessibility permission"))
+                default:
+                    Issue.record("Expected CaptureError.accessibilityPermissionDenied but got \(captureError)")
                 }
-                // Verify error message is helpful
-                #expect(error.localizedDescription.contains("Accessibility permission"))
+            } catch {
+                Issue.record("Expected CaptureError.accessibilityPermissionDenied but got \(error)")
             }
         }
     }

@@ -79,7 +79,8 @@ struct UIAutomationServiceEnhancedTests {
         // Call detectElements (the new method)
         let result = try await service.detectElements(
             in: imageData,
-            sessionId: nil)
+            sessionId: nil,
+            windowContext: nil)
 
         // Verify result contains expected metadata
         #expect(result.metadata.method == "AXorcist")

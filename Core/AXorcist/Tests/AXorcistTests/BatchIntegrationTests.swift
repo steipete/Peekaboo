@@ -134,7 +134,7 @@ class BatchIntegrationTests: XCTestCase {
         XCTAssertEqual(result2.success, true, "Query should succeed")
         XCTAssertEqual(result2.command, CommandType.query.rawValue)
         XCTAssertNotNil(result2.data)
-        XCTAssertEqual(result2.data?.attributes?["AXRole"]?.value as? String, textAreaRole)
+        XCTAssertEqual(result2.data?.attributes?["AXRole"]?.stringValue, textAreaRole)
 
         XCTAssertNotEqual(batchResponse.debugLogs, nil)
     }
