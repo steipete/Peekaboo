@@ -55,6 +55,9 @@ public final class PeekabooServices: @unchecked Sendable {
 
     /// Audio input service for voice commands and audio transcription
     public let audioInput: AudioInputServiceProtocol
+    
+    /// Screen management service for multi-monitor support
+    public let screens: ScreenServiceProtocol
 
     /// Lock for thread-safe agent updates
     private let agentLock = NSLock()
@@ -87,6 +90,9 @@ public final class PeekabooServices: @unchecked Sendable {
 
         let dockSvc = DockService()
         self.logger.debug("✅ DockService initialized")
+        
+        let screenSvc = ScreenService()
+        self.logger.debug("✅ ScreenService initialized")
 
         self.logging = logging
         self.screenCapture = screenCap
@@ -95,6 +101,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.windows = windows
         self.menu = menuSvc
         self.dock = dockSvc
+        self.screens = screenSvc
 
         self.dialogs = DialogService()
         self.logger.debug("✅ DialogService initialized")
@@ -148,7 +155,8 @@ public final class PeekabooServices: @unchecked Sendable {
         permissions: PermissionsService? = nil,
         agent: AgentServiceProtocol? = nil,
         configuration: ConfigurationManager? = nil,
-        audioInput: AudioInputServiceProtocol? = nil)
+        audioInput: AudioInputServiceProtocol? = nil,
+        screens: ScreenServiceProtocol? = nil)
     {
         self.logger.info("🚀 Initializing PeekabooServices with custom implementations")
         self.logging = logging ?? LoggingService()
@@ -166,6 +174,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.agent = agent
         self.configuration = configuration ?? ConfigurationManager.shared
         self.audioInput = audioInput ?? AudioInputService(aiService: PeekabooAIService())
+        self.screens = screens ?? ScreenService()
 
         self.logger.info("✨ PeekabooServices initialization complete (custom)")
     }
@@ -186,7 +195,8 @@ public final class PeekabooServices: @unchecked Sendable {
         permissions: PermissionsService,
         configuration: ConfigurationManager,
         agent: AgentServiceProtocol?,
-        audioInput: AudioInputServiceProtocol)
+        audioInput: AudioInputServiceProtocol,
+        screens: ScreenServiceProtocol)
     {
         self.logging = logging
         self.screenCapture = screenCapture
@@ -203,6 +213,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.configuration = configuration
         self.agent = agent
         self.audioInput = audioInput
+        self.screens = screens
     }
 
     /// Create the shared instance with proper initialization order
@@ -223,6 +234,7 @@ public final class PeekabooServices: @unchecked Sendable {
         let files = FileService()
         let config = ConfigurationManager.shared
         let permissions = PermissionsService()
+        let screens = ScreenService()
         let process = ProcessService(
             applicationService: apps,
             screenCaptureService: screenCap,
@@ -253,7 +265,8 @@ public final class PeekabooServices: @unchecked Sendable {
             permissions: permissions,
             configuration: config,
             agent: nil,
-            audioInput: audioInput)
+            audioInput: audioInput,
+            screens: screens)
 
         // Initialize ModelProvider with available API keys
         Task {
@@ -336,7 +349,8 @@ public final class PeekabooServices: @unchecked Sendable {
             permissions: permissions,
             configuration: config,
             agent: agent,
-            audioInput: audioInput)
+            audioInput: audioInput,
+            screens: screens)
     }
 
     /// Refresh the agent service when API keys change
