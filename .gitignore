@@ -121,7 +121,11 @@ playground.xcworkspace
 timeline.xctimeline
 
 ## Build products
-*.app
+# Only ignore built app bundles in specific locations
+/build/*.app
+/DerivedData/**/*.app
+/Apps/Mac/build/*.app
+/Apps/Mac/DerivedData/**/*.app
 *.ipa
 *.dSYM.zip
 *.dSYM
