@@ -17,6 +17,9 @@ struct PeekabooApp: App {
     @State private var speechRecognizer: SpeechRecognizer?
     @State private var agent: PeekabooAgent?
     
+    // Control Inspector window creation
+    @AppStorage("inspectorWindowRequested") private var inspectorRequested = false
+    
     // Logger
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "PeekabooApp")
 
@@ -88,9 +91,18 @@ struct PeekabooApp: App {
 
         // Inspector window
         WindowGroup("Inspector", id: "inspector") {
-            InspectorWindow()
-                .environment(self.settings)
-                .environment(self.permissions)
+            if inspectorRequested {
+                InspectorWindow()
+                    .environment(self.settings)
+                    .environment(self.permissions)
+            } else {
+                // Placeholder view until Inspector is actually requested
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .onAppear {
+                        logger.info("Inspector window created but not yet requested")
+                    }
+            }
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 450, height: 700)
@@ -280,6 +292,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc private func handleShowInspector() {
         self.logger.info("Received ShowInspector notification")
+        // Mark that Inspector has been requested
+        UserDefaults.standard.set(true, forKey: "inspectorWindowRequested")
         self.showInspector()
     }
 

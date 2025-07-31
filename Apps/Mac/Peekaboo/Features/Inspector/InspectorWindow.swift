@@ -9,7 +9,7 @@ import AppKit
 
 struct InspectorWindow: View {
     @Environment(Permissions.self) private var permissions
-    
+        
     var body: some View {
         InspectorView()
             .frame(minWidth: 400, minHeight: 600)
@@ -27,11 +27,11 @@ struct InspectorWindow: View {
                 // CRITICAL: Accept mouse events for local monitor to work
                 window.ignoresMouseEvents = false
                 
-                // Make it a key window that can receive events
-                window.makeKeyAndOrderFront(nil)
-                
                 // Set window identifier for debugging
                 window.identifier = NSUserInterfaceItemIdentifier("inspector")
+                
+                // Note: Don't call makeKeyAndOrderFront here as it forces the window to appear
+                // The window should only appear when explicitly opened via menu/shortcut
             }))
             .onAppear {
                 Task {
