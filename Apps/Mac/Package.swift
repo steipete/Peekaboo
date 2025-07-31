@@ -15,12 +15,14 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../../Core/PeekabooCore"),
+        .package(path: "../../Core/PeekabooUICore"),
     ],
     targets: [
         .target(
             name: "Peekaboo",
             dependencies: [
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
+                .product(name: "PeekabooUICore", package: "PeekabooUICore"),
             ],
             path: "Peekaboo",
             exclude: ["PeekabooApp.swift", "Info.plist"],

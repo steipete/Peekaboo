@@ -5,11 +5,9 @@ struct InspectorWindow: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(PeekabooSettings.self) private var settings
     @Environment(Permissions.self) private var permissions
-    @StateObject private var overlayManager = OverlayManager()
 
     var body: some View {
         InspectorView()
-            .environmentObject(self.overlayManager)
             .frame(minWidth: 400, minHeight: 600)
             .onAppear {
                 // Check permissions when window appears

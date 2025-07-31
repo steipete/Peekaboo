@@ -12,12 +12,16 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../../Core/AXorcist"),
+        .package(path: "../../Core/PeekabooCore"),
+        .package(path: "../../Core/PeekabooUICore"),
     ],
     targets: [
         .executableTarget(
             name: "PeekabooInspector",
             dependencies: [
                 .product(name: "AXorcist", package: "AXorcist"),
+                .product(name: "PeekabooCore", package: "PeekabooCore"),
+                .product(name: "PeekabooUICore", package: "PeekabooUICore"),
             ],
             path: "PeekabooInspector",
             resources: [
