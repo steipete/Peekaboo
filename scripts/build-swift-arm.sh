@@ -17,8 +17,8 @@ echo "🧹 Cleaning previous build artifacts..."
 rm -rf "$SWIFT_PROJECT_PATH/.build"
 rm -f "$FINAL_BINARY_PATH.tmp"
 
-echo "📦 Reading version from package.json..."
-VERSION=$(node -p "require('$PROJECT_ROOT/Server/package.json').version")
+echo "📦 Reading version from version.json..."
+VERSION=$(node -p "require('$PROJECT_ROOT/version.json').version")
 echo "Version: $VERSION"
 
 echo "💉 Injecting version into Swift code..."

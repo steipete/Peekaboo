@@ -34,9 +34,9 @@ public final class MCPToolRegistry: Sendable {
     }
     
     /// Get tool information for MCP
-    public func toolInfos() -> [Tool] {
+    public func toolInfos() -> [MCP.Tool] {
         allTools().map { tool in
-            Tool(
+            MCP.Tool(
                 name: tool.name,
                 description: tool.description,
                 inputSchema: tool.inputSchema

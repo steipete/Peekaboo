@@ -1,6 +1,8 @@
 import ArgumentParser
 import Foundation
 import PeekabooCore
+import MCP
+import Logging
 
 /// Command for Model Context Protocol server operations
 struct MCPCommand: AsyncParsableCommand {
@@ -47,20 +49,26 @@ extension MCPCommand {
         )
         
         @Option(help: "Transport type (stdio, http, sse)")
-        var transport: TransportType = .stdio
+        var transport: String = "stdio"
         
         @Option(help: "Port for HTTP/SSE transport")
         var port: Int = 8080
         
-        @Option(help: "Log level (debug, info, warn, error)")
-        var logLevel: LogLevel = .info
-        
         func run() async throws {
             do {
-                let server = try PeekabooMCPServer(logLevel: logLevel)
-                try await server.serve(transport: transport, port: port)
+                // Convert string transport to PeekabooCore.TransportType
+                let transportType: PeekabooCore.TransportType
+                switch transport.lowercased() {
+                case "stdio": transportType = .stdio
+                case "http": transportType = .http
+                case "sse": transportType = .sse
+                default: transportType = .stdio
+                }
+                
+                let server = try await PeekabooMCPServer()
+                try await server.serve(transport: transportType, port: port)
             } catch {
-                CLILogger.error("Failed to start MCP server: \(error)")
+                Logger.shared.error("Failed to start MCP server: \(error)")
                 throw ExitCode.failure
             }
         }
@@ -89,7 +97,7 @@ extension MCPCommand {
         var args: String = "{}"
         
         func run() async throws {
-            CLILogger.error("MCP client functionality not yet implemented")
+            Logger.shared.error("MCP client functionality not yet implemented")
             throw ExitCode.failure
         }
     }
@@ -102,7 +110,7 @@ extension MCPCommand {
         )
         
         func run() async throws {
-            CLILogger.error("MCP server listing not yet implemented")
+            Logger.shared.error("MCP server listing not yet implemented")
             throw ExitCode.failure
         }
     }
@@ -118,23 +126,9 @@ extension MCPCommand {
         var server: String?
         
         func run() async throws {
-            CLILogger.error("MCP inspection not yet implemented")
+            Logger.shared.error("MCP inspection not yet implemented")
             throw ExitCode.failure
         }
     }
 }
 
-// MARK: - Supporting Types
-
-enum TransportType: String, ExpressibleByArgument, CaseIterable {
-    case stdio
-    case http
-    case sse
-}
-
-enum LogLevel: String, ExpressibleByArgument, CaseIterable {
-    case debug
-    case info
-    case warn
-    case error
-}

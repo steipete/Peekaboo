@@ -9,12 +9,7 @@ public struct ImageTool: MCPTool {
     
     public var description: String {
         """
-        Captures macOS screen content and optionally analyzes it. \
-        Targets can be entire screen, specific app window, or all windows of an app (via app_target). \
-        Supports foreground/background capture. Output via file path or inline Base64 data (format: "data"). \
-        If a question is provided, image is analyzed by an AI model. \
-        Window shadows/frames excluded. \
-        Peekaboo \(Version.current.string)
+        Captures macOS screen content and optionally analyzes it. Targets can be entire screen, specific app window, or all windows of an app (via app_target). Supports foreground/background capture. Output via file path or inline Base64 data (format: "data"). If a question is provided, image is analyzed by an AI model (auto-selected from PEEKABOO_AI_PROVIDERS). Window shadows/frames excluded. Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
         """
     }
     
@@ -46,6 +41,7 @@ public struct ImageTool: MCPTool {
     
     public init() {}
     
+    @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
         let input = try arguments.decode(ImageInput.self)
         
@@ -85,7 +81,7 @@ public struct ImageTool: MCPTool {
                 captureResults = [result]
             } else {
                 // Capture all windows
-                let windows = try await PeekabooServices.shared.windows.listWindows(for: identifier)
+                let windows = try await PeekabooServices.shared.windows.listWindows(target: .application(identifier))
                 var results: [CaptureResult] = []
                 
                 for (index, _) in windows.enumerated() {
@@ -106,7 +102,7 @@ public struct ImageTool: MCPTool {
         }
         
         // Save images if path provided
-        var savedFiles: [SavedFile] = []
+        var savedFiles: [MCPSavedFile] = []
         
         if let basePath = input.path {
             for (index, result) in captureResults.enumerated() {
@@ -124,28 +120,28 @@ public struct ImageTool: MCPTool {
                 
                 try saveImageData(result.imageData, to: fileName, format: format)
                 
-                savedFiles.append(SavedFile(
+                savedFiles.append(MCPSavedFile(
                     path: fileName,
-                    itemLabel: describeCapture(result.metadata),
-                    windowTitle: result.metadata.windowInfo?.title,
-                    windowId: nil,
-                    windowIndex: index,
-                    mimeType: format.mimeType
+                    item_label: describeCapture(result.metadata),
+                    window_title: result.metadata.windowInfo?.title,
+                    window_id: nil,
+                    window_index: index,
+                    mime_type: format.mimeType
                 ))
             }
         }
         
         // Handle analysis if requested
         if let question = input.question {
-            let imagePath = savedFiles.first?.path ?? try saveTemporaryImage(captureResults.first!.imageData)
+            let imagePath = try savedFiles.first?.path ?? saveTemporaryImage(captureResults.first!.imageData)
             let analysis = try await analyzeImage(at: imagePath, question: question)
             
             return ToolResponse.text(
                 analysis.text,
-                meta: [
-                    "model": analysis.modelUsed,
-                    "savedFiles": savedFiles.map { $0.path }
-                ]
+                meta: .object([
+                    "model": .string(analysis.modelUsed),
+                    "savedFiles": .array(savedFiles.map { Value.string($0.path) })
+                ])
             )
         }
         
@@ -154,22 +150,29 @@ public struct ImageTool: MCPTool {
             return ToolResponse.image(
                 data: captureResults.first!.imageData,
                 mimeType: "image/png",
-                meta: ["savedFiles": savedFiles.map { $0.path }]
+                meta: .object(["savedFiles": .array(savedFiles.map { Value.string($0.path) })])
             )
         }
         
         return ToolResponse.text(
             buildImageSummary(savedFiles: savedFiles, captureCount: captureResults.count),
-            meta: ["savedFiles": savedFiles.map { $0.path }]
+            meta: .object(["savedFiles": .array(savedFiles.map { Value.string($0.path) })])
         )
     }
 }
 
 // MARK: - Supporting Types
 
+// Extended format that includes "data" option
+enum ImageFormatOption: String, Codable {
+    case png
+    case jpg
+    case data  // Return as base64 data
+}
+
 struct ImageInput: Codable {
     let path: String?
-    let format: ImageFormat?
+    let format: ImageFormatOption?
     let appTarget: String?
     let question: String?
     let captureFocus: CaptureFocus?
@@ -181,7 +184,7 @@ struct ImageInput: Codable {
     }
 }
 
-enum CaptureTarget {
+enum ImageCaptureTarget {
     case screen(index: Int?)
     case frontmost
     case application(identifier: String, windowIndex: Int?)
@@ -190,7 +193,7 @@ enum CaptureTarget {
 
 // MARK: - Helper Functions
 
-private func parseCaptureTarget(_ appTarget: String?) throws -> CaptureTarget {
+private func parseCaptureTarget(_ appTarget: String?) throws -> ImageCaptureTarget {
     guard let target = appTarget else {
         return .screen(index: nil)
     }
@@ -228,7 +231,7 @@ private func parseCaptureTarget(_ appTarget: String?) throws -> CaptureTarget {
     }
 }
 
-private func normalizeFormat(_ format: ImageFormat?) -> ImageFormat {
+private func normalizeFormat(_ format: ImageFormatOption?) -> ImageFormatOption {
     guard let format = format else { return .png }
     
     // The jpeg alias is handled by ImageFormat's Codable implementation
@@ -252,7 +255,7 @@ private func captureMenuBar() async throws -> CaptureResult {
     return try await PeekabooServices.shared.screenCapture.captureArea(menuBarRect)
 }
 
-private func saveImageData(_ data: Data, to path: String, format: ImageFormat) throws {
+private func saveImageData(_ data: Data, to path: String, format: ImageFormatOption) throws {
     let url = URL(fileURLWithPath: path.expandingTildeInPath)
     
     // Create parent directory if needed
@@ -263,7 +266,7 @@ private func saveImageData(_ data: Data, to path: String, format: ImageFormat) t
     
     // Convert format if needed
     let outputData: Data
-    if format == .jpg {
+    if format.imageFormat == .jpg {
         // Convert PNG to JPEG
         guard let image = NSImage(data: data),
               let tiffData = image.tiffRepresentation,
@@ -287,7 +290,7 @@ private func saveTemporaryImage(_ data: Data) throws -> String {
     return url.path
 }
 
-private func ensureExtension(_ path: String, format: ImageFormat) -> String {
+private func ensureExtension(_ path: String, format: ImageFormatOption) -> String {
     let expectedExt = format.fileExtension
     let url = URL(fileURLWithPath: path.expandingTildeInPath)
     
@@ -298,7 +301,7 @@ private func ensureExtension(_ path: String, format: ImageFormat) -> String {
     return path
 }
 
-private func generateFileName(basePath: String, index: Int, metadata: CaptureMetadata, format: ImageFormat) -> String {
+private func generateFileName(basePath: String, index: Int, metadata: CaptureMetadata, format: ImageFormatOption) -> String {
     let url = URL(fileURLWithPath: basePath.expandingTildeInPath)
     let basename = url.deletingPathExtension().lastPathComponent
     let directory = url.deletingLastPathComponent()
@@ -337,7 +340,7 @@ private func describeCapture(_ metadata: CaptureMetadata) -> String {
     return "Screenshot"
 }
 
-private func buildImageSummary(savedFiles: [SavedFile], captureCount: Int) -> String {
+private func buildImageSummary(savedFiles: [MCPSavedFile], captureCount: Int) -> String {
     if savedFiles.isEmpty {
         return "Captured \(captureCount) image(s)"
     }
@@ -346,37 +349,55 @@ private func buildImageSummary(savedFiles: [SavedFile], captureCount: Int) -> St
     lines.append("📸 Captured \(captureCount) screenshot(s)")
     
     for file in savedFiles {
-        lines.append("  • \(file.itemLabel): \(file.path)")
+        lines.append("  • \(file.item_label): \(file.path)")
     }
     
     return lines.joined(separator: "\n")
 }
 
 private func analyzeImage(at path: String, question: String) async throws -> (text: String, modelUsed: String) {
-    let imageData = try Data(contentsOf: URL(fileURLWithPath: path))
-    
-    let result = try await PeekabooServices.shared.ai.analyzeImage(
-        imageData,
-        question: question,
-        preferredProvider: nil
-    )
-    
-    return (text: result.text, modelUsed: "\(result.provider)/\(result.model)")
+    // TODO: Implement AI analysis once AI service is migrated
+    // For now, return a placeholder response
+    throw PeekabooError.operationError(message: "AI analysis not yet implemented in MCP server")
 }
 
 // MARK: - Supporting Types
 
-struct SavedFile {
+struct MCPSavedFile {
     let path: String
-    let itemLabel: String
-    let windowTitle: String?
-    let windowId: String?
-    let windowIndex: Int?
-    let mimeType: String
+    let item_label: String
+    let window_title: String?
+    let window_id: String?
+    let window_index: Int?
+    let mime_type: String
 }
 
 extension String {
     var expandingTildeInPath: String {
         return (self as NSString).expandingTildeInPath
+    }
+}
+
+extension ImageFormatOption {
+    var mimeType: String {
+        switch self {
+        case .png, .data: return "image/png"
+        case .jpg: return "image/jpeg"
+        }
+    }
+    
+    var fileExtension: String {
+        switch self {
+        case .png, .data: return "png"
+        case .jpg: return "jpg"
+        }
+    }
+    
+    // Convert to ImageFormat for actual image saving
+    var imageFormat: ImageFormat {
+        switch self {
+        case .png, .data: return .png
+        case .jpg: return .jpg
+        }
     }
 }

@@ -61,14 +61,14 @@ public protocol SessionManagerProtocol: Sendable {
     ///   - sessionId: Session identifier
     ///   - elementId: Element ID to retrieve
     /// - Returns: UI element if found
-    func getElement(sessionId: String, elementId: String) async throws -> UIElement?
+    func getElement(sessionId: String, elementId: String) async throws -> PeekabooCore.UIElement?
 
     /// Find elements matching a query
     /// - Parameters:
     ///   - sessionId: Session identifier
     ///   - query: Search query
     /// - Returns: Array of matching elements
-    func findElements(sessionId: String, matching query: String) async throws -> [UIElement]
+    func findElements(sessionId: String, matching query: String) async throws -> [PeekabooCore.UIElement]
 
     /// Get the full UI automation session data
     /// - Parameter sessionId: Session identifier

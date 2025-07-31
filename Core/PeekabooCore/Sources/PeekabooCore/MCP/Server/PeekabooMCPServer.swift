@@ -2,79 +2,116 @@ import Foundation
 import MCP
 import os.log
 
+/// Transport types supported by the MCP server
+public enum TransportType: CustomStringConvertible {
+    case stdio
+    case http
+    case sse
+    
+    public var description: String {
+        switch self {
+        case .stdio: return "stdio"
+        case .http: return "http"
+        case .sse: return "sse"
+        }
+    }
+}
+
 /// Peekaboo MCP Server implementation
 public actor PeekabooMCPServer {
     private let server: Server
     private let toolRegistry: MCPToolRegistry
-    private let logger: Logger
+    private let logger: os.Logger
+    private let serverName = "peekaboo-mcp"
+    private let serverVersion = "3.0.0-beta.2"
     
-    public init(logLevel: LogLevel = .info) throws {
-        self.logger = Logger(subsystem: "boo.peekaboo.mcp", category: "server")
-        self.toolRegistry = MCPToolRegistry()
+    public init() async throws {
+        self.logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "server")
+        self.toolRegistry = await MCPToolRegistry()
         
         // Initialize the official MCP Server
         self.server = Server(
-            name: "peekaboo-mcp",
-            version: Version.current.string,
+            name: serverName,
+            version: serverVersion,
             capabilities: Server.Capabilities(
-                tools: .init(listChanged: true),
+                prompts: .init(listChanged: false),
                 resources: .init(subscribe: false, listChanged: false),
-                prompts: .init(listChanged: false)
+                tools: .init(listChanged: true)
             )
         )
         
-        setupHandlers()
-        Task { await registerAllTools() }
+        await setupHandlers()
+        await registerAllTools()
     }
     
-    private func setupHandlers() {
+    private func setupHandlers() async {
         // Tool list handler
-        server.withMethodHandler(ListTools.self) { [weak self] _ in
-            guard let self = self else { return ListTools.Response(tools: []) }
+        await server.withMethodHandler(ListTools.self) { [weak self] _ in
+            guard let self = self else { return ListTools.Result(tools: []) }
             
             let tools = await self.toolRegistry.toolInfos()
-            return ListTools.Response(tools: tools)
+            return ListTools.Result(tools: tools)
         }
         
         // Tool call handler
-        server.withMethodHandler(CallTool.self) { [weak self] request in
+        await server.withMethodHandler(CallTool.self) { [weak self] params in
             guard let self = self else {
-                throw ServerError(code: ErrorCode.internalError, message: "Server deallocated")
+                throw MCP.MCPError.methodNotFound("Server deallocated")
             }
             
-            guard let tool = await self.toolRegistry.tool(named: request.name) else {
-                throw ServerError(code: ErrorCode.invalidParams, message: "Tool '\(request.name)' not found")
+            guard let tool = await self.toolRegistry.tool(named: params.name) else {
+                throw MCP.MCPError.invalidParams("Tool '\(params.name)' not found")
             }
             
-            let arguments = ToolArguments(raw: request.arguments ?? [:])
+            let arguments = ToolArguments(value: .object(params.arguments ?? [:]))
             let response = try await tool.execute(arguments: arguments)
             
-            return CallTool.Response(
+            return CallTool.Result(
                 content: response.content,
-                isError: response.isError,
-                meta: response.meta
+                isError: response.isError
             )
         }
         
+        // Resources list handler (empty for now, but prevents inspector errors)
+        await server.withMethodHandler(ListResources.self) { _ in
+            // Return empty resources list
+            return ListResources.Result(resources: [], nextCursor: nil)
+        }
+        
+        // Resources read handler (returns error for now)
+        await server.withMethodHandler(ReadResource.self) { params in
+            throw MCP.MCPError.invalidParams("Resource '\(params.uri)' not found")
+        }
+        
         // Initialize handler
-        server.withMethodHandler(Initialize.self) { [weak self] request in
+        await server.withMethodHandler(Initialize.self) { [weak self] request in
             guard let self = self else {
-                throw ServerError(code: ErrorCode.internalError, message: "Server deallocated")
+                throw MCP.MCPError.methodNotFound("Server deallocated")
             }
             
-            await self.logger.info("Client connected", metadata: [
-                "clientInfo": "\(request.clientInfo.name) \(request.clientInfo.version)",
-                "protocolVersion": "\(request.protocolVersion)"
-            ])
+            self.logger.info("Client connected: \(request.clientInfo.name) \(request.clientInfo.version), protocol: \(request.protocolVersion)")
             
-            return Initialize.Response(
+            // Create a response struct that matches Initialize.Result
+            struct InitializeResult: Codable {
+                let protocolVersion: String
+                let capabilities: Server.Capabilities
+                let serverInfo: Server.Info
+                let instructions: String?
+            }
+            
+            let result = InitializeResult(
                 protocolVersion: "2024-11-05",
-                capabilities: self.server.capabilities,
+                capabilities: await self.server.capabilities,
                 serverInfo: Server.Info(
-                    name: self.server.name,
-                    version: self.server.version
-                )
+                    name: self.serverName,
+                    version: self.serverVersion
+                ),
+                instructions: nil
             )
+            
+            // Convert to Initialize.Result via JSON
+            let data = try JSONEncoder().encode(result)
+            return try JSONDecoder().decode(Initialize.Result.self, from: data)
         }
     }
     
@@ -86,6 +123,7 @@ public actor PeekabooMCPServer {
             AnalyzeTool(),
             ListTool(),
             PermissionsTool(),
+            SleepTool(),
             
             // UI automation tools
             SeeTool(),
@@ -103,9 +141,8 @@ public actor PeekabooMCPServer {
             MenuTool(),
             
             // System tools
-            RunTool(),
-            SleepTool(),
-            CleanTool(),
+            // RunTool(), // Removed: Security risk - allows arbitrary script execution
+            // CleanTool(), // Removed: Internal maintenance tool, not for external use
             
             // Advanced tools
             AgentTool(),
@@ -114,20 +151,18 @@ public actor PeekabooMCPServer {
             SpaceTool(),
         ])
         
-        logger.info("Registered \(await toolRegistry.allTools().count) tools")
+        let toolCount = await self.toolRegistry.allTools().count
+        logger.info("Registered \(toolCount) tools")
     }
     
     public func serve(transport: TransportType, port: Int = 8080) async throws {
-        logger.info("Starting Peekaboo MCP server", metadata: [
-            "transport": "\(transport)",
-            "version": "\(Version.current.string)"
-        ])
+        logger.info("Starting Peekaboo MCP server on \(transport) transport, version: \(self.serverVersion)")
         
         let serverTransport: any Transport
         
         switch transport {
         case .stdio:
-            serverTransport = StdioTransport(logger: logger)
+            serverTransport = StdioTransport()
             
         case .http:
             // Note: HTTP transport would need custom implementation
@@ -139,6 +174,9 @@ public actor PeekabooMCPServer {
         }
         
         try await server.start(transport: serverTransport)
+        
+        // Keep the server running
+        await server.waitUntilCompleted()
     }
 }
 
