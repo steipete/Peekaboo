@@ -4,6 +4,7 @@ import SwiftUI
 
 private let logger = Logger(subsystem: "boo.peekaboo.playground", category: "App")
 private let clickLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Click")
+private let keyLogger = Logger(subsystem: "boo.peekaboo.playground", category: "Key")
 
 @main
 struct PlaygroundApp: App {
@@ -12,6 +13,7 @@ struct PlaygroundApp: App {
 
     init() {
         self.setupGlobalMouseClickMonitor()
+        self.setupGlobalKeyMonitor()
     }
 
     private func setupGlobalMouseClickMonitor() {
@@ -73,6 +75,98 @@ struct PlaygroundApp: App {
                 }
             }
             return event
+        }
+    }
+
+    private func setupGlobalKeyMonitor() {
+        // Monitor key events globally within the app
+        NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { event in
+            let eventTypeStr: String
+            var keyInfo = ""
+            
+            switch event.type {
+            case .keyDown:
+                eventTypeStr = "Key Down"
+                // Get the key character if available
+                if let chars = event.charactersIgnoringModifiers, !chars.isEmpty {
+                    keyInfo = "'\(chars)'"
+                }
+                // Add key code for special keys
+                let specialKey = self.specialKeyName(for: event.keyCode)
+                if !specialKey.isEmpty {
+                    keyInfo = keyInfo.isEmpty ? specialKey : "\(keyInfo) (\(specialKey))"
+                }
+            case .keyUp:
+                eventTypeStr = "Key Up"
+                if let chars = event.charactersIgnoringModifiers, !chars.isEmpty {
+                    keyInfo = "'\(chars)'"
+                }
+                let specialKey = self.specialKeyName(for: event.keyCode)
+                if !specialKey.isEmpty {
+                    keyInfo = keyInfo.isEmpty ? specialKey : "\(keyInfo) (\(specialKey))"
+                }
+            case .flagsChanged:
+                eventTypeStr = "Modifier Changed"
+                var modifiers: [String] = []
+                if event.modifierFlags.contains(.command) { modifiers.append("⌘ Command") }
+                if event.modifierFlags.contains(.shift) { modifiers.append("⇧ Shift") }
+                if event.modifierFlags.contains(.option) { modifiers.append("⌥ Option") }
+                if event.modifierFlags.contains(.control) { modifiers.append("⌃ Control") }
+                if event.modifierFlags.contains(.function) { modifiers.append("fn Function") }
+                keyInfo = modifiers.isEmpty ? "Released" : modifiers.joined(separator: " + ")
+            default:
+                eventTypeStr = "Unknown"
+            }
+            
+            // Log with more detail for debugging
+            let logMessage = "\(eventTypeStr): \(keyInfo) (keyCode: \(event.keyCode))"
+            keyLogger.info("\(logMessage)")
+            
+            // Also log to ActionLogger for UI display (only for keyDown events)
+            if event.type == .keyDown {
+                ActionLogger.shared.log(.keyboard, "Key pressed: \(keyInfo)")
+            }
+            
+            return event
+        }
+    }
+    
+    private func specialKeyName(for keyCode: UInt16) -> String {
+        switch keyCode {
+        case 36: return "Return"
+        case 76: return "Enter"
+        case 48: return "Tab"
+        case 53: return "Escape"
+        case 49: return "Space"
+        case 51: return "Delete"
+        case 117: return "Forward Delete"
+        case 123: return "Left Arrow"
+        case 124: return "Right Arrow"
+        case 125: return "Down Arrow"
+        case 126: return "Up Arrow"
+        case 115: return "Home"
+        case 119: return "End"
+        case 116: return "Page Up"
+        case 121: return "Page Down"
+        case 122: return "F1"
+        case 120: return "F2"
+        case 99: return "F3"
+        case 118: return "F4"
+        case 96: return "F5"
+        case 97: return "F6"
+        case 98: return "F7"
+        case 100: return "F8"
+        case 101: return "F9"
+        case 109: return "F10"
+        case 103: return "F11"
+        case 111: return "F12"
+        case 105: return "F13"
+        case 107: return "F14"
+        case 113: return "F15"
+        case 57: return "Caps Lock"
+        case 114: return "Help"
+        case 71: return "Clear"
+        default: return ""
         }
     }
 
