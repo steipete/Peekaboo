@@ -233,7 +233,7 @@ final class StatusBarController: NSObject {
     // MARK: - Icon Animation
 
     private func observeAgentState() {
-        _ = withObservationTracking {
+        withObservationTracking {
             // Observe multiple properties to ensure we catch all changes
             _ = self.agent.isProcessing
             _ = self.agent.toolExecutionHistory.count

@@ -85,7 +85,7 @@ final class PeekabooAgent {
 
     /// Execute a task with the agent
     func executeTask(_ task: String) async throws {
-        guard let agentService = services.agent else {
+        guard services.agent != nil else {
             throw AgentError.serviceUnavailable
         }
         

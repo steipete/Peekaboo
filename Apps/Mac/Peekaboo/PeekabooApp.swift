@@ -100,7 +100,7 @@ struct PeekabooApp: App {
             SettingsWindow()
                 .environment(self.settings)
                 .environment(self.permissions)
-                .environmentObject(self.appDelegate.visualizerCoordinator ?? VisualizerCoordinator(overlayManager: OverlayManager()))
+                .environmentObject(self.appDelegate.visualizerCoordinator ?? VisualizerCoordinator())
                 .onAppear {
                     // Ensure visualizer coordinator is available
                     if self.appDelegate.visualizerCoordinator == nil {
@@ -127,7 +127,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var agent: PeekabooAgent?
 
     // Visualizer components
-    private var overlayManager: OverlayManager?
     var visualizerCoordinator: VisualizerCoordinator?
     private var visualizerXPCService: VisualizerXPCService?
 
@@ -138,15 +137,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Don't set activation policy here - let DockIconManager handle it
 
         // Initialize visualizer components
-        overlayManager = OverlayManager()
-        if let overlayManager {
-            self.visualizerCoordinator = VisualizerCoordinator(overlayManager: overlayManager)
+        self.visualizerCoordinator = VisualizerCoordinator()
 
-            if let coordinator = visualizerCoordinator {
-                self.visualizerXPCService = VisualizerXPCService(visualizerCoordinator: coordinator)
-                self.visualizerXPCService?.start()
-                self.logger.info("Visualizer XPC service started")
-            }
+        if let coordinator = visualizerCoordinator {
+            self.visualizerXPCService = VisualizerXPCService(visualizerCoordinator: coordinator)
+            self.visualizerXPCService?.start()
+            self.logger.info("Visualizer XPC service started")
         }
 
         // Status bar will be created after state is connected

@@ -189,7 +189,7 @@ struct TypeAnimationView: View {
                 let key = self.keys[self.currentKeyIndex]
 
                 // Press the key
-                withAnimation(.easeIn(duration: 0.05)) {
+                _ = withAnimation(.easeIn(duration: 0.05)) {
                     self.pressedKeys.insert(key.lowercased())
                 }
 

@@ -181,7 +181,7 @@ final class MenuBarAnimationController: ObservableObject {
         }
 
         // Create the ghost icon with animation properties
-        let nsImage = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { [self] rect in
+        let nsImage = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
             let context = NSGraphicsContext.current!.cgContext
 
             // Apply transformations for floating animation

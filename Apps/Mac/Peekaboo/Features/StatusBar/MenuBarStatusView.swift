@@ -169,7 +169,7 @@ struct MenuBarStatusView: View {
     
     private var unifiedContentView: some View {
         Group {
-            if let currentSession = sessionStore.currentSession {
+            if sessionStore.currentSession != nil {
                 // Show unified activity feed for current session
                 UnifiedActivityFeed()
             } else if !sessionStore.sessions.isEmpty {

@@ -16,11 +16,13 @@ struct InspectorView: View {
 
     var body: some View {
         PeekabooUICore.InspectorView(
-            configuration: InspectorConfiguration(
-                showPermissionAlert: false, // We handle permissions differently
-                enableOverlay: true,
-                defaultDetailLevel: .moderate
-            )
+            configuration: {
+                var config = InspectorConfiguration()
+                config.showPermissionAlert = false // We handle permissions differently
+                config.enableOverlay = true
+                config.defaultDetailLevel = .moderate
+                return config
+            }()
         )
         .environmentObject(overlayManager)
         .onAppear {
