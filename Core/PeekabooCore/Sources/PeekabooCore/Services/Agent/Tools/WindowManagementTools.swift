@@ -15,7 +15,7 @@ extension PeekabooAgentService {
     func createListWindowsTool() -> Tool<PeekabooServices> {
         createTool(
             name: "list_windows",
-            description: "List all visible windows across all applications",
+            description: "List all visible windows across all applications. Uses fast CGWindowList API when screen recording permission is granted, with automatic fallback to accessibility API. Results are returned quickly with built-in timeout protection to prevent hangs.",
             parameters: .object(
                 properties: [
                     "app": ParameterSchema.string(description: "Optional: Filter windows by application name"),
@@ -33,7 +33,7 @@ extension PeekabooAgentService {
                         .first(where: { $0.name.lowercased().contains(appFilter.lowercased()) })
                     {
                         // Use applications service for UnifiedToolOutput
-                        let windowsOutput = try await context.applications.listWindows(for: targetApp.name)
+                        let windowsOutput = try await context.applications.listWindows(for: targetApp.name, timeout: nil)
                         windows = windowsOutput.data.windows
                     }
                 } else {
@@ -93,7 +93,7 @@ extension PeekabooAgentService {
                         do {
                             // Use a main-thread-safe timeout mechanism
                             let windowsResult = try await withMainThreadTimeout(seconds: 5.0) {
-                                try await context.applications.listWindows(for: app.name)
+                                try await context.applications.listWindows(for: app.name, timeout: nil)
                             }
 
                             if let windowsOutput = windowsResult {

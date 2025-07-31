@@ -1551,10 +1551,30 @@ peekaboo config edit
 1. **Screen Recording** (Required):
    - System Settings → Privacy & Security → Screen & System Audio Recording
    - Enable for Terminal, Claude Desktop, or your IDE
+   - **Performance Benefit**: Enables fast window enumeration using CGWindowList API
+   - Without this permission, window operations may be slower
 
 2. **Accessibility** (Optional):
    - System Settings → Privacy & Security → Accessibility
-   - Enable for better window focus control
+   - Enable for better window focus control and UI automation
+
+Check permissions status:
+```bash
+peekaboo permissions check
+peekaboo permissions request screen-recording
+peekaboo permissions request accessibility
+```
+
+### Performance Optimizations
+
+Peekaboo v3 includes significant performance improvements:
+
+- **Hybrid Window Enumeration**: Automatically uses the faster CGWindowList API when screen recording permission is granted, with seamless fallback to accessibility APIs
+- **Built-in Timeout Protection**: All window and menu operations have configurable timeouts (default 2s) to prevent hangs
+- **Smart API Selection**: Automatically chooses the fastest available API based on your permissions
+- **Parallel Processing**: Window data is fetched concurrently when possible
+
+These optimizations ensure that operations that previously could hang for 2+ minutes now complete in seconds.
 
 ## 🏗️ Building from Source
 

@@ -232,7 +232,7 @@ ApplicationResolvable {
         Logger.shared.verbose("Capturing all windows for app: \(appIdentifier)")
 
         // Get window count
-        let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
+        let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier, timeout: nil)
         var savedFiles: [SavedFile] = []
 
         for (index, window) in windowsOutput.data.windows.enumerated() {

@@ -15,9 +15,11 @@ public protocol ApplicationServiceProtocol: Sendable {
     func findApplication(identifier: String) async throws -> ServiceApplicationInfo
 
     /// List all windows for a specific application
-    /// - Parameter appIdentifier: Application name or bundle ID
+    /// - Parameters:
+    ///   - appIdentifier: Application name or bundle ID
+    ///   - timeout: Optional timeout in seconds (defaults to 2 seconds)
     /// - Returns: UnifiedToolOutput containing window information
-    func listWindows(for appIdentifier: String) async throws -> UnifiedToolOutput<ServiceWindowListData>
+    func listWindows(for appIdentifier: String, timeout: Float?) async throws -> UnifiedToolOutput<ServiceWindowListData>
 
     /// Get information about the frontmost application
     /// - Returns: Application information

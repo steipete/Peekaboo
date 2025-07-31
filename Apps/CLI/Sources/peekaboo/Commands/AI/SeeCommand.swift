@@ -228,7 +228,7 @@ ApplicationResolvable {
                         category: "WindowSearch",
                         metadata: ["title": title]
                     )
-                    let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
+                    let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier, timeout: nil)
                     Logger.shared.verbose(
                         "Found windows",
                         category: "WindowSearch",

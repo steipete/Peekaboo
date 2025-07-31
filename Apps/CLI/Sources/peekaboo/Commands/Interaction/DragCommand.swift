@@ -232,7 +232,7 @@ struct DragCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
         // Try to find application window using ApplicationService
         do {
             _ = try await PeekabooServices.shared.applications.findApplication(identifier: appName)
-            let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appName)
+            let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appName, timeout: nil)
 
             if let firstWindow = windowsOutput.data.windows.first {
                 // Return center of window

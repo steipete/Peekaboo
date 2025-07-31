@@ -123,7 +123,7 @@ ApplicationResolvablePositional {
 
             // Find the target application using the service
             // Get windows for the app using the service
-            let output = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier)
+            let output = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier, timeout: nil)
 
             if self.jsonOutput {
                 // For JSON output, include window details if requested
@@ -199,7 +199,13 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
         abstract: "Check system permissions required for Peekaboo",
         discussion: """
         Checks system permissions using PeekabooCore PeekabooServices.shared.
-        Verifies Screen Recording (required) and Accessibility (optional) permissions.
+        
+        Permissions checked:
+        - Screen Recording: Required for capturing screen content and optimal window listing
+        - Accessibility: Required for UI automation (clicking, typing, etc.)
+        
+        Note: Screen Recording permission also improves performance for window operations
+        by allowing use of faster CGWindowList API with full window information.
         """
     )
 
@@ -215,6 +221,9 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
         // Extract status for JSON output
         let screenRecording = permissionInfos.first { $0.name == "Screen Recording" }?.isGranted ?? false
         let accessibility = permissionInfos.first { $0.name == "Accessibility" }?.isGranted ?? false
+        
+        // Additional check for screen recording using CGWindowList heuristic
+        let cgWindowListCheck = checkScreenRecordingViaWindowList()
         
         // Create permission status for JSON
         let permissions = PermissionStatus(
@@ -235,7 +244,39 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
                     print("    Grant via: \(permission.grantInstructions)")
                 }
             }
+            
+            // Show additional performance info for screen recording
+            if screenRecording {
+                if cgWindowListCheck {
+                    print("\n  ✅ Optimal performance mode enabled (CGWindowList access confirmed)")
+                } else {
+                    print("\n  ⚠️  Limited CGWindowList access - window names may not be visible")
+                }
+                print("     → Screen recording improves window listing performance")
+            }
         }
+    }
+    
+    /// Check screen recording permission using CGWindowList heuristic
+    private func checkScreenRecordingViaWindowList() -> Bool {
+        guard let windowList = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+            return false
+        }
+        
+        let ourPID = ProcessInfo.processInfo.processIdentifier
+        
+        // Check if we can see window names from other processes
+        for window in windowList {
+            guard let ownerPID = window[kCGWindowOwnerPID as String] as? Int32,
+                  ownerPID != ourPID,
+                  let _ = window[kCGWindowName as String] as? String else {
+                continue
+            }
+            // Found a window name from another process - we have permission
+            return true
+        }
+        
+        return false
     }
 }
 

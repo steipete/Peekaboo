@@ -34,8 +34,8 @@ public final class MenuService: MenuServiceProtocol {
         let axApp = AXUIElementCreateApplication(appInfo.processIdentifier)
         let appElement = Element(axApp)
 
-        // Get menu bar
-        guard let menuBar = appElement.menuBar() else {
+        // Get menu bar with timeout protection
+        guard let menuBar = appElement.menuBarWithTimeout(timeout: 2.0) else {
             var context = ErrorContext()
             context.add("application", appInfo.name)
             throw NotFoundError(
@@ -44,12 +44,27 @@ public final class MenuService: MenuServiceProtocol {
                 context: context.build())
         }
 
-        // Collect all menus
+        // Collect all menus with timeout
         var menus: [Menu] = []
-
+        let menuEnumerationTimeout: TimeInterval = 5.0 // 5 seconds total for menu enumeration
+        let menuStartTime = Date()
+        
         let topLevelMenus = menuBar.children() ?? []
+        
         for menuBarItem in topLevelMenus {
+            // Check if we've exceeded total timeout
+            if Date().timeIntervalSince(menuStartTime) > menuEnumerationTimeout {
+                self.logger.warning("Menu enumeration timed out after \(menuEnumerationTimeout)s, collected \(menus.count) menus")
+                break
+            }
+            
+            // Extract menu with time tracking
+            let menuItemStartTime = Date()
             if let menu = extractMenu(from: menuBarItem, parentPath: "") {
+                let menuProcessingTime = Date().timeIntervalSince(menuItemStartTime)
+                if menuProcessingTime > 1.0 {
+                    self.logger.debug("Menu '\(menu.title)' took \(menuProcessingTime)s to process")
+                }
                 menus.append(menu)
             }
         }
@@ -292,7 +307,14 @@ public final class MenuService: MenuServiceProtocol {
                     // This is the menu, extract its items
                     if let menuChildren = child.children() {
                         let currentPath = parentPath.isEmpty ? title : "\(parentPath) > \(title)"
-                        items = self.extractMenuItems(from: menuChildren, parentPath: currentPath)
+                        // Limit depth to prevent excessive recursion
+                        let maxDepth = 3
+                        let currentDepth = currentPath.split(separator: ">").count
+                        if currentDepth < maxDepth {
+                            items = self.extractMenuItems(from: menuChildren, parentPath: currentPath)
+                        } else {
+                            self.logger.debug("Skipping menu items at depth \(currentDepth) (max: \(maxDepth))")
+                        }
                     }
                     break
                 }
@@ -304,7 +326,8 @@ public final class MenuService: MenuServiceProtocol {
 
     @MainActor
     private func extractMenuItems(from elements: [Element], parentPath: String) -> [MenuItem] {
-        elements.compactMap { element in
+        // Process all items now that we have timeout protection
+        return elements.compactMap { element in
             self.extractMenuItem(from: element, parentPath: parentPath)
         }
     }

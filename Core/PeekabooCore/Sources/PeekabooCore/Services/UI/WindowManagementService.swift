@@ -259,7 +259,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
     public func listWindows(target: WindowTarget) async throws -> [ServiceWindowInfo] {
         switch target {
         case let .application(appIdentifier):
-            let output = try await applicationService.listWindows(for: appIdentifier)
+            let output = try await applicationService.listWindows(for: appIdentifier, timeout: nil)
             return output.data.windows
 
         case let .title(titleSubstring):
@@ -268,7 +268,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             var matchingWindows: [ServiceWindowInfo] = []
 
             for app in appsOutput.data.applications {
-                let windowsOutput = try await applicationService.listWindows(for: app.name)
+                let windowsOutput = try await applicationService.listWindows(for: app.name, timeout: nil)
                 let filtered = windowsOutput.data.windows.filter { window in
                     window.title.localizedCaseInsensitiveContains(titleSubstring)
                 }
@@ -279,14 +279,14 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             
         case let .applicationAndTitle(appIdentifier, titleSubstring):
             // More efficient: only search windows of the specified app
-            let windowsOutput = try await applicationService.listWindows(for: appIdentifier)
+            let windowsOutput = try await applicationService.listWindows(for: appIdentifier, timeout: nil)
             let filtered = windowsOutput.data.windows.filter { window in
                 window.title.localizedCaseInsensitiveContains(titleSubstring)
             }
             return filtered
 
         case let .index(app, index):
-            let windowsOutput = try await applicationService.listWindows(for: app)
+            let windowsOutput = try await applicationService.listWindows(for: app, timeout: nil)
             let windows = windowsOutput.data.windows
             guard index >= 0, index < windows.count else {
                 throw PeekabooError.invalidInput(
@@ -296,7 +296,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
 
         case .frontmost:
             let frontmostApp = try await applicationService.getFrontmostApplication()
-            let windowsOutput = try await applicationService.listWindows(for: frontmostApp.name)
+            let windowsOutput = try await applicationService.listWindows(for: frontmostApp.name, timeout: nil)
             let windows = windowsOutput.data.windows
             return windows.isEmpty ? [] : [windows[0]]
 
@@ -305,7 +305,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
             let appsOutput = try await applicationService.listApplications()
 
             for app in appsOutput.data.applications {
-                let windowsOutput = try await applicationService.listWindows(for: app.name)
+                let windowsOutput = try await applicationService.listWindows(for: app.name, timeout: nil)
                 if let window = windowsOutput.data.windows.first(where: { $0.windowID == id }) {
                     return [window]
                 }
@@ -320,7 +320,7 @@ public final class WindowManagementService: WindowManagementServiceProtocol {
         let frontmostApp = try await applicationService.getFrontmostApplication()
 
         // Get its windows
-        let windowsOutput = try await applicationService.listWindows(for: frontmostApp.name)
+        let windowsOutput = try await applicationService.listWindows(for: frontmostApp.name, timeout: nil)
 
         // The first window is typically the focused one
         return windowsOutput.data.windows.first
