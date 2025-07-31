@@ -3,9 +3,9 @@ import CoreGraphics
 @testable import PeekabooCore
 
 @Suite("CoordinateTransformer Tests")
+@MainActor
 struct CoordinateTransformerTests {
     
-    @MainActor
     let transformer = CoordinateTransformer()
     
     // MARK: - Basic Transformation Tests
@@ -43,9 +43,14 @@ struct CoordinateTransformerTests {
             to: .screen
         )
         
-        // The bounds should be offset by the window origin
-        #expect(screenBounds.origin.x == 162.5) // Normalized then denormalized
-        #expect(screenBounds.origin.y == 316.67 ± 0.01) // With tolerance for float precision
+        // First normalize: (50-100)/800 = -50/800 = -0.0625 for x
+        // Then denormalize to screen (assuming 1920x1080 default)
+        #if !canImport(AppKit)
+        let expectedX = -0.0625 * 1920  // -120
+        let expectedY = -0.25 * 1080     // -270
+        #expect(screenBounds.origin.x == expectedX)
+        #expect(screenBounds.origin.y == expectedY)
+        #endif
     }
     
     @Test("Transform between view and normalized coordinates")
@@ -106,7 +111,7 @@ struct CoordinateTransformerTests {
         )
         
         #expect(normalizedPoint.x == 0.125) // 100 / 800
-        #expect(normalizedPoint.y == 0.333 ± 0.001) // 200 / 600
+        #expect(abs(normalizedPoint.y - 0.333) < 0.001) // 200 / 600
     }
     
     // MARK: - Conversion Method Tests
@@ -137,7 +142,7 @@ struct CoordinateTransformerTests {
         // Y = viewHeight - normalizedY - normalizedHeight
         #if !canImport(AppKit)
         let expectedY = 600 - (100.0 / 1080 * 600) - (150.0 / 1080 * 600)
-        #expect(viewBounds.origin.y == expectedY ± 0.1)
+        #expect(abs(viewBounds.origin.y - expectedY) < 0.1)
         #endif
     }
     

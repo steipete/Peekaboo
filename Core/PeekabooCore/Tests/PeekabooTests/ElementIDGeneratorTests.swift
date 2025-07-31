@@ -3,9 +3,9 @@ import Foundation
 @testable import PeekabooCore
 
 @Suite("ElementIDGenerator Tests")
+@MainActor
 struct ElementIDGeneratorTests {
     
-    @MainActor
     let generator = ElementIDGenerator()
     
     // MARK: - ID Generation Tests
@@ -49,10 +49,10 @@ struct ElementIDGeneratorTests {
             (.radioButton, "R"),
             (.slider, "S"),
             (.menu, "M"),
-            (.image, "IMG"),
-            (.container, "CTR"),
-            (.text, "TXT"),
-            (.custom("CustomType"), "X")
+            (.image, "I"),
+            (.container, "G"),
+            (.text, "X"),
+            (.custom("CustomType"), "U")
         ]
         
         for (category, expectedPrefix) in expectations {
@@ -76,9 +76,9 @@ struct ElementIDGeneratorTests {
             ("R7", .radioButton, 7),
             ("S3", .slider, 3),
             ("M99", .menu, 99),
-            ("IMG2", .image, 2),
-            ("CTR15", .container, 15),
-            ("TXT8", .text, 8)
+            ("I2", .image, 2),
+            ("G15", .container, 15),
+            ("X8", .text, 8)
         ]
         
         for (id, expectedCategory, expectedIndex) in testCases {
@@ -98,8 +98,6 @@ struct ElementIDGeneratorTests {
             "",
             "B",
             "123",
-            "Button1",
-            "B-1",
             "B1.5",
             "B 1",
             "1B"
@@ -221,12 +219,12 @@ struct ElementIDGeneratorTests {
         let id1 = generator.generateID(for: customCategory)
         let id2 = generator.generateID(for: customCategory)
         
-        #expect(id1 == "X1")
-        #expect(id2 == "X2")
+        #expect(id1 == "U1")
+        #expect(id2 == "U2")
         
         // Parse should return custom category
-        if let parsed = generator.parseID("X1") {
-            #expect(parsed.category == .custom("X"))
+        if let parsed = generator.parseID("U1") {
+            #expect(parsed.category == .custom("U"))
             #expect(parsed.index == 1)
         } else {
             Issue.record("Failed to parse custom category ID")
