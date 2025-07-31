@@ -399,7 +399,6 @@ struct ScreensSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
             } else {
                 // Human-readable output
                 print("Screens (\(screens.count) total):")
-                print(String(repeating: "=", count: 50))
                 
                 for screen in screens {
                     print("\n\(screen.index). \(screen.name)\(screen.isPrimary ? " (Primary)" : "")")

@@ -89,9 +89,10 @@ peekaboo image --app Safari --path screenshot.png
 peekaboo image --mode frontmost
 peekaboo image --mode screen --screen-index 0
 
-# List applications and windows
+# List applications, windows, and screens
 peekaboo list apps
 peekaboo list windows --app "Visual Studio Code"
+peekaboo list screens  # List all displays with indices for --screen-index
 
 # Analyze images with AI (use image command with --analyze)
 peekaboo image --analyze "What error is shown?" --path screenshot.png
@@ -443,6 +444,47 @@ await see({ app_target: "screen:1" })  // Second screen
   }
 }
 ```
+
+#### Discovering Available Screens
+
+Before capturing specific screens, you can list all connected displays:
+
+```bash
+# List all screens with details
+peekaboo list screens
+
+# Example output:
+# Screens (3 total):
+# 
+# 0. Built-in Display (Primary)
+#    Resolution: 3008×1692
+#    Position: 0,0
+#    Scale: 2.0x (Retina)
+#    Visible Area: 3008×1612
+# 
+# 1. External Display
+#    Resolution: 3840×2160
+#    Position: 3008,0
+#    Scale: 2.0x (Retina)
+# 
+# 2. Studio Display
+#    Resolution: 5120×2880
+#    Position: -5120,0
+#    Scale: 2.0x (Retina)
+# 
+# 💡 Use 'peekaboo see --screen-index N' to capture a specific screen
+
+# Get JSON output for scripting
+peekaboo list screens --json-output
+```
+
+This command shows:
+- **Screen index**: Use with `see --screen-index` or `image --screen-index`
+- **Display name**: Built-in, External, or specific model names
+- **Resolution**: Full screen resolution
+- **Position**: Coordinates in the unified desktop space
+- **Scale factor**: Retina display information
+- **Visible area**: Usable area (excluding menu bar on primary screen)
 
 #### Multi-Screen Capture
 When capturing multiple screens, Peekaboo automatically saves each screen as a separate file:
