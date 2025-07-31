@@ -5,8 +5,9 @@ import PeekabooUICore
 @main
 struct PeekabooInspectorApp: App {
     @StateObject private var overlayManager = OverlayManager()
-    private let overlayWindowController: OverlayWindowController
+    @MainActor private let overlayWindowController: OverlayWindowController
     
+    @MainActor
     init() {
         let manager = OverlayManager()
         self._overlayManager = StateObject(wrappedValue: manager)

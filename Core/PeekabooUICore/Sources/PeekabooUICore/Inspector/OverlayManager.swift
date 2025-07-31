@@ -191,7 +191,8 @@ public class OverlayManager: ObservableObject {
     // MARK: - Private Methods
     
     private func setupEventMonitoring() {
-        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDown]) { [weak self] event in
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDown]) { [weak self] event in
+            // Process the event asynchronously
             Task { @MainActor in
                 guard let self = self else { return }
                 
@@ -199,13 +200,16 @@ public class OverlayManager: ObservableObject {
                 
                 if event.type == .mouseMoved && self.isOverlayActive {
                     await self.updateHoveredElement()
-                } else if event.type == .leftMouseDown {
+                } else if event.type == .leftMouseDown && self.isOverlayActive {
                     if let hovered = self.hoveredElement {
                         self.selectedElement = hovered
                         self.delegate?.overlayManager(self, didSelectElement: hovered)
                     }
                 }
             }
+            
+            // Return the event unchanged to pass it through
+            return event
         }
         
         // Start update timer

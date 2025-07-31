@@ -27,6 +27,9 @@ let package = Package(
             resources: [
                 .process("Assets.xcassets"),
                 .process("AppIcon.icon"),
+            ],
+            swiftSettings: [
+                .swiftLanguageMode(.v6)
             ]
         ),
     ]

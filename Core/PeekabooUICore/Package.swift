@@ -20,11 +20,17 @@ let package = Package(
             dependencies: [
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
                 .product(name: "AXorcist", package: "AXorcist"),
+            ],
+            swiftSettings: [
+                .swiftLanguageMode(.v6)
             ]
         ),
         .testTarget(
             name: "PeekabooUITests",
-            dependencies: ["PeekabooUICore"]
+            dependencies: ["PeekabooUICore"],
+            swiftSettings: [
+                .swiftLanguageMode(.v6)
+            ]
         ),
     ]
 )

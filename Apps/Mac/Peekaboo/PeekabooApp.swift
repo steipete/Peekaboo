@@ -95,6 +95,7 @@ struct PeekabooApp: App {
         .windowResizability(.contentSize)
         .defaultSize(width: 450, height: 700)
         .windowStyle(.automatic)
+        .windowToolbarStyle(.unified(showsTitle: true))
 
         // Settings scene
         Settings {
