@@ -361,6 +361,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         tools.append(createListWindowsTool())
         tools.append(createFocusWindowTool())
         tools.append(createResizeWindowTool())
+        tools.append(createListScreensTool())
 
         // Space management tools (temporarily disabled)
         tools.append(createListSpacesTool())

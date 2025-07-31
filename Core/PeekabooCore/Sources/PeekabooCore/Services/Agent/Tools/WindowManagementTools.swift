@@ -630,6 +630,48 @@ extension PeekabooAgentService {
             })
     }
 
+    /// Create the list screens tool
+    func createListScreensTool() -> Tool<PeekabooServices> {
+        createTool(
+            name: "list_screens",
+            description: "List all available displays/monitors with their properties",
+            parameters: .object(
+                properties: [:],
+                required: []),
+            handler: { _, context in
+                let screens = context.screens.listScreens()
+                
+                if screens.isEmpty {
+                    return .success("No screens found")
+                }
+                
+                var output = "Found \(screens.count) screen(s):\n\n"
+                
+                for screen in screens {
+                    output += "\(screen.index). \(screen.name)\(screen.isPrimary ? " (Primary)" : "")\n"
+                    output += "   • Resolution: \(Int(screen.frame.width))×\(Int(screen.frame.height))\n"
+                    output += "   • Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))\n"
+                    output += "   • Scale: \(screen.scaleFactor)x\(screen.scaleFactor > 1 ? " (Retina)" : "")\n"
+                    output += "   • Display ID: \(screen.displayID)\n"
+                    
+                    // Show visible area if different from full resolution
+                    if screen.visibleFrame.size != screen.frame.size {
+                        output += "   • Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))\n"
+                    }
+                    output += "\n"
+                }
+                
+                output += "💡 Use screen index with 'see' tool to capture specific screens"
+                
+                return .success(
+                    output.trimmingCharacters(in: .whitespacesAndNewlines),
+                    metadata: [
+                        "count": String(screens.count),
+                        "primary_index": String(screens.firstIndex(where: { $0.isPrimary }) ?? 0)
+                    ])
+            })
+    }
+
     /// Create the switch space tool
     func createSwitchSpaceTool() -> Tool<PeekabooServices> {
         createTool(
