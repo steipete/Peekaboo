@@ -221,9 +221,10 @@ final class StatusBarController: NSObject {
         // First ensure the app is active
         NSApp.activate(ignoringOtherApps: true)
 
-        // Post notification to open inspector window
-        self.logger.info("Posting OpenWindow.inspector notification")
-        NotificationCenter.default.post(name: Notification.Name("OpenWindow.inspector"), object: nil)
+        // Post notification to trigger window opening
+        // The AppDelegate listens for this notification and calls showInspector
+        self.logger.info("Posting ShowInspector notification")
+        NotificationCenter.default.post(name: Notification.Name("ShowInspector"), object: nil)
     }
 
     @objc private func showAbout() {

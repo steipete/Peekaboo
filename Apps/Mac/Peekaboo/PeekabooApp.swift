@@ -181,6 +181,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Setup keyboard shortcuts
         self.setupKeyboardShortcuts()
+        
+        // Setup notification observers
+        self.setupNotificationObservers()
 
         // Show onboarding if needed
         if !settings.hasValidAPIKey {
@@ -261,6 +264,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Activate the app
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    // MARK: - Notifications
+    
+    private func setupNotificationObservers() {
+        // Listen for Inspector window request
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleShowInspector),
+            name: Notification.Name("ShowInspector"),
+            object: nil
+        )
+    }
+    
+    @objc private func handleShowInspector() {
+        self.logger.info("Received ShowInspector notification")
+        self.showInspector()
     }
 
     // MARK: - Keyboard Shortcuts

@@ -732,6 +732,23 @@ When modifying agent behavior, update these prompts to guide the AI's responses 
 - **Build fails**: See Swift Package Manager troubleshooting section above
 
 
+## SwiftUI App Delegate Pattern
+
+**IMPORTANT**: In SwiftUI apps, `NSApp.delegate as? AppDelegate` does NOT work! SwiftUI manages its own internal app delegate, and the `@NSApplicationDelegateAdaptor` property wrapper doesn't make the delegate accessible via `NSApp.delegate`.
+
+**Wrong approach**:
+```swift
+if let appDelegate = NSApp.delegate as? AppDelegate {
+    // This will always fail in SwiftUI apps!
+}
+```
+
+**Correct approaches**:
+1. Use notifications to communicate between components
+2. Pass the AppDelegate through environment values
+3. Use shared singleton patterns for app-wide services
+4. Store references in accessible places during initialization
+
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.
