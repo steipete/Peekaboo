@@ -2,6 +2,8 @@
 
 This document outlines the comprehensive plan to migrate Peekaboo from a TypeScript-based MCP server to a pure Swift implementation with a minimal Node.js restart wrapper for npm distribution.
 
+> **✅ UPDATE (2025-01-31)**: The official Swift MCP SDK (v0.9.0) supports BOTH client and server functionality! The server class is called `Server` (not `MCPServer`). This plan uses the official SDK for both server and client capabilities.
+
 ## Table of Contents
 
 1. [Executive Summary](#executive-summary)
@@ -23,10 +25,10 @@ This document outlines the comprehensive plan to migrate Peekaboo from a TypeScr
 - Preserve all existing functionality and user experience
 
 ### Timeline
-- **Total Duration**: 10-15 days
-- **MVP (Basic tools)**: 5-7 days  
-- **Full parity**: 10-12 days
-- **Testing & Polish**: 2-3 days
+- **Total Duration**: 8-12 days (reduced from 10-15 since we don't need custom protocol)
+- **MVP (Basic tools)**: 3-5 days  
+- **Full parity**: 7-9 days
+- **Testing & Polish**: 1-2 days
 
 ### Key Benefits
 - Single binary deployment (except npm wrapper)
@@ -80,8 +82,7 @@ targets: [
     .executableTarget(
         name: "peekaboo",
         dependencies: [
-            .product(name: "MCPServer", package: "swift-sdk"),
-            .product(name: "MCPClient", package: "swift-sdk"),
+            .product(name: "MCP", package: "swift-sdk"),
             "PeekabooCore",
             "AXorcist"
         ]
@@ -124,12 +125,11 @@ struct Serve: AsyncParsableCommand {
 ```swift
 // Core/PeekabooCore/Sources/PeekabooCore/MCP/PeekabooMCPServer.swift
 import Foundation
-import MCPServer
+import MCP
 import os.log
 
-@MainActor
-public class PeekabooMCPServer {
-    private let server: MCPServer
+public actor PeekabooMCPServer {
+    private let server: Server
     private let toolRegistry: MCPToolRegistry
     private let logger: Logger
     
@@ -137,13 +137,14 @@ public class PeekabooMCPServer {
         self.logger = Logger(subsystem: "boo.peekaboo.mcp", category: "server")
         self.toolRegistry = MCPToolRegistry()
         
-        self.server = try MCPServer(
-            info: ServerInfo(
-                name: "peekaboo-mcp",
-                version: Version.current.string
-            ),
-            capabilities: ServerCapabilities(
-                tools: ToolsCapability()
+        // Initialize the official MCP Server
+        self.server = Server(
+            name: "peekaboo-mcp",
+            version: Version.current.string,
+            capabilities: Server.Capabilities(
+                tools: .init(listChanged: true),
+                resources: .init(subscribe: false, listChanged: false),
+                prompts: .init(listChanged: false)
             )
         )
         
@@ -152,16 +153,39 @@ public class PeekabooMCPServer {
     }
     
     private func setupHandlers() {
-        server.setRequestHandler(ListToolsRequest.self) { [weak self] _ in
-            guard let self = self else { return ListToolsResponse(tools: []) }
-            return ListToolsResponse(tools: self.toolRegistry.allTools())
+        // Tool list handler
+        server.withMethodHandler(ListTools.self) { [weak self] _ in
+            guard let self = self else { return ListTools.Response(tools: []) }
+            
+            let tools = await self.toolRegistry.allTools().map { tool in
+                Tool(
+                    name: tool.name,
+                    description: tool.description,
+                    inputSchema: tool.inputSchema
+                )
+            }
+            
+            return ListTools.Response(tools: tools)
         }
         
-        server.setRequestHandler(CallToolRequest.self) { [weak self] request in
-            guard let self = self else { 
-                throw MCPError.serverError("Server deallocated")
+        // Tool call handler
+        server.withMethodHandler(CallTool.self) { [weak self] request in
+            guard let self = self else {
+                throw ServerError(code: ErrorCode.internalError, message: "Server deallocated")
             }
-            return try await self.handleToolCall(request)
+            
+            guard let tool = await self.toolRegistry.tool(named: request.name) else {
+                throw ServerError(code: ErrorCode.invalidParams, message: "Tool '\(request.name)' not found")
+            }
+            
+            let arguments = ToolArguments(raw: request.arguments ?? [:])
+            let response = try await tool.execute(arguments: arguments)
+            
+            return CallTool.Response(
+                content: response.content,
+                isError: response.isError,
+                meta: response.meta
+            )
         }
     }
     
@@ -171,22 +195,22 @@ public class PeekabooMCPServer {
             "version": "\(Version.current.string)"
         ])
         
+        let serverTransport: any Transport
+        
         switch transport {
         case .stdio:
-            let transport = StdioServerTransport()
-            try await server.connect(transport)
-            try await server.run()
+            serverTransport = StdioTransport(logger: logger)
             
         case .http:
-            let transport = HTTPServerTransport(port: port)
-            try await server.connect(transport)
-            try await server.run()
+            // Note: HTTP transport would need custom implementation
+            // as the SDK only provides HTTPClientTransport
+            throw MCPError.notImplemented("HTTP server transport not yet implemented")
             
         case .sse:
-            let transport = SSEServerTransport(port: port)
-            try await server.connect(transport)
-            try await server.run()
+            throw MCPError.notImplemented("SSE server transport not yet implemented")
         }
+        
+        try await server.start(transport: serverTransport)
     }
 }
 ```
@@ -197,12 +221,12 @@ public class PeekabooMCPServer {
 ```swift
 // Core/PeekabooCore/Sources/PeekabooCore/MCP/MCPTool.swift
 import Foundation
-import MCPServer
+import MCP
 
 public protocol MCPTool {
     var name: String { get }
     var description: String { get }
-    var inputSchema: JSONSchema { get }
+    var inputSchema: Value { get }
     
     func execute(arguments: ToolArguments) async throws -> ToolResponse
 }
@@ -210,9 +234,41 @@ public protocol MCPTool {
 public struct ToolArguments {
     private let raw: [String: Any]
     
+    public init(raw: [String: Any]) {
+        self.raw = raw
+    }
+    
     public func decode<T: Decodable>(_ type: T.Type) throws -> T {
         let data = try JSONSerialization.data(withJSONObject: raw)
         return try JSONDecoder().decode(type, from: data)
+    }
+}
+
+public struct ToolResponse {
+    public let content: [Content]
+    public let isError: Bool
+    public let meta: [String: Any]?
+    
+    public init(content: [Content], isError: Bool = false, meta: [String: Any]? = nil) {
+        self.content = content
+        self.isError = isError
+        self.meta = meta
+    }
+    
+    public static func text(_ text: String, meta: [String: Any]? = nil) -> ToolResponse {
+        ToolResponse(
+            content: [.text(text)],
+            isError: false,
+            meta: meta
+        )
+    }
+    
+    public static func error(_ message: String) -> ToolResponse {
+        ToolResponse(
+            content: [.text(message)],
+            isError: true,
+            meta: nil
+        )
     }
 }
 ```
@@ -237,23 +293,25 @@ public struct ImageTool: MCPTool {
         """
     }
     
-    public var inputSchema: JSONSchema {
-        .object(
+    public var inputSchema: Value {
+        SchemaBuilder.object(
             properties: [
-                "path": .string(description: "Optional. Base absolute path for saving the image."),
-                "format": .enum(
-                    ["png", "jpg", "data"],
-                    description: "Optional. Output format."
+                "path": SchemaBuilder.string(
+                    description: "Optional. Base absolute path for saving the image."
                 ),
-                "app_target": .string(
+                "format": SchemaBuilder.string(
+                    description: "Optional. Output format.",
+                    enum: ["png", "jpg", "data"]
+                ),
+                "app_target": SchemaBuilder.string(
                     description: "Optional. Specifies the capture target."
                 ),
-                "question": .string(
+                "question": SchemaBuilder.string(
                     description: "Optional. If provided, the captured image will be analyzed."
                 ),
-                "capture_focus": .enum(
-                    ["background", "auto", "foreground"],
+                "capture_focus": SchemaBuilder.string(
                     description: "Optional. Focus behavior.",
+                    enum: ["background", "auto", "foreground"],
                     default: "auto"
                 )
             ],
@@ -289,16 +347,15 @@ public struct ImageTool: MCPTool {
         // Return capture result
         if input.format == "data" {
             let imageData = try Data(contentsOf: URL(fileURLWithPath: result.savedFiles.first!.path))
-            return .data(
-                imageData.base64EncodedString(),
-                mimeType: "image/png",
-                metadata: ["savedFiles": result.savedFiles.map { $0.path }]
+            return ToolResponse(
+                content: [.image(data: imageData, mimeType: "image/png")],
+                meta: ["savedFiles": result.savedFiles.map { $0.path }]
             )
         }
         
-        return .text(
+        return ToolResponse.text(
             buildImageSummary(result),
-            metadata: ["savedFiles": result.savedFiles.map { $0.path }]
+            meta: ["savedFiles": result.savedFiles.map { $0.path }]
         )
     }
 }
@@ -368,58 +425,75 @@ public class MCPToolRegistry {
 
 ### Phase 3: Schema Generation (Days 6-7)
 
-#### 3.1 Codable to JSON Schema
+#### 3.1 JSON Schema with MCP Value Type
 ```swift
-// Core/PeekabooCore/Sources/PeekabooCore/MCP/Schema/JSONSchemaGenerator.swift
+// Core/PeekabooCore/Sources/PeekabooCore/MCP/Schema/SchemaBuilder.swift
 import Foundation
+import MCP
 
-public enum JSONSchema {
-    case object(properties: [String: JSONSchema], required: [String] = [])
-    case array(items: JSONSchema)
-    case string(description: String? = nil)
-    case number(description: String? = nil)
-    case integer(description: String? = nil)
-    case boolean(description: String? = nil)
-    case `enum`([String], description: String? = nil, default: String? = nil)
-    
-    public func encode() -> [String: Any] {
-        switch self {
-        case .object(let properties, let required):
-            var schema: [String: Any] = ["type": "object"]
-            schema["properties"] = properties.mapValues { $0.encode() }
-            if !required.isEmpty {
-                schema["required"] = required
-            }
-            return schema
-            
-        case .array(let items):
-            return [
-                "type": "array",
-                "items": items.encode()
-            ]
-            
-        case .string(let description):
-            var schema: [String: Any] = ["type": "string"]
-            if let desc = description {
-                schema["description"] = desc
-            }
-            return schema
-            
-        case .enum(let values, let description, let defaultValue):
-            var schema: [String: Any] = [
-                "type": "string",
-                "enum": values
-            ]
-            if let desc = description {
-                schema["description"] = desc
-            }
-            if let def = defaultValue {
-                schema["default"] = def
-            }
-            return schema
-            
-        // ... other cases
+public struct SchemaBuilder {
+    /// Build a JSON Schema using MCP's Value type
+    public static func object(
+        properties: [String: Value],
+        required: [String] = [],
+        description: String? = nil
+    ) -> Value {
+        var schema: [String: Value] = [
+            "type": .string("object"),
+            "properties": .object(properties)
+        ]
+        
+        if !required.isEmpty {
+            schema["required"] = .array(required.map { .string($0) })
         }
+        
+        if let desc = description {
+            schema["description"] = .string(desc)
+        }
+        
+        return .object(schema)
+    }
+    
+    public static func string(
+        description: String? = nil,
+        enum values: [String]? = nil,
+        default: String? = nil
+    ) -> Value {
+        var schema: [String: Value] = ["type": .string("string")]
+        
+        if let desc = description {
+            schema["description"] = .string(desc)
+        }
+        
+        if let values = values {
+            schema["enum"] = .array(values.map { .string($0) })
+        }
+        
+        if let defaultValue = `default` {
+            schema["default"] = .string(defaultValue)
+        }
+        
+        return .object(schema)
+    }
+    
+    public static func boolean(description: String? = nil) -> Value {
+        var schema: [String: Value] = ["type": .string("boolean")]
+        
+        if let desc = description {
+            schema["description"] = .string(desc)
+        }
+        
+        return .object(schema)
+    }
+    
+    public static func number(description: String? = nil) -> Value {
+        var schema: [String: Value] = ["type": .string("number")]
+        
+        if let desc = description {
+            schema["description"] = .string(desc)
+        }
+        
+        return .object(schema)
     }
 }
 ```
