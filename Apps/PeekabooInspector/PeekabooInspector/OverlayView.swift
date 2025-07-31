@@ -25,18 +25,6 @@ struct ElementOverlay: View {
     private let idGenerator = ElementIDGenerator.shared
 
     var body: some View {
-        // Debug: Log element info to understand positioning
-        _ = {
-            if self.element.elementID.hasPrefix("B") || self.element.elementID.hasPrefix("C") || self.element.elementID
-                .hasPrefix("Peekaboo")
-            {
-                Self.logger
-                    .debug(
-                        "Element \(self.element.elementID) (\(self.element.displayName)): frame = \(self.element.frame.debugDescription)")
-                Self.logger.debug("  App: \(self.element.appBundleID)")
-            }
-        }()
-
         // Get main screen size for coordinate transformation
         let screenSize = NSScreen.main?.frame.size ?? CGSize(width: 1920, height: 1080)
         
@@ -103,6 +91,17 @@ struct ElementOverlay: View {
                     }
                     .position(x: transformedFrame.minX + 40, y: transformedFrame.minY + 10)
                 }
+            }
+        }
+        .onAppear {
+            // Debug: Log element info to understand positioning
+            if self.element.elementID.hasPrefix("B") || self.element.elementID.hasPrefix("C") || self.element.elementID
+                .hasPrefix("Peekaboo")
+            {
+                Self.logger
+                    .debug(
+                        "Element \(self.element.elementID) (\(self.element.displayName)): frame = \(self.element.frame.debugDescription)")
+                Self.logger.debug("  App: \(self.element.appBundleID)")
             }
         }
     }
