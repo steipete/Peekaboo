@@ -9,6 +9,22 @@ func logError(_ message: String) {
     FileHandle.standardError.write(data)
 }
 
+// Generate dynamic permissions section for help
+func getDynamicPermissionsSection() -> String {
+    // We can't use async in the configuration initializer, so we'll provide a static fallback
+    // The actual dynamic checking happens in the permissions command
+    return """
+PERMISSIONS:
+  Peekaboo requires system permissions to function properly.
+  
+  Screen Recording (Required): For all screenshot operations
+  Accessibility (Optional): For window focus control
+  
+  Check current status and grant instructions:
+    peekaboo permissions
+"""
+}
+
 /// Main command-line interface for Peekaboo.
 ///
 /// Provides a comprehensive CLI for capturing screenshots and analyzing images
@@ -59,20 +75,7 @@ struct Peekaboo: AsyncParsableCommand {
           peekaboo click --on T1 --space-switch          # Auto-switch Space & click
           peekaboo type "Hello from Space 2!"            # Type with auto-focus
 
-        PERMISSIONS:
-          Peekaboo requires system permissions to function properly:
-
-          ✅ Screen Recording (REQUIRED)
-             Needed for all screenshot operations
-             Grant via: System Settings > Privacy & Security > Screen Recording
-
-          ⚠️  Accessibility (OPTIONAL)
-             Needed for window focus control (foreground capture mode)
-             Grant via: System Settings > Privacy & Security > Accessibility
-
-          Check your permissions status:
-            peekaboo permissions                    # Human-readable output
-            peekaboo permissions --json-output      # Machine-readable JSON
+        \(getDynamicPermissionsSection())
 
         CONFIGURATION:
           Peekaboo uses a configuration file at ~/.config/peekaboo/config.json

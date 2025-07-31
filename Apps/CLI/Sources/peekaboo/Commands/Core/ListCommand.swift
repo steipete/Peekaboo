@@ -25,14 +25,18 @@ struct ListCommand: AsyncParsableCommand {
           peekaboo list menubar --json-output            # Output as JSON
 
           peekaboo list permissions                      # Check permissions
+          
+          peekaboo list screens                          # List all displays
+          peekaboo list screens --json-output            # Output as JSON
 
         SUBCOMMANDS:
           apps          List all running applications with process IDs
           windows       List windows for a specific application  
           permissions   Check permissions required for Peekaboo
           menubar       List all menu bar items (status icons)
+          screens       List all available displays/monitors
         """,
-        subcommands: [AppsSubcommand.self, WindowsSubcommand.self, PermissionsSubcommand.self, MenuBarSubcommand.self],
+        subcommands: [AppsSubcommand.self, WindowsSubcommand.self, PermissionsSubcommand.self, MenuBarSubcommand.self, ScreensSubcommand.self],
         defaultSubcommand: AppsSubcommand.self
     )
 
@@ -205,10 +209,14 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
-        // Check permissions using the services
-        let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
-        let accessibility = await PeekabooServices.shared.automation.hasAccessibilityPermission()
-
+        // Get permissions using shared helper
+        let permissionInfos = await PermissionHelpers.getCurrentPermissions()
+        
+        // Extract status for JSON output
+        let screenRecording = permissionInfos.first { $0.name == "Screen Recording" }?.isGranted ?? false
+        let accessibility = permissionInfos.first { $0.name == "Accessibility" }?.isGranted ?? false
+        
+        // Create permission status for JSON
         let permissions = PermissionStatus(
             screenRecording: screenRecording,
             accessibility: accessibility
@@ -217,9 +225,16 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
         let data = PermissionStatusData(permissions: permissions)
 
         output(data) {
-            print("Server Permissions Status:")
-            print("  Screen Recording: \(screenRecording ? "✅ Granted" : "❌ Not granted")")
-            print("  Accessibility: \(accessibility ? "✅ Granted" : "❌ Not granted")")
+            print("Peekaboo Permissions Status:")
+            
+            for permission in permissionInfos {
+                print("  \(PermissionHelpers.formatPermissionStatus(permission))")
+                
+                // Only show grant instructions if permission is not granted
+                if !permission.isGranted {
+                    print("    Grant via: \(permission.grantInstructions)")
+                }
+            }
         }
     }
 }
@@ -301,4 +316,136 @@ struct MenuBarSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
     }
 
     // Error handling is provided by ErrorHandlingCommand protocol
+}
+
+/// Subcommand for listing all available screens/displays
+struct ScreensSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
+    static let configuration = CommandConfiguration(
+        commandName: "screens",
+        abstract: "List all available displays/monitors with details",
+        discussion: """
+        Lists all connected displays including their resolution, position, and other properties.
+        Useful for discovering screen indices for the 'see --screen-index' command and
+        debugging multi-monitor setups.
+        
+        The screen index shown can be used with commands like:
+          peekaboo see --screen-index 0    # Capture primary screen
+          peekaboo see --screen-index 1    # Capture secondary screen
+        """
+    )
+    
+    @Flag(name: .long, help: "Output results in JSON format for scripting")
+    var jsonOutput = false
+    
+    @MainActor
+    mutating func run() async throws {
+        Logger.shared.setJsonOutputMode(self.jsonOutput)
+        
+        do {
+            // Get screens from the service
+            let screens = PeekabooServices.shared.screens.listScreens()
+            let primaryIndex = screens.firstIndex(where: { $0.isPrimary })
+            
+            // Create output data
+            let screenListData = ScreenListData(
+                screens: screens.map { screen in
+                    ScreenListData.ScreenDetails(
+                        index: screen.index,
+                        name: screen.name,
+                        resolution: ScreenListData.Resolution(
+                            width: Int(screen.frame.width),
+                            height: Int(screen.frame.height)
+                        ),
+                        position: ScreenListData.Position(
+                            x: Int(screen.frame.origin.x),
+                            y: Int(screen.frame.origin.y)
+                        ),
+                        visibleArea: ScreenListData.Resolution(
+                            width: Int(screen.visibleFrame.width),
+                            height: Int(screen.visibleFrame.height)
+                        ),
+                        isPrimary: screen.isPrimary,
+                        scaleFactor: screen.scaleFactor,
+                        displayID: Int(screen.displayID)
+                    )
+                },
+                primaryIndex: primaryIndex
+            )
+            
+            let output = UnifiedToolOutput(
+                data: screenListData,
+                summary: UnifiedToolOutput<ScreenListData>.Summary(
+                    brief: "Found \(screens.count) screen\(screens.count == 1 ? "" : "s")",
+                    detail: nil,
+                    status: .success,
+                    counts: ["screens": screens.count],
+                    highlights: screens.enumerated().compactMap { index, screen in
+                        screen.isPrimary ? UnifiedToolOutput<ScreenListData>.Summary.Highlight(
+                            label: "Primary",
+                            value: "\(screen.name) (Index \(index))",
+                            kind: .primary
+                        ) : nil
+                    }
+                ),
+                metadata: UnifiedToolOutput<ScreenListData>.Metadata(
+                    duration: 0.0,
+                    warnings: [],
+                    hints: ["Use 'peekaboo see --screen-index N' to capture a specific screen"]
+                )
+            )
+            
+            if self.jsonOutput {
+                try print(output.toJSON())
+            } else {
+                // Human-readable output
+                print("Screens (\(screens.count) total):")
+                print(String(repeating: "=", count: 50))
+                
+                for screen in screens {
+                    print("\n\(screen.index). \(screen.name)\(screen.isPrimary ? " (Primary)" : "")")
+                    print("   Resolution: \(Int(screen.frame.width))×\(Int(screen.frame.height))")
+                    print("   Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))")
+                    print("   Scale: \(screen.scaleFactor)x\(screen.scaleFactor > 1 ? " (Retina)" : "")")
+                    
+                    // Show visible area if different from full resolution
+                    if screen.visibleFrame.size != screen.frame.size {
+                        print("   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))")
+                    }
+                }
+                
+                print("\n💡 Use 'peekaboo see --screen-index N' to capture a specific screen")
+            }
+        } catch {
+            self.handleError(error)
+            throw ExitCode(1)
+        }
+    }
+}
+
+// MARK: - Screen List Data Model
+
+struct ScreenListData: Codable {
+    let screens: [ScreenDetails]
+    let primaryIndex: Int?
+    
+    struct ScreenDetails: Codable {
+        let index: Int
+        let name: String
+        let resolution: Resolution
+        let position: Position
+        let visibleArea: Resolution
+        let isPrimary: Bool
+        let scaleFactor: CGFloat
+        let displayID: Int
+    }
+    
+    struct Resolution: Codable {
+        let width: Int
+        let height: Int
+    }
+    
+    struct Position: Codable {
+        let x: Int
+        let y: Int
+    }
 }

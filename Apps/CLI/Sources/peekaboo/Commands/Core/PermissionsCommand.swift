@@ -64,11 +64,14 @@ struct PermissionsCommand: AsyncParsableCommand {
     func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
 
-        // Get permissions from PeekabooCore services
-        let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
-        let accessibility = await PeekabooServices.shared.automation.hasAccessibilityPermission()
-
-        // Create permission status
+        // Get permissions using shared helper
+        let permissionInfos = await PermissionHelpers.getCurrentPermissions()
+        
+        // Extract status for JSON output
+        let screenRecording = permissionInfos.first { $0.name == "Screen Recording" }?.isGranted ?? false
+        let accessibility = permissionInfos.first { $0.name == "Accessibility" }?.isGranted ?? false
+        
+        // Create permission status for JSON
         let permissions = PermissionStatus(
             screenRecording: screenRecording,
             accessibility: accessibility
@@ -79,22 +82,20 @@ struct PermissionsCommand: AsyncParsableCommand {
             outputSuccessCodable(data: data)
         } else {
             print("Peekaboo Permissions Status:")
-            print("  Screen Recording: \(screenRecording ? "✅ Granted" : "❌ Not Granted")")
-            print("  Accessibility: \(accessibility ? "✅ Granted" : "⚠️  Not Granted (Optional)")")
-
-            if !screenRecording {
-                print("\nScreen Recording permission is required for capturing screenshots.")
-                print("Grant via: System Settings > Privacy & Security > Screen Recording")
-            }
-
-            if !accessibility {
-                print("\nAccessibility permission is optional but needed for window focus control.")
-                print("Grant via: System Settings > Privacy & Security > Accessibility")
+            
+            for permission in permissionInfos {
+                print("  \(PermissionHelpers.formatPermissionStatus(permission))")
+                
+                // Only show grant instructions if permission is not granted
+                if !permission.isGranted {
+                    print("    Grant via: \(permission.grantInstructions)")
+                }
             }
         }
 
         // Exit with error if required permissions are missing
-        if !screenRecording {
+        let hasAllRequired = permissionInfos.filter { $0.isRequired }.allSatisfy { $0.isGranted }
+        if !hasAllRequired {
             throw ExitCode(1)
         }
     }
