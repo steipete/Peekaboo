@@ -254,6 +254,15 @@ This issue typically occurs when:
 
 **Note: Poltergeist now builds the Mac app automatically! You can still use Xcode or xcodebuild for manual builds.**
 
+**IMPORTANT: GUI apps MUST be built and run through Xcode or xcodebuild, NOT with Swift CLI!**
+- Swift CLI builds (`swift build`) create binaries that lack proper macOS app bundle structure
+- Running GUI apps built with Swift CLI results in:
+  - No dock icon
+  - Weird application state
+  - Missing app bundle resources
+- Always use Xcode or xcodebuild for GUI applications
+- This applies to both the main Peekaboo Mac app and PeekabooInspector
+
 ```bash
 # Open in Xcode (recommended for development)
 open Apps/Peekaboo.xcworkspace

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		7814F0F12E1B0A80000995F8 /* AXorcist in Frameworks */ = {isa = PBXBuildFile; productRef = 7814F0F02E1B0A80000995F8 /* AXorcist */; };
+		78EA3D132E3B92C0000ADFA6 /* PeekabooUICore in Frameworks */ = {isa = PBXBuildFile; productRef = 78EA3D122E3B92C0000ADFA6 /* PeekabooUICore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7814F0F12E1B0A80000995F8 /* AXorcist in Frameworks */,
+				78EA3D132E3B92C0000ADFA6 /* PeekabooUICore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +73,7 @@
 			name = Inspector;
 			packageProductDependencies = (
 				7814F0F02E1B0A80000995F8 /* AXorcist */,
+				78EA3D122E3B92C0000ADFA6 /* PeekabooUICore */,
 			);
 			productName = PeekabooInspector;
 			productReference = 7814F0DE2E1B0A20000995F8 /* Inspector.app */;
@@ -102,6 +105,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				7814F0EF2E1B0A80000995F8 /* XCRemoteSwiftPackageReference "AXorcist" */,
+				78EA3D112E3B92C0000ADFA6 /* XCLocalSwiftPackageReference "../../Core/PeekabooUICore" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7814F0DF2E1B0A20000995F8 /* Products */;
@@ -329,6 +333,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		78EA3D112E3B92C0000ADFA6 /* XCLocalSwiftPackageReference "../../Core/PeekabooUICore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Core/PeekabooUICore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		7814F0EF2E1B0A80000995F8 /* XCRemoteSwiftPackageReference "AXorcist" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -345,6 +356,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 7814F0EF2E1B0A80000995F8 /* XCRemoteSwiftPackageReference "AXorcist" */;
 			productName = AXorcist;
+		};
+		78EA3D122E3B92C0000ADFA6 /* PeekabooUICore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PeekabooUICore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
