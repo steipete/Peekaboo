@@ -100,6 +100,8 @@ peekaboo see --analyze "Describe this UI" --app Chrome
 
 # GUI Automation (v3)
 peekaboo see --app Safari               # Identify UI elements
+peekaboo see --mode screen              # Capture all screens (multi-screen)
+peekaboo see --mode screen --screen-index 1  # Capture specific screen
 peekaboo click "Submit"                 # Click button by text
 peekaboo type "Hello world"             # Type at current focus
 peekaboo type "Line 1\nLine 2"          # Type with newline (escape sequences)
@@ -414,6 +416,13 @@ The `see` tool is the foundation of GUI automation. It captures a screenshot and
 // Example: See what's on screen
 await see({ app_target: "Safari" })
 
+// Multi-screen support - capture all screens
+await see({ app_target: "" })  // Empty string captures all screens
+
+// Capture specific screen by index
+await see({ app_target: "screen:0" })  // Primary screen
+await see({ app_target: "screen:1" })  // Second screen
+
 // Returns:
 {
   screenshot_path: "/tmp/peekaboo_123.png",
@@ -434,6 +443,21 @@ await see({ app_target: "Safari" })
   }
 }
 ```
+
+#### Multi-Screen Capture
+When capturing multiple screens, Peekaboo automatically saves each screen as a separate file:
+- Primary screen: `screenshot.png`
+- Additional screens: `screenshot_screen1.png`, `screenshot_screen2.png`, etc.
+
+Display information (name, resolution) is shown for each captured screen:
+```
+📸 Captured 3 screens:
+   🖥️  Display 0: Built-in Retina Display (2880×1800) → screenshot.png
+   🖥️  Display 1: LG Ultra HD (3840×2160) → screenshot_screen1.png
+   🖥️  Display 2: Studio Display (5120×2880) → screenshot_screen2.png
+```
+
+**Note**: Annotation is automatically disabled for full screen captures due to performance constraints.
 
 #### Element ID Format
 - **B1, B2...** - Buttons

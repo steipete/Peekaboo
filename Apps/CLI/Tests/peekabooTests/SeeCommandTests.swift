@@ -46,6 +46,27 @@ struct SeeCommandTests {
         #expect(command.mode == nil) // Mode not explicitly set
     }
 
+    @Test("See command parses screen-index parameter")
+    func parseScreenIndex() throws {
+        let command = try SeeCommand.parse(["--mode", "screen", "--screen-index", "1"])
+        #expect(command.mode == .screen)
+        #expect(command.screenIndex == 1)
+    }
+    
+    @Test("See command screen-index only works with screen mode")
+    func screenIndexRequiresScreenMode() throws {
+        // Should parse without error even if not in screen mode
+        let command = try SeeCommand.parse(["--mode", "window", "--screen-index", "0"])
+        #expect(command.screenIndex == 0)
+        // The validation happens at runtime, not parse time
+    }
+    
+    @Test("See command handles multi-screen capture defaults")
+    func multiScreenDefaults() throws {
+        let command = try SeeCommand.parse(["--mode", "screen"])
+        #expect(command.screenIndex == nil) // No index means capture all screens
+    }
+
     @Test("See command auto-infers window mode when window title is specified")
     func autoInferWindowModeWithTitle() throws {
         let command = try SeeCommand.parse(["--window-title", "Document"])

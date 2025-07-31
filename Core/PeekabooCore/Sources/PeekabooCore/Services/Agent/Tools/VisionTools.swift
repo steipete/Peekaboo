@@ -29,10 +29,19 @@ public struct VisionToolDefinitions {
               peekaboo see --app menubar             # Capture menu bar only
               peekaboo see --app frontmost           # Capture active window
               peekaboo see --pid 12345                # Capture by process ID
-              peekaboo see --mode screen             # Capture entire screen
+              peekaboo see --mode screen             # Capture all screens (multi-screen)
+              peekaboo see --mode screen --screen-index 0  # Capture primary screen only
+              peekaboo see --mode screen --screen-index 1  # Capture second screen only
               peekaboo see --window-title "GitHub"   # Capture specific window
               peekaboo see --annotate                # Generate annotated screenshot
               peekaboo see --analyze "Find login"    # Capture and analyze
+              
+            MULTI-SCREEN SUPPORT:
+              When capturing without --screen-index, all screens are captured and saved:
+              • Primary screen: screenshot.png
+              • Additional screens: screenshot_screen1.png, screenshot_screen2.png, etc.
+              Display information (name, resolution) is shown for each captured screen.
+              Note: Annotation is disabled for full screen captures due to performance.
 
             OUTPUT:
               Returns a session ID that can be used with click, type, and other

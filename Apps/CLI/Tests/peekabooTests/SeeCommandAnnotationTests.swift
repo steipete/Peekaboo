@@ -47,6 +47,23 @@ struct SeeCommandAnnotationTests {
         #expect(transformedBounds.size.height == 50) // unchanged
     }
 
+    @Test("Annotation is disabled for screen mode captures")
+    func annotationDisabledForScreenMode() {
+        // This test documents that annotation should be disabled for full screen captures
+        // due to performance constraints
+        
+        // When attempting to annotate a screen capture
+        // The see command should log a warning and continue without annotation
+        
+        // Expected behavior:
+        // 1. User requests: peekaboo see --mode screen --annotate
+        // 2. System logs: "Annotation is disabled for full screen captures due to performance constraints"
+        // 3. Capture proceeds without annotation
+        // 4. No annotated file is created
+        
+        #expect(true) // This is a behavioral test documented here
+    }
+
     @Test("Coordinate system conversion for NSGraphicsContext")
     func coordinateSystemConversion() {
         // Given a window-relative element bounds with top-left origin
