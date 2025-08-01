@@ -138,6 +138,8 @@ struct Peekaboo: AsyncParsableCommand {
             SpaceCommand.self,
             // Agent commands
             AgentCommand.self,
+            // MCP commands
+            MCPCommand.self,
         ]
     )
 }
