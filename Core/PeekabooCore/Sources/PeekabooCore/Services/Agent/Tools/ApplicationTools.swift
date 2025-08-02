@@ -88,7 +88,7 @@ extension PeekabooAgentService {
         return createSimpleTool(
             name: definition.name,
             description: definition.agentDescription,
-            handler: { context in
+            execute: { _, context in
                 let appsOutput = try await context.applications.listApplications()
 
                 if appsOutput.data.applications.isEmpty {
@@ -106,8 +106,7 @@ extension PeekabooAgentService {
                 }
 
                 return .success(
-                    output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: ["count": String(appsOutput.data.applications.count)])
+                    output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 
@@ -119,14 +118,14 @@ extension PeekabooAgentService {
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
-            handler: { params, context in
+            execute: { params, context in
                 let appName = try params.string("name")
                 let waitForLaunch = params.bool("wait_for_launch", default: true)
 
                 // First check if already running
                 let runningAppsOutput = try await context.applications.listApplications()
                 if let existingApp = runningAppsOutput.data.applications
-                    .first(where: { $0.name.lowercased() == appName.lowercased() })
+                    .first(where: { $0.name.lowercased() == appName?.lowercased() ?? "" })
                 {
                     // Get window information
                     let windows = try await context.windows.listWindows(target: .application(existingApp.name))
@@ -180,17 +179,7 @@ extension PeekabooAgentService {
                         statusMessage += ")"
                     }
 
-                    return .success(
-                        statusMessage,
-                        metadata: [
-                            "app": existingApp.name,
-                            "bundleId": existingApp.bundleIdentifier ?? "",
-                            "wasRunning": "true",
-                            "windowCount": String(windows.count),
-                            "normalWindows": String(normalWindows),
-                            "minimizedWindows": String(minimizedWindows),
-                            "fullscreenWindows": String(fullscreenWindows),
-                        ])
+                    return .success(statusMessage)
                 }
 
                 // Launch the app
@@ -216,25 +205,12 @@ extension PeekabooAgentService {
                             "\(windows.count) new windows"
                         }
 
-                        return .success(
-                            "Launched \(launchedApp.name) (\(windowDescription))",
-                            metadata: [
-                                "app": launchedApp.name,
-                                "bundleId": launchedApp.bundleIdentifier ?? "",
-                                "wasRunning": "false",
-                                "windowCount": String(windows.count),
-                            ])
+                        return .success("Launched \(launchedApp.name) (\(windowDescription))")
                     } else {
                         throw PeekabooError.operationError(message: "\(appName) launched but is not responding")
                     }
                 } else {
-                    return .success(
-                        "Launched \(launchedApp.name) (not waiting for completion)",
-                        metadata: [
-                            "app": launchedApp.name,
-                            "bundleId": launchedApp.bundleIdentifier ?? "",
-                            "wasRunning": "false",
-                        ])
+                    return .success("Launched \(launchedApp.name) (not waiting for completion)")
                 }
             })
     }

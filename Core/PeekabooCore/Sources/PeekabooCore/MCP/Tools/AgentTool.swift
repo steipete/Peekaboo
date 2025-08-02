@@ -103,23 +103,27 @@ public struct AgentTool: MCPTool {
                     dateFormatter.dateStyle = .medium
                     dateFormatter.timeStyle = .short
                     
-                    return "ID: \(session.id)\nCreated: \(dateFormatter.string(from: session.createdAt))\nUpdated: \(dateFormatter.string(from: session.updatedAt))\nMessage Count: \(session.messageCount)"
+                    return "ID: \(session.id)\nCreated: \(dateFormatter.string(from: session.createdAt))\nUpdated: \(dateFormatter.string(from: session.lastModified))\nMessage Count: \(session.messageCount)"
                 }.joined(separator: "\n---\n")
+                
+                let sessionsArray = sessions.map { session in
+                    let dateFormatter = ISO8601DateFormatter()
+                    return Value.object([
+                        "id": .string(session.id),
+                        "createdAt": .string(dateFormatter.string(from: session.createdAt)),
+                        "updatedAt": .string(dateFormatter.string(from: session.lastModified)),
+                        "messageCount": .string(String(session.messageCount))
+                    ])
+                }
+                
+                let meta = Value.object([
+                    "sessionCount": .string(String(sessions.count)),
+                    "sessions": .array(sessionsArray)
+                ])
                 
                 return ToolResponse.text(
                     "Available Sessions:\n\n\(sessionDescriptions)",
-                    meta: .object([
-                        "sessionCount": .string(String(sessions.count)),
-                        "sessions": .array(sessions.map { session in
-                            let dateFormatter = ISO8601DateFormatter()
-                            return .object([
-                                "id": .string(session.id),
-                                "createdAt": .string(dateFormatter.string(from: session.createdAt)),
-                                "updatedAt": .string(dateFormatter.string(from: session.updatedAt)),
-                                "messageCount": .string(String(session.messageCount))
-                            ])
-                        })
-                    ])
+                    meta: meta
                 )
             } catch {
                 logger.error("Failed to list sessions: \(error.localizedDescription)")
@@ -180,21 +184,22 @@ public struct AgentTool: MCPTool {
             
             // Format response based on verbosity level
             if input.quiet {
-                return ToolResponse.text(result.content)
+                return ToolResponse.text(result.response)
             } else if input.verbose {
-                var metadata: [String: Value] = [
-                    "sessionId": .string(result.sessionId),
-                    "modelName": .string(result.metadata.modelName),
-                    "toolCallCount": .string(String(result.metadata.toolCallCount)),
-                    "executionTime": .string(String(format: "%.2f", result.metadata.endTime.timeIntervalSince(result.metadata.startTime))),
-                    "isResumed": .string(result.metadata.isResumed ? "true" : "false")
-                ]
+                var metadata: [String: Value] = [:]
+                if let sessionId = result.sessionId {
+                    metadata["sessionId"] = .string(sessionId)
+                }
+                metadata["success"] = .bool(result.success)
+                if let error = result.error {
+                    metadata["error"] = .string(error)
+                }
                 
                 if let usage = result.usage {
                     metadata["usage"] = .object([
-                        "promptTokens": .string(String(usage.promptTokens)),
-                        "completionTokens": .string(String(usage.completionTokens)),
-                        "totalTokens": .string(String(usage.totalTokens))
+                        "promptTokens": .string(String(usage.promptTokens ?? 0)),
+                        "completionTokens": .string(String(usage.completionTokens ?? 0)),
+                        "totalTokens": .string(String(usage.totalTokens ?? 0))
                     ])
                 }
                 
@@ -206,24 +211,24 @@ public struct AgentTool: MCPTool {
                 // Default output format
                 var output = result.content
                 
-                if result.metadata.toolCallCount > 0 {
-                    output += "\n\n🔧 Tools used: \(result.metadata.toolCallCount)"
+                if let sessionId = result.sessionId {
+                    output += "\n🆔 Session: \(sessionId)"
                 }
                 
                 if let usage = result.usage {
-                    output += "\n📊 Tokens: \(usage.promptTokens) in, \(usage.completionTokens) out"
+                    output += "\n📊 Tokens: \(usage.promptTokens ?? 0) in, \(usage.completionTokens ?? 0) out"
                 }
                 
-                let executionTime = result.metadata.endTime.timeIntervalSince(result.metadata.startTime)
-                output += "\n⏱️ Execution time: \(String(format: "%.1f", executionTime))s"
+                // Add more details if needed
+                
+                var meta: [String: Value] = [:]
+                if let sessionId = result.sessionId {
+                    meta["sessionId"] = .string(sessionId)
+                }
                 
                 return ToolResponse.text(
                     output,
-                    meta: .object([
-                        "sessionId": .string(result.sessionId),
-                        "modelName": .string(result.metadata.modelName),
-                        "toolCallCount": .string(String(result.metadata.toolCallCount))
-                    ])
+                    meta: meta.isEmpty ? nil : .object(meta)
                 )
             }
             

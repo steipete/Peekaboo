@@ -421,7 +421,7 @@ extension PeekabooAgentService {
             name: definition.name,
             description: definition.agentDescription,
             parameters: parameters,
-            handler: { params, context in
+            execute: { params, context in
                 let target = try params.string("target")
                 let appName = params.string("app", default: nil)
                 let doubleClick = params.bool("double_click", default: false)
@@ -430,7 +430,7 @@ extension PeekabooAgentService {
                 let startTime = Date()
 
                 // Check if target is coordinates (e.g., "100,200")
-                if target.contains(","),
+                if target?.contains(",") ?? false,
                    let coordParts = target.split(separator: ",").map(String.init).map(Double.init) as? [Double],
                    coordParts.count == 2
                 {
@@ -450,14 +450,7 @@ extension PeekabooAgentService {
 
                     let actionType = rightClick ? "Right-clicked" : (doubleClick ? "Double-clicked" : "Clicked")
                     return .success(
-                        "\(actionType) at (\(Int(coordinates.x)), \(Int(coordinates.y))) in \(targetApp)",
-                        metadata: [
-                            "x": String(Int(coordinates.x)),
-                            "y": String(Int(coordinates.y)),
-                            "type": rightClick ? "right_click" : (doubleClick ? "double_click" : "click"),
-                            "app": targetApp,
-                            "duration": String(format: "%.2fs", duration),
-                        ])
+                        "\(actionType) at (\(Int(coordinates.x)), \(Int(coordinates.y))) in \(targetApp)")
                 }
 
                 // Try to click using the target as a query
@@ -475,14 +468,7 @@ extension PeekabooAgentService {
                 let targetApp = appName ?? frontmostApp?.name ?? "unknown"
 
                 let actionType = rightClick ? "Right-clicked" : (doubleClick ? "Double-clicked" : "Clicked")
-                return .success(
-                    "\(actionType) on '\(target)' in \(targetApp)",
-                    metadata: [
-                        "element": target,
-                        "type": rightClick ? "right_click" : (doubleClick ? "double_click" : "click"),
-                        "app": targetApp,
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                return .success("\(actionType) on '\(target)' in \(targetApp)")
             })
     }
 
@@ -503,7 +489,7 @@ extension PeekabooAgentService {
                         description: "Whether to clear the field before typing (default: false)"),
                 ],
                 required: ["text"]),
-            handler: { params, context in
+            execute: { params, context in
                 let text = try params.string("text")
                 let fieldLabel = params.string("field", default: nil)
                 let appName = params.string("app", default: nil)
@@ -525,7 +511,7 @@ extension PeekabooAgentService {
 
                 // Type the text using the automation service
                 try await context.automation.type(
-                    text: text,
+                    text: text ?? "",
                     target: fieldLabel,
                     clearExisting: clearFirst,
                     typingDelay: 0,
@@ -555,16 +541,7 @@ extension PeekabooAgentService {
                     output += " (cleared first)"
                 }
 
-                return .success(
-                    output,
-                    metadata: [
-                        "text": text,
-                        "field": fieldLabel ?? "current focus",
-                        "cleared": String(clearFirst),
-                        "app": targetApp,
-                        "characterCount": String(characterCount),
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                return .success(output)
             })
     }
 
@@ -586,7 +563,7 @@ extension PeekabooAgentService {
                         description: "Optional: Application name"),
                 ],
                 required: ["direction"]),
-            handler: { params, context in
+            execute: { params, context in
                 let directionStr = try params.string("direction")
                 let amount = params.int("amount", default: 5) ?? 5
                 let target = params.string("target", default: nil)
@@ -595,7 +572,7 @@ extension PeekabooAgentService {
                 let startTime = Date()
 
                 let direction: ScrollDirection
-                switch directionStr.lowercased() {
+                switch directionStr?.lowercased() ?? "" {
                 case "up": direction = .up
                 case "down": direction = .down
                 case "left": direction = .left
@@ -625,15 +602,7 @@ extension PeekabooAgentService {
                 }
                 output += " - \(targetApp)"
 
-                return .success(
-                    output,
-                    metadata: [
-                        "direction": directionStr,
-                        "amount": String(amount),
-                        "target": target ?? "current position",
-                        "app": targetApp,
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                return .success(output)
             })
     }
 
@@ -650,14 +619,14 @@ extension PeekabooAgentService {
                         description: "Number of times to press the key (default: 1)"),
                 ],
                 required: ["key"]),
-            handler: { params, context in
+            execute: { params, context in
                 let keyStr = try params.string("key")
                 let count = params.int("count", default: 1) ?? 1
 
                 let startTime = Date()
 
                 // Map key name to SpecialKey enum - handle various naming conventions
-                let normalizedKey = keyStr.lowercased()
+                let normalizedKey = keyStr?.lowercased() ?? ""
                     .replacingOccurrences(of: "_", with: "")
                     .replacingOccurrences(of: "-", with: "")
                 
@@ -704,14 +673,7 @@ extension PeekabooAgentService {
                 }
                 output += " in \(targetApp)"
 
-                return .success(
-                    output,
-                    metadata: [
-                        "key": keyStr,
-                        "count": String(count),
-                        "app": targetApp,
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                return .success(output)
             })
     }
 
@@ -731,12 +693,12 @@ extension PeekabooAgentService {
                         description: "Modifier keys to hold (e.g., ['command', 'shift'])"),
                 ],
                 required: ["key"]),
-            handler: { params, context in
+            execute: { params, context in
                 let keyStr = try params.string("key")
-                let modifierStrs = params.stringArray("modifiers") ?? []
+                let modifierStrs = params.arguments["modifiers"] as? [String] ?? []
 
                 // Map key names to match what hotkey expects
-                let mappedKey: String = switch keyStr.lowercased() {
+                let mappedKey: String = switch keyStr?.lowercased() ?? "" {
                 case "return", "enter": "return"
                 case "escape", "esc": "escape"
                 case "delete", "backspace": "delete"
@@ -744,7 +706,7 @@ extension PeekabooAgentService {
                 case "arrow_down", "down": "down"
                 case "arrow_left", "left": "left"
                 case "arrow_right", "right": "right"
-                default: keyStr.lowercased()
+                default: keyStr?.lowercased() ?? ""
                 }
 
                 // Map modifier strings to the expected format
@@ -780,18 +742,9 @@ extension PeekabooAgentService {
                 if !modifierStrs.isEmpty {
                     shortcutDisplay = modifierStrs.map(\.capitalized).joined(separator: "+") + "+"
                 }
-                shortcutDisplay += keyStr.capitalized
+                shortcutDisplay += keyStr?.capitalized ?? ""
 
-                return .success(
-                    "Pressed \(shortcutDisplay) in \(targetApp)",
-                    metadata: [
-                        "key": keyStr,
-                        "modifiers": modifierStrs.joined(separator: ","),
-                        "keys": keysString,
-                        "shortcut": shortcutDisplay,
-                        "app": targetApp,
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                return .success("Pressed \(shortcutDisplay) in \(targetApp)")
             })
     }
 }

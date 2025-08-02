@@ -21,7 +21,7 @@ extension PeekabooAgentService {
                     "app": ParameterSchema.string(description: "Optional: Filter windows by application name"),
                 ],
                 required: []),
-            handler: { params, context in
+            execute: { params, context in
                 let appFilter = params.string("app", default: nil)
 
                 var windows: [ServiceWindowInfo] = []
@@ -132,11 +132,7 @@ extension PeekabooAgentService {
                 }
 
                 return .success(
-                    output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: [
-                        "count": String(windows.count),
-                        "app": appFilter ?? "all",
-                    ])
+                    output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 
@@ -153,7 +149,7 @@ extension PeekabooAgentService {
                     "window_id": ParameterSchema.integer(description: "Specific window ID"),
                 ],
                 required: []),
-            handler: { params, context in
+            execute: { params, context in
                 let title = params.string("title", default: nil)
                 let appName = params.string("app", default: nil)
                 let windowId = params.int("window_id", default: nil)
@@ -257,47 +253,43 @@ extension PeekabooAgentService {
                 // Focus the window
                 let startTime = Date()
                 try await context.windows.focusWindow(target: .windowId(window.windowID))
-                let duration = Date().timeIntervalSince(startTime)
+                let _ = Date().timeIntervalSince(startTime)
 
                 // The window.windowID is already the system window ID
                 let systemWindowID = window.windowID
 
                 return .success(
-                    "Focused \(appInfo.name) - \"\(window.title)\" (Window ID: \(systemWindowID))",
-                    metadata: [
-                        "app": appInfo.name,
-                        "window": window.title,
-                        "window_id": String(systemWindowID),
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                    "Focused \(appInfo.name) - \"\(window.title)\" (Window ID: \(systemWindowID))")
             })
     }
 
     /// Create the resize window tool
     func createResizeWindowTool() -> Tool<PeekabooServices> {
-        createTool(
+        let parameters = ToolParameters.object(
+            properties: [
+                "title": ParameterSchema.string(description: "Window title (partial match)"),
+                "app": ParameterSchema.string(description: "Application name"),
+                "window_id": ParameterSchema.integer(description: "Specific window ID"),
+                "frontmost": ParameterSchema.boolean(description: "Use the frontmost window"),
+                "width": ParameterSchema.integer(description: "New width in pixels"),
+                "height": ParameterSchema.integer(description: "New height in pixels"),
+                "x": ParameterSchema.integer(description: "New X position"),
+                "y": ParameterSchema.integer(description: "New Y position"),
+                "preset": ParameterSchema.enumeration(
+                    ["maximize", "center", "left_half", "right_half", "top_half", "bottom_half"],
+                    description: "Preset size/position"),
+                "target_screen": ParameterSchema.integer(description: "Move window to specific screen (0-based index)"),
+                "screen_preset": ParameterSchema.enumeration(
+                    ["same", "next", "previous", "primary"],
+                    description: "Move window relative to screens"),
+            ],
+            required: [])
+        
+        return createTool(
             name: "resize_window",
             description: "Resize and/or move a window",
-            parameters: .object(
-                properties: [
-                    "title": ParameterSchema.string(description: "Window title (partial match)"),
-                    "app": ParameterSchema.string(description: "Application name"),
-                    "window_id": ParameterSchema.integer(description: "Specific window ID"),
-                    "frontmost": ParameterSchema.boolean(description: "Use the frontmost window"),
-                    "width": ParameterSchema.integer(description: "New width in pixels"),
-                    "height": ParameterSchema.integer(description: "New height in pixels"),
-                    "x": ParameterSchema.integer(description: "New X position"),
-                    "y": ParameterSchema.integer(description: "New Y position"),
-                    "preset": ParameterSchema.enumeration(
-                        ["maximize", "center", "left_half", "right_half", "top_half", "bottom_half"],
-                        description: "Preset size/position"),
-                    "target_screen": ParameterSchema.integer(description: "Move window to specific screen (0-based index)"),
-                    "screen_preset": ParameterSchema.enumeration(
-                        ["same", "next", "previous", "primary"],
-                        description: "Move window relative to screens"),
-                ],
-                required: []),
-            handler: { (params: ToolParameterParser, context: PeekabooServices) in
+            parameters: parameters,
+            execute: { (params: ToolInput, context: PeekabooServices) in
                 let title = params.string("title", default: nil)
                 let appName = params.string("app", default: nil)
                 let windowId = params.int("window_id", default: nil)
@@ -561,7 +553,7 @@ extension PeekabooAgentService {
                 try await context.windows.setWindowBounds(
                     target: .windowId(window.windowID),
                     bounds: newBounds)
-                let duration = Date().timeIntervalSince(startTime)
+                let _ = Date().timeIntervalSince(startTime)
 
                 // The window.windowID is already the system window ID
                 let systemWindowID = window.windowID
@@ -580,18 +572,7 @@ extension PeekabooAgentService {
                     }
                 }
 
-                return .success(
-                    output,
-                    metadata: [
-                        "app": appInfo.name,
-                        "window": window.title,
-                        "window_id": String(systemWindowID),
-                        "x": String(Int(newBounds.origin.x)),
-                        "y": String(Int(newBounds.origin.y)),
-                        "width": String(Int(newBounds.width)),
-                        "height": String(Int(newBounds.height)),
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                return .success(output)
             })
     }
 
@@ -603,7 +584,7 @@ extension PeekabooAgentService {
             parameters: .object(
                 properties: [:],
                 required: []),
-            handler: { _, _ in
+            execute: { _, _ in
                 let spaceService = SpaceManagementService()
                 let spaces = spaceService.getAllSpaces()
 
@@ -625,8 +606,7 @@ extension PeekabooAgentService {
                 }
 
                 return .success(
-                    output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: ["count": String(spaces.count)])
+                    output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 
@@ -638,7 +618,7 @@ extension PeekabooAgentService {
             parameters: .object(
                 properties: [:],
                 required: []),
-            handler: { _, context in
+            execute: { _, context in
                 let screens = context.screens.listScreens()
                 
                 if screens.isEmpty {
@@ -664,11 +644,7 @@ extension PeekabooAgentService {
                 output += "💡 Use screen index with 'see' tool to capture specific screens"
                 
                 return .success(
-                    output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: [
-                        "count": String(screens.count),
-                        "primary_index": String(screens.firstIndex(where: { $0.isPrimary }) ?? 0)
-                    ])
+                    output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 
@@ -682,7 +658,7 @@ extension PeekabooAgentService {
                     "space_number": ParameterSchema.integer(description: "Space number to switch to (1-based)"),
                 ],
                 required: ["space_number"]),
-            handler: { params, _ in
+            execute: { params, _ in
                 guard let spaceNumber = params.int("space_number", default: nil) else {
                     throw PeekabooError.invalidInput("space_number is required")
                 }
@@ -706,8 +682,7 @@ extension PeekabooAgentService {
                 try? await Task.sleep(nanoseconds: 500_000_000)
 
                 return .success(
-                    "Switched to Space \(spaceNumber)",
-                    metadata: ["space_id": String(spaceId)])
+                    "Switched to Space \(spaceNumber)")
             })
     }
 
@@ -723,7 +698,7 @@ extension PeekabooAgentService {
                     "bring_to_current": ParameterSchema.boolean(description: "Move window to current space instead"),
                 ],
                 required: []),
-            handler: { params, _ in
+            execute: { params, _ in
                 let windowId = params.int("window_id", default: nil)
                 let spaceNumber = params.int("space_number", default: nil)
                 let bringToCurrent = params.bool("bring_to_current", default: false)

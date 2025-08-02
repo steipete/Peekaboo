@@ -136,8 +136,10 @@ extension PeekabooAgentService {
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
-            handler: { params, context in
-                let buttonLabel = try params.string("button")
+            execute: { params, context in
+                guard let buttonLabel = params.string("button") else {
+                    throw PeekabooError.invalidInput("Button label is required")
+                }
                 let appName = params.string("app", default: nil)
 
                 // Get the frontmost app if not specified
@@ -153,15 +155,9 @@ extension PeekabooAgentService {
                 _ = try await context.dialogs.clickButton(
                     buttonText: buttonLabel,
                     windowTitle: appName)
-                let duration = Date().timeIntervalSince(startTime)
+                let _ = Date().timeIntervalSince(startTime)
 
-                return .success(
-                    "Clicked '\(buttonLabel)' in dialog - \(targetApp)",
-                    metadata: [
-                        "button": buttonLabel,
-                        "app": targetApp,
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                return .success("Clicked '\(buttonLabel)' in dialog - \(targetApp)")
             })
     }
 
@@ -173,7 +169,7 @@ extension PeekabooAgentService {
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
-            handler: { params, context in
+            execute: { params, context in
                 let text = try params.string("text")
                 let fieldLabel = params.string("field", default: nil)
                 let appName = params.string("app", default: nil)
@@ -206,13 +202,13 @@ extension PeekabooAgentService {
 
                 // Type the text
                 try await context.automation.type(
-                    text: text,
+                    text: text ?? "",
                     target: nil,
                     clearExisting: false,
                     typingDelay: 0,
                     sessionId: nil)
 
-                let duration = Date().timeIntervalSince(startTime)
+                let _ = Date().timeIntervalSince(startTime)
 
                 var output = "Entered \"\(text)\""
                 if let fieldLabel {
@@ -220,15 +216,7 @@ extension PeekabooAgentService {
                 }
                 output += " - \(targetApp) dialog"
 
-                return .success(
-                    output,
-                    metadata: [
-                        "text": text,
-                        "field": fieldLabel ?? "current field",
-                        "app": targetApp,
-                        "cleared": String(clearFirst),
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                return .success(output)
             })
     }
 }

@@ -219,7 +219,7 @@ extension PeekabooAgentService {
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
-            handler: { params, context in
+            execute: { params, context in
                 let appName = params.string("app", default: nil)
                 let format = params.string("format", default: "full") ?? "full"
                 let filterType = params.string("filter", default: nil)
@@ -352,16 +352,7 @@ extension PeekabooAgentService {
                     let savedPath = captureResult.savedPath ?? detectionResult.screenshotPath
                     summary += "\nSaved to: \(savedPath)"
 
-                    return .success(
-                        summary,
-                        metadata: [
-                            "path": captureResult.savedPath ?? detectionResult.screenshotPath,
-                            "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
-                            "app": targetDescription,
-                            "elementCount": String(totalElements),
-                            "duration": String(format: "%.2fs", duration),
-                            "elementDetectionSkipped": String(skipElementDetection),
-                        ])
+                    return .success(summary)
                 }
 
                 // Full format with detailed element list
@@ -380,16 +371,7 @@ extension PeekabooAgentService {
                 let savedPath = captureResult.savedPath ?? detectionResult.screenshotPath
                 fullOutput += "\nSaved to: \(savedPath)"
 
-                return .success(
-                    fullOutput,
-                    metadata: [
-                        "path": captureResult.savedPath ?? detectionResult.screenshotPath,
-                        "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
-                        "elementCount": String(skipElementDetection ? 0 : formatElementList(elements, filterType: filterType ?? "all").totalCount),
-                        "app": targetDescription,
-                        "duration": String(format: "%.2fs", duration),
-                        "elementDetectionSkipped": String(skipElementDetection),
-                    ])
+                return .success(fullOutput)
             })
     }
 
@@ -401,8 +383,10 @@ extension PeekabooAgentService {
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
-            handler: { params, context in
-                let path = try params.string("path")
+            execute: { params, context in
+                guard let path = params.string("path") else {
+                    throw PeekabooError.invalidInput("Path is required")
+                }
                 let expandedPath = path.expandedPath
                 let appName = params.string("app", default: nil)
 
@@ -440,14 +424,7 @@ extension PeekabooAgentService {
                     .map { $0 / 1024 } ?? 0
 
                 return .success(
-                    "Captured \(targetDescription) → \(expandedPath) (\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height)), \(fileSizeKB)KB)",
-                    metadata: [
-                        "path": expandedPath,
-                        "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
-                        "source": targetDescription,
-                        "fileSize": "\(fileSizeKB)KB",
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                    "Captured \(targetDescription) → \(expandedPath) (\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height)), \(fileSizeKB)KB)")
             })
     }
 
@@ -464,7 +441,7 @@ extension PeekabooAgentService {
                     "save_path": ParameterSchema.string(description: "Optional: Path to save the screenshot"),
                 ],
                 required: []),
-            handler: { params, context in
+            execute: { params, context in
                 let title = params.string("title", default: nil)
                 let windowId = params.int("window_id", default: nil).map { CGWindowID($0) }
                 let savePath = params.string("save_path", default: nil)
@@ -571,7 +548,7 @@ extension PeekabooAgentService {
                 var output = "Captured \(appName) - \"\(window.title)\" (Window ID: \(window.windowID))\n"
                 output += "Resolution: \(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))\n"
                 if searchedApps > 0 {
-                    output += "Searched \(searchedApps) apps in \(String(format: "%.2fs", duration))\n"
+                    output += "Searched \(searchedApps) apps\n"
                 }
                 output += "\n"
                 output += elementList.description
@@ -580,17 +557,7 @@ extension PeekabooAgentService {
                     output += "\nSaved to: \(savedPath)"
                 }
 
-                return .success(
-                    output,
-                    metadata: [
-                        "app": appName,
-                        "window": window.title,
-                        "windowId": String(window.windowID),
-                        "path": savedPath ?? detectionResult.screenshotPath,
-                        "resolution": "\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height))",
-                        "elementCount": String(elementList.totalCount),
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                return .success(output)
             })
     }
 }

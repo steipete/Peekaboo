@@ -115,7 +115,7 @@ public struct ListTool: MCPTool {
     private func listApplicationWindows(app: String, includeDetails: [String]?) async throws -> ToolResponse {
         do {
             // Get windows for the app (the service handles identifier resolution)
-            let output = try await PeekabooServices.shared.applications.listWindows(for: app)
+            let output = try await PeekabooServices.shared.applications.listWindows(for: app, timeout: nil)
             
             let windows = output.data.windows
             let appInfo = output.data.targetApplication

@@ -79,8 +79,8 @@ extension PeekabooAgentService {
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
-            handler: { params, _ in
-                let command = try params.string("command")
+            execute: { params, _ in
+                guard let command = params.string("command") else { throw PeekabooError.invalidInput("Command is required") }
                 let workingDirectory = params.string("working_directory", default: nil)
                 let timeout = params.int("timeout", default: 30) ?? 30
 
@@ -132,7 +132,7 @@ extension PeekabooAgentService {
                 process.waitUntilExit()
                 timeoutTask.cancel()
 
-                let duration = Date().timeIntervalSince(startTime)
+                let _ = Date().timeIntervalSince(startTime)
 
                 let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
                 let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
@@ -179,22 +179,11 @@ extension PeekabooAgentService {
 
                 // Format the final output
                 var finalOutput = summary + "\n"
-                if !result.isEmpty, !result.contains("completed successfully") {
+                if !result.isEmpty, !result?.contains("completed successfully") ?? false {
                     finalOutput += "\n" + result
                 }
 
-                return .success(
-                    finalOutput.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: [
-                        "command": command,
-                        "commandName": commandName,
-                        "exitCode": "0",
-                        "workingDirectory": actualWorkingDir,
-                        "duration": String(format: "%.2fs", duration),
-                        "lineCount": String(lineCount),
-                        "outputSize": String(output.count),
-                        "truncated": String(truncated),
-                    ])
+                return .success(finalOutput.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 }

@@ -114,43 +114,29 @@ public struct AnalyzeTool: MCPTool {
             
             // Create a request with the image
             let imageContent = ImageContent(base64: base64String, mediaType: mediaType)
-            let messageContent = MessageContent.multimodal([
-                MessageContentPart(type: "text", text: question),
-                MessageContentPart(type: "image_url", imageUrl: imageContent)
+            let messageContent = MessageContent.multipart([
+                .text(question),
+                .image(imageContent)
             ])
             
             let messages: [Message] = [
-                .user(content: messageContent)
+                Message(role: "user", content: messageContent)
             ]
             
             let request = ModelRequest(
                 messages: messages,
-                tools: nil,
-                settings: ModelSettings(
-                    modelName: modelName,
-                    temperature: 0.7,
-                    maxTokens: 4096,
-                    toolChoice: ToolChoice.none
-                ),
-                systemInstructions: "You are a helpful AI assistant analyzing images. Provide clear, detailed answers about what you see."
+                temperature: 0.7,
+                maxTokens: 4096
             )
             
             logger.info("Analyzing image with \(providerType ?? "auto")/\(modelName)")
             let startTime = Date()
             
             // Get the response
-            let response = try await model.getResponse(request: request)
+            let analysisText = try await model.sendRequest(request)
             
             let duration = Date().timeIntervalSince(startTime)
             logger.info("Analysis completed in \(String(format: "%.2f", duration))s")
-            
-            // Extract text content from response
-            var analysisText = ""
-            for content in response.content {
-                if case .outputText(let text) = content {
-                    analysisText += text
-                }
-            }
             
             // Create response with metadata
             let metadata: [String: Any] = [
@@ -201,7 +187,7 @@ public struct AnalyzeTool: MCPTool {
         
         // Try to get the model from the provider first
         do {
-            return try await modelProvider.getModel(modelName: modelName)
+            return try await modelProvider.getModel(name: modelName, providerType: providerType)
         } catch {
             // If not found, try to create based on provider type
             if let providerType = providerType {
@@ -210,27 +196,27 @@ public struct AnalyzeTool: MCPTool {
                     guard let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] else {
                         throw PeekabooError.authenticationFailed("ANTHROPIC_API_KEY not set")
                     }
-                    return AnthropicModel(apiKey: apiKey, modelName: modelName)
+                    throw PeekabooError.invalidInput("AnthropicModel not yet implemented")
                     
                 case "openai":
                     guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
                         throw PeekabooError.authenticationFailed("OPENAI_API_KEY not set")
                     }
-                    return OpenAIModel(apiKey: apiKey)
+                    throw PeekabooError.invalidInput("OpenAIModel not yet implemented")
                     
                 case "grok":
                     guard let apiKey = ProcessInfo.processInfo.environment["X_AI_API_KEY"] ??
                                       ProcessInfo.processInfo.environment["XAI_API_KEY"] else {
                         throw PeekabooError.authenticationFailed("X_AI_API_KEY or XAI_API_KEY not set")
                     }
-                    return GrokModel(apiKey: apiKey, modelName: modelName)
+                    throw PeekabooError.invalidInput("GrokModel not yet implemented")
                     
                 case "ollama":
                     let baseURLString = ProcessInfo.processInfo.environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
                     guard let baseURL = URL(string: baseURLString) else {
                         throw PeekabooError.invalidInput("Invalid Ollama base URL: \(baseURLString)")
                     }
-                    return OllamaModel(modelName: modelName, baseURL: baseURL)
+                    throw PeekabooError.invalidInput("OllamaModel not yet implemented")
                     
                 default:
                     throw PeekabooError.invalidInput("Unknown provider type: \(providerType)")
@@ -242,19 +228,19 @@ public struct AnalyzeTool: MCPTool {
                 guard let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] else {
                     throw PeekabooError.authenticationFailed("ANTHROPIC_API_KEY not set")
                 }
-                return AnthropicModel(apiKey: apiKey, modelName: modelName)
+                throw PeekabooError.invalidInput("AnthropicModel not yet implemented")
             } else if modelName.contains("gpt") || modelName.contains("o3") || modelName.contains("o4") {
                 guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
                     throw PeekabooError.authenticationFailed("OPENAI_API_KEY not set")
                 }
-                return OpenAIModel(apiKey: apiKey)
+                throw PeekabooError.invalidInput("OpenAIModel not yet implemented")
             } else {
                 // Assume Ollama for unknown models
                 let baseURLString = ProcessInfo.processInfo.environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
                 guard let baseURL = URL(string: baseURLString) else {
                     throw PeekabooError.invalidInput("Invalid Ollama base URL: \(baseURLString)")
                 }
-                return OllamaModel(modelName: modelName, baseURL: baseURL)
+                throw PeekabooError.invalidInput("OllamaModel not yet implemented")
             }
         }
     }

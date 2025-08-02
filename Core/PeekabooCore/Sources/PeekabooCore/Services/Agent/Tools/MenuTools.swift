@@ -116,12 +116,12 @@ extension PeekabooAgentService {
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
-            handler: { params, context in
+            execute: { params, context in
                 let menuPath = try params.string("path")
                 let appName = params.string("app", default: nil)
 
                 // Parse menu path
-                let pathComponents = menuPath
+                let pathComponents = (menuPath ?? "")
                     .split(separator: ">")
                     .map { $0.trimmingCharacters(in: .whitespaces) }
 
@@ -157,15 +157,9 @@ extension PeekabooAgentService {
 
                 let startTime = Date()
                 try await context.menu.clickMenuItem(app: targetApp, itemPath: menuPath)
-                let duration = Date().timeIntervalSince(startTime)
+                let _ = Date().timeIntervalSince(startTime)
 
-                return .success(
-                    "Clicked \(targetApp) > \(menuPath)",
-                    metadata: [
-                        "menuPath": menuPath,
-                        "app": targetApp,
-                        "duration": String(format: "%.2fs", duration),
-                    ])
+                return .success("Clicked \(targetApp) > \(menuPath)")
             })
     }
 
@@ -177,7 +171,7 @@ extension PeekabooAgentService {
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
-            handler: { params, context in
+            execute: { params, context in
                 let appName = params.string("app", default: nil)
                 let specificMenu = params.string("menu", default: nil)
 
@@ -201,7 +195,7 @@ extension PeekabooAgentService {
                     try await context.menu.listFrontmostMenus()
                 }
 
-                let duration = Date().timeIntervalSince(startTime)
+                let _ = Date().timeIntervalSince(startTime)
 
                 // Count total menu items
                 var totalItems = 0
@@ -241,15 +235,7 @@ extension PeekabooAgentService {
                     summary += " (expanded '\(specificMenu)' menu with \(expandedMenuItems) items)"
                 }
 
-                return .success(
-                    output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: [
-                        "app": targetApp,
-                        "menuCount": String(menuStructure.menus.count),
-                        "totalItems": String(totalItems),
-                        "duration": String(format: "%.2fs", duration),
-                        "summary": summary,
-                    ])
+                return .success(output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 }

@@ -99,13 +99,13 @@ extension PeekabooAgentService {
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
-            handler: { params, context in
+            execute: { params, context in
                 let appName = try params.string("name")
 
                 // Check if app was already running before clicking
                 let appsBeforeLaunchOutput = try await context.applications.listApplications()
                 let wasRunning = appsBeforeLaunchOutput.data.applications.contains {
-                    $0.name.lowercased() == appName.lowercased()
+                    $0.name.lowercased() == appName?.lowercased() ?? ""
                 }
 
                 let startTime = Date()
@@ -117,9 +117,9 @@ extension PeekabooAgentService {
                 // Verify launch and get window info
                 let appsAfterLaunchOutput = try await context.applications.listApplications()
                 if let launchedApp = appsAfterLaunchOutput.data.applications
-                    .first(where: { $0.name.lowercased() == appName.lowercased() })
+                    .first(where: { $0.name.lowercased() == appName?.lowercased() ?? "" })
                 {
-                    let duration = Date().timeIntervalSince(startTime)
+                    let _ = Date().timeIntervalSince(startTime)
 
                     // Get window information
                     let windows = try await context.windows.listWindows(target: .application(launchedApp.name))
@@ -145,23 +145,10 @@ extension PeekabooAgentService {
                         }
                     }
 
-                    return .success(
-                        output,
-                        metadata: [
-                            "app": launchedApp.name,
-                            "wasRunning": String(wasRunning),
-                            "windowCount": String(windows.count),
-                            "duration": String(format: "%.2fs", duration),
-                        ])
+                    return .success(output)
                 } else {
-                    let duration = Date().timeIntervalSince(startTime)
-                    return .success(
-                        "Clicked \(appName) in Dock (app may be starting)",
-                        metadata: [
-                            "app": appName,
-                            "wasRunning": String(wasRunning),
-                            "duration": String(format: "%.2fs", duration),
-                        ])
+                    let _ = Date().timeIntervalSince(startTime)
+                    return .success("Clicked \(appName) in Dock (app may be starting)")
                 }
             })
     }
@@ -174,12 +161,12 @@ extension PeekabooAgentService {
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
-            handler: { params, context in
+            execute: { params, context in
                 let section = params.string("section", default: "all") ?? "all"
 
                 let startTime = Date()
                 let dockItems = try await context.dock.listDockItems(includeAll: true)
-                let duration = Date().timeIntervalSince(startTime)
+                let _ = Date().timeIntervalSince(startTime)
 
                 if dockItems.isEmpty {
                     return .success("No items found in Dock")
@@ -258,17 +245,7 @@ extension PeekabooAgentService {
                     }
                 }
 
-                return .success(
-                    output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    metadata: [
-                        "totalCount": String(filteredItems.count),
-                        "appCount": String(appCount),
-                        "runningCount": String(runningCount),
-                        "folderCount": String(folderCount),
-                        "section": section,
-                        "duration": String(format: "%.2fs", duration),
-                        "summary": summary,
-                    ])
+                return .success(output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 }

@@ -23,7 +23,7 @@ extension PeekabooAgentService {
                         description: "Optional: Specific element type to find"),
                 ],
                 required: ["label"]),
-            handler: { params, context in
+            execute: { params, context in
                 let searchLabel = try params.string("label")
                 let appName = params.string("app", default: nil)
                 let elementType = params.string("element_type", default: nil)
@@ -32,14 +32,14 @@ extension PeekabooAgentService {
                 let targetDescription = appName ?? "entire screen"
 
                 // Always search by label since that's what the user is looking for
-                let searchCriteria = UIElementSearchCriteria.label(searchLabel)
+                let searchCriteria = UIElementSearchCriteria.label(searchLabel ?? "")
 
                 do {
                     let element = try await context.automation.findElement(
                         matching: searchCriteria,
                         in: appName)
 
-                    let duration = Date().timeIntervalSince(startTime)
+                    let _ = Date().timeIntervalSince(startTime)
 
                     // If element type was specified, verify it matches
                     if let elementType {
@@ -69,18 +69,7 @@ extension PeekabooAgentService {
                         description += "\n   Status: Disabled"
                     }
 
-                    return .success(
-                        description,
-                        metadata: [
-                            "elementId": element.id,
-                            "elementType": element.type.rawValue,
-                            "elementLabel": element.label ?? "",
-                            "elementX": String(Int(element.bounds.minX)),
-                            "elementY": String(Int(element.bounds.minY)),
-                            "searchLabel": searchLabel,
-                            "app": targetDescription,
-                            "duration": String(format: "%.2fs", duration),
-                        ])
+                    return .success(description)
                 } catch {
                     var notFoundMessage = "No elements found matching '\(searchLabel)'"
                     if let elementType {
@@ -106,7 +95,7 @@ extension PeekabooAgentService {
                         description: "Optional: Filter by element type"),
                 ],
                 required: []),
-            handler: { params, context in
+            execute: { params, context in
                 let appName = params.string("app", default: nil)
                 let elementType = params.string("element_type", default: "all") ?? "all"
 
@@ -135,7 +124,7 @@ extension PeekabooAgentService {
                     sessionId: nil,
                     windowContext: nil)
 
-                let duration = Date().timeIntervalSince(startTime)
+                let _ = Date().timeIntervalSince(startTime)
 
                 // Format the element list based on type filter
                 let elements = detectionResult.elements
@@ -177,15 +166,7 @@ extension PeekabooAgentService {
                     }
                 }
 
-                return .success(
-                    filteredOutput.description,
-                    metadata: [
-                        "elementCount": String(filteredOutput.totalCount),
-                        "filter": elementType,
-                        "app": targetDescription,
-                        "duration": String(format: "%.2fs", duration),
-                        "summary": summary,
-                    ])
+                return .success(filteredOutput.description)
             })
     }
 
@@ -194,7 +175,7 @@ extension PeekabooAgentService {
         createSimpleTool(
             name: "focused",
             description: "Get information about the currently focused element",
-            handler: { context in
+            execute: { _, context in
                 // Get focused element information
                 guard let focusInfo = context.automation.getFocusedElement() else {
                     return .error(message: "No element is currently focused", code: "NO_FOCUSED_ELEMENT")
@@ -213,20 +194,7 @@ extension PeekabooAgentService {
                 description += "\nPosition: [\(Int(focusInfo.frame.origin.x)), \(Int(focusInfo.frame.origin.y))]"
                 description += "\nSize: \(Int(focusInfo.frame.size.width))×\(Int(focusInfo.frame.size.height))"
 
-                return .success(
-                    description,
-                    metadata: [
-                        "role": focusInfo.role,
-                        "title": focusInfo.title ?? "",
-                        "value": focusInfo.value ?? "",
-                        "applicationName": focusInfo.applicationName,
-                        "bundleIdentifier": focusInfo.bundleIdentifier,
-                        "processId": String(focusInfo.processId),
-                        "x": String(Int(focusInfo.frame.origin.x)),
-                        "y": String(Int(focusInfo.frame.origin.y)),
-                        "width": String(Int(focusInfo.frame.size.width)),
-                        "height": String(Int(focusInfo.frame.size.height)),
-                    ])
+                return .success(description)
             })
     }
 }
