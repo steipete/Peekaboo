@@ -54,11 +54,15 @@ public final class AgentSessionManager: Sendable {
         }
     }
     
-    public func loadSession(id: String) -> AgentSession? {
+    public func loadSession(id: String) async -> AgentSession? {
         getSession(id: id)
     }
     
-    public func clearAllSessions() {
+    public func deleteSession(id: String) async {
+        sessions.removeValue(forKey: id)
+    }
+    
+    public func clearAllSessions() async {
         sessions.removeAll()
     }
 }
@@ -135,8 +139,6 @@ public struct AgentExecutionResult: Sendable {
     /// Usage statistics if available
     public let usage: Usage?
     
-    /// Tool calls made during execution
-    public let toolCalls: [ToolCall]
     
     /// Metadata about the execution
     public let metadata: AgentMetadata
@@ -146,14 +148,12 @@ public struct AgentExecutionResult: Sendable {
         messages: [Message] = [],
         sessionId: String? = nil,
         usage: Usage? = nil,
-        toolCalls: [ToolCall] = [],
         metadata: AgentMetadata
     ) {
         self.content = content
         self.messages = messages
         self.sessionId = sessionId
         self.usage = usage
-        self.toolCalls = toolCalls
         self.metadata = metadata
     }
 }

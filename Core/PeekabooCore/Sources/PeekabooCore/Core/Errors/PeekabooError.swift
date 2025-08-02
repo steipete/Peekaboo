@@ -54,6 +54,7 @@ public enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProto
     // Additional errors
     case notFound(String)
     case permissionDenied(String)
+    case notImplemented(String)
 
     // Generic errors - removed context since it can't be Sendable
     case operationError(message: String)
@@ -128,6 +129,8 @@ public enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProto
             return "Not found: \(message)"
         case let .permissionDenied(message):
             return "Permission denied: \(message)"
+        case let .notImplemented(message):
+            return "Not implemented: \(message)"
         case let .operationError(message):
             return message
         }
@@ -200,6 +203,8 @@ public enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProto
             .unknownError
         case .permissionDenied:
             .unknownError
+        case .notImplemented:
+            .unknownError
         }
     }
 
@@ -267,6 +272,8 @@ public enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProto
             return ["message": message]
         case let .permissionDenied(message):
             return ["message": message]
+        case let .notImplemented(message):
+            return ["message": message]
         default:
             return [:]
         }
@@ -309,6 +316,8 @@ public enum PeekabooError: LocalizedError, StandardizedError, PeekabooErrorProto
             .unknown
         case .permissionDenied:
             .permissions
+        case .notImplemented:
+            .unknown
         }
     }
 

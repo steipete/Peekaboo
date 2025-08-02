@@ -179,7 +179,7 @@ extension PeekabooAgentService {
 
                 // Format the final output
                 var finalOutput = summary + "\n"
-                if !result.isEmpty, !result?.contains("completed successfully") ?? false {
+                if !result.isEmpty, !result.contains("completed successfully") {
                     finalOutput += "\n" + result
                 }
 

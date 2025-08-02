@@ -41,7 +41,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 messages: [],
                 sessionId: UUID().uuidString,
                 usage: nil,
-                toolCalls: [],
                 metadata: AgentMetadata(
                     startTime: Date(),
                     endTime: Date(),
@@ -89,19 +88,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 agent: agent,
                 input: task,
                 context: self.services,
-                sessionId: sessionId,
+                sessionId: sessionId ?? UUID().uuidString,
                 streamHandler: { chunk in
                     // Convert streaming chunks to events
                     await eventHandler.send(.assistantMessage(content: chunk))
-                },
-                eventHandler: { toolEvent in
-                    // Convert tool events to agent events
-                    switch toolEvent {
-                    case let .started(name, arguments):
-                        await eventHandler.send(.toolCallStarted(name: name, arguments: arguments))
-                    case let .completed(name, result):
-                        await eventHandler.send(.toolCallCompleted(name: name, result: result))
-                    }
                 })
 
             // Send completion event with usage information
@@ -114,7 +104,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 agent: agent,
                 input: task,
                 context: self.services,
-                sessionId: sessionId)
+                sessionId: sessionId ?? UUID().uuidString)
         }
     }
     
@@ -132,7 +122,6 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 messages: [],
                 sessionId: UUID().uuidString,
                 usage: nil,
-                toolCalls: [],
                 metadata: AgentMetadata(
                     startTime: Date(),
                     endTime: Date(),
@@ -184,19 +173,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 agent: agent,
                 input: input,
                 context: self.services,
-                sessionId: sessionId,
+                sessionId: sessionId ?? UUID().uuidString,
                 streamHandler: { chunk in
                     // Convert streaming chunks to events
                     await eventHandler.send(.assistantMessage(content: chunk))
-                },
-                eventHandler: { toolEvent in
-                    // Convert tool events to agent events
-                    switch toolEvent {
-                    case let .started(name, arguments):
-                        await eventHandler.send(.toolCallStarted(name: name, arguments: arguments))
-                    case let .completed(name, result):
-                        await eventHandler.send(.toolCallCompleted(name: name, result: result))
-                    }
                 })
 
             // Send completion event with usage information
@@ -213,14 +193,14 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 agent: agent,
                 input: input,
                 context: self.services,
-                sessionId: sessionId)
+                sessionId: sessionId ?? UUID().uuidString)
         }
     }
 
     /// Clean up any cached sessions or resources
     public func cleanup() async {
         // Clean up old sessions (older than 7 days)
-        try? await self.sessionManager.cleanOldSessions(daysToKeep: 7)
+        self.sessionManager.cleanOldSessions(olderThan: Date().addingTimeInterval(-7 * 24 * 60 * 60))
     }
 
     // MARK: - Agent Creation
@@ -231,19 +211,13 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         modelName: String = "claude-opus-4-20250514",
         apiType: String? = nil) -> PeekabooAgent<PeekabooServices>
     {
+        // Create model using the factory
+        let model = ModelFactory.shared.createModel(modelName: modelName, providerType: apiType)
+        
         let agent = PeekabooAgent<PeekabooServices>(
-            name: name,
-            instructions: AgentSystemPrompt.generate(),
-            tools: self.createPeekabooTools(),
-            modelSettings: ModelSettings(
-                modelName: modelName,
-                temperature: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? nil : nil,
-                // o3 doesn't support temperature
-                maxTokens: modelName.hasPrefix(AgentConfiguration.o3ModelPrefix) ? AgentConfiguration
-                    .o3MaxTokens : AgentConfiguration.defaultMaxTokens,
-                toolChoice: .auto, // Let the model decide when to use tools vs generate text
-                additionalParameters: self.buildAdditionalParameters(modelName: modelName, apiType: apiType)),
-            description: "An AI assistant for macOS automation using Peekaboo")
+            model: model,
+            sessionId: UUID().uuidString,
+            services: self.services)
 
         return agent
     }
@@ -295,19 +269,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 agent: agent,
                 input: task,
                 context: self.services,
-                sessionId: sessionId,
+                sessionId: sessionId ?? UUID().uuidString,
                 streamHandler: { chunk in
                     // Convert streaming chunks to events
                     await eventHandler.send(.assistantMessage(content: chunk))
-                },
-                eventHandler: { toolEvent in
-                    // Convert tool events to agent events
-                    switch toolEvent {
-                    case let .started(name, arguments):
-                        await eventHandler.send(.toolCallStarted(name: name, arguments: arguments))
-                    case let .completed(name, result):
-                        await eventHandler.send(.toolCallCompleted(name: name, result: result))
-                    }
                 })
 
             // Send completion event with usage information
@@ -320,7 +285,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 agent: agent,
                 input: task,
                 context: self.services,
-                sessionId: sessionId)
+                sessionId: sessionId ?? UUID().uuidString)
         }
     }
 
@@ -337,7 +302,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             agent: agent,
             input: task,
             context: self.services,
-            sessionId: sessionId,
+            sessionId: sessionId ?? UUID().uuidString,
             streamHandler: streamHandler)
     }
 
@@ -499,19 +464,10 @@ extension PeekabooAgentService {
                 agent: agent,
                 input: continuationPrompt,
                 context: self.services,
-                sessionId: sessionId,
+                sessionId: sessionId ?? UUID().uuidString,
                 streamHandler: { chunk in
                     // Convert streaming chunks to events
                     await eventHandler.send(.assistantMessage(content: chunk))
-                },
-                eventHandler: { toolEvent in
-                    // Convert tool events to agent events
-                    switch toolEvent {
-                    case let .started(name, arguments):
-                        await eventHandler.send(.toolCallStarted(name: name, arguments: arguments))
-                    case let .completed(name, result):
-                        await eventHandler.send(.toolCallCompleted(name: name, result: result))
-                    }
                 })
 
             // Send completion event with usage information
@@ -524,7 +480,7 @@ extension PeekabooAgentService {
                 agent: agent,
                 input: continuationPrompt,
                 context: self.services,
-                sessionId: sessionId)
+                sessionId: sessionId ?? UUID().uuidString)
         }
     }
 
@@ -532,7 +488,16 @@ extension PeekabooAgentService {
 
     /// List available sessions
     public func listSessions() async throws -> [SessionSummary] {
-        try await self.sessionManager.listSessions()
+        let sessions = self.sessionManager.listSessions()
+        return sessions.map { session in
+            SessionSummary(
+                id: session.id,
+                title: "Session \(session.id)",
+                createdAt: session.createdAt,
+                lastModified: session.lastUpdated,
+                messageCount: session.messages.count
+            )
+        }
     }
 
     /// Get detailed session information

@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Tool Call
 
 /// Represents a call to a tool made by the model
-public struct ToolCall: Codable, Sendable {
+public struct ToolCall: Codable {
     public let id: String
     public let name: String
     public let arguments: [String: Any]

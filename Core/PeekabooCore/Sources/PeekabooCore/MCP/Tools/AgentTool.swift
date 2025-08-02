@@ -184,16 +184,14 @@ public struct AgentTool: MCPTool {
             
             // Format response based on verbosity level
             if input.quiet {
-                return ToolResponse.text(result.response)
+                return ToolResponse.text(result.content)
             } else if input.verbose {
                 var metadata: [String: Value] = [:]
                 if let sessionId = result.sessionId {
                     metadata["sessionId"] = .string(sessionId)
                 }
-                metadata["success"] = .bool(result.success)
-                if let error = result.error {
-                    metadata["error"] = .string(error)
-                }
+                metadata["toolCallCount"] = .int(result.metadata.toolCallCount)
+                metadata["modelName"] = .string(result.metadata.modelName)
                 
                 if let usage = result.usage {
                     metadata["usage"] = .object([
