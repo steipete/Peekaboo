@@ -279,6 +279,12 @@ final class PeekabooSettings {
         }
     }
 
+    // Custom Providers
+    @ObservationIgnored
+    var customProviders: [String: Configuration.CustomProvider] {
+        configManager.listCustomProviders()
+    }
+    
     // Computed Properties
     var hasValidAPIKey: Bool {
         switch self.selectedProvider {
@@ -289,8 +295,18 @@ final class PeekabooSettings {
         case "ollama":
             true // Ollama doesn't require API key
         default:
-            false
+            // Check if it's a custom provider
+            if let customProvider = customProviders[selectedProvider] {
+                return !customProvider.options.apiKey.isEmpty
+            }
+            return false
         }
+    }
+    
+    var allAvailableProviders: [String] {
+        let builtIn = ["openai", "anthropic", "ollama"]
+        let custom = Array(customProviders.keys)
+        return builtIn + custom.sorted()
     }
 
     // Storage
@@ -575,7 +591,12 @@ final class PeekabooSettings {
                 case "ollama":
                     "ollama/\(self.selectedModel)"
                 default:
-                    "anthropic/claude-opus-4-20250514"
+                    // Check if it's a custom provider
+                    if self.customProviders[self.selectedProvider] != nil {
+                        "\(self.selectedProvider)/\(self.selectedModel)"
+                    } else {
+                        "anthropic/claude-opus-4-20250514"
+                    }
                 }
 
                 // Update providers string
@@ -627,5 +648,35 @@ final class PeekabooSettings {
         } catch {
             print("Failed to save API key to credentials: \(error)")
         }
+    }
+    
+    // MARK: - Custom Provider Management
+    
+    func addCustomProvider(_ provider: Configuration.CustomProvider, id: String) throws {
+        try configManager.addCustomProvider(provider, id: id)
+        // Trigger UI update
+        objectWillChange.send()
+    }
+    
+    func removeCustomProvider(id: String) throws {
+        try configManager.removeCustomProvider(id: id)
+        // If we were using this provider, switch to a built-in one
+        if selectedProvider == id {
+            selectedProvider = "anthropic"
+        }
+        // Trigger UI update
+        objectWillChange.send()
+    }
+    
+    func getCustomProvider(id: String) -> Configuration.CustomProvider? {
+        return configManager.getCustomProvider(id: id)
+    }
+    
+    func testCustomProvider(id: String) async -> (success: Bool, error: String?) {
+        return await configManager.testCustomProvider(id: id)
+    }
+    
+    func discoverModelsForCustomProvider(id: String) async -> (models: [String], error: String?) {
+        return await configManager.discoverModelsForCustomProvider(id: id)
     }
 }

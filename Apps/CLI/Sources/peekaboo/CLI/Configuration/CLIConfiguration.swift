@@ -115,4 +115,36 @@ final class ConfigurationManager: @unchecked Sendable {
             defaultValue: defaultValue
         )
     }
+    
+    // MARK: - Custom Provider Management
+    
+    /// Add a custom AI provider to the configuration
+    func addCustomProvider(_ provider: Configuration.CustomProvider, id: String) throws {
+        try self.coreManager.addCustomProvider(provider, id: id)
+    }
+    
+    /// Remove a custom provider from the configuration
+    func removeCustomProvider(id: String) throws {
+        try self.coreManager.removeCustomProvider(id: id)
+    }
+    
+    /// Get a specific custom provider by ID
+    func getCustomProvider(id: String) -> Configuration.CustomProvider? {
+        return self.coreManager.getCustomProvider(id: id)
+    }
+    
+    /// List all configured custom providers
+    func listCustomProviders() -> [String: Configuration.CustomProvider] {
+        return self.coreManager.listCustomProviders()
+    }
+    
+    /// Test connection to a custom provider
+    func testCustomProvider(id: String) async -> (success: Bool, error: String?) {
+        return await self.coreManager.testCustomProvider(id: id)
+    }
+    
+    /// Discover available models from a custom provider
+    func discoverModelsForCustomProvider(id: String) async -> (models: [String], error: String?) {
+        return await self.coreManager.discoverModelsForCustomProvider(id: id)
+    }
 }

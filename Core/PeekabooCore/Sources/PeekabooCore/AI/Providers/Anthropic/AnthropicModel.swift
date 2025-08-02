@@ -28,6 +28,7 @@ public final class AnthropicModel: ModelInterface {
     private let session: URLSession
     private let anthropicVersion: String
     private let modelName: String?
+    private let customHeaders: [String: String]?
 
     public init(
         apiKey: String,
@@ -40,6 +41,24 @@ public final class AnthropicModel: ModelInterface {
         self.baseURL = baseURL
         self.anthropicVersion = anthropicVersion
         self.modelName = modelName
+        self.customHeaders = nil
+        self.session = session ?? URLSession.shared
+    }
+    
+    /// Initialize with custom provider configuration
+    public init(
+        apiKey: String,
+        baseURL: String,
+        modelName: String? = nil,
+        headers: [String: String]? = nil,
+        anthropicVersion: String = "2023-06-01",
+        session: URLSession? = nil)
+    {
+        self.apiKey = apiKey
+        self.baseURL = URL(string: baseURL) ?? URL(string: "https://api.anthropic.com/v1")!
+        self.anthropicVersion = anthropicVersion
+        self.modelName = modelName
+        self.customHeaders = headers
         self.session = session ?? URLSession.shared
     }
 
@@ -317,6 +336,11 @@ public final class AnthropicModel: ModelInterface {
         request.setValue(self.apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue(self.anthropicVersion, forHTTPHeaderField: "anthropic-version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Add custom headers from provider configuration
+        customHeaders?.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
 
         // Note: Using a custom encoder here to only have sortedKeys without prettyPrinted
         let encoder = JSONEncoder()

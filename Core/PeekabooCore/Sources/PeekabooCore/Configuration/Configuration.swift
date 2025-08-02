@@ -12,19 +12,22 @@ public struct Configuration: Codable {
     public var logging: LoggingConfig?
     public var agent: AgentConfig?
     public var visualizer: VisualizerConfig?
+    public var customProviders: [String: CustomProvider]?
 
     public init(
         aiProviders: AIProviderConfig? = nil,
         defaults: DefaultsConfig? = nil,
         logging: LoggingConfig? = nil,
         agent: AgentConfig? = nil,
-        visualizer: VisualizerConfig? = nil)
+        visualizer: VisualizerConfig? = nil,
+        customProviders: [String: CustomProvider]? = nil)
     {
         self.aiProviders = aiProviders
         self.defaults = defaults
         self.logging = logging
         self.agent = agent
         self.visualizer = visualizer
+        self.customProviders = customProviders
     }
 
     /// Configuration for AI vision providers.
@@ -177,6 +180,104 @@ public struct Configuration: Codable {
             self.dialogInteractionEnabled = dialogInteractionEnabled
             self.spaceTransitionEnabled = spaceTransitionEnabled
             self.ghostEasterEggEnabled = ghostEasterEggEnabled
+        }
+    }
+    
+    /// Custom AI provider configuration.
+    ///
+    /// Defines a custom AI provider endpoint with connection details, supported models,
+    /// and capabilities. Allows extending Peekaboo with additional AI services beyond
+    /// the built-in providers.
+    public struct CustomProvider: Codable {
+        public let name: String
+        public let description: String?
+        public let type: ProviderType
+        public let options: ProviderOptions
+        public let models: [String: ModelDefinition]?
+        public let enabled: Bool
+        
+        public init(
+            name: String,
+            description: String? = nil,
+            type: ProviderType,
+            options: ProviderOptions,
+            models: [String: ModelDefinition]? = nil,
+            enabled: Bool = true)
+        {
+            self.name = name
+            self.description = description
+            self.type = type
+            self.options = options
+            self.models = models
+            self.enabled = enabled
+        }
+        
+        /// Provider API compatibility type.
+        public enum ProviderType: String, Codable, CaseIterable {
+            case openai = "openai"
+            case anthropic = "anthropic"
+            
+            public var displayName: String {
+                switch self {
+                case .openai: return "OpenAI Compatible"
+                case .anthropic: return "Anthropic Compatible"
+                }
+            }
+        }
+    }
+    
+    /// Provider connection and authentication options.
+    ///
+    /// Contains the technical details needed to connect to a custom provider,
+    /// including API endpoint, authentication, and request customization.
+    public struct ProviderOptions: Codable {
+        public let baseURL: String
+        public let apiKey: String  // Environment variable reference like {env:API_KEY}
+        public let headers: [String: String]?
+        public let timeout: TimeInterval?
+        public let retryAttempts: Int?
+        public let defaultParameters: [String: String]?
+        
+        public init(
+            baseURL: String,
+            apiKey: String,
+            headers: [String: String]? = nil,
+            timeout: TimeInterval? = nil,
+            retryAttempts: Int? = nil,
+            defaultParameters: [String: String]? = nil)
+        {
+            self.baseURL = baseURL
+            self.apiKey = apiKey
+            self.headers = headers
+            self.timeout = timeout
+            self.retryAttempts = retryAttempts
+            self.defaultParameters = defaultParameters
+        }
+    }
+    
+    /// Model definition with capabilities and constraints.
+    ///
+    /// Describes an AI model available through a custom provider, including
+    /// its capabilities, token limits, and model-specific parameters.
+    public struct ModelDefinition: Codable {
+        public let name: String
+        public let maxTokens: Int?
+        public let supportsTools: Bool?
+        public let supportsVision: Bool?
+        public let parameters: [String: String]?
+        
+        public init(
+            name: String,
+            maxTokens: Int? = nil,
+            supportsTools: Bool? = nil,
+            supportsVision: Bool? = nil,
+            parameters: [String: String]? = nil)
+        {
+            self.name = name
+            self.maxTokens = maxTokens
+            self.supportsTools = supportsTools
+            self.supportsVision = supportsVision
+            self.parameters = parameters
         }
     }
 }

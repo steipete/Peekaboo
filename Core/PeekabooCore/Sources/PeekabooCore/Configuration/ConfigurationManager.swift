@@ -638,4 +638,279 @@ public final class ConfigurationManager: @unchecked Sendable {
         // Reload configuration
         self.configuration = config
     }
+    
+    /// Test method to verify module interface
+    public func testMethod() -> String {
+        return "test"
+    }
+    
+    // MARK: - Custom Provider Management
+    
+    /// Add a custom AI provider to the configuration
+    /// - Parameters:
+    ///   - provider: The custom provider configuration
+    ///   - id: Unique identifier for the provider
+    /// - Throws: Configuration errors if save fails
+    public func addCustomProvider(_ provider: Configuration.CustomProvider, id: String) throws {
+        var config = self.loadConfiguration() ?? Configuration()
+        
+        // Initialize customProviders if needed
+        if config.customProviders == nil {
+            config.customProviders = [:]
+        }
+        
+        // Add the provider
+        config.customProviders?[id] = provider
+        
+        // Save configuration
+        try self.saveConfiguration(config)
+        
+        // Reload in memory
+        self.configuration = config
+    }
+    
+    /// Remove a custom provider from the configuration
+    /// - Parameter id: Provider identifier to remove
+    /// - Throws: Configuration errors if save fails
+    public func removeCustomProvider(id: String) throws {
+        var config = self.loadConfiguration() ?? Configuration()
+        
+        // Remove the provider if it exists
+        config.customProviders?.removeValue(forKey: id)
+        
+        // If no providers left, clean up the empty dictionary
+        if config.customProviders?.isEmpty == true {
+            config.customProviders = nil
+        }
+        
+        // Save configuration
+        try self.saveConfiguration(config)
+        
+        // Reload in memory
+        self.configuration = config
+    }
+    
+    /// Get a specific custom provider by ID
+    /// - Parameter id: Provider identifier
+    /// - Returns: The custom provider if found
+    public func getCustomProvider(id: String) -> Configuration.CustomProvider? {
+        return self.loadConfiguration()?.customProviders?[id]
+    }
+    
+    /// List all configured custom providers
+    /// - Returns: Dictionary of provider ID to provider configuration
+    public func listCustomProviders() -> [String: Configuration.CustomProvider] {
+        return self.loadConfiguration()?.customProviders ?? [:]
+    }
+    
+    /// Test connection to a custom provider
+    /// - Parameter id: Provider identifier to test
+    /// - Returns: True if connection successful
+    public func testCustomProvider(id: String) async -> (success: Bool, error: String?) {
+        guard let provider = getCustomProvider(id: id) else {
+            return (false, "Provider '\(id)' not found")
+        }
+        
+        // Resolve API key from environment
+        guard let apiKey = resolveCredential(provider.options.apiKey) else {
+            return (false, "API key not found or invalid: \(provider.options.apiKey)")
+        }
+        
+        // Test basic connection based on provider type
+        do {
+            switch provider.type {
+            case .openai:
+                return try await testOpenAICompatibleProvider(provider: provider, apiKey: apiKey)
+            case .anthropic:
+                return try await testAnthropicCompatibleProvider(provider: provider, apiKey: apiKey)
+            }
+        } catch {
+            return (false, "Connection test failed: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Discover available models from a custom provider
+    /// - Parameter id: Provider identifier
+    /// - Returns: List of available model IDs
+    public func discoverModelsForCustomProvider(id: String) async -> (models: [String], error: String?) {
+        guard let provider = getCustomProvider(id: id) else {
+            return ([], "Provider '\(id)' not found")
+        }
+        
+        guard let apiKey = resolveCredential(provider.options.apiKey) else {
+            return ([], "API key not found: \(provider.options.apiKey)")
+        }
+        
+        do {
+            switch provider.type {
+            case .openai:
+                return try await discoverOpenAICompatibleModels(provider: provider, apiKey: apiKey)
+            case .anthropic:
+                // Anthropic doesn't have a models endpoint, return configured models
+                let configuredModels = provider.models?.keys.map { String($0) } ?? []
+                return (configuredModels, nil)
+            }
+        } catch {
+            return ([], "Model discovery failed: \(error.localizedDescription)")
+        }
+    }
+    
+    // MARK: - Private Helper Methods
+    
+    /// Save configuration to disk
+    private func saveConfiguration(_ config: Configuration) throws {
+        let encoder = JSONCoding.encoder
+        let data = try encoder.encode(config)
+        
+        // Ensure directory exists
+        try FileManager.default.createDirectory(
+            atPath: Self.baseDir,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700])
+        
+        // Write file atomically
+        try data.write(to: URL(fileURLWithPath: Self.configPath), options: .atomic)
+    }
+    
+    /// Resolve a credential reference like {env:API_KEY} to actual value
+    private func resolveCredential(_ reference: String) -> String? {
+        // Handle {env:VAR_NAME} format
+        if reference.hasPrefix("{env:") && reference.hasSuffix("}") {
+            let varName = String(reference.dropFirst(5).dropLast(1))
+            
+            // Try environment variable first
+            if let envValue = ProcessInfo.processInfo.environment[varName] {
+                return envValue
+            }
+            
+            // Try credentials file
+            if let credValue = credentials[varName] {
+                return credValue
+            }
+            
+            return nil
+        }
+        
+        // Return as-is if not an environment reference
+        return reference
+    }
+    
+    /// Test OpenAI-compatible provider connection
+    private func testOpenAICompatibleProvider(
+        provider: Configuration.CustomProvider,
+        apiKey: String) async throws -> (success: Bool, error: String?)
+    {
+        let url = URL(string: "\(provider.options.baseURL)/models")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Add custom headers
+        provider.options.headers?.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            return (false, "Invalid response")
+        }
+        
+        if httpResponse.statusCode == 200 {
+            return (true, nil)
+        } else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            return (false, errorMessage)
+        }
+    }
+    
+    /// Test Anthropic-compatible provider connection
+    private func testAnthropicCompatibleProvider(
+        provider: Configuration.CustomProvider,
+        apiKey: String) async throws -> (success: Bool, error: String?)
+    {
+        // For Anthropic-compatible providers, we'll try a simple message request
+        let url = URL(string: "\(provider.options.baseURL)/messages")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        
+        // Add custom headers
+        provider.options.headers?.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        
+        let testPayload: [String: Any] = [
+            "model": "claude-3-5-sonnet-20241022",
+            "max_tokens": 10,
+            "messages": [
+                ["role": "user", "content": "Hi"]
+            ]
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: testPayload)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            return (false, "Invalid response")
+        }
+        
+        // Accept both success (200) and client errors (400s) as "connection working"
+        // since we're just testing connectivity, not actual API functionality
+        if httpResponse.statusCode < 500 {
+            return (true, nil)
+        } else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            return (false, errorMessage)
+        }
+    }
+    
+    /// Discover models from OpenAI-compatible provider
+    private func discoverOpenAICompatibleModels(
+        provider: Configuration.CustomProvider,
+        apiKey: String) async throws -> (models: [String], error: String?)
+    {
+        let url = URL(string: "\(provider.options.baseURL)/models")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Add custom headers
+        provider.options.headers?.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            return ([], "Invalid response")
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "HTTP \(httpResponse.statusCode)"
+            return ([], errorMessage)
+        }
+        
+        // Parse OpenAI models response format
+        struct ModelsResponse: Codable {
+            let data: [ModelInfo]
+            
+            struct ModelInfo: Codable {
+                let id: String
+            }
+        }
+        
+        do {
+            let response = try JSONDecoder().decode(ModelsResponse.self, from: data)
+            let modelIds = response.data.map(\.id)
+            return (modelIds, nil)
+        } catch {
+            return ([], "Failed to parse models response: \(error.localizedDescription)")
+        }
+    }
 }

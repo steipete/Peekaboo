@@ -48,7 +48,18 @@ public actor ModelProvider {
             return cached
         }
 
-        // Try exact match first
+        // Check for custom provider first (format: provider-id/model-path)
+        if let slashIndex = modelName.firstIndex(of: "/") {
+            let providerId = String(modelName[..<slashIndex])
+            let modelPath = String(modelName[modelName.index(after: slashIndex)...])
+            
+            if let model = try? createCustomProviderModel(providerId: providerId, modelPath: modelPath) {
+                self.modelCache[modelName] = model
+                return model
+            }
+        }
+
+        // Try exact match for built-in models
         if let factory = modelFactories[modelName] {
             // Create new model instance
             let model = try factory()
@@ -626,5 +637,112 @@ extension ModelProvider {
         {
             self.configureGrok(ModelProviderConfig.Grok(apiKey: apiKey))
         }
+    }
+    
+    // MARK: - Custom Provider Support
+    
+    /// Create a model instance for a custom provider
+    /// - Parameters:
+    ///   - providerId: The custom provider ID
+    ///   - modelPath: The model path within the provider
+    /// - Returns: A model instance
+    /// - Throws: ModelError if provider not found or configuration invalid
+    private func createCustomProviderModel(providerId: String, modelPath: String) throws -> any ModelInterface {
+        let configManager = ConfigurationManager.shared
+        
+        guard let provider = configManager.getCustomProvider(id: providerId) else {
+            throw ModelError.modelNotFound("Custom provider '\(providerId)' not found")
+        }
+        
+        guard provider.enabled else {
+            throw ModelError.modelNotFound("Custom provider '\(providerId)' is disabled")
+        }
+        
+        // Resolve API key
+        guard let apiKey = resolveCredential(provider.options.apiKey) else {
+            throw ModelError.authenticationFailed
+        }
+        
+        // Create model based on provider type
+        switch provider.type {
+        case .openai:
+            return try createOpenAICompatibleModel(
+                provider: provider,
+                modelPath: modelPath,
+                apiKey: apiKey
+            )
+        case .anthropic:
+            return try createAnthropicCompatibleModel(
+                provider: provider,
+                modelPath: modelPath,
+                apiKey: apiKey
+            )
+        }
+    }
+    
+    /// Create an OpenAI-compatible model for custom provider
+    private func createOpenAICompatibleModel(
+        provider: Configuration.CustomProvider,
+        modelPath: String,
+        apiKey: String) throws -> any ModelInterface
+    {
+        // Create OpenAI model with custom configuration
+        let openAIModel = OpenAIModel(
+            apiKey: apiKey,
+            baseURL: provider.options.baseURL,
+            modelName: modelPath,
+            headers: provider.options.headers
+        )
+        
+        return openAIModel
+    }
+    
+    /// Create an Anthropic-compatible model for custom provider
+    private func createAnthropicCompatibleModel(
+        provider: Configuration.CustomProvider,
+        modelPath: String,
+        apiKey: String) throws -> any ModelInterface
+    {
+        // Create Anthropic model with custom configuration
+        let anthropicModel = AnthropicModel(
+            apiKey: apiKey,
+            baseURL: provider.options.baseURL,
+            modelName: modelPath,
+            headers: provider.options.headers
+        )
+        
+        return anthropicModel
+    }
+    
+    /// Resolve a credential reference like {env:API_KEY} to actual value
+    private func resolveCredential(_ reference: String) -> String? {
+        // Handle {env:VAR_NAME} format
+        if reference.hasPrefix("{env:") && reference.hasSuffix("}") {
+            let varName = String(reference.dropFirst(5).dropLast(1))
+            
+            // Try environment variable first
+            if let envValue = ProcessInfo.processInfo.environment[varName] {
+                return envValue
+            }
+            
+            // Try credentials file
+            let credentialsPath = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".peekaboo")
+                .appendingPathComponent("credentials")
+            
+            if let credentials = try? String(contentsOf: credentialsPath) {
+                for line in credentials.components(separatedBy: .newlines) {
+                    let trimmed = line.trimmingCharacters(in: .whitespaces)
+                    if trimmed.hasPrefix("\(varName)=") {
+                        return String(trimmed.dropFirst("\(varName)=".count))
+                    }
+                }
+            }
+            
+            return nil
+        }
+        
+        // Return as-is if not an environment reference
+        return reference
     }
 }

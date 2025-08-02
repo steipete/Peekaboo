@@ -27,6 +27,8 @@ public final class OpenAIModel: ModelInterface {
     private let baseURL: URL
     private let session: URLSession
     private let organizationId: String?
+    private let customHeaders: [String: String]?
+    private let customModelName: String?
 
     public init(
         apiKey: String,
@@ -37,6 +39,33 @@ public final class OpenAIModel: ModelInterface {
         self.apiKey = apiKey
         self.baseURL = baseURL
         self.organizationId = organizationId
+        self.customHeaders = nil
+        self.customModelName = nil
+        // Create custom session with longer timeout for o3 models
+        if let session {
+            self.session = session
+        } else {
+            let config = URLSessionConfiguration.default
+            config.timeoutIntervalForRequest = 600 // 10 minutes
+            config.timeoutIntervalForResource = 600
+            self.session = URLSession(configuration: config)
+        }
+    }
+    
+    /// Initialize with custom provider configuration
+    public init(
+        apiKey: String,
+        baseURL: String,
+        modelName: String? = nil,
+        headers: [String: String]? = nil,
+        organizationId: String? = nil,
+        session: URLSession? = nil)
+    {
+        self.apiKey = apiKey
+        self.baseURL = URL(string: baseURL) ?? URL(string: "https://api.openai.com/v1")!
+        self.organizationId = organizationId
+        self.customHeaders = headers
+        self.customModelName = modelName
         // Create custom session with longer timeout for o3 models
         if let session {
             self.session = session
@@ -339,6 +368,11 @@ public final class OpenAIModel: ModelInterface {
         if let orgId = organizationId {
             request.setValue(orgId, forHTTPHeaderField: "OpenAI-Organization")
         }
+        
+        // Add custom headers from provider configuration
+        customHeaders?.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
 
         // Note: Using a custom encoder here to only have sortedKeys without prettyPrinted
         let encoder = JSONEncoder()
@@ -415,12 +449,15 @@ public final class OpenAIModel: ModelInterface {
                 parameters: self.convertToolParameters(tool.function.parameters))
         }
 
+        // Use custom model name if provided, otherwise use the request's model name
+        let modelName = customModelName ?? request.settings.modelName
+        
         return OpenAIResponsesRequest(
-            model: request.settings.modelName,
+            model: modelName,
             input: messages, // Note: 'input' not 'messages' for Responses API
             tools: tools,
             toolChoice: self.convertToolChoice(request.settings.toolChoice),
-            temperature: (request.settings.modelName.hasPrefix("o3") || request.settings.modelName.hasPrefix("o4")) ?
+            temperature: (modelName.hasPrefix("o3") || modelName.hasPrefix("o4")) ?
                 nil : request.settings.temperature,
             topP: request.settings.topP,
             stream: stream,

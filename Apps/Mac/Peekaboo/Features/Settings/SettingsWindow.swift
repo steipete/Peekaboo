@@ -76,7 +76,7 @@ struct AISettingsView: View {
     @State private var showingAnthropicKey = false
 
     private var allModels: [(provider: String, models: [(id: String, name: String)])] {
-        [
+        var models: [(provider: String, models: [(id: String, name: String)])] = [
             ("openai", [
                 ("gpt-4.1", "GPT-4.1"),
                 ("gpt-4.1-mini", "GPT-4.1 mini"),
@@ -97,6 +97,16 @@ struct AISettingsView: View {
                 ("llama3.2-vision:latest", "Llama 3.2 Vision"),
             ]),
         ]
+        
+        // Add custom providers
+        for (id, provider) in settings.customProviders.sorted(by: { $0.key < $1.key }) {
+            let providerModels = provider.models?.map { (id: $0.key, name: $0.value.name) } ?? [
+                (id: "custom-model", name: "Default Model")
+            ]
+            models.append((id, providerModels))
+        }
+        
+        return models
     }
 
     private var modelDescriptions: [String: String] {
@@ -314,6 +324,11 @@ struct AISettingsView: View {
                         .foregroundColor(.secondary)
                         .padding(.leading, 88)
                 }
+            }
+
+            // Custom Providers
+            Section("Custom Providers") {
+                CustomProviderView()
             }
 
             // API usage info
