@@ -36,7 +36,7 @@ public protocol ApprovalHandler: Sendable {
 }
 
 /// Result of an approval request
-public enum ApprovalResult {
+public enum ApprovalResult: Sendable {
     case approved
     case rejected(reason: String?)
     case approvedAlways // Approve this and all future calls
@@ -67,7 +67,7 @@ public struct ToolApprovalItem {
 }
 
 /// Status of a tool approval
-public enum ApprovalStatus {
+public enum ApprovalStatus: Sendable {
     case pending
     case approved
     case rejected(reason: String?)
