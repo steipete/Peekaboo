@@ -1,0 +1,235 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-macos:
+    name: Test on macOS
+    runs-on: macos-15
+    strategy:
+      matrix:
+        xcode: ['16.2']
+        swift: ['6.0']
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ matrix.xcode }}
+        
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          .build
+          ~/Library/Developer/Xcode/DerivedData
+        key: ${{ runner.os }}-swift-${{ hashFiles('Package.swift', 'Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-swift-
+          
+    - name: Print Swift version
+      run: swift --version
+      
+    - name: Print Xcode version  
+      run: xcodebuild -version
+      
+    - name: Resolve dependencies
+      run: swift package resolve
+      
+    - name: Build package
+      run: swift build --configuration release
+      
+    - name: Run tests
+      run: swift test --configuration release --parallel
+      
+    - name: Build documentation
+      run: swift package generate-documentation --target Tachikoma || true
+
+  test-linux:
+    name: Test on Linux
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.0.3-jammy
+      
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install system dependencies
+      run: |
+        apt-get update -qq
+        apt-get install -y libssl-dev zlib1g-dev
+        
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: .build
+        key: ${{ runner.os }}-swift-${{ hashFiles('Package.swift', 'Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-swift-
+          
+    - name: Print Swift version
+      run: swift --version
+      
+    - name: Resolve dependencies
+      run: swift package resolve
+      
+    - name: Build package
+      run: swift build --configuration release
+      
+    - name: Run tests
+      run: swift test --configuration release --parallel
+
+  code-quality:
+    name: Code Quality
+    runs-on: macos-15
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '16.2'
+        
+    - name: Check Swift format
+      run: |
+        # Install swift-format if needed
+        if ! command -v swift-format &> /dev/null; then
+          echo "swift-format not available, skipping format check"
+        else
+          swift-format lint --recursive Sources/ Tests/
+        fi
+        
+    - name: Check for TODO/FIXME comments
+      run: |
+        # Check for TODO/FIXME comments that should be addressed
+        if grep -r "TODO\|FIXME" Sources/ Tests/ --exclude-dir=.build; then
+          echo "Warning: Found TODO/FIXME comments"
+        fi
+        
+    - name: Security scan
+      run: |
+        # Check for potential API key leaks
+        if grep -r "sk-[a-zA-Z0-9]\{48\}" Sources/ --exclude-dir=.build; then
+          echo "ERROR: Potential OpenAI API key found in sources!"
+          exit 1
+        fi
+        if grep -r "sk-ant-[a-zA-Z0-9]\{48\}" Sources/ --exclude-dir=.build; then
+          echo "ERROR: Potential Anthropic API key found in sources!"
+          exit 1
+        fi
+        if grep -r "xai-[a-zA-Z0-9]\{48\}" Sources/ --exclude-dir=.build; then
+          echo "ERROR: Potential xAI API key found in sources!"
+          exit 1
+        fi
+        echo "✅ No API keys found in source code"
+
+  package-compatibility:
+    name: Package Compatibility
+    runs-on: macos-15
+    strategy:
+      matrix:
+        swift-version: ['6.0']
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '16.2'
+        
+    - name: Test Swift Package Manager integration
+      run: |
+        # Create a test project that imports Tachikoma
+        mkdir test-integration
+        cd test-integration
+        
+        # Create Package.swift
+        cat > Package.swift << 'EOF'
+        // swift-tools-version: 6.0
+        import PackageDescription
+        
+        let package = Package(
+            name: "TachikomaTest",
+            platforms: [
+                .macOS(.v14),
+                .iOS(.v17),
+                .watchOS(.v10),
+                .tvOS(.v17)
+            ],
+            dependencies: [
+                .package(path: "..")
+            ],
+            targets: [
+                .executableTarget(
+                    name: "TachikomaTest",
+                    dependencies: ["Tachikoma"],
+                    path: "Sources"
+                )
+            ]
+        )
+        EOF
+        
+        # Create test source
+        mkdir -p Sources
+        cat > Sources/main.swift << 'EOF'
+        import Tachikoma
+        import Foundation
+        
+        @main
+        struct TachikomaTest {
+            static func main() async {
+                print("Testing Tachikoma integration...")
+                
+                // Test basic initialization
+                let tachikoma = Tachikoma.shared
+                print("✅ Tachikoma initialized successfully")
+                
+                // Test provider registration (mock)
+                await tachikoma.registerModel(name: "test-model") {
+                    MockModel()
+                }
+                print("✅ Model registration working")
+                
+                print("🎉 Integration test completed successfully")
+            }
+        }
+        
+        // Mock model for testing
+        struct MockModel: ModelInterface {
+            var maskedApiKey: String { "mock-***" }
+            
+            func getResponse(request: ModelRequest) async throws -> ModelResponse {
+                return ModelResponse(
+                    id: "test-response",
+                    content: [.text("Mock response")],
+                    usage: nil,
+                    metadata: [:]
+                )
+            }
+            
+            func getStreamedResponse(request: ModelRequest) async throws -> AsyncThrowingStream<StreamEvent, any Error> {
+                return AsyncThrowingStream { continuation in
+                    continuation.yield(.contentDelta("Mock"))
+                    continuation.yield(.contentDelta(" response"))
+                    continuation.yield(.done)
+                    continuation.finish()
+                }
+            }
+        }
+        EOF
+        
+        # Build and run the test
+        swift build
+        swift run TachikomaTest
