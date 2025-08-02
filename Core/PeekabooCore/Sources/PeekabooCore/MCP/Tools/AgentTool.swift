@@ -1,6 +1,7 @@
 import Foundation
 import MCP
 import os.log
+import Tachikoma
 
 /// MCP tool for executing complex automation tasks using an AI agent
 public struct AgentTool: MCPTool {

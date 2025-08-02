@@ -1,6 +1,7 @@
 import AXorcist
 import CoreGraphics
 import Foundation
+import Tachikoma
 
 // MARK: - Tool Definitions
 

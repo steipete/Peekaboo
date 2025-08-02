@@ -1,4 +1,5 @@
 import Foundation
+import Tachikoma
 
 /// Manages configuration loading and precedence resolution.
 ///
@@ -589,7 +590,7 @@ public final class ConfigurationManager: @unchecked Sendable {
     public func getSelectedProvider() -> String {
         // Extract provider from providers string (e.g., "anthropic/model" -> "anthropic")
         let providers = self.getAIProviders()
-        return AIProviderParser.parseFirst(providers)?.provider ?? "anthropic"
+        return Tachikoma.ProviderParser.parseFirst(providers)?.provider ?? "anthropic"
     }
 
     /// Get agent model

@@ -1,6 +1,7 @@
 import AppKit
 import AXorcist
 import CoreGraphics
+import Tachikoma
 import Foundation
 
 // MARK: - Tool Definitions

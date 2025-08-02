@@ -1,7 +1,8 @@
 import Foundation
 
 /// Utility for parsing AI provider configuration strings
-public enum AIProviderParser {
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
+public enum ProviderParser {
     /// Represents a parsed AI provider configuration
     public struct ProviderConfig: Equatable, Sendable {
         /// The provider name (e.g., "openai", "anthropic", "ollama")
@@ -13,6 +14,11 @@ public enum AIProviderParser {
         /// The full string representation (e.g., "openai/gpt-4")
         public var fullString: String {
             "\(self.provider)/\(self.model)"
+        }
+        
+        public init(provider: String, model: String) {
+            self.provider = provider
+            self.model = model
         }
     }
 
@@ -65,13 +71,26 @@ public enum AIProviderParser {
 
         /// The model from configuration (if any)
         public let configModel: String?
+        
+        public init(
+            model: String,
+            hasConflict: Bool,
+            environmentModel: String? = nil,
+            configModel: String? = nil
+        ) {
+            self.model = model
+            self.hasConflict = hasConflict
+            self.environmentModel = environmentModel
+            self.configModel = configModel
+        }
     }
 
     /// Determine the default model based on available providers and API keys
     /// - Parameters:
-    ///   - providersString: The PEEKABOO_AI_PROVIDERS string
+    ///   - providersString: The AI_PROVIDERS string (e.g., from TACHIKOMA_AI_PROVIDERS env var)
     ///   - hasOpenAI: Whether OpenAI API key is available
     ///   - hasAnthropic: Whether Anthropic API key is available
+    ///   - hasGrok: Whether Grok API key is available
     ///   - hasOllama: Whether Ollama is available (always true as it doesn't require API key)
     ///   - configuredDefault: Optional default from configuration
     ///   - isEnvironmentProvided: Whether the providers string came from environment variable
@@ -80,6 +99,7 @@ public enum AIProviderParser {
         from providersString: String,
         hasOpenAI: Bool,
         hasAnthropic: Bool,
+        hasGrok: Bool = false,
         hasOllama: Bool = true,
         configuredDefault: String? = nil,
         isEnvironmentProvided: Bool = false) -> ModelDetermination
@@ -93,6 +113,8 @@ public enum AIProviderParser {
             case "openai" where hasOpenAI:
                 environmentModel = config.model
             case "anthropic" where hasAnthropic:
+                environmentModel = config.model
+            case "grok", "xai" where hasGrok:
                 environmentModel = config.model
             case "ollama" where hasOllama:
                 environmentModel = config.model
@@ -122,6 +144,8 @@ public enum AIProviderParser {
                 "claude-opus-4-20250514"
             } else if hasOpenAI {
                 "o3"
+            } else if hasGrok {
+                "grok-4"
             } else {
                 "llava:latest"
             }
@@ -136,9 +160,10 @@ public enum AIProviderParser {
 
     /// Determine the default model based on available providers and API keys (simple version)
     /// - Parameters:
-    ///   - providersString: The PEEKABOO_AI_PROVIDERS string
+    ///   - providersString: The AI_PROVIDERS string
     ///   - hasOpenAI: Whether OpenAI API key is available
     ///   - hasAnthropic: Whether Anthropic API key is available
+    ///   - hasGrok: Whether Grok API key is available
     ///   - hasOllama: Whether Ollama is available (always true as it doesn't require API key)
     ///   - configuredDefault: Optional default from configuration
     /// - Returns: The model name to use
@@ -146,6 +171,7 @@ public enum AIProviderParser {
         from providersString: String,
         hasOpenAI: Bool,
         hasAnthropic: Bool,
+        hasGrok: Bool = false,
         hasOllama: Bool = true,
         configuredDefault: String? = nil) -> String
     {
@@ -153,6 +179,7 @@ public enum AIProviderParser {
             from: providersString,
             hasOpenAI: hasOpenAI,
             hasAnthropic: hasAnthropic,
+            hasGrok: hasGrok,
             hasOllama: hasOllama,
             configuredDefault: configuredDefault,
             isEnvironmentProvided: false)
@@ -173,3 +200,4 @@ public enum AIProviderParser {
         self.parse(fullString)?.model
     }
 }
+

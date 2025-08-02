@@ -1,6 +1,7 @@
 import Foundation
 import MCP
 import os.log
+import Tachikoma
 
 /// MCP tool for analyzing images with AI
 public struct AnalyzeTool: MCPTool {
@@ -113,14 +114,14 @@ public struct AnalyzeTool: MCPTool {
             let model = try await getOrCreateModel(modelName: modelName, providerType: providerType)
             
             // Create a request with the image
-            let imageContent = ImageContent(base64: base64String, mediaType: mediaType)
-            let messageContent = MessageContent.multipart([
-                .text(question),
-                .image(imageContent)
+            let imageContent = ImageContent(base64: base64String)
+            let messageContent = MessageContent.multimodal([
+                MessageContentPart(type: "text", text: question),
+                MessageContentPart(type: "image", imageUrl: imageContent)
             ])
             
             let messages: [Message] = [
-                Message(role: "user", content: messageContent)
+                .user(content: messageContent)
             ]
             
             let request = ModelRequest(

@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import Tachikoma
 
 /// Represents a tool's complete definition used across CLI, agent, and documentation
 @available(macOS 14.0, *)

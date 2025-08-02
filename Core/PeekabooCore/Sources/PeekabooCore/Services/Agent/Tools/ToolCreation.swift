@@ -1,4 +1,5 @@
 import Foundation
+import Tachikoma
 
 // MARK: - Tool Creation Helpers
 
@@ -15,8 +16,7 @@ public func createSimpleTool<Context>(
         function: FunctionDefinition(
             name: name,
             description: description,
-            parameters: ToolParameters(
-                type: .object,
+            parameters: ToolParameters.object(
                 properties: parameters,
                 required: required
             )
@@ -38,8 +38,7 @@ public func createTool<Context>(
         function: FunctionDefinition(
             name: name,
             description: description,
-            parameters: parameters ?? ToolParameters(
-                type: .object,
+            parameters: parameters ?? ToolParameters.object(
                 properties: [:],
                 required: []
             )

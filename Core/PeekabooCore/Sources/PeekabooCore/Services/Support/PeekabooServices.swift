@@ -287,7 +287,7 @@ public final class PeekabooServices: @unchecked Sendable {
             logger.debug("🔍 Has OpenAI: \(hasOpenAI), Has Anthropic: \(hasAnthropic), Has Ollama: \(hasOllama)")
 
             // Determine default model using the parser with conflict detection
-            let determination = AIProviderParser.determineDefaultModelWithConflict(
+            let determination = Tachikoma.ProviderParser.determineDefaultModelWithConflict(
                 from: providers,
                 hasOpenAI: hasOpenAI,
                 hasAnthropic: hasAnthropic,
