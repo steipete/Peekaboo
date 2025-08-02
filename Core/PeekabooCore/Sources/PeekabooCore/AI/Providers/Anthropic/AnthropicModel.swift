@@ -457,7 +457,8 @@ public final class AnthropicModel: ModelInterface {
             var blocks: [AnthropicContentBlock] = []
 
             if let base64 = imageContent.base64 {
-                blocks.append(.image(base64: base64, mediaType: "image/jpeg"))
+                let mediaType = imageContent.mediaType ?? "image/jpeg"
+                blocks.append(.image(base64: base64, mediaType: mediaType))
             } else if imageContent.url != nil {
                 // For URLs, we'd need to download and convert to base64
                 // For now, throw an error
@@ -474,7 +475,8 @@ public final class AnthropicModel: ModelInterface {
                     return .text(text)
                 } else if let image = part.imageUrl {
                     if let base64 = image.base64 {
-                        return .image(base64: base64, mediaType: "image/jpeg")
+                        let mediaType = image.mediaType ?? "image/jpeg"
+                        return .image(base64: base64, mediaType: mediaType)
                     } else if image.url != nil {
                         throw PeekabooError.invalidInput(
                             field: "image",

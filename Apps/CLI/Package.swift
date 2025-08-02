@@ -13,6 +13,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.9.0"),
         .package(path: "../../Core/PeekabooCore"),
     ],
     targets: [
@@ -20,6 +21,7 @@ let package = Package(
             name: "peekaboo",
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                .product(name: "MCP", package: "swift-sdk"),
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
             ],
             swiftSettings: [

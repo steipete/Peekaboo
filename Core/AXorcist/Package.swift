@@ -32,17 +32,7 @@ let package = Package(
                 "AXorcist", // Dependency restored to AXorcist
                 .product(name: "ArgumentParser", package: "swift-argument-parser"), // Added dependency product
             ],
-            path: "Sources/axorc", // Explicit path
-            sources: [
-                "AXORCMain.swift",
-                "Core/InputHandler.swift",
-                "Models/AXORCModels.swift",
-                "CommandExecutor.swift",
-                "CommandExecutionFunctions.swift",
-                "CommandHandlers.swift",
-                "CommandResponseHelpers.swift",
-                "CommandTypeExtensions.swift",
-            ]
+            path: "Sources/axorc" // Explicit path
         ),
         .testTarget(
             name: "AXorcistTests",

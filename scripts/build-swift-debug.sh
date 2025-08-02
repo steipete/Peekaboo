@@ -17,8 +17,8 @@ if [[ "$CLEAN_BUILD" == "true" ]]; then
     (cd "$SWIFT_PROJECT_PATH" && swift package reset 2>/dev/null || true)
 fi
 
-echo "📦 Reading version from package.json..."
-VERSION=$(node -p "require('$PROJECT_ROOT/Server/package.json').version" 2>/dev/null || echo "3.0.0-dev")
+echo "📦 Reading version from version.json..."
+VERSION=$(node -p "require('$PROJECT_ROOT/version.json').version" 2>/dev/null || echo "3.0.0-dev")
 
 echo "💉 Injecting version into Swift code..."
 VERSION_SWIFT_PATH="$SWIFT_PROJECT_PATH/Sources/peekaboo/Version.swift"

@@ -173,15 +173,17 @@ public struct ImageContent: Codable, Sendable {
     public let url: String?
     public let base64: String?
     public let detail: ImageDetail?
+    public let mediaType: String?
 
     public enum ImageDetail: String, Codable, Sendable {
         case auto, low, high
     }
 
-    public init(url: String? = nil, base64: String? = nil, detail: ImageDetail? = nil) {
+    public init(url: String? = nil, base64: String? = nil, detail: ImageDetail? = nil, mediaType: String? = nil) {
         self.url = url
         self.base64 = base64
         self.detail = detail
+        self.mediaType = mediaType
     }
 }
 
