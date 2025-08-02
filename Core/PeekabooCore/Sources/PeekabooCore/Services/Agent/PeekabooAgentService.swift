@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import Tachikoma
 
 // MARK: - Peekaboo Agent Service
 
@@ -8,7 +9,7 @@ import Foundation
 @MainActor
 public final class PeekabooAgentService: AgentServiceProtocol {
     private let services: PeekabooServices
-    private let modelProvider: ModelProvider
+    private let tachikoma: Tachikoma
     private let sessionManager: AgentSessionManager
     private let defaultModelName: String
 
@@ -20,7 +21,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         defaultModelName: String = "claude-opus-4-20250514")
     {
         self.services = services
-        self.modelProvider = .shared
+        self.tachikoma = .shared
         self.sessionManager = AgentSessionManager()
         self.defaultModelName = defaultModelName
     }

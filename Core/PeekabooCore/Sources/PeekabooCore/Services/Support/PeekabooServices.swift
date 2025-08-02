@@ -1,5 +1,6 @@
 import Foundation
 import os.log
+import Tachikoma
 
 /// Main entry point for all Peekaboo services
 /// Provides a unified interface for screen capture, automation, and management operations
@@ -268,14 +269,14 @@ public final class PeekabooServices: @unchecked Sendable {
             audioInput: audioInput,
             screens: screens)
 
-        // Initialize ModelProvider with available API keys
+        // Initialize Tachikoma with available API keys
         Task {
             do {
-                try await ModelProvider.shared.setupFromEnvironment()
-                logger.debug("✅ ModelProvider initialized from environment")
+                try await Tachikoma.shared.setupFromEnvironment()
+                logger.debug("✅ Tachikoma initialized from environment")
             } catch {
-                let peekabooError = error.asPeekabooError(context: "Failed to setup ModelProvider")
-                logger.error("⚠️ ModelProvider setup failed: \(peekabooError.localizedDescription)")
+                let peekabooError = error.asPeekabooError(context: "Failed to setup Tachikoma")
+                logger.error("⚠️ Tachikoma setup failed: \(peekabooError.localizedDescription)")
             }
         }
 
