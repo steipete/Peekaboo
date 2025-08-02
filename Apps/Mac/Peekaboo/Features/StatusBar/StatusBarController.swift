@@ -49,14 +49,35 @@ final class StatusBarController: NSObject {
     // MARK: - Setup
 
     private func setupStatusItem() {
-        guard let button = statusItem.button else { return }
+        guard let button = statusItem.button else { 
+            logger.error("StatusBar button is nil - cannot setup status item")
+            return 
+        }
 
         // Use the MenuIcon asset
-        button.image = NSImage(named: "MenuIcon")
-        button.image?.isTemplate = true
+        let menuIcon = NSImage(named: "MenuIcon")
+        if let menuIcon = menuIcon {
+            logger.info("MenuIcon loaded successfully: \(menuIcon.size.width)x\(menuIcon.size.height)")
+            button.image = menuIcon
+            button.image?.isTemplate = true
+        } else {
+            logger.error("Failed to load MenuIcon - using fallback")
+            // Create a simple fallback icon
+            let fallbackIcon = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
+                NSColor.controlAccentColor.set()
+                let path = NSBezierPath(ovalIn: rect.insetBy(dx: 4, dy: 4))
+                path.fill()
+                return true
+            }
+            fallbackIcon.isTemplate = true
+            button.image = fallbackIcon
+        }
+        
         button.action = #selector(self.statusItemClicked)
         button.target = self
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        
+        logger.info("Status bar button setup complete")
     }
 
     private func setupAnimationController() {

@@ -4,7 +4,7 @@ import SwiftUI
 
 @main
 struct PeekabooApp: App {
-    // Test comment for Poltergeist Mac build v10 - Now testing Mac app build!
+    // Test comment for Poltergeist Mac build v12 - Testing Mac app rebuild detection again
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
 

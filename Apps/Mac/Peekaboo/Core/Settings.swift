@@ -289,11 +289,11 @@ final class PeekabooSettings {
     var hasValidAPIKey: Bool {
         switch self.selectedProvider {
         case "openai":
-            !self.openAIAPIKey.isEmpty
+            return !self.openAIAPIKey.isEmpty
         case "anthropic":
-            !self.anthropicAPIKey.isEmpty
+            return !self.anthropicAPIKey.isEmpty
         case "ollama":
-            true // Ollama doesn't require API key
+            return true // Ollama doesn't require API key
         default:
             // Check if it's a custom provider
             if let customProvider = customProviders[selectedProvider] {
@@ -654,8 +654,7 @@ final class PeekabooSettings {
     
     func addCustomProvider(_ provider: Configuration.CustomProvider, id: String) throws {
         try configManager.addCustomProvider(provider, id: id)
-        // Trigger UI update
-        objectWillChange.send()
+        // UI updates automatically with @Observable
     }
     
     func removeCustomProvider(id: String) throws {
@@ -664,8 +663,7 @@ final class PeekabooSettings {
         if selectedProvider == id {
             selectedProvider = "anthropic"
         }
-        // Trigger UI update
-        objectWillChange.send()
+        // UI updates automatically with @Observable
     }
     
     func getCustomProvider(id: String) -> Configuration.CustomProvider? {

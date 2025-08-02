@@ -218,6 +218,11 @@ final class MenuBarAnimationController: ObservableObject {
                 )
                 
                 menuIcon.draw(in: drawRect)
+            } else {
+                // Fallback: draw a simple circle if MenuIcon fails to load
+                NSColor.controlAccentColor.set()
+                let fallbackPath = NSBezierPath(ovalIn: rect.insetBy(dx: 4, dy: 4))
+                fallbackPath.fill()
             }
 
             context.restoreGState()

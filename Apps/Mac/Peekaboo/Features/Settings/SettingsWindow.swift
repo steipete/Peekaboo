@@ -1,6 +1,7 @@
 import Observation
 import SwiftUI
 import AppKit
+import PeekabooCore
 
 struct SettingsWindow: View {
     @Environment(PeekabooSettings.self) private var settings

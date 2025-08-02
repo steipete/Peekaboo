@@ -5,7 +5,7 @@ import PeekabooCore
 struct CustomProviderView: View {
     @Environment(PeekabooSettings.self) private var settings
     @State private var showingAddProvider = false
-    @State private var providerToEdit: (id: String, provider: Configuration.CustomProvider)?
+    @State private var providerToEdit: IdentifiableCustomProvider?
     @State private var selectedProviderId: String?
     @State private var showingDeleteConfirmation = false
     @State private var testResults: [String: (success: Bool, message: String)] = [:]
@@ -58,7 +58,7 @@ struct CustomProviderView: View {
                                     settings.selectedProvider = id
                                 },
                                 onEdit: {
-                                    providerToEdit = (id, provider)
+                                    providerToEdit = IdentifiableCustomProvider((id, provider))
                                 },
                                 onDelete: {
                                     selectedProviderId = id
@@ -307,7 +307,6 @@ struct AddCustomProviderView: View {
             }
             .formStyle(.grouped)
             .navigationTitle("Add Custom Provider")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -466,7 +465,6 @@ struct EditCustomProviderView: View {
             }
             .formStyle(.grouped)
             .navigationTitle("Edit Custom Provider")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -537,7 +535,13 @@ struct EditCustomProviderView: View {
     }
 }
 
-// Helper extension to make tuple identifiable for sheet presentation
-extension (String, Configuration.CustomProvider): Identifiable {
-    var id: String { self.0 }
+// Helper struct to make tuple identifiable for sheet presentation
+struct IdentifiableCustomProvider: Identifiable {
+    let id: String
+    let provider: Configuration.CustomProvider
+    
+    init(_ tuple: (String, Configuration.CustomProvider)) {
+        self.id = tuple.0
+        self.provider = tuple.1
+    }
 }

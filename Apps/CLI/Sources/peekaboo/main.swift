@@ -3,6 +3,8 @@ import CoreGraphics
 import Foundation
 import PeekabooCore
 
+// Test comment for Poltergeist CLI rebuild detection
+
 // Simple stderr logging function
 func logError(_ message: String) {
     let data = Data("\(message)\n".utf8)
