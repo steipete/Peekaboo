@@ -51,7 +51,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         }
 
         // Use the new architecture internally
-        let agent = self.createAutomationAgent(modelName: self.defaultModelName)
+        let agent = try await self.createAutomationAgent(modelName: self.defaultModelName)
 
         // Create a new session for this task
         let sessionId = UUID().uuidString
@@ -132,7 +132,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         }
 
         // Use the new architecture internally
-        let agent = self.createAutomationAgent(modelName: self.defaultModelName)
+        let agent = try await self.createAutomationAgent(modelName: self.defaultModelName)
 
         // Create a new session for this task
         let sessionId = UUID().uuidString
@@ -209,10 +209,10 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     public func createAutomationAgent(
         name: String = "Peekaboo Assistant",
         modelName: String = "claude-opus-4-20250514",
-        apiType: String? = nil) -> PeekabooAgent<PeekabooServices>
+        apiType: String? = nil) async throws -> PeekabooAgent<PeekabooServices>
     {
-        // Create model using the factory
-        let model = ModelFactory.shared.createModel(modelName: modelName, providerType: apiType)
+        // Create model using Tachikoma's ModelProvider
+        let model = try await ModelProvider.shared.getModel(modelName: modelName)
         
         let agent = PeekabooAgent<PeekabooServices>(
             model: model,
@@ -231,7 +231,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         modelName: String = "claude-opus-4-20250514",
         eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
-        let agent = self.createAutomationAgent(modelName: modelName)
+        let agent = try await self.createAutomationAgent(modelName: modelName)
 
         // If we have an event delegate, use streaming
         if eventDelegate != nil {
@@ -296,7 +296,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         modelName: String = "claude-opus-4-20250514",
         streamHandler: @Sendable @escaping (String) async -> Void) async throws -> AgentExecutionResult
     {
-        let agent = self.createAutomationAgent(modelName: modelName)
+        let agent = try await self.createAutomationAgent(modelName: modelName)
 
         return try await AgentRunner.runStreaming(
             agent: agent,
@@ -405,9 +405,9 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 extension PeekabooAgentService {
     /// Create a simple agent for basic tasks
     public func createSimpleAgent(
-        modelName: String = "claude-opus-4-20250514") -> PeekabooAgent<PeekabooServices>
+        modelName: String = "claude-opus-4-20250514") async throws -> PeekabooAgent<PeekabooServices>
     {
-        self.createAutomationAgent(
+        try await self.createAutomationAgent(
             name: "Simple Assistant",
             modelName: modelName)
     }
@@ -424,7 +424,7 @@ extension PeekabooAgentService {
         }
 
         // Use AgentRunner to resume the session with existing messages
-        let agent = self.createAutomationAgent(modelName: modelName)
+        let agent = try await self.createAutomationAgent(modelName: modelName)
 
         // Create a continuation prompt if needed
         let continuationPrompt = "Continue from where we left off."

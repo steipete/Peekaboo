@@ -54,8 +54,6 @@ public final class PeekabooServices: @unchecked Sendable {
     /// Agent service for AI-powered automation
     public private(set) var agent: AgentServiceProtocol?
 
-    /// Audio input service for voice commands and audio transcription
-    public let audioInput: AudioInputServiceProtocol
     
     /// Screen management service for multi-monitor support
     public let screens: ScreenServiceProtocol
@@ -131,10 +129,6 @@ public final class PeekabooServices: @unchecked Sendable {
         // Agent service will be initialized by createShared method
         self.agent = nil
 
-        // Audio input service needs AI service, so temporarily initialize with placeholder
-        // Will be properly initialized in createShared with actual AI service
-        self.audioInput = AudioInputService(aiService: PeekabooAIService())
-        self.logger.debug("✅ AudioInputService initialized (placeholder)")
 
         self.logger.info("✨ PeekabooServices initialization complete")
     }
@@ -156,7 +150,6 @@ public final class PeekabooServices: @unchecked Sendable {
         permissions: PermissionsService? = nil,
         agent: AgentServiceProtocol? = nil,
         configuration: ConfigurationManager? = nil,
-        audioInput: AudioInputServiceProtocol? = nil,
         screens: ScreenServiceProtocol? = nil)
     {
         self.logger.info("🚀 Initializing PeekabooServices with custom implementations")
@@ -174,7 +167,6 @@ public final class PeekabooServices: @unchecked Sendable {
         self.permissions = permissions ?? PermissionsService()
         self.agent = agent
         self.configuration = configuration ?? ConfigurationManager.shared
-        self.audioInput = audioInput ?? AudioInputService(aiService: PeekabooAIService())
         self.screens = screens ?? ScreenService()
 
         self.logger.info("✨ PeekabooServices initialization complete (custom)")
@@ -196,7 +188,6 @@ public final class PeekabooServices: @unchecked Sendable {
         permissions: PermissionsService,
         configuration: ConfigurationManager,
         agent: AgentServiceProtocol?,
-        audioInput: AudioInputServiceProtocol,
         screens: ScreenServiceProtocol)
     {
         self.logging = logging
@@ -213,7 +204,6 @@ public final class PeekabooServices: @unchecked Sendable {
         self.permissions = permissions
         self.configuration = configuration
         self.agent = agent
-        self.audioInput = audioInput
         self.screens = screens
     }
 
@@ -245,10 +235,9 @@ public final class PeekabooServices: @unchecked Sendable {
             menuService: menuSvc,
             dockService: dockSvc)
 
-        // Create AI service and audio service
+        // Create AI service
         let aiService = PeekabooAIService()
-        let audioInput = AudioInputService(aiService: aiService)
-        logger.debug("✅ AudioInputService initialized")
+        logger.debug("✅ AI service initialized")
 
         // Create services instance first
         let services = PeekabooServices(
@@ -266,7 +255,6 @@ public final class PeekabooServices: @unchecked Sendable {
             permissions: permissions,
             configuration: config,
             agent: nil,
-            audioInput: audioInput,
             screens: screens)
 
         // Initialize Tachikoma with available API keys
@@ -350,7 +338,6 @@ public final class PeekabooServices: @unchecked Sendable {
             permissions: permissions,
             configuration: config,
             agent: agent,
-            audioInput: audioInput,
             screens: screens)
     }
 
