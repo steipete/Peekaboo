@@ -183,7 +183,7 @@ extension PeekabooAgentService {
                 }
 
                 // Launch the app
-                let launchedApp = try await context.applications.launchApplication(identifier: appName)
+                let launchedApp = try await context.applications.launchApplication(identifier: appName ?? "")
 
                 if waitForLaunch {
                     // Wait a bit for the app to launch

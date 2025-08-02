@@ -210,7 +210,7 @@ extension PeekabooAgentService {
 
                 let _ = Date().timeIntervalSince(startTime)
 
-                var output = "Entered \"\(text)\""
+                var output = "Entered \"\(text ?? "")\""
                 if let fieldLabel {
                     output += " in '\(fieldLabel)' field"
                 }

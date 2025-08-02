@@ -156,10 +156,10 @@ extension PeekabooAgentService {
                 }
 
                 let startTime = Date()
-                try await context.menu.clickMenuItem(app: targetApp, itemPath: menuPath)
+                try await context.menu.clickMenuItem(app: targetApp, itemPath: menuPath ?? "")
                 let _ = Date().timeIntervalSince(startTime)
 
-                return .success("Clicked \(targetApp) > \(menuPath)")
+                return .success("Clicked \(targetApp) > \(menuPath ?? "")")
             })
     }
 

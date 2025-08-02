@@ -109,7 +109,7 @@ extension PeekabooAgentService {
                 }
 
                 let startTime = Date()
-                try await context.dock.launchFromDock(appName: appName)
+                try await context.dock.launchFromDock(appName: appName ?? "")
 
                 // Wait a moment for launch
                 try await Task.sleep(nanoseconds: TimeInterval.mediumDelay.nanoseconds)

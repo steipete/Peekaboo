@@ -132,7 +132,7 @@ extension PeekabooAgentService {
                 process.waitUntilExit()
                 timeoutTask.cancel()
 
-                let _ = Date().timeIntervalSince(startTime)
+                let duration = Date().timeIntervalSince(startTime)
 
                 let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
                 let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
