@@ -7,7 +7,7 @@ import Tachikoma
 public struct Tool<Context> {
     public let definition: ToolDefinition
     public let execute: (ToolInput, Context) async throws -> ToolOutput
-
+    
     public init(
         definition: ToolDefinition,
         execute: @escaping (ToolInput, Context) async throws -> ToolOutput
@@ -15,7 +15,7 @@ public struct Tool<Context> {
         self.definition = definition
         self.execute = execute
     }
-
+    
     /// Convert to Tachikoma's AITool
     public func toTachikomaAITool() -> AITool<Context> {
         return AITool<Context>(
