@@ -1,4 +1,6 @@
 {
+  "version": "1.0",
+  "projectType": "mixed",
   "targets": [
     {
       "name": "peekaboo-cli",
@@ -6,14 +8,12 @@
       "enabled": true,
       "buildCommand": "./scripts/build-swift-debug.sh",
       "outputPath": "./peekaboo",
-      "statusFile": "/tmp/peekaboo-cli-build-status.json",
-      "lockFile": "/tmp/peekaboo-cli-build.lock",
       "settlingDelay": 1000,
       "debounceInterval": 5000,
       "icon": "./assets/icon_512x512@2x.png",
       "watchPaths": [
         "Core/PeekabooCore/**/*.swift",
-        "Core/AXorcist/**/*.swift", 
+        "Core/AXorcist/**/*.swift",
         "Apps/CLI/**/*.swift"
       ]
     },
@@ -24,8 +24,6 @@
       "enabled": true,
       "buildCommand": "./scripts/build-mac-debug.sh",
       "bundleId": "boo.peekaboo.mac.debug",
-      "statusFile": "/tmp/peekaboo-mac-build-status.json",
-      "lockFile": "/tmp/peekaboo-mac-build.lock",
       "autoRelaunch": true,
       "settlingDelay": 1000,
       "debounceInterval": 5000,
@@ -39,14 +37,47 @@
       ]
     }
   ],
+  "watchman": {
+    "useDefaultExclusions": true,
+    "excludeDirs": [
+      "coverage",
+      "*.log",
+      "tmp_screenshots",
+      "test_output",
+      "Server/dist",
+      "Server/node_modules"
+    ],
+    "projectType": "mixed",
+    "maxFileEvents": 15000,
+    "recrawlThreshold": 3,
+    "settlingDelay": 1000,
+    "rules": [
+      {
+        "pattern": "**/test_results/**",
+        "action": "ignore",
+        "reason": "Test output directory",
+        "enabled": true
+      },
+      {
+        "pattern": "**/*.xcuserstate",
+        "action": "ignore",
+        "reason": "Xcode user state files",
+        "enabled": true
+      }
+    ]
+  },
+  "performance": {
+    "profile": "balanced",
+    "autoOptimize": true,
+    "metrics": {
+      "enabled": true,
+      "reportInterval": 300
+    }
+  },
   "notifications": {
     "enabled": true,
     "successSound": "Glass",
-    "failureSound": "Basso",
-    "buildStart": true,
-    "buildFailed": true,
-    "buildSuccess": true,
-    "minInterval": 10000
+    "failureSound": "Basso"
   },
   "logging": {
     "file": ".poltergeist.log",
