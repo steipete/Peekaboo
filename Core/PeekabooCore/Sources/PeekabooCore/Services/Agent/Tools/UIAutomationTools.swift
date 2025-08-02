@@ -431,7 +431,7 @@ extension PeekabooAgentService {
 
                 // Check if target is coordinates (e.g., "100,200")
                 if target?.contains(",") ?? false,
-                   let coordParts = target.split(separator: ",").map(String.init).map(Double.init) as? [Double],
+                   let coordParts = target?.split(separator: ",").map(String.init).map(Double.init) as? [Double],
                    coordParts.count == 2
                 {
                     let coordinates = CGPoint(x: coordParts[0], y: coordParts[1])
@@ -490,7 +490,9 @@ extension PeekabooAgentService {
                 ],
                 required: ["text"]),
             execute: { params, context in
-                let text = try params.string("text")
+                guard let text = params.string("text") else {
+                    throw PeekabooError.invalidInput("Text is required")
+                }
                 let fieldLabel = params.string("field", default: nil)
                 let appName = params.string("app", default: nil)
                 let clearFirst = params.bool("clear_first", default: false)
@@ -511,7 +513,7 @@ extension PeekabooAgentService {
 
                 // Type the text using the automation service
                 try await context.automation.type(
-                    text: text ?? "",
+                    text: text,
                     target: fieldLabel,
                     clearExisting: clearFirst,
                     typingDelay: 0,

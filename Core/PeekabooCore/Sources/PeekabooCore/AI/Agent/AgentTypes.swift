@@ -68,7 +68,7 @@ public final class AgentSessionManager: Sendable {
 }
 
 /// The main agent type
-public struct PeekabooAgent<Services> {
+public struct PeekabooAgent<Services>: Sendable where Services: Sendable {
     public let model: any ModelInterface
     public let sessionId: String
     public let services: Services
@@ -213,8 +213,8 @@ public enum AgentRunner {
         input: String,
         context: Services,
         sessionId: String,
-        streamHandler: @escaping (String) async -> Void
-    ) async throws -> AgentExecutionResult {
+        streamHandler: @Sendable @escaping (String) async -> Void
+    ) async throws -> AgentExecutionResult where Services: Sendable {
         // Implementation would go here
         fatalError("AgentRunner.runStreaming not yet implemented")
     }
@@ -225,7 +225,7 @@ public enum AgentRunner {
         input: String,
         context: Services,
         sessionId: String
-    ) async throws -> AgentExecutionResult {
+    ) async throws -> AgentExecutionResult where Services: Sendable {
         // Implementation would go here
         fatalError("AgentRunner.run not yet implemented")
     }
