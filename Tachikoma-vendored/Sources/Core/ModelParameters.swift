@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Model Parameters
 
 /// Type-safe representation of additional model parameters
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct ModelParameters: Codable, Sendable {
     private let storage: [String: Value]
 
@@ -220,7 +220,7 @@ public struct ModelParameters: Codable, Sendable {
 
 // MARK: - Convenience Builders
 
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 extension ModelParameters {
     /// Create parameters for OpenAI o3/o4 models
     public static func o3Parameters(

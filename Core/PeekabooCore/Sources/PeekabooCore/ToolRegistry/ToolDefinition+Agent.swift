@@ -8,51 +8,50 @@ extension UnifiedToolDefinition {
     public func toAgentParameters() -> ToolParameters {
         var properties: [String: ParameterSchema] = [:]
         var required: [String] = []
-        
+
         for param in parameters {
             // Skip CLI-only parameters that don't make sense for agents
             if param.cliOptions?.argumentType == .argument {
                 continue
             }
-            
-            let schema: ParameterSchema
-            switch param.type {
+
+            let schema: ParameterSchema = switch param.type {
             case .string:
                 if let options = param.options {
-                    schema = .enumeration(options, description: param.description)
+                    .enumeration(options, description: param.description)
                 } else {
-                    schema = .string(description: param.description)
+                    .string(description: param.description)
                 }
             case .integer:
-                schema = .integer(description: param.description)
+                .integer(description: param.description)
             case .boolean:
-                schema = .boolean(description: param.description)
+                .boolean(description: param.description)
             case .enumeration:
-                schema = .enumeration(param.options ?? [], description: param.description)
+                .enumeration(param.options ?? [], description: param.description)
             case .object:
-                schema = .object(properties: [:], description: param.description)
+                .object(properties: [:], description: param.description)
             case .array:
-                schema = .array(of: .string(description: ""), description: param.description)
+                .array(of: .string(description: ""), description: param.description)
             }
-            
+
             // Map CLI parameter names to agent parameter names
             let agentParamName = param.name.replacingOccurrences(of: "-", with: "_")
             properties[agentParamName] = schema
-            
+
             if param.required {
                 required.append(agentParamName)
             }
         }
-        
+
         return ToolParameters.object(properties: properties, required: required)
     }
-    
+
     /// Get formatted examples for agent tools
     public var agentExamples: String {
         if examples.isEmpty {
             return ""
         }
-        
+
         return "\n\nExamples:\n" + examples.map { "  \($0)" }.joined(separator: "\n")
     }
 }
@@ -62,7 +61,7 @@ public struct ParameterMapping: Sendable {
     public let cliName: String
     public let propertyName: String
     public let argumentType: CLIOptions.ArgumentType
-    
+
     public init(cliName: String, propertyName: String, argumentType: CLIOptions.ArgumentType) {
         self.cliName = cliName
         self.propertyName = propertyName

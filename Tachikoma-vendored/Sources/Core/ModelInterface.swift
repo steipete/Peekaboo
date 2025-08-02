@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Model Interface Protocol
 
 /// Protocol defining the interface for AI model providers
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public protocol ModelInterface: Sendable {
     /// Get a non-streaming response from the model
     /// - Parameter request: The model request containing messages, tools, and settings
@@ -410,7 +410,7 @@ public struct JSONSchema: Codable, Sendable {
 // MARK: - Model Provider Protocol
 
 /// Protocol for model provider factories
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public protocol ModelProviderProtocol {
     /// Get a model by name
     /// - Parameter modelName: The name of the model to retrieve

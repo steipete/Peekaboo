@@ -14,7 +14,7 @@ public protocol AgentServiceProtocol: Sendable {
         _ task: String,
         dryRun: Bool,
         eventDelegate: AgentEventDelegate?) async throws -> AgentExecutionResult
-    
+
     /// Execute a task with audio content
     /// - Parameters:
     ///   - audioContent: The audio content to process

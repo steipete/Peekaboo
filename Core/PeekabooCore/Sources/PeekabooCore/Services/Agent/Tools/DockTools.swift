@@ -14,7 +14,7 @@ public struct DockToolDefinitions {
         discussion: """
             Clicks on an application in the Dock to launch or activate it.
             If the app is already running, it will be brought to the front.
-            
+
             EXAMPLES:
               peekaboo dock-launch Safari
               peekaboo dock-launch "Google Chrome"
@@ -29,12 +29,11 @@ public struct DockToolDefinitions {
                 required: true,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .argument)
-            )
+                cliOptions: CLIOptions(argumentType: .argument)),
         ],
         examples: [
             #"{"name": "Safari"}"#,
-            #"{"name": "Google Chrome"}"#
+            #"{"name": "Google Chrome"}"#,
         ],
         agentGuidance: """
             AGENT TIPS:
@@ -43,9 +42,8 @@ public struct DockToolDefinitions {
             - If app was already running, it just activates it
             - Some apps may take time to fully launch
             - Use 'list_dock' to see available apps
-        """
-    )
-    
+        """)
+
     public static let listDock = UnifiedToolDefinition(
         name: "list_dock",
         commandName: "list-dock",
@@ -53,7 +51,7 @@ public struct DockToolDefinitions {
         discussion: """
             Lists all items in the macOS Dock, including applications, folders,
             and recent items. Shows which apps are currently running.
-            
+
             EXAMPLES:
               peekaboo list-dock
               peekaboo list-dock --section apps
@@ -68,13 +66,12 @@ public struct DockToolDefinitions {
                 required: false,
                 defaultValue: "all",
                 options: ["apps", "recent", "all"],
-                cliOptions: CLIOptions(argumentType: .option)
-            )
+                cliOptions: CLIOptions(argumentType: .option)),
         ],
         examples: [
             #"{}"#,
             #"{"section": "apps"}"#,
-            #"{"section": "recent"}"#
+            #"{"section": "recent"}"#,
         ],
         agentGuidance: """
             AGENT TIPS:
@@ -83,8 +80,7 @@ public struct DockToolDefinitions {
             - Use this to find exact app names for dock_launch
             - Dock items are listed in their visual order
             - Some items may be separators or special folders
-        """
-    )
+        """)
 }
 
 // MARK: - Dock Tools
@@ -95,7 +91,7 @@ extension PeekabooAgentService {
     /// Create the dock launch tool
     func createDockLaunchTool() -> Tool<PeekabooServices> {
         let definition = DockToolDefinitions.dockLaunch
-        
+
         return createTool(
             name: definition.name,
             description: definition.agentDescription,
@@ -120,7 +116,7 @@ extension PeekabooAgentService {
                 if let launchedApp = appsAfterLaunchOutput.data.applications
                     .first(where: { $0.name.lowercased() == appName?.lowercased() ?? "" })
                 {
-                    let _ = Date().timeIntervalSince(startTime)
+                    _ = Date().timeIntervalSince(startTime)
 
                     // Get window information
                     let windows = try await context.windows.listWindows(target: .application(launchedApp.name))
@@ -148,7 +144,7 @@ extension PeekabooAgentService {
 
                     return .success(output)
                 } else {
-                    let _ = Date().timeIntervalSince(startTime)
+                    _ = Date().timeIntervalSince(startTime)
                     return .success("Clicked \(appName) in Dock (app may be starting)")
                 }
             })
@@ -157,7 +153,7 @@ extension PeekabooAgentService {
     /// Create the list dock tool
     func createListDockTool() -> Tool<PeekabooServices> {
         let definition = DockToolDefinitions.listDock
-        
+
         return createTool(
             name: definition.name,
             description: definition.agentDescription,
@@ -167,7 +163,7 @@ extension PeekabooAgentService {
 
                 let startTime = Date()
                 let dockItems = try await context.dock.listDockItems(includeAll: true)
-                let _ = Date().timeIntervalSince(startTime)
+                _ = Date().timeIntervalSince(startTime)
 
                 if dockItems.isEmpty {
                     return .success("No items found in Dock")

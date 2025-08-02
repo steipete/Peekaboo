@@ -54,7 +54,6 @@ public final class PeekabooServices: @unchecked Sendable {
     /// Agent service for AI-powered automation
     public private(set) var agent: AgentServiceProtocol?
 
-    
     /// Screen management service for multi-monitor support
     public let screens: ScreenServiceProtocol
 
@@ -89,7 +88,7 @@ public final class PeekabooServices: @unchecked Sendable {
 
         let dockSvc = DockService()
         self.logger.debug("✅ DockService initialized")
-        
+
         let screenSvc = ScreenService()
         self.logger.debug("✅ ScreenService initialized")
 
@@ -128,7 +127,6 @@ public final class PeekabooServices: @unchecked Sendable {
 
         // Agent service will be initialized by createShared method
         self.agent = nil
-
 
         self.logger.info("✨ PeekabooServices initialization complete")
     }
@@ -287,7 +285,7 @@ public final class PeekabooServices: @unchecked Sendable {
             logger.debug("🔍 Has OpenAI: \(hasOpenAI), Has Anthropic: \(hasAnthropic), Has Ollama: \(hasOllama)")
 
             // Determine default model using the parser with conflict detection
-            let determination = Tachikoma.ProviderParser.determineDefaultModelWithConflict(
+            let determination = ProviderParser.determineDefaultModelWithConflict(
                 from: providers,
                 hasOpenAI: hasOpenAI,
                 hasAnthropic: hasAnthropic,

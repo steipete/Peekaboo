@@ -7,12 +7,12 @@ public enum TransportType: CustomStringConvertible {
     case stdio
     case http
     case sse
-    
+
     public var description: String {
         switch self {
-        case .stdio: return "stdio"
-        case .http: return "http"
-        case .sse: return "sse"
+        case .stdio: "stdio"
+        case .http: "http"
+        case .sse: "sse"
         }
     }
 }
@@ -24,75 +24,74 @@ public actor PeekabooMCPServer {
     private let logger: os.Logger
     private let serverName = "peekaboo-mcp"
     private let serverVersion = "3.0.0-beta.2"
-    
+
     public init() async throws {
         self.logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "server")
         self.toolRegistry = await MCPToolRegistry()
-        
+
         // Initialize the official MCP Server
         self.server = Server(
-            name: serverName,
-            version: serverVersion,
+            name: self.serverName,
+            version: self.serverVersion,
             capabilities: Server.Capabilities(
                 prompts: .init(listChanged: false),
                 resources: .init(subscribe: false, listChanged: false),
-                tools: .init(listChanged: true)
-            )
-        )
-        
-        await setupHandlers()
-        await registerAllTools()
+                tools: .init(listChanged: true)))
+
+        await self.setupHandlers()
+        await self.registerAllTools()
     }
-    
+
     private func setupHandlers() async {
         // Tool list handler
-        await server.withMethodHandler(ListTools.self) { [weak self] _ in
-            guard let self = self else { return ListTools.Result(tools: []) }
-            
+        await self.server.withMethodHandler(ListTools.self) { [weak self] _ in
+            guard let self else { return ListTools.Result(tools: []) }
+
             let tools = await self.toolRegistry.toolInfos()
             return ListTools.Result(tools: tools)
         }
-        
+
         // Tool call handler
-        await server.withMethodHandler(CallTool.self) { [weak self] params in
-            guard let self = self else {
+        await self.server.withMethodHandler(CallTool.self) { [weak self] params in
+            guard let self else {
                 throw MCP.MCPError.methodNotFound("Server deallocated")
             }
-            
+
             guard let tool = await self.toolRegistry.tool(named: params.name) else {
                 throw MCP.MCPError.invalidParams("Tool '\(params.name)' not found")
             }
-            
+
             let arguments = ToolArguments(value: .object(params.arguments ?? [:]))
-            
+
             // Execute tool on main thread
             let response = try await tool.execute(arguments: arguments)
-            
+
             return CallTool.Result(
                 content: response.content,
-                isError: response.isError
-            )
+                isError: response.isError)
         }
-        
+
         // Resources list handler (empty for now, but prevents inspector errors)
-        await server.withMethodHandler(ListResources.self) { _ in
+        await self.server.withMethodHandler(ListResources.self) { _ in
             // Return empty resources list
-            return ListResources.Result(resources: [], nextCursor: nil)
+            ListResources.Result(resources: [], nextCursor: nil)
         }
-        
+
         // Resources read handler (returns error for now)
-        await server.withMethodHandler(ReadResource.self) { params in
+        await self.server.withMethodHandler(ReadResource.self) { params in
             throw MCP.MCPError.invalidParams("Resource '\(params.uri)' not found")
         }
-        
+
         // Initialize handler
-        await server.withMethodHandler(Initialize.self) { [weak self] request in
-            guard let self = self else {
+        await self.server.withMethodHandler(Initialize.self) { [weak self] request in
+            guard let self else {
                 throw MCP.MCPError.methodNotFound("Server deallocated")
             }
-            
-            self.logger.info("Client connected: \(request.clientInfo.name) \(request.clientInfo.version), protocol: \(request.protocolVersion)")
-            
+
+            self.logger
+                .info(
+                    "Client connected: \(request.clientInfo.name) \(request.clientInfo.version), protocol: \(request.protocolVersion)")
+
             // Create a response struct that matches Initialize.Result
             struct InitializeResult: Codable {
                 let protocolVersion: String
@@ -100,33 +99,31 @@ public actor PeekabooMCPServer {
                 let serverInfo: Server.Info
                 let instructions: String?
             }
-            
-            let result = InitializeResult(
+
+            let result = await InitializeResult(
                 protocolVersion: "2024-11-05",
-                capabilities: await self.server.capabilities,
+                capabilities: self.server.capabilities,
                 serverInfo: Server.Info(
                     name: self.serverName,
-                    version: self.serverVersion
-                ),
-                instructions: nil
-            )
-            
+                    version: self.serverVersion),
+                instructions: nil)
+
             // Convert to Initialize.Result via JSON
             let data = try JSONEncoder().encode(result)
             return try JSONDecoder().decode(Initialize.Result.self, from: data)
         }
     }
-    
+
     private func registerAllTools() async {
         // Register all Peekaboo tools
-        await toolRegistry.register([
+        await self.toolRegistry.register([
             // Core tools
             ImageTool(),
             AnalyzeTool(),
             ListTool(),
             PermissionsTool(),
             SleepTool(),
-            
+
             // UI automation tools
             SeeTool(),
             ClickTool(),
@@ -136,49 +133,49 @@ public actor PeekabooMCPServer {
             SwipeTool(),
             DragTool(),
             MoveTool(),
-            
+
             // App management tools
             AppTool(),
             WindowTool(),
             MenuTool(),
-            
+
             // System tools
             // RunTool(), // Removed: Security risk - allows arbitrary script execution
             // CleanTool(), // Removed: Internal maintenance tool, not for external use
-            
+
             // Advanced tools
             AgentTool(),
             DockTool(),
             DialogTool(),
             SpaceTool(),
         ])
-        
+
         let toolCount = await self.toolRegistry.allTools().count
-        logger.info("Registered \(toolCount) tools")
+        self.logger.info("Registered \(toolCount) tools")
     }
-    
+
     public func serve(transport: TransportType, port: Int = 8080) async throws {
-        logger.info("Starting Peekaboo MCP server on \(transport) transport, version: \(self.serverVersion)")
-        
+        self.logger.info("Starting Peekaboo MCP server on \(transport) transport, version: \(self.serverVersion)")
+
         let serverTransport: any Transport
-        
+
         switch transport {
         case .stdio:
             serverTransport = StdioTransport()
-            
+
         case .http:
             // Note: HTTP transport would need custom implementation
             // as the SDK only provides HTTPClientTransport
             throw MCPError.notImplemented("HTTP server transport not yet implemented")
-            
+
         case .sse:
             throw MCPError.notImplemented("SSE server transport not yet implemented")
         }
-        
-        try await server.start(transport: serverTransport)
-        
+
+        try await self.server.start(transport: serverTransport)
+
         // Keep the server running
-        await server.waitUntilCompleted()
+        await self.server.waitUntilCompleted()
     }
 }
 
@@ -189,17 +186,17 @@ public enum MCPError: LocalizedError {
     case toolNotFound(String)
     case invalidArguments(String)
     case executionFailed(String)
-    
+
     public var errorDescription: String? {
         switch self {
-        case .notImplemented(let feature):
-            return "\(feature) is not yet implemented"
-        case .toolNotFound(let tool):
-            return "Tool '\(tool)' not found"
-        case .invalidArguments(let details):
-            return "Invalid arguments: \(details)"
-        case .executionFailed(let message):
-            return "Execution failed: \(message)"
+        case let .notImplemented(feature):
+            "\(feature) is not yet implemented"
+        case let .toolNotFound(tool):
+            "Tool '\(tool)' not found"
+        case let .invalidArguments(details):
+            "Invalid arguments: \(details)"
+        case let .executionFailed(message):
+            "Execution failed: \(message)"
         }
     }
 }

@@ -107,7 +107,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 sessionId: sessionId ?? UUID().uuidString)
         }
     }
-    
+
     /// Execute a task with audio content
     public func executeTaskWithAudio(
         audioContent: AudioContent,
@@ -187,7 +187,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             // For now, convert audio to text if transcript is available
             // In the future, we'll pass audio directly to providers that support it
             let input = audioContent.transcript ?? "[Audio message without transcript]"
-            
+
             // Execute without streaming
             return try await AgentRunner.run(
                 agent: agent,
@@ -213,7 +213,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     {
         // Create model using Tachikoma's ModelProvider
         let model = try await ModelProvider.shared.getModel(modelName: modelName)
-        
+
         let agent = PeekabooAgent<PeekabooServices>(
             model: model,
             sessionId: UUID().uuidString,
@@ -495,8 +495,7 @@ extension PeekabooAgentService {
                 title: "Session \(session.id)",
                 createdAt: session.createdAt,
                 lastModified: session.lastUpdated,
-                messageCount: session.messages.count
-            )
+                messageCount: session.messages.count)
         }
     }
 

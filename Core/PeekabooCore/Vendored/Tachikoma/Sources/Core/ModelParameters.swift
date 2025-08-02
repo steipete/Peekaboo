@@ -36,7 +36,8 @@ public struct ModelParameters: Codable, Sendable {
             } else {
                 throw DecodingError.dataCorruptedError(
                     in: container,
-                    debugDescription: "Unable to decode ModelParameters.Value")
+                    debugDescription: "Unable to decode ModelParameters.Value"
+                )
             }
         }
 
@@ -92,7 +93,7 @@ public struct ModelParameters: Codable, Sendable {
                 convertedStorage[key] = converted
             }
         }
-        self.storage = convertedStorage
+        storage = convertedStorage
     }
 
     /// Convert any value to our Value enum
@@ -124,7 +125,7 @@ public struct ModelParameters: Codable, Sendable {
 
     // MARK: - Access Methods
 
-    public subscript(key: String) -> Value? { self.storage[key] }
+    public subscript(key: String) -> Value? { storage[key] }
 
     public func string(_ key: String) -> String? {
         guard case let .string(value) = storage[key] else { return nil }
@@ -148,59 +149,59 @@ public struct ModelParameters: Codable, Sendable {
 
     /// Get the raw dictionary for JSON serialization
     public var rawDictionary: [String: Any] {
-        self.storage.mapValues { $0.rawValue }
+        storage.mapValues { $0.rawValue }
     }
 
     /// Check if empty
     public var isEmpty: Bool {
-        self.storage.isEmpty
+        storage.isEmpty
     }
 
     // MARK: - Mutating Methods
-    
+
     /// Set a parameter value
     public mutating func set(_ key: String, value: Any) {
         if let converted = Self.convertToValue(value) {
-            var newStorage = self.storage
+            var newStorage = storage
             newStorage[key] = converted
             self = ModelParameters(newStorage)
         }
     }
-    
+
     /// Get a parameter value
     public func get(_ key: String) -> Any? {
-        return self.storage[key]?.rawValue
+        return storage[key]?.rawValue
     }
 
     // MARK: - Builder Methods
 
     public func with(_ key: String, value: String) -> ModelParameters {
-        var newStorage = self.storage
+        var newStorage = storage
         newStorage[key] = .string(value)
         return ModelParameters(newStorage)
     }
 
     public func with(_ key: String, value: Int) -> ModelParameters {
-        var newStorage = self.storage
+        var newStorage = storage
         newStorage[key] = .int(value)
         return ModelParameters(newStorage)
     }
 
     public func with(_ key: String, value: Double) -> ModelParameters {
-        var newStorage = self.storage
+        var newStorage = storage
         newStorage[key] = .double(value)
         return ModelParameters(newStorage)
     }
 
     public func with(_ key: String, value: Bool) -> ModelParameters {
-        var newStorage = self.storage
+        var newStorage = storage
         newStorage[key] = .bool(value)
         return ModelParameters(newStorage)
     }
 
     public func with(_ key: String, value: [String: Any]) -> ModelParameters {
         guard let converted = Self.convertToValue(value) else { return self }
-        var newStorage = self.storage
+        var newStorage = storage
         newStorage[key] = converted
         return ModelParameters(newStorage)
     }
@@ -209,24 +210,24 @@ public struct ModelParameters: Codable, Sendable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
-        self.storage = try container.decode([String: Value].self)
+        storage = try container.decode([String: Value].self)
     }
 
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
-        try container.encode(self.storage)
+        try container.encode(storage)
     }
 }
 
 // MARK: - Convenience Builders
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
-extension ModelParameters {
+public extension ModelParameters {
     /// Create parameters for OpenAI o3/o4 models
-    public static func o3Parameters(
+    static func o3Parameters(
         reasoningEffort: String = "medium",
-        maxCompletionTokens: Int = 32768) -> ModelParameters
-    {
+        maxCompletionTokens: Int = 32768
+    ) -> ModelParameters {
         ModelParameters()
             .with("reasoning_effort", value: reasoningEffort)
             .with("max_completion_tokens", value: maxCompletionTokens)
@@ -234,7 +235,7 @@ extension ModelParameters {
     }
 
     /// Create parameters with API type
-    public static func withAPIType(_ apiType: String) -> ModelParameters {
+    static func withAPIType(_ apiType: String) -> ModelParameters {
         ModelParameters().with("apiType", value: apiType)
     }
 }

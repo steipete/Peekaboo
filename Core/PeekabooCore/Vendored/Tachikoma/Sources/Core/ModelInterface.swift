@@ -41,8 +41,8 @@ public struct ModelRequest: Codable, Sendable {
         messages: [Message],
         tools: [ToolDefinition]? = nil,
         settings: ModelSettings,
-        systemInstructions: String? = nil)
-    {
+        systemInstructions: String? = nil
+    ) {
         self.messages = messages
         self.tools = tools
         self.settings = settings
@@ -80,8 +80,8 @@ public struct ModelResponse: Codable, Sendable {
         usage: Usage? = nil,
         flagged: Bool = false,
         flaggedCategories: [String]? = nil,
-        finishReason: FinishReason? = nil)
-    {
+        finishReason: FinishReason? = nil
+    ) {
         self.id = id
         self.model = model
         self.content = content
@@ -148,8 +148,8 @@ public struct ModelSettings: Codable, Sendable {
         responseFormat: ResponseFormat? = nil,
         seed: Int? = nil,
         user: String? = nil,
-        additionalParameters: ModelParameters? = nil)
-    {
+        additionalParameters: ModelParameters? = nil
+    ) {
         self.modelName = modelName
         self.temperature = temperature
         self.topP = topP
@@ -169,9 +169,9 @@ public struct ModelSettings: Codable, Sendable {
     public static var `default`: ModelSettings {
         ModelSettings(modelName: "claude-opus-4-20250514")
     }
-    
+
     // MARK: - Convenience Constructors
-    
+
     /// Create settings with just specified parameters, using Claude Opus 4 as default model
     public init(
         temperature: Double? = nil,
@@ -185,8 +185,8 @@ public struct ModelSettings: Codable, Sendable {
         responseFormat: ResponseFormat? = nil,
         seed: Int? = nil,
         user: String? = nil,
-        additionalParameters: ModelParameters? = nil)
-    {
+        additionalParameters: ModelParameters? = nil
+    ) {
         self.init(
             modelName: "claude-opus-4-20250514",
             temperature: temperature,
@@ -203,26 +203,26 @@ public struct ModelSettings: Codable, Sendable {
             additionalParameters: additionalParameters
         )
     }
-    
+
     /// Convenience constructors for specific API types and reasoning parameters
     public init(
         apiType: String,
-        modelName: String = "claude-opus-4-20250514")
-    {
+        modelName: String = "claude-opus-4-20250514"
+    ) {
         let params = ModelParameters([
-            "apiType": ModelParameters.Value.string(apiType)
+            "apiType": ModelParameters.Value.string(apiType),
         ])
         self.init(modelName: modelName, additionalParameters: params)
     }
-    
+
     public init(
         reasoningEffort: String,
         reasoning: [String: String]? = nil,
         temperature: Double? = nil,
-        modelName: String = "o3")
-    {
+        modelName: String = "o3"
+    ) {
         var params: [String: ModelParameters.Value] = [
-            "reasoningEffort": ModelParameters.Value.string(reasoningEffort)
+            "reasoningEffort": ModelParameters.Value.string(reasoningEffort),
         ]
         if let reasoning = reasoning {
             let reasoningValue = reasoning.mapValues { ModelParameters.Value.string($0) }
@@ -247,41 +247,41 @@ public struct ModelSettings: Codable, Sendable {
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        self.modelName = try container.decode(String.self, forKey: .modelName)
-        self.temperature = try container.decodeIfPresent(Double.self, forKey: .temperature)
-        self.topP = try container.decodeIfPresent(Double.self, forKey: .topP)
-        self.maxTokens = try container.decodeIfPresent(Int.self, forKey: .maxTokens)
-        self.frequencyPenalty = try container.decodeIfPresent(Double.self, forKey: .frequencyPenalty)
-        self.presencePenalty = try container.decodeIfPresent(Double.self, forKey: .presencePenalty)
-        self.stopSequences = try container.decodeIfPresent([String].self, forKey: .stopSequences)
-        self.toolChoice = try container.decodeIfPresent(ToolChoice.self, forKey: .toolChoice)
-        self.parallelToolCalls = try container.decodeIfPresent(Bool.self, forKey: .parallelToolCalls)
-        self.responseFormat = try container.decodeIfPresent(ResponseFormat.self, forKey: .responseFormat)
-        self.seed = try container.decodeIfPresent(Int.self, forKey: .seed)
-        self.user = try container.decodeIfPresent(String.self, forKey: .user)
+        modelName = try container.decode(String.self, forKey: .modelName)
+        temperature = try container.decodeIfPresent(Double.self, forKey: .temperature)
+        topP = try container.decodeIfPresent(Double.self, forKey: .topP)
+        maxTokens = try container.decodeIfPresent(Int.self, forKey: .maxTokens)
+        frequencyPenalty = try container.decodeIfPresent(Double.self, forKey: .frequencyPenalty)
+        presencePenalty = try container.decodeIfPresent(Double.self, forKey: .presencePenalty)
+        stopSequences = try container.decodeIfPresent([String].self, forKey: .stopSequences)
+        toolChoice = try container.decodeIfPresent(ToolChoice.self, forKey: .toolChoice)
+        parallelToolCalls = try container.decodeIfPresent(Bool.self, forKey: .parallelToolCalls)
+        responseFormat = try container.decodeIfPresent(ResponseFormat.self, forKey: .responseFormat)
+        seed = try container.decodeIfPresent(Int.self, forKey: .seed)
+        user = try container.decodeIfPresent(String.self, forKey: .user)
 
         // Decode additional parameters
-        self.additionalParameters = try container.decodeIfPresent(ModelParameters.self, forKey: .additionalParameters)
+        additionalParameters = try container.decodeIfPresent(ModelParameters.self, forKey: .additionalParameters)
     }
 
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
-        try container.encode(self.modelName, forKey: .modelName)
-        try container.encodeIfPresent(self.temperature, forKey: .temperature)
-        try container.encodeIfPresent(self.topP, forKey: .topP)
-        try container.encodeIfPresent(self.maxTokens, forKey: .maxTokens)
-        try container.encodeIfPresent(self.frequencyPenalty, forKey: .frequencyPenalty)
-        try container.encodeIfPresent(self.presencePenalty, forKey: .presencePenalty)
-        try container.encodeIfPresent(self.stopSequences, forKey: .stopSequences)
-        try container.encodeIfPresent(self.toolChoice, forKey: .toolChoice)
-        try container.encodeIfPresent(self.parallelToolCalls, forKey: .parallelToolCalls)
-        try container.encodeIfPresent(self.responseFormat, forKey: .responseFormat)
-        try container.encodeIfPresent(self.seed, forKey: .seed)
-        try container.encodeIfPresent(self.user, forKey: .user)
+        try container.encode(modelName, forKey: .modelName)
+        try container.encodeIfPresent(temperature, forKey: .temperature)
+        try container.encodeIfPresent(topP, forKey: .topP)
+        try container.encodeIfPresent(maxTokens, forKey: .maxTokens)
+        try container.encodeIfPresent(frequencyPenalty, forKey: .frequencyPenalty)
+        try container.encodeIfPresent(presencePenalty, forKey: .presencePenalty)
+        try container.encodeIfPresent(stopSequences, forKey: .stopSequences)
+        try container.encodeIfPresent(toolChoice, forKey: .toolChoice)
+        try container.encodeIfPresent(parallelToolCalls, forKey: .parallelToolCalls)
+        try container.encodeIfPresent(responseFormat, forKey: .responseFormat)
+        try container.encodeIfPresent(seed, forKey: .seed)
+        try container.encodeIfPresent(user, forKey: .user)
 
         // Encode additional parameters
-        try container.encodeIfPresent(self.additionalParameters, forKey: .additionalParameters)
+        try container.encodeIfPresent(additionalParameters, forKey: .additionalParameters)
     }
 }
 
@@ -381,21 +381,21 @@ public struct JSONSchema: Codable, Sendable {
     public init(name: String, strict: Bool = true, schema: [String: Any]) throws {
         self.name = name
         self.strict = strict
-        self.schemaData = try JSONSerialization.data(withJSONObject: schema)
+        schemaData = try JSONSerialization.data(withJSONObject: schema)
     }
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.name = try container.decode(String.self, forKey: .name)
-        self.strict = try container.decode(Bool.self, forKey: .strict)
-        self.schemaData = try container.decode(Data.self, forKey: .schema)
+        name = try container.decode(String.self, forKey: .name)
+        strict = try container.decode(Bool.self, forKey: .strict)
+        schemaData = try container.decode(Data.self, forKey: .schema)
     }
 
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.name, forKey: .name)
-        try container.encode(self.strict, forKey: .strict)
-        try container.encode(self.schemaData, forKey: .schema)
+        try container.encode(name, forKey: .name)
+        try container.encode(strict, forKey: .strict)
+        try container.encode(schemaData, forKey: .schema)
     }
 
     /// Get the schema as a dictionary
@@ -421,4 +421,5 @@ public protocol ModelProviderProtocol {
 // MARK: - Model Errors
 
 // MARK: - Note
+
 // ModelError is defined in TachikomaError.swift to avoid duplication

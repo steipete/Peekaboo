@@ -13,7 +13,7 @@ public struct ShellToolDefinitions {
         discussion: """
             Executes a shell command using bash and captures the output.
             Commands run with a configurable timeout and safety checks.
-            
+
             EXAMPLES:
               peekaboo shell "ls -la"
               peekaboo shell "git status" --working-directory ~/Projects
@@ -28,8 +28,7 @@ public struct ShellToolDefinitions {
                 required: true,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .argument)
-            ),
+                cliOptions: CLIOptions(argumentType: .argument)),
             ParameterDefinition(
                 name: "working-directory",
                 type: .string,
@@ -37,8 +36,7 @@ public struct ShellToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option, longName: "working-directory")
-            ),
+                cliOptions: CLIOptions(argumentType: .option, longName: "working-directory")),
             ParameterDefinition(
                 name: "timeout",
                 type: .integer,
@@ -46,13 +44,12 @@ public struct ShellToolDefinitions {
                 required: false,
                 defaultValue: "30",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            )
+                cliOptions: CLIOptions(argumentType: .option)),
         ],
         examples: [
             #"{"command": "ls -la"}"#,
             #"{"command": "git status", "working_directory": "~/Projects"}"#,
-            #"{"command": "python3 script.py", "timeout": 60}"#
+            #"{"command": "python3 script.py", "timeout": 60}"#,
         ],
         agentGuidance: """
             AGENT TIPS:
@@ -63,8 +60,7 @@ public struct ShellToolDefinitions {
             - Shows exit code and execution time
             - Working directory defaults to current directory
             - Use quotes for complex commands with pipes
-        """
-    )
+        """)
 }
 
 // MARK: - Shell Tools
@@ -75,13 +71,14 @@ extension PeekabooAgentService {
     /// Create the shell tool
     func createShellTool() -> Tool<PeekabooServices> {
         let definition = ShellToolDefinitions.shell
-        
+
         return createTool(
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, _ in
-                guard let command = params.string("command") else { throw PeekabooError.invalidInput("Command is required") }
+                guard let command = params.string("command")
+                else { throw PeekabooError.invalidInput("Command is required") }
                 let workingDirectory = params.string("working_directory", default: nil)
                 let timeout = params.int("timeout", default: 30) ?? 30
 

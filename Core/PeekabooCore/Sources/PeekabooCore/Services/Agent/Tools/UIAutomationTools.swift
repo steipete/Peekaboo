@@ -40,7 +40,7 @@ public struct UIAutomationToolDefinitions {
               - Role descriptions
 
               Use --id for precise element targeting from 'see' output.
-              
+
             TROUBLESHOOTING:
               If elements aren't found:
               - Run 'peekaboo see' first to capture the UI
@@ -57,8 +57,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .argument)
-            ),
+                cliOptions: CLIOptions(argumentType: .argument)),
             ParameterDefinition(
                 name: "session",
                 type: .string,
@@ -66,8 +65,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "on",
                 type: .string,
@@ -75,8 +73,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "id",
                 type: .string,
@@ -84,8 +81,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "app",
                 type: .string,
@@ -93,8 +89,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "coords",
                 type: .string,
@@ -102,8 +97,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "wait-for",
                 type: .integer,
@@ -111,8 +105,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "5000",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "double",
                 type: .boolean,
@@ -120,8 +113,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "false",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .flag)
-            ),
+                cliOptions: CLIOptions(argumentType: .flag)),
             ParameterDefinition(
                 name: "right",
                 type: .boolean,
@@ -129,8 +121,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "false",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .flag)
-            ),
+                cliOptions: CLIOptions(argumentType: .flag)),
             ParameterDefinition(
                 name: "button",
                 type: .enumeration,
@@ -138,8 +129,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "left",
                 options: ["left", "right", "middle"],
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "modifier_keys",
                 type: .array,
@@ -147,13 +137,12 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: ["cmd", "shift", "option", "control"],
-                cliOptions: CLIOptions(argumentType: .option)
-            )
+                cliOptions: CLIOptions(argumentType: .option)),
         ],
         examples: [
             #"{"x": 100, "y": 200}"#,
             #"{"description": "Submit button"}"#,
-            #"{"x": 50, "y": 50, "button": "right"}"#
+            #"{"x": 50, "y": 50, "button": "right"}"#,
         ],
         agentGuidance: """
             AGENT TIPS:
@@ -162,9 +151,8 @@ public struct UIAutomationToolDefinitions {
             - Menu bar items may need coordinate clicks
             - Wait for elements that load dynamically
             - Check element IDs from 'see' output for precision
-        """
-    )
-    
+        """)
+
     public static let type = UnifiedToolDefinition(
         name: "type",
         commandName: nil,
@@ -198,8 +186,7 @@ public struct UIAutomationToolDefinitions {
                 required: true,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .argument)
-            ),
+                cliOptions: CLIOptions(argumentType: .argument)),
             ParameterDefinition(
                 name: "delay",
                 type: .integer,
@@ -207,8 +194,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "50",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "press-return",
                 type: .boolean,
@@ -216,8 +202,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "false",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .flag)
-            ),
+                cliOptions: CLIOptions(argumentType: .flag)),
             ParameterDefinition(
                 name: "clear",
                 type: .boolean,
@@ -225,15 +210,13 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "false",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .flag)
-            )
+                cliOptions: CLIOptions(argumentType: .flag)),
         ],
         examples: [
             #"{"text": "Hello, World!"}"#,
-            #"{"text": "username@example.com", "press_return": true}"#
-        ]
-    )
-    
+            #"{"text": "username@example.com", "press_return": true}"#,
+        ])
+
     public static let scroll = UnifiedToolDefinition(
         name: "scroll",
         commandName: nil,
@@ -256,8 +239,7 @@ public struct UIAutomationToolDefinitions {
                 required: true,
                 defaultValue: nil,
                 options: ["up", "down", "left", "right"],
-                cliOptions: CLIOptions(argumentType: .argument)
-            ),
+                cliOptions: CLIOptions(argumentType: .argument)),
             ParameterDefinition(
                 name: "amount",
                 type: .integer,
@@ -265,8 +247,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "5",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "smooth",
                 type: .boolean,
@@ -274,8 +255,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "false",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .flag)
-            ),
+                cliOptions: CLIOptions(argumentType: .flag)),
             ParameterDefinition(
                 name: "on",
                 type: .string,
@@ -283,15 +263,13 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            )
+                cliOptions: CLIOptions(argumentType: .option)),
         ],
         examples: [
             #"{"direction": "down", "amount": 10}"#,
-            #"{"direction": "up", "x": 500, "y": 300}"#
-        ]
-    )
-    
+            #"{"direction": "up", "x": 500, "y": 300}"#,
+        ])
+
     public static let press = UnifiedToolDefinition(
         name: "press",
         commandName: nil,
@@ -327,8 +305,7 @@ public struct UIAutomationToolDefinitions {
                 required: true,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .argument)
-            ),
+                cliOptions: CLIOptions(argumentType: .argument)),
             ParameterDefinition(
                 name: "count",
                 type: .integer,
@@ -336,8 +313,7 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "1",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "delay",
                 type: .integer,
@@ -345,16 +321,14 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "100",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            )
+                cliOptions: CLIOptions(argumentType: .option)),
         ],
         examples: [
             #"{"keys": ["return"]}"#,
             #"{"keys": ["tab", "tab", "return"]}"#,
-            #"{"keys": ["escape"]}"#
-        ]
-    )
-    
+            #"{"keys": ["escape"]}"#,
+        ])
+
     public static let hotkey = UnifiedToolDefinition(
         name: "hotkey",
         commandName: nil,
@@ -377,8 +351,7 @@ public struct UIAutomationToolDefinitions {
                 required: true,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .argument)
-            ),
+                cliOptions: CLIOptions(argumentType: .argument)),
             ParameterDefinition(
                 name: "repeat",
                 type: .integer,
@@ -386,15 +359,13 @@ public struct UIAutomationToolDefinitions {
                 required: false,
                 defaultValue: "1",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            )
+                cliOptions: CLIOptions(argumentType: .option)),
         ],
         examples: [
             #"{"keys": ["cmd", "c"]}"#,
             #"{"keys": ["cmd", "shift", "t"]}"#,
-            #"{"keys": ["cmd", "w"], "repeat": 3}"#
-        ]
-    )
+            #"{"keys": ["cmd", "w"], "repeat": 3}"#,
+        ])
 }
 
 /// UI automation tools for clicking, typing, and interacting with elements
@@ -403,7 +374,7 @@ extension PeekabooAgentService {
     /// Create the click tool
     func createClickTool() -> Tool<PeekabooServices> {
         let definition = UIAutomationToolDefinitions.click
-        
+
         // Custom parameter mapping for agent tool
         let parameters = ToolParameters.object(
             properties: [
@@ -417,7 +388,7 @@ extension PeekabooAgentService {
                     description: "Whether to right-click (default: false)"),
             ],
             required: ["target"])
-        
+
         return createTool(
             name: definition.name,
             description: definition.agentDescription,
@@ -431,8 +402,8 @@ extension PeekabooAgentService {
                 let startTime = Date()
 
                 // Check if target is coordinates (e.g., "100,200")
-                if target?.contains(",") ?? false,
-                   let coordParts = target?.split(separator: ",").map(String.init).map(Double.init) as? [Double],
+                if target.contains(","),
+                   let coordParts = target.split(separator: ",").map(String.init).map(Double.init) as? [Double],
                    coordParts.count == 2
                 {
                     let coordinates = CGPoint(x: coordParts[0], y: coordParts[1])
@@ -475,7 +446,7 @@ extension PeekabooAgentService {
 
     /// Create the type tool
     func createTypeTool() -> Tool<PeekabooServices> {
-        return createTool(
+        createTool(
             name: "type",
             description: "Type text at the current cursor position or into a specific field. Supports escape sequences: \\n (newline), \\t (tab), \\b (backspace), \\e (escape), \\\\ (literal backslash)",
             parameters: ToolParameters.object(
@@ -491,9 +462,7 @@ extension PeekabooAgentService {
                 ],
                 required: ["text"]),
             execute: { params, context in
-                guard let text = params.string("text") else {
-                    throw PeekabooError.invalidInput("Text is required")
-                }
+                let text = try params.string("text")
                 let fieldLabel = params.string("field", default: nil)
                 let appName = params.string("app", default: nil)
                 let clearFirst = params.bool("clear_first", default: false)
@@ -550,7 +519,7 @@ extension PeekabooAgentService {
 
     /// Create the scroll tool
     func createScrollTool() -> Tool<PeekabooServices> {
-        return createTool(
+        createTool(
             name: "scroll",
             description: "Scroll in a window or element",
             parameters: ToolParameters.object(
@@ -611,7 +580,7 @@ extension PeekabooAgentService {
 
     /// Create the press tool
     func createPressTool() -> Tool<PeekabooServices> {
-        return createTool(
+        createTool(
             name: "press",
             description: "Press individual keys like Enter, Tab, Escape, arrow keys, etc. Use this instead of type when you just need to press special keys.",
             parameters: ToolParameters.object(
@@ -632,7 +601,7 @@ extension PeekabooAgentService {
                 let normalizedKey = keyStr?.lowercased() ?? ""
                     .replacingOccurrences(of: "_", with: "")
                     .replacingOccurrences(of: "-", with: "")
-                
+
                 let mappedKey: String = switch normalizedKey {
                 case "return", "enter": "return"
                 case "forwarddelete", "fndelete": "forward_delete"
@@ -647,9 +616,11 @@ extension PeekabooAgentService {
                 case "capslock": "caps_lock"
                 default: normalizedKey
                 }
-                
+
                 guard let specialKey = SpecialKey(rawValue: mappedKey) else {
-                    throw PeekabooError.invalidInput("Unknown key: '\(keyStr)'. Available keys: return, enter, tab, escape, delete, forward_delete, space, up, down, left, right, home, end, pageup, pagedown, f1-f12, caps_lock, clear, help")
+                    throw PeekabooError
+                        .invalidInput(
+                            "Unknown key: '\(keyStr)'. Available keys: return, enter, tab, escape, delete, forward_delete, space, up, down, left, right, home, end, pageup, pagedown, f1-f12, caps_lock, clear, help")
                 }
 
                 // Build type actions for the key presses
@@ -682,7 +653,7 @@ extension PeekabooAgentService {
 
     /// Create the hotkey tool
     func createHotkeyTool() -> Tool<PeekabooServices> {
-        return createTool(
+        createTool(
             name: "hotkey",
             description: "Press a keyboard shortcut or key combination",
             parameters: ToolParameters.object(

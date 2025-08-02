@@ -3,13 +3,13 @@ import Foundation
 // MARK: - Streaming Event Types
 
 /// Base protocol for all streaming events
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public protocol StreamingEvent: Codable, Sendable {
     var type: StreamEventType { get }
 }
 
 /// Types of streaming events
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum StreamEventType: String, Codable, Sendable {
     case textDelta = "text_delta"
     case responseStarted = "response_started"
@@ -24,7 +24,7 @@ public enum StreamEventType: String, Codable, Sendable {
 }
 
 /// Main streaming event enum that encompasses all event types
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum StreamEvent: Codable, Sendable {
     case textDelta(StreamTextDelta)
     case responseStarted(StreamResponseStarted)
@@ -121,7 +121,7 @@ public enum StreamEvent: Codable, Sendable {
 // MARK: - Concrete Streaming Event Types
 
 /// Text delta event containing incremental text output
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct StreamTextDelta: StreamingEvent, Codable, Sendable {
     public var type = StreamEventType.textDelta
     public let delta: String
@@ -134,7 +134,7 @@ public struct StreamTextDelta: StreamingEvent, Codable, Sendable {
 }
 
 /// Response started event
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct StreamResponseStarted: StreamingEvent, Codable, Sendable {
     public var type = StreamEventType.responseStarted
     public let id: String
@@ -149,7 +149,7 @@ public struct StreamResponseStarted: StreamingEvent, Codable, Sendable {
 }
 
 /// Response completed event with final metadata
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct StreamResponseCompleted: StreamingEvent, Codable, Sendable {
     public var type = StreamEventType.responseCompleted
     public let id: String
@@ -164,7 +164,7 @@ public struct StreamResponseCompleted: StreamingEvent, Codable, Sendable {
 }
 
 /// Tool call delta event for incremental tool call information
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct StreamToolCallDelta: StreamingEvent, Codable, Sendable {
     public var type = StreamEventType.toolCallDelta
     public let id: String
@@ -179,7 +179,7 @@ public struct StreamToolCallDelta: StreamingEvent, Codable, Sendable {
 }
 
 /// Tool call completed event
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct StreamToolCallCompleted: StreamingEvent, Codable, Sendable {
     public var type = StreamEventType.toolCallCompleted
     public let id: String
@@ -192,7 +192,7 @@ public struct StreamToolCallCompleted: StreamingEvent, Codable, Sendable {
 }
 
 /// Function call arguments delta event for incremental function call argument information
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct StreamFunctionCallArgumentsDelta: StreamingEvent, Codable, Sendable {
     public var type = StreamEventType.functionCallArgumentsDelta
     public let id: String
@@ -205,7 +205,7 @@ public struct StreamFunctionCallArgumentsDelta: StreamingEvent, Codable, Sendabl
 }
 
 /// Error event for stream errors
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct StreamError: StreamingEvent, Codable, Sendable {
     public var type = StreamEventType.error
     public let error: ErrorDetail
@@ -216,7 +216,7 @@ public struct StreamError: StreamingEvent, Codable, Sendable {
 }
 
 /// Unknown event for forward compatibility
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct StreamUnknown: StreamingEvent, Codable, Sendable {
     public var type = StreamEventType.unknown
     public let eventType: String
@@ -246,7 +246,7 @@ public struct StreamUnknown: StreamingEvent, Codable, Sendable {
 }
 
 /// Reasoning summary delta event for o3 models
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct StreamReasoningSummaryDelta: StreamingEvent, Codable, Sendable {
     public var type = StreamEventType.reasoningSummaryDelta
     public let delta: String
@@ -259,7 +259,7 @@ public struct StreamReasoningSummaryDelta: StreamingEvent, Codable, Sendable {
 }
 
 /// Reasoning summary completed event for o3 models
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct StreamReasoningSummaryCompleted: StreamingEvent, Codable, Sendable {
     public var type = StreamEventType.reasoningSummaryCompleted
     public let summary: String
@@ -274,7 +274,7 @@ public struct StreamReasoningSummaryCompleted: StreamingEvent, Codable, Sendable
 // MARK: - Supporting Types
 
 /// Function call delta for incremental function information
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct FunctionCallDelta: Codable, Sendable {
     public let name: String?
     public let arguments: String?
@@ -286,7 +286,7 @@ public struct FunctionCallDelta: Codable, Sendable {
 }
 
 /// Token usage information
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct Usage: Codable, Sendable {
     public let promptTokens: Int
     public let completionTokens: Int
@@ -310,7 +310,7 @@ public struct Usage: Codable, Sendable {
 }
 
 /// Detailed token usage breakdown
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct TokenDetails: Codable, Sendable {
     public let cachedTokens: Int?
     public let audioTokens: Int?
@@ -324,7 +324,7 @@ public struct TokenDetails: Codable, Sendable {
 }
 
 /// Reason why the response finished
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum FinishReason: String, Codable, Sendable {
     case stop
     case length
@@ -334,7 +334,7 @@ public enum FinishReason: String, Codable, Sendable {
 }
 
 /// Error detail information
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct ErrorDetail: Codable, Sendable {
     public let message: String
     public let type: String?
@@ -351,7 +351,7 @@ public struct ErrorDetail: Codable, Sendable {
 
 // MARK: - Stream Event Extensions
 
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 extension StreamEvent {
     /// Check if this is a final event
     public var isFinal: Bool {

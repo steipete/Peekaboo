@@ -5,9 +5,9 @@ import os.log
 /// MCP tool for manipulating application windows
 public struct WindowTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "WindowTool")
-    
+
     public let name = "window"
-    
+
     public var description: String {
         """
         Manipulate application windows - close, minimize, maximize, move, resize, and focus.
@@ -31,48 +31,39 @@ public struct WindowTool: MCPTool {
         Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest
         """
     }
-    
+
     public var inputSchema: Value {
         SchemaBuilder.object(
             properties: [
                 "action": SchemaBuilder.string(
                     description: "The action to perform on the window",
-                    enum: ["close", "minimize", "maximize", "move", "resize", "set-bounds", "focus"]
-                ),
+                    enum: ["close", "minimize", "maximize", "move", "resize", "set-bounds", "focus"]),
                 "app": SchemaBuilder.string(
-                    description: "Target application name, bundle ID, or process ID"
-                ),
+                    description: "Target application name, bundle ID, or process ID"),
                 "title": SchemaBuilder.string(
-                    description: "Window title to target (partial matching supported)"
-                ),
+                    description: "Window title to target (partial matching supported)"),
                 "index": SchemaBuilder.number(
-                    description: "Window index (0-based) for multi-window applications"
-                ),
+                    description: "Window index (0-based) for multi-window applications"),
                 "x": SchemaBuilder.number(
-                    description: "X coordinate for move or set-bounds action"
-                ),
+                    description: "X coordinate for move or set-bounds action"),
                 "y": SchemaBuilder.number(
-                    description: "Y coordinate for move or set-bounds action"
-                ),
+                    description: "Y coordinate for move or set-bounds action"),
                 "width": SchemaBuilder.number(
-                    description: "Width for resize or set-bounds action"
-                ),
+                    description: "Width for resize or set-bounds action"),
                 "height": SchemaBuilder.number(
-                    description: "Height for resize or set-bounds action"
-                )
+                    description: "Height for resize or set-bounds action"),
             ],
-            required: ["action"]
-        )
+            required: ["action"])
     }
-    
+
     public init() {}
-    
+
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
         guard let action = arguments.getString("action") else {
             return ToolResponse.error("Missing required parameter: action")
         }
-        
+
         let app = arguments.getString("app")
         let title = arguments.getString("title")
         let index = arguments.getInt("index")
@@ -80,73 +71,68 @@ public struct WindowTool: MCPTool {
         let y = arguments.getNumber("y")
         let width = arguments.getNumber("width")
         let height = arguments.getNumber("height")
-        
+
         let windowService = PeekabooServices.shared.windows
-        
+
         do {
             let startTime = Date()
-            
+
             switch action {
             case "close":
-                return try await handleClose(
+                return try await self.handleClose(
                     service: windowService,
                     app: app,
                     title: title,
                     index: index,
-                    startTime: startTime
-                )
-                
+                    startTime: startTime)
+
             case "minimize":
-                return try await handleMinimize(
+                return try await self.handleMinimize(
                     service: windowService,
                     app: app,
                     title: title,
                     index: index,
-                    startTime: startTime
-                )
-                
+                    startTime: startTime)
+
             case "maximize":
-                return try await handleMaximize(
+                return try await self.handleMaximize(
                     service: windowService,
                     app: app,
                     title: title,
                     index: index,
-                    startTime: startTime
-                )
-                
+                    startTime: startTime)
+
             case "move":
-                guard let x = x, let y = y else {
+                guard let x, let y else {
                     return ToolResponse.error("Move action requires both 'x' and 'y' coordinates")
                 }
-                return try await handleMove(
+                return try await self.handleMove(
                     service: windowService,
                     app: app,
                     title: title,
                     index: index,
                     x: x,
                     y: y,
-                    startTime: startTime
-                )
-                
+                    startTime: startTime)
+
             case "resize":
-                guard let width = width, let height = height else {
+                guard let width, let height else {
                     return ToolResponse.error("Resize action requires both 'width' and 'height' dimensions")
                 }
-                return try await handleResize(
+                return try await self.handleResize(
                     service: windowService,
                     app: app,
                     title: title,
                     index: index,
                     width: width,
                     height: height,
-                    startTime: startTime
-                )
-                
+                    startTime: startTime)
+
             case "set-bounds":
-                guard let x = x, let y = y, let width = width, let height = height else {
+                guard let x, let y, let width, let height else {
                     return ToolResponse.error("Set-bounds action requires 'x', 'y', 'width', and 'height' parameters")
                 }
-                return try await handleSetBounds(
+                return try await self.handleSetBounds(
                     service: windowService,
                     app: app,
                     title: title,
@@ -155,117 +141,114 @@ public struct WindowTool: MCPTool {
                     y: y,
                     width: width,
                     height: height,
-                    startTime: startTime
-                )
-                
+                    startTime: startTime)
+
             case "focus":
-                return try await handleFocus(
+                return try await self.handleFocus(
                     service: windowService,
                     app: app,
                     title: title,
                     index: index,
-                    startTime: startTime
-                )
-                
+                    startTime: startTime)
+
             default:
-                return ToolResponse.error("Unknown action: \(action). Supported actions: close, minimize, maximize, move, resize, set-bounds, focus")
+                return ToolResponse
+                    .error(
+                        "Unknown action: \(action). Supported actions: close, minimize, maximize, move, resize, set-bounds, focus")
             }
-            
+
         } catch {
-            logger.error("Window operation execution failed: \(error)")
+            self.logger.error("Window operation execution failed: \(error)")
             return ToolResponse.error("Failed to \(action) window: \(error.localizedDescription)")
         }
     }
-    
+
     // MARK: - Action Handlers
-    
+
     private func handleClose(
         service: WindowManagementServiceProtocol,
         app: String?,
         title: String?,
         index: Int?,
-        startTime: Date
-    ) async throws -> ToolResponse {
+        startTime: Date) async throws -> ToolResponse
+    {
         let target = try createWindowTarget(app: app, title: title, index: index)
-        
+
         // Get window info before closing for better reporting
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
             return ToolResponse.error("No matching window found to close")
         }
-        
+
         try await service.closeWindow(target: target)
-        
+
         let executionTime = Date().timeIntervalSince(startTime)
-        
+
         return ToolResponse(
             content: [.text("✅ Closed window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s")],
             meta: .object([
                 "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowInfo.windowID)),
-                "execution_time": .double(executionTime)
-            ])
-        )
+                "execution_time": .double(executionTime),
+            ]))
     }
-    
+
     private func handleMinimize(
         service: WindowManagementServiceProtocol,
         app: String?,
         title: String?,
         index: Int?,
-        startTime: Date
-    ) async throws -> ToolResponse {
+        startTime: Date) async throws -> ToolResponse
+    {
         let target = try createWindowTarget(app: app, title: title, index: index)
-        
+
         // Get window info before minimizing
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
             return ToolResponse.error("No matching window found to minimize")
         }
-        
+
         try await service.minimizeWindow(target: target)
-        
+
         let executionTime = Date().timeIntervalSince(startTime)
-        
+
         return ToolResponse(
             content: [.text("✅ Minimized window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s")],
             meta: .object([
                 "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowInfo.windowID)),
-                "execution_time": .double(executionTime)
-            ])
-        )
+                "execution_time": .double(executionTime),
+            ]))
     }
-    
+
     private func handleMaximize(
         service: WindowManagementServiceProtocol,
         app: String?,
         title: String?,
         index: Int?,
-        startTime: Date
-    ) async throws -> ToolResponse {
+        startTime: Date) async throws -> ToolResponse
+    {
         let target = try createWindowTarget(app: app, title: title, index: index)
-        
+
         // Get window info before maximizing
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
             return ToolResponse.error("No matching window found to maximize")
         }
-        
+
         try await service.maximizeWindow(target: target)
-        
+
         let executionTime = Date().timeIntervalSince(startTime)
-        
+
         return ToolResponse(
             content: [.text("✅ Maximized window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s")],
             meta: .object([
                 "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowInfo.windowID)),
-                "execution_time": .double(executionTime)
-            ])
-        )
+                "execution_time": .double(executionTime),
+            ]))
     }
-    
+
     private func handleMove(
         service: WindowManagementServiceProtocol,
         app: String?,
@@ -273,33 +256,35 @@ public struct WindowTool: MCPTool {
         index: Int?,
         x: Double,
         y: Double,
-        startTime: Date
-    ) async throws -> ToolResponse {
+        startTime: Date) async throws -> ToolResponse
+    {
         let target = try createWindowTarget(app: app, title: title, index: index)
         let position = CGPoint(x: x, y: y)
-        
+
         // Get window info before moving
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
             return ToolResponse.error("No matching window found to move")
         }
-        
+
         try await service.moveWindow(target: target, to: position)
-        
+
         let executionTime = Date().timeIntervalSince(startTime)
-        
+
         return ToolResponse(
-            content: [.text("✅ Moved window '\(windowInfo.title)' to (\(Int(x)), \(Int(y))) in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "✅ Moved window '\(windowInfo.title)' to (\(Int(x)), \(Int(y))) in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowInfo.windowID)),
                 "new_x": .double(x),
                 "new_y": .double(y),
-                "execution_time": .double(executionTime)
-            ])
-        )
+                "execution_time": .double(executionTime),
+            ]))
     }
-    
+
     private func handleResize(
         service: WindowManagementServiceProtocol,
         app: String?,
@@ -307,33 +292,35 @@ public struct WindowTool: MCPTool {
         index: Int?,
         width: Double,
         height: Double,
-        startTime: Date
-    ) async throws -> ToolResponse {
+        startTime: Date) async throws -> ToolResponse
+    {
         let target = try createWindowTarget(app: app, title: title, index: index)
         let size = CGSize(width: width, height: height)
-        
+
         // Get window info before resizing
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
             return ToolResponse.error("No matching window found to resize")
         }
-        
+
         try await service.resizeWindow(target: target, to: size)
-        
+
         let executionTime = Date().timeIntervalSince(startTime)
-        
+
         return ToolResponse(
-            content: [.text("✅ Resized window '\(windowInfo.title)' to \(Int(width)) × \(Int(height)) in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "✅ Resized window '\(windowInfo.title)' to \(Int(width)) × \(Int(height)) in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowInfo.windowID)),
                 "new_width": .double(width),
                 "new_height": .double(height),
-                "execution_time": .double(executionTime)
-            ])
-        )
+                "execution_time": .double(executionTime),
+            ]))
     }
-    
+
     private func handleSetBounds(
         service: WindowManagementServiceProtocol,
         app: String?,
@@ -343,23 +330,26 @@ public struct WindowTool: MCPTool {
         y: Double,
         width: Double,
         height: Double,
-        startTime: Date
-    ) async throws -> ToolResponse {
+        startTime: Date) async throws -> ToolResponse
+    {
         let target = try createWindowTarget(app: app, title: title, index: index)
         let bounds = CGRect(x: x, y: y, width: width, height: height)
-        
+
         // Get window info before setting bounds
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
             return ToolResponse.error("No matching window found to set bounds")
         }
-        
+
         try await service.setWindowBounds(target: target, bounds: bounds)
-        
+
         let executionTime = Date().timeIntervalSince(startTime)
-        
+
         return ToolResponse(
-            content: [.text("✅ Set bounds for window '\(windowInfo.title)' to (\(Int(x)), \(Int(y)), \(Int(width)) × \(Int(height))) in \(String(format: "%.2f", executionTime))s")],
+            content: [
+                .text(
+                    "✅ Set bounds for window '\(windowInfo.title)' to (\(Int(x)), \(Int(y)), \(Int(width)) × \(Int(height))) in \(String(format: "%.2f", executionTime))s"),
+            ],
             meta: .object([
                 "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowInfo.windowID)),
@@ -367,59 +357,57 @@ public struct WindowTool: MCPTool {
                 "new_y": .double(y),
                 "new_width": .double(width),
                 "new_height": .double(height),
-                "execution_time": .double(executionTime)
-            ])
-        )
+                "execution_time": .double(executionTime),
+            ]))
     }
-    
+
     private func handleFocus(
         service: WindowManagementServiceProtocol,
         app: String?,
         title: String?,
         index: Int?,
-        startTime: Date
-    ) async throws -> ToolResponse {
+        startTime: Date) async throws -> ToolResponse
+    {
         let target = try createWindowTarget(app: app, title: title, index: index)
-        
+
         // Get window info before focusing
         let windows = try await service.listWindows(target: target)
         guard let windowInfo = windows.first else {
             return ToolResponse.error("No matching window found to focus")
         }
-        
+
         try await service.focusWindow(target: target)
-        
+
         let executionTime = Date().timeIntervalSince(startTime)
-        
+
         return ToolResponse(
             content: [.text("✅ Focused window '\(windowInfo.title)' in \(String(format: "%.2f", executionTime))s")],
             meta: .object([
                 "window_title": .string(windowInfo.title),
                 "window_id": .double(Double(windowInfo.windowID)),
-                "execution_time": .double(executionTime)
-            ])
-        )
+                "execution_time": .double(executionTime),
+            ]))
     }
-    
+
     // MARK: - Helper Methods
-    
+
     private func createWindowTarget(app: String?, title: String?, index: Int?) throws -> WindowTarget {
-        if let app = app, let title = title {
+        if let app, let title {
             return .applicationAndTitle(app: app, title: title)
         }
-        
-        if let app = app, let index = index {
+
+        if let app, let index {
             return .index(app: app, index: index)
         }
-        
-        if let app = app {
+
+        if let app {
             return .application(app)
         }
-        
-        if let title = title {
+
+        if let title {
             return .title(title)
         }
-        
+
         throw PeekabooError.invalidInput("Must specify at least 'app' or 'title' parameter to target a window")
     }
 }

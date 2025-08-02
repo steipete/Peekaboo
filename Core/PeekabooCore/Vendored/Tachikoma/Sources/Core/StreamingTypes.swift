@@ -229,13 +229,13 @@ public struct StreamUnknown: StreamingEvent, Codable, Sendable {
 
     /// Get the raw data as a dictionary if possible
     public func getRawData() throws -> [String: Any]? {
-        let data = Data(self.rawJSON)
+        let data = Data(rawJSON)
         return try JSONSerialization.jsonObject(with: data) as? [String: Any]
     }
 
     /// Get the raw data as a pretty-printed JSON string
     public func getRawJSONString() -> String? {
-        let data = Data(self.rawJSON)
+        let data = Data(rawJSON)
         if let json = try? JSONSerialization.jsonObject(with: data),
            let prettyData = try? JSONSerialization.data(withJSONObject: json, options: .prettyPrinted)
         {
@@ -299,8 +299,8 @@ public struct Usage: Codable, Sendable {
         completionTokens: Int,
         totalTokens: Int,
         promptTokensDetails: TokenDetails? = nil,
-        completionTokensDetails: TokenDetails? = nil)
-    {
+        completionTokensDetails: TokenDetails? = nil
+    ) {
         self.promptTokens = promptTokens
         self.completionTokens = completionTokens
         self.totalTokens = totalTokens
@@ -352,9 +352,9 @@ public struct ErrorDetail: Codable, Sendable {
 // MARK: - Stream Event Extensions
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
-extension StreamEvent {
+public extension StreamEvent {
     /// Check if this is a final event
-    public var isFinal: Bool {
+    var isFinal: Bool {
         switch self {
         case .responseCompleted, .error, .reasoningSummaryCompleted:
             true
@@ -364,7 +364,7 @@ extension StreamEvent {
     }
 
     /// Extract any text content from the event
-    public var textContent: String? {
+    var textContent: String? {
         switch self {
         case let .textDelta(delta):
             delta.delta

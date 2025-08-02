@@ -164,7 +164,7 @@ struct ElementTimeoutTests {
         let menuItems = menuBar.menuBarItems() ?? []
         
         // Then - should have standard menus
-        #expect(menuItems.count > 0)
+        #expect(!menuItems.isEmpty)
         #expect(menuItems.contains { item in
             item.title()?.contains("File") ?? false
         })

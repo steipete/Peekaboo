@@ -25,7 +25,7 @@ struct PeekabooInspectorApp: App {
                     overlayWindowController.stopMonitoringScreenChanges()
                     overlayWindowController.removeOverlays()
                 }
-                .onChange(of: overlayManager.isOverlayActive) { _, isActive in
+                .onChange(of: overlayManager.isOverlayActive) { _, _ in
                     overlayWindowController.updateVisibility()
                 }
         }

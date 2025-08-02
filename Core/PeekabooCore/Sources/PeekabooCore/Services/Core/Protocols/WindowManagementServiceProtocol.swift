@@ -63,7 +63,7 @@ public enum WindowTarget: Sendable, CustomStringConvertible {
 
     /// Target by application and window index
     case index(app: String, index: Int)
-    
+
     /// Target by application and window title (more efficient than title alone)
     case applicationAndTitle(app: String, title: String)
 

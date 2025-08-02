@@ -13,9 +13,9 @@ public enum ProviderParser {
 
         /// The full string representation (e.g., "openai/gpt-4")
         public var fullString: String {
-            "\(self.provider)/\(self.model)"
+            "\(provider)/\(model)"
         }
-        
+
         public init(provider: String, model: String) {
             self.provider = provider
             self.model = model
@@ -55,7 +55,7 @@ public enum ProviderParser {
     /// - Parameter providersString: String like "openai/gpt-4,anthropic/claude-3"
     /// - Returns: First parsed configuration or nil if none valid
     public static func parseFirst(_ providersString: String) -> ProviderConfig? {
-        self.parseList(providersString).first
+        parseList(providersString).first
     }
 
     /// Result of determining the default model with conflict information
@@ -71,7 +71,7 @@ public enum ProviderParser {
 
         /// The model from configuration (if any)
         public let configModel: String?
-        
+
         public init(
             model: String,
             hasConflict: Bool,
@@ -102,10 +102,10 @@ public enum ProviderParser {
         hasGrok: Bool = false,
         hasOllama: Bool = true,
         configuredDefault: String? = nil,
-        isEnvironmentProvided: Bool = false) -> ModelDetermination
-    {
+        isEnvironmentProvided: Bool = false
+    ) -> ModelDetermination {
         // Parse providers and find first available one
-        let providers = self.parseList(providersString)
+        let providers = parseList(providersString)
         var environmentModel: String?
 
         for config in providers {
@@ -155,7 +155,8 @@ public enum ProviderParser {
             model: finalModel,
             hasConflict: hasConflict,
             environmentModel: environmentModel,
-            configModel: configuredDefault)
+            configModel: configuredDefault
+        )
     }
 
     /// Determine the default model based on available providers and API keys (simple version)
@@ -173,16 +174,17 @@ public enum ProviderParser {
         hasAnthropic: Bool,
         hasGrok: Bool = false,
         hasOllama: Bool = true,
-        configuredDefault: String? = nil) -> String
-    {
-        let determination = self.determineDefaultModelWithConflict(
+        configuredDefault: String? = nil
+    ) -> String {
+        let determination = determineDefaultModelWithConflict(
             from: providersString,
             hasOpenAI: hasOpenAI,
             hasAnthropic: hasAnthropic,
             hasGrok: hasGrok,
             hasOllama: hasOllama,
             configuredDefault: configuredDefault,
-            isEnvironmentProvided: false)
+            isEnvironmentProvided: false
+        )
         return determination.model
     }
 
@@ -190,14 +192,13 @@ public enum ProviderParser {
     /// - Parameter fullString: String like "openai/gpt-4"
     /// - Returns: Just the provider part (e.g., "openai")
     public static func extractProvider(from fullString: String) -> String? {
-        self.parse(fullString)?.provider
+        parse(fullString)?.provider
     }
 
     /// Extract model name from a full provider/model string
     /// - Parameter fullString: String like "openai/gpt-4"
     /// - Returns: Just the model part (e.g., "gpt-4")
     public static func extractModel(from fullString: String) -> String? {
-        self.parse(fullString)?.model
+        parse(fullString)?.model
     }
 }
-

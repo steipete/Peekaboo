@@ -36,7 +36,7 @@ public struct VisionToolDefinitions {
               peekaboo see --window-title "GitHub"   # Capture specific window
               peekaboo see --annotate                # Generate annotated screenshot
               peekaboo see --analyze "Find login"    # Capture and analyze
-              
+
             MULTI-SCREEN SUPPORT:
               When capturing without --screen-index, all screens are captured and saved:
               • Primary screen: screenshot.png
@@ -57,8 +57,7 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "pid",
                 type: .integer,
@@ -66,8 +65,7 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option, longName: "pid")
-            ),
+                cliOptions: CLIOptions(argumentType: .option, longName: "pid")),
             ParameterDefinition(
                 name: "window-title",
                 type: .string,
@@ -75,8 +73,7 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "mode",
                 type: .enumeration,
@@ -84,8 +81,7 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: ["screen", "window", "frontmost"],
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "path",
                 type: .string,
@@ -93,8 +89,7 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "screen-index",
                 type: .integer,
@@ -102,8 +97,7 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option, longName: "screen-index")
-            ),
+                cliOptions: CLIOptions(argumentType: .option, longName: "screen-index")),
             ParameterDefinition(
                 name: "annotate",
                 type: .boolean,
@@ -111,8 +105,7 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: "false",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .flag)
-            ),
+                cliOptions: CLIOptions(argumentType: .flag)),
             ParameterDefinition(
                 name: "analyze",
                 type: .string,
@@ -120,8 +113,7 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "format",
                 type: .enumeration,
@@ -129,8 +121,7 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: "full",
                 options: ["full", "brief"],
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "filter",
                 type: .enumeration,
@@ -138,13 +129,12 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: ["button", "text_field", "image", "link", "menu", "static_text"],
-                cliOptions: CLIOptions(argumentType: .option)
-            )
+                cliOptions: CLIOptions(argumentType: .option)),
         ],
         examples: [
             #"{"app": "Safari"}"#,
             #"{"format": "brief"}"#,
-            #"{"app": "Finder", "filter": "button"}"#
+            #"{"app": "Finder", "filter": "button"}"#,
         ],
         agentGuidance: """
             AGENT TIPS:
@@ -156,9 +146,8 @@ public struct VisionToolDefinitions {
             - **Background capture**: 'see' can capture apps in the background - no need to focus first!
             - **Focus + capture**: You can combine operations: 'see --app Safari' will both focus AND capture
             - This means you don't need separate focus_window + see commands in most cases
-        """
-    )
-    
+        """)
+
     public static let screenshot = UnifiedToolDefinition(
         name: "screenshot",
         commandName: nil,
@@ -181,8 +170,7 @@ public struct VisionToolDefinitions {
                 required: true,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .argument)
-            ),
+                cliOptions: CLIOptions(argumentType: .argument)),
             ParameterDefinition(
                 name: "app",
                 type: .string,
@@ -190,8 +178,7 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "window-title",
                 type: .string,
@@ -199,14 +186,12 @@ public struct VisionToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            )
+                cliOptions: CLIOptions(argumentType: .option)),
         ],
         examples: [
             #"{"path": "~/Desktop/screenshot.png"}"#,
-            #"{"path": "/tmp/safari.png", "app": "Safari"}"#
-        ]
-    )
+            #"{"path": "/tmp/safari.png", "app": "Safari"}"#,
+        ])
 }
 
 /// Vision-related tools for screen capture and analysis
@@ -215,7 +200,7 @@ extension PeekabooAgentService {
     /// Create the primary 'see' tool for capturing and analyzing UI
     func createSeeTool() -> Tool<PeekabooServices> {
         let definition = VisionToolDefinitions.see
-        
+
         return createTool(
             name: definition.name,
             description: definition.agentDescription,
@@ -244,14 +229,14 @@ extension PeekabooAgentService {
                     } else {
                         targetDescription = appName
                     }
-                    
+
                     // Only detect elements for specific app captures
                     detectionResult = try await context.automation.detectElements(
                         in: captureResult.imageData,
                         sessionId: nil,
                         windowContext: WindowContext(applicationName: appName, windowTitle: nil))
                     skipElementDetection = false
-                    
+
                     // Show annotated screenshot visualization for agents
                     if let windowBounds = captureResult.metadata.windowInfo?.bounds {
                         logger.info("🎯 VisionTools: Showing annotated screenshot visualization")
@@ -259,8 +244,7 @@ extension PeekabooAgentService {
                             imageData: captureResult.imageData,
                             elements: detectionResult.elements.all,
                             windowBounds: windowBounds,
-                            duration: 3.0
-                        )
+                            duration: 3.0)
                     }
                 } else {
                     // Capture entire screen
@@ -270,7 +254,7 @@ extension PeekabooAgentService {
                     let appsOutput = try await context.applications.listApplications()
                     let visibleApps = appsOutput.data.applications.count(where: { $0.isActive || !$0.isHidden })
                     targetDescription = "entire screen (with \(visibleApps) visible apps)"
-                    
+
                     // SKIP element detection for entire screen - too expensive!
                     // Create an empty result instead
                     detectionResult = ElementDetectionResult(
@@ -285,17 +269,16 @@ extension PeekabooAgentService {
                             sliders: [],
                             checkboxes: [],
                             menus: [],
-                            other: []
-                        ),
+                            other: []),
                         metadata: DetectionMetadata(
                             detectionTime: 0.0,
                             elementCount: 0,
                             method: "Skipped - entire screen capture",
-                            warnings: ["Element detection is disabled for entire screen captures to prevent UI freezing"],
+                            warnings: [
+                                "Element detection is disabled for entire screen captures to prevent UI freezing",
+                            ],
                             windowContext: nil,
-                            isDialog: false
-                        )
-                    )
+                            isDialog: false))
                     skipElementDetection = true
                 }
 
@@ -323,7 +306,7 @@ extension PeekabooAgentService {
                         elements.links.count + elements.other.count
 
                     var summary = "Captured \(targetDescription) (\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height)))\n"
-                    
+
                     if skipElementDetection {
                         summary += "Note: Element detection skipped for entire screen captures (too expensive)\n"
                     } else {
@@ -358,7 +341,7 @@ extension PeekabooAgentService {
 
                 // Full format with detailed element list
                 var fullOutput = "Captured \(targetDescription) (\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height)))\n\n"
-                
+
                 if skipElementDetection {
                     fullOutput += "Note: Element detection is disabled for entire screen captures to prevent UI freezing.\n"
                     fullOutput += "To analyze UI elements, please capture a specific application instead.\n"
@@ -379,15 +362,13 @@ extension PeekabooAgentService {
     /// Create the screenshot tool for saving screen captures
     func createScreenshotTool() -> Tool<PeekabooServices> {
         let definition = VisionToolDefinitions.screenshot
-        
+
         return createTool(
             name: definition.name,
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                guard let path = params.string("path") else {
-                    throw PeekabooError.invalidInput("Path is required")
-                }
+                let path = try params.string("path")
                 let expandedPath = path.expandedPath
                 let appName = params.string("app", default: nil)
 
@@ -431,7 +412,7 @@ extension PeekabooAgentService {
 
     /// Create the window capture tool
     func createWindowCaptureTool() -> Tool<PeekabooServices> {
-        return createTool(
+        createTool(
             name: "window_capture",
             description: "Capture a specific window by title or window ID",
             parameters: ToolParameters.object(

@@ -31,7 +31,9 @@ public enum AnthropicSystemContent: Codable, Sendable {
                 AnthropicSystemContent.self,
                 DecodingError.Context(
                     codingPath: decoder.codingPath,
-                    debugDescription: "Expected String or Array of system blocks"))
+                    debugDescription: "Expected String or Array of system blocks"
+                )
+            )
         }
     }
 
@@ -159,7 +161,9 @@ public enum AnthropicContent: Codable, Sendable {
                 AnthropicContent.self,
                 DecodingError.Context(
                     codingPath: decoder.codingPath,
-                    debugDescription: "Expected String or Array of content blocks"))
+                    debugDescription: "Expected String or Array of content blocks"
+                )
+            )
         }
     }
 
@@ -241,8 +245,8 @@ public struct AnthropicTool: Codable, Sendable {
         name: String,
         description: String,
         inputSchema: AnthropicJSONSchema,
-        cacheControl: AnthropicCacheControl? = nil)
-    {
+        cacheControl: AnthropicCacheControl? = nil
+    ) {
         self.name = name
         self.description = description
         self.inputSchema = inputSchema
@@ -262,8 +266,8 @@ public struct AnthropicJSONSchema: Codable, Sendable {
         type: String = "object",
         properties: [String: AnthropicPropertySchema]? = nil,
         required: [String]? = nil,
-        description: String? = nil)
-    {
+        description: String? = nil
+    ) {
         self.type = type
         self.properties = properties
         self.required = required
@@ -299,7 +303,8 @@ public enum AnthropicToolChoice: Codable, Sendable {
             throw DecodingError.dataCorruptedError(
                 forKey: .type,
                 in: container,
-                debugDescription: "Unknown tool choice type: \(type)")
+                debugDescription: "Unknown tool choice type: \(type)"
+            )
         }
     }
 
@@ -443,7 +448,7 @@ public struct AnthropicErrorResponse: Codable, Sendable {
     public let error: AnthropicError
 
     public var message: String {
-        self.error.message
+        error.message
     }
 
     public var code: String? {
@@ -451,7 +456,7 @@ public struct AnthropicErrorResponse: Codable, Sendable {
     }
 
     public var type: String? {
-        self.error.type
+        error.type
     }
 }
 
@@ -465,9 +470,9 @@ public struct AnthropicError: Codable, Sendable {
 // MARK: - Helper Extensions
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
-extension AnthropicContentBlock {
+public extension AnthropicContentBlock {
     /// Create a text content block
-    public static func text(_ text: String, cacheControl: AnthropicCacheControl? = nil) -> AnthropicContentBlock {
+    static func text(_ text: String, cacheControl: AnthropicCacheControl? = nil) -> AnthropicContentBlock {
         AnthropicContentBlock(
             type: "text",
             text: text,
@@ -478,33 +483,36 @@ extension AnthropicContentBlock {
             toolUseId: nil,
             content: nil,
             isError: nil,
-            cacheControl: cacheControl)
+            cacheControl: cacheControl
+        )
     }
 
     /// Create an image content block
-    public static func image(
+    static func image(
         base64: String,
         mediaType: String,
-        cacheControl: AnthropicCacheControl? = nil) -> AnthropicContentBlock
-    {
+        cacheControl: AnthropicCacheControl? = nil
+    ) -> AnthropicContentBlock {
         AnthropicContentBlock(
             type: "image",
             text: nil,
             source: AnthropicImageSource(
                 type: "base64",
                 mediaType: mediaType,
-                data: base64),
+                data: base64
+            ),
             id: nil,
             name: nil,
             input: nil,
             toolUseId: nil,
             content: nil,
             isError: nil,
-            cacheControl: cacheControl)
+            cacheControl: cacheControl
+        )
     }
 
     /// Create a tool use content block
-    public static func toolUse(id: String, name: String, input: [String: Any]) -> AnthropicContentBlock {
+    static func toolUse(id: String, name: String, input: [String: Any]) -> AnthropicContentBlock {
         AnthropicContentBlock(
             type: "tool_use",
             text: nil,
@@ -515,11 +523,12 @@ extension AnthropicContentBlock {
             toolUseId: nil,
             content: nil,
             isError: nil,
-            cacheControl: nil)
+            cacheControl: nil
+        )
     }
 
     /// Create a tool result content block
-    public static func toolResult(toolUseId: String, content: String, isError: Bool = false) -> AnthropicContentBlock {
+    static func toolResult(toolUseId: String, content: String, isError: Bool = false) -> AnthropicContentBlock {
         AnthropicContentBlock(
             type: "tool_result",
             text: nil,
@@ -530,7 +539,8 @@ extension AnthropicContentBlock {
             toolUseId: toolUseId,
             content: .string(content),
             isError: isError,
-            cacheControl: nil)
+            cacheControl: nil
+        )
     }
 }
 
@@ -666,8 +676,8 @@ public struct AnthropicPropertySchema: Codable, Sendable {
         enum enumValues: [String]? = nil,
         items: AnthropicPropertySchema? = nil,
         properties: [String: AnthropicPropertySchema]? = nil,
-        required: [String]? = nil)
-    {
+        required: [String]? = nil
+    ) {
         self.type = type
         self.description = description
         self.enum = enumValues

@@ -82,7 +82,7 @@ struct MCPToolExecutionTests {
         // List tool might not validate the type and just return empty results
         // or it might fall back to a default type
         // Let's just check that it returns a response without crashing
-        #expect(response.content.count > 0)
+        #expect(!response.content.isEmpty)
     }
     
     // MARK: - App Tool Tests

@@ -1,8 +1,8 @@
 import AppKit
 import AXorcist
 import CoreGraphics
-import Tachikoma
 import Foundation
+import Tachikoma
 
 // MARK: - Tool Definitions
 
@@ -15,7 +15,7 @@ public struct ApplicationToolDefinitions {
         discussion: """
             Lists all currently running applications with their process IDs
             and active status.
-            
+
             EXAMPLES:
               peekaboo list-apps
         """,
@@ -27,9 +27,8 @@ public struct ApplicationToolDefinitions {
             - Shows all running apps including background processes
             - Active app is marked with (active)
             - Use app names from this list for other commands
-        """
-    )
-    
+        """)
+
     public static let launchApp = UnifiedToolDefinition(
         name: "launch_app",
         commandName: "launch-app",
@@ -37,7 +36,7 @@ public struct ApplicationToolDefinitions {
         discussion: """
             Launches an application by name. If the app is already running,
             it will be brought to the front instead.
-            
+
             EXAMPLES:
               peekaboo launch-app Safari
               peekaboo launch-app "Google Chrome" --no-wait
@@ -51,8 +50,7 @@ public struct ApplicationToolDefinitions {
                 required: true,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .argument)
-            ),
+                cliOptions: CLIOptions(argumentType: .argument)),
             ParameterDefinition(
                 name: "no-wait",
                 type: .boolean,
@@ -60,12 +58,11 @@ public struct ApplicationToolDefinitions {
                 required: false,
                 defaultValue: "false",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .flag, longName: "no-wait")
-            )
+                cliOptions: CLIOptions(argumentType: .flag, longName: "no-wait")),
         ],
         examples: [
             #"{"name": "Safari"}"#,
-            #"{"name": "TextEdit", "wait_for_launch": false}"#
+            #"{"name": "TextEdit", "wait_for_launch": false}"#,
         ],
         agentGuidance: """
             AGENT TIPS:
@@ -73,8 +70,7 @@ public struct ApplicationToolDefinitions {
             - Shows window count after launch
             - Use exact app names from 'list_apps' for best results
             - Some apps may take time to show windows after launch
-        """
-    )
+        """)
 }
 
 // MARK: - Application Tools
@@ -85,7 +81,7 @@ extension PeekabooAgentService {
     /// Create the list apps tool
     func createListAppsTool() -> Tool<PeekabooServices> {
         let definition = ApplicationToolDefinitions.listApps
-        
+
         return createSimpleTool(
             name: definition.name,
             description: definition.agentDescription,
@@ -114,7 +110,7 @@ extension PeekabooAgentService {
     /// Create the launch app tool
     func createLaunchAppTool() -> Tool<PeekabooServices> {
         let definition = ApplicationToolDefinitions.launchApp
-        
+
         return createTool(
             name: definition.name,
             description: definition.agentDescription,

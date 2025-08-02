@@ -40,7 +40,7 @@ extension PeekabooAgentService {
                         matching: searchCriteria,
                         in: appName)
 
-                    let _ = Date().timeIntervalSince(startTime)
+                    _ = Date().timeIntervalSince(startTime)
 
                     // If element type was specified, verify it matches
                     if let elementType {
@@ -125,7 +125,7 @@ extension PeekabooAgentService {
                     sessionId: nil,
                     windowContext: nil)
 
-                let _ = Date().timeIntervalSince(startTime)
+                _ = Date().timeIntervalSince(startTime)
 
                 // Format the element list based on type filter
                 let elements = detectionResult.elements

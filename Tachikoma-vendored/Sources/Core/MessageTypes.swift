@@ -220,7 +220,7 @@ public struct AudioContent: Codable, Sendable {
     public let url: String?
     public let base64: String?
     public let transcript: String?
-    public let duration: Double?
+    public let duration: TimeInterval?
     public let mimeType: String?
 
     public init(

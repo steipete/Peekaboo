@@ -14,7 +14,7 @@ public struct MenuToolDefinitions {
         discussion: """
             Clicks a menu item in an application's menu bar using the menu path.
             Menu paths use ">" to separate menu levels.
-            
+
             EXAMPLES:
               peekaboo menu-click "File > New"
               peekaboo menu-click "Edit > Copy" --app Safari
@@ -29,8 +29,7 @@ public struct MenuToolDefinitions {
                 required: true,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .argument)
-            ),
+                cliOptions: CLIOptions(argumentType: .argument)),
             ParameterDefinition(
                 name: "app",
                 type: .string,
@@ -38,12 +37,11 @@ public struct MenuToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            )
+                cliOptions: CLIOptions(argumentType: .option)),
         ],
         examples: [
             #"{"path": "File > New"}"#,
-            #"{"path": "Edit > Copy", "app": "Safari"}"#
+            #"{"path": "Edit > Copy", "app": "Safari"}"#,
         ],
         agentGuidance: """
             AGENT TIPS:
@@ -52,9 +50,8 @@ public struct MenuToolDefinitions {
             - Menu paths are case-sensitive
             - Use 'list_menus' first to discover available menu items
             - Some menu items may be disabled depending on context
-        """
-    )
-    
+        """)
+
     public static let listMenus = UnifiedToolDefinition(
         name: "list_menus",
         commandName: "list-menus",
@@ -62,7 +59,7 @@ public struct MenuToolDefinitions {
         discussion: """
             Lists all available menu items for an application, showing the
             complete menu structure including submenus and keyboard shortcuts.
-            
+
             EXAMPLES:
               peekaboo list-menus                    # List menus for frontmost app
               peekaboo list-menus --app Safari        # List Safari menus
@@ -77,8 +74,7 @@ public struct MenuToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "menu",
                 type: .string,
@@ -86,13 +82,12 @@ public struct MenuToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            )
+                cliOptions: CLIOptions(argumentType: .option)),
         ],
         examples: [
             #"{}"#,
             #"{"app": "Safari"}"#,
-            #"{"app": "TextEdit", "menu": "File"}"#
+            #"{"app": "TextEdit", "menu": "File"}"#,
         ],
         agentGuidance: """
             AGENT TIPS:
@@ -100,8 +95,7 @@ public struct MenuToolDefinitions {
             - Disabled items are marked in the output
             - Use this before menu_click to find exact menu paths
             - Menu structure may change based on app state
-        """
-    )
+        """)
 }
 
 // MARK: - Menu Tools
@@ -112,7 +106,7 @@ extension PeekabooAgentService {
     /// Create the menu click tool
     func createMenuClickTool() -> Tool<PeekabooServices> {
         let definition = MenuToolDefinitions.menuClick
-        
+
         return createTool(
             name: definition.name,
             description: definition.agentDescription,
@@ -158,7 +152,7 @@ extension PeekabooAgentService {
 
                 let startTime = Date()
                 try await context.menu.clickMenuItem(app: targetApp, itemPath: menuPath ?? "")
-                let _ = Date().timeIntervalSince(startTime)
+                _ = Date().timeIntervalSince(startTime)
 
                 return .success("Clicked \(targetApp) > \(menuPath ?? "")")
             })
@@ -167,7 +161,7 @@ extension PeekabooAgentService {
     /// Create the list menus tool
     func createListMenusTool() -> Tool<PeekabooServices> {
         let definition = MenuToolDefinitions.listMenus
-        
+
         return createTool(
             name: definition.name,
             description: definition.agentDescription,
@@ -196,7 +190,7 @@ extension PeekabooAgentService {
                     try await context.menu.listFrontmostMenus()
                 }
 
-                let _ = Date().timeIntervalSince(startTime)
+                _ = Date().timeIntervalSince(startTime)
 
                 // Count total menu items
                 var totalItems = 0

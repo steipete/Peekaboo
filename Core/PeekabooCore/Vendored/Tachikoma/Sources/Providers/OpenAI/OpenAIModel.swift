@@ -16,14 +16,14 @@ public final class OpenAIModel: ModelInterface, Sendable {
         organizationId: String? = nil,
         modelName: String? = nil,
         headers: [String: String]? = nil,
-        session: URLSession? = nil)
-    {
+        session: URLSession? = nil
+    ) {
         self.apiKey = apiKey
         self.baseURL = baseURL
         self.organizationId = organizationId
-        self.customHeaders = headers
-        self.customModelName = modelName
-        
+        customHeaders = headers
+        customModelName = modelName
+
         if let session {
             self.session = session
         } else {
@@ -37,9 +37,9 @@ public final class OpenAIModel: ModelInterface, Sendable {
     // MARK: - ModelInterface Implementation
 
     public var maskedApiKey: String {
-        guard self.apiKey.count > 8 else { return "***" }
-        let start = self.apiKey.prefix(6)
-        let end = self.apiKey.suffix(2)
+        guard apiKey.count > 8 else { return "***" }
+        let start = apiKey.prefix(6)
+        let end = apiKey.suffix(2)
         return "\(start)...\(end)"
     }
 
@@ -100,7 +100,8 @@ public final class OpenAIModel: ModelInterface, Sendable {
                             }
 
                             if let chunkData = data.data(using: .utf8),
-                               let chunk = try? JSONDecoder().decode(OpenAIStreamChunk.self, from: chunkData) {
+                               let chunk = try? JSONDecoder().decode(OpenAIStreamChunk.self, from: chunkData)
+                            {
                                 if let events = processStreamChunk(chunk) {
                                     for event in events {
                                         continuation.yield(event)
@@ -130,16 +131,16 @@ public final class OpenAIModel: ModelInterface, Sendable {
     }
 
     private func createURLRequest(endpoint: String, body: any Encodable) throws -> URLRequest {
-        let url = self.baseURL.appendingPathComponent(endpoint)
+        let url = baseURL.appendingPathComponent(endpoint)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(self.apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         if let orgId = organizationId {
             request.setValue(orgId, forHTTPHeaderField: "OpenAI-Organization")
         }
-        
+
         customHeaders?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
         }
@@ -165,7 +166,7 @@ public final class OpenAIModel: ModelInterface, Sendable {
 
     private func convertToOpenAIRequest(_ request: ModelRequest, stream: Bool) throws -> any Encodable {
         let modelName = customModelName ?? request.settings.modelName
-        
+
         if modelName.hasPrefix("o3") || modelName.hasPrefix("o4") {
             return try convertToResponsesRequest(request, stream: stream)
         } else {
@@ -195,7 +196,9 @@ public final class OpenAIModel: ModelInterface, Sendable {
                 function: OpenAIFunction(
                     name: tool.function.name,
                     description: tool.function.description,
-                    parameters: convertToolParameters(tool.function.parameters)))
+                    parameters: convertToolParameters(tool.function.parameters)
+                )
+            )
         }
 
         return OpenAIChatRequest(
@@ -206,7 +209,8 @@ public final class OpenAIModel: ModelInterface, Sendable {
             temperature: request.settings.temperature,
             topP: request.settings.topP,
             stream: stream,
-            maxTokens: request.settings.maxTokens)
+            maxTokens: request.settings.maxTokens
+        )
     }
 
     private func convertToResponsesRequest(_ request: ModelRequest, stream: Bool) throws -> OpenAIResponsesRequest {
@@ -230,11 +234,12 @@ public final class OpenAIModel: ModelInterface, Sendable {
                 type: "function",
                 name: tool.function.name,
                 description: tool.function.description,
-                parameters: convertToolParameters(tool.function.parameters))
+                parameters: convertToolParameters(tool.function.parameters)
+            )
         }
 
         let modelName = customModelName ?? request.settings.modelName
-        
+
         return OpenAIResponsesRequest(
             model: modelName,
             input: messages,
@@ -244,10 +249,12 @@ public final class OpenAIModel: ModelInterface, Sendable {
             topP: request.settings.topP,
             stream: stream,
             maxOutputTokens: request.settings.maxTokens ?? 65536,
-            reasoning: (modelName.hasPrefix("o3") || modelName.hasPrefix("o4")) ? 
+            reasoning: (modelName.hasPrefix("o3") || modelName.hasPrefix("o4")) ?
                 OpenAIReasoning(
                     effort: request.settings.additionalParameters?.string("reasoning_effort") ?? "medium",
-                    summary: "detailed") : nil)
+                    summary: "detailed"
+                ) : nil
+        )
     }
 
     private func convertUserMessage(_ content: MessageContent) throws -> OpenAIMessage {
@@ -256,19 +263,21 @@ public final class OpenAIModel: ModelInterface, Sendable {
             return OpenAIMessage(role: "user", content: .string(text))
         case let .image(imageContent):
             var parts: [OpenAIMessageContentPart] = []
-            
+
             if let url = imageContent.url {
                 parts.append(OpenAIMessageContentPart(
                     type: "image_url",
                     text: nil,
-                    imageUrl: OpenAIImageUrl(url: url, detail: imageContent.detail?.rawValue)))
+                    imageUrl: OpenAIImageUrl(url: url, detail: imageContent.detail?.rawValue)
+                ))
             } else if let base64 = imageContent.base64 {
                 parts.append(OpenAIMessageContentPart(
-                    type: "image_url", 
+                    type: "image_url",
                     text: nil,
-                    imageUrl: OpenAIImageUrl(url: "data:image/jpeg;base64,\(base64)", detail: imageContent.detail?.rawValue)))
+                    imageUrl: OpenAIImageUrl(url: "data:image/jpeg;base64,\(base64)", detail: imageContent.detail?.rawValue)
+                ))
             }
-            
+
             return OpenAIMessage(role: "user", content: .array(parts))
         case let .multimodal(parts):
             let contentParts = parts.compactMap { part -> OpenAIMessageContentPart? in
@@ -279,12 +288,14 @@ public final class OpenAIModel: ModelInterface, Sendable {
                         return OpenAIMessageContentPart(
                             type: "image_url",
                             text: nil,
-                            imageUrl: OpenAIImageUrl(url: url, detail: image.detail?.rawValue))
+                            imageUrl: OpenAIImageUrl(url: url, detail: image.detail?.rawValue)
+                        )
                     } else if let base64 = image.base64 {
                         return OpenAIMessageContentPart(
                             type: "image_url",
                             text: nil,
-                            imageUrl: OpenAIImageUrl(url: "data:image/jpeg;base64,\(base64)", detail: image.detail?.rawValue))
+                            imageUrl: OpenAIImageUrl(url: "data:image/jpeg;base64,\(base64)", detail: image.detail?.rawValue)
+                        )
                     }
                 }
                 return nil
@@ -325,7 +336,9 @@ public final class OpenAIModel: ModelInterface, Sendable {
                         name: toolCall.function.name,
                         description: nil,
                         parameters: nil,
-                        arguments: toolCall.function.arguments)))
+                        arguments: toolCall.function.arguments
+                    )
+                ))
             }
         }
 
@@ -338,52 +351,52 @@ public final class OpenAIModel: ModelInterface, Sendable {
 
     private func convertToolParameters(_ params: ToolParameters) -> [String: Any] {
         var properties: [String: Any] = [:]
-        
+
         for (key, schema) in params.properties {
             properties[key] = convertParameterSchema(schema)
         }
-        
+
         return [
             "type": params.type,
             "properties": properties,
             "required": params.required,
-            "additionalProperties": params.additionalProperties
+            "additionalProperties": params.additionalProperties,
         ]
     }
 
     private func convertParameterSchema(_ schema: ParameterSchema) -> [String: Any] {
         var result: [String: Any] = [
-            "type": schema.type.rawValue
+            "type": schema.type.rawValue,
         ]
-        
+
         if let description = schema.description {
             result["description"] = description
         }
-        
+
         if let enumValues = schema.enumValues {
             result["enum"] = enumValues
         }
-        
+
         if let minimum = schema.minimum {
             result["minimum"] = minimum
         }
-        
+
         if let maximum = schema.maximum {
             result["maximum"] = maximum
         }
-        
+
         if let pattern = schema.pattern {
             result["pattern"] = pattern
         }
-        
+
         if let items = schema.items {
             result["items"] = convertParameterSchema(items.value)
         }
-        
+
         if let properties = schema.properties {
             result["properties"] = properties.mapValues { convertParameterSchema($0) }
         }
-        
+
         return result
     }
 
@@ -429,7 +442,9 @@ public final class OpenAIModel: ModelInterface, Sendable {
                     type: .function,
                     function: FunctionCall(
                         name: toolCall.function.name,
-                        arguments: toolCall.function.arguments ?? ""))))
+                        arguments: toolCall.function.arguments ?? ""
+                    )
+                )))
             }
         }
 
@@ -439,7 +454,8 @@ public final class OpenAIModel: ModelInterface, Sendable {
                 completionTokens: usage.completionTokens,
                 totalTokens: usage.totalTokens,
                 promptTokensDetails: nil,
-                completionTokensDetails: nil)
+                completionTokensDetails: nil
+            )
         }
 
         return ModelResponse(
@@ -448,7 +464,8 @@ public final class OpenAIModel: ModelInterface, Sendable {
             content: content,
             usage: usage,
             flagged: false,
-            finishReason: convertFinishReason(choice.finishReason))
+            finishReason: convertFinishReason(choice.finishReason)
+        )
     }
 
     private func convertFinishReason(_ reason: String?) -> FinishReason? {
@@ -472,7 +489,9 @@ public final class OpenAIModel: ModelInterface, Sendable {
                             index: toolCall.index ?? 0,
                             function: FunctionCallDelta(
                                 name: function.name,
-                                arguments: function.arguments))))
+                                arguments: function.arguments
+                            )
+                        )))
                     }
                 }
             }
@@ -482,7 +501,8 @@ public final class OpenAIModel: ModelInterface, Sendable {
             events.append(.responseCompleted(StreamResponseCompleted(
                 id: chunk.id ?? "",
                 usage: nil,
-                finishReason: convertFinishReason(finishReason))))
+                finishReason: convertFinishReason(finishReason)
+            )))
         }
 
         return events.isEmpty ? nil : events
@@ -492,7 +512,7 @@ public final class OpenAIModel: ModelInterface, Sendable {
         if let errorResponse = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: data) {
             let message = errorResponse.error.message
             let code = errorResponse.error.code
-            
+
             switch response.statusCode {
             case 401:
                 throw TachikomaError.authenticationFailed
@@ -504,7 +524,7 @@ public final class OpenAIModel: ModelInterface, Sendable {
                 } else {
                     throw TachikomaError.invalidRequest(message)
                 }
-            case 500...599:
+            case 500 ... 599:
                 throw TachikomaError.modelOverloaded
             default:
                 throw TachikomaError.apiError(message: message, code: code)

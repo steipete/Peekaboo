@@ -1,7 +1,7 @@
 import Foundation
 
 /// Grok model implementation using OpenAI-compatible Chat Completions API
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public final class GrokModel: ModelInterface, Sendable {
     private let apiKey: String
     private let modelName: String

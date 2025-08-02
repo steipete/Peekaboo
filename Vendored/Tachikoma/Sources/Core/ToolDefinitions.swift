@@ -278,6 +278,214 @@ public enum ToolInput {
     }
 }
 
+// MARK: - ToolInput Convenience Methods
+
+extension ToolInput {
+    /// Dictionary access for parameter extraction
+    public var arguments: [String: Any] {
+        switch self {
+        case let .dictionary(dict):
+            return dict
+        case let .string(str):
+            return ["text": str]
+        case let .array(array):
+            return ["items": array]
+        case .null:
+            return [:]
+        }
+    }
+    
+    /// Extract string value with key
+    public func stringValue(_ key: String) throws -> String {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+        
+        if let stringValue = value as? String {
+            return stringValue
+        }
+        
+        throw ToolError.invalidInput("Parameter '\(key)' must be a string")
+    }
+    
+    /// Extract optional string value with key and default
+    public func stringValue(_ key: String, default defaultValue: String?) -> String? {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+        
+        return value as? String ?? defaultValue
+    }
+    
+    /// Extract integer value with key
+    public func intValue(_ key: String) throws -> Int {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+        
+        if let intValue = value as? Int {
+            return intValue
+        }
+        
+        if let doubleValue = value as? Double {
+            return Int(doubleValue)
+        }
+        
+        if let stringValue = value as? String, let intValue = Int(stringValue) {
+            return intValue
+        }
+        
+        throw ToolError.invalidInput("Parameter '\(key)' must be an integer")
+    }
+    
+    /// Extract optional integer value with key and default
+    public func intValue(_ key: String, default defaultValue: Int?) -> Int? {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+        
+        if let intValue = value as? Int {
+            return intValue
+        }
+        
+        if let doubleValue = value as? Double {
+            return Int(doubleValue)
+        }
+        
+        if let stringValue = value as? String, let intValue = Int(stringValue) {
+            return intValue
+        }
+        
+        return defaultValue
+    }
+    
+    /// Extract boolean value with key
+    public func boolValue(_ key: String) throws -> Bool {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+        
+        if let boolValue = value as? Bool {
+            return boolValue
+        }
+        
+        if let stringValue = value as? String {
+            return stringValue.lowercased() == "true" || stringValue == "1"
+        }
+        
+        if let intValue = value as? Int {
+            return intValue != 0
+        }
+        
+        throw ToolError.invalidInput("Parameter '\(key)' must be a boolean")
+    }
+    
+    /// Extract optional boolean value with key and default
+    public func boolValue(_ key: String, default defaultValue: Bool) -> Bool {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+        
+        if let boolValue = value as? Bool {
+            return boolValue
+        }
+        
+        if let stringValue = value as? String {
+            return stringValue.lowercased() == "true" || stringValue == "1"
+        }
+        
+        if let intValue = value as? Int {
+            return intValue != 0
+        }
+        
+        return defaultValue
+    }
+    
+    /// Extract double value with key
+    public func doubleValue(_ key: String) throws -> Double {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+        
+        if let doubleValue = value as? Double {
+            return doubleValue
+        }
+        
+        if let intValue = value as? Int {
+            return Double(intValue)
+        }
+        
+        if let stringValue = value as? String, let doubleValue = Double(stringValue) {
+            return doubleValue
+        }
+        
+        throw ToolError.invalidInput("Parameter '\(key)' must be a number")
+    }
+    
+    /// Extract optional double value with key and default
+    public func doubleValue(_ key: String, default defaultValue: Double?) -> Double? {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+        
+        if let doubleValue = value as? Double {
+            return doubleValue
+        }
+        
+        if let intValue = value as? Int {
+            return Double(intValue)
+        }
+        
+        if let stringValue = value as? String, let doubleValue = Double(stringValue) {
+            return doubleValue
+        }
+        
+        return defaultValue
+    }
+    
+    // MARK: - Compatibility Methods (delegate to renamed methods)
+    
+    /// Extract string value with key (compatibility method)
+    public func string(_ key: String) throws -> String {
+        return try stringValue(key)
+    }
+    
+    /// Extract optional string value with key and default (compatibility method)
+    public func string(_ key: String, default defaultValue: String?) -> String? {
+        return stringValue(key, default: defaultValue)
+    }
+    
+    /// Extract integer value with key (compatibility method)
+    public func int(_ key: String) throws -> Int {
+        return try intValue(key)
+    }
+    
+    /// Extract optional integer value with key and default (compatibility method)
+    public func int(_ key: String, default defaultValue: Int?) -> Int? {
+        return intValue(key, default: defaultValue)
+    }
+    
+    /// Extract boolean value with key (compatibility method)
+    public func bool(_ key: String) throws -> Bool {
+        return try boolValue(key)
+    }
+    
+    /// Extract optional boolean value with key and default (compatibility method)
+    public func bool(_ key: String, default defaultValue: Bool) -> Bool {
+        return boolValue(key, default: defaultValue)
+    }
+    
+    /// Extract double value with key (compatibility method)
+    public func double(_ key: String) throws -> Double {
+        return try doubleValue(key)
+    }
+    
+    /// Extract optional double value with key and default (compatibility method)
+    public func double(_ key: String, default defaultValue: Double?) -> Double? {
+        return doubleValue(key, default: defaultValue)
+    }
+}
+
 /// Strongly-typed output from a tool
 public enum ToolOutput: Codable, Sendable {
     case string(String)

@@ -14,25 +14,25 @@ import Foundation
 public struct VisualizableElement: Sendable {
     /// Unique identifier for the element
     public let id: String
-    
+
     /// Category of the element for styling
     public let category: ElementCategory
-    
+
     /// Bounds of the element in screen coordinates
     public let bounds: CGRect
-    
+
     /// Optional label or text content
     public let label: String?
-    
+
     /// Whether the element is enabled/interactive
     public let isEnabled: Bool
-    
+
     /// Whether the element is currently selected
     public let isSelected: Bool
-    
+
     /// Additional metadata for custom visualization
     public let metadata: [String: String]
-    
+
     public init(
         id: String,
         category: ElementCategory,
@@ -40,8 +40,8 @@ public struct VisualizableElement: Sendable {
         label: String? = nil,
         isEnabled: Bool = true,
         isSelected: Bool = false,
-        metadata: [String: String] = [:]
-    ) {
+        metadata: [String: String] = [:])
+    {
         self.id = id
         self.category = category
         self.bounds = bounds
@@ -65,7 +65,7 @@ public enum ElementCategory: Sendable, Equatable, Hashable {
     case container
     case text
     case custom(String)
-    
+
     /// Initialize from AX role
     public init(axRole: String) {
         switch axRole {
@@ -93,7 +93,7 @@ public enum ElementCategory: Sendable, Equatable, Hashable {
             self = .custom(axRole)
         }
     }
-    
+
     /// Initialize from ElementType
     public init(elementType: ElementType) {
         switch elementType {
@@ -117,32 +117,32 @@ public enum ElementCategory: Sendable, Equatable, Hashable {
             self = .text
         }
     }
-    
+
     /// Get ID prefix for this category
     public var idPrefix: String {
         switch self {
         case .button:
-            return "B"
+            "B"
         case .textInput:
-            return "T"
+            "T"
         case .link:
-            return "L"
+            "L"
         case .checkbox:
-            return "C"
+            "C"
         case .radioButton:
-            return "R"
+            "R"
         case .slider:
-            return "S"
+            "S"
         case .menu:
-            return "M"
+            "M"
         case .image:
-            return "I"
+            "I"
         case .container:
-            return "G"
+            "G"
         case .text:
-            return "X"
+            "X"
         case .custom:
-            return "U"
+            "U"
         }
     }
 }
@@ -153,25 +153,25 @@ public enum ElementCategory: Sendable, Equatable, Hashable {
 public struct ElementStyle: Sendable {
     /// Primary color for the element
     public let primaryColor: CGColor
-    
+
     /// Fill opacity (0.0 - 1.0)
     public let fillOpacity: Double
-    
+
     /// Stroke width in points
     public let strokeWidth: Double
-    
+
     /// Stroke opacity (0.0 - 1.0)
     public let strokeOpacity: Double
-    
+
     /// Corner radius for rounded elements
     public let cornerRadius: Double
-    
+
     /// Shadow configuration
     public let shadow: ShadowStyle?
-    
+
     /// Label style
     public let labelStyle: LabelStyle
-    
+
     public init(
         primaryColor: CGColor,
         fillOpacity: Double = 0.2,
@@ -179,8 +179,8 @@ public struct ElementStyle: Sendable {
         strokeOpacity: Double = 1.0,
         cornerRadius: Double = 4.0,
         shadow: ShadowStyle? = nil,
-        labelStyle: LabelStyle = .default
-    ) {
+        labelStyle: LabelStyle = .default)
+    {
         self.primaryColor = primaryColor
         self.fillOpacity = fillOpacity
         self.strokeWidth = strokeWidth
@@ -197,7 +197,7 @@ public struct ShadowStyle: Sendable {
     public let radius: Double
     public let offsetX: Double
     public let offsetY: Double
-    
+
     public init(color: CGColor, radius: Double, offsetX: Double = 0, offsetY: Double = 2) {
         self.color = color
         self.radius = radius
@@ -213,44 +213,43 @@ public struct LabelStyle: Sendable {
     public let backgroundColor: CGColor?
     public let textColor: CGColor
     public let padding: EdgeInsets
-    
+
     public enum FontWeight: Sendable {
         case regular
         case medium
         case bold
     }
-    
+
     public struct EdgeInsets: Sendable {
         public let horizontal: Double
         public let vertical: Double
-        
+
         public init(horizontal: Double = 6, vertical: Double = 3) {
             self.horizontal = horizontal
             self.vertical = vertical
         }
     }
-    
+
     public init(
         fontSize: Double = 11,
         fontWeight: FontWeight = .medium,
         backgroundColor: CGColor? = nil,
         textColor: CGColor,
-        padding: EdgeInsets = EdgeInsets()
-    ) {
+        padding: EdgeInsets = EdgeInsets())
+    {
         self.fontSize = fontSize
         self.fontWeight = fontWeight
         self.backgroundColor = backgroundColor
         self.textColor = textColor
         self.padding = padding
     }
-    
+
     public static let `default` = LabelStyle(
         fontSize: 11,
         fontWeight: .medium,
         backgroundColor: CGColor(gray: 0, alpha: 0.85),
         textColor: CGColor(gray: 1, alpha: 1),
-        padding: EdgeInsets(horizontal: 6, vertical: 3)
-    )
+        padding: EdgeInsets(horizontal: 6, vertical: 3))
 }
 
 // MARK: - Visualization State
@@ -269,13 +268,13 @@ public enum ElementVisualizationState: Sendable {
 public enum CoordinateSpace: Sendable {
     /// Screen coordinates with origin at top-left
     case screen
-    
+
     /// Window coordinates relative to window origin
     case window(CGRect)
-    
+
     /// View coordinates relative to container
     case view(CGSize)
-    
+
     /// Normalized coordinates (0.0 - 1.0)
     case normalized
 }

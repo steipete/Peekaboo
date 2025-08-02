@@ -1,7 +1,7 @@
 import Foundation
 
 /// OpenAI model implementation conforming to ModelInterface
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public final class OpenAIModel: ModelInterface, Sendable {
     private let apiKey: String
     private let baseURL: URL

@@ -1,10 +1,6 @@
 import Foundation
 @_exported import Logging
 
-// All types are already public and available when importing Tachikoma
-// Swift Package Manager automatically makes all public types available
-// No need for explicit re-exports since they're in the same module
-
 /// Tachikoma - A comprehensive Swift package for AI model integration
 ///
 /// Tachikoma provides a unified interface for connecting to various AI providers
@@ -14,7 +10,7 @@ import Foundation
 ///
 /// Named after the AI entity from Ghost in the Shell, Tachikoma embodies
 /// the cyberpunk aesthetic of autonomous AI systems.
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public final class Tachikoma: @unchecked Sendable {
     public static let shared = Tachikoma()
     

@@ -14,18 +14,15 @@ public enum CompletionTools {
             parameters: ToolParameters.object(
                 properties: [
                     "summary": ParameterSchema.string(
-                        description: "Brief summary of what was accomplished"
-                    )
+                        description: "Brief summary of what was accomplished"),
                 ],
-                required: ["summary"]
-            ),
+                required: ["summary"]),
             execute: { params, _ in
                 let summary = try params.string("summary") ?? "Task completed"
                 return .success("✅ Task completed: \(summary)")
-            }
-        )
+            })
     }
-    
+
     /// Create the need info tool for requesting more information
     public static func createNeedInfoTool<Services>() -> Tool<Services> {
         createTool(
@@ -34,25 +31,21 @@ public enum CompletionTools {
             parameters: ToolParameters.object(
                 properties: [
                     "question": ParameterSchema.string(
-                        description: "The specific question or information needed from the user"
-                    ),
+                        description: "The specific question or information needed from the user"),
                     "context": ParameterSchema.string(
-                        description: "Additional context about why this information is needed"
-                    )
+                        description: "Additional context about why this information is needed"),
                 ],
-                required: ["question"]
-            ),
+                required: ["question"]),
             execute: { params, _ in
                 let question = try params.string("question") ?? "Additional information needed"
                 let context = params.string("context", default: nil)
-                
+
                 var response = "❓ Need more information: \(question)"
                 if let context {
                     response += "\n\nContext: \(context)"
                 }
-                
+
                 return .success(response)
-            }
-        )
+            })
     }
 }

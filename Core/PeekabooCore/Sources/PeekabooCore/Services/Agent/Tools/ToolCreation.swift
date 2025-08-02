@@ -9,8 +9,8 @@ public func createSimpleTool<Context>(
     description: String,
     parameters: [String: ParameterSchema] = [:],
     required: [String] = [],
-    execute: @escaping (ToolInput, Context) async throws -> ToolOutput
-) -> Tool<Context> {
+    execute: @escaping (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
+{
     let definition = ToolDefinition(
         type: .function,
         function: FunctionDefinition(
@@ -18,11 +18,8 @@ public func createSimpleTool<Context>(
             description: description,
             parameters: ToolParameters.object(
                 properties: parameters,
-                required: required
-            )
-        )
-    )
-    
+                required: required)))
+
     return Tool(definition: definition, execute: execute)
 }
 
@@ -31,8 +28,8 @@ public func createTool<Context>(
     name: String,
     description: String,
     parameters: ToolParameters? = nil,
-    execute: @escaping (ToolInput, Context) async throws -> ToolOutput
-) -> Tool<Context> {
+    execute: @escaping (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
+{
     let definition = ToolDefinition(
         type: .function,
         function: FunctionDefinition(
@@ -40,11 +37,8 @@ public func createTool<Context>(
             description: description,
             parameters: parameters ?? ToolParameters.object(
                 properties: [:],
-                required: []
-            )
-        )
-    )
-    
+                required: [])))
+
     return Tool(definition: definition, execute: execute)
 }
 
@@ -54,76 +48,67 @@ public func createTool<Context>(
 public func stringParam(
     description: String,
     enumValues: [String]? = nil,
-    pattern: String? = nil
-) -> ParameterSchema {
+    pattern: String? = nil) -> ParameterSchema
+{
     ParameterSchema(
         type: .string,
         description: description,
         enumValues: enumValues,
-        pattern: pattern
-    )
+        pattern: pattern)
 }
 
 /// Create a number parameter schema
 public func numberParam(
     description: String,
     minimum: Double? = nil,
-    maximum: Double? = nil
-) -> ParameterSchema {
+    maximum: Double? = nil) -> ParameterSchema
+{
     ParameterSchema(
         type: .number,
         description: description,
         minimum: minimum,
-        maximum: maximum
-    )
+        maximum: maximum)
 }
 
 /// Create an integer parameter schema
 public func integerParam(
     description: String,
     minimum: Int? = nil,
-    maximum: Int? = nil
-) -> ParameterSchema {
+    maximum: Int? = nil) -> ParameterSchema
+{
     ParameterSchema(
         type: .integer,
         description: description,
         minimum: minimum?.double,
-        maximum: maximum?.double
-    )
+        maximum: maximum?.double)
 }
 
 /// Create a boolean parameter schema
 public func boolParam(description: String) -> ParameterSchema {
     ParameterSchema(
         type: .boolean,
-        description: description
-    )
+        description: description)
 }
 
 /// Create an array parameter schema
 public func arrayParam(
     description: String,
-    items: ParameterSchema
-) -> ParameterSchema {
+    items: ParameterSchema) -> ParameterSchema
+{
     ParameterSchema(
         type: .array,
         description: description,
-        items: ParameterSchemaItems(value: items)
-    )
+        items: items)
 }
 
 /// Create an object parameter schema
 public func objectParam(
     description: String,
-    properties: [String: ParameterSchema],
-    required: [String] = []
-) -> ParameterSchema {
-    ParameterSchema(
-        type: .object,
-        description: description,
+    properties: [String: ParameterSchema]) -> ParameterSchema
+{
+    ParameterSchema.object(
         properties: properties,
-        required: required
-    )
+        description: description)
 }
 
 // MARK: - Type Extensions

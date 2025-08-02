@@ -13,18 +13,18 @@ import Foundation
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public final class Tachikoma: @unchecked Sendable {
     public static let shared = Tachikoma()
-    
+
     private let logger: Logger
-    
+
     private init() {
-        self.logger = Logger(label: "build.tachikoma")
+        logger = Logger(label: "build.tachikoma")
     }
-    
+
     /// Get the shared logger instance
     public var log: Logger {
         logger
     }
-    
+
     /// Get a model instance for the specified model name
     /// - Parameter modelName: The model identifier (e.g., "gpt-4.1", "claude-opus-4", "provider-id/model-name")
     /// - Returns: A model instance conforming to ModelInterface
@@ -32,56 +32,56 @@ public final class Tachikoma: @unchecked Sendable {
     public func getModel(_ modelName: String) async throws -> any ModelInterface {
         return try await ModelProvider.shared.getModel(modelName: modelName)
     }
-    
+
     /// Configure OpenAI provider with specific settings
     /// - Parameter configuration: OpenAI configuration
     public func configureOpenAI(_ configuration: ProviderConfiguration.OpenAI) async {
         await ModelProvider.shared.configureOpenAI(configuration)
     }
-    
+
     /// Configure Anthropic provider with specific settings
     /// - Parameter configuration: Anthropic configuration
     public func configureAnthropic(_ configuration: ProviderConfiguration.Anthropic) async {
         await ModelProvider.shared.configureAnthropic(configuration)
     }
-    
+
     /// Configure Ollama provider with specific settings
     /// - Parameter configuration: Ollama configuration
     public func configureOllama(_ configuration: ProviderConfiguration.Ollama) async {
         await ModelProvider.shared.configureOllama(configuration)
     }
-    
+
     /// Configure Grok provider with specific settings
     /// - Parameter configuration: Grok configuration
     public func configureGrok(_ configuration: ProviderConfiguration.Grok) async {
         await ModelProvider.shared.configureGrok(configuration)
     }
-    
+
     /// Set up all providers from environment variables
     /// - Throws: TachikomaError if setup fails
     public func setupFromEnvironment() async throws {
         try await ModelProvider.shared.setupFromEnvironment()
     }
-    
+
     /// List all available models from configured providers
     /// - Returns: Array of available model identifiers
     public func availableModels() async -> [String] {
         return await ModelProvider.shared.listModels()
     }
-    
+
     /// Clear all cached model instances
     public func clearModelCache() async {
         await ModelProvider.shared.clearCache()
     }
-    
+
     /// Register a custom model factory
     /// - Parameters:
     ///   - modelName: The model name to register
     ///   - factory: Factory closure that creates the model instance
     public func registerModel(
         name modelName: String,
-        factory: @escaping @Sendable () throws -> any ModelInterface) async
-    {
+        factory: @escaping @Sendable () throws -> any ModelInterface
+    ) async {
         await ModelProvider.shared.register(modelName: modelName, factory: factory)
     }
 }

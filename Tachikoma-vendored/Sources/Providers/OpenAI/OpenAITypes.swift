@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Helper Types
 
 /// Sendable wrapper for Any values
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnySendable: Codable, @unchecked Sendable {
     public let value: Any
     
@@ -56,7 +56,7 @@ public struct AnySendable: Codable, @unchecked Sendable {
 // MARK: - OpenAI API Request Types
 
 /// Chat Completions API request format
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIChatRequest: Codable, Sendable {
     public let model: String
     public let messages: [OpenAIMessage]
@@ -76,7 +76,7 @@ public struct OpenAIChatRequest: Codable, Sendable {
 }
 
 /// Responses API request format (for o3/o4 models)
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIResponsesRequest: Codable, Sendable {
     public let model: String
     public let input: [OpenAIMessage]
@@ -97,7 +97,7 @@ public struct OpenAIResponsesRequest: Codable, Sendable {
 }
 
 /// OpenAI message format
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIMessage: Codable, Sendable {
     public let role: String
     public let content: MessageContent?
@@ -145,7 +145,7 @@ public struct OpenAIMessage: Codable, Sendable {
 }
 
 /// OpenAI message content part for multimodal messages
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIMessageContentPart: Codable, Sendable {
     public let type: String
     public let text: String?
@@ -164,7 +164,7 @@ public struct OpenAIMessageContentPart: Codable, Sendable {
 }
 
 /// OpenAI image URL format
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIImageUrl: Codable, Sendable {
     public let url: String
     public let detail: String?
@@ -176,7 +176,7 @@ public struct OpenAIImageUrl: Codable, Sendable {
 }
 
 /// OpenAI tool definition for Chat Completions API
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAITool: Codable, Sendable {
     public let type: String
     public let function: OpenAIFunction
@@ -188,7 +188,7 @@ public struct OpenAITool: Codable, Sendable {
 }
 
 /// OpenAI tool definition for Responses API
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIResponsesTool: Codable, Sendable {
     public let type: String
     public let name: String
@@ -233,7 +233,7 @@ public struct OpenAIResponsesTool: Codable, Sendable {
 }
 
 /// OpenAI function definition
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIFunction: Codable, Sendable {
     public let name: String
     public let description: String?
@@ -284,7 +284,7 @@ public struct OpenAIFunction: Codable, Sendable {
 }
 
 /// OpenAI tool call
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIToolCall: Codable, Sendable {
     public let id: String
     public let type: String
@@ -298,7 +298,7 @@ public struct OpenAIToolCall: Codable, Sendable {
 }
 
 /// OpenAI reasoning configuration for o3/o4 models
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIReasoning: Codable, Sendable {
     public let effort: String
     public let summary: String
@@ -312,7 +312,7 @@ public struct OpenAIReasoning: Codable, Sendable {
 // MARK: - OpenAI Response Types
 
 /// OpenAI Chat Completions response
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIResponse: Codable, Sendable {
     public let id: String
     public let model: String
@@ -321,7 +321,7 @@ public struct OpenAIResponse: Codable, Sendable {
 }
 
 /// OpenAI response choice
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIChoice: Codable, Sendable {
     public let message: OpenAIMessage
     public let finishReason: String?
@@ -333,7 +333,7 @@ public struct OpenAIChoice: Codable, Sendable {
 }
 
 /// OpenAI usage information
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIUsage: Codable, Sendable {
     public let promptTokens: Int
     public let completionTokens: Int
@@ -349,7 +349,7 @@ public struct OpenAIUsage: Codable, Sendable {
 // MARK: - OpenAI Streaming Types
 
 /// OpenAI streaming chunk
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIStreamChunk: Codable, Sendable {
     public let id: String?
     public let model: String?
@@ -357,7 +357,7 @@ public struct OpenAIStreamChunk: Codable, Sendable {
 }
 
 /// OpenAI streaming choice
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIStreamChoice: Codable, Sendable {
     public let delta: OpenAIStreamDelta?
     public let finishReason: String?
@@ -369,7 +369,7 @@ public struct OpenAIStreamChoice: Codable, Sendable {
 }
 
 /// OpenAI streaming delta
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIStreamDelta: Codable, Sendable {
     public let content: String?
     public let toolCalls: [OpenAIStreamToolCall]?
@@ -381,7 +381,7 @@ public struct OpenAIStreamDelta: Codable, Sendable {
 }
 
 /// OpenAI streaming tool call
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIStreamToolCall: Codable, Sendable {
     public let id: String?
     public let type: String?
@@ -390,7 +390,7 @@ public struct OpenAIStreamToolCall: Codable, Sendable {
 }
 
 /// OpenAI streaming function
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIStreamFunction: Codable, Sendable {
     public let name: String?
     public let arguments: String?
@@ -399,13 +399,13 @@ public struct OpenAIStreamFunction: Codable, Sendable {
 // MARK: - Error Types
 
 /// OpenAI error response
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIErrorResponse: Codable, Sendable {
     public let error: OpenAIError
 }
 
 /// OpenAI error details
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct OpenAIError: Codable, Sendable {
     public let message: String
     public let type: String?
@@ -415,7 +415,7 @@ public struct OpenAIError: Codable, Sendable {
 // MARK: - Helper Types
 
 /// Dynamic coding key for JSON encoding/decoding
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 struct AnyCodingKey: CodingKey {
     var stringValue: String
     var intValue: Int?
@@ -432,7 +432,7 @@ struct AnyCodingKey: CodingKey {
 }
 
 /// Wrapper for any codable value
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnyCodable: Codable, @unchecked Sendable {
     public let value: Any
     

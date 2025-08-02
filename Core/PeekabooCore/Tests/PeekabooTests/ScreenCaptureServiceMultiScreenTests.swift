@@ -23,7 +23,7 @@ struct ScreenCaptureServiceMultiScreenTests {
         // Try to capture the first screen
         let result = try await service.captureScreen(displayIndex: 0)
         
-        #expect(result.imageData.count > 0)
+        #expect(!result.imageData.isEmpty)
         #expect(result.captureMode == .screen)
         #expect(result.metadata.displayInfo != nil)
         
@@ -52,7 +52,7 @@ struct ScreenCaptureServiceMultiScreenTests {
         // Currently captureScreen(displayIndex: nil) returns first screen
         let result = try await service.captureScreen(displayIndex: nil)
         
-        #expect(result.imageData.count > 0)
+        #expect(!result.imageData.isEmpty)
         #expect(result.captureMode == .screen)
     }
     

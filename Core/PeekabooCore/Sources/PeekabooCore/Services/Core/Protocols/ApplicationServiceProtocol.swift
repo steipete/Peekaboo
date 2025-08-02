@@ -19,7 +19,8 @@ public protocol ApplicationServiceProtocol: Sendable {
     ///   - appIdentifier: Application name or bundle ID
     ///   - timeout: Optional timeout in seconds (defaults to 2 seconds)
     /// - Returns: UnifiedToolOutput containing window information
-    func listWindows(for appIdentifier: String, timeout: Float?) async throws -> UnifiedToolOutput<ServiceWindowListData>
+    func listWindows(for appIdentifier: String, timeout: Float?) async throws
+        -> UnifiedToolOutput<ServiceWindowListData>
 
     /// Get information about the frontmost application
     /// - Returns: Application information
@@ -135,10 +136,10 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
 
     /// Human-readable name of the Space (if available)
     public let spaceName: String?
-    
+
     /// Screen index (position in NSScreen.screens array)
     public let screenIndex: Int?
-    
+
     /// Screen name (e.g., "Built-in Display", "LG UltraFine")
     public let screenName: String?
 

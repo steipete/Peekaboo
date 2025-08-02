@@ -6,14 +6,14 @@ import Tachikoma
 @available(macOS 14.0, *)
 public struct UnifiedToolDefinition: Sendable {
     public let name: String
-    public let commandName: String?  // CLI command name (if different from tool name)
-    public let abstract: String      // One-line description
-    public let discussion: String    // Detailed help with examples
+    public let commandName: String? // CLI command name (if different from tool name)
+    public let abstract: String // One-line description
+    public let discussion: String // Detailed help with examples
     public let category: ToolCategory
     public let parameters: [ParameterDefinition]
     public let examples: [String]
-    public let agentGuidance: String?  // Special tips for AI agents
-    
+    public let agentGuidance: String? // Special tips for AI agents
+
     public init(
         name: String,
         commandName: String? = nil,
@@ -22,8 +22,8 @@ public struct UnifiedToolDefinition: Sendable {
         category: ToolCategory,
         parameters: [ParameterDefinition] = [],
         examples: [String] = [],
-        agentGuidance: String? = nil
-    ) {
+        agentGuidance: String? = nil)
+    {
         self.name = name
         self.commandName = commandName
         self.abstract = abstract
@@ -33,22 +33,21 @@ public struct UnifiedToolDefinition: Sendable {
         self.examples = examples
         self.agentGuidance = agentGuidance
     }
-    
+
     /// Generate CLI CommandConfiguration
     public var commandConfiguration: CommandConfiguration {
         CommandConfiguration(
-            commandName: commandName ?? name,
-            abstract: abstract,
-            discussion: discussion
-        )
+            commandName: self.commandName ?? self.name,
+            abstract: self.abstract,
+            discussion: self.discussion)
     }
-    
+
     /// Generate agent tool description
     public var agentDescription: String {
         if let guidance = agentGuidance {
-            return "\(abstract)\n\n\(guidance)"
+            return "\(self.abstract)\n\n\(guidance)"
         }
-        return abstract
+        return self.abstract
     }
 }
 
@@ -60,8 +59,8 @@ public struct ParameterDefinition: Sendable {
     public let required: Bool
     public let defaultValue: String?
     public let options: [String]?
-    public let cliOptions: CLIOptions?  // CLI-specific options
-    
+    public let cliOptions: CLIOptions? // CLI-specific options
+
     public init(
         name: String,
         type: UnifiedParameterType,
@@ -69,8 +68,8 @@ public struct ParameterDefinition: Sendable {
         required: Bool = false,
         defaultValue: String? = nil,
         options: [String]? = nil,
-        cliOptions: CLIOptions? = nil
-    ) {
+        cliOptions: CLIOptions? = nil)
+    {
         self.name = name
         self.type = type
         self.description = description
@@ -96,21 +95,21 @@ public struct CLIOptions: Sendable {
     public let argumentType: ArgumentType
     public let shortName: Character?
     public let longName: String?
-    
+
     public init(
         argumentType: ArgumentType,
         shortName: Character? = nil,
-        longName: String? = nil
-    ) {
+        longName: String? = nil)
+    {
         self.argumentType = argumentType
         self.shortName = shortName
         self.longName = longName
     }
-    
+
     public enum ArgumentType: Sendable {
-        case argument   // Positional argument
-        case option     // --name value
-        case flag       // --flag
+        case argument // Positional argument
+        case option // --name value
+        case flag // --flag
     }
 }
 
@@ -123,16 +122,16 @@ public enum ToolCategory: String, CaseIterable, Sendable {
     case menu = "Menu/Dialog"
     case system = "System"
     case element = "Elements"
-    
+
     public var icon: String {
         switch self {
-        case .vision: return "👁️"
-        case .automation: return "🤖"
-        case .window: return "🪟"
-        case .app: return "📱"
-        case .menu: return "📋"
-        case .system: return "⚙️"
-        case .element: return "🔍"
+        case .vision: "👁️"
+        case .automation: "🤖"
+        case .window: "🪟"
+        case .app: "📱"
+        case .menu: "📋"
+        case .system: "⚙️"
+        case .element: "🔍"
         }
     }
 }

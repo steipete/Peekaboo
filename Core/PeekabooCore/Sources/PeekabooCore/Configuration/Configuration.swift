@@ -115,7 +115,7 @@ public struct Configuration: Codable {
             self.maxTokens = maxTokens
         }
     }
-    
+
     /// Visualizer configuration for animation and visual feedback.
     ///
     /// Controls visual feedback settings for UI automation operations,
@@ -126,7 +126,7 @@ public struct Configuration: Codable {
         public var effectIntensity: Double?
         public var soundEnabled: Bool?
         public var keyboardTheme: String?
-        
+
         // Individual animation toggles
         public var screenshotFlashEnabled: Bool?
         public var clickAnimationEnabled: Bool?
@@ -141,7 +141,7 @@ public struct Configuration: Codable {
         public var dialogInteractionEnabled: Bool?
         public var spaceTransitionEnabled: Bool?
         public var ghostEasterEggEnabled: Bool?
-        
+
         public init(
             enabled: Bool? = nil,
             animationSpeed: Double? = nil,
@@ -182,7 +182,7 @@ public struct Configuration: Codable {
             self.ghostEasterEggEnabled = ghostEasterEggEnabled
         }
     }
-    
+
     /// Custom AI provider configuration.
     ///
     /// Defines a custom AI provider endpoint with connection details, supported models,
@@ -195,7 +195,7 @@ public struct Configuration: Codable {
         public let options: ProviderOptions
         public let models: [String: ModelDefinition]?
         public let enabled: Bool
-        
+
         public init(
             name: String,
             description: String? = nil,
@@ -211,33 +211,33 @@ public struct Configuration: Codable {
             self.models = models
             self.enabled = enabled
         }
-        
+
         /// Provider API compatibility type.
         public enum ProviderType: String, Codable, CaseIterable {
-            case openai = "openai"
-            case anthropic = "anthropic"
-            
+            case openai
+            case anthropic
+
             public var displayName: String {
                 switch self {
-                case .openai: return "OpenAI Compatible"
-                case .anthropic: return "Anthropic Compatible"
+                case .openai: "OpenAI Compatible"
+                case .anthropic: "Anthropic Compatible"
                 }
             }
         }
     }
-    
+
     /// Provider connection and authentication options.
     ///
     /// Contains the technical details needed to connect to a custom provider,
     /// including API endpoint, authentication, and request customization.
     public struct ProviderOptions: Codable {
         public let baseURL: String
-        public let apiKey: String  // Environment variable reference like {env:API_KEY}
+        public let apiKey: String // Environment variable reference like {env:API_KEY}
         public let headers: [String: String]?
         public let timeout: TimeInterval?
         public let retryAttempts: Int?
         public let defaultParameters: [String: String]?
-        
+
         public init(
             baseURL: String,
             apiKey: String,
@@ -254,7 +254,7 @@ public struct Configuration: Codable {
             self.defaultParameters = defaultParameters
         }
     }
-    
+
     /// Model definition with capabilities and constraints.
     ///
     /// Describes an AI model available through a custom provider, including
@@ -265,7 +265,7 @@ public struct Configuration: Codable {
         public let supportsTools: Bool?
         public let supportsVision: Bool?
         public let parameters: [String: String]?
-        
+
         public init(
             name: String,
             maxTokens: Int? = nil,

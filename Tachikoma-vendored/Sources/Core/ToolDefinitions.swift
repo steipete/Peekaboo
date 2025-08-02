@@ -2,9 +2,9 @@ import Foundation
 
 // MARK: - Tool Definition
 
-/// A tool that can be used by an AI model to perform actions
-
-public struct AITool<Context> {
+/// A tool that can be used by an agent to perform actions
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
+public struct Tool<Context> {
     /// Unique name of the tool
     public let name: String
 
@@ -278,6 +278,214 @@ public enum ToolInput {
     }
 }
 
+// MARK: - ToolInput Convenience Methods
+
+extension ToolInput {
+    /// Dictionary access for parameter extraction
+    public var arguments: [String: Any] {
+        switch self {
+        case let .dictionary(dict):
+            return dict
+        case let .string(str):
+            return ["text": str]
+        case let .array(array):
+            return ["items": array]
+        case .null:
+            return [:]
+        }
+    }
+    
+    /// Extract string value with key
+    public func stringValue(_ key: String) throws -> String {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+        
+        if let stringValue = value as? String {
+            return stringValue
+        }
+        
+        throw ToolError.invalidInput("Parameter '\(key)' must be a string")
+    }
+    
+    /// Extract optional string value with key and default
+    public func stringValue(_ key: String, default defaultValue: String?) -> String? {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+        
+        return value as? String ?? defaultValue
+    }
+    
+    /// Extract integer value with key
+    public func intValue(_ key: String) throws -> Int {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+        
+        if let intValue = value as? Int {
+            return intValue
+        }
+        
+        if let doubleValue = value as? Double {
+            return Int(doubleValue)
+        }
+        
+        if let stringValue = value as? String, let intValue = Int(stringValue) {
+            return intValue
+        }
+        
+        throw ToolError.invalidInput("Parameter '\(key)' must be an integer")
+    }
+    
+    /// Extract optional integer value with key and default
+    public func intValue(_ key: String, default defaultValue: Int?) -> Int? {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+        
+        if let intValue = value as? Int {
+            return intValue
+        }
+        
+        if let doubleValue = value as? Double {
+            return Int(doubleValue)
+        }
+        
+        if let stringValue = value as? String, let intValue = Int(stringValue) {
+            return intValue
+        }
+        
+        return defaultValue
+    }
+    
+    /// Extract boolean value with key
+    public func boolValue(_ key: String) throws -> Bool {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+        
+        if let boolValue = value as? Bool {
+            return boolValue
+        }
+        
+        if let stringValue = value as? String {
+            return stringValue.lowercased() == "true" || stringValue == "1"
+        }
+        
+        if let intValue = value as? Int {
+            return intValue != 0
+        }
+        
+        throw ToolError.invalidInput("Parameter '\(key)' must be a boolean")
+    }
+    
+    /// Extract optional boolean value with key and default
+    public func boolValue(_ key: String, default defaultValue: Bool) -> Bool {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+        
+        if let boolValue = value as? Bool {
+            return boolValue
+        }
+        
+        if let stringValue = value as? String {
+            return stringValue.lowercased() == "true" || stringValue == "1"
+        }
+        
+        if let intValue = value as? Int {
+            return intValue != 0
+        }
+        
+        return defaultValue
+    }
+    
+    /// Extract double value with key
+    public func doubleValue(_ key: String) throws -> Double {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+        
+        if let doubleValue = value as? Double {
+            return doubleValue
+        }
+        
+        if let intValue = value as? Int {
+            return Double(intValue)
+        }
+        
+        if let stringValue = value as? String, let doubleValue = Double(stringValue) {
+            return doubleValue
+        }
+        
+        throw ToolError.invalidInput("Parameter '\(key)' must be a number")
+    }
+    
+    /// Extract optional double value with key and default
+    public func doubleValue(_ key: String, default defaultValue: Double?) -> Double? {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+        
+        if let doubleValue = value as? Double {
+            return doubleValue
+        }
+        
+        if let intValue = value as? Int {
+            return Double(intValue)
+        }
+        
+        if let stringValue = value as? String, let doubleValue = Double(stringValue) {
+            return doubleValue
+        }
+        
+        return defaultValue
+    }
+    
+    // MARK: - Compatibility Methods (delegate to renamed methods)
+    
+    /// Extract string value with key (compatibility method)
+    public func string(_ key: String) throws -> String {
+        return try stringValue(key)
+    }
+    
+    /// Extract optional string value with key and default (compatibility method)
+    public func string(_ key: String, default defaultValue: String?) -> String? {
+        return stringValue(key, default: defaultValue)
+    }
+    
+    /// Extract integer value with key (compatibility method)
+    public func int(_ key: String) throws -> Int {
+        return try intValue(key)
+    }
+    
+    /// Extract optional integer value with key and default (compatibility method)
+    public func int(_ key: String, default defaultValue: Int?) -> Int? {
+        return intValue(key, default: defaultValue)
+    }
+    
+    /// Extract boolean value with key (compatibility method)
+    public func bool(_ key: String) throws -> Bool {
+        return try boolValue(key)
+    }
+    
+    /// Extract optional boolean value with key and default (compatibility method)
+    public func bool(_ key: String, default defaultValue: Bool) -> Bool {
+        return boolValue(key, default: defaultValue)
+    }
+    
+    /// Extract double value with key (compatibility method)
+    public func double(_ key: String) throws -> Double {
+        return try doubleValue(key)
+    }
+    
+    /// Extract optional double value with key and default (compatibility method)
+    public func double(_ key: String, default defaultValue: Double?) -> Double? {
+        return doubleValue(key, default: defaultValue)
+    }
+}
+
 /// Strongly-typed output from a tool
 public enum ToolOutput: Codable, Sendable {
     case string(String)
@@ -536,9 +744,9 @@ public final class Box<T: Codable & Sendable>: Codable, Sendable {
 
 // MARK: - Tool Builder
 
-/// Builder pattern for creating AI tools
-
-public struct AIToolBuilder<Context> {
+/// Builder pattern for creating tools
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
+public struct ToolBuilder<Context> {
     private var name: String = ""
     private var description: String = ""
     private var parameters: ToolParameters = .init()
@@ -547,38 +755,38 @@ public struct AIToolBuilder<Context> {
 
     public init() {}
 
-    public func withName(_ name: String) -> AIToolBuilder<Context> {
+    public func withName(_ name: String) -> ToolBuilder<Context> {
         var builder = self
         builder.name = name
         return builder
     }
 
-    public func withDescription(_ description: String) -> AIToolBuilder<Context> {
+    public func withDescription(_ description: String) -> ToolBuilder<Context> {
         var builder = self
         builder.description = description
         return builder
     }
 
-    public func withParameters(_ parameters: ToolParameters) -> AIToolBuilder<Context> {
+    public func withParameters(_ parameters: ToolParameters) -> ToolBuilder<Context> {
         var builder = self
         builder.parameters = parameters
         return builder
     }
 
-    public func withStrict(_ strict: Bool) -> AIToolBuilder<Context> {
+    public func withStrict(_ strict: Bool) -> ToolBuilder<Context> {
         var builder = self
         builder.strict = strict
         return builder
     }
 
     public func withExecution(_ execute: @escaping (ToolInput, Context) async throws -> ToolOutput)
-    -> AIToolBuilder<Context> {
+    -> ToolBuilder<Context> {
         var builder = self
         builder.execute = execute
         return builder
     }
 
-    public func build() throws -> AITool<Context> {
+    public func build() throws -> Tool<Context> {
         guard !self.name.isEmpty else {
             throw ToolError.invalidInput("Tool name is required")
         }
@@ -587,7 +795,7 @@ public struct AIToolBuilder<Context> {
             throw ToolError.invalidInput("Tool execution function is required")
         }
 
-        return AITool(
+        return Tool(
             name: self.name,
             description: self.description,
             parameters: self.parameters,

@@ -7,8 +7,8 @@ public func createTool<Context>(
     description: String,
     parameters: ToolParameters? = nil,
     execute: @escaping (ToolInput, Context) async throws -> ToolOutput
-) -> AITool<Context> {
-    return AITool<Context>(
+) -> Tool<Context> {
+    return Tool<Context>(
         name: name,
         description: description,
         parameters: parameters ?? ToolParameters.object(properties: [:], required: []),
@@ -24,7 +24,7 @@ public func createSimpleTool<Context>(
     parameters: [String: ParameterSchema] = [:],
     required: [String] = [],
     execute: @escaping (ToolInput, Context) async throws -> ToolOutput
-) -> AITool<Context> {
+) -> Tool<Context> {
     return createTool(
         name: name,
         description: description,
@@ -37,10 +37,10 @@ public func createSimpleTool<Context>(
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public func stringParam(
     description: String,
-    enumValues: [String]? = nil,
+    enumValues _: [String]? = nil,
     pattern: String? = nil
 ) -> ParameterSchema {
-    ParameterSchema.string(description: description, pattern: pattern, enumValues: enumValues)
+    ParameterSchema.string(description: description, pattern: pattern)
 }
 
 /// Create a number parameter schema
@@ -83,9 +83,9 @@ public func arrayParam(
 public func objectParam(
     description: String,
     properties: [String: ParameterSchema],
-    required: [String] = []
+    required _: [String] = []
 ) -> ParameterSchema {
-    ParameterSchema.object(properties: properties, description: description, required: required)
+    ParameterSchema.object(properties: properties, description: description)
 }
 
 // MARK: - Type Extensions

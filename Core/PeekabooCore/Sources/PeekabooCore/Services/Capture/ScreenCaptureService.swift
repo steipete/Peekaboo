@@ -16,7 +16,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
     public init(loggingService: LoggingServiceProtocol) {
         self.logger = loggingService.logger(category: LoggingService.Category.screenCapture)
-        
+
         // Only connect to visualizer if we're not running inside the Mac app
         // The Mac app provides the visualizer service, not consumes it
         let isMacApp = Bundle.main.bundleIdentifier == "boo.peekaboo.mac"
@@ -570,7 +570,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             windowID,
             [.boundsIgnoreFraming, .nominalResolution])
 
-        guard let image = image else {
+        guard let image else {
             throw OperationError.captureFailed(reason: "Failed to create window image")
         }
 
@@ -649,9 +649,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
         // Capture using legacy API
         // TODO: Migrate to ScreenCaptureKit when ready
-        let image = CGWindowListCreateImage(screenBounds, .optionOnScreenBelowWindow, kCGNullWindowID, .nominalResolution)
+        let image = CGWindowListCreateImage(
+            screenBounds,
+            .optionOnScreenBelowWindow,
+            kCGNullWindowID,
+            .nominalResolution)
 
-        guard let image = image else {
+        guard let image else {
             throw OperationError.captureFailed(reason: "Failed to create screen image using legacy API")
         }
 
@@ -702,7 +706,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
     deinit {
         // Cancel timeout task first to prevent race condition
         timeoutTask?.cancel()
-        
+
         // Ensure continuation is resumed if object is deallocated
         queue.sync(flags: .barrier) {
             if let continuation = self.continuation {
@@ -716,7 +720,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
 
     func waitForImage() async throws -> CGImage {
         try await withCheckedThrowingContinuation { continuation in
-            queue.async(flags: .barrier) {
+            self.queue.async(flags: .barrier) {
                 self.continuation = continuation
             }
 
@@ -725,7 +729,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
             self.timeoutTask = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
                 guard let self else { return }
-                
+
                 self.queue.async(flags: .barrier) {
                     if let cont = self.continuation {
                         cont.resume(throwing: OperationError.timeout(
@@ -746,7 +750,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
         self.timeoutTask = nil
 
         guard let imageBuffer = sampleBuffer.imageBuffer else {
-            queue.async(flags: .barrier) {
+            self.queue.async(flags: .barrier) {
                 if let continuation = self.continuation {
                     continuation.resume(throwing: OperationError.captureFailed(reason: "No image buffer in sample"))
                     self.continuation = nil
@@ -759,7 +763,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
         let context = CIContext()
 
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-            queue.async(flags: .barrier) {
+            self.queue.async(flags: .barrier) {
                 if let continuation = self.continuation {
                     continuation
                         .resume(throwing: OperationError.captureFailed(reason: "Failed to create CGImage from buffer"))
@@ -769,7 +773,7 @@ private final class CaptureOutput: NSObject, SCStreamOutput, @unchecked Sendable
             return
         }
 
-        queue.async(flags: .barrier) {
+        self.queue.async(flags: .barrier) {
             if let continuation = self.continuation {
                 continuation.resume(returning: cgImage)
                 self.continuation = nil

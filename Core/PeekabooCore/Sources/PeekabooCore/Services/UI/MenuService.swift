@@ -48,16 +48,18 @@ public final class MenuService: MenuServiceProtocol {
         var menus: [Menu] = []
         let menuEnumerationTimeout: TimeInterval = 5.0 // 5 seconds total for menu enumeration
         let menuStartTime = Date()
-        
+
         let topLevelMenus = menuBar.children() ?? []
-        
+
         for menuBarItem in topLevelMenus {
             // Check if we've exceeded total timeout
             if Date().timeIntervalSince(menuStartTime) > menuEnumerationTimeout {
-                self.logger.warning("Menu enumeration timed out after \(menuEnumerationTimeout)s, collected \(menus.count) menus")
+                self.logger
+                    .warning(
+                        "Menu enumeration timed out after \(menuEnumerationTimeout)s, collected \(menus.count) menus")
                 break
             }
-            
+
             // Extract menu with time tracking
             let menuItemStartTime = Date()
             if let menu = extractMenu(from: menuBarItem, parentPath: "") {
@@ -327,7 +329,7 @@ public final class MenuService: MenuServiceProtocol {
     @MainActor
     private func extractMenuItems(from elements: [Element], parentPath: String) -> [MenuItem] {
         // Process all items now that we have timeout protection
-        return elements.compactMap { element in
+        elements.compactMap { element in
             self.extractMenuItem(from: element, parentPath: parentPath)
         }
     }
@@ -565,82 +567,78 @@ public final class MenuService: MenuServiceProtocol {
             key: cmdChar,
             displayString: displayParts.joined())
     }
-    
+
     // MARK: - Menu Bar Item Methods
-    
+
     /// List all menu bar items (status items)
     public func listMenuBarItems() async throws -> [MenuBarItemInfo] {
         let extras = try await listMenuExtras()
-        
+
         // Convert MenuExtraInfo to MenuBarItemInfo with index
         return extras.enumerated().map { index, extra in
             MenuBarItemInfo(
                 title: extra.title,
                 index: index,
                 isVisible: extra.isVisible,
-                description: extra.title
-            )
+                description: extra.title)
         }
     }
-    
+
     /// Click a menu bar item by name
     public func clickMenuBarItem(named name: String) async throws -> ClickResult {
         // Try to find and click using the existing menu extra functionality
         do {
-            try await clickMenuExtra(title: name)
+            try await self.clickMenuExtra(title: name)
             return ClickResult(
                 elementDescription: "Menu bar item: \(name)",
-                location: nil
-            )
+                location: nil)
         } catch {
             // If that fails, try to find it in the list and click by position
             let items = try await listMenuBarItems()
-            
+
             // Try exact match first
             if let item = items.first(where: { $0.title == name }) {
-                return try await clickMenuBarItem(at: item.index)
+                return try await self.clickMenuBarItem(at: item.index)
             }
-            
+
             // Try case-insensitive match
             if let item = items.first(where: { $0.title?.lowercased() == name.lowercased() }) {
-                return try await clickMenuBarItem(at: item.index)
+                return try await self.clickMenuBarItem(at: item.index)
             }
-            
+
             // Try partial match
             if let item = items.first(where: { $0.title?.lowercased().contains(name.lowercased()) ?? false }) {
-                return try await clickMenuBarItem(at: item.index)
+                return try await self.clickMenuBarItem(at: item.index)
             }
-            
+
             throw NotFoundError(
                 code: .menuNotFound,
                 userMessage: "Menu bar item '\(name)' not found",
-                context: ["availableItems": items.compactMap { $0.title }.joined(separator: ", ")]
-            )
+                context: ["availableItems": items.compactMap(\.title).joined(separator: ", ")])
         }
     }
-    
+
     /// Click a menu bar item by index
     public func clickMenuBarItem(at index: Int) async throws -> ClickResult {
         let extras = try await listMenuExtras()
-        
-        guard index >= 0 && index < extras.count else {
-            throw PeekabooError.invalidInput("Invalid menu bar item index: \(index). Valid range: 0-\(extras.count - 1)")
+
+        guard index >= 0, index < extras.count else {
+            throw PeekabooError
+                .invalidInput("Invalid menu bar item index: \(index). Valid range: 0-\(extras.count - 1)")
         }
-        
+
         let extra = extras[index]
-        
+
         // Click at the item's position
         let clickService = ClickService()
         try await clickService.click(
             target: .coordinates(extra.position),
             clickType: .single,
-            sessionId: nil
-        )
-        
+            sessionId: nil)
+
         return ClickResult(
             elementDescription: "Menu bar item [\(index)]: \(extra.title)",
-            location: extra.position
-        )
+            location: extra.position)
     }
 }
 

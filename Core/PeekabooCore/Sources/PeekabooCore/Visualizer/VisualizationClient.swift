@@ -56,8 +56,8 @@ public final class VisualizationClient {
 
     /// Establishes connection to the visualizer service if available
     public func connect() {
-        logger.info("🔌 Client: Attempting to connect to visualizer service")
-        
+        self.logger.info("🔌 Client: Attempting to connect to visualizer service")
+
         guard self.isEnabled else {
             self.logger.info("🔌 Client: Visual feedback is disabled, skipping connection")
             return
@@ -68,8 +68,8 @@ public final class VisualizationClient {
             self.logger.info("🔌 Client: Peekaboo.app is not running, visual feedback unavailable")
             return
         }
-        
-        logger.info("🔌 Client: Peekaboo.app is running, establishing XPC connection")
+
+        self.logger.info("🔌 Client: Peekaboo.app is running, establishing XPC connection")
 
         // Create XPC connection
         self.connection = NSXPCConnection(machServiceName: VisualizerXPCServiceName)
@@ -124,25 +124,25 @@ public final class VisualizationClient {
 
     /// Shows screenshot flash animation
     public func showScreenshotFlash(in rect: CGRect) async -> Bool {
-        logger.info("📸 Client: Screenshot flash requested for rect: \(String(describing: rect))")
-        
+        self.logger.info("📸 Client: Screenshot flash requested for rect: \(String(describing: rect))")
+
         guard self.isConnected else {
-            logger.warning("📸 Client: Not connected to visualizer service")
+            self.logger.warning("📸 Client: Not connected to visualizer service")
             return false
         }
-        
+
         guard self.isEnabled else {
-            logger.info("📸 Client: Visual feedback disabled")
+            self.logger.info("📸 Client: Visual feedback disabled")
             return false
         }
 
         // Check screenshot-specific environment variable
         if ProcessInfo.processInfo.environment["PEEKABOO_VISUAL_SCREENSHOTS"] == "false" {
-            logger.info("📸 Client: Screenshot visual feedback disabled via environment variable")
+            self.logger.info("📸 Client: Screenshot visual feedback disabled via environment variable")
             return false
         }
-        
-        logger.info("📸 Client: Sending screenshot flash to XPC service")
+
+        self.logger.info("📸 Client: Sending screenshot flash to XPC service")
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showScreenshotFlash(in: rect) { success in
@@ -154,19 +154,19 @@ public final class VisualizationClient {
 
     /// Shows click feedback
     public func showClickFeedback(at point: CGPoint, type: ClickType) async -> Bool {
-        logger.info("🖱️ Client: Click feedback requested at point: \(String(describing: point)), type: \(type)")
-        
+        self.logger.info("🖱️ Client: Click feedback requested at point: \(String(describing: point)), type: \(type)")
+
         guard self.isConnected else {
-            logger.warning("🖱️ Client: Not connected to visualizer service")
+            self.logger.warning("🖱️ Client: Not connected to visualizer service")
             return false
         }
-        
+
         guard self.isEnabled else {
-            logger.info("🖱️ Client: Visual feedback disabled")
+            self.logger.info("🖱️ Client: Visual feedback disabled")
             return false
         }
-        
-        logger.info("🖱️ Client: Sending click feedback to XPC service")
+
+        self.logger.info("🖱️ Client: Sending click feedback to XPC service")
 
         return await withCheckedContinuation { continuation in
             self.remoteProxy?.showClickFeedback(at: point, type: type.rawValue) { success in
@@ -322,38 +322,38 @@ public final class VisualizationClient {
         imageData: Data,
         elements: [DetectedElement],
         windowBounds: CGRect,
-        duration: TimeInterval = 3.0
-    ) async -> Bool {
-        logger.info("🎯 Client: Annotated screenshot requested with \(elements.count) elements")
-        
+        duration: TimeInterval = 3.0) async -> Bool
+    {
+        self.logger.info("🎯 Client: Annotated screenshot requested with \(elements.count) elements")
+
         guard self.isConnected else {
-            logger.warning("🎯 Client: Not connected to visualizer service")
+            self.logger.warning("🎯 Client: Not connected to visualizer service")
             return false
         }
-        
+
         guard self.isEnabled else {
-            logger.info("🎯 Client: Visual feedback disabled")
+            self.logger.info("🎯 Client: Visual feedback disabled")
             return false
         }
-        
+
         // Serialize elements
         do {
             let encoder = JSONEncoder()
             let elementData = try encoder.encode(elements)
-            
+
             return await withCheckedContinuation { continuation in
                 self.remoteProxy?.showAnnotatedScreenshot(
                     imageData: imageData,
                     elementData: elementData,
                     windowBounds: windowBounds,
-                    duration: duration
-                ) { success in
+                    duration: duration)
+                { success in
                     self.logger.info("🎯 Client: Annotated screenshot result: \(success)")
                     continuation.resume(returning: success)
                 }
             }
         } catch {
-            logger.error("🎯 Client: Failed to encode elements: \(error)")
+            self.logger.error("🎯 Client: Failed to encode elements: \(error)")
             return false
         }
     }

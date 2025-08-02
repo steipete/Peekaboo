@@ -252,14 +252,14 @@ struct ElementLayoutEngineTests {
         
         // Labels should not overlap
         let label1Bounds = CGRect(
-            x: label1Pos.x - labelSize.width/2,
-            y: label1Pos.y - labelSize.height/2,
+            x: label1Pos.x - labelSize.width / 2,
+            y: label1Pos.y - labelSize.height / 2,
             width: labelSize.width,
             height: labelSize.height
         )
         let label2Bounds = CGRect(
-            x: label2Pos.x - labelSize.width/2,
-            y: label2Pos.y - labelSize.height/2,
+            x: label2Pos.x - labelSize.width / 2,
+            y: label2Pos.y - labelSize.height / 2,
             width: labelSize.width,
             height: labelSize.height
         )

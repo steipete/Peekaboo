@@ -29,11 +29,11 @@ public actor ModelProvider {
     ///   - factory: Factory closure that creates the model
     public func register(
         modelName: String,
-        factory: @escaping @Sendable () throws -> any ModelInterface)
-    {
-        self.modelFactories[modelName] = factory
+        factory: @escaping @Sendable () throws -> any ModelInterface
+    ) {
+        modelFactories[modelName] = factory
         // Clear cache for this model
-        self.modelCache.removeValue(forKey: modelName)
+        modelCache.removeValue(forKey: modelName)
     }
 
     /// Get a model by name
@@ -50,9 +50,9 @@ public actor ModelProvider {
         if let slashIndex = modelName.firstIndex(of: "/") {
             let providerId = String(modelName[..<slashIndex])
             let modelPath = String(modelName[modelName.index(after: slashIndex)...])
-            
+
             if let model = try? createCustomProviderModel(providerId: providerId, modelPath: modelPath) {
-                self.modelCache[modelName] = model
+                modelCache[modelName] = model
                 return model
             }
         }
@@ -60,7 +60,7 @@ public actor ModelProvider {
         // Try exact match for built-in models
         if let factory = modelFactories[modelName] {
             let model = try factory()
-            self.modelCache[modelName] = model
+            modelCache[modelName] = model
             return model
         }
 
@@ -70,8 +70,8 @@ public actor ModelProvider {
         {
             let model = try factory()
             // Cache with both original and resolved names
-            self.modelCache[modelName] = model
-            self.modelCache[resolvedName] = model
+            modelCache[modelName] = model
+            modelCache[resolvedName] = model
             return model
         }
 
@@ -81,42 +81,42 @@ public actor ModelProvider {
 
     /// List all registered models
     public func listModels() -> [String] {
-        Array(self.modelFactories.keys).sorted()
+        Array(modelFactories.keys).sorted()
     }
 
     /// Clear model cache
     public func clearCache() {
-        self.modelCache.removeAll()
+        modelCache.removeAll()
     }
 
     /// Clear all model registrations and cache (useful for testing)
     public func clearAll() async {
-        self.modelCache.removeAll()
-        self.modelFactories.removeAll()
+        modelCache.removeAll()
+        modelFactories.removeAll()
         // Re-register default models
-        await self.registerDefaultModels()
+        await registerDefaultModels()
     }
 
     /// Unregister a model
     public func unregister(modelName: String) {
-        self.modelFactories.removeValue(forKey: modelName)
-        self.modelCache.removeValue(forKey: modelName)
+        modelFactories.removeValue(forKey: modelName)
+        modelCache.removeValue(forKey: modelName)
     }
 
     // MARK: - Private Methods
 
     private func registerDefaultModels() async {
         // Register OpenAI models
-        self.registerOpenAIModels()
+        registerOpenAIModels()
 
         // Register Anthropic models
-        self.registerAnthropicModels()
+        registerAnthropicModels()
 
         // Register Grok models
-        self.registerGrokModels()
+        registerGrokModels()
 
         // Register Ollama models
-        self.registerOllamaModels()
+        registerOllamaModels()
     }
 
     /// Resolve lenient model names to their full versions
@@ -207,7 +207,7 @@ public actor ModelProvider {
         ]
 
         for modelName in models {
-            self.register(modelName: modelName) {
+            register(modelName: modelName) {
                 guard let apiKey = self.getOpenAIAPIKey() else {
                     throw TachikomaError.authenticationFailed
                 }
@@ -217,7 +217,7 @@ public actor ModelProvider {
         }
     }
 
-    nonisolated private func getOpenAIAPIKey() -> String? {
+    private nonisolated func getOpenAIAPIKey() -> String? {
         // Check environment variable
         if let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
             return apiKey
@@ -259,7 +259,7 @@ public actor ModelProvider {
         ]
 
         for (alias, actualModelId) in modelMappings {
-            self.register(modelName: alias) {
+            register(modelName: alias) {
                 guard let apiKey = self.getAnthropicAPIKey() else {
                     throw TachikomaError.authenticationFailed
                 }
@@ -269,7 +269,7 @@ public actor ModelProvider {
         }
     }
 
-    nonisolated private func getAnthropicAPIKey() -> String? {
+    private nonisolated func getAnthropicAPIKey() -> String? {
         // Check environment variable
         if let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] {
             return apiKey
@@ -316,7 +316,7 @@ public actor ModelProvider {
         ]
 
         for modelName in models {
-            self.register(modelName: modelName) {
+            register(modelName: modelName) {
                 guard let apiKey = self.getGrokAPIKey() else {
                     throw TachikomaError.authenticationFailed
                 }
@@ -326,7 +326,7 @@ public actor ModelProvider {
         }
     }
 
-    nonisolated private func getGrokAPIKey() -> String? {
+    private nonisolated func getGrokAPIKey() -> String? {
         // Check environment variables (both variants)
         if let apiKey = ProcessInfo.processInfo.environment["X_AI_API_KEY"] {
             return apiKey
@@ -400,7 +400,7 @@ public actor ModelProvider {
         guard let baseURL = URL(string: baseURLString) else { return }
 
         for modelName in models {
-            self.register(modelName: modelName) {
+            register(modelName: modelName) {
                 OllamaModel(modelName: modelName, baseURL: baseURL)
             }
         }
@@ -414,7 +414,7 @@ public actor ModelProvider {
     ///   - modelPath: The model path within the provider
     /// - Returns: A model instance
     /// - Throws: TachikomaError if provider not found or configuration invalid
-    private func createCustomProviderModel(providerId: String, modelPath: String) throws -> any ModelInterface {
+    private func createCustomProviderModel(providerId _: String, modelPath _: String) throws -> any ModelInterface {
         // For now, return a basic implementation
         // This can be extended with a configuration system later
         throw TachikomaError.modelNotFound("Custom providers not yet implemented")
@@ -435,8 +435,8 @@ public enum ProviderConfiguration {
         public init(
             apiKey: String,
             organizationId: String? = nil,
-            baseURL: URL? = nil)
-        {
+            baseURL: URL? = nil
+        ) {
             self.apiKey = apiKey
             self.organizationId = organizationId
             self.baseURL = baseURL
@@ -450,8 +450,8 @@ public enum ProviderConfiguration {
 
         public init(
             apiKey: String,
-            baseURL: URL? = nil)
-        {
+            baseURL: URL? = nil
+        ) {
             self.apiKey = apiKey
             self.baseURL = baseURL
         }
@@ -473,8 +473,8 @@ public enum ProviderConfiguration {
 
         public init(
             apiKey: String,
-            baseURL: URL? = nil)
-        {
+            baseURL: URL? = nil
+        ) {
             self.apiKey = apiKey
             self.baseURL = baseURL
         }
@@ -484,9 +484,9 @@ public enum ProviderConfiguration {
 // MARK: - Model Provider Extensions
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
-extension ModelProvider {
+public extension ModelProvider {
     /// Configure OpenAI models with specific settings
-    public func configureOpenAI(_ config: ProviderConfiguration.OpenAI) {
+    func configureOpenAI(_ config: ProviderConfiguration.OpenAI) {
         let models = [
             // GPT-4o series
             "gpt-4o",
@@ -506,18 +506,19 @@ extension ModelProvider {
         ]
 
         for modelName in models {
-            self.register(modelName: modelName) {
+            register(modelName: modelName) {
                 OpenAIModel(
                     apiKey: config.apiKey,
                     baseURL: config.baseURL ?? URL(string: "https://api.openai.com/v1")!,
                     organizationId: config.organizationId,
-                    modelName: modelName)
+                    modelName: modelName
+                )
             }
         }
     }
 
     /// Configure Anthropic models with specific settings
-    public func configureAnthropic(_ config: ProviderConfiguration.Anthropic) {
+    func configureAnthropic(_ config: ProviderConfiguration.Anthropic) {
         // Map of model names to their actual IDs
         let modelMappings: [String: String] = [
             // Claude 4 series (Latest - May 2025)
@@ -536,17 +537,18 @@ extension ModelProvider {
         ]
 
         for (alias, actualModelId) in modelMappings {
-            self.register(modelName: alias) {
+            register(modelName: alias) {
                 AnthropicModel(
                     apiKey: config.apiKey,
                     baseURL: config.baseURL ?? URL(string: "https://api.anthropic.com/v1")!,
-                    modelName: actualModelId)
+                    modelName: actualModelId
+                )
             }
         }
     }
 
     /// Configure Ollama models with specific settings
-    public func configureOllama(_ config: ProviderConfiguration.Ollama) {
+    func configureOllama(_ config: ProviderConfiguration.Ollama) {
         let models = [
             // Vision models
             "llava:latest",
@@ -584,14 +586,14 @@ extension ModelProvider {
         ]
 
         for modelName in models {
-            self.register(modelName: modelName) {
+            register(modelName: modelName) {
                 OllamaModel(modelName: modelName, baseURL: config.baseURL)
             }
         }
     }
 
     /// Configure Grok models with specific settings
-    public func configureGrok(_ config: ProviderConfiguration.Grok) {
+    func configureGrok(_ config: ProviderConfiguration.Grok) {
         let models = [
             // Grok 4 series
             "grok-4",
@@ -615,36 +617,37 @@ extension ModelProvider {
         ]
 
         for modelName in models {
-            self.register(modelName: modelName) {
+            register(modelName: modelName) {
                 GrokModel(
                     apiKey: config.apiKey,
                     modelName: modelName,
-                    baseURL: config.baseURL ?? URL(string: "https://api.x.ai/v1")!)
+                    baseURL: config.baseURL ?? URL(string: "https://api.x.ai/v1")!
+                )
             }
         }
     }
 
     /// Quick setup with API key from environment
-    public func setupFromEnvironment() async throws {
+    func setupFromEnvironment() async throws {
         if let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] {
-            self.configureOpenAI(ProviderConfiguration.OpenAI(apiKey: apiKey))
+            configureOpenAI(ProviderConfiguration.OpenAI(apiKey: apiKey))
         }
 
         if let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] {
-            self.configureAnthropic(ProviderConfiguration.Anthropic(apiKey: apiKey))
+            configureAnthropic(ProviderConfiguration.Anthropic(apiKey: apiKey))
         }
 
         // Configure Ollama (no API key needed)
         let ollamaBaseURL = ProcessInfo.processInfo.environment["TACHIKOMA_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
         if let baseURL = URL(string: ollamaBaseURL) {
-            self.configureOllama(ProviderConfiguration.Ollama(baseURL: baseURL))
+            configureOllama(ProviderConfiguration.Ollama(baseURL: baseURL))
         }
 
         // Configure Grok with various API key options
         if let apiKey = ProcessInfo.processInfo.environment["X_AI_API_KEY"] ??
             ProcessInfo.processInfo.environment["XAI_API_KEY"]
         {
-            self.configureGrok(ProviderConfiguration.Grok(apiKey: apiKey))
+            configureGrok(ProviderConfiguration.Grok(apiKey: apiKey))
         }
     }
 }

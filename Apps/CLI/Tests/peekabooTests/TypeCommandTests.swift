@@ -128,7 +128,7 @@ struct TypeCommandTests {
         
         // Empty text
         let emptyActions = command.processTextWithEscapes("")
-        #expect(emptyActions.count == 0)
+        #expect(emptyActions.isEmpty)
         
         // Only escape sequences
         let onlyEscapes = command.processTextWithEscapes("\\n\\t\\b\\e")

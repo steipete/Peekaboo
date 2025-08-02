@@ -212,7 +212,7 @@ public final class WindowIdentityService {
         // and will return info only for that specific window
         let options: CGWindowListOption = [.optionIncludingWindow]
         if let windowList = CGWindowListCopyWindowInfo(options, windowID) as NSArray?,
-           windowList.count > 0
+           !windowList.isEmpty
         {
             return true
         }

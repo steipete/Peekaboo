@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Anthropic API Request Types
 
 /// Cache control configuration
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicCacheControl: Codable, Sendable {
     public let type: String // "ephemeral"
 
@@ -13,7 +13,7 @@ public struct AnthropicCacheControl: Codable, Sendable {
 }
 
 /// System content that can be cached
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum AnthropicSystemContent: Codable, Sendable {
     case string(String)
     case array([AnthropicSystemBlock])
@@ -47,7 +47,7 @@ public enum AnthropicSystemContent: Codable, Sendable {
 }
 
 /// System block that can contain cache control
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicSystemBlock: Codable, Sendable {
     public let type: String // "text"
     public let text: String
@@ -66,7 +66,7 @@ public struct AnthropicSystemBlock: Codable, Sendable {
 }
 
 /// Main request structure for Anthropic's Messages API
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicRequest: Codable, Sendable {
     /// ID of the model to use (e.g., "claude-3-opus-20240229")
     public let model: String
@@ -119,7 +119,7 @@ public struct AnthropicRequest: Codable, Sendable {
 }
 
 /// Anthropic message structure
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicMessage: Codable, Sendable {
     /// Role of the message sender
     public let role: AnthropicRole
@@ -134,14 +134,14 @@ public struct AnthropicMessage: Codable, Sendable {
 }
 
 /// Message roles in Anthropic API
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum AnthropicRole: String, Codable, Sendable {
     case user
     case assistant
 }
 
 /// Content types for Anthropic messages
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum AnthropicContent: Codable, Sendable {
     case string(String)
     case array([AnthropicContentBlock])
@@ -175,7 +175,7 @@ public enum AnthropicContent: Codable, Sendable {
 }
 
 /// Content block for multimodal messages
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicContentBlock: Codable, Sendable {
     public let type: String
 
@@ -208,7 +208,7 @@ public struct AnthropicContentBlock: Codable, Sendable {
 }
 
 /// Image source for content blocks
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicImageSource: Codable, Sendable {
     public let type: String // "base64"
     public let mediaType: String // "image/jpeg", "image/png", etc.
@@ -224,7 +224,7 @@ public struct AnthropicImageSource: Codable, Sendable {
 // MARK: - Tool Definitions
 
 /// Tool definition for Anthropic
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicTool: Codable, Sendable {
     public let name: String
     public let description: String
@@ -251,7 +251,7 @@ public struct AnthropicTool: Codable, Sendable {
 }
 
 /// JSON Schema for tool parameters
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicJSONSchema: Codable, Sendable {
     public let type: String
     public let properties: [String: AnthropicPropertySchema]?
@@ -272,7 +272,7 @@ public struct AnthropicJSONSchema: Codable, Sendable {
 }
 
 /// Tool choice configuration
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum AnthropicToolChoice: Codable, Sendable {
     case auto
     case any
@@ -319,7 +319,7 @@ public enum AnthropicToolChoice: Codable, Sendable {
 }
 
 /// Metadata for requests
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicMetadata: Codable, Sendable {
     public let userId: String?
 
@@ -331,7 +331,7 @@ public struct AnthropicMetadata: Codable, Sendable {
 // MARK: - Response Types
 
 /// Response from Anthropic's Messages API
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicResponse: Codable, Sendable {
     public let id: String
     public let type: String
@@ -351,7 +351,7 @@ public struct AnthropicResponse: Codable, Sendable {
 }
 
 /// Usage statistics
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicUsage: Codable, Sendable {
     public let inputTokens: Int
     public let outputTokens: Int
@@ -365,7 +365,7 @@ public struct AnthropicUsage: Codable, Sendable {
 // MARK: - Streaming Types
 
 /// Server-sent event for streaming
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicStreamEvent: Codable, Sendable {
     public let type: String
 
@@ -398,7 +398,7 @@ public struct AnthropicStreamEvent: Codable, Sendable {
 }
 
 /// Stream message metadata
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicStreamMessage: Codable, Sendable {
     public let id: String
     public let type: String
@@ -413,7 +413,7 @@ public struct AnthropicStreamMessage: Codable, Sendable {
 }
 
 /// Delta updates for streaming
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicDelta: Codable, Sendable {
     // Text delta
     public let text: String?
@@ -438,7 +438,7 @@ public struct AnthropicDelta: Codable, Sendable {
 // MARK: - Error Types
 
 /// Anthropic error response
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicErrorResponse: Codable, Sendable {
     public let error: AnthropicError
 
@@ -456,7 +456,7 @@ public struct AnthropicErrorResponse: Codable, Sendable {
 }
 
 /// Error details
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicError: Codable, Sendable {
     public let type: String
     public let message: String
@@ -464,7 +464,7 @@ public struct AnthropicError: Codable, Sendable {
 
 // MARK: - Helper Extensions
 
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 extension AnthropicContentBlock {
     /// Create a text content block
     public static func text(_ text: String, cacheControl: AnthropicCacheControl? = nil) -> AnthropicContentBlock {
@@ -537,7 +537,7 @@ extension AnthropicContentBlock {
 // MARK: - Input Value Types
 
 /// Type-safe input value for Anthropic tool use
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum AnthropicInputValue: Codable, Sendable {
     case string(String)
     case int(Int)
@@ -651,7 +651,7 @@ public enum AnthropicInputValue: Codable, Sendable {
 }
 
 /// Type-safe property schema for Anthropic JSON Schema
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnthropicPropertySchema: Codable, Sendable {
     public let type: String
     public let description: String?

@@ -385,7 +385,7 @@ struct ScreensSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
         do {
             // Get screens from the service
             let screens = PeekabooServices.shared.screens.listScreens()
-            let primaryIndex = screens.firstIndex(where: { $0.isPrimary })
+            let primaryIndex = screens.firstIndex { $0.isPrimary }
             
             // Create output data
             let screenListData = ScreenListData(

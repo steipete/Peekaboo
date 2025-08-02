@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Helper Types
 
-internal class GrokPartialToolCall {
+class GrokPartialToolCall {
     var id: String = ""
     var type: String = "function"
     var index: Int = 0
@@ -14,30 +14,30 @@ internal class GrokPartialToolCall {
     }
 
     init(from delta: GrokToolCallDelta) {
-        self.id = delta.id ?? ""
-        self.index = delta.index
-        self.name = delta.function?.name
-        self.arguments = delta.function?.arguments ?? ""
+        id = delta.id ?? ""
+        index = delta.index
+        name = delta.function?.name
+        arguments = delta.function?.arguments ?? ""
     }
 
     func update(with delta: GrokToolCallDelta) {
         if let funcName = delta.function?.name {
-            self.name = funcName
+            name = funcName
         }
         if let args = delta.function?.arguments {
-            self.arguments += args
+            arguments += args
         }
     }
 
     func toCompleted() -> FunctionCall? {
         guard let name else { return nil }
-        return FunctionCall(name: name, arguments: self.arguments)
+        return FunctionCall(name: name, arguments: arguments)
     }
 }
 
 // MARK: - Grok Request Types
 
-internal struct GrokChatCompletionRequest: Encodable {
+struct GrokChatCompletionRequest: Encodable {
     let model: String
     let messages: [GrokMessage]
     let tools: [GrokTool]?
@@ -59,7 +59,7 @@ internal struct GrokChatCompletionRequest: Encodable {
     }
 }
 
-internal struct GrokMessage: Encodable {
+struct GrokMessage: Encodable {
     let role: String
     let content: GrokMessageContent?
     let toolCalls: [GrokToolCall]?
@@ -72,7 +72,7 @@ internal struct GrokMessage: Encodable {
     }
 }
 
-internal enum GrokMessageContent: Encodable {
+enum GrokMessageContent: Encodable {
     case string(String)
     case array([GrokMessageContentPart])
 
@@ -87,7 +87,7 @@ internal enum GrokMessageContent: Encodable {
     }
 }
 
-internal struct GrokMessageContentPart: Encodable {
+struct GrokMessageContentPart: Encodable {
     let type: String
     let text: String?
     let imageUrl: GrokImageUrl?
@@ -98,23 +98,23 @@ internal struct GrokMessageContentPart: Encodable {
     }
 }
 
-internal struct GrokImageUrl: Encodable {
+struct GrokImageUrl: Encodable {
     let url: String
     let detail: String?
 }
 
-internal struct GrokToolCall: Encodable {
+struct GrokToolCall: Encodable {
     let id: String
     let type: String
     let function: GrokFunctionCall
 }
 
-internal struct GrokFunctionCall: Encodable {
+struct GrokFunctionCall: Encodable {
     let name: String
     let arguments: String
 }
 
-internal struct GrokTool: Encodable {
+struct GrokTool: Encodable {
     let type: String
     let function: Function
 
@@ -131,7 +131,7 @@ internal struct GrokTool: Encodable {
     }
 }
 
-internal enum GrokToolChoice: Encodable {
+enum GrokToolChoice: Encodable {
     case string(String)
     case object(GrokToolChoiceObject)
 
@@ -146,18 +146,18 @@ internal enum GrokToolChoice: Encodable {
     }
 }
 
-internal struct GrokToolChoiceObject: Encodable {
+struct GrokToolChoiceObject: Encodable {
     let type: String
     let function: GrokToolChoiceFunction
 }
 
-internal struct GrokToolChoiceFunction: Encodable {
+struct GrokToolChoiceFunction: Encodable {
     let name: String
 }
 
 // MARK: - Response Types
 
-internal struct GrokChatCompletionResponse: Decodable {
+struct GrokChatCompletionResponse: Decodable {
     let id: String
     let model: String
     let choices: [Choice]
@@ -210,7 +210,7 @@ internal struct GrokChatCompletionResponse: Decodable {
 
 // MARK: - Streaming Types
 
-internal struct GrokChatCompletionChunk: Decodable {
+struct GrokChatCompletionChunk: Decodable {
     let id: String
     let model: String
     let choices: [StreamChoice]
@@ -244,7 +244,7 @@ internal struct GrokChatCompletionChunk: Decodable {
     }
 }
 
-internal struct GrokToolCallDelta: Decodable {
+struct GrokToolCallDelta: Decodable {
     let index: Int
     let id: String?
     let type: String?
@@ -258,23 +258,23 @@ internal struct GrokToolCallDelta: Decodable {
 
 // MARK: - Error Types
 
-internal struct GrokErrorResponse: Decodable {
+struct GrokErrorResponse: Decodable {
     let error: GrokError
 
     var message: String {
-        self.error.message
+        error.message
     }
 
     var code: String? {
-        self.error.code
+        error.code
     }
 
     var type: String? {
-        self.error.type
+        error.type
     }
 }
 
-internal struct GrokError: Decodable {
+struct GrokError: Decodable {
     let message: String
     let type: String
     let code: String?
@@ -283,7 +283,7 @@ internal struct GrokError: Decodable {
 // MARK: - Property Schema
 
 /// Type-safe property schema for Grok tool parameters
-internal struct GrokPropertySchema: Codable, Sendable {
+struct GrokPropertySchema: Codable, Sendable {
     let type: String
     let description: String?
     let `enum`: [String]?
@@ -303,8 +303,8 @@ internal struct GrokPropertySchema: Codable, Sendable {
         minimum: Double? = nil,
         maximum: Double? = nil,
         pattern: String? = nil,
-        required: [String]? = nil)
-    {
+        required: [String]? = nil
+    ) {
         self.type = type
         self.description = description
         self.enum = enumValues
@@ -318,22 +318,22 @@ internal struct GrokPropertySchema: Codable, Sendable {
 
     /// Create from a ParameterSchema
     init(from schema: ParameterSchema) {
-        self.type = schema.type.rawValue
-        self.description = schema.description
+        type = schema.type.rawValue
+        description = schema.description
         self.enum = schema.enumValues
-        self.items = schema.items.map { Box(GrokPropertySchema(from: $0.value)) }
-        self.properties = schema.properties?.mapValues { GrokPropertySchema(from: $0) }
-        self.minimum = schema.minimum
-        self.maximum = schema.maximum
-        self.pattern = schema.pattern
-        self.required = nil
+        items = schema.items.map { Box(GrokPropertySchema(from: $0.value)) }
+        properties = schema.properties?.mapValues { GrokPropertySchema(from: $0) }
+        minimum = schema.minimum
+        maximum = schema.maximum
+        pattern = schema.pattern
+        required = nil
     }
 }
 
 // MARK: - Extensions
 
 /// Helper to convert ToolParameters to Grok-compatible structure
-internal extension ToolParameters {
+extension ToolParameters {
     func toGrokParameters() -> (type: String, properties: [String: GrokPropertySchema], required: [String]) {
         var grokProperties: [String: GrokPropertySchema] = [:]
 

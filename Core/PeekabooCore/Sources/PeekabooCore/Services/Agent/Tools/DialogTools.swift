@@ -14,7 +14,7 @@ public struct DialogToolDefinitions {
         discussion: """
             Clicks a button in any open dialog, sheet, or alert window by matching
             the button label text.
-            
+
             EXAMPLES:
               peekaboo dialog-click OK
               peekaboo dialog-click Save --app TextEdit
@@ -29,8 +29,7 @@ public struct DialogToolDefinitions {
                 required: true,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .argument)
-            ),
+                cliOptions: CLIOptions(argumentType: .argument)),
             ParameterDefinition(
                 name: "app",
                 type: .string,
@@ -38,13 +37,12 @@ public struct DialogToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            )
+                cliOptions: CLIOptions(argumentType: .option)),
         ],
         examples: [
             #"{"button": "OK"}"#,
             #"{"button": "Save", "app": "TextEdit"}"#,
-            #"{"button": "Don't Save"}"#
+            #"{"button": "Don't Save"}"#,
         ],
         agentGuidance: """
             AGENT TIPS:
@@ -53,9 +51,8 @@ public struct DialogToolDefinitions {
             - Works with alerts, sheets, and modal dialogs
             - If multiple dialogs are open, clicks in the frontmost one
             - Some buttons may have keyboard shortcuts (shown in parentheses)
-        """
-    )
-    
+        """)
+
     public static let dialogInput = UnifiedToolDefinition(
         name: "dialog_input",
         commandName: "dialog-input",
@@ -63,7 +60,7 @@ public struct DialogToolDefinitions {
         discussion: """
             Types text into the currently focused text field in a dialog,
             sheet, or form. Can optionally clear the field first.
-            
+
             EXAMPLES:
               peekaboo dialog-input "My Document Name"
               peekaboo dialog-input "password123" --no-clear
@@ -78,8 +75,7 @@ public struct DialogToolDefinitions {
                 required: true,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .argument)
-            ),
+                cliOptions: CLIOptions(argumentType: .argument)),
             ParameterDefinition(
                 name: "field",
                 type: .string,
@@ -87,8 +83,7 @@ public struct DialogToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "app",
                 type: .string,
@@ -96,8 +91,7 @@ public struct DialogToolDefinitions {
                 required: false,
                 defaultValue: nil,
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .option)
-            ),
+                cliOptions: CLIOptions(argumentType: .option)),
             ParameterDefinition(
                 name: "no-clear",
                 type: .boolean,
@@ -105,13 +99,12 @@ public struct DialogToolDefinitions {
                 required: false,
                 defaultValue: "false",
                 options: nil,
-                cliOptions: CLIOptions(argumentType: .flag, longName: "no-clear")
-            )
+                cliOptions: CLIOptions(argumentType: .flag, longName: "no-clear")),
         ],
         examples: [
             #"{"text": "My Document"}"#,
             #"{"text": "password123", "clear_first": false}"#,
-            #"{"text": "report.pdf", "app": "Preview"}"#
+            #"{"text": "report.pdf", "app": "Preview"}"#,
         ],
         agentGuidance: """
             AGENT TIPS:
@@ -120,8 +113,7 @@ public struct DialogToolDefinitions {
             - Field must be focused before using this command
             - For password fields, the text won't be visible
             - Tab between fields or click to focus specific fields first
-        """
-    )
+        """)
 }
 
 // MARK: - Dialog Tools
@@ -132,7 +124,7 @@ extension PeekabooAgentService {
     /// Create the dialog click tool
     func createDialogClickTool() -> Tool<PeekabooServices> {
         let definition = DialogToolDefinitions.dialogClick
-        
+
         return createTool(
             name: definition.name,
             description: definition.agentDescription,
@@ -156,7 +148,7 @@ extension PeekabooAgentService {
                 _ = try await context.dialogs.clickButton(
                     buttonText: buttonLabel,
                     windowTitle: appName)
-                let _ = Date().timeIntervalSince(startTime)
+                _ = Date().timeIntervalSince(startTime)
 
                 return .success("Clicked '\(buttonLabel)' in dialog - \(targetApp)")
             })
@@ -165,7 +157,7 @@ extension PeekabooAgentService {
     /// Create the dialog input tool
     func createDialogInputTool() -> Tool<PeekabooServices> {
         let definition = DialogToolDefinitions.dialogInput
-        
+
         return createTool(
             name: definition.name,
             description: definition.agentDescription,
@@ -209,7 +201,7 @@ extension PeekabooAgentService {
                     typingDelay: 0,
                     sessionId: nil)
 
-                let _ = Date().timeIntervalSince(startTime)
+                _ = Date().timeIntervalSince(startTime)
 
                 var output = "Entered \"\(text ?? "")\""
                 if let fieldLabel {

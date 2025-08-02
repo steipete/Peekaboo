@@ -25,8 +25,8 @@ public struct Tool<Context> {
         description: String,
         parameters: ToolParameters,
         strict: Bool = true,
-        execute: @escaping (ToolInput, Context) async throws -> ToolOutput)
-    {
+        execute: @escaping (ToolInput, Context) async throws -> ToolOutput
+    ) {
         self.name = name
         self.description = description
         self.parameters = parameters
@@ -39,10 +39,12 @@ public struct Tool<Context> {
         ToolDefinition(
             type: .function,
             function: FunctionDefinition(
-                name: self.name,
-                description: self.description,
-                parameters: self.parameters,
-                strict: self.strict))
+                name: name,
+                description: description,
+                parameters: parameters,
+                strict: strict
+            )
+        )
     }
 }
 
@@ -75,8 +77,8 @@ public struct FunctionDefinition: Codable, Sendable {
         name: String,
         description: String,
         parameters: ToolParameters,
-        strict: Bool? = nil)
-    {
+        strict: Bool? = nil
+    ) {
         self.name = name
         self.description = description
         self.parameters = parameters
@@ -97,8 +99,8 @@ public struct ToolParameters: Codable, Sendable {
         type: String = "object",
         properties: [String: ParameterSchema] = [:],
         required: [String] = [],
-        additionalProperties: Bool = false)
-    {
+        additionalProperties: Bool = false
+    ) {
         self.type = type
         self.properties = properties
         self.required = required
@@ -108,13 +110,14 @@ public struct ToolParameters: Codable, Sendable {
     /// Create parameters from a dictionary of property definitions
     public static func object(
         properties: [String: ParameterSchema],
-        required: [String] = []) -> ToolParameters
-    {
+        required: [String] = []
+    ) -> ToolParameters {
         ToolParameters(
             type: "object",
             properties: properties,
             required: required,
-            additionalProperties: false)
+            additionalProperties: false
+        )
     }
 }
 
@@ -137,8 +140,8 @@ public struct ParameterSchema: Codable, Sendable {
         properties: [String: ParameterSchema]? = nil,
         minimum: Double? = nil,
         maximum: Double? = nil,
-        pattern: String? = nil)
-    {
+        pattern: String? = nil
+    ) {
         self.type = type
         self.description = description
         self.enumValues = enumValues
@@ -157,16 +160,16 @@ public struct ParameterSchema: Codable, Sendable {
     public static func number(
         description: String? = nil,
         minimum: Double? = nil,
-        maximum: Double? = nil) -> ParameterSchema
-    {
+        maximum: Double? = nil
+    ) -> ParameterSchema {
         ParameterSchema(type: .number, description: description, minimum: minimum, maximum: maximum)
     }
 
     public static func integer(
         description: String? = nil,
         minimum: Double? = nil,
-        maximum: Double? = nil) -> ParameterSchema
-    {
+        maximum: Double? = nil
+    ) -> ParameterSchema {
         ParameterSchema(type: .integer, description: description, minimum: minimum, maximum: maximum)
     }
 
@@ -275,6 +278,214 @@ public enum ToolInput {
         case .null:
             NSNull()
         }
+    }
+}
+
+// MARK: - ToolInput Convenience Methods
+
+public extension ToolInput {
+    /// Dictionary access for parameter extraction
+    var arguments: [String: Any] {
+        switch self {
+        case let .dictionary(dict):
+            return dict
+        case let .string(str):
+            return ["text": str]
+        case let .array(array):
+            return ["items": array]
+        case .null:
+            return [:]
+        }
+    }
+
+    /// Extract string value with key
+    func stringValue(_ key: String) throws -> String {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+
+        if let stringValue = value as? String {
+            return stringValue
+        }
+
+        throw ToolError.invalidInput("Parameter '\(key)' must be a string")
+    }
+
+    /// Extract optional string value with key and default
+    func stringValue(_ key: String, default defaultValue: String?) -> String? {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+
+        return value as? String ?? defaultValue
+    }
+
+    /// Extract integer value with key
+    func intValue(_ key: String) throws -> Int {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+
+        if let intValue = value as? Int {
+            return intValue
+        }
+
+        if let doubleValue = value as? Double {
+            return Int(doubleValue)
+        }
+
+        if let stringValue = value as? String, let intValue = Int(stringValue) {
+            return intValue
+        }
+
+        throw ToolError.invalidInput("Parameter '\(key)' must be an integer")
+    }
+
+    /// Extract optional integer value with key and default
+    func intValue(_ key: String, default defaultValue: Int?) -> Int? {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+
+        if let intValue = value as? Int {
+            return intValue
+        }
+
+        if let doubleValue = value as? Double {
+            return Int(doubleValue)
+        }
+
+        if let stringValue = value as? String, let intValue = Int(stringValue) {
+            return intValue
+        }
+
+        return defaultValue
+    }
+
+    /// Extract boolean value with key
+    func boolValue(_ key: String) throws -> Bool {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+
+        if let boolValue = value as? Bool {
+            return boolValue
+        }
+
+        if let stringValue = value as? String {
+            return stringValue.lowercased() == "true" || stringValue == "1"
+        }
+
+        if let intValue = value as? Int {
+            return intValue != 0
+        }
+
+        throw ToolError.invalidInput("Parameter '\(key)' must be a boolean")
+    }
+
+    /// Extract optional boolean value with key and default
+    func boolValue(_ key: String, default defaultValue: Bool) -> Bool {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+
+        if let boolValue = value as? Bool {
+            return boolValue
+        }
+
+        if let stringValue = value as? String {
+            return stringValue.lowercased() == "true" || stringValue == "1"
+        }
+
+        if let intValue = value as? Int {
+            return intValue != 0
+        }
+
+        return defaultValue
+    }
+
+    /// Extract double value with key
+    func doubleValue(_ key: String) throws -> Double {
+        guard let value = arguments[key] else {
+            throw ToolError.invalidInput("Missing required parameter: \(key)")
+        }
+
+        if let doubleValue = value as? Double {
+            return doubleValue
+        }
+
+        if let intValue = value as? Int {
+            return Double(intValue)
+        }
+
+        if let stringValue = value as? String, let doubleValue = Double(stringValue) {
+            return doubleValue
+        }
+
+        throw ToolError.invalidInput("Parameter '\(key)' must be a number")
+    }
+
+    /// Extract optional double value with key and default
+    func doubleValue(_ key: String, default defaultValue: Double?) -> Double? {
+        guard let value = arguments[key] else {
+            return defaultValue
+        }
+
+        if let doubleValue = value as? Double {
+            return doubleValue
+        }
+
+        if let intValue = value as? Int {
+            return Double(intValue)
+        }
+
+        if let stringValue = value as? String, let doubleValue = Double(stringValue) {
+            return doubleValue
+        }
+
+        return defaultValue
+    }
+
+    // MARK: - Compatibility Methods (delegate to renamed methods)
+
+    /// Extract string value with key (compatibility method)
+    func string(_ key: String) throws -> String {
+        return try stringValue(key)
+    }
+
+    /// Extract optional string value with key and default (compatibility method)
+    func string(_ key: String, default defaultValue: String?) -> String? {
+        return stringValue(key, default: defaultValue)
+    }
+
+    /// Extract integer value with key (compatibility method)
+    func int(_ key: String) throws -> Int {
+        return try intValue(key)
+    }
+
+    /// Extract optional integer value with key and default (compatibility method)
+    func int(_ key: String, default defaultValue: Int?) -> Int? {
+        return intValue(key, default: defaultValue)
+    }
+
+    /// Extract boolean value with key (compatibility method)
+    func bool(_ key: String) throws -> Bool {
+        return try boolValue(key)
+    }
+
+    /// Extract optional boolean value with key and default (compatibility method)
+    func bool(_ key: String, default defaultValue: Bool) -> Bool {
+        return boolValue(key, default: defaultValue)
+    }
+
+    /// Extract double value with key (compatibility method)
+    func double(_ key: String) throws -> Double {
+        return try doubleValue(key)
+    }
+
+    /// Extract optional double value with key and default (compatibility method)
+    func double(_ key: String, default defaultValue: Double?) -> Double? {
+        return doubleValue(key, default: defaultValue)
     }
 }
 
@@ -430,14 +641,14 @@ public enum ToolOutput: Codable, Sendable {
 
 // MARK: - Builder Methods
 
-extension ToolOutput {
+public extension ToolOutput {
     /// Create a dictionary/object output using a builder pattern
-    public static func dictionary(_ builder: () -> [String: ToolOutput]) -> ToolOutput {
+    static func dictionary(_ builder: () -> [String: ToolOutput]) -> ToolOutput {
         .object(builder())
     }
 
     /// Create a dictionary/object output from key-value pairs
-    public static func dictionary(_ pairs: (String, ToolOutput)...) -> ToolOutput {
+    static func dictionary(_ pairs: (String, ToolOutput)...) -> ToolOutput {
         var dict: [String: ToolOutput] = [:]
         for (key, value) in pairs {
             dict[key] = value
@@ -446,16 +657,16 @@ extension ToolOutput {
     }
 
     /// Create from a Swift dictionary with automatic type conversion
-    public static func from(_ dict: [String: Any]) -> ToolOutput {
+    static func from(_ dict: [String: Any]) -> ToolOutput {
         var result: [String: ToolOutput] = [:]
         for (key, value) in dict {
-            result[key] = self.from(value)
+            result[key] = from(value)
         }
         return .object(result)
     }
 
     /// Create from any Swift value with automatic type conversion
-    public static func from(_ value: Any) -> ToolOutput {
+    static func from(_ value: Any) -> ToolOutput {
         switch value {
         case let str as String:
             .string(str)
@@ -466,7 +677,7 @@ extension ToolOutput {
         case let bool as Bool:
             .boolean(bool)
         case let dict as [String: Any]:
-            self.from(dict)
+            from(dict)
         case let array as [Any]:
             .array(array.map { self.from($0) })
         case is NSNull:
@@ -478,7 +689,7 @@ extension ToolOutput {
     }
 
     /// Convenience method for success results
-    public static func success(_ message: String, metadata: (String, ToolOutput)...) -> ToolOutput {
+    static func success(_ message: String, metadata: (String, ToolOutput)...) -> ToolOutput {
         var dict: [String: ToolOutput] = ["result": .string(message)]
         for (key, value) in metadata {
             dict[key] = value
@@ -525,12 +736,12 @@ public final class Box<T: Codable & Sendable>: Codable, Sendable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
-        self.value = try container.decode(T.self)
+        value = try container.decode(T.self)
     }
 
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
-        try container.encode(self.value)
+        try container.encode(value)
     }
 }
 
@@ -572,14 +783,15 @@ public struct ToolBuilder<Context> {
     }
 
     public func withExecution(_ execute: @escaping (ToolInput, Context) async throws -> ToolOutput)
-    -> ToolBuilder<Context> {
+        -> ToolBuilder<Context>
+    {
         var builder = self
         builder.execute = execute
         return builder
     }
 
     public func build() throws -> Tool<Context> {
-        guard !self.name.isEmpty else {
+        guard !name.isEmpty else {
             throw ToolError.invalidInput("Tool name is required")
         }
 
@@ -588,16 +800,16 @@ public struct ToolBuilder<Context> {
         }
 
         return Tool(
-            name: self.name,
-            description: self.description,
-            parameters: self.parameters,
-            strict: self.strict,
-            execute: execute)
+            name: name,
+            description: description,
+            parameters: parameters,
+            strict: strict,
+            execute: execute
+        )
     }
 }
 
 // MARK: - Type Aliases
-
 
 // MARK: - ToolInput Helpers
 
@@ -611,12 +823,12 @@ public enum ToolInputHelpers {
         }
         return value
     }
-    
+
     /// Get string value for a key, with optional default
     public static func getString(_ input: ToolInput, key: String, default defaultValue: String? = nil) -> String? {
         return input.value(for: key) ?? defaultValue
     }
-    
+
     /// Get integer value for a key, with optional default
     public static func getInt(_ input: ToolInput, key: String, default defaultValue: Int? = nil) -> Int? {
         if let value: Int = input.value(for: key) {
@@ -627,12 +839,12 @@ public enum ToolInputHelpers {
         }
         return defaultValue
     }
-    
+
     /// Get boolean value for a key, with optional default
     public static func getBool(_ input: ToolInput, key: String, default defaultValue: Bool = false) -> Bool {
         return input.value(for: key) ?? defaultValue
     }
-    
+
     /// Get double value for a key, with optional default
     public static func getDouble(_ input: ToolInput, key: String, default defaultValue: Double? = nil) -> Double? {
         if let value: Double = input.value(for: key) {

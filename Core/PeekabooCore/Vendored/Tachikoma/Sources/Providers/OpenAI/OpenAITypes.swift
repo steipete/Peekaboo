@@ -6,34 +6,34 @@ import Foundation
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnySendable: Codable, @unchecked Sendable {
     public let value: Any
-    
+
     public init(_ value: Any) {
         self.value = value
     }
-    
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if let intValue = try? container.decode(Int.self) {
-            self.value = intValue
+            value = intValue
         } else if let doubleValue = try? container.decode(Double.self) {
-            self.value = doubleValue
+            value = doubleValue
         } else if let boolValue = try? container.decode(Bool.self) {
-            self.value = boolValue
+            value = boolValue
         } else if let stringValue = try? container.decode(String.self) {
-            self.value = stringValue
+            value = stringValue
         } else if let arrayValue = try? container.decode([AnySendable].self) {
-            self.value = arrayValue.map(\.value)
+            value = arrayValue.map(\.value)
         } else if let dictValue = try? container.decode([String: AnySendable].self) {
-            self.value = dictValue.mapValues(\.value)
+            value = dictValue.mapValues(\.value)
         } else {
-            self.value = NSNull()
+            value = NSNull()
         }
     }
-    
+
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
-        
+
         switch value {
         case let intValue as Int:
             try container.encode(intValue)
@@ -208,10 +208,10 @@ public struct OpenAIResponsesTool: Codable, Sendable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.type = try container.decode(String.self, forKey: .type)
-        self.name = try container.decode(String.self, forKey: .name)
-        self.description = try container.decode(String.self, forKey: .description)
-        
+        type = try container.decode(String.self, forKey: .type)
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decode(String.self, forKey: .description)
+
         // Decode parameters as generic JSON
         let parametersContainer = try container.nestedContainer(keyedBy: AnyCodingKey.self, forKey: .parameters)
         var parameters: [String: AnySendable] = [:]
@@ -226,7 +226,7 @@ public struct OpenAIResponsesTool: Codable, Sendable {
         try container.encode(type, forKey: .type)
         try container.encode(name, forKey: .name)
         try container.encode(description, forKey: .description)
-        
+
         // Skip encoding parameters for now - this needs to be handled at runtime
         try container.encodeIfPresent(nil as String?, forKey: .parameters)
     }
@@ -253,10 +253,10 @@ public struct OpenAIFunction: Codable, Sendable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.name = try container.decode(String.self, forKey: .name)
-        self.description = try container.decodeIfPresent(String.self, forKey: .description)
-        self.arguments = try container.decodeIfPresent(String.self, forKey: .arguments)
-        
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        arguments = try container.decodeIfPresent(String.self, forKey: .arguments)
+
         if container.contains(.parameters) {
             let parametersContainer = try container.nestedContainer(keyedBy: AnyCodingKey.self, forKey: .parameters)
             var parameters: [String: AnySendable] = [:]
@@ -265,7 +265,7 @@ public struct OpenAIFunction: Codable, Sendable {
             }
             self.parameters = parameters
         } else {
-            self.parameters = nil
+            parameters = nil
         }
     }
 
@@ -274,7 +274,7 @@ public struct OpenAIFunction: Codable, Sendable {
         try container.encode(name, forKey: .name)
         try container.encodeIfPresent(description, forKey: .description)
         try container.encodeIfPresent(arguments, forKey: .arguments)
-        
+
         if let parameters = parameters {
             // Convert AnySendable parameters to AnyCodable for encoding
             let codableParams = parameters.mapValues { AnyCodable($0.value) }
@@ -422,11 +422,11 @@ struct AnyCodingKey: CodingKey {
 
     init?(stringValue: String) {
         self.stringValue = stringValue
-        self.intValue = nil
+        intValue = nil
     }
 
     init?(intValue: Int) {
-        self.stringValue = "\(intValue)"
+        stringValue = "\(intValue)"
         self.intValue = intValue
     }
 }
@@ -435,14 +435,14 @@ struct AnyCodingKey: CodingKey {
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AnyCodable: Codable, @unchecked Sendable {
     public let value: Any
-    
+
     public init(_ value: Any) {
         self.value = value
     }
-    
+
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
-        
+
         if let intValue = value as? Int {
             try container.encode(intValue)
         } else if let doubleValue = value as? Double {
@@ -457,10 +457,10 @@ public struct AnyCodable: Codable, @unchecked Sendable {
             try container.encode(str)
         }
     }
-    
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
-        
+
         if let intValue = try? container.decode(Int.self) {
             value = intValue
         } else if let doubleValue = try? container.decode(Double.self) {

@@ -33,7 +33,7 @@ struct ApplicationServiceTests {
         
         // Then - should complete quickly even if Safari has many windows
         #expect(elapsed < 0.5)
-        #expect(result.metadata.warnings.contains { $0.contains("timeout") || $0.contains("incomplete") } || result.data.windows.count > 0)
+        #expect(result.metadata.warnings.contains { $0.contains("timeout") || $0.contains("incomplete") } || !result.data.windows.isEmpty)
     }
     
     @Test("List windows with nil timeout uses default")
@@ -97,7 +97,7 @@ struct ApplicationServiceTests {
         #expect(output.data.targetApplication?.name == "Finder")
         #expect(output.summary.counts["windows"] != nil)
         #expect(output.summary.status == .success)
-        #expect(output.metadata.hints.count > 0)
+        #expect(!output.metadata.hints.isEmpty)
     }
     
     @Test("Timeout configuration is applied")
@@ -132,7 +132,7 @@ struct ApplicationServiceTests {
             })
         } else {
             // Got some windows before timeout
-            #expect(result.data.windows.count >= 0)
+            #expect(result.data.windows.isEmpty)
         }
     }
 }

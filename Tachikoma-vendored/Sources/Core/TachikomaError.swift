@@ -3,7 +3,7 @@
 // MARK: - Tachikoma Error Types
 
 /// Main error type for the Tachikoma library
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum TachikomaError: Error, LocalizedError, Sendable {
     case modelNotFound(String)
     case authenticationFailed
@@ -120,7 +120,7 @@ public enum TachikomaError: Error, LocalizedError, Sendable {
 // MARK: - Model Request/Response Errors
 
 /// Specific errors for model requests and responses
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum ModelError: Error, LocalizedError, Sendable {
     case invalidInput(String)
     case missingRequiredParameter(String)
@@ -153,7 +153,7 @@ public enum ModelError: Error, LocalizedError, Sendable {
 // MARK: - Streaming Errors
 
 /// Errors specific to streaming operations
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum StreamingError: Error, LocalizedError, Sendable {
     case streamClosed
     case invalidEventFormat(String)
@@ -177,7 +177,7 @@ public enum StreamingError: Error, LocalizedError, Sendable {
 // MARK: - Tool Execution Errors
 
 /// Errors for tool execution
-
+@available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public enum ToolExecutionError: Error, LocalizedError, Sendable {
     case toolNotFound(String)
     case invalidArguments(String)
