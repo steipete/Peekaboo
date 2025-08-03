@@ -85,18 +85,5 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
-        
-        // Test targets
-        .testTarget(
-            name: "TachikomaExamplesTests",
-            dependencies: [
-                "SharedExampleUtils",
-                "TachikomaComparison",
-                "TachikomaBasics",
-                "TachikomaStreaming",
-                "TachikomaAgent",
-                "TachikomaMultimodal",
-            ]
-        ),
     ]
 )

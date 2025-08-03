@@ -147,9 +147,10 @@ struct TachikomaBasics: AsyncParsableCommand {
         }
         
         // Step 4: Create a request
-        let request = ConversationRequest(
-            messages: [Message(role: .user, content: .text(message))],
-            maxTokens: 300
+        let request = ModelRequest(
+            messages: [Message.user(content: .text(message))],
+            tools: nil,
+            settings: ModelSettings(maxTokens: 300)
         )
         
         if verbose {
@@ -227,7 +228,7 @@ struct TachikomaBasics: AsyncParsableCommand {
     }
     
     /// Display the response in a formatted way
-    private func displayResponse(message: String, response: ConversationResponse, model: String, duration: TimeInterval) {
+    private func displayResponse(message: String, response: ModelResponse, model: String, duration: TimeInterval) {
         let provider = detectProviderFromModel(model)
         let emoji = TerminalOutput.providerEmoji(provider)
         
@@ -237,8 +238,16 @@ struct TachikomaBasics: AsyncParsableCommand {
         TerminalOutput.print("\(emoji) \(provider) response:", color: .bold)
         TerminalOutput.separator("─")
         
-        if let content = response.message.content.text {
-            TerminalOutput.print(content, color: .white)
+        // Extract text content from response
+        let textContent = response.content.compactMap { item in
+            if case let .outputText(text) = item {
+                return text
+            }
+            return nil
+        }.joined()
+        
+        if !textContent.isEmpty {
+            TerminalOutput.print(textContent, color: .white)
         } else {
             TerminalOutput.print("(No text content in response)", color: .dim)
         }
@@ -246,7 +255,7 @@ struct TachikomaBasics: AsyncParsableCommand {
         TerminalOutput.separator("─")
         
         // Show statistics
-        let tokenCount = PerformanceMeasurement.estimateTokenCount(response.message.content.text ?? "")
+        let tokenCount = PerformanceMeasurement.estimateTokenCount(textContent)
         let stats = [
             "⏱️ Duration: \(String(format: "%.2fs", duration))",
             "🔤 Tokens: ~\(tokenCount)",
