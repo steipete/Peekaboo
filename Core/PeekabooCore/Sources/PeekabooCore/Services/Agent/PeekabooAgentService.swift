@@ -24,27 +24,24 @@ extension ToolOutput {
 
 /// Simple event delegate wrapper for streaming
 @available(macOS 14.0, *)
-@MainActor
-final class StreamingEventDelegate: Tachikoma.AgentEventDelegate {
-    let onChunk: @MainActor (String) async -> Void
+final class StreamingEventDelegate: @unchecked Sendable, AgentEventDelegate {
+    let onChunk: @MainActor @Sendable (String) async -> Void
 
-    init(onChunk: @MainActor @escaping (String) async -> Void) {
+    init(onChunk: @MainActor @escaping @Sendable (String) async -> Void) {
         self.onChunk = onChunk
     }
 
-    func agentDidEmitEvent(_ event: Tachikoma.AgentEvent) {
-        Task { @MainActor in
-            // Extract content from different event types
-            switch event {
-            case let .thinkingMessage(content):
-                await self.onChunk(content)
-            case let .assistantMessage(content):
-                await self.onChunk(content)
-            case let .completed(summary, _):
-                await self.onChunk(summary)
-            default:
-                break
-            }
+    nonisolated func agentDidEmitEvent(_ event: AgentEvent) async {
+        // Extract content from different event types
+        switch event {
+        case let .thinkingMessage(content):
+            await self.onChunk(content)
+        case let .assistantMessage(content):
+            await self.onChunk(content)
+        case let .completed(summary, _):
+            await self.onChunk(summary)
+        default:
+            break
         }
     }
 }
@@ -95,7 +92,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     public func executeTask(
         _ task: String,
         dryRun: Bool = false,
-        eventDelegate: Tachikoma.AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
         // For dry run, just return a simulated result
         if dryRun {
@@ -122,7 +119,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         if eventDelegate != nil {
             // SAFETY: We ensure that the delegate is only accessed on MainActor
             // This is a legacy API pattern that predates Swift's strict concurrency
-            let unsafeDelegate = UnsafeTransfer(eventDelegate!)
+            let unsafeDelegate = UnsafeTransfer<AgentEventDelegate>(eventDelegate!)
 
             // Create event stream infrastructure
             let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
@@ -177,7 +174,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     public func executeTaskWithAudio(
         audioContent: AudioContent,
         dryRun: Bool = false,
-        eventDelegate: Tachikoma.AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
         // For dry run, just return a simulated result
         if dryRun {
@@ -205,7 +202,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         if eventDelegate != nil {
             // SAFETY: We ensure that the delegate is only accessed on MainActor
             // This is a legacy API pattern that predates Swift's strict concurrency
-            let unsafeDelegate = UnsafeTransfer(eventDelegate!)
+            let unsafeDelegate = UnsafeTransfer<AgentEventDelegate>(eventDelegate!)
 
             // Create event stream infrastructure
             let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
@@ -304,7 +301,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         _ task: String,
         sessionId: String? = nil,
         modelName: String = "claude-opus-4-20250514",
-        eventDelegate: Tachikoma.AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
         let agent = try await self.createAutomationAgent(modelName: modelName)
 
@@ -312,7 +309,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         if eventDelegate != nil {
             // SAFETY: We ensure that the delegate is only accessed on MainActor
             // This is a legacy API pattern that predates Swift's strict concurrency
-            let unsafeDelegate = UnsafeTransfer(eventDelegate!)
+            let unsafeDelegate = UnsafeTransfer<AgentEventDelegate>(eventDelegate!)
 
             // Create event stream infrastructure
             let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
@@ -496,7 +493,7 @@ extension PeekabooAgentService {
     public func resumeSession(
         sessionId: String,
         modelName: String = "claude-opus-4-20250514",
-        eventDelegate: Tachikoma.AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
         // Load the session
         guard try await self.sessionManager.loadSession(id: sessionId) != nil else {
@@ -512,7 +509,7 @@ extension PeekabooAgentService {
         // Execute with the loaded session
         if eventDelegate != nil {
             // SAFETY: We ensure that the delegate is only accessed on MainActor
-            let unsafeDelegate = UnsafeTransfer(eventDelegate!)
+            let unsafeDelegate = UnsafeTransfer<AgentEventDelegate>(eventDelegate!)
 
             // Create event stream infrastructure
             let (eventStream, eventContinuation) = AsyncStream<AgentEvent>.makeStream()
