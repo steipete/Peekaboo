@@ -2,18 +2,32 @@
 
 Welcome to the Tachikoma Examples package! This collection demonstrates the power and flexibility of Tachikoma's multi-provider AI integration system through practical, executable examples.
 
-## 🌟 What Makes Tachikoma Special?
+## What Makes Tachikoma Special?
 
 Unlike other AI libraries, Tachikoma provides:
 
-- **🔄 Provider Agnostic**: Same code works with OpenAI, Anthropic, Ollama, Grok
-- **🏗️ Dependency Injection**: Testable, configurable, no hidden singletons
-- **🎯 Unified Interface**: Consistent API across all providers
-- **⚙️ Smart Configuration**: Environment-based setup with automatic model detection
+- **Provider Agnostic**: Same code works with OpenAI, Anthropic, Ollama, Grok
+- **Dependency Injection**: Testable, configurable, no hidden singletons  
+- **Unified Interface**: Consistent API across all providers
+- **Smart Configuration**: Environment-based setup with automatic model detection
 
-## 📦 Examples Overview
+## Platform Support
 
-### 1. 🚀 TachikomaComparison - The Killer Demo
+Tachikoma runs everywhere Swift does:
+
+![Platform Support](https://img.shields.io/badge/platforms-macOS%20%7C%20iOS%20%7C%20watchOS%20%7C%20tvOS%20%7C%20Linux-blue)
+![Xcode](https://img.shields.io/badge/Xcode-16.4%2B-blue)
+![Swift](https://img.shields.io/badge/Swift-6.0%2B-orange)
+
+- **macOS** 14.0+ (Sonoma and later)
+- **iOS** 17.0+ 
+- **watchOS** 10.0+
+- **tvOS** 17.0+
+- **Linux** (Ubuntu 20.04+, Amazon Linux 2, etc.)
+
+## Examples Overview
+
+### 1. TachikomaComparison - The Killer Demo
 **The showcase example** - Compare AI providers side-by-side in real-time!
 
 ```bash
@@ -38,7 +52,7 @@ swift run TachikomaComparison "Explain quantum computing"
 └────────────────────────────────────────┘ └────────────────────────────────────────┘
 ```
 
-### 2. 🎓 TachikomaBasics - Getting Started
+### 2. TachikomaBasics - Getting Started
 **Perfect starting point** - Learn fundamental concepts step by step.
 
 ```bash
@@ -53,7 +67,7 @@ swift run TachikomaBasics --list-providers
 - Provider selection and fallbacks
 - Error handling and debugging
 
-### 3. ⚡ TachikomaStreaming - Real-time Responses
+### 3. TachikomaStreaming - Real-time Responses
 **Live streaming demo** - See responses appear in real-time.
 
 ```bash
@@ -67,7 +81,7 @@ swift run TachikomaStreaming --race "Compare streaming speeds"
 - Streaming performance comparison
 - Terminal-based live display
 
-### 4. 🤖 TachikomaAgent - AI Agents & Tool Calling
+### 4. TachikomaAgent - AI Agents & Tool Calling
 **Agent patterns** - Build AI agents with custom tools and function calling.
 
 ```bash
@@ -81,7 +95,7 @@ swift run TachikomaAgent --tools weather,calculator "Calculate 15% tip for $67.5
 - Agent conversation patterns
 - Tool response handling
 
-### 5. 👁️ TachikomaMultimodal - Vision + Text
+### 5. TachikomaMultimodal - Vision + Text
 **Multimodal processing** - Combine text and images across providers.
 
 ```bash
@@ -95,7 +109,7 @@ swift run TachikomaMultimodal --compare-vision "Which provider sees better?"
 - Vision capability comparison (Claude vs GPT-4V vs LLaVA)
 - Practical image processing workflows
 
-## 📘 Tachikoma API Basics
+## Tachikoma API Basics
 
 Before diving into the examples, here's how to use Tachikoma in your own Swift projects:
 
@@ -266,13 +280,14 @@ let config = AIConfiguration(providers: [
 let modelProvider = try AIModelProvider(configuration: config)
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Prerequisites
 
 ```bash
-# Ensure you have Swift 6.0+ installed
+# Ensure you have Swift 6.0+ and Xcode 16.4+ installed
 swift --version
+xcodebuild -version
 
 # Clone the repository (if not already done)
 cd /path/to/Peekaboo/Examples
@@ -314,7 +329,7 @@ swift run TachikomaBasics "Hello, Tachikoma!"
 swift run TachikomaComparison --interactive
 ```
 
-## 🛠️ Development Setup
+## Development Setup
 
 ### Building Individual Examples
 
@@ -355,7 +370,7 @@ alias ta='.build/debug/TachikomaAgent'
 alias tm='.build/debug/TachikomaMultimodal'
 ```
 
-## 🎯 Usage Patterns
+## Usage Patterns
 
 ### Environment Configuration
 
@@ -397,7 +412,7 @@ swift run TachikomaComparison --column-width 80 --max-length 1000 "Long question
 swift run TachikomaAgent --tools weather,calculator,file_reader "Complex task"
 ```
 
-## 📊 Performance Metrics
+## Performance Metrics
 
 All examples automatically measure and display performance metrics after each run:
 
@@ -457,7 +472,7 @@ All examples automatically measure and display performance metrics after each ru
 ⏱️ Duration: 22.51s | 🔤 Tokens: 301 | 📝 Words: 182 | 🎯 Confidence: 90%
 ```
 
-## 🎨 Customization
+## Customization
 
 ### Adding New Providers
 
@@ -494,7 +509,7 @@ TerminalOutput.header("Section Title")
 TerminalOutput.separator("─", length: 50)
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -536,7 +551,7 @@ swift run TachikomaBasics --verbose "Debug message"
 swift run TachikomaComparison --list-providers
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Want to add more examples or improve existing ones?
 
@@ -545,7 +560,7 @@ Want to add more examples or improve existing ones?
 3. **Improve documentation**: Update this README
 4. **Test thoroughly**: Ensure examples work with all providers
 
-## 📚 Next Steps
+## Next Steps
 
 After exploring these examples:
 
@@ -554,7 +569,7 @@ After exploring these examples:
 3. **Build custom tools** for the agent examples
 4. **Contribute back** improvements and new examples
 
-## 🔗 Related Documentation
+## Related Documentation
 
 - [Tachikoma Main Documentation](../Tachikoma/README.md)
 - [Architecture Overview](../ARCHITECTURE.md)
@@ -562,7 +577,7 @@ After exploring these examples:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 - **Start with TachikomaComparison** - it's the most impressive demo
 - **Use `--interactive` mode** for experimentation
