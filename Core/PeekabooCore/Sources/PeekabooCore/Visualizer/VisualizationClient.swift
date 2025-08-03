@@ -96,13 +96,16 @@ public final class VisualizationClient {
 
         // Test connection
         self.remoteProxy?.isVisualFeedbackEnabled { [weak self] enabled in
-            self?.isConnected = true
-            self?.isEnabled = enabled
-            self?.retryAttempt = 0
-            self?.logger.info("Connected to visualizer service, feedback enabled: \(enabled)")
+            Task { @MainActor in
+                guard let self else { return }
+                self.isConnected = true
+                self.isEnabled = enabled
+                self.retryAttempt = 0
+                self.logger.info("Connected to visualizer service, feedback enabled: \(enabled)")
 
-            // Post notification
-            NotificationCenter.default.post(name: .visualizerConnected, object: nil)
+                // Post notification
+                NotificationCenter.default.post(name: .visualizerConnected, object: nil)
+            }
         }
     }
 
@@ -364,14 +367,17 @@ public final class VisualizationClient {
     public func updateSettings(_ settings: [String: Any]) async -> Bool {
         guard self.isConnected else { return false }
 
-        return await withCheckedContinuation { continuation in
+        let success = await withCheckedContinuation { continuation in
             self.remoteProxy?.updateSettings(settings) { success in
-                if success {
-                    NotificationCenter.default.post(name: .visualizerSettingsChanged, object: settings)
-                }
                 continuation.resume(returning: success)
             }
         }
+        
+        if success {
+            NotificationCenter.default.post(name: .visualizerSettingsChanged, object: settings)
+        }
+        
+        return success
     }
 
     // MARK: - Private Methods

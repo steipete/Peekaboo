@@ -17,6 +17,7 @@ final class MenuBarAnimationController: ObservableObject {
     @Published private(set) var isAnimating: Bool = false
 
     /// Animation timer
+    @ObservationIgnored
     private var animationTimer: Timer?
 
     /// Cache for rendered icons
@@ -94,9 +95,10 @@ final class MenuBarAnimationController: ObservableObject {
         self.logger.info("Stopping ghost animation")
         self.isAnimating = false
 
-        // Stop timer
-        self.animationTimer?.invalidate()
+        // Stop timer - invalidate on main queue since Timer is main queue bound
+        let timer = self.animationTimer
         self.animationTimer = nil
+        timer?.invalidate()
 
         // Render final static frame
         self.renderCurrentFrame()
@@ -247,7 +249,6 @@ final class MenuBarAnimationController: ObservableObject {
     }
 
     deinit {
-        animationTimer?.invalidate()
         logger.info("MenuBarAnimationController deallocated")
     }
 }
