@@ -78,7 +78,7 @@ extension PeekabooAgentService {
             parameters: definition.toAgentParameters(),
             execute: { params, _ in
                 let command = try params.string("command")
-                let workingDirectory: String? = params.string("working_directory")
+                let workingDirectory = params.string("working_directory", default: nil)
                 let timeout = params.int("timeout", default: 30) ?? 30
 
                 let startTime = Date()

@@ -131,7 +131,7 @@ extension PeekabooAgentService {
             parameters: definition.toAgentParameters(),
             execute: { params, context in
                 let buttonLabel = try params.string("button")
-                let appName: String? = try params.string("app")
+                let appName = params.string("app", default: nil)
 
                 // Get the frontmost app if not specified
                 let targetApp: String
@@ -162,8 +162,8 @@ extension PeekabooAgentService {
             parameters: definition.toAgentParameters(),
             execute: { params, context in
                 let text = try params.string("text")
-                let fieldLabel: String? = try params.string("field")
-                let appName: String? = try params.string("app")
+                let fieldLabel = params.string("field", default: nil)
+                let appName = params.string("app", default: nil)
                 let clearFirst = params.bool("clear_first", default: true)
 
                 // For now, this is a simplified implementation

@@ -26,8 +26,8 @@ extension PeekabooAgentService {
                 required: ["label"]),
             execute: { params, context in
                 let searchLabel = try params.string("label")
-                let appName = try params.string("app")
-                let elementType = try params.string("element_type")
+                let appName = params.string("app", default: nil)
+                let elementType = params.string("element_type", default: nil)
 
                 let startTime = Date()
                 let targetDescription = appName ?? "entire screen"
@@ -97,8 +97,8 @@ extension PeekabooAgentService {
                 ],
                 required: []),
             execute: { params, context in
-                let appName: String? = try params.string("app")
-                let elementType = try params.string("element_type", default: "all") ?? "all"
+                let appName = params.string("app", default: nil)
+                let elementType = params.string("element_type", default: "all") ?? "all"
 
                 let startTime = Date()
 

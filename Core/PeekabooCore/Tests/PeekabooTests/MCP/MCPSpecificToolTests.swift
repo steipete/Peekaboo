@@ -297,7 +297,7 @@ struct MCPToolDescriptionTests {
             SeeTool(),
             ClickTool(),
             TypeTool(),
-            AgentTool()
+            MCPAgentTool()
         ]
         
         for tool in tools {
@@ -339,7 +339,7 @@ struct MCPToolDescriptionTests {
             AppTool(),
             WindowTool(),
             MenuTool(),
-            AgentTool(),
+            MCPAgentTool(),
             DockTool(),
             DialogTool(),
             SpaceTool()

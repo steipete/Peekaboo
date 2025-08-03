@@ -23,7 +23,7 @@ extension PeekabooAgentService {
                 ],
                 required: []),
             execute: { params, context in
-                let appFilter: String? = params.string("app")
+                let appFilter = params.string("app", default: nil)
 
                 var windows: [ServiceWindowInfo] = []
 
@@ -153,9 +153,9 @@ extension PeekabooAgentService {
                 ],
                 required: []),
             execute: { params, context in
-                let title: String? = params.string("title")
-                let appName: String? = params.string("app")
-                let windowId: Int? = params.int("window_id")
+                let title = params.string("title", default: nil)
+                let appName = params.string("app", default: nil)
+                let windowId = params.int("window_id", default: nil)
 
                 // Require at least one parameter
                 guard title != nil || appName != nil || windowId != nil else {
@@ -295,17 +295,17 @@ extension PeekabooAgentService {
             description: "Resize and/or move a window",
             parameters: parameters,
             execute: { (params: ToolInput, context: PeekabooServices) in
-                let title = try params.string("title")
-                let appName = try params.string("app")
-                let windowId = try params.int("window_id")
-                let frontmost = try params.bool("frontmost", default: false)
-                let width = try params.int("width")
-                let height = try params.int("height")
-                let x = try params.int("x")
-                let y = try params.int("y")
-                let preset = try params.string("preset")
-                let targetScreen = try params.int("target_screen")
-                let screenPreset = try params.string("screen_preset")
+                let title = params.string("title", default: nil)
+                let appName = params.string("app", default: nil)
+                let windowId = params.int("window_id", default: nil)
+                let frontmost = params.bool("frontmost", default: false)
+                let width = params.int("width", default: nil)
+                let height = params.int("height", default: nil)
+                let x = params.int("x", default: nil)
+                let y = params.int("y", default: nil)
+                let preset = params.string("preset", default: nil)
+                let targetScreen = params.int("target_screen", default: nil)
+                let screenPreset = params.string("screen_preset", default: nil)
 
                 // Log the resize request for debugging
                 var searchCriteria: [String] = []
@@ -682,10 +682,7 @@ extension PeekabooAgentService {
                 ],
                 required: ["space_number"]),
             execute: { params, _ in
-                let spaceNumber: Int? = try params.int("space_number")
-                guard let spaceNumber else {
-                    throw PeekabooError.invalidInput("space_number is required")
-                }
+                let spaceNumber = try params.int("space_number")
 
                 // Get space info
                 let spaceService = SpaceManagementService()
@@ -723,8 +720,8 @@ extension PeekabooAgentService {
                 ],
                 required: []),
             execute: { params, _ in
-                let windowId: Int? = try params.int("window_id")
-                let spaceNumber: Int? = try params.int("space_number")
+                let windowId = params.int("window_id", default: nil)
+                let spaceNumber = params.int("space_number", default: nil)
                 let bringToCurrent = params.bool("bring_to_current", default: false)
 
                 guard let windowId else {

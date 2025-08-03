@@ -188,7 +188,7 @@ struct MCPToolRegistryIntegrationTests {
             AppTool(),
             WindowTool(),
             MenuTool(),
-            AgentTool(),
+            MCPAgentTool(),
             DockTool(),
             DialogTool(),
             SpaceTool()

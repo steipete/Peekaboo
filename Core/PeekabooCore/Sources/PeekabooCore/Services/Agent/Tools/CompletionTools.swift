@@ -18,7 +18,7 @@ public enum CompletionTools {
                 ],
                 required: ["summary"]),
             execute: { params, _ in
-                let summary = try params.string("summary") ?? "Task completed"
+                let summary = try params.string("summary")
                 return ToolOutput.success("✅ Task completed: \(summary)")
             })
     }
@@ -37,8 +37,8 @@ public enum CompletionTools {
                 ],
                 required: ["question"]),
             execute: { params, _ in
-                let question = try params.string("question") ?? "Additional information needed"
-                let context: String? = try params.string("context")
+                let question = try params.string("question")
+                let context = params.string("context", default: nil)
 
                 var response = "❓ Need more information: \(question)"
                 if let context = context {

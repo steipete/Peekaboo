@@ -11,16 +11,13 @@ public func createSimpleTool<Context>(
     required: [String] = [],
     execute: @escaping (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
 {
-    let definition = ToolDefinition(
-        type: .function,
-        function: FunctionDefinition(
-            name: name,
-            description: description,
-            parameters: ToolParameters.object(
-                properties: parameters,
-                required: required)))
-
-    return Tool(definition: definition, execute: execute)
+    return Tool(
+        name: name,
+        description: description,
+        parameters: ToolParameters.object(
+            properties: parameters,
+            required: required),
+        execute: execute)
 }
 
 /// Create a tool with full control over the definition
@@ -30,16 +27,13 @@ public func createTool<Context>(
     parameters: ToolParameters? = nil,
     execute: @escaping (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
 {
-    let definition = ToolDefinition(
-        type: .function,
-        function: FunctionDefinition(
-            name: name,
-            description: description,
-            parameters: parameters ?? ToolParameters.object(
-                properties: [:],
-                required: [])))
-
-    return Tool(definition: definition, execute: execute)
+    return Tool(
+        name: name,
+        description: description,
+        parameters: parameters ?? ToolParameters.object(
+            properties: [:],
+            required: []),
+        execute: execute)
 }
 
 // MARK: - Parameter Schema Helpers

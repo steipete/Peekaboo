@@ -171,7 +171,7 @@ struct MCPToolSchemaTests {
     
     @Test("Agent tool complex schema")
     func testAgentToolSchema() {
-        let tool = AgentTool()
+        let tool = MCPAgentTool()
         
         guard case let .object(schema) = tool.inputSchema,
               let properties = schema["properties"] as? Value,

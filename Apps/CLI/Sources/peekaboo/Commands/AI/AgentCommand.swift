@@ -2,6 +2,7 @@ import ArgumentParser
 import Dispatch
 import Foundation
 import PeekabooCore
+import Tachikoma
 
 // Temporary session info struct until PeekabooAgentService implements session management
 // Test: Icon notifications are now working
@@ -130,7 +131,7 @@ final class GhostAnimator {
 
 /// Get icon for tool name in compact mode
 func iconForTool(_ toolName: String) -> String {
-    guard let tool = PeekabooTool(from: toolName) else {
+    guard let tool = AgentTool(rawValue: toolName) else {
         return "⚙️"
     }
 
@@ -346,6 +347,13 @@ struct AgentCommand: AsyncParsableCommand {
         // Handle audio input
         var executionTask: String
         if self.audio || self.audioFile != nil {
+            // TODO: Audio functionality not yet implemented
+            print("\(TerminalColor.red)Error: Audio input functionality is not yet implemented\(TerminalColor.reset)")
+            return
+        }
+        
+        /* Commented out until audio service is implemented
+        if self.audio || self.audioFile != nil {
             if !self.jsonOutput && !self.quiet {
                 if let audioPath = audioFile {
                     print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
@@ -423,6 +431,9 @@ struct AgentCommand: AsyncParsableCommand {
                 return
             }
         } else {
+            // Regular execution requires task
+        */
+        {
             // Regular execution requires task
             guard let providedTask = task else {
                 if self.jsonOutput {
@@ -638,7 +649,9 @@ struct AgentCommand: AsyncParsableCommand {
             }
 
             // Show API key info in verbose mode
-            if self.outputMode == .verbose, let apiKey = result.metadata.maskedApiKey {
+            if self.outputMode == .verbose, 
+               let peekabooAgent = peekabooAgent as? PeekabooAgentService,
+               let apiKey = await peekabooAgent.maskedApiKey {
                 print("\(TerminalColor.gray)API Key: \(apiKey)\(TerminalColor.reset)")
             }
 
@@ -691,10 +704,9 @@ struct AgentCommand: AsyncParsableCommand {
                         ]
                     },
                     "metadata": [
-                        "duration": result.metadata.duration,
+                        "executionTime": result.metadata.executionTime,
                         "toolCallCount": result.metadata.toolCallCount,
-                        "modelName": result.metadata.modelName,
-                        "isResumed": result.metadata.isResumed
+                        "modelName": result.metadata.modelName
                     ],
                     "usage": result.usage.map { usage in
                         [
@@ -733,9 +745,9 @@ struct AgentCommand: AsyncParsableCommand {
         let sessions = sessionSummaries.map { summary in
             AgentSessionInfo(
                 id: summary.id,
-                task: summary.metadata?.string("task") ?? "Unknown task",
+                task: summary.summary ?? "Unknown task",
                 created: summary.createdAt,
-                lastModified: summary.updatedAt,
+                lastModified: summary.lastAccessedAt,
                 messageCount: summary.messageCount
             )
         }
@@ -841,6 +853,7 @@ struct AgentCommand: AsyncParsableCommand {
 // MARK: - Event Delegate for Real-time Updates
 
 @available(macOS 14.0, *)
+@MainActor
 final class CompactEventDelegate: AgentEventDelegate {
     let outputMode: OutputMode
     let jsonOutput: Bool
@@ -870,7 +883,7 @@ final class CompactEventDelegate: AgentEventDelegate {
         guard !self.hasShownFinalSummary else { return }
 
         // Show a simple completion summary
-        let totalElapsed = result.metadata.duration
+        let totalElapsed = result.metadata.executionTime
         let tokenInfo = self.totalTokens > 0 ? ", \(self.totalTokens) tokens" : ""
         let toolsText = result.metadata.toolCallCount == 1 ? "1 tool" : "\(result.metadata.toolCallCount) tools"
 
@@ -897,7 +910,7 @@ final class CompactEventDelegate: AgentEventDelegate {
 
     // Extract meaningful summary from tool results
     private func getToolResultSummary(_ toolName: String, _ result: [String: Any]) -> String {
-        guard let tool = PeekabooTool(from: toolName) else {
+        guard let tool = AgentTool(rawValue: toolName) else {
             // Fallback for unknown tools
             if let success = result["success"] as? Bool {
                 return success ? "Success" : "Failed"
@@ -1434,6 +1447,7 @@ final class CompactEventDelegate: AgentEventDelegate {
         return ""
     }
 
+    @MainActor
     func agentDidEmitEvent(_ event: AgentEvent) {
         guard !self.jsonOutput else { return }
 
@@ -1485,7 +1499,7 @@ final class CompactEventDelegate: AgentEventDelegate {
                         }
                     } else {
                         // Show compact summary based on tool and args
-                        if let data = arguments.data(using: .utf8),
+                        if let data = arguments.data(using: String.Encoding.utf8),
                            let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                             let summary = self.compactToolSummary(name, args)
                             if !summary.isEmpty {
@@ -1509,7 +1523,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
 
             if self.outputMode != .quiet {
-                if let data = result.data(using: .utf8),
+                if let data = result.data(using: String.Encoding.utf8),
                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                     // Get result summary for compact mode
                     let resultSummary = self.getToolResultSummary(name, json)
@@ -1609,7 +1623,7 @@ final class CompactEventDelegate: AgentEventDelegate {
                 print("\n💭 Assistant: \(content)")
             } else if self.outputMode == .compact {
                 // Stop animation on first content if still running
-                if self.isThinking && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if self.isThinking && !content.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
                     self.ghostAnimator.stop()
                     self.isThinking = false
                     self.hasReceivedContent = true
@@ -1687,12 +1701,9 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
         } else {
             // Fallback to old error display for tools not yet updated
-            guard let toolEnum = PeekabooTool(from: tool) else {
-                return
-            }
-
-            switch toolEnum {
-            case .shell:
+            // TODO: Update to use new tool system
+            switch tool {
+            case "shell":
                 // Show command output if present
                 if let output = json["output"] as? String, !output.isEmpty {
                     print(
@@ -1713,12 +1724,8 @@ final class CompactEventDelegate: AgentEventDelegate {
     }
 
     private func compactToolSummary(_ toolName: String, _ args: [String: Any]) -> String {
-        guard let tool = PeekabooTool(from: toolName) else {
-            return toolName.replacingOccurrences(of: "_", with: " ").capitalized
-        }
-
-        switch tool {
-        case .see:
+        switch toolName {
+        case "see":
             var parts: [String] = []
             if let mode = args["mode"] as? String {
                 parts.append(mode == "window" ? "active window" : mode)
@@ -1732,7 +1739,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return parts.joined(separator: " ")
 
-        case .screenshot:
+        case "screenshot":
             if let mode = args["mode"] as? String {
                 return mode == "window" ? "active window" : mode
             } else if let app = args["app"] as? String {
@@ -1740,13 +1747,13 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "full screen"
 
-        case .windowCapture:
+        case "window_capture":
             if let app = args["appName"] as? String {
                 return app
             }
             return "active window"
 
-        case .click:
+        case "click":
             if let target = args["target"] as? String {
                 // Check if it's an element ID (like B7, O6, etc.) or text
                 if target.count <= 3 && target.range(of: "^[A-Z]\\d+$", options: .regularExpression) != nil {
@@ -1764,14 +1771,14 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return ""
 
-        case .type:
+        case "type":
             if let text = args["text"] as? String {
                 // Show full text in compact mode, even if it's long
                 return "'\(text)'"
             }
             return ""
 
-        case .scroll:
+        case "scroll":
             if let direction = args["direction"] as? String {
                 if let amount = args["amount"] as? Int {
                     return "\(direction) \(amount)px"
@@ -1780,13 +1787,13 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "down"
 
-        case .focusWindow:
+        case "focus_window":
             if let app = args["appName"] as? String {
                 return app
             }
             return "active window"
 
-        case .resizeWindow:
+        case "resize_window":
             var parts: [String] = []
             if let app = args["appName"] as? String {
                 parts.append(app)
@@ -1796,7 +1803,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return parts.isEmpty ? "active window" : parts.joined(separator: " ")
 
-        case .launchApp:
+        case "launch_app":
             if let app = args["appName"] as? String {
                 return app
             } else if let name = args["name"] as? String {
@@ -1804,7 +1811,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "application"
 
-        case .hotkey:
+        case "hotkey":
             // Check for the complete keys string first (includes modifiers and key)
             if let keys = args["keys"] as? String {
                 // Format keyboard shortcuts with proper symbols
@@ -1838,7 +1845,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "keyboard shortcut"
 
-        case .shell:
+        case "shell":
             var parts: [String] = []
             if let command = args["command"] as? String {
                 // Show full command in compact mode
@@ -1854,7 +1861,7 @@ final class CompactEventDelegate: AgentEventDelegate {
 
             return parts.joined(separator: " ")
 
-        case .listApps, .listWindows, .listElements, .listMenus, .listDock, .listSpaces:
+        case "list_apps", "list_windows", "list_elements", "list_menus", "list_dock", "list_spaces":
             if let target = args["target"] as? String {
                 switch target {
                 case "apps": return "running applications"
@@ -1873,7 +1880,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return ""
 
-        case .menuClick:
+        case "menu_click":
             var parts: [String] = []
             if let app = args["app"] as? String {
                 parts.append(app)
@@ -1885,7 +1892,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return parts.isEmpty ? "menu item" : parts.joined(separator: " ")
 
-        case .findElement:
+        case "find_element":
             if let text = args["text"] as? String {
                 return "'\(text)'"
             } else if let elementId = args["elementId"] as? String {
@@ -1893,22 +1900,22 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "UI element"
 
-        case .focused:
+        case "focused":
             return "current element"
 
-        case .dockLaunch:
+        case "dock_launch":
             if let app = args["appName"] as? String {
                 return app
             }
             return "dock item"
 
-        case .switchSpace:
+        case "switch_space":
             if let to = args["to"] as? Int {
                 return "to space \(to)"
             }
             return "space"
 
-        case .moveWindowToSpace:
+        case "move_window_to_space":
             var parts: [String] = []
             if let app = args["app"] as? String {
                 parts.append(app)
@@ -1918,7 +1925,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return parts.isEmpty ? "window to space" : parts.joined(separator: " ")
 
-        case .wait:
+        case "wait":
             if let seconds = args["seconds"] as? Double {
                 return "\(seconds)s"
             } else if let seconds = args["seconds"] as? Int {
@@ -1926,7 +1933,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "1s"
 
-        case .dialogClick:
+        case "dialog_click":
             var parts: [String] = []
             if let button = args["button"] as? String {
                 parts.append("'\(button)'")
@@ -1936,7 +1943,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return parts.isEmpty ? "dialog button" : parts.joined(separator: " ")
 
-        case .dialogInput:
+        case "dialog_input":
             var parts: [String] = []
             if let text = args["text"] as? String {
                 let truncated = text.count > 20 ? String(text.prefix(20)) + "..." : text
@@ -1959,12 +1966,10 @@ final class CompactEventDelegate: AgentEventDelegate {
             return ""
         }
 
-        guard let tool = PeekabooTool(from: toolName) else {
-            return ""
-        }
-
-        switch tool {
-        case .see, .screenshot:
+        // TODO: Update to use new tool system
+        // For now, use basic string matching
+        switch toolName {
+        case "see", "screenshot":
             if let app = args["app"] as? String {
                 return app
             } else if let mode = args["mode"] as? String {
@@ -1972,7 +1977,7 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "screen"
 
-        case .click:
+        case "click":
             if let target = args["target"] as? String {
                 return String(target.prefix(20))
             } else if let element = args["element"] as? String {
@@ -1980,19 +1985,19 @@ final class CompactEventDelegate: AgentEventDelegate {
             }
             return "element"
 
-        case .type:
+        case "type":
             if let text = args["text"] as? String {
                 return "'\(String(text.prefix(15)))...'"
             }
             return "text"
 
-        case .launchApp:
+        case "launch_app":
             if let app = args["appName"] as? String {
                 return app
             }
             return "app"
 
-        case .shell:
+        case "shell":
             if let cmd = args["command"] as? String {
                 return String(cmd.prefix(20))
             }

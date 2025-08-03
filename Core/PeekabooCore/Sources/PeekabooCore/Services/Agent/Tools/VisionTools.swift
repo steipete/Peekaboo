@@ -206,9 +206,9 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let appName: String? = params.string("app")
+                let appName = params.string("app", default: nil)
                 let format = params.string("format", default: "full") ?? "full"
-                let filterType: String? = params.string("filter")
+                let filterType = params.string("filter", default: nil)
 
                 let startTime = Date()
 
@@ -370,7 +370,7 @@ extension PeekabooAgentService {
             execute: { params, context in
                 let path = try params.string("path")
                 let expandedPath = path.expandedPath
-                let appName: String? = params.string("app")
+                let appName = params.string("app", default: nil)
 
                 let startTime = Date()
 
@@ -424,9 +424,9 @@ extension PeekabooAgentService {
                 ],
                 required: []),
             execute: { params, context in
-                let title: String? = params.string("title")
-                let windowId = params.int("window_id").map { CGWindowID($0) }
-                let savePath: String? = params.string("save_path")
+                let title = params.string("title", default: nil)
+                let windowId = params.int("window_id", default: nil).map { CGWindowID($0) }
+                let savePath = params.string("save_path", default: nil)
 
                 guard title != nil || windowId != nil else {
                     throw PeekabooError.invalidInput("Either 'title' or 'window_id' must be provided")

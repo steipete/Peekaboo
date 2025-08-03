@@ -59,9 +59,24 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     private let tachikoma: Tachikoma
     private let sessionManager: AgentSessionManager
     private let defaultModelName: String
+    private var currentModel: (any ModelInterface)?
 
     /// The default model name used by this agent service
     public var defaultModel: String { self.defaultModelName }
+    
+    /// Get the masked API key for the current model
+    public var maskedApiKey: String? {
+        get async {
+            if let model = currentModel {
+                return model.maskedApiKey
+            }
+            // Try to get model to retrieve masked API key
+            if let model = try? await Tachikoma.shared.getModel(self.defaultModelName) {
+                return model.maskedApiKey
+            }
+            return nil
+        }
+    }
 
     public init(
         services: PeekabooServices,

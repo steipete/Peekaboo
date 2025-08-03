@@ -113,10 +113,10 @@ extension PeekabooAgentService {
             parameters: definition.toAgentParameters(),
             execute: { params, context in
                 let menuPath = try params.string("path")
-                let appName = params.string("app")
+                let appName = params.string("app", default: nil)
 
                 // Parse menu path
-                let pathComponents = (menuPath ?? "")
+                let pathComponents = menuPath
                     .split(separator: ">")
                     .map { $0.trimmingCharacters(in: .whitespaces) }
 
@@ -167,8 +167,8 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let appName = params.string("app")
-                let specificMenu = params.string("menu")
+                let appName = params.string("app", default: nil)
+                let specificMenu = params.string("menu", default: nil)
 
                 let startTime = Date()
 

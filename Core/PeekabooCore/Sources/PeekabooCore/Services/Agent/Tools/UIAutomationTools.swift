@@ -395,7 +395,7 @@ extension PeekabooAgentService {
             parameters: parameters,
             execute: { params, context in
                 let target = try params.string("target")
-                let appName = params.string("app")
+                let appName = params.string("app", default: nil)
                 let doubleClick = params.bool("double_click", default: false)
                 let rightClick = params.bool("right_click", default: false)
 
@@ -463,8 +463,8 @@ extension PeekabooAgentService {
                 required: ["text"]),
             execute: { params, context in
                 let text = try params.string("text")
-                let fieldLabel: String? = params.string("field")
-                let appName: String? = params.string("app")
+                let fieldLabel = params.string("field", default: nil)
+                let appName = params.string("app", default: nil)
                 let clearFirst = params.bool("clear_first", default: false)
 
                 let startTime = Date()
@@ -538,13 +538,13 @@ extension PeekabooAgentService {
             execute: { params, context in
                 let directionStr = try params.string("direction")
                 let amount = params.int("amount", default: 5) ?? 5
-                let target: String? = params.string("target")
-                let appName: String? = params.string("app")
+                let target = params.string("target", default: nil)
+                let appName = params.string("app", default: nil)
 
                 let startTime = Date()
 
                 let direction: ScrollDirection
-                switch directionStr?.lowercased() ?? "" {
+                switch directionStr.lowercased() {
                 case "up": direction = .up
                 case "down": direction = .down
                 case "left": direction = .left
@@ -598,7 +598,7 @@ extension PeekabooAgentService {
                 let startTime = Date()
 
                 // Map key name to SpecialKey enum - handle various naming conventions
-                let normalizedKey = keyStr?.lowercased() ?? ""
+                let normalizedKey = keyStr.lowercased()
                     .replacingOccurrences(of: "_", with: "")
                     .replacingOccurrences(of: "-", with: "")
 
@@ -672,7 +672,7 @@ extension PeekabooAgentService {
                 let modifierStrs = params.arguments["modifiers"] as? [String] ?? []
 
                 // Map key names to match what hotkey expects
-                let mappedKey: String = switch keyStr?.lowercased() ?? "" {
+                let mappedKey: String = switch keyStr.lowercased() {
                 case "return", "enter": "return"
                 case "escape", "esc": "escape"
                 case "delete", "backspace": "delete"
@@ -680,7 +680,7 @@ extension PeekabooAgentService {
                 case "arrow_down", "down": "down"
                 case "arrow_left", "left": "left"
                 case "arrow_right", "right": "right"
-                default: keyStr?.lowercased() ?? ""
+                default: keyStr.lowercased()
                 }
 
                 // Map modifier strings to the expected format
@@ -716,7 +716,7 @@ extension PeekabooAgentService {
                 if !modifierStrs.isEmpty {
                     shortcutDisplay = modifierStrs.map(\.capitalized).joined(separator: "+") + "+"
                 }
-                shortcutDisplay += keyStr?.capitalized ?? ""
+                shortcutDisplay += keyStr.capitalized
 
                 return ToolOutput.success("Pressed \(shortcutDisplay) in \(targetApp)")
             })

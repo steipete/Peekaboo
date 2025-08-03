@@ -144,7 +144,7 @@ public actor PeekabooMCPServer {
             // CleanTool(), // Removed: Internal maintenance tool, not for external use
 
             // Advanced tools
-            AgentTool(),
+            MCPAgentTool(),
             DockTool(),
             DialogTool(),
             SpaceTool(),

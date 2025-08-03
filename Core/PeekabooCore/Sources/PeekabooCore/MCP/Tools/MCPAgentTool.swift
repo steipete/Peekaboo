@@ -4,7 +4,7 @@ import os.log
 import Tachikoma
 
 /// MCP tool for executing complex automation tasks using an AI agent
-public struct AgentTool: MCPTool {
+public struct MCPAgentTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "AgentTool")
 
     public let name = "agent"
