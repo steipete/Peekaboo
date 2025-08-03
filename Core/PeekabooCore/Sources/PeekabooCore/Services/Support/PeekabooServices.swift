@@ -101,8 +101,7 @@ public final class PeekabooServices: @unchecked Sendable {
     /// Permissions verification service for checking macOS privacy permissions
     public let permissions: PermissionsService
 
-    /// AI model provider for accessing configured language models (OpenAI, Anthropic, etc.)
-    public let modelProvider: AIModelProvider
+    // Model provider is now handled internally by Tachikoma
 
     /// Intelligent automation agent service for natural language task execution
     public private(set) var agent: AgentServiceProtocol?
@@ -115,7 +114,7 @@ public final class PeekabooServices: @unchecked Sendable {
 
     /// Initialize with default service implementations
     @MainActor
-    public init(modelProvider: AIModelProvider? = nil) {
+    public init() {
         self.logger.info("🚀 Initializing PeekabooServices with default implementations")
 
         let logging = LoggingService()
@@ -178,9 +177,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.permissions = PermissionsService()
         self.logger.debug("✅ PermissionsService initialized")
 
-        // Set model provider (default to empty if not provided)
-        self.modelProvider = modelProvider ?? AIModelProvider()
-        self.logger.debug("✅ AIModelProvider initialized")
+        // Model provider is now handled internally by Tachikoma
 
         // Agent service will be initialized by createShared method
         self.agent = nil
@@ -205,8 +202,7 @@ public final class PeekabooServices: @unchecked Sendable {
         permissions: PermissionsService? = nil,
         agent: AgentServiceProtocol? = nil,
         configuration: ConfigurationManager? = nil,
-        screens: ScreenServiceProtocol? = nil,
-        modelProvider: AIModelProvider? = nil)
+        screens: ScreenServiceProtocol? = nil)
     {
         self.logger.info("🚀 Initializing PeekabooServices with custom implementations")
         self.logging = logging ?? LoggingService()
@@ -224,7 +220,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.agent = agent
         self.configuration = configuration ?? ConfigurationManager.shared
         self.screens = screens ?? ScreenService()
-        self.modelProvider = modelProvider ?? AIModelProvider()
+        // Model provider is now handled internally by Tachikoma
 
         self.logger.info("✨ PeekabooServices initialization complete (custom)")
     }
@@ -245,8 +241,7 @@ public final class PeekabooServices: @unchecked Sendable {
         permissions: PermissionsService,
         configuration: ConfigurationManager,
         agent: AgentServiceProtocol?,
-        screens: ScreenServiceProtocol,
-        modelProvider: AIModelProvider)
+        screens: ScreenServiceProtocol)
     {
         self.logging = logging
         self.screenCapture = screenCapture
@@ -263,7 +258,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.configuration = configuration
         self.agent = agent
         self.screens = screens
-        self.modelProvider = modelProvider
+        // Model provider is now handled internally by Tachikoma
     }
 
     /// Create the shared instance with proper initialization order
@@ -363,20 +358,21 @@ public final class PeekabooServices: @unchecked Sendable {
                 """)
             }
 
-            // Create AI model provider from environment
-            let modelProvider = try? AIConfiguration.fromEnvironment()
-            agent = PeekabooAgentService(
-                services: services,
-                modelProvider: modelProvider ?? AIModelProvider(),
-                defaultModelName: determination.model)
+            // PeekabooAgentService now uses Tachikoma internally
+            do {
+                agent = try PeekabooAgentService(
+                    services: services,
+                    defaultModelName: determination.model)
+            } catch {
+                logger.error("Failed to initialize PeekabooAgentService: \(error)")
+                agent = nil
+            }
             logger.debug("✅ PeekabooAgentService initialized with available providers")
         } else {
             agent = nil
             logger.debug("⚠️ PeekabooAgentService skipped - no API keys found for any provider")
         }
 
-        // Create default model provider for the instance
-        let defaultModelProvider = (try? AIConfiguration.fromEnvironment()) ?? AIModelProvider()
         
         // Return services with agent
         return PeekabooServices(
@@ -395,7 +391,7 @@ public final class PeekabooServices: @unchecked Sendable {
             configuration: config,
             agent: agent,
             screens: screens,
-            modelProvider: defaultModelProvider)
+)
     }
 
     /// Refresh the agent service when API keys change
@@ -431,10 +427,14 @@ public final class PeekabooServices: @unchecked Sendable {
             self.agentLock.lock()
             defer { agentLock.unlock() }
 
-            self.agent = PeekabooAgentService(
-                services: self,
-                modelProvider: self.modelProvider,
-                defaultModelName: defaultModel ?? "claude-opus-4-20250514")
+            do {
+                self.agent = try PeekabooAgentService(
+                    services: self,
+                    defaultModelName: defaultModel ?? "claude-opus-4-20250514")
+            } catch {
+                self.logger.error("Failed to refresh PeekabooAgentService: \(error)")
+                self.agent = nil
+            }
             self.logger.info("✅ Agent service refreshed with providers: \(providers)")
         } else {
             self.agentLock.lock()

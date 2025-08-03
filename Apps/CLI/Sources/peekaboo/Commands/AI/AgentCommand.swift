@@ -131,6 +131,14 @@ final class GhostAnimator {
 
 /// Get icon for tool name in compact mode
 func iconForTool(_ toolName: String) -> String {
+    // Handle special communication tools
+    if toolName == "task_completed" || toolName == "done" {
+        return "✅"
+    }
+    if toolName == "need_more_information" || toolName == "need_info" {
+        return "❓"
+    }
+    
     guard let tool = AgentTool(rawValue: toolName) else {
         return "⚙️"
     }
@@ -139,19 +147,17 @@ func iconForTool(_ toolName: String) -> String {
     case .see, .screenshot, .windowCapture: return "👁"
     case .click, .dialogClick: return "🖱"
     case .type, .dialogInput: return "⌨️"
-    case .listApps, .launchApp, .dockLaunch: return "📱"
-    case .listWindows, .focusWindow, .resizeWindow: return "🪟"
+    case .listApps, .launchApp: return "📱"
+    case .listWindows, .focusWindow, .resizeWindow, .listScreens: return "🪟"
     case .hotkey: return "⌨️"
     case .wait: return "⏱"
     case .scroll: return "📜"
     case .findElement, .listElements, .focused: return "🔍"
     case .shell: return "💻"
     case .menuClick, .listMenus: return "📋"
-    case .listDock: return "📋"
-    case .taskCompleted: return "✅"
-    case .needMoreInformation: return "❓"
+    case .listDock, .dockClick: return "📋"
     case .listSpaces, .switchSpace, .moveWindowToSpace: return "🪟"
-    case .drag, .swipe: return "👆"
+    case .press: return "⌨️"
     }
 }
 
@@ -345,7 +351,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
 
         // Handle audio input
-        var executionTask: String
+        let executionTask: String
         if self.audio || self.audioFile != nil {
             // TODO: Audio functionality not yet implemented
             print("\(TerminalColor.red)Error: Audio input functionality is not yet implemented\(TerminalColor.reset)")
@@ -433,22 +439,23 @@ struct AgentCommand: AsyncParsableCommand {
         } else {
             // Regular execution requires task
         */
-        {
-            // Regular execution requires task
-            guard let providedTask = task else {
-                if self.jsonOutput {
-                    let error = ["success": false, "error": "Task argument is required"] as [String: Any]
-                    let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
-                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
-                } else {
-                    print("\(TerminalColor.red)Error: Task argument is required\(TerminalColor.reset)")
-                    print("Usage: peekaboo agent \"<your-task>\"")
-                    print("       peekaboo agent --audio")
-                    print("       peekaboo agent --audio-file recording.wav")
-                }
-                return
-            }
+        
+        // Check if we have a task to execute
+        if let providedTask = task {
             executionTask = providedTask
+        } else {
+            // No task provided, show error
+            if self.jsonOutput {
+                let error = ["success": false, "error": "Task argument is required"] as [String: Any]
+                let jsonData = try JSONSerialization.data(withJSONObject: error, options: .prettyPrinted)
+                print(String(data: jsonData, encoding: .utf8) ?? "{}")
+            } else {
+                print("\(TerminalColor.red)Error: Task argument is required\(TerminalColor.reset)")
+                print("Usage: peekaboo agent \"<your-task>\"")
+                print("       peekaboo agent --audio")
+                print("       peekaboo agent --audio-file recording.wav")
+            }
+            return
         }
 
         // Execute task
@@ -854,7 +861,7 @@ struct AgentCommand: AsyncParsableCommand {
 
 @available(macOS 14.0, *)
 @MainActor
-final class CompactEventDelegate: AgentEventDelegate {
+final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
     let outputMode: OutputMode
     let jsonOutput: Bool
     private var currentTool: String?
@@ -1448,7 +1455,7 @@ final class CompactEventDelegate: AgentEventDelegate {
     }
 
     @MainActor
-    func agentDidEmitEvent(_ event: AgentEvent) {
+    func agentDidEmitEvent(_ event: PeekabooCore.AgentEvent) {
         guard !self.jsonOutput else { return }
 
         switch event {
