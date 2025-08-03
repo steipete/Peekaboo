@@ -246,13 +246,13 @@ struct MenuBarStatusView: View {
         // Add user message to current session (or create new if needed)
         if let session = sessionStore.currentSession {
             self.sessionStore.addMessage(
-                ConversationMessage(role: .user, content: text),
+                PeekabooCore.ConversationMessage(role: .user, content: text),
                 to: session)
         } else {
             // Create new session if needed
             let newSession = self.sessionStore.createSession(title: text)
             self.sessionStore.addMessage(
-                ConversationMessage(role: .user, content: text),
+                PeekabooCore.ConversationMessage(role: .user, content: text),
                 to: newSession)
         }
 
@@ -276,7 +276,7 @@ struct MenuBarStatusView: View {
         // Add user message to current session
         if let session = sessionStore.currentSession {
             self.sessionStore.addMessage(
-                ConversationMessage(role: .user, content: text),
+                PeekabooCore.ConversationMessage(role: .user, content: text),
                 to: session)
         }
 
