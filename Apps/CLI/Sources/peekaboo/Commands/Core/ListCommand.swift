@@ -3,7 +3,7 @@ import ArgumentParser
 import Foundation
 import PeekabooCore
 
-/// List running applications, windows, or check system permissions
+/// List running applications, windows, or check system permissions.
 struct ListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
