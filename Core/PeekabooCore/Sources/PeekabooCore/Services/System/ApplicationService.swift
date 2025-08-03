@@ -3,7 +3,43 @@ import AXorcist
 import Foundation
 import os.log
 
-/// Default implementation of application management operations
+/**
+ * Application discovery and management service for macOS automation.
+ *
+ * Provides intelligent application lookup, window enumeration, and process management.
+ * Supports multiple identification formats including PID, bundle ID, application name,
+ * and fuzzy matching with defensive programming for app lifecycle complexities.
+ *
+ * ## Core Capabilities
+ * - Application discovery with multiple identifier formats
+ * - Window enumeration and counting via accessibility APIs
+ * - Process management and focus control
+ * - Fuzzy name matching with GUI app preference
+ *
+ * ## Identification Formats
+ * - `"PID:1234"` - Direct process ID lookup
+ * - `"com.apple.Safari"` - Bundle identifier matching
+ * - `"Safari"` - Name matching (case-insensitive)
+ * - `"Saf"` - Fuzzy matching for partial names
+ *
+ * ## Usage Example
+ * ```swift
+ * let appService = ApplicationService()
+ *
+ * // List all applications
+ * let result = try await appService.listApplications()
+ * for app in result.data.applications {
+ *     print("\(app.name): \(app.windowCount) windows")
+ * }
+ *
+ * // Find specific application
+ * let safari = try await appService.findApplication(identifier: "Safari")
+ * ```
+ *
+ * - Important: Requires Accessibility permission for window enumeration
+ * - Note: Performance 5-200ms depending on operation and system load
+ * - Since: PeekabooCore 1.0.0
+ */
 @MainActor
 public final class ApplicationService: ApplicationServiceProtocol {
     let logger = Logger(subsystem: "boo.peekaboo.core", category: "ApplicationService")
@@ -98,6 +134,39 @@ public final class ApplicationService: ApplicationServiceProtocol {
                 hints: ["Use app name or PID to target specific application"]))
     }
 
+    /**
+     * Find a specific application using flexible identification formats.
+     *
+     * - Parameter identifier: Application identifier in one of these formats:
+     *   - Process ID: `"PID:1234"` for direct process lookup
+     *   - Bundle ID: `"com.apple.Safari"` for exact bundle identifier matching
+     *   - App Name: `"Safari"` for case-insensitive name matching
+     *   - Partial Name: `"Saf"` for fuzzy matching when exact match fails
+     * - Returns: `ServiceApplicationInfo` containing application details and window count
+     * - Throws: `PeekabooError.appNotFound` if no matching application is found
+     *
+     * ## Matching Priority
+     * 1. Exact PID match (if identifier starts with "PID:")
+     * 2. Exact bundle ID match
+     * 3. Exact name match (case-insensitive)
+     * 4. Fuzzy partial name match
+     * 5. GUI applications preferred over background processes
+     *
+     * ## Examples
+     * ```swift
+     * // Find by exact name
+     * let safari = try await appService.findApplication(identifier: "Safari")
+     *
+     * // Find by process ID
+     * let app = try await appService.findApplication(identifier: "PID:1234")
+     *
+     * // Find by bundle ID
+     * let chrome = try await appService.findApplication(identifier: "com.google.Chrome")
+     *
+     * // Fuzzy match
+     * let xcode = try await appService.findApplication(identifier: "Xcod") // Matches "Xcode"
+     * ```
+     */
     public func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
         self.logger.info("Finding application with identifier: \(identifier, privacy: .public)")
 

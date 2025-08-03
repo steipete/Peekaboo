@@ -4,7 +4,40 @@ import CoreGraphics
 import Foundation
 import os.log
 
-/// Service for handling click operations
+/**
+ * Specialized click service providing precise mouse interaction capabilities.
+ *
+ * Handles all types of click operations with intelligent targeting, session integration,
+ * and multiple targeting modes. Supports element-based clicking via session cache,
+ * coordinate-based clicking, and query-based element discovery.
+ *
+ * ## Click Types
+ * - Single, double, right-click, and middle-click
+ * - Coordinate-based and element-based targeting
+ * - Query-based element discovery and interaction
+ *
+ * ## Usage Example
+ * ```swift
+ * let clickService = ClickService(sessionManager: sessionManager)
+ *
+ * // Click by element ID
+ * try await clickService.click(
+ *     target: .elementId("B1"),
+ *     clickType: .single,
+ *     sessionId: "session_123"
+ * )
+ *
+ * // Click by coordinates
+ * try await clickService.click(
+ *     target: .coordinates(CGPoint(x: 100, y: 200)),
+ *     clickType: .right,
+ *     sessionId: nil
+ * )
+ * ```
+ *
+ * - Note: Part of UIAutomationService's specialized service architecture
+ * - Since: PeekabooCore 1.0.0
+ */
 @MainActor
 public final class ClickService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ClickService")

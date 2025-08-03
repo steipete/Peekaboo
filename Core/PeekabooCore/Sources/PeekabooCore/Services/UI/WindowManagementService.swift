@@ -4,7 +4,39 @@ import CoreGraphics
 import Foundation
 import os.log
 
-/// Default implementation of window management operations using AXorcist
+/**
+ * Window management service providing window control operations using AXorcist.
+ *
+ * Handles window positioning, resizing, state changes (close/minimize/maximize), and focus
+ * management with visual feedback integration. Built on AXorcist accessibility framework
+ * for type-safe window operations across applications.
+ *
+ * ## Core Operations
+ * - Window state: close, minimize, maximize, focus
+ * - Positioning: move windows to specific coordinates  
+ * - Resizing: resize windows to specific dimensions
+ * - Multi-window support with index-based targeting
+ *
+ * ## Usage Example
+ * ```swift
+ * let windowService = WindowManagementService()
+ *
+ * // Close specific window
+ * try await windowService.closeWindow(
+ *     target: WindowTarget(appIdentifier: "Safari", windowIndex: 1)
+ * )
+ *
+ * // Move and resize window
+ * try await windowService.moveWindow(
+ *     target: WindowTarget(appIdentifier: "Terminal"),
+ *     position: CGPoint(x: 100, y: 100)
+ * )
+ * ```
+ *
+ * - Important: Requires Accessibility permission for window operations
+ * - Note: Performance varies 10-200ms depending on operation and application
+ * - Since: PeekabooCore 1.0.0
+ */
 @MainActor
 public final class WindowManagementService: WindowManagementServiceProtocol {
     private let applicationService: ApplicationServiceProtocol

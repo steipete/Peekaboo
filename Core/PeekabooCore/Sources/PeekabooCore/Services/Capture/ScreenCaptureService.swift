@@ -8,7 +8,40 @@ import Foundation
 // This is a workaround for SCShareableContent.current hanging on macOS beta versions
 private let USE_MODERN_SCREENCAPTURE_API = ProcessInfo.processInfo.environment["PEEKABOO_USE_MODERN_CAPTURE"] != "false"
 
-/// Default implementation of screen capture operations
+/**
+ * Screen and window capture service with dual API support.
+ *
+ * Provides fast screen capture using ScreenCaptureKit (modern) or CGWindowList (legacy) APIs.
+ * Automatically handles API selection, permission management, and retry logic with visual
+ * feedback integration.
+ *
+ * ## Core Capabilities
+ * - Screen capture for specific displays or main display
+ * - Window capture with application targeting
+ * - Dual API architecture with automatic fallback
+ * - Built-in retry logic and permission validation
+ *
+ * ## Usage Example
+ * ```swift
+ * let captureService = ScreenCaptureService(loggingService: logger)
+ *
+ * // Capture main screen
+ * let screenResult = try await captureService.captureScreen(displayIndex: nil)
+ *
+ * // Capture application window
+ * let windowResult = try await captureService.captureWindow(
+ *     appIdentifier: "Safari",
+ *     windowIndex: 0
+ * )
+ * ```
+ *
+ * ## API Control
+ * Use `PEEKABOO_USE_MODERN_CAPTURE=false` to force legacy CGWindowList API.
+ *
+ * - Important: Requires Screen Recording permission
+ * - Note: Performance 20-150ms depending on operation and display size
+ * - Since: PeekabooCore 1.0.0
+ */
 @MainActor
 public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     private let logger: CategoryLogger
@@ -137,6 +170,41 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
     }
 
+    /**
+     * Capture a specific application window with precise targeting.
+     *
+     * - Parameters:
+     *   - appIdentifier: Application identifier (name, bundle ID, or "PID:1234" format)
+     *   - windowIndex: Window index within app (nil for frontmost window, 0-based indexing)
+     * - Returns: `CaptureResult` containing image data, metadata, and optional saved path
+     * - Throws: `PeekabooError` if application not found, window index invalid, or capture fails
+     *
+     * ## Window Selection
+     * - `windowIndex: nil` - Captures the frontmost/active window of the application
+     * - `windowIndex: 0` - Captures the first window (topmost in window list)
+     * - `windowIndex: 1` - Captures the second window, etc.
+     *
+     * ## Examples
+     * ```swift
+     * // Capture Safari's frontmost window
+     * let result = try await captureService.captureWindow(
+     *     appIdentifier: "Safari",
+     *     windowIndex: nil
+     * )
+     *
+     * // Capture specific Chrome window by index
+     * let chromeWindow = try await captureService.captureWindow(
+     *     appIdentifier: "com.google.Chrome",
+     *     windowIndex: 1
+     * )
+     *
+     * // Capture by process ID
+     * let processWindow = try await captureService.captureWindow(
+     *     appIdentifier: "PID:1234",
+     *     windowIndex: 0
+     * )
+     * ```
+     */
     public func captureWindow(appIdentifier: String, windowIndex: Int?) async throws -> CaptureResult {
         let correlationId = UUID().uuidString
         self.logger.info("Starting window capture", metadata: [

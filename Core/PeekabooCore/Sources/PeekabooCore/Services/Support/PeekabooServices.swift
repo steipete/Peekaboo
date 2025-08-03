@@ -2,56 +2,109 @@ import Foundation
 import os.log
 import Tachikoma
 
-/// Main entry point for all Peekaboo services
-/// Provides a unified interface for screen capture, automation, and management operations
+/**
+ * Central service registry and coordination hub for all Peekaboo functionality.
+ *
+ * `PeekabooServices` is the main entry point for accessing all Peekaboo capabilities including
+ * screen capture, UI automation, window management, and AI-powered operations. It provides
+ * a unified interface that coordinates between different service implementations and manages
+ * their lifecycle.
+ *
+ * ## Architecture Overview
+ * PeekabooServices follows a service locator pattern where individual services are:
+ * - **Injected at initialization**: All services are provided via dependency injection
+ * - **Protocol-based**: Services implement specific protocols for testability
+ * - **Thread-safe**: All services can be safely accessed from multiple threads
+ * - **Stateless where possible**: Most services maintain minimal state
+ *
+ * ## Core Service Categories
+ * - **Capture Services**: Screen capture, window capture, region capture
+ * - **Automation Services**: Click, type, scroll, hotkey operations
+ * - **Management Services**: Window, application, and session management
+ * - **AI Services**: Model providers and intelligent automation agents
+ *
+ * ## Usage Example
+ * ```swift
+ * // Access the shared instance
+ * let services = PeekabooServices.shared
+ *
+ * // Capture a screenshot
+ * let screenshot = try await services.screenCapture.captureScreen()
+ *
+ * // Perform UI automation
+ * try await services.automation.click(target: .coordinate(100, 200))
+ *
+ * // Use AI agent for complex tasks
+ * if let agent = services.agent {
+ *     let result = try await agent.executeTask("Click the submit button")
+ * }
+ * ```
+ *
+ * ## Dependency Injection
+ * For testing or custom configurations, services can be injected:
+ * ```swift
+ * let customServices = PeekabooServices(
+ *     screenCapture: MockScreenCaptureService(),
+ *     automation: MockAutomationService(),
+ *     // ... other services
+ * )
+ * ```
+ *
+ * - Important: All services run on the main thread due to macOS UI automation requirements
+ * - Note: The shared instance is automatically configured with production services
+ * - Since: PeekabooCore 1.0.0
+ */
 public final class PeekabooServices: @unchecked Sendable {
-    /// Shared instance for convenience
+    /// Shared instance for convenient access in typical usage scenarios
     @MainActor
     public static let shared = PeekabooServices.createShared()
 
-    /// Logger for service initialization and operations
+    /// Internal logger for debugging service initialization and coordination
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "Services")
 
-    /// Unified logging service
+    /// Centralized logging service for consistent logging across all Peekaboo components
     public let logging: LoggingServiceProtocol
 
-    /// Screen capture operations
+    /// Screen and window capture service supporting ScreenCaptureKit and legacy APIs
     public let screenCapture: ScreenCaptureServiceProtocol
 
-    /// Application and window queries
+    /// Application discovery and enumeration service for finding running apps and windows
     public let applications: ApplicationServiceProtocol
 
-    /// UI automation operations
+    /// Core UI automation service for mouse, keyboard, and accessibility interactions
     public let automation: UIAutomationServiceProtocol
 
-    /// Window management operations
+    /// Window management service for positioning, resizing, and organizing windows
     public let windows: WindowManagementServiceProtocol
 
-    /// Menu interaction operations
+    /// Menu bar interaction service for navigating application menus
     public let menu: MenuServiceProtocol
 
-    /// Dock interaction operations
+    /// macOS Dock interaction service for launching and managing Dock items
     public let dock: DockServiceProtocol
 
-    /// Dialog interaction operations
+    /// System dialog interaction service for handling alerts, file dialogs, etc.
     public let dialogs: DialogServiceProtocol
 
-    /// Session management
+    /// Session and state management for automation workflows and history
     public let sessions: SessionManagerProtocol
 
-    /// File system operations
+    /// File system operations service for reading, writing, and manipulating files
     public let files: FileServiceProtocol
 
-    /// Configuration management
+    /// Configuration management for user preferences and API keys
     public let configuration: ConfigurationManager
 
-    /// Process/script execution service
+    /// Process execution service for running shell commands and scripts
     public let process: ProcessServiceProtocol
 
-    /// Permissions checking service
+    /// Permissions verification service for checking macOS privacy permissions
     public let permissions: PermissionsService
 
-    /// Agent service for AI-powered automation
+    /// AI model provider for accessing configured language models (OpenAI, Anthropic, etc.)
+    public let modelProvider: AIModelProvider
+
+    /// Intelligent automation agent service for natural language task execution
     public private(set) var agent: AgentServiceProtocol?
 
     /// Screen management service for multi-monitor support
@@ -62,7 +115,7 @@ public final class PeekabooServices: @unchecked Sendable {
 
     /// Initialize with default service implementations
     @MainActor
-    public init() {
+    public init(modelProvider: AIModelProvider? = nil) {
         self.logger.info("🚀 Initializing PeekabooServices with default implementations")
 
         let logging = LoggingService()
@@ -125,6 +178,10 @@ public final class PeekabooServices: @unchecked Sendable {
         self.permissions = PermissionsService()
         self.logger.debug("✅ PermissionsService initialized")
 
+        // Set model provider (default to empty if not provided)
+        self.modelProvider = modelProvider ?? AIModelProvider()
+        self.logger.debug("✅ AIModelProvider initialized")
+
         // Agent service will be initialized by createShared method
         self.agent = nil
 
@@ -148,7 +205,8 @@ public final class PeekabooServices: @unchecked Sendable {
         permissions: PermissionsService? = nil,
         agent: AgentServiceProtocol? = nil,
         configuration: ConfigurationManager? = nil,
-        screens: ScreenServiceProtocol? = nil)
+        screens: ScreenServiceProtocol? = nil,
+        modelProvider: AIModelProvider? = nil)
     {
         self.logger.info("🚀 Initializing PeekabooServices with custom implementations")
         self.logging = logging ?? LoggingService()
@@ -166,6 +224,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.agent = agent
         self.configuration = configuration ?? ConfigurationManager.shared
         self.screens = screens ?? ScreenService()
+        self.modelProvider = modelProvider ?? AIModelProvider()
 
         self.logger.info("✨ PeekabooServices initialization complete (custom)")
     }
@@ -186,7 +245,8 @@ public final class PeekabooServices: @unchecked Sendable {
         permissions: PermissionsService,
         configuration: ConfigurationManager,
         agent: AgentServiceProtocol?,
-        screens: ScreenServiceProtocol)
+        screens: ScreenServiceProtocol,
+        modelProvider: AIModelProvider)
     {
         self.logging = logging
         self.screenCapture = screenCapture
@@ -203,6 +263,7 @@ public final class PeekabooServices: @unchecked Sendable {
         self.configuration = configuration
         self.agent = agent
         self.screens = screens
+        self.modelProvider = modelProvider
     }
 
     /// Create the shared instance with proper initialization order
@@ -255,16 +316,7 @@ public final class PeekabooServices: @unchecked Sendable {
             agent: nil,
             screens: screens)
 
-        // Initialize Tachikoma with available API keys
-        Task {
-            do {
-                try await Tachikoma.shared.setupFromEnvironment()
-                logger.debug("✅ Tachikoma initialized from environment")
-            } catch {
-                let peekabooError = error.asPeekabooError(context: "Failed to setup Tachikoma")
-                logger.error("⚠️ Tachikoma setup failed: \(peekabooError.localizedDescription)")
-            }
-        }
+        // Note: AI model provider is created later from environment in createShared
 
         // Now create agent service if any API key is available
         // Check for OpenAI, Anthropic, or Ollama availability
@@ -311,20 +363,21 @@ public final class PeekabooServices: @unchecked Sendable {
                 """)
             }
 
-            do {
-                agent = try PeekabooAgentService(
-                    services: services,
-                    defaultModelName: determination.model)
-            } catch {
-                logger.error("Failed to initialize PeekabooAgentService: \(error)")
-                agent = nil
-            }
+            // Create AI model provider from environment
+            let modelProvider = try? AIConfiguration.fromEnvironment()
+            agent = PeekabooAgentService(
+                services: services,
+                modelProvider: modelProvider ?? AIModelProvider(),
+                defaultModelName: determination.model)
             logger.debug("✅ PeekabooAgentService initialized with available providers")
         } else {
             agent = nil
             logger.debug("⚠️ PeekabooAgentService skipped - no API keys found for any provider")
         }
 
+        // Create default model provider for the instance
+        let defaultModelProvider = (try? AIConfiguration.fromEnvironment()) ?? AIModelProvider()
+        
         // Return services with agent
         return PeekabooServices(
             logging: logging,
@@ -341,7 +394,8 @@ public final class PeekabooServices: @unchecked Sendable {
             permissions: permissions,
             configuration: config,
             agent: agent,
-            screens: screens)
+            screens: screens,
+            modelProvider: defaultModelProvider)
     }
 
     /// Refresh the agent service when API keys change
@@ -377,8 +431,9 @@ public final class PeekabooServices: @unchecked Sendable {
             self.agentLock.lock()
             defer { agentLock.unlock() }
 
-            self.agent = try? PeekabooAgentService(
+            self.agent = PeekabooAgentService(
                 services: self,
+                modelProvider: self.modelProvider,
                 defaultModelName: defaultModel ?? "claude-opus-4-20250514")
             self.logger.info("✅ Agent service refreshed with providers: \(providers)")
         } else {

@@ -4,7 +4,35 @@ import CoreGraphics
 import Foundation
 import os.log
 
-/// Service for detecting UI elements in screenshots and applications
+/**
+ * AI-powered UI element detection service for screenshot analysis.
+ *
+ * Combines computer vision with accessibility APIs to detect and classify interactive
+ * UI elements in screenshots. Provides element identification, bounds calculation,
+ * and accessibility correlation for automation targeting.
+ *
+ * ## Detection Capabilities
+ * - Button, text field, image, and static text recognition
+ * - Element bounds and coordinate mapping
+ * - Accessibility attribute extraction
+ * - Session-based element caching
+ *
+ * ## Usage Example
+ * ```swift
+ * let detectionService = ElementDetectionService(sessionManager: sessionManager)
+ *
+ * let result = try await detectionService.detectElements(
+ *     in: screenshotData,
+ *     sessionId: "session_123",
+ *     windowContext: WindowContext(applicationName: "Safari")
+ * )
+ *
+ * print("Detected \(result.elements.all.count) elements")
+ * ```
+ *
+ * - Note: Core component of UIAutomationService's element recognition pipeline
+ * - Since: PeekabooCore 1.0.0
+ */
 @MainActor
 public final class ElementDetectionService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ElementDetectionService")
