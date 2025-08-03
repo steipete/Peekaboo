@@ -633,8 +633,6 @@ struct AgentCommand: AsyncParsableCommand {
         do {
             let result = try await peekabooAgent.executeTask(
                 task,
-                sessionId: sessionId,
-                modelName: actualModelName, // Use the actual model name from config/env
                 eventDelegate: eventDelegate
             )
 
@@ -700,15 +698,17 @@ struct AgentCommand: AsyncParsableCommand {
                 "result": [
                     "content": result.content,
                     "sessionId": result.sessionId,
-                    "toolCalls": result.toolCalls.map { toolCall in
-                        [
-                            "id": toolCall.id,
-                            "type": toolCall.type.rawValue,
-                            "function": [
-                                "name": toolCall.function.name,
-                                "arguments": toolCall.function.arguments
-                            ]
-                        ]
+                    "toolCalls": result.messages.flatMap { message in
+                        message.content.compactMap { content in
+                            if case .toolCall(let toolCall) = content {
+                                return [
+                                    "id": toolCall.id,
+                                    "name": toolCall.name,
+                                    "arguments": toolCall.arguments
+                                ]
+                            }
+                            return nil
+                        }
                     },
                     "metadata": [
                         "executionTime": result.metadata.executionTime,
@@ -717,8 +717,8 @@ struct AgentCommand: AsyncParsableCommand {
                     ],
                     "usage": result.usage.map { usage in
                         [
-                            "promptTokens": usage.promptTokens,
-                            "completionTokens": usage.completionTokens,
+                            "inputTokens": usage.inputTokens,
+                            "outputTokens": usage.outputTokens,
                             "totalTokens": usage.totalTokens
                         ]
                     } as Any
