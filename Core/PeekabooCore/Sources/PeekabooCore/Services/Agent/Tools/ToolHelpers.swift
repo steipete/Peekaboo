@@ -1,5 +1,5 @@
 import Foundation
-import Tachikoma
+import TachikomaCore
 
 // MARK: - Tool Helper Functions
 
@@ -35,7 +35,7 @@ extension PeekabooAgentService {
             }
         }
 
-        return .failure(peekabooError)
+        return ToolOutput.failure(peekabooError)
     }
 
     /// Enhance error with context-specific information

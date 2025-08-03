@@ -3,7 +3,7 @@ import AXorcist
 import CoreGraphics
 import Foundation
 import OSLog
-import Tachikoma
+import TachikomaCore
 
 // MARK: - Window Management Tools
 
@@ -17,13 +17,15 @@ extension PeekabooAgentService {
         createTool(
             name: "list_windows",
             description: "List all visible windows across all applications. Uses fast CGWindowList API when screen recording permission is granted, with automatic fallback to accessibility API. Results are returned quickly with built-in timeout protection to prevent hangs.",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [
-                    "app": ParameterSchema.string(description: "Optional: Filter windows by application name"),
+                    "app": ToolParameterProperty(
+                        type: .string,
+                        description: "Optional: Filter windows by application name"),
                 ],
                 required: []),
             execute: { params, context in
-                let appFilter = params.string("app", default: nil)
+                let appFilter = params.stringValue("app", default: nil)
 
                 var windows: [ServiceWindowInfo] = []
 
@@ -86,9 +88,10 @@ extension PeekabooAgentService {
                         regularApps.append(app)
                     }
 
-                    Self.logger
-                        .debug(
-                            "Checking \(regularApps.count) regular apps for windows (filtered from \(appsOutput.data.applications.count) total)")
+                    // Create a local logger to avoid @MainActor isolation issues
+                    let localLogger = Logger(subsystem: "boo.peekaboo.core", category: "WindowTools")
+                    localLogger.debug(
+                        "Checking \(regularApps.count) regular apps for windows (filtered from \(appsOutput.data.applications.count) total)")
 
                     // Process each app sequentially without any concurrent operations
                     // This ensures all AX operations stay on the main thread
@@ -102,11 +105,11 @@ extension PeekabooAgentService {
                             if let windowsOutput = windowsResult {
                                 windows.append(contentsOf: windowsOutput.data.windows)
                             } else {
-                                Self.logger.debug("Timeout getting windows for \(app.name)")
+                                localLogger.debug("Timeout getting windows for \(app.name)")
                             }
                         } catch {
                             // Skip apps that fail
-                            Self.logger.debug("Error getting windows for \(app.name): \(error)")
+                            localLogger.debug("Error getting windows for \(app.name): \(error)")
                         }
                     }
                 }
@@ -144,18 +147,24 @@ extension PeekabooAgentService {
         createTool(
             name: "focus_window",
             description: "Bring a window to the front and give it focus",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [
-                    "title": ParameterSchema
-                        .string(description: "Window title to search for (partial match supported)"),
-                    "app": ParameterSchema.string(description: "Application name"),
-                    "window_id": ParameterSchema.integer(description: "Specific window ID"),
+                    "title": ToolParameterProperty(
+                        type: .string,
+                        description: "Window title to search for (partial match supported)"),
+                    "app": ToolParameterProperty(
+                        type: .string,
+                        description: "Application name"),
+                    "window_id": ToolParameterProperty(
+                        type: .integer,
+                        description: "Specific window ID"),
                 ],
                 required: []),
             execute: { params, context in
-                let title = params.string("title", default: nil)
-                let appName = params.string("app", default: nil)
-                let windowId = params.int("window_id", default: nil)
+                let localLogger = Logger(subsystem: "boo.peekaboo.core", category: "WindowTools")
+                let title = params.stringValue("title", default: nil)
+                let appName = params.stringValue("app", default: nil)
+                let windowId = params.intValue("window_id", default: nil)
 
                 // Require at least one parameter
                 guard title != nil || appName != nil || windowId != nil else {
@@ -203,7 +212,7 @@ extension PeekabooAgentService {
                             windows.append(contentsOf: appWindows)
                         } catch {
                             // Skip apps that fail
-                            Self.logger.debug("Error getting windows for \(app.name): \(error)")
+                            localLogger.debug("Error getting windows for \(app.name): \(error)")
                         }
                     }
                 }
@@ -270,23 +279,41 @@ extension PeekabooAgentService {
 
     /// Create the resize window tool
     func createResizeWindowTool() -> Tool<PeekabooServices> {
-        let parameters = ToolParameters.object(
+        let parameters = ToolParameters(
             properties: [
-                "title": ParameterSchema.string(description: "Window title (partial match)"),
-                "app": ParameterSchema.string(description: "Application name"),
-                "window_id": ParameterSchema.integer(description: "Specific window ID"),
-                "frontmost": ParameterSchema.boolean(description: "Use the frontmost window"),
-                "width": ParameterSchema.integer(description: "New width in pixels"),
-                "height": ParameterSchema.integer(description: "New height in pixels"),
-                "x": ParameterSchema.integer(description: "New X position"),
-                "y": ParameterSchema.integer(description: "New Y position"),
-                "preset": ParameterSchema.enumeration(
-                    ["maximize", "center", "left_half", "right_half", "top_half", "bottom_half"],
-                    description: "Preset size/position"),
-                "target_screen": ParameterSchema.integer(description: "Move window to specific screen (0-based index)"),
-                "screen_preset": ParameterSchema.enumeration(
-                    ["same", "next", "previous", "primary"],
-                    description: "Move window relative to screens"),
+                "title": ToolParameterProperty(
+                    type: .string,
+                    description: "Window title (partial match)"),
+                "app": ToolParameterProperty(
+                    type: .string,
+                    description: "Application name"),
+                "window_id": ToolParameterProperty(
+                    type: .integer,
+                    description: "Specific window ID"),
+                "frontmost": ToolParameterProperty(
+                    type: .boolean,
+                    description: "Use the frontmost window"),
+                "width": ToolParameterProperty(
+                    type: .integer,
+                    description: "New width in pixels"),
+                "height": ToolParameterProperty(
+                    type: .integer,
+                    description: "New height in pixels"),
+                "x": ToolParameterProperty(
+                    type: .integer,
+                    description: "New X position"),
+                "y": ToolParameterProperty(
+                    type: .integer,
+                    description: "New Y position"),
+                "preset": ToolParameterProperty(
+                    type: .string,
+                    description: "Preset size/position (maximize, center, left_half, right_half, top_half, bottom_half)"),
+                "target_screen": ToolParameterProperty(
+                    type: .integer,
+                    description: "Move window to specific screen (0-based index)"),
+                "screen_preset": ToolParameterProperty(
+                    type: .string,
+                    description: "Move window relative to screens (same, next, previous, primary)"),
             ],
             required: [])
 
@@ -295,17 +322,18 @@ extension PeekabooAgentService {
             description: "Resize and/or move a window",
             parameters: parameters,
             execute: { (params: ToolInput, context: PeekabooServices) in
-                let title = params.string("title", default: nil)
-                let appName = params.string("app", default: nil)
-                let windowId = params.int("window_id", default: nil)
-                let frontmost = params.bool("frontmost", default: false)
-                let width = params.int("width", default: nil)
-                let height = params.int("height", default: nil)
-                let x = params.int("x", default: nil)
-                let y = params.int("y", default: nil)
-                let preset = params.string("preset", default: nil)
-                let targetScreen = params.int("target_screen", default: nil)
-                let screenPreset = params.string("screen_preset", default: nil)
+                let localLogger = Logger(subsystem: "boo.peekaboo.core", category: "WindowTools")
+                let title = params.stringValue("title", default: nil)
+                let appName = params.stringValue("app", default: nil)
+                let windowId = params.intValue("window_id", default: nil)
+                let frontmost = params.boolValue("frontmost", default: false)
+                let width = params.intValue("width", default: nil)
+                let height = params.intValue("height", default: nil)
+                let x = params.intValue("x", default: nil)
+                let y = params.intValue("y", default: nil)
+                let preset = params.stringValue("preset", default: nil)
+                let targetScreen = params.intValue("target_screen", default: nil)
+                let screenPreset = params.stringValue("screen_preset", default: nil)
 
                 // Log the resize request for debugging
                 var searchCriteria: [String] = []
@@ -323,7 +351,7 @@ extension PeekabooAgentService {
                 if let targetScreen { resizeParams.append("targetScreen=\(targetScreen)") }
                 if let screenPreset { resizeParams.append("screenPreset=\(screenPreset)") }
 
-                Self.logger
+                localLogger
                     .info(
                         "resize_window: Searching for window with [\(searchCriteria.joined(separator: ", "))], resize params: [\(resizeParams.joined(separator: ", "))]")
 
@@ -363,12 +391,12 @@ extension PeekabooAgentService {
                             }
                         } catch {
                             // Skip apps that fail
-                            Self.logger.debug("Error getting windows for \(app.name): \(error)")
+                            localLogger.debug("Error getting windows for \(app.name): \(error)")
                         }
                     }
 
                     guard let found = foundWindow else {
-                        Self.logger
+                        localLogger
                             .error(
                                 "Window not found with ID \(windowId). Searched \(appsOutput.data.applications.count) applications.")
                         throw PeekabooError.windowNotFound(criteria: "window with ID \(windowId)")
@@ -398,7 +426,7 @@ extension PeekabooAgentService {
                                 windows.append(contentsOf: appWindows)
                             } catch {
                                 // Skip apps that fail
-                                Self.logger.debug("Error getting windows for \(app.name): \(error)")
+                                localLogger.debug("Error getting windows for \(app.name): \(error)")
                             }
                         }
                     }
@@ -424,10 +452,10 @@ extension PeekabooAgentService {
                         let criteria = criteriaItems.joined(separator: " ")
 
                         // Log more helpful error message
-                        Self.logger
+                        localLogger
                             .error("Window not found matching \(criteria). Found \(windows.count) total windows.")
                         if !windows.isEmpty {
-                            Self.logger
+                            localLogger
                                 .debug(
                                     "Available windows: \(windows.map { "\($0.title) (ID: \($0.windowID))" }.joined(separator: ", "))")
                         }
@@ -441,18 +469,18 @@ extension PeekabooAgentService {
                 var newBounds = window.bounds
 
                 // Determine target screen
-                let targetScreenInfo: ScreenInfo?
+                var targetScreenInfo: ScreenInfo?
                 if let targetScreen {
                     // Use specific screen index
-                    targetScreenInfo = context.screens.screen(at: targetScreen)
+                    targetScreenInfo = await context.screens.screen(at: targetScreen)
                 } else if let screenPreset {
                     // Use screen preset
-                    let currentScreen = context.screens.screenContainingWindow(bounds: window.bounds)
-                    let screens = context.screens.listScreens()
+                    let currentScreen = await context.screens.screenContainingWindow(bounds: window.bounds)
+                    let screens = await context.screens.listScreens()
 
                     switch screenPreset {
                     case "primary":
-                        targetScreenInfo = context.screens.primaryScreen
+                        targetScreenInfo = await context.screens.primaryScreen
                     case "next":
                         if let current = currentScreen, current.index < screens.count - 1 {
                             targetScreenInfo = screens[current.index + 1]
@@ -472,8 +500,10 @@ extension PeekabooAgentService {
                     }
                 } else {
                     // No screen targeting - use current screen or main
-                    targetScreenInfo = context.screens.screenContainingWindow(bounds: window.bounds) ?? context.screens
-                        .primaryScreen
+                    targetScreenInfo = await context.screens.screenContainingWindow(bounds: window.bounds)
+                    if targetScreenInfo == nil {
+                        targetScreenInfo = await context.screens.primaryScreen
+                    }
                 }
 
                 if let preset {
@@ -527,7 +557,7 @@ extension PeekabooAgentService {
                     // If we're moving to a different screen but no preset was specified,
                     // maintain relative position on the new screen
                     if targetScreen != nil || screenPreset != nil {
-                        let currentScreen = context.screens.screenContainingWindow(bounds: window.bounds)
+                        let currentScreen = await context.screens.screenContainingWindow(bounds: window.bounds)
                         if let currentScreen, let targetScreenInfo, currentScreen.index != targetScreenInfo.index {
                             // Calculate relative position on current screen
                             let relativeX = (window.bounds.minX - currentScreen.frame.minX) / currentScreen.frame.width
@@ -599,17 +629,18 @@ extension PeekabooAgentService {
             })
     }
 
+    /*
     /// Create the list spaces tool
     func createListSpacesTool() -> Tool<PeekabooServices> {
         createTool(
             name: "list_spaces",
             description: "List all macOS Spaces (virtual desktops)",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [:],
                 required: []),
-            execute: { _, _ in
+            execute: { _, context in
                 let spaceService = SpaceManagementService()
-                let spaces = spaceService.getAllSpaces()
+                let spaces = await spaceService.getAllSpaces()
 
                 if spaces.isEmpty {
                     return ToolOutput.success("No Spaces found")
@@ -632,17 +663,18 @@ extension PeekabooAgentService {
                     output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
+    */
 
     /// Create the list screens tool
     func createListScreensTool() -> Tool<PeekabooServices> {
         createTool(
             name: "list_screens",
             description: "List all available displays/monitors with their properties",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [:],
                 required: []),
             execute: { _, context in
-                let screens = context.screens.listScreens()
+                let screens = await context.screens.listScreens()
 
                 if screens.isEmpty {
                     return ToolOutput.success("No screens found")
@@ -671,22 +703,27 @@ extension PeekabooAgentService {
             })
     }
 
+    // MARK: - Disabled Space Management Tools
+    // These tools are temporarily disabled due to missing SpaceManagementService integration
+    
+    /*
     /// Create the switch space tool
     func createSwitchSpaceTool() -> Tool<PeekabooServices> {
         createTool(
             name: "switch_space",
             description: "Switch to a different macOS Space (virtual desktop)",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [
-                    "space_number": ParameterSchema.integer(description: "Space number to switch to (1-based)"),
+                    "space_number": ToolParameterProperty(
+                        type: .integer,
+                        description: "Space number to switch to (1-based)"),
                 ],
                 required: ["space_number"]),
-            execute: { params, _ in
-                let spaceNumber = try params.int("space_number")
+            execute: { params, context in
+                let spaceNumber = try params.intValue("space_number")
 
                 // Get space info
-                let spaceService = SpaceManagementService()
-                let spaces = spaceService.getAllSpaces()
+                let spaces = await context.spaces.listSpaces().data.spaces
 
                 guard spaceNumber > 0, spaceNumber <= spaces.count else {
                     throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
@@ -696,8 +733,7 @@ extension PeekabooAgentService {
                 let spaceId = targetSpace.id
 
                 // Switch to space
-                let spaceServiceForSwitch = SpaceManagementService()
-                try await spaceServiceForSwitch.switchToSpace(spaceId)
+                try await context.spaces.switchToSpace(index: spaceNumber - 1)
 
                 // Give it time to switch
                 try? await Task.sleep(nanoseconds: 500_000_000)
@@ -712,44 +748,50 @@ extension PeekabooAgentService {
         createTool(
             name: "move_window_to_space",
             description: "Move a window to a different macOS Space (virtual desktop)",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [
-                    "window_id": ParameterSchema.integer(description: "Window ID to move"),
-                    "space_number": ParameterSchema.integer(description: "Target space number (1-based)"),
-                    "bring_to_current": ParameterSchema.boolean(description: "Move window to current space instead"),
+                    "window_id": ToolParameterProperty(
+                        type: .integer,
+                        description: "Window ID to move"),
+                    "space_number": ToolParameterProperty(
+                        type: .integer,
+                        description: "Target space number (1-based)"),
+                    "bring_to_current": ToolParameterProperty(
+                        type: .boolean,
+                        description: "Move window to current space instead"),
                 ],
                 required: []),
-            execute: { params, _ in
-                let windowId = params.int("window_id", default: nil)
-                let spaceNumber = params.int("space_number", default: nil)
-                let bringToCurrent = params.bool("bring_to_current", default: false)
+            execute: { params, context in
+                let windowId = params.intValue("window_id", default: nil)
+                let spaceNumber = params.intValue("space_number", default: nil)
+                let bringToCurrent = params.boolValue("bring_to_current", default: false)
 
                 guard let windowId else {
                     throw PeekabooError.invalidInput("window_id is required")
                 }
 
                 if bringToCurrent {
-                    let spaceService = SpaceManagementService()
-                    try spaceService.moveWindowToCurrentSpace(windowID: CGWindowID(windowId))
+                    // Move window to current space using the context service
+                    try await context.spaces.moveWindowToCurrentSpace(windowId: windowId)
                     return ToolOutput.success("Moved window to current Space")
                 } else {
                     guard let spaceNumber else {
                         throw PeekabooError.invalidInput("Either space_number or bring_to_current must be specified")
                     }
 
-                    let spaceService = SpaceManagementService()
-                    let spaces = spaceService.getAllSpaces()
+                    let spaces = await context.spaces.listSpaces().data.spaces
                     guard spaceNumber > 0, spaceNumber <= spaces.count else {
                         throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
                     }
 
-                    let targetSpace = spaces[spaceNumber - 1]
-                    try spaceService.moveWindowToSpace(windowID: CGWindowID(windowId), spaceID: targetSpace.id)
+                    // Move window to specific space
+                    try await context.spaces.moveWindowToSpace(windowId: windowId, spaceIndex: spaceNumber - 1)
 
                     return ToolOutput.success("Moved window to Space \(spaceNumber)")
                 }
             })
     }
+    */
 }
 
 // MARK: - Main Thread Timeout Utility

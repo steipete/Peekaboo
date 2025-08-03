@@ -2,7 +2,7 @@ import AppKit
 import AXorcist
 import CoreGraphics
 import Foundation
-import Tachikoma
+import TachikomaCore
 
 // MARK: - Tool Definitions
 
@@ -116,8 +116,8 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let appName = try params.string("name")
-                let waitForLaunch = params.bool("wait_for_launch", default: true)
+                let appName = try params.stringValue("name")
+                let waitForLaunch = params.boolValue("wait_for_launch", default: true)
 
                 // First check if already running
                 let runningAppsOutput = try await context.applications.listApplications()

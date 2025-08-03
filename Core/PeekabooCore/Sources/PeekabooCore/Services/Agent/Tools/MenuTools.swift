@@ -1,7 +1,7 @@
 import AXorcist
 import CoreGraphics
 import Foundation
-import Tachikoma
+import TachikomaCore
 
 // MARK: - Tool Definitions
 
@@ -112,8 +112,8 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let menuPath = try params.string("path")
-                let appName = params.string("app", default: nil)
+                let menuPath = try params.stringValue("path")
+                let appName = params.stringValue("app", default: nil)
 
                 // Parse menu path
                 let pathComponents = menuPath
@@ -167,8 +167,8 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let appName = params.string("app", default: nil)
-                let specificMenu = params.string("menu", default: nil)
+                let appName = params.stringValue("app", default: nil)
+                let specificMenu = params.stringValue("menu", default: nil)
 
                 let startTime = Date()
 

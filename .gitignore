@@ -17,6 +17,12 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+# macOS Extended Attributes and Metadata
+*.bridgesupport
+.metadata_never_index
+.ql_*
+.Trash-*
+
 # Node.js / TypeScript
 node_modules/
 /node_modules/
@@ -163,9 +169,20 @@ Core/**/.swiftpm/
 *.temp
 .cache/
 debug
+*.bak
+*.backup
+*~
 
 # OS generated files
 Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Editor backup files
+*.swp
+*.swo
+.#*
+#*#
 
 # npm package files
 *.tgz

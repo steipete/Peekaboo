@@ -1,7 +1,7 @@
 import AXorcist
 import CoreGraphics
 import Foundation
-import Tachikoma
+import TachikomaCore
 
 // MARK: - Tool Definitions
 
@@ -130,8 +130,8 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let buttonLabel = try params.string("button")
-                let appName = params.string("app", default: nil)
+                let buttonLabel = try params.stringValue("button")
+                let appName = params.stringValue("app", default: nil)
 
                 // Get the frontmost app if not specified
                 let targetApp: String
@@ -161,10 +161,10 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let text = try params.string("text")
-                let fieldLabel = params.string("field", default: nil)
-                let appName = params.string("app", default: nil)
-                let clearFirst = params.bool("clear_first", default: true)
+                let text = try params.stringValue("text")
+                let fieldLabel = params.stringValue("field", default: nil)
+                let appName = params.stringValue("app", default: nil)
+                let clearFirst = params.boolValue("clear_first", default: true)
 
                 // For now, this is a simplified implementation
                 // Field-specific targeting is not yet supported

@@ -1,7 +1,7 @@
 import AXorcist
 import CoreGraphics
 import Foundation
-import Tachikoma
+import TachikomaCore
 
 // MARK: - UI Automation Tools
 
@@ -376,15 +376,19 @@ extension PeekabooAgentService {
         let definition = UIAutomationToolDefinitions.click
 
         // Custom parameter mapping for agent tool
-        let parameters = ToolParameters.object(
+        let parameters = ToolParameters(
             properties: [
-                "target": ParameterSchema.string(
+                "target": ToolParameterProperty(
+                    type: .string,
                     description: "Element to click - can be button text, element label (clicks center), or 'x,y' coordinates"),
-                "app": ParameterSchema.string(
+                "app": ToolParameterProperty(
+                    type: .string,
                     description: "Optional: Application name to search within"),
-                "double_click": ParameterSchema.boolean(
+                "double_click": ToolParameterProperty(
+                    type: .boolean,
                     description: "Whether to double-click (default: false)"),
-                "right_click": ParameterSchema.boolean(
+                "right_click": ToolParameterProperty(
+                    type: .boolean,
                     description: "Whether to right-click (default: false)"),
             ],
             required: ["target"])
@@ -394,10 +398,10 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: parameters,
             execute: { params, context in
-                let target = try params.string("target")
-                let appName = params.string("app", default: nil)
-                let doubleClick = params.bool("double_click", default: false)
-                let rightClick = params.bool("right_click", default: false)
+                let target = try params.stringValue("target")
+                let appName = params.stringValue("app", default: nil)
+                let doubleClick = params.boolValue("double_click", default: false)
+                let rightClick = params.boolValue("right_click", default: false)
 
                 let startTime = Date()
 
@@ -449,23 +453,27 @@ extension PeekabooAgentService {
         createTool(
             name: "type",
             description: "Type text at the current cursor position or into a specific field. Supports escape sequences: \\n (newline), \\t (tab), \\b (backspace), \\e (escape), \\\\ (literal backslash)",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [
-                    "text": ParameterSchema.string(
+                    "text": ToolParameterProperty(
+                        type: .string,
                         description: "Text to type. Supports escape sequences: \\n (newline), \\t (tab), \\b (backspace), \\e (escape), \\\\ (literal backslash)"),
-                    "field": ParameterSchema.string(
+                    "field": ToolParameterProperty(
+                        type: .string,
                         description: "Optional: Label or identifier of the text field to type into"),
-                    "app": ParameterSchema.string(
+                    "app": ToolParameterProperty(
+                        type: .string,
                         description: "Optional: Application name to search within"),
-                    "clear_first": ParameterSchema.boolean(
+                    "clear_first": ToolParameterProperty(
+                        type: .boolean,
                         description: "Whether to clear the field before typing (default: false)"),
                 ],
                 required: ["text"]),
             execute: { params, context in
-                let text = try params.string("text")
-                let fieldLabel = params.string("field", default: nil)
-                let appName = params.string("app", default: nil)
-                let clearFirst = params.bool("clear_first", default: false)
+                let text = try params.stringValue("text")
+                let fieldLabel = params.stringValue("field", default: nil)
+                let appName = params.stringValue("app", default: nil)
+                let clearFirst = params.boolValue("clear_first", default: false)
 
                 let startTime = Date()
 
@@ -522,24 +530,28 @@ extension PeekabooAgentService {
         createTool(
             name: "scroll",
             description: "Scroll in a window or element",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [
-                    "direction": ParameterSchema.enumeration(
-                        ["up", "down", "left", "right"],
-                        description: "Scroll direction"),
-                    "amount": ParameterSchema.integer(
+                    "direction": ToolParameterProperty(
+                        type: .string,
+                        description: "Scroll direction",
+                        enumValues: ["up", "down", "left", "right"]),
+                    "amount": ToolParameterProperty(
+                        type: .integer,
                         description: "Number of scroll units (default: 5)"),
-                    "target": ParameterSchema.string(
+                    "target": ToolParameterProperty(
+                        type: .string,
                         description: "Optional: Element to scroll within (label or identifier)"),
-                    "app": ParameterSchema.string(
+                    "app": ToolParameterProperty(
+                        type: .string,
                         description: "Optional: Application name"),
                 ],
                 required: ["direction"]),
             execute: { params, context in
-                let directionStr = try params.string("direction")
-                let amount = params.int("amount", default: 5) ?? 5
-                let target = params.string("target", default: nil)
-                let appName = params.string("app", default: nil)
+                let directionStr = try params.stringValue("direction")
+                let amount = params.intValue("amount", default: nil as Int?) ?? 5
+                let target = params.stringValue("target", default: nil)
+                let appName = params.stringValue("app", default: nil)
 
                 let startTime = Date()
 
@@ -583,17 +595,19 @@ extension PeekabooAgentService {
         createTool(
             name: "press",
             description: "Press individual keys like Enter, Tab, Escape, arrow keys, etc. Use this instead of type when you just need to press special keys.",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [
-                    "key": ParameterSchema.string(
+                    "key": ToolParameterProperty(
+                        type: .string,
                         description: "Key to press: return, enter, tab, escape, delete, forward_delete, space, up, down, left, right, home, end, pageup, pagedown, f1-f12, caps_lock, clear, help"),
-                    "count": ParameterSchema.integer(
+                    "count": ToolParameterProperty(
+                        type: .integer,
                         description: "Number of times to press the key (default: 1)"),
                 ],
                 required: ["key"]),
             execute: { params, context in
-                let keyStr = try params.string("key")
-                let count = params.int("count", default: 1) ?? 1
+                let keyStr = try params.stringValue("key")
+                let count = params.intValue("count", default: nil as Int?) ?? 1
 
                 let startTime = Date()
 
@@ -656,20 +670,21 @@ extension PeekabooAgentService {
         createTool(
             name: "hotkey",
             description: "Press a keyboard shortcut or key combination",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [
-                    "key": ParameterSchema.string(
+                    "key": ToolParameterProperty(
+                        type: .string,
                         description: "Main key to press (e.g., 'a', 'space', 'return', 'escape', 'tab', 'delete', 'arrow_up')"),
-                    "modifiers": ParameterSchema.array(
-                        of: ParameterSchema.enumeration(
-                            ["command", "control", "option", "shift", "function"],
-                            description: "Modifier key"),
-                        description: "Modifier keys to hold (e.g., ['command', 'shift'])"),
+                    "modifiers": ToolParameterProperty(
+                        type: .array,
+                        description: "Modifier keys to hold (e.g., ['command', 'shift'])",
+                        enumValues: ["command", "control", "option", "shift", "function"]),
                 ],
                 required: ["key"]),
             execute: { params, context in
-                let keyStr = try params.string("key")
-                let modifierStrs = params.arguments["modifiers"] as? [String] ?? []
+                let keyStr = try params.stringValue("key")
+                // Get modifiers array - for now default to empty until we implement proper array support
+                let modifierStrs: [String] = []  // TODO: Implement array parameter support
 
                 // Map key names to match what hotkey expects
                 let mappedKey: String = switch keyStr.lowercased() {

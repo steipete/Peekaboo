@@ -1,7 +1,7 @@
 import Foundation
 import MCP
 import os.log
-import Tachikoma
+import TachikomaCore
 
 /// MCP tool for analyzing images with AI
 public struct AnalyzeTool: MCPTool {
@@ -103,44 +103,16 @@ public struct AnalyzeTool: MCPTool {
         let (modelName, providerType) = self.parseAIProviders(aiProviders)
 
         do {
-            // Read the image file
-            let imageData = try Data(contentsOf: URL(fileURLWithPath: expandedPath))
-            let base64String = imageData.base64EncodedString()
-
-            // Get or create model instance
-            let model = try await getOrCreateModel(modelName: modelName, providerType: providerType)
-
-            // Create a request with the image
-            let imageContent = ImageContent(base64: base64String)
-            let messageContent = MessageContent.multimodal([
-                MessageContentPart(type: "text", text: question),
-                MessageContentPart(type: "image", imageUrl: imageContent),
-            ])
-
-            // Create messages array - avoid ambiguity by not using type annotation
-            let userMessage = Message.user(content: messageContent)
-            let messages = [userMessage]
-
-            let settings = ModelSettings(
-                modelName: modelName,
-                temperature: 0.7,
-                maxTokens: 4096)
-
-            let request = ModelRequest(
-                messages: messages,
-                tools: nil,
-                settings: settings)
-
             self.logger.info("Analyzing image with \(providerType ?? "auto")/\(modelName)")
             let startTime = Date()
 
-            // Get the response
-            let response = try await model.getResponse(request: request)
-            let analysisText: String = if case let .outputText(text) = response.content.first {
-                text
-            } else {
-                "No response received"
-            }
+            // Use the new API
+            let analysisText = try await analyzeImageWithAI(
+                imagePath: expandedPath,
+                question: question,
+                modelName: modelName,
+                providerType: providerType
+            )
 
             let duration = Date().timeIntervalSince(startTime)
             self.logger.info("Analysis completed in \(String(format: "%.2f", duration))s")
@@ -188,65 +160,97 @@ public struct AnalyzeTool: MCPTool {
         return ("claude-opus-4-20250514", "anthropic")
     }
 
-    private func getOrCreateModel(modelName: String, providerType: String?) async throws -> any ModelInterface {
-        // Use Tachikoma API which handles actor isolation properly
-        do {
-            return try await Tachikoma.shared.getModel(modelName)
-        } catch {
-            // If not found, try to create based on provider type
-            if let providerType {
-                switch providerType.lowercased() {
-                case "anthropic":
-                    guard let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] else {
-                        throw PeekabooError.authenticationFailed("ANTHROPIC_API_KEY not set")
-                    }
-                    throw PeekabooError.invalidInput("AnthropicModel not yet implemented")
-
-                case "openai":
-                    guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
-                        throw PeekabooError.authenticationFailed("OPENAI_API_KEY not set")
-                    }
-                    throw PeekabooError.invalidInput("OpenAIModel not yet implemented")
-
-                case "grok":
-                    guard let apiKey = ProcessInfo.processInfo.environment["X_AI_API_KEY"] ??
-                        ProcessInfo.processInfo.environment["XAI_API_KEY"]
-                    else {
-                        throw PeekabooError.authenticationFailed("X_AI_API_KEY or XAI_API_KEY not set")
-                    }
-                    throw PeekabooError.invalidInput("GrokModel not yet implemented")
-
-                case "ollama":
-                    let baseURLString = ProcessInfo.processInfo.environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
-                    guard let baseURL = URL(string: baseURLString) else {
-                        throw PeekabooError.invalidInput("Invalid Ollama base URL: \(baseURLString)")
-                    }
-                    throw PeekabooError.invalidInput("OllamaModel not yet implemented")
-
-                default:
-                    throw PeekabooError.invalidInput("Unknown provider type: \(providerType)")
-                }
+    private func analyzeImageWithAI(imagePath: String, question: String, modelName: String, providerType: String?) async throws -> String {
+        // Load and encode the image
+        guard let imageData = try? Data(contentsOf: URL(fileURLWithPath: imagePath)) else {
+            throw PeekabooError.invalidInput("Could not load image from path: \(imagePath)")
+        }
+        
+        let base64Image = imageData.base64EncodedString()
+        
+        // Create the model using the new API
+        let languageModel: LanguageModel
+        if let providerType {
+            switch providerType.lowercased() {
+            case "anthropic":
+                languageModel = .anthropic(.opus4)
+            case "openai":
+                languageModel = .openai(.gpt4o)
+            case "grok":
+                languageModel = .grok(.grok4)
+            case "ollama":
+                languageModel = .ollama(.llava)
+            default:
+                throw PeekabooError.invalidInput("Unknown provider type: \(providerType)")
             }
-
-            // Final fallback - try to guess based on model name
-            if modelName.contains("claude") {
-                guard let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] else {
-                    throw PeekabooError.authenticationFailed("ANTHROPIC_API_KEY not set")
-                }
-                throw PeekabooError.invalidInput("AnthropicModel not yet implemented")
-            } else if modelName.contains("gpt") || modelName.contains("o3") || modelName.contains("o4") {
-                guard let apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] else {
-                    throw PeekabooError.authenticationFailed("OPENAI_API_KEY not set")
-                }
-                throw PeekabooError.invalidInput("OpenAIModel not yet implemented")
+        } else {
+            // Try to parse the model name into a LanguageModel
+            languageModel = try parseModelName(modelName)
+        }
+        
+        // Create the conversation with the image and question
+        let imageContent = ModelMessage.ContentPart.ImageContent(data: base64Image, mimeType: "image/png")
+        let conversation = ConversationBuilder()
+            .user(text: question, images: [imageContent])
+            .build()
+        
+        // Use the ConversationContext's generateText method
+        let result = try await conversation.generateText(using: languageModel)
+        
+        return result.text
+    }
+    
+    /// Parse a model name string into a LanguageModel enum
+    private func parseModelName(_ modelName: String) throws -> LanguageModel {
+        let lowercased = modelName.lowercased()
+        
+        // Claude models
+        if lowercased.contains("claude") {
+            if lowercased.contains("opus") {
+                return .anthropic(.opus4)
+            } else if lowercased.contains("sonnet") {
+                return .anthropic(.sonnet3_5)
+            } else if lowercased.contains("haiku") {
+                return .anthropic(.haiku3_5)
             } else {
-                // Assume Ollama for unknown models
-                let baseURLString = ProcessInfo.processInfo.environment["PEEKABOO_OLLAMA_BASE_URL"] ?? "http://localhost:11434"
-                guard let baseURL = URL(string: baseURLString) else {
-                    throw PeekabooError.invalidInput("Invalid Ollama base URL: \(baseURLString)")
-                }
-                throw PeekabooError.invalidInput("OllamaModel not yet implemented")
+                return .anthropic(.opus4) // Default Claude
             }
         }
+        
+        // OpenAI models
+        if lowercased.contains("gpt") || lowercased.contains("o3") || lowercased.contains("o4") {
+            if lowercased.contains("o3") {
+                return .openai(.o3)
+            } else if lowercased.contains("o4") {
+                return .openai(.o4Mini)
+            } else if lowercased.contains("4o") {
+                return .openai(.gpt4o)
+            } else if lowercased.contains("gpt-4.1") {
+                return .openai(.gpt4_1)
+            } else {
+                return .openai(.gpt4o) // Default GPT
+            }
+        }
+        
+        // Grok models
+        if lowercased.contains("grok") {
+            return .grok(.grok4)
+        }
+        
+        // Ollama models
+        if lowercased.contains("llama") || lowercased.contains("llava") || lowercased.contains("mistral") {
+            if lowercased.contains("llava") {
+                return .ollama(.llava)
+            } else if lowercased.contains("llama3.3") {
+                return .ollama(.llama3_3)
+            } else if lowercased.contains("mistral") {
+                return .ollama(.mistralNemo)
+            } else {
+                return .ollama(.llama3_3) // Default Ollama
+            }
+        }
+        
+        // Default fallback
+        return .anthropic(.opus4)
     }
 }

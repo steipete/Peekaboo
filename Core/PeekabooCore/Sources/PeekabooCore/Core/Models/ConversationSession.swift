@@ -1,5 +1,27 @@
 import Foundation
-import Tachikoma
+import TachikomaCore
+
+// MARK: - Audio Content
+
+/// Represents audio content in a conversation message
+public struct AudioContent: Codable, Sendable {
+    public let data: Data?
+    public let duration: TimeInterval?
+    public let transcript: String?
+    public let format: String?
+    
+    public init(
+        data: Data? = nil,
+        duration: TimeInterval? = nil,
+        transcript: String? = nil,
+        format: String? = nil)
+    {
+        self.data = data
+        self.duration = duration
+        self.transcript = transcript
+        self.format = format
+    }
+}
 
 // MARK: - Conversation Session Models
 

@@ -1,5 +1,5 @@
 import Foundation
-import Tachikoma
+import TachikomaCore
 
 // MARK: - Tool Creation Helpers
 
@@ -7,16 +7,13 @@ import Tachikoma
 public func createSimpleTool<Context>(
     name: String,
     description: String,
-    parameters: [String: ParameterSchema] = [:],
+    parameters: [String: ToolParameterProperty] = [:],
     required: [String] = [],
-    execute: @escaping (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
+    execute: @escaping @Sendable (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
 {
     Tool(
         name: name,
         description: description,
-        parameters: ToolParameters.object(
-            properties: parameters,
-            required: required),
         execute: execute)
 }
 
@@ -25,90 +22,56 @@ public func createTool<Context>(
     name: String,
     description: String,
     parameters: ToolParameters? = nil,
-    execute: @escaping (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
+    execute: @escaping @Sendable (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
 {
     Tool(
         name: name,
         description: description,
-        parameters: parameters ?? ToolParameters.object(
-            properties: [:],
-            required: []),
         execute: execute)
 }
 
-// MARK: - Parameter Schema Helpers
+// MARK: - ToolParameterProperty Helpers
 
-/// Create a string parameter schema
+/// Create a string parameter property
 public func stringParam(
     description: String,
-    enumValues: [String]? = nil,
-    pattern: String? = nil) -> ParameterSchema
+    enumValues: [String]? = nil) -> ToolParameterProperty
 {
-    ParameterSchema(
+    ToolParameterProperty(
         type: .string,
         description: description,
-        enumValues: enumValues,
-        pattern: pattern)
+        enumValues: enumValues)
 }
 
-/// Create a number parameter schema
+/// Create a number parameter property
 public func numberParam(
     description: String,
     minimum: Double? = nil,
-    maximum: Double? = nil) -> ParameterSchema
+    maximum: Double? = nil) -> ToolParameterProperty
 {
-    ParameterSchema(
+    ToolParameterProperty(
         type: .number,
         description: description,
         minimum: minimum,
         maximum: maximum)
 }
 
-/// Create an integer parameter schema
+/// Create an integer parameter property
 public func integerParam(
     description: String,
-    minimum: Int? = nil,
-    maximum: Int? = nil) -> ParameterSchema
+    minimum: Double? = nil,
+    maximum: Double? = nil) -> ToolParameterProperty
 {
-    ParameterSchema(
+    ToolParameterProperty(
         type: .integer,
         description: description,
-        minimum: minimum?.double,
-        maximum: maximum?.double)
+        minimum: minimum,
+        maximum: maximum)
 }
 
-/// Create a boolean parameter schema
-public func boolParam(description: String) -> ParameterSchema {
-    ParameterSchema(
+/// Create a boolean parameter property
+public func boolParam(description: String) -> ToolParameterProperty {
+    ToolParameterProperty(
         type: .boolean,
         description: description)
-}
-
-/// Create an array parameter schema
-public func arrayParam(
-    description: String,
-    items: ParameterSchema) -> ParameterSchema
-{
-    ParameterSchema(
-        type: .array,
-        description: description,
-        items: items)
-}
-
-/// Create an object parameter schema
-public func objectParam(
-    description: String,
-    properties: [String: ParameterSchema]) -> ParameterSchema
-{
-    ParameterSchema.object(
-        properties: properties,
-        description: description)
-}
-
-// MARK: - Type Extensions
-
-extension Int {
-    var double: Double {
-        Double(self)
-    }
 }

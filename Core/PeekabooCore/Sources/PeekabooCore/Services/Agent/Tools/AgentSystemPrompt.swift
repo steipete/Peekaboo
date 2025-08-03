@@ -1,5 +1,5 @@
 import Foundation
-import Tachikoma
+import TachikomaCore
 
 // MARK: - Agent System Prompt
 

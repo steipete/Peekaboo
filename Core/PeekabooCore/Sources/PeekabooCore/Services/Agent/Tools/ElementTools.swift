@@ -1,7 +1,7 @@
 import AXorcist
 import CoreGraphics
 import Foundation
-import Tachikoma
+import TachikomaCore
 
 // MARK: - Element Tools
 
@@ -13,21 +13,24 @@ extension PeekabooAgentService {
         createTool(
             name: "find_element",
             description: "Find a specific UI element by label or identifier",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [
-                    "label": ParameterSchema.string(
+                    "label": ToolParameterProperty(
+                        type: .string,
                         description: "Label or text to search for"),
-                    "app": ParameterSchema.string(
+                    "app": ToolParameterProperty(
+                        type: .string,
                         description: "Optional: Application name to search within"),
-                    "element_type": ParameterSchema.enumeration(
-                        ["button", "text_field", "menu", "checkbox", "radio", "link"],
-                        description: "Optional: Specific element type to find"),
+                    "element_type": ToolParameterProperty(
+                        type: .string,
+                        description: "Optional: Specific element type to find",
+                        enumValues: ["button", "text_field", "menu", "checkbox", "radio", "link"]),
                 ],
                 required: ["label"]),
             execute: { params, context in
-                let searchLabel = try params.string("label")
-                let appName = params.string("app", default: nil)
-                let elementType = params.string("element_type", default: nil)
+                let searchLabel = try params.stringValue("label")
+                let appName = params.stringValue("app", default: nil as String?)
+                let elementType = params.stringValue("element_type", default: nil as String?)
 
                 let startTime = Date()
                 let targetDescription = appName ?? "entire screen"
@@ -87,18 +90,20 @@ extension PeekabooAgentService {
         createTool(
             name: "list_elements",
             description: "List all interactive elements in the current view",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [
-                    "app": ParameterSchema.string(
+                    "app": ToolParameterProperty(
+                        type: .string,
                         description: "Optional: Application name to search within"),
-                    "element_type": ParameterSchema.enumeration(
-                        ["button", "text_field", "menu", "checkbox", "radio", "link", "all"],
-                        description: "Optional: Filter by element type"),
+                    "element_type": ToolParameterProperty(
+                        type: .string,
+                        description: "Optional: Filter by element type",
+                        enumValues: ["button", "text_field", "menu", "checkbox", "radio", "link", "all"]),
                 ],
                 required: []),
             execute: { params, context in
-                let appName = params.string("app", default: nil)
-                let elementType = params.string("element_type", default: "all") ?? "all"
+                let appName = params.stringValue("app", default: nil as String?)
+                let elementType = params.stringValue("element_type", default: "all")
 
                 let startTime = Date()
 
@@ -178,7 +183,7 @@ extension PeekabooAgentService {
             description: "Get information about the currently focused element",
             execute: { _, context in
                 // Get focused element information
-                guard let focusInfo = context.automation.getFocusedElement() else {
+                guard let focusInfo = await context.automation.getFocusedElement() else {
                     return ToolOutput.failure(PeekabooError.elementNotFound("No element is currently focused"))
                 }
 

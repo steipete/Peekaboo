@@ -2,7 +2,7 @@ import AXorcist
 import CoreGraphics
 import Foundation
 import OSLog
-import Tachikoma
+import TachikomaCore
 
 // MARK: - Vision Tools
 
@@ -206,9 +206,9 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let appName = params.string("app", default: nil)
-                let format = params.string("format", default: "full") ?? "full"
-                let filterType = params.string("filter", default: nil)
+                let appName = params.stringValue("app", default: nil as String?)
+                let format = params.stringValue("format", default: "full" as String?) ?? "full"
+                let filterType = params.stringValue("filter", default: nil as String?)
 
                 let startTime = Date()
 
@@ -368,9 +368,9 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let path = try params.string("path")
+                let path = try params.stringValue("path")
                 let expandedPath = path.expandedPath
-                let appName = params.string("app", default: nil)
+                let appName = params.stringValue("app", default: nil)
 
                 let startTime = Date()
 
@@ -415,18 +415,23 @@ extension PeekabooAgentService {
         createTool(
             name: "window_capture",
             description: "Capture a specific window by title or window ID",
-            parameters: ToolParameters.object(
+            parameters: ToolParameters(
                 properties: [
-                    "title": ParameterSchema
-                        .string(description: "Window title to search for (partial match supported)"),
-                    "window_id": ParameterSchema.integer(description: "Specific window ID to capture"),
-                    "save_path": ParameterSchema.string(description: "Optional: Path to save the screenshot"),
+                    "title": ToolParameterProperty(
+                        type: .string,
+                        description: "Window title to search for (partial match supported)"),
+                    "window_id": ToolParameterProperty(
+                        type: .integer,
+                        description: "Specific window ID to capture"),
+                    "save_path": ToolParameterProperty(
+                        type: .string,
+                        description: "Optional: Path to save the screenshot"),
                 ],
                 required: []),
             execute: { params, context in
-                let title = params.string("title", default: nil)
-                let windowId = params.int("window_id", default: nil).map { CGWindowID($0) }
-                let savePath = params.string("save_path", default: nil)
+                let title = params.stringValue("title", default: nil as String?)
+                let windowId = params.intValue("window_id", default: nil as Int?).map { CGWindowID($0) }
+                let savePath = params.stringValue("save_path", default: nil as String?)
 
                 guard title != nil || windowId != nil else {
                     throw PeekabooError.invalidInput("Either 'title' or 'window_id' must be provided")

@@ -1,6 +1,21 @@
 import CoreGraphics
 import Foundation
-import Tachikoma
+import TachikomaCore
+
+// MARK: - Timeout State Actor
+
+@available(macOS 14.0, *)
+private actor TimeoutState {
+    private var timedOut = false
+    
+    func setTimedOut() {
+        timedOut = true
+    }
+    
+    var wasTimedOut: Bool {
+        timedOut
+    }
+}
 
 // MARK: - Tool Definitions
 
@@ -77,9 +92,9 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, _ in
-                let command = try params.string("command")
-                let workingDirectory = params.string("working_directory", default: nil)
-                let timeout = params.int("timeout", default: 30) ?? 30
+                let command = try params.stringValue("command")
+                let workingDirectory = params.stringValue("working_directory", default: nil as String?)
+                let timeout = params.intValue("timeout", default: 30 as Int?) ?? 30
 
                 let startTime = Date()
 
@@ -116,12 +131,12 @@ extension PeekabooAgentService {
 
                 try process.run()
 
-                // Set up timeout
-                var timedOut = false
+                // Set up timeout using actor for safe concurrent access
+                let timeoutState = TimeoutState()
                 let timeoutTask = Task {
                     try await Task.sleep(nanoseconds: UInt64(timeout) * TimeInterval.longDelay.nanoseconds)
                     if process.isRunning {
-                        timedOut = true
+                        await timeoutState.setTimedOut()
                         process.terminate()
                     }
                 }
@@ -137,7 +152,7 @@ extension PeekabooAgentService {
                 let output = String(data: outputData, encoding: .utf8) ?? ""
                 let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
 
-                if timedOut {
+                if await timeoutState.wasTimedOut {
                     throw PeekabooError
                         .operationError(message: "Command timed out after \(timeout) seconds and was terminated")
                 }

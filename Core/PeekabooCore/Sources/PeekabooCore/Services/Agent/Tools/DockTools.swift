@@ -1,7 +1,7 @@
 import AXorcist
 import CoreGraphics
 import Foundation
-import Tachikoma
+import TachikomaCore
 
 // MARK: - Tool Definitions
 
@@ -97,7 +97,7 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let appName = try params.string("name")
+                let appName = try params.stringValue("name")
 
                 // Check if app was already running before clicking
                 let appsBeforeLaunchOutput = try await context.applications.listApplications()
@@ -159,7 +159,7 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let section = params.string("section", default: "all") ?? "all"
+                let section = params.stringValue("section", default: "all" as String?) ?? "all"
 
                 let startTime = Date()
                 let dockItems = try await context.dock.listDockItems(includeAll: true)

@@ -1,12 +1,12 @@
 import Foundation
-import Tachikoma
+import TachikomaCore
 
 /// Extensions to convert UnifiedToolDefinition to agent tool formats
 @available(macOS 14.0, *)
 extension UnifiedToolDefinition {
     /// Convert parameters to agent tool parameters
     public func toAgentParameters() -> ToolParameters {
-        var properties: [String: ParameterSchema] = [:]
+        var properties: [String: ToolParameterProperty] = [:]
         var required: [String] = []
 
         for param in parameters {
@@ -15,35 +15,51 @@ extension UnifiedToolDefinition {
                 continue
             }
 
-            let schema: ParameterSchema = switch param.type {
+            let property: ToolParameterProperty = switch param.type {
             case .string:
-                if let options = param.options {
-                    .enumeration(options, description: param.description)
-                } else {
-                    .string(description: param.description)
-                }
+                ToolParameterProperty(
+                    type: .string,
+                    description: param.description,
+                    enumValues: param.options
+                )
             case .integer:
-                .integer(description: param.description)
+                ToolParameterProperty(
+                    type: .integer,
+                    description: param.description
+                )
             case .boolean:
-                .boolean(description: param.description)
+                ToolParameterProperty(
+                    type: .boolean,
+                    description: param.description
+                )
             case .enumeration:
-                .enumeration(param.options ?? [], description: param.description)
+                ToolParameterProperty(
+                    type: .string,
+                    description: param.description,
+                    enumValues: param.options ?? []
+                )
             case .object:
-                .object(properties: [:], description: param.description)
+                ToolParameterProperty(
+                    type: .object,
+                    description: param.description
+                )
             case .array:
-                .array(of: .string(description: ""), description: param.description)
+                ToolParameterProperty(
+                    type: .array,
+                    description: param.description
+                )
             }
 
             // Map CLI parameter names to agent parameter names
             let agentParamName = param.name.replacingOccurrences(of: "-", with: "_")
-            properties[agentParamName] = schema
+            properties[agentParamName] = property
 
             if param.required {
                 required.append(agentParamName)
             }
         }
 
-        return ToolParameters.object(properties: properties, required: required)
+        return ToolParameters(properties: properties, required: required)
     }
 
     /// Get formatted examples for agent tools

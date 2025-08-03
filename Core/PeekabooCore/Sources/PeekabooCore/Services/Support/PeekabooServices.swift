@@ -1,6 +1,6 @@
 import Foundation
 import os.log
-import Tachikoma
+import TachikomaCore
 
 /**
  * Central service registry and coordination hub for all Peekaboo functionality.
@@ -331,8 +331,8 @@ public final class PeekabooServices: @unchecked Sendable {
                     "🔍 Environment PEEKABOO_AI_PROVIDERS: '\(ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"] ?? "not set")'")
             logger.debug("🔍 Has OpenAI: \(hasOpenAI), Has Anthropic: \(hasAnthropic), Has Ollama: \(hasOllama)")
 
-            // Determine default model using the parser with conflict detection
-            let determination = ProviderParser.determineDefaultModelWithConflict(
+            // Determine default model with conflict detection
+            let determination = services.determineDefaultModelWithConflict(
                 from: providers,
                 hasOpenAI: hasOpenAI,
                 hasAnthropic: hasAnthropic,
@@ -360,9 +360,11 @@ public final class PeekabooServices: @unchecked Sendable {
 
             // PeekabooAgentService now uses Tachikoma internally
             do {
+                // Convert model string to LanguageModel enum
+                let defaultModel = LanguageModel.anthropic(.opus4) // Default fallback
                 agent = try PeekabooAgentService(
                     services: services,
-                    defaultModelName: determination.model)
+                    defaultModel: defaultModel)
             } catch {
                 logger.error("Failed to initialize PeekabooAgentService: \(error)")
                 agent = nil
@@ -426,9 +428,11 @@ public final class PeekabooServices: @unchecked Sendable {
             defer { agentLock.unlock() }
 
             do {
+                // Convert model string to LanguageModel enum
+                let languageModel = LanguageModel.anthropic(.opus4) // Default fallback
                 self.agent = try PeekabooAgentService(
                     services: self,
-                    defaultModelName: defaultModel ?? "claude-opus-4-20250514")
+                    defaultModel: languageModel)
             } catch {
                 self.logger.error("Failed to refresh PeekabooAgentService: \(error)")
                 self.agent = nil
@@ -556,6 +560,50 @@ extension PeekabooServices {
             actions: executedActions,
             initialScreenshot: captureResult.savedPath)
     }
+    
+    // MARK: - Private Helper Methods
+    
+    private func determineDefaultModelWithConflict(
+        from providers: String,
+        hasOpenAI: Bool,
+        hasAnthropic: Bool,
+        hasOllama: Bool,
+        configuredDefault: String?,
+        isEnvironmentProvided: Bool
+    ) -> ModelDetermination {
+        let components = providers.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let environmentModel = components.first?.split(separator: "/").last.map(String.init)
+        
+        let hasConflict = isEnvironmentProvided && configuredDefault != nil && configuredDefault != environmentModel
+        
+        let model: String
+        if !providers.isEmpty {
+            model = environmentModel ?? "claude-opus-4-20250514"
+        } else if hasAnthropic {
+            model = "claude-opus-4-20250514"
+        } else if hasOpenAI {
+            model = "gpt-4o"
+        } else if hasOllama {
+            model = "llama3.3"
+        } else {
+            model = "claude-opus-4-20250514"
+        }
+        
+        return ModelDetermination(
+            model: model,
+            hasConflict: hasConflict,
+            configModel: configuredDefault,
+            environmentModel: environmentModel
+        )
+    }
+}
+
+/// Result of model determination with conflict detection
+struct ModelDetermination {
+    let model: String
+    let hasConflict: Bool
+    let configModel: String?
+    let environmentModel: String?
 }
 
 /// Target for capture operations
