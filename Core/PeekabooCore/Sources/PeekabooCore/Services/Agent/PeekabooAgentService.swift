@@ -25,14 +25,14 @@ extension ToolOutput {
 /// Simple event delegate wrapper for streaming
 @available(macOS 14.0, *)
 @MainActor
-final class StreamingEventDelegate: AgentEventDelegate {
+final class StreamingEventDelegate: Tachikoma.AgentEventDelegate {
     let onChunk: @MainActor (String) async -> Void
 
     init(onChunk: @MainActor @escaping (String) async -> Void) {
         self.onChunk = onChunk
     }
 
-    func agentDidEmitEvent(_ event: AgentEvent) {
+    func agentDidEmitEvent(_ event: Tachikoma.AgentEvent) {
         Task { @MainActor in
             // Extract content from different event types
             switch event {
@@ -95,7 +95,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     public func executeTask(
         _ task: String,
         dryRun: Bool = false,
-        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: Tachikoma.AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
         // For dry run, just return a simulated result
         if dryRun {
@@ -177,7 +177,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     public func executeTaskWithAudio(
         audioContent: AudioContent,
         dryRun: Bool = false,
-        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: Tachikoma.AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
         // For dry run, just return a simulated result
         if dryRun {
@@ -304,7 +304,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         _ task: String,
         sessionId: String? = nil,
         modelName: String = "claude-opus-4-20250514",
-        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: Tachikoma.AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
         let agent = try await self.createAutomationAgent(modelName: modelName)
 
@@ -496,7 +496,7 @@ extension PeekabooAgentService {
     public func resumeSession(
         sessionId: String,
         modelName: String = "claude-opus-4-20250514",
-        eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
+        eventDelegate: Tachikoma.AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
         // Load the session
         guard try await self.sessionManager.loadSession(id: sessionId) != nil else {
@@ -537,6 +537,11 @@ extension PeekabooAgentService {
             defer {
                 eventContinuation.finish()
                 eventTask.cancel()
+            }
+
+            // Create event delegate wrapper for streaming
+            let streamingDelegate = StreamingEventDelegate { chunk in
+                await eventHandler.send(.assistantMessage(content: chunk))
             }
 
             // Run the agent with streaming
