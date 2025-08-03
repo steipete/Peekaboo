@@ -2,6 +2,7 @@ import AVFoundation
 import Foundation
 import Observation
 import Speech
+import TachikomaCore
 
 /// Provides speech-to-text capabilities for voice-driven automation.
 ///
@@ -44,13 +45,14 @@ import Speech
 public enum RecognitionMode: String, CaseIterable {
     case native = "Native macOS"
     case whisper = "OpenAI Whisper"
+    case tachikoma = "Tachikoma Audio API"
     case direct = "Direct to AI"
 
     var requiresOpenAIKey: Bool {
         switch self {
         case .native, .direct:
             false
-        case .whisper:
+        case .whisper, .tachikoma:
             true
         }
     }
@@ -61,6 +63,8 @@ public enum RecognitionMode: String, CaseIterable {
             "Built-in macOS speech recognition (no API key required)"
         case .whisper:
             "OpenAI Whisper for better accuracy (requires OpenAI key)"
+        case .tachikoma:
+            "Tachikoma unified audio API with multiple provider support"
         case .direct:
             "Send audio directly to AI provider for native processing"
         }
@@ -154,6 +158,14 @@ final class SpeechRecognizer: NSObject, SFSpeechRecognizerDelegate {
                 try self.startNativeRecognition()
                 self.error = SpeechError.apiKeyRequired
             }
+        case .tachikoma:
+            if !self.settings.openAIAPIKey.isEmpty {
+                try self.startTachikomaRecognition()
+            } else {
+                // Fall back to native if no OpenAI key
+                try self.startNativeRecognition()
+                self.error = SpeechError.apiKeyRequired
+            }
         case .direct:
             try self.startDirectRecording()
         }
@@ -177,6 +189,10 @@ final class SpeechRecognizer: NSObject, SFSpeechRecognizerDelegate {
         case .whisper:
             // Stop Whisper recording
             self.audioRecorder?.stopRecording()
+
+        case .tachikoma:
+            // Stop Tachikoma recording
+            self.stopTachikomaRecording()
 
         case .direct:
             // Stop direct recording

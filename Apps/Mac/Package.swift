@@ -16,6 +16,7 @@ let package = Package(
     dependencies: [
         .package(path: "../../Core/PeekabooCore"),
         .package(path: "../../Core/PeekabooUICore"),
+        .package(path: "../../Tachikoma"),
     ],
     targets: [
         .target(
@@ -23,6 +24,7 @@ let package = Package(
             dependencies: [
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
                 .product(name: "PeekabooUICore", package: "PeekabooUICore"),
+                .product(name: "TachikomaCore", package: "Tachikoma"),
             ],
             path: "Peekaboo",
             exclude: ["PeekabooApp.swift", "Info.plist"],
