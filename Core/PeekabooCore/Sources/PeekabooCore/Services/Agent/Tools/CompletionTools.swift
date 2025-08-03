@@ -6,7 +6,58 @@ import TachikomaCore
 /// Tools for task completion and status reporting
 @available(macOS 14.0, *)
 public enum CompletionTools {
-    /// Create the done tool for marking tasks as complete
+    /// Create the done tool for marking tasks as complete - SimpleTool version
+    public static func createDoneSimpleTool() -> SimpleTool {
+        SimpleTool(
+            name: "done",
+            description: "Mark the task as completed with a summary of what was accomplished",
+            parameters: ToolParameters(
+                properties: [
+                    "summary": ToolParameterProperty(
+                        type: .string,
+                        description: "Summary of what was accomplished"
+                    )
+                ],
+                required: ["summary"]
+            ),
+            execute: { args in
+                let summary = try args.getString("summary")
+                return .string("✅ Task completed: \(summary)")
+            })
+    }
+
+    /// Create the need info tool for requesting more information - SimpleTool version
+    public static func createNeedInfoSimpleTool() -> SimpleTool {
+        SimpleTool(
+            name: "need_info",
+            description: "Request additional information from the user when the task is unclear or missing details",
+            parameters: ToolParameters(
+                properties: [
+                    "question": ToolParameterProperty(
+                        type: .string,
+                        description: "The question to ask the user"
+                    ),
+                    "context": ToolParameterProperty(
+                        type: .string,
+                        description: "Additional context for the question"
+                    )
+                ],
+                required: ["question"]
+            ),
+            execute: { args in
+                let question = try args.getString("question")
+                let context = args.getStringOptional("context")
+
+                var response = "❓ Need more information: \(question)"
+                if let context {
+                    response += "\n\nContext: \(context)"
+                }
+
+                return .string(response)
+            })
+    }
+
+    /// Create the done tool for marking tasks as complete (legacy Tool<Context> version)
     public static func createDoneTool<Services>() -> Tool<Services> {
         Tool(
             name: "done",
@@ -17,7 +68,7 @@ public enum CompletionTools {
             })
     }
 
-    /// Create the need info tool for requesting more information
+    /// Create the need info tool for requesting more information (legacy Tool<Context> version)
     public static func createNeedInfoTool<Services>() -> Tool<Services> {
         Tool(
             name: "need_info",

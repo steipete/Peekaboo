@@ -105,11 +105,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                     endTime: Date()))
         }
 
-        // Use the new architecture internally
-        let agent = try await self.createAutomationAgent(model: self.defaultLanguageModel)
-
-        // Create a new session for this task
-        let sessionId = UUID().uuidString
+        // Note: In the new API, we don't need to create agents - we use direct functions
 
         // Execute with streaming if we have an event delegate
         if eventDelegate != nil {
@@ -146,7 +142,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 await eventHandler.send(.assistantMessage(content: chunk))
             }
 
-            let result = try await self.runStreamingStub(agent, task, selectedModel, streamingDelegate)
+            let result = try await self.executeWithStreaming(task, model: selectedModel, streamingDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -155,7 +151,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         } else {
             // Execute without streaming
             let selectedModel = self.defaultLanguageModel
-            return try await self.runStub(agent, task, selectedModel)
+            return try await self.executeWithoutStreaming(task, model: selectedModel)
         }
     }
 
@@ -181,11 +177,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                     endTime: Date()))
         }
 
-        // Use the new architecture internally
-        let agent = try await self.createAutomationAgent(model: self.defaultLanguageModel)
-
-        // Create a new session for this task
-        let sessionId = UUID().uuidString
+        // Note: In the new API, we don't need to create agents - we use direct functions
 
         // Execute with streaming if we have an event delegate
         if eventDelegate != nil {
@@ -226,7 +218,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 await eventHandler.send(.assistantMessage(content: chunk))
             }
 
-            let result = try await self.runStreamingStub(agent, input, selectedModel, streamingDelegate)
+            let result = try await self.executeWithStreaming(input, model: selectedModel, streamingDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -239,7 +231,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
             // Execute without streaming
             let selectedModel = self.defaultLanguageModel
-            return try await self.runStub(agent, input, selectedModel)
+            return try await self.executeWithoutStreaming(input, model: selectedModel)
         }
     }
 
@@ -283,7 +275,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         model: LanguageModel? = nil,
         eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
-        let agent = try await self.createAutomationAgent(model: model)
+        // Note: In the new API, we don't need to create agents - we use direct functions
 
         // If we have an event delegate, use streaming
         if eventDelegate != nil {
@@ -324,7 +316,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 await eventHandler.send(.assistantMessage(content: chunk))
             }
 
-            let result = try await self.runStreamingStub(agent, task, selectedModel, streamingDelegate)
+            let result = try await self.executeWithStreaming(task, model: selectedModel, streamingDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -333,7 +325,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         } else {
             // Non-streaming execution
             let selectedModel = model ?? self.defaultLanguageModel
-            return try await self.runStub(agent, task, selectedModel)
+            return try await self.executeWithoutStreaming(task, model: selectedModel)
         }
     }
 
@@ -344,12 +336,14 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         model: LanguageModel? = nil,
         streamHandler: @Sendable @escaping (String) async -> Void) async throws -> AgentExecutionResult
     {
-        let agent = try await self.createAutomationAgent(model: model)
+        // Note: In the new API, we don't need to create agents - we use direct functions
 
         // AgentRunner.runStreaming doesn't have a streamHandler parameter
         // We need to use the agent directly with an event delegate
         let selectedModel = model ?? self.defaultLanguageModel
-        return try await self.runStreamingStub(agent, task, selectedModel, Optional<Any>.none as Any)
+        // For streaming without event handler, create a dummy delegate that discards chunks
+        let dummyDelegate = StreamingEventDelegate { _ in /* discard */ }
+        return try await self.executeWithStreaming(task, model: selectedModel, streamingDelegate: dummyDelegate)
     }
 
     // MARK: - Tool Creation
@@ -470,7 +464,7 @@ extension PeekabooAgentService {
         }
 
         // Use AgentRunner to resume the session with existing messages
-        let agent = try await self.createAutomationAgent(model: model)
+        // Note: In the new API, we don't need to create agents - we use direct functions
 
         // Create a continuation prompt if needed
         let continuationPrompt = "Continue from where we left off."
@@ -512,7 +506,7 @@ extension PeekabooAgentService {
 
             // Run the agent with streaming
             let selectedModel = model ?? self.defaultLanguageModel
-            let result = try await self.runStreamingStub(agent, continuationPrompt, selectedModel, streamingDelegate)
+            let result = try await self.executeWithStreaming(continuationPrompt, model: selectedModel, streamingDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -521,7 +515,7 @@ extension PeekabooAgentService {
         } else {
             // Execute without streaming
             let selectedModel = model ?? self.defaultLanguageModel
-            return try await self.runStub(agent, continuationPrompt, selectedModel)
+            return try await self.executeWithoutStreaming(continuationPrompt, model: selectedModel)
         }
     }
 
@@ -618,15 +612,94 @@ extension PeekabooAgentService {
         return modelString
     }
     
-    /// Compatibility stub for AgentRunner.runStreaming
-    /// TODO: Replace with direct streamText calls
-    private func runStreamingStub(_ params: Any...) async throws -> AgentExecutionResult {
-        throw TachikomaError.unsupportedOperation("Legacy AgentRunner.runStreaming - use direct streamText calls")
+    /// Execute task using direct streamText calls with event streaming
+    private func executeWithStreaming(
+        _ task: String,
+        model: LanguageModel,
+        streamingDelegate: StreamingEventDelegate
+    ) async throws -> AgentExecutionResult {
+        let startTime = Date()
+        let sessionId = UUID().uuidString
+        
+        // Create conversation with the task
+        let conversation = ConversationBuilder()
+            .system(AgentSystemPrompt.generate())
+            .user(task)
+            .build()
+        
+        // Stream the response
+        var fullContent = ""
+        let streamResult = try await streamText(
+            model: model,
+            messages: conversation.messages,
+            tools: [] // For now, tools are not passed to the core API
+        )
+        
+        for try await chunk in streamResult.textStream {
+            // Only process text deltas
+            if chunk.type == .textDelta, let content = chunk.content {
+                fullContent += content
+                // Send chunk to the streaming delegate
+                await streamingDelegate.onChunk(content)
+            }
+        }
+        
+        let endTime = Date()
+        let executionTime = endTime.timeIntervalSince(startTime)
+        
+        // Create result
+        return AgentExecutionResult(
+            content: fullContent,
+            messages: conversation.messages + [ModelMessage.assistant(fullContent)],
+            sessionId: sessionId,
+            usage: nil, // Usage info not available from streamText yet
+            metadata: AgentMetadata(
+                executionTime: executionTime,
+                toolCallCount: 0,
+                modelName: model.description,
+                startTime: startTime,
+                endTime: endTime
+            )
+        )
     }
     
-    /// Compatibility stub for AgentRunner.run  
-    /// TODO: Replace with direct generateText calls
-    private func runStub(_ params: Any...) async throws -> AgentExecutionResult {
-        throw TachikomaError.unsupportedOperation("Legacy AgentRunner.run - use direct generateText calls")
+    /// Execute task using direct generateText calls without streaming
+    private func executeWithoutStreaming(
+        _ task: String,
+        model: LanguageModel
+    ) async throws -> AgentExecutionResult {
+        let startTime = Date()
+        let sessionId = UUID().uuidString
+        
+        // Create conversation with the task
+        let conversation = ConversationBuilder()
+            .system(AgentSystemPrompt.generate())
+            .user(task)
+            .build()
+        
+        // Generate the response
+        let response = try await generateText(
+            model: model,
+            messages: conversation.messages,
+            tools: [] // For now, tools are not passed to the core API
+        )
+        
+        let endTime = Date()
+        let executionTime = endTime.timeIntervalSince(startTime)
+        
+        // Create result
+        return AgentExecutionResult(
+            content: response.text,
+            messages: conversation.messages + [ModelMessage.assistant(response.text)],
+            sessionId: sessionId,
+            usage: nil, // Usage info not available from generateText yet
+            metadata: AgentMetadata(
+                executionTime: executionTime,
+                toolCallCount: 0,
+                modelName: model.description,
+                startTime: startTime,
+                endTime: endTime
+            )
+        )
     }
 }

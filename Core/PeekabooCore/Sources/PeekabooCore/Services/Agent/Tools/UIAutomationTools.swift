@@ -683,8 +683,8 @@ extension PeekabooAgentService {
                 required: ["key"]),
             execute: { params, context in
                 let keyStr = try params.stringValue("key")
-                // Get modifiers array - for now default to empty until we implement proper array support
-                let modifierStrs: [String] = []  // TODO: Implement array parameter support
+                // Get modifiers array using the new array parameter support
+                let modifierStrs = params.stringArrayValue("modifiers", default: [])
 
                 // Map key names to match what hotkey expects
                 let mappedKey: String = switch keyStr.lowercased() {
