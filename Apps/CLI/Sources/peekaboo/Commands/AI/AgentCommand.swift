@@ -177,6 +177,10 @@ struct AgentCommand: AsyncParsableCommand {
           peekaboo agent "Click on the login button and fill the form"
           peekaboo agent "Find the Terminal app and run 'ls -la'"
 
+          # Control execution steps:
+          peekaboo agent --max-steps 5 "Simple task"  # Limit to 5 steps
+          peekaboo agent --max-steps 50 "Complex multi-step automation"  # Allow more steps
+
           # Audio input:
           peekaboo agent --audio  # Record from microphone
           peekaboo agent --audio-file recording.wav  # Use audio file
@@ -190,9 +194,14 @@ struct AgentCommand: AsyncParsableCommand {
         The agent will:
         1. Analyze your request
         2. Break it down into steps
-        3. Execute each step using Peekaboo commands
+        3. Execute each step using Peekaboo commands (default: max 20 steps)
         4. Verify results with screenshots
         5. Retry if needed
+
+        EXECUTION CONTROL:
+        The --max-steps parameter controls how many AI reasoning steps the agent can take.
+        Each step can include tool calls and responses. Complex tasks may need more steps.
+        Default is 20 steps, which handles most automation tasks effectively.
 
         Audio input requires OpenAI API key for transcription via Whisper API.
         """
@@ -360,84 +369,84 @@ struct AgentCommand: AsyncParsableCommand {
 
         /* Commented out until audio service is implemented
          if self.audio || self.audioFile != nil {
-             if !self.jsonOutput && !self.quiet {
-                 if let audioPath = audioFile {
-                     print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
-                 } else {
-                     print(
-                         "\(TerminalColor.cyan)🎙️ Starting audio recording... (Press Ctrl+C to stop)\(TerminalColor.reset)"
-                     )
-                 }
-             }
-
-             let audioService = services.audioInput
-
-             do {
-                 if let audioPath = audioFile {
-                     // Transcribe from file
-                     let url = URL(fileURLWithPath: audioPath)
-                     executionTask = try await audioService.transcribeAudioFile(url)
-                 } else {
-                     // Record from microphone
-                     try await audioService.startRecording()
-
-                     // Create a continuation to handle the async signal
-                     let transcript = try await withTaskCancellationHandler {
-                         try await withCheckedThrowingContinuation { continuation in
-                             // Set up signal handler for Ctrl+C
-                             let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
-                             signalSource.setEventHandler {
-                                 signalSource.cancel()
-                                 Task { @MainActor in
-                                     do {
-                                         let transcript = try await audioService.stopRecording()
-                                         continuation.resume(returning: transcript)
-                                     } catch {
-                                         continuation.resume(throwing: error)
-                                     }
-                                 }
-                             }
-                             signalSource.resume()
-
-                             // Also provide a way to stop recording after a timeout (optional)
-                             // This could be configured via a flag if needed
-                         }
-                     } onCancel: {
-                         Task { @MainActor in
-                             _ = try? await audioService.stopRecording()
-                         }
-                     }
-
-                     executionTask = transcript
-                 }
-
-                 if !self.jsonOutput && !self.quiet {
-                     print("\(TerminalColor.green)✅ Transcription complete\(TerminalColor.reset)")
-                     print("\(TerminalColor.gray)Transcript: \(executionTask.prefix(100))...\(TerminalColor.reset)")
-                 }
-
-                 // If we have both audio and a task, combine them
-                 if let providedTask = task {
-                     executionTask = "\(providedTask)\n\nAudio transcript:\n\(executionTask)"
-                 }
-
-             } catch {
-                 if self.jsonOutput {
-                     let errorObj = [
-                         "success": false,
-                         "error": "Audio processing failed: \(error.localizedDescription)"
-                     ] as [String: Any]
-                     let jsonData = try JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted)
-                     print(String(data: jsonData, encoding: .utf8) ?? "{}")
-                 } else {
-                     print(
-                         "\(TerminalColor.red)❌ Audio processing failed: \(error.localizedDescription)\(TerminalColor.reset)"
-                     )
-                 }
-                 return
-             }
+         if !self.jsonOutput && !self.quiet {
+         if let audioPath = audioFile {
+         print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
          } else {
-             // Regular execution requires task
+         print(
+         "\(TerminalColor.cyan)🎙️ Starting audio recording... (Press Ctrl+C to stop)\(TerminalColor.reset)"
+         )
+         }
+         }
+
+         let audioService = services.audioInput
+
+         do {
+         if let audioPath = audioFile {
+         // Transcribe from file
+         let url = URL(fileURLWithPath: audioPath)
+         executionTask = try await audioService.transcribeAudioFile(url)
+         } else {
+         // Record from microphone
+         try await audioService.startRecording()
+
+         // Create a continuation to handle the async signal
+         let transcript = try await withTaskCancellationHandler {
+         try await withCheckedThrowingContinuation { continuation in
+         // Set up signal handler for Ctrl+C
+         let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
+         signalSource.setEventHandler {
+         signalSource.cancel()
+         Task { @MainActor in
+         do {
+         let transcript = try await audioService.stopRecording()
+         continuation.resume(returning: transcript)
+         } catch {
+         continuation.resume(throwing: error)
+         }
+         }
+         }
+         signalSource.resume()
+
+         // Also provide a way to stop recording after a timeout (optional)
+         // This could be configured via a flag if needed
+         }
+         } onCancel: {
+         Task { @MainActor in
+         _ = try? await audioService.stopRecording()
+         }
+         }
+
+         executionTask = transcript
+         }
+
+         if !self.jsonOutput && !self.quiet {
+         print("\(TerminalColor.green)✅ Transcription complete\(TerminalColor.reset)")
+         print("\(TerminalColor.gray)Transcript: \(executionTask.prefix(100))...\(TerminalColor.reset)")
+         }
+
+         // If we have both audio and a task, combine them
+         if let providedTask = task {
+         executionTask = "\(providedTask)\n\nAudio transcript:\n\(executionTask)"
+         }
+
+         } catch {
+         if self.jsonOutput {
+         let errorObj = [
+         "success": false,
+         "error": "Audio processing failed: \(error.localizedDescription)"
+         ] as [String: Any]
+         let jsonData = try JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted)
+         print(String(data: jsonData, encoding: .utf8) ?? "{}")
+         } else {
+         print(
+         "\(TerminalColor.red)❌ Audio processing failed: \(error.localizedDescription)\(TerminalColor.reset)"
+         )
+         }
+         return
+         }
+         } else {
+         // Regular execution requires task
          */
 
         // Check if we have a task to execute
@@ -459,7 +468,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
 
         // Execute task
-        try await self.executeTask(agentService, task: executionTask)
+        try await self.executeTask(agentService, task: executionTask, maxSteps: self.maxSteps ?? 20)
     }
 
     // MARK: - Task Execution
@@ -573,11 +582,82 @@ struct AgentCommand: AsyncParsableCommand {
         return modelName
     }
 
+    private func parseModelString(_ modelString: String) -> LanguageModel? {
+        if isDebugLoggingEnabled {
+            print("DEBUG AgentCommand: Parsing model string: '\(modelString)'")
+        }
+        let lowercased = modelString.lowercased()
+
+        // OpenAI Models
+        if lowercased.contains("gpt-4o") || lowercased == "gpt4o" {
+            let model = LanguageModel.openai(.gpt4o)
+            if isDebugLoggingEnabled {
+                print("DEBUG AgentCommand: Parsed to: \(model)")
+            }
+            return model
+        } else if lowercased.contains("gpt-4o-mini") || lowercased == "gpt4o-mini" {
+            return .openai(.gpt4oMini)
+        } else if lowercased.contains("gpt-4.1") || lowercased == "gpt4.1" || lowercased == "gpt-4.1" {
+            return .openai(.gpt4_1)
+        } else if lowercased.contains("gpt-4.1-mini") || lowercased == "gpt4.1-mini" {
+            return .openai(.gpt4_1Mini)
+        } else if lowercased == "o3" {
+            return .openai(.o3)
+        } else if lowercased == "o3-mini" || lowercased == "o3mini" {
+            return .openai(.o3Mini)
+        } else if lowercased == "o3-pro" || lowercased == "o3pro" {
+            return .openai(.o3Pro)
+        } else if lowercased == "o4-mini" || lowercased == "o4mini" {
+            return .openai(.o4Mini)
+
+            // Anthropic Models
+        } else if lowercased.contains("claude-opus-4") || lowercased
+            .contains("claude-4-opus") || lowercased == "claude-opus-4" {
+            return .anthropic(.opus4)
+        } else if lowercased.contains("claude-sonnet-4") || lowercased
+            .contains("claude-4-sonnet") || lowercased == "claude-sonnet-4" {
+            return .anthropic(.sonnet4)
+        } else if lowercased.contains("claude-3-5-sonnet") || lowercased == "claude-3-5-sonnet" {
+            return .anthropic(.sonnet3_5)
+        } else if lowercased.contains("claude-3-5-haiku") || lowercased == "claude-3-5-haiku" {
+            return .anthropic(.haiku3_5)
+
+            // Grok Models
+        } else if lowercased.contains("grok-4") || lowercased == "grok-4" || lowercased == "grok4" {
+            return .grok(.grok4)
+        } else if lowercased.contains("grok-2") || lowercased == "grok-2" || lowercased == "grok2" {
+            return .grok(.grok2_1212)
+
+            // Ollama Models
+        } else if lowercased.contains("llama3.3") || lowercased == "llama3.3" {
+            return .ollama(.llama3_3)
+        } else if lowercased.contains("llama3.2") || lowercased == "llama3.2" {
+            return .ollama(.llama3_2)
+        } else if lowercased.contains("llama3.1") || lowercased == "llama3.1" {
+            return .ollama(.llama3_1)
+
+            // Fallback - try to infer provider from common patterns
+        } else if lowercased.contains("gpt") || lowercased.contains("o3") || lowercased.contains("o4") {
+            return .openai(.gpt4o) // Default OpenAI model
+        } else if lowercased.contains("claude") {
+            return .anthropic(.opus4) // Default Anthropic model
+        } else if lowercased.contains("grok") {
+            return .grok(.grok4) // Default Grok model
+        } else if lowercased.contains("llama") {
+            return .ollama(.llama3_3) // Default Ollama model
+        }
+
+        return nil
+    }
+
     private func executeTask(
         _ agentService: AgentServiceProtocol,
         task: String,
+        maxSteps: Int = 20,
         sessionId: String? = nil
     ) async throws {
+        fputs("DEBUG STDERR: executeTask called with model parameter: \(String(describing: self.model))\n", stderr)
+
         // Update terminal title with VibeTunnel
         self.updateTerminalTitle("Starting: \(task.prefix(50))...")
 
@@ -631,8 +711,19 @@ struct AgentCommand: AsyncParsableCommand {
         }
 
         do {
+            // Parse the model string from CLI parameter
+            let languageModel: LanguageModel? = self.model.flatMap { self.parseModelString($0) }
+
+            if isDebugLoggingEnabled {
+                print("DEBUG AgentCommand: CLI model parameter: \(String(describing: self.model))")
+                print("DEBUG AgentCommand: Parsed language model: \(String(describing: languageModel))")
+            }
+
             let result = try await peekabooAgent.executeTask(
                 task,
+                maxSteps: maxSteps,
+                sessionId: sessionId as String?, // Explicit cast to disambiguate method
+                model: languageModel,
                 eventDelegate: eventDelegate
             )
 
@@ -700,7 +791,7 @@ struct AgentCommand: AsyncParsableCommand {
                     "sessionId": result.sessionId,
                     "toolCalls": result.messages.flatMap { message in
                         message.content.compactMap { content in
-                            if case .toolCall(let toolCall) = content {
+                            if case let .toolCall(toolCall) = content {
                                 return [
                                     "id": toolCall.id,
                                     "name": toolCall.name,
@@ -819,7 +910,7 @@ struct AgentCommand: AsyncParsableCommand {
         }
 
         // Execute task with existing session
-        try await self.executeTask(agentService, task: task, sessionId: sessionId)
+        try await self.executeTask(agentService, task: task, maxSteps: self.maxSteps ?? 20, sessionId: sessionId)
     }
 
     private func updateTerminalTitle(_ title: String) {
@@ -892,7 +983,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
         // Show a simple completion summary
         let totalElapsed = result.metadata.executionTime
         let tokenInfo = self.totalTokens > 0 ? ", \(self.totalTokens) tokens" : ""
-        let toolsText = result.metadata.toolCallCount == 1 ? "1 tool" : "\(result.metadata.toolCallCount) tools"
+        let toolsText = result.metadata.toolCallCount == 1 ? "⚒ 1 tool" : "⚒ \(result.metadata.toolCallCount) tools"
 
         if self.outputMode == .compact {
             print(
@@ -1560,7 +1651,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                         // Show completion stats after the message
                         let totalElapsed = Date().timeIntervalSince(startTime)
                         let tokenInfo = self.totalTokens > 0 ? ", \(self.totalTokens) tokens" : ""
-                        let toolsText = self.toolCallCount == 1 ? "1 tool" : "\(self.toolCallCount) tools"
+                        let toolsText = self.toolCallCount == 1 ? "⚒ 1 tool" : "⚒ \(self.toolCallCount) tools"
                         print(
                             "\n\(TerminalColor.gray)Task completed in \(self.formatDuration(totalElapsed)) with \(toolsText)\(tokenInfo)\(TerminalColor.reset)"
                         )

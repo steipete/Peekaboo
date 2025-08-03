@@ -16,10 +16,10 @@ struct PeekabooApp: App {
     // Dependencies that need the core state
     @State private var speechRecognizer: SpeechRecognizer?
     @State private var agent: PeekabooAgent?
-    
+
     // Control Inspector window creation
     @AppStorage("inspectorWindowRequested") private var inspectorRequested = false
-    
+
     // Logger
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "PeekabooApp")
 
@@ -91,7 +91,7 @@ struct PeekabooApp: App {
 
         // Inspector window
         WindowGroup("Inspector", id: "inspector") {
-            if inspectorRequested {
+            if self.inspectorRequested {
                 InspectorWindow()
                     .environment(self.settings)
                     .environment(self.permissions)
@@ -100,7 +100,7 @@ struct PeekabooApp: App {
                 Color.clear
                     .frame(width: 1, height: 1)
                     .onAppear {
-                        logger.info("Inspector window created but not yet requested")
+                        self.logger.info("Inspector window created but not yet requested")
                     }
             }
         }
@@ -185,7 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Connect dock icon manager to settings
         DockIconManager.shared.connectToSettings(settings)
-        
+
         // Connect visualizer coordinator to settings
         if let coordinator = visualizerCoordinator {
             coordinator.connectSettings(settings)
@@ -193,7 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Setup keyboard shortcuts
         self.setupKeyboardShortcuts()
-        
+
         // Setup notification observers
         self.setupNotificationObservers()
 
@@ -279,17 +279,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Notifications
-    
+
     private func setupNotificationObservers() {
         // Listen for Inspector window request
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(handleShowInspector),
+            selector: #selector(self.handleShowInspector),
             name: Notification.Name("ShowInspector"),
-            object: nil
-        )
+            object: nil)
     }
-    
+
     @objc private func handleShowInspector() {
         self.logger.info("Received ShowInspector notification")
         // Mark that Inspector has been requested
@@ -316,9 +315,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return event
         }
     }
-    
+
     // MARK: - Public Access
-    
+
     /// Returns the visualizer coordinator for preview functionality
 }
 

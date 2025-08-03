@@ -1,7 +1,7 @@
-import Observation
-import SwiftUI
 import AppKit
+import Observation
 import PeekabooCore
+import SwiftUI
 
 struct SettingsWindow: View {
     @Environment(PeekabooSettings.self) private var settings
@@ -18,7 +18,7 @@ struct SettingsWindow: View {
                 .tabItem {
                     Label("AI", systemImage: "brain")
                 }
-            
+
             VisualizerSettingsTabView()
                 .tabItem {
                     Label("Visualizer", systemImage: "sparkles")
@@ -98,15 +98,15 @@ struct AISettingsView: View {
                 ("llama3.2-vision:latest", "Llama 3.2 Vision"),
             ]),
         ]
-        
+
         // Add custom providers
-        for (id, provider) in settings.customProviders.sorted(by: { $0.key < $1.key }) {
+        for (id, provider) in self.settings.customProviders.sorted(by: { $0.key < $1.key }) {
             let providerModels = provider.models?.map { (id: $0.key, name: $0.value.name) } ?? [
-                (id: "custom-model", name: "Default Model")
+                (id: "custom-model", name: "Default Model"),
             ]
             models.append((id, providerModels))
         }
-        
+
         return models
     }
 
@@ -357,10 +357,10 @@ struct AISettingsView: View {
 struct VisualizerSettingsTabView: View {
     @Environment(PeekabooSettings.self) private var settings
     @EnvironmentObject private var visualizerCoordinator: VisualizerCoordinator
-    
+
     var body: some View {
-        VisualizerSettingsView(settings: settings)
-            .environmentObject(visualizerCoordinator)
+        VisualizerSettingsView(settings: self.settings)
+            .environmentObject(self.visualizerCoordinator)
     }
 }
 

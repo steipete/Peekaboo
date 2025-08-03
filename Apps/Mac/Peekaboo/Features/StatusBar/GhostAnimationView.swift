@@ -38,7 +38,7 @@ struct GhostAnimationView: View {
             let animatedX = center.x + (self.isAnimating ? self.horizontalOffset : 0)
             let animatedY = center.y + (self.isAnimating ? self.verticalOffset : 0)
             let drawCenter = CGPoint(x: animatedX, y: animatedY)
-            
+
             // Apply scale transformation
             context.scaleBy(x: self.scale, y: self.scale)
 
@@ -169,7 +169,7 @@ struct GhostAnimationView: View {
         {
             self.verticalOffset = self.floatAmplitude
         }
-        
+
         // Start horizontal floating animation (different speed for organic movement)
         withAnimation(
             .easeInOut(duration: self.animationDuration * 1.2)
@@ -177,7 +177,7 @@ struct GhostAnimationView: View {
         {
             self.horizontalOffset = self.horizontalAmplitude
         }
-        
+
         // Start scale animation
         withAnimation(
             .easeInOut(duration: self.animationDuration * 0.8)

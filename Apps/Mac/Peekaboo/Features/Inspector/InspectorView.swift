@@ -4,8 +4,8 @@
 //
 //  Bridge to the full Inspector from PeekabooUICore
 
-import SwiftUI
 import PeekabooUICore
+import SwiftUI
 
 struct InspectorView: View {
     var body: some View {

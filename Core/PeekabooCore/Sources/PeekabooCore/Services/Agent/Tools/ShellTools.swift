@@ -7,13 +7,13 @@ import TachikomaCore
 @available(macOS 14.0, *)
 private actor TimeoutState {
     private var timedOut = false
-    
+
     func setTimedOut() {
-        timedOut = true
+        self.timedOut = true
     }
-    
+
     var wasTimedOut: Bool {
-        timedOut
+        self.timedOut
     }
 }
 

@@ -68,7 +68,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         get async {
             // For the new API, we would need to implement API key masking in LanguageModel
             // For now, return a placeholder
-            return "***"
+            "***"
         }
     }
 
@@ -87,6 +87,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     /// Execute a task using the AI agent
     public func executeTask(
         _ task: String,
+        maxSteps: Int = 20,
         dryRun: Bool = false,
         eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
@@ -142,7 +143,11 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 await eventHandler.send(.assistantMessage(content: chunk))
             }
 
-            let result = try await self.executeWithStreaming(task, model: selectedModel, streamingDelegate: streamingDelegate)
+            let result = try await self.executeWithStreaming(
+                task,
+                model: selectedModel,
+                maxSteps: maxSteps,
+                streamingDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -151,13 +156,14 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         } else {
             // Execute without streaming
             let selectedModel = self.defaultLanguageModel
-            return try await self.executeWithoutStreaming(task, model: selectedModel)
+            return try await self.executeWithoutStreaming(task, model: selectedModel, maxSteps: maxSteps)
         }
     }
 
     /// Execute a task with audio content
     public func executeTaskWithAudio(
         audioContent: AudioContent,
+        maxSteps: Int = 20,
         dryRun: Bool = false,
         eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
@@ -218,7 +224,11 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 await eventHandler.send(.assistantMessage(content: chunk))
             }
 
-            let result = try await self.executeWithStreaming(input, model: selectedModel, streamingDelegate: streamingDelegate)
+            let result = try await self.executeWithStreaming(
+                input,
+                model: selectedModel,
+                maxSteps: maxSteps,
+                streamingDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -231,7 +241,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
             // Execute without streaming
             let selectedModel = self.defaultLanguageModel
-            return try await self.executeWithoutStreaming(input, model: selectedModel)
+            return try await self.executeWithoutStreaming(input, model: selectedModel, maxSteps: maxSteps)
         }
     }
 
@@ -271,6 +281,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     /// Execute a task with the automation agent (with session support)
     public func executeTask(
         _ task: String,
+        maxSteps: Int = 20,
         sessionId: String? = nil,
         model: LanguageModel? = nil,
         eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
@@ -309,14 +320,18 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             }
 
             // Run the agent with streaming
-            let selectedModel = self.defaultLanguageModel
+            let selectedModel = model ?? self.defaultLanguageModel
 
             // Create event delegate wrapper for streaming
             let streamingDelegate = StreamingEventDelegate { chunk in
                 await eventHandler.send(.assistantMessage(content: chunk))
             }
 
-            let result = try await self.executeWithStreaming(task, model: selectedModel, streamingDelegate: streamingDelegate)
+            let result = try await self.executeWithStreaming(
+                task,
+                model: selectedModel,
+                maxSteps: maxSteps,
+                streamingDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -325,7 +340,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         } else {
             // Non-streaming execution
             let selectedModel = model ?? self.defaultLanguageModel
-            return try await self.executeWithoutStreaming(task, model: selectedModel)
+            return try await self.executeWithoutStreaming(task, model: selectedModel, maxSteps: maxSteps)
         }
     }
 
@@ -343,7 +358,11 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         let selectedModel = model ?? self.defaultLanguageModel
         // For streaming without event handler, create a dummy delegate that discards chunks
         let dummyDelegate = StreamingEventDelegate { _ in /* discard */ }
-        return try await self.executeWithStreaming(task, model: selectedModel, streamingDelegate: dummyDelegate)
+        return try await self.executeWithStreaming(
+            task,
+            model: selectedModel,
+            maxSteps: 20,
+            streamingDelegate: dummyDelegate)
     }
 
     // MARK: - Tool Creation
@@ -404,12 +423,12 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
         return tools
     }
-    
+
     /// Create SimpleTool versions of essential Peekaboo tools for TachikomaCore integration
     private func createSimpleTools() -> [SimpleTool] {
         let services = self.services
         var tools: [SimpleTool] = []
-        
+
         // Simple test tool with no parameters
         do {
             let simpleTool = try tool(name: "get_time", description: "Get the current time") { builder in
@@ -423,14 +442,95 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         } catch {
             print("Failed to create time tool: \(error)")
         }
-        
+
+        // Simple calculator tool
+        do {
+            let calcTool = try tool(
+                name: "calculate",
+                description: "Perform simple math calculations like 1+1, 2*3, etc.")
+            { builder in
+                builder
+                    .stringParameter(
+                        "expression",
+                        description: "Math expression like '1+1' or '2*3'",
+                        required: true)
+                    .execute { args in
+                        // Debug: Print all arguments received
+                        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+                            ProcessInfo.processInfo.arguments.contains("-v")
+                        {
+                            print("DEBUG Calculator tool received arguments:")
+                            // This is a hack to see what we received - args doesn't have a way to iterate
+                            for testKey in ["expression", "expr", "math", "calculation", "equation", "problem"] {
+                                if let value = args.getStringOptional(testKey) {
+                                    print("DEBUG   \(testKey): '\(value)'")
+                                }
+                            }
+                        }
+
+                        guard let expression = args.getStringOptional("expression"),
+                              !expression.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        else {
+                            return .string("Error: Empty expression")
+                        }
+
+                        let cleanExpression = expression.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                        // Handle common simple cases first
+                        let simpleCases = [
+                            "1+1": "2",
+                            "2+2": "4",
+                            "2*3": "6",
+                            "3*4": "12",
+                            "10/2": "5",
+                            "5-3": "2",
+                        ]
+
+                        if let result = simpleCases[cleanExpression] {
+                            return .string(result)
+                        }
+
+                        // Validate the expression contains only safe characters
+                        let allowedCharacters = CharacterSet(charactersIn: "0123456789+-*/().")
+                        if !cleanExpression.unicodeScalars.allSatisfy(allowedCharacters.contains) {
+                            return .string(
+                                "Error: Expression contains invalid characters. Only numbers, +, -, *, /, (, ), and . are allowed.")
+                        }
+
+                        // Additional safety: Check for malformed expressions
+                        if cleanExpression.contains("==") || cleanExpression.hasPrefix("=") || cleanExpression
+                            .hasSuffix("=")
+                        {
+                            return .string(
+                                "Error: Invalid expression format. Use arithmetic expressions like '1+1', not equations.")
+                        }
+
+                        // Try to evaluate using NSExpression with error handling
+                        do {
+                            let nsExpression = NSExpression(format: cleanExpression)
+                            if let result = nsExpression.expressionValue(with: nil, context: nil) as? NSNumber {
+                                return .string("\(result)")
+                            } else {
+                                return .string("Error: Could not evaluate expression '\(cleanExpression)'")
+                            }
+                        } catch {
+                            return .string(
+                                "Error: Invalid expression '\(cleanExpression)': \(error.localizedDescription)")
+                        }
+                    }
+            }
+            tools.append(calcTool)
+        } catch {
+            print("Failed to create calculator tool: \(error)")
+        }
+
         // List apps tool
         do {
             let listAppsTool = try tool(name: "list_apps", description: "List all running applications") { builder in
                 builder.execute { _ in
                     let result = try await services.applications.listApplications()
                     let runningApps = result.data.applications
-                    let appNames = runningApps.map { $0.name }.sorted()
+                    let appNames = runningApps.map(\.name).sorted()
                     return .string("Running applications: " + appNames.joined(separator: ", "))
                 }
             }
@@ -438,31 +538,34 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         } catch {
             // Skip if tool creation fails
         }
-        
+
         // See (screenshot) tool
         do {
-            let seeTool = try tool(name: "see", description: "Capture and analyze the current screen or application") { builder in
+            let seeTool = try tool(
+                name: "see",
+                description: "Capture and analyze the current screen or application")
+            { builder in
                 builder
                     .stringParameter("app", description: "Application name to capture (optional)", required: false)
                     .execute { args in
                         let appName = args.getStringOptional("app")
-                        
+
                         // Capture screen
                         let captureResult = try await services.screenCapture.captureScreen(
-                            displayIndex: nil
-                        )
-                        
+                            displayIndex: nil)
+
                         // Return basic screen capture information
                         // TODO: Implement AI analysis using Tachikoma vision models
                         let windowInfo = captureResult.metadata.windowInfo?.title ?? "Unknown"
-                        return .string("Screen captured successfully. Window: \(windowInfo). Path: \(captureResult.savedPath ?? "N/A")")
+                        return .string(
+                            "Screen captured successfully. Window: \(windowInfo). Path: \(captureResult.savedPath ?? "N/A")")
                     }
             }
             tools.append(seeTool)
         } catch {
             // Skip if tool creation fails
         }
-        
+
         // Click tool
         do {
             let clickTool = try tool(name: "click", description: "Click on UI elements") { builder in
@@ -470,9 +573,9 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                     .stringParameter("element", description: "Description of the element to click", required: true)
                     .boolParameter("double", description: "Whether to double-click", required: false)
                     .execute { args in
-                        let elementDescription = try args.getString("element")  
+                        let elementDescription = try args.getString("element")
                         let isDouble = args.getBoolOptional("double") ?? false
-                        
+
                         // For now, return a message indicating what would be clicked
                         // TODO: Implement actual element detection and clicking
                         let clickType = isDouble ? "Double-click" : "Click"
@@ -483,7 +586,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         } catch {
             // Skip if tool creation fails
         }
-        
+
         // Shell/bash tool
         do {
             let shellTool = try tool(name: "run_bash", description: "Execute shell commands") { builder in
@@ -491,7 +594,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                     .stringParameter("command", description: "Shell command to execute", required: true)
                     .execute { args in
                         let command = try args.getString("command")
-                        
+
                         // Shell execution is not available in ProcessService - it's for Peekaboo scripts
                         // For now, return a placeholder
                         return .string("Shell command execution not yet implemented: \(command)")
@@ -501,7 +604,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         } catch {
             // Skip if tool creation fails
         }
-        
+
         return tools
     }
 
@@ -606,7 +709,11 @@ extension PeekabooAgentService {
 
             // Run the agent with streaming
             let selectedModel = model ?? self.defaultLanguageModel
-            let result = try await self.executeWithStreaming(continuationPrompt, model: selectedModel, streamingDelegate: streamingDelegate)
+            let result = try await self.executeWithStreaming(
+                continuationPrompt,
+                model: selectedModel,
+                maxSteps: 20,
+                streamingDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -615,7 +722,7 @@ extension PeekabooAgentService {
         } else {
             // Execute without streaming
             let selectedModel = model ?? self.defaultLanguageModel
-            return try await self.executeWithoutStreaming(continuationPrompt, model: selectedModel)
+            return try await self.executeWithoutStreaming(continuationPrompt, model: selectedModel, maxSteps: 20)
         }
     }
 
@@ -701,57 +808,70 @@ extension PeekabooAgentService {
             description: description,
             execute: execute)
     }
-    
+
     // MARK: - Helper Functions
-    
+
     /// Parse a model string and return a mock model object for compatibility
     /// TODO: Replace with direct LanguageModel enum usage
     private func parseModelString(_ modelString: String) async throws -> Any {
         // This is a compatibility stub - in the new API we don't need to "get" models
         // We just use LanguageModel enum directly with generateText/streamText
-        return modelString
+        modelString
     }
-    
+
     /// Execute task using direct streamText calls with event streaming
     private func executeWithStreaming(
         _ task: String,
         model: LanguageModel,
-        streamingDelegate: StreamingEventDelegate
-    ) async throws -> AgentExecutionResult {
+        maxSteps: Int = 20,
+        streamingDelegate: StreamingEventDelegate) async throws -> AgentExecutionResult
+    {
         let startTime = Date()
         let sessionId = UUID().uuidString
-        
+
         // Create conversation with the task
-        let conversation = ConversationBuilder()
-            .system(AgentSystemPrompt.generate())
-            .user(task)
-            .build()
-        
+        let messages = [
+            ModelMessage.system(AgentSystemPrompt.generate()),
+            ModelMessage.user(task)
+        ]
+
         // Create tools for the model (convert to SimpleTool format)
         let tools = self.createSimpleTools()
-        
-        print("DEBUG: Passing \(tools.count) tools to generateText")
-        for tool in tools {
-            print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) parameters")
+
+        // Only log tool debug info in verbose mode
+        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+            ProcessInfo.processInfo.arguments.contains("-v")
+        {
+            print("DEBUG: Passing \(tools.count) tools to generateText")
+            for tool in tools {
+                print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) parameters")
+            }
         }
-        
+
+        // Debug: Log which model is being used (streaming)
+        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+            ProcessInfo.processInfo.arguments.contains("-v")
+        {
+            print("DEBUG PeekabooAgentService (streaming): Using model: \(model)")
+            print("DEBUG PeekabooAgentService (streaming): Model description: \(model.description)")
+        }
+
         // IMPORTANT: TachikomaCore streamText doesn't handle tool execution
         // Use generateText instead when tools are present
         let response = try await generateText(
             model: model,
-            messages: conversation.messages,
+            messages: messages,
             tools: tools.isEmpty ? nil : tools,
-            maxSteps: 3  // Allow multiple steps for tool execution and response
-        )
-        
+            maxSteps: maxSteps)
+
         let fullContent = response.text
-        
+
         // Send the complete response to streaming delegate
         await streamingDelegate.onChunk(fullContent)
-        
+
         let endTime = Date()
         let executionTime = endTime.timeIntervalSince(startTime)
-        
+
         // Create result
         return AgentExecutionResult(
             content: fullContent,
@@ -763,48 +883,59 @@ extension PeekabooAgentService {
                 toolCallCount: response.steps.reduce(0) { $0 + $1.toolCalls.count },
                 modelName: model.description,
                 startTime: startTime,
-                endTime: endTime
-            )
-        )
+                endTime: endTime))
     }
-    
+
     /// Execute task using direct generateText calls without streaming
     private func executeWithoutStreaming(
         _ task: String,
-        model: LanguageModel
-    ) async throws -> AgentExecutionResult {
+        model: LanguageModel,
+        maxSteps: Int = 20) async throws -> AgentExecutionResult
+    {
         let startTime = Date()
         let sessionId = UUID().uuidString
-        
+
         // Create conversation with the task
-        let conversation = ConversationBuilder()
-            .system(AgentSystemPrompt.generate())
-            .user(task)
-            .build()
-        
+        let messages = [
+            ModelMessage.system(AgentSystemPrompt.generate()),
+            ModelMessage.user(task)
+        ]
+
         // Create tools for the model (convert to SimpleTool format)
         let tools = self.createSimpleTools()
-        
-        print("DEBUG: Passing \(tools.count) tools to generateText (non-streaming)")
-        for tool in tools {
-            print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) parameters")
+
+        // Only log tool debug info in verbose mode
+        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+            ProcessInfo.processInfo.arguments.contains("-v")
+        {
+            print("DEBUG: Passing \(tools.count) tools to generateText (non-streaming)")
+            for tool in tools {
+                print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) parameters")
+            }
         }
-        
+
+        // Debug: Log which model is being used
+        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+            ProcessInfo.processInfo.arguments.contains("-v")
+        {
+            print("DEBUG PeekabooAgentService: Using model: \(model)")
+            print("DEBUG PeekabooAgentService: Model description: \(model.description)")
+        }
+
         // Generate the response
         let response = try await generateText(
             model: model,
-            messages: conversation.messages,
+            messages: messages,
             tools: tools.isEmpty ? nil : tools,
-            maxSteps: 3  // Allow multiple steps for tool execution and response
-        )
-        
+            maxSteps: maxSteps)
+
         let endTime = Date()
         let executionTime = endTime.timeIntervalSince(startTime)
-        
+
         // Create result
         return AgentExecutionResult(
             content: response.text,
-            messages: conversation.messages + [ModelMessage.assistant(response.text)],
+            messages: messages + [ModelMessage.assistant(response.text)],
             sessionId: sessionId,
             usage: nil, // Usage info not available from generateText yet
             metadata: AgentMetadata(
@@ -812,8 +943,6 @@ extension PeekabooAgentService {
                 toolCallCount: 0,
                 modelName: model.description,
                 startTime: startTime,
-                endTime: endTime
-            )
-        )
+                endTime: endTime))
     }
 }

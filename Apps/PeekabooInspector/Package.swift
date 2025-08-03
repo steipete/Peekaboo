@@ -7,8 +7,7 @@ let package = Package(
     products: [
         .executable(
             name: "PeekabooInspector",
-            targets: ["PeekabooInspector"]
-        ),
+            targets: ["PeekabooInspector"]),
     ],
     dependencies: [
         .package(path: "../../Core/AXorcist"),
@@ -29,8 +28,6 @@ let package = Package(
                 .process("AppIcon.icon"),
             ],
             swiftSettings: [
-                .swiftLanguageMode(.v6)
-            ]
-        ),
-    ]
-)
+                .swiftLanguageMode(.v6),
+            ]),
+    ])

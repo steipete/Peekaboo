@@ -1,12 +1,12 @@
 import AppKit
-import SwiftUI
 import PeekabooUICore
+import SwiftUI
 
 @main
 struct PeekabooInspectorApp: App {
     @StateObject private var overlayManager = OverlayManager()
     @MainActor private let overlayWindowController: OverlayWindowController
-    
+
     @MainActor
     init() {
         let manager = OverlayManager()
@@ -17,16 +17,16 @@ struct PeekabooInspectorApp: App {
     var body: some Scene {
         WindowGroup("Peekaboo Inspector") {
             InspectorView()
-                .environmentObject(overlayManager)
+                .environmentObject(self.overlayManager)
                 .onAppear {
-                    overlayWindowController.startMonitoringScreenChanges()
+                    self.overlayWindowController.startMonitoringScreenChanges()
                 }
                 .onDisappear {
-                    overlayWindowController.stopMonitoringScreenChanges()
-                    overlayWindowController.removeOverlays()
+                    self.overlayWindowController.stopMonitoringScreenChanges()
+                    self.overlayWindowController.removeOverlays()
                 }
-                .onChange(of: overlayManager.isOverlayActive) { _, _ in
-                    overlayWindowController.updateVisibility()
+                .onChange(of: self.overlayManager.isOverlayActive) { _, _ in
+                    self.overlayWindowController.updateVisibility()
                 }
         }
         .windowStyle(.hiddenTitleBar)

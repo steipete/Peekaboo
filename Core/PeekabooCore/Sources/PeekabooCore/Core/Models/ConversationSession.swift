@@ -9,7 +9,7 @@ public struct AudioContent: Codable, Sendable {
     public let duration: TimeInterval?
     public let transcript: String?
     public let format: String?
-    
+
     public init(
         data: Data? = nil,
         duration: TimeInterval? = nil,

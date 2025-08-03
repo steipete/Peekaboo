@@ -32,16 +32,16 @@ struct MenuBarStatusView: View {
                 .frame(maxHeight: 500)
 
             Divider()
-            
+
             // Always show input area and action buttons for consistent experience
             VStack(spacing: 0) {
                 // Input area (always visible)
                 self.inputAreaView
                     .padding(10)
                     .background(.regularMaterial)
-                
+
                 Divider()
-                
+
                 // Action buttons (always visible)
                 self.actionButtonsView
                     .padding()
@@ -57,7 +57,7 @@ struct MenuBarStatusView: View {
                 self.hasAppeared = true
                 self.refreshTrigger = UUID()
                 // Focus the input field when idle
-                if self.sessionStore.currentSession == nil && !self.agent.isProcessing {
+                if self.sessionStore.currentSession == nil, !self.agent.isProcessing {
                     self.isInputFocused = true
                 }
             }
@@ -167,13 +167,13 @@ struct MenuBarStatusView: View {
     }
 
     // MARK: - Unified Content View
-    
+
     private var unifiedContentView: some View {
         Group {
-            if sessionStore.currentSession != nil {
+            if self.sessionStore.currentSession != nil {
                 // Show unified activity feed for current session
                 UnifiedActivityFeed()
-            } else if !sessionStore.sessions.isEmpty {
+            } else if !self.sessionStore.sessions.isEmpty {
                 // Show recent sessions when no active session
                 self.recentSessionsView
             } else {
@@ -182,18 +182,18 @@ struct MenuBarStatusView: View {
             }
         }
     }
-    
+
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "moon.stars")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
                 .symbolEffect(.pulse.byLayer, options: .repeating.speed(0.5))
-            
+
             Text("Welcome to Peekaboo")
                 .font(.title3)
                 .fontWeight(.medium)
-            
+
             Text("Ask me to help you with automation tasks")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -201,9 +201,9 @@ struct MenuBarStatusView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
     }
-    
+
     // MARK: - Input Area View
-    
+
     private var inputAreaView: some View {
         HStack(spacing: 8) {
             if self.isVoiceMode {
@@ -238,7 +238,6 @@ struct MenuBarStatusView: View {
         }
     }
 
-
     private func submitInput() {
         let text = self.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
@@ -268,7 +267,6 @@ struct MenuBarStatusView: View {
         }
     }
 
-
     private func submitFollowUp() {
         let text = self.inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
@@ -292,7 +290,6 @@ struct MenuBarStatusView: View {
         }
     }
 
-
     @ViewBuilder
     private var recentSessionsView: some View {
         ScrollView {
@@ -314,13 +311,13 @@ struct MenuBarStatusView: View {
                             // Don't open main window - keep the popover experience
                         }
                 }
-                
-                if sessionStore.sessions.isEmpty {
+
+                if self.sessionStore.sessions.isEmpty {
                     VStack(spacing: 12) {
                         Text("No recent sessions")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        
+
                         Text("Start by asking me something")
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -342,13 +339,13 @@ struct MenuBarStatusView: View {
                     .font(.system(size: 36))
                     .foregroundColor(.secondary)
                     .symbolEffect(.pulse.byLayer, options: .repeating.speed(0.5))
-                
+
                 Text("Ask Peekaboo")
                     .font(.headline)
                     .foregroundColor(.primary)
             }
             .padding(.top)
-            
+
             // Input field - always visible
             HStack(spacing: 8) {
                 if self.isVoiceMode {
@@ -356,7 +353,7 @@ struct MenuBarStatusView: View {
                         .foregroundColor(.red)
                         .font(.caption)
                 }
-                
+
                 TextField("What would you like me to do?", text: self.$inputText)
                     .textFieldStyle(.plain)
                     .font(.body)
@@ -364,7 +361,7 @@ struct MenuBarStatusView: View {
                     .onSubmit {
                         self.submitInput()
                     }
-                
+
                 Button(action: self.submitInput) {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.title2)
@@ -376,18 +373,18 @@ struct MenuBarStatusView: View {
             .background(Color(NSColor.controlBackgroundColor))
             .cornerRadius(8)
             .padding(.horizontal)
-            
+
             // Recent sessions if any
             if !self.sessionStore.sessions.isEmpty {
                 Divider()
                     .padding(.horizontal)
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Recent Sessions")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .padding(.horizontal)
-                    
+
                     ScrollView {
                         VStack(spacing: 2) {
                             ForEach(self.sessionStore.sessions.prefix(3)) { session in
@@ -396,9 +393,9 @@ struct MenuBarStatusView: View {
                                         .font(.caption)
                                         .lineLimit(1)
                                         .foregroundColor(.primary)
-                                    
+
                                     Spacer()
-                                    
+
                                     Text(formatSessionDuration(session))
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
@@ -418,7 +415,7 @@ struct MenuBarStatusView: View {
                     .frame(maxHeight: 100)
                 }
             }
-            
+
             Spacer(minLength: 0)
         }
     }
@@ -449,7 +446,7 @@ struct MenuBarStatusView: View {
                 .controlSize(.small)
                 .buttonStyle(.bordered)
             }
-            
+
             Button(action: self.openMainWindow) {
                 Label("Expand", systemImage: "arrow.up.left.and.arrow.down.right")
                     .font(.caption)
@@ -762,4 +759,3 @@ private func formatSessionDuration(_ session: ConversationSession) -> String {
 
     return formatter.string(from: duration) ?? "0s"
 }
-

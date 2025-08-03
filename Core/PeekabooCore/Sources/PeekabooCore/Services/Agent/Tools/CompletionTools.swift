@@ -15,11 +15,9 @@ public enum CompletionTools {
                 properties: [
                     "summary": ToolParameterProperty(
                         type: .string,
-                        description: "Summary of what was accomplished"
-                    )
+                        description: "Summary of what was accomplished"),
                 ],
-                required: ["summary"]
-            ),
+                required: ["summary"]),
             execute: { args in
                 let summary = try args.getString("summary")
                 return .string("✅ Task completed: \(summary)")
@@ -35,15 +33,12 @@ public enum CompletionTools {
                 properties: [
                     "question": ToolParameterProperty(
                         type: .string,
-                        description: "The question to ask the user"
-                    ),
+                        description: "The question to ask the user"),
                     "context": ToolParameterProperty(
                         type: .string,
-                        description: "Additional context for the question"
-                    )
+                        description: "Additional context for the question"),
                 ],
-                required: ["question"]
-            ),
+                required: ["question"]),
             execute: { args in
                 let question = try args.getString("question")
                 let context = args.getStringOptional("context")

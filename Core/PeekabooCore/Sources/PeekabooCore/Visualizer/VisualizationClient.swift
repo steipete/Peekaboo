@@ -372,11 +372,11 @@ public final class VisualizationClient {
                 continuation.resume(returning: success)
             }
         }
-        
+
         if success {
             NotificationCenter.default.post(name: .visualizerSettingsChanged, object: settings)
         }
-        
+
         return success
     }
 

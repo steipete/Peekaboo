@@ -127,20 +127,18 @@ private struct SessionToolCallView: View {
         .background(Color.secondary.opacity(0.1))
         .cornerRadius(4)
     }
-    
+
     private var toolSummary: String {
         // Use ToolFormatter to get a human-readable summary
         ToolFormatter.compactToolSummary(
             toolName: self.toolCall.name,
-            arguments: self.toolCall.arguments
-        )
+            arguments: self.toolCall.arguments)
     }
-    
+
     private var resultSummary: String? {
         // Use ToolFormatter to extract meaningful result information
         ToolFormatter.toolResultSummary(
             toolName: self.toolCall.name,
-            result: self.toolCall.result
-        )
+            result: self.toolCall.result)
     }
 }

@@ -233,12 +233,16 @@ struct MCPToolErrorHandlingTests {
     func malformedCoordinates() async throws {
         let tool = ClickTool()
 
-        let args = ToolArguments(raw: ["target": "not-a-coordinate"])
+        let args = ToolArguments(raw: ["coords": "not-a-coordinate"])
 
         let response = try await tool.execute(arguments: args)
 
-        // Should handle gracefully - either parse as element or error
-        // The actual behavior depends on ClickTool implementation
+        // Should return an error for malformed coordinates
+        #expect(response.isError == true)
+
+        if case let .text(error) = response.content.first {
+            #expect(error.contains("Invalid coordinates format") || error.contains("coordinates"))
+        }
     }
 }
 

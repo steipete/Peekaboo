@@ -15,39 +15,33 @@ extension UnifiedToolDefinition {
                 continue
             }
 
-            let property: ToolParameterProperty = switch param.type {
+            let property = switch param.type {
             case .string:
                 ToolParameterProperty(
                     type: .string,
                     description: param.description,
-                    enumValues: param.options
-                )
+                    enumValues: param.options)
             case .integer:
                 ToolParameterProperty(
                     type: .integer,
-                    description: param.description
-                )
+                    description: param.description)
             case .boolean:
                 ToolParameterProperty(
                     type: .boolean,
-                    description: param.description
-                )
+                    description: param.description)
             case .enumeration:
                 ToolParameterProperty(
                     type: .string,
                     description: param.description,
-                    enumValues: param.options ?? []
-                )
+                    enumValues: param.options ?? [])
             case .object:
                 ToolParameterProperty(
                     type: .object,
-                    description: param.description
-                )
+                    description: param.description)
             case .array:
                 ToolParameterProperty(
                     type: .array,
-                    description: param.description
-                )
+                    description: param.description)
             }
 
             // Map CLI parameter names to agent parameter names

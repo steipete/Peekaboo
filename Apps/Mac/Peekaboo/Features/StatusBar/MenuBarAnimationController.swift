@@ -188,16 +188,16 @@ final class MenuBarAnimationController: ObservableObject {
 
             // Apply transformations for floating animation
             context.saveGState()
-            
+
             // Move to center for scaling
             context.translateBy(x: rect.midX, y: rect.midY)
-            
+
             // Apply scale
             context.scaleBy(x: scale, y: scale)
-            
+
             // Apply position offsets
             context.translateBy(x: CGFloat(horizontalOffset), y: CGFloat(verticalOffset))
-            
+
             // Move back from center
             context.translateBy(x: -rect.midX, y: -rect.midY)
 
@@ -210,15 +210,14 @@ final class MenuBarAnimationController: ObservableObject {
                 let iconSize = menuIcon.size
                 let scale = min(rect.width / iconSize.width, rect.height / iconSize.height)
                 let scaledSize = NSSize(width: iconSize.width * scale, height: iconSize.height * scale)
-                
+
                 // Center the icon in the rect
                 let drawRect = NSRect(
                     x: rect.midX - scaledSize.width / 2,
                     y: rect.midY - scaledSize.height / 2,
                     width: scaledSize.width,
-                    height: scaledSize.height
-                )
-                
+                    height: scaledSize.height)
+
                 menuIcon.draw(in: drawRect)
             } else {
                 // Fallback: draw a simple circle if MenuIcon fails to load

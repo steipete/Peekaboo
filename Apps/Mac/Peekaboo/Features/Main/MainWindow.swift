@@ -21,12 +21,11 @@ struct MainWindow: View {
         case text
         case voice
     }
-    
+
     private var showErrorAlert: Binding<Bool> {
         Binding(
             get: { self.errorMessage != nil },
-            set: { if !$0 { self.errorMessage = nil } }
-        )
+            set: { if !$0 { self.errorMessage = nil } })
     }
 
     var body: some View {
@@ -147,9 +146,10 @@ struct MainWindow: View {
                                     .id(message.id)
                                     .transition(.asymmetric(
                                         insertion: .push(from: .bottom).combined(with: .opacity),
-                                        removal: .opacity
-                                    ))
-                                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: session.messages.count)
+                                        removal: .opacity))
+                                    .animation(
+                                        .spring(response: 0.3, dampingFraction: 0.8),
+                                        value: session.messages.count)
                             }
                         } else {
                             self.emptyStateView
@@ -254,7 +254,7 @@ struct MainWindow: View {
                 Text("Recognition:")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 Menu {
                     ForEach(RecognitionMode.allCases, id: \.self) { mode in
                         Button {
@@ -281,7 +281,7 @@ struct MainWindow: View {
                 .menuStyle(.borderlessButton)
                 .help(self.speechRecognizer.recognitionMode.description)
             }
-            
+
             if self.speechRecognizer.isListening {
                 // Listening state
                 HStack(spacing: 8) {
@@ -305,7 +305,7 @@ struct MainWindow: View {
                     .padding(.horizontal)
                     .frame(minHeight: 40)
             }
-            
+
             // Show error if present
             if let error = speechRecognizer.error {
                 Text(error.localizedDescription)
@@ -354,7 +354,7 @@ struct MainWindow: View {
             self.inputText = ""
         }
     }
-    
+
     private func submitAudioInput(audioData: Data, duration: TimeInterval, transcript: String? = nil) {
         Task {
             self.isProcessing = true
@@ -371,9 +371,8 @@ struct MainWindow: View {
                     audioData: audioData,
                     duration: duration,
                     mimeType: "audio/wav",
-                    transcript: transcript
-                )
-                
+                    transcript: transcript)
+
                 self.errorMessage = nil
             } catch {
                 self.errorMessage = error.localizedDescription
@@ -418,18 +417,18 @@ struct MainWindow: View {
                     self.inputText = transcript
                     self.submitInput()
                 }
-                
+
             case .direct:
                 // For direct mode, we'll submit the audio data
                 if let audioData = self.speechRecognizer.recordedAudioData,
-                   let duration = self.speechRecognizer.recordedAudioDuration {
+                   let duration = self.speechRecognizer.recordedAudioDuration
+                {
                     // Submit as audio message with transcript if available
                     let transcript = self.speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
                     self.submitAudioInput(
-                        audioData: audioData, 
-                        duration: duration, 
-                        transcript: transcript.isEmpty ? nil : transcript
-                    )
+                        audioData: audioData,
+                        duration: duration,
+                        transcript: transcript.isEmpty ? nil : transcript)
                 }
             }
         } else {
@@ -437,7 +436,7 @@ struct MainWindow: View {
             Task {
                 do {
                     try self.speechRecognizer.startListening()
-                    
+
                     // Monitor for errors during recording
                     if let error = self.speechRecognizer.error {
                         self.errorMessage = error.localizedDescription
@@ -492,11 +491,11 @@ struct MessageRow: View {
 
             Spacer()
         }
-        .scaleEffect(appeared ? 1 : 0.8)
-        .opacity(appeared ? 1 : 0)
+        .scaleEffect(self.appeared ? 1 : 0.8)
+        .opacity(self.appeared ? 1 : 0)
         .onAppear {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                appeared = true
+                self.appeared = true
             }
         }
     }
@@ -612,28 +611,26 @@ struct MainWindowToolCallView: View {
         .padding(.vertical, 4)
         .background(Color.secondary.opacity(0.1))
         .cornerRadius(4)
-        .scaleEffect(appeared ? 1 : 0.8)
-        .opacity(appeared ? 1 : 0)
+        .scaleEffect(self.appeared ? 1 : 0.8)
+        .opacity(self.appeared ? 1 : 0)
         .onAppear {
             withAnimation(.spring(response: 0.25, dampingFraction: 0.8).delay(0.1)) {
-                appeared = true
+                self.appeared = true
             }
         }
     }
-    
+
     private var toolSummary: String {
         // Use ToolFormatter to get a human-readable summary
         ToolFormatter.compactToolSummary(
             toolName: self.toolCall.name,
-            arguments: self.toolCall.arguments
-        )
+            arguments: self.toolCall.arguments)
     }
-    
+
     private var resultSummary: String? {
         // Use ToolFormatter to extract meaningful result information
         ToolFormatter.toolResultSummary(
             toolName: self.toolCall.name,
-            result: self.toolCall.result
-        )
+            result: self.toolCall.result)
     }
 }

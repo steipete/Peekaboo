@@ -20,7 +20,7 @@ public struct AppTool: MCPTool {
         - hide: Hide an application
         - unhide: Show a hidden application
 
-        Target applications by name (e.g., "Safari"), bundle ID (e.g., "com.apple.Safari"), 
+        Target applications by name (e.g., "Safari"), bundle ID (e.g., "com.apple.Safari"),
         or process ID (e.g., "PID:663"). Fuzzy matching is supported for application names.
 
         Examples:

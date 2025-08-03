@@ -630,40 +630,40 @@ extension PeekabooAgentService {
     }
 
     /*
-    /// Create the list spaces tool
-    func createListSpacesTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "list_spaces",
-            description: "List all macOS Spaces (virtual desktops)",
-            parameters: ToolParameters(
-                properties: [:],
-                required: []),
-            execute: { _, context in
-                let spaceService = SpaceManagementService()
-                let spaces = await spaceService.getAllSpaces()
+     /// Create the list spaces tool
+     func createListSpacesTool() -> Tool<PeekabooServices> {
+     createTool(
+     name: "list_spaces",
+     description: "List all macOS Spaces (virtual desktops)",
+     parameters: ToolParameters(
+     properties: [:],
+     required: []),
+     execute: { _, context in
+     let spaceService = SpaceManagementService()
+     let spaces = await spaceService.getAllSpaces()
 
-                if spaces.isEmpty {
-                    return ToolOutput.success("No Spaces found")
-                }
+     if spaces.isEmpty {
+     return ToolOutput.success("No Spaces found")
+     }
 
-                var output = "Found \(spaces.count) Space(s):\n\n"
+     var output = "Found \(spaces.count) Space(s):\n\n"
 
-                for (index, space) in spaces.enumerated() {
-                    output += "Space \(index + 1):\n"
-                    output += "  • ID: \(space.id)\n"
-                    output += "  • Type: \(space.type.rawValue)\n"
-                    output += "  • Active: \(space.isActive ? "Yes" : "No")\n"
-                    if let displayID = space.displayID {
-                        output += "  • Display: \(displayID)\n"
-                    }
-                    output += "\n"
-                }
+     for (index, space) in spaces.enumerated() {
+     output += "Space \(index + 1):\n"
+     output += "  • ID: \(space.id)\n"
+     output += "  • Type: \(space.type.rawValue)\n"
+     output += "  • Active: \(space.isActive ? "Yes" : "No")\n"
+     if let displayID = space.displayID {
+     output += "  • Display: \(displayID)\n"
+     }
+     output += "\n"
+     }
 
-                return ToolOutput.success(
-                    output.trimmingCharacters(in: .whitespacesAndNewlines))
-            })
-    }
-    */
+     return ToolOutput.success(
+     output.trimmingCharacters(in: .whitespacesAndNewlines))
+     })
+     }
+     */
 
     /// Create the list screens tool
     func createListScreensTool() -> Tool<PeekabooServices> {
@@ -704,94 +704,95 @@ extension PeekabooAgentService {
     }
 
     // MARK: - Disabled Space Management Tools
+
     // These tools are temporarily disabled due to missing SpaceManagementService integration
-    
+
     /*
-    /// Create the switch space tool
-    func createSwitchSpaceTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "switch_space",
-            description: "Switch to a different macOS Space (virtual desktop)",
-            parameters: ToolParameters(
-                properties: [
-                    "space_number": ToolParameterProperty(
-                        type: .integer,
-                        description: "Space number to switch to (1-based)"),
-                ],
-                required: ["space_number"]),
-            execute: { params, context in
-                let spaceNumber = try params.intValue("space_number")
+     /// Create the switch space tool
+     func createSwitchSpaceTool() -> Tool<PeekabooServices> {
+     createTool(
+     name: "switch_space",
+     description: "Switch to a different macOS Space (virtual desktop)",
+     parameters: ToolParameters(
+     properties: [
+     "space_number": ToolParameterProperty(
+     type: .integer,
+     description: "Space number to switch to (1-based)"),
+     ],
+     required: ["space_number"]),
+     execute: { params, context in
+     let spaceNumber = try params.intValue("space_number")
 
-                // Get space info
-                let spaces = await context.spaces.listSpaces().data.spaces
+     // Get space info
+     let spaces = await context.spaces.listSpaces().data.spaces
 
-                guard spaceNumber > 0, spaceNumber <= spaces.count else {
-                    throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
-                }
+     guard spaceNumber > 0, spaceNumber <= spaces.count else {
+     throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
+     }
 
-                let targetSpace = spaces[spaceNumber - 1]
-                let spaceId = targetSpace.id
+     let targetSpace = spaces[spaceNumber - 1]
+     let spaceId = targetSpace.id
 
-                // Switch to space
-                try await context.spaces.switchToSpace(index: spaceNumber - 1)
+     // Switch to space
+     try await context.spaces.switchToSpace(index: spaceNumber - 1)
 
-                // Give it time to switch
-                try? await Task.sleep(nanoseconds: 500_000_000)
+     // Give it time to switch
+     try? await Task.sleep(nanoseconds: 500_000_000)
 
-                return ToolOutput.success(
-                    "Switched to Space \(spaceNumber)")
-            })
-    }
+     return ToolOutput.success(
+     "Switched to Space \(spaceNumber)")
+     })
+     }
 
-    /// Create the move window to space tool
-    func createMoveWindowToSpaceTool() -> Tool<PeekabooServices> {
-        createTool(
-            name: "move_window_to_space",
-            description: "Move a window to a different macOS Space (virtual desktop)",
-            parameters: ToolParameters(
-                properties: [
-                    "window_id": ToolParameterProperty(
-                        type: .integer,
-                        description: "Window ID to move"),
-                    "space_number": ToolParameterProperty(
-                        type: .integer,
-                        description: "Target space number (1-based)"),
-                    "bring_to_current": ToolParameterProperty(
-                        type: .boolean,
-                        description: "Move window to current space instead"),
-                ],
-                required: []),
-            execute: { params, context in
-                let windowId = params.intValue("window_id", default: nil)
-                let spaceNumber = params.intValue("space_number", default: nil)
-                let bringToCurrent = params.boolValue("bring_to_current", default: false)
+     /// Create the move window to space tool
+     func createMoveWindowToSpaceTool() -> Tool<PeekabooServices> {
+     createTool(
+     name: "move_window_to_space",
+     description: "Move a window to a different macOS Space (virtual desktop)",
+     parameters: ToolParameters(
+     properties: [
+     "window_id": ToolParameterProperty(
+     type: .integer,
+     description: "Window ID to move"),
+     "space_number": ToolParameterProperty(
+     type: .integer,
+     description: "Target space number (1-based)"),
+     "bring_to_current": ToolParameterProperty(
+     type: .boolean,
+     description: "Move window to current space instead"),
+     ],
+     required: []),
+     execute: { params, context in
+     let windowId = params.intValue("window_id", default: nil)
+     let spaceNumber = params.intValue("space_number", default: nil)
+     let bringToCurrent = params.boolValue("bring_to_current", default: false)
 
-                guard let windowId else {
-                    throw PeekabooError.invalidInput("window_id is required")
-                }
+     guard let windowId else {
+     throw PeekabooError.invalidInput("window_id is required")
+     }
 
-                if bringToCurrent {
-                    // Move window to current space using the context service
-                    try await context.spaces.moveWindowToCurrentSpace(windowId: windowId)
-                    return ToolOutput.success("Moved window to current Space")
-                } else {
-                    guard let spaceNumber else {
-                        throw PeekabooError.invalidInput("Either space_number or bring_to_current must be specified")
-                    }
+     if bringToCurrent {
+     // Move window to current space using the context service
+     try await context.spaces.moveWindowToCurrentSpace(windowId: windowId)
+     return ToolOutput.success("Moved window to current Space")
+     } else {
+     guard let spaceNumber else {
+     throw PeekabooError.invalidInput("Either space_number or bring_to_current must be specified")
+     }
 
-                    let spaces = await context.spaces.listSpaces().data.spaces
-                    guard spaceNumber > 0, spaceNumber <= spaces.count else {
-                        throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
-                    }
+     let spaces = await context.spaces.listSpaces().data.spaces
+     guard spaceNumber > 0, spaceNumber <= spaces.count else {
+     throw PeekabooError.invalidInput("Invalid space number. Available spaces: 1-\(spaces.count)")
+     }
 
-                    // Move window to specific space
-                    try await context.spaces.moveWindowToSpace(windowId: windowId, spaceIndex: spaceNumber - 1)
+     // Move window to specific space
+     try await context.spaces.moveWindowToSpace(windowId: windowId, spaceIndex: spaceNumber - 1)
 
-                    return ToolOutput.success("Moved window to Space \(spaceNumber)")
-                }
-            })
-    }
-    */
+     return ToolOutput.success("Moved window to Space \(spaceNumber)")
+     }
+     })
+     }
+     */
 }
 
 // MARK: - Main Thread Timeout Utility

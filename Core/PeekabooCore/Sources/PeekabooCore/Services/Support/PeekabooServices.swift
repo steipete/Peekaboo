@@ -560,41 +560,39 @@ extension PeekabooServices {
             actions: executedActions,
             initialScreenshot: captureResult.savedPath)
     }
-    
+
     // MARK: - Private Helper Methods
-    
+
     private func determineDefaultModelWithConflict(
         from providers: String,
         hasOpenAI: Bool,
         hasAnthropic: Bool,
         hasOllama: Bool,
         configuredDefault: String?,
-        isEnvironmentProvided: Bool
-    ) -> ModelDetermination {
+        isEnvironmentProvided: Bool) -> ModelDetermination
+    {
         let components = providers.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         let environmentModel = components.first?.split(separator: "/").last.map(String.init)
-        
+
         let hasConflict = isEnvironmentProvided && configuredDefault != nil && configuredDefault != environmentModel
-        
-        let model: String
-        if !providers.isEmpty {
-            model = environmentModel ?? "claude-opus-4-20250514"
+
+        let model: String = if !providers.isEmpty {
+            environmentModel ?? "claude-opus-4-20250514"
         } else if hasAnthropic {
-            model = "claude-opus-4-20250514"
+            "claude-opus-4-20250514"
         } else if hasOpenAI {
-            model = "gpt-4o"
+            "gpt-4o"
         } else if hasOllama {
-            model = "llama3.3"
+            "llama3.3"
         } else {
-            model = "claude-opus-4-20250514"
+            "claude-opus-4-20250514"
         }
-        
+
         return ModelDetermination(
             model: model,
             hasConflict: hasConflict,
             configModel: configuredDefault,
-            environmentModel: environmentModel
-        )
+            environmentModel: environmentModel)
     }
 }
 

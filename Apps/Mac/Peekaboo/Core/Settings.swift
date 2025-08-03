@@ -134,16 +134,16 @@ final class PeekabooSettings {
     var soundEffectsEnabled: Bool = true {
         didSet { self.save() }
     }
-    
+
     // MARK: - Visualizer Settings
-    
+
     var visualizerEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var visualizerAnimationSpeed: Double = 1.0 {
         didSet {
             let clamped = max(0.1, min(2.0, visualizerAnimationSpeed))
@@ -154,7 +154,7 @@ final class PeekabooSettings {
             }
         }
     }
-    
+
     var visualizerEffectIntensity: Double = 1.0 {
         didSet {
             let clamped = max(0.1, min(2.0, visualizerEffectIntensity))
@@ -165,21 +165,21 @@ final class PeekabooSettings {
             }
         }
     }
-    
+
     var visualizerSoundEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var visualizerKeyboardTheme: String = "modern" {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     // Individual animation toggles
     var screenshotFlashEnabled: Bool = true {
         didSet {
@@ -187,84 +187,84 @@ final class PeekabooSettings {
             self.updateConfigFile()
         }
     }
-    
+
     var clickAnimationEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var typeAnimationEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var scrollAnimationEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var mouseTrailEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var swipePathEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var hotkeyOverlayEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var appLifecycleEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var windowOperationEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var menuNavigationEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var dialogInteractionEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     var spaceTransitionEnabled: Bool = true {
         didSet {
             self.save()
             self.updateConfigFile()
         }
     }
-    
+
     // Easter eggs
     var ghostEasterEggEnabled: Bool = true {
         didSet {
@@ -272,7 +272,7 @@ final class PeekabooSettings {
             self.updateConfigFile()
         }
     }
-    
+
     var annotatedScreenshotEnabled: Bool = true {
         didSet {
             self.save()
@@ -283,9 +283,9 @@ final class PeekabooSettings {
     // Custom Providers
     @ObservationIgnored
     var customProviders: [String: Configuration.CustomProvider] {
-        configManager.listCustomProviders()
+        self.configManager.listCustomProviders()
     }
-    
+
     // Computed Properties
     var hasValidAPIKey: Bool {
         switch self.selectedProvider {
@@ -303,7 +303,7 @@ final class PeekabooSettings {
             return false
         }
     }
-    
+
     var allAvailableProviders: [String] {
         let builtIn = ["openai", "anthropic", "ollama"]
         let custom = Array(customProviders.keys)
@@ -375,44 +375,44 @@ final class PeekabooSettings {
             self.soundEffectsEnabled = true
             self.userDefaults.set(true, forKey: "\(self.keyPrefix)soundEffectsEnabledSet")
         }
-        
+
         // Load visualizer settings
         if self.userDefaults.object(forKey: "\(self.keyPrefix)visualizerEnabled") == nil {
             self.visualizerEnabled = true
         } else {
             self.visualizerEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)visualizerEnabled")
         }
-        
+
         self.visualizerAnimationSpeed = self.userDefaults.double(forKey: "\(self.keyPrefix)visualizerAnimationSpeed")
         if self.visualizerAnimationSpeed == 0 { self.visualizerAnimationSpeed = 1.0 }
-        
+
         self.visualizerEffectIntensity = self.userDefaults.double(forKey: "\(self.keyPrefix)visualizerEffectIntensity")
         if self.visualizerEffectIntensity == 0 { self.visualizerEffectIntensity = 1.0 }
-        
+
         if self.userDefaults.object(forKey: "\(self.keyPrefix)visualizerSoundEnabled") == nil {
             self.visualizerSoundEnabled = true
         } else {
             self.visualizerSoundEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)visualizerSoundEnabled")
         }
-        
+
         self.visualizerKeyboardTheme = self.userDefaults.string(forKey: "\(self.keyPrefix)visualizerKeyboardTheme") ?? "modern"
-        
+
         // Load individual animation toggles with defaults to true
         let animationKeys = [
             "screenshotFlashEnabled", "clickAnimationEnabled", "typeAnimationEnabled",
             "scrollAnimationEnabled", "mouseTrailEnabled", "swipePathEnabled",
             "hotkeyOverlayEnabled", "appLifecycleEnabled", "windowOperationEnabled",
             "menuNavigationEnabled", "dialogInteractionEnabled", "spaceTransitionEnabled",
-            "ghostEasterEggEnabled"
+            "ghostEasterEggEnabled",
         ]
-        
+
         for key in animationKeys {
             let fullKey = "\(self.keyPrefix)\(key)"
             if self.userDefaults.object(forKey: fullKey) == nil {
                 self.userDefaults.set(true, forKey: fullKey)
             }
         }
-        
+
         self.screenshotFlashEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)screenshotFlashEnabled")
         self.clickAnimationEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)clickAnimationEnabled")
         self.typeAnimationEnabled = self.userDefaults.bool(forKey: "\(self.keyPrefix)typeAnimationEnabled")
@@ -447,14 +447,14 @@ final class PeekabooSettings {
         self.userDefaults.set(self.voiceActivationEnabled, forKey: "\(self.keyPrefix)voiceActivationEnabled")
         self.userDefaults.set(self.hapticFeedbackEnabled, forKey: "\(self.keyPrefix)hapticFeedbackEnabled")
         self.userDefaults.set(self.soundEffectsEnabled, forKey: "\(self.keyPrefix)soundEffectsEnabled")
-        
+
         // Save visualizer settings
         self.userDefaults.set(self.visualizerEnabled, forKey: "\(self.keyPrefix)visualizerEnabled")
         self.userDefaults.set(self.visualizerAnimationSpeed, forKey: "\(self.keyPrefix)visualizerAnimationSpeed")
         self.userDefaults.set(self.visualizerEffectIntensity, forKey: "\(self.keyPrefix)visualizerEffectIntensity")
         self.userDefaults.set(self.visualizerSoundEnabled, forKey: "\(self.keyPrefix)visualizerSoundEnabled")
         self.userDefaults.set(self.visualizerKeyboardTheme, forKey: "\(self.keyPrefix)visualizerKeyboardTheme")
-        
+
         // Save individual animation toggles
         self.userDefaults.set(self.screenshotFlashEnabled, forKey: "\(self.keyPrefix)screenshotFlashEnabled")
         self.userDefaults.set(self.clickAnimationEnabled, forKey: "\(self.keyPrefix)clickAnimationEnabled")
@@ -650,32 +650,32 @@ final class PeekabooSettings {
             print("Failed to save API key to credentials: \(error)")
         }
     }
-    
+
     // MARK: - Custom Provider Management
-    
+
     func addCustomProvider(_ provider: Configuration.CustomProvider, id: String) throws {
-        try configManager.addCustomProvider(provider, id: id)
+        try self.configManager.addCustomProvider(provider, id: id)
         // UI updates automatically with @Observable
     }
-    
+
     func removeCustomProvider(id: String) throws {
-        try configManager.removeCustomProvider(id: id)
+        try self.configManager.removeCustomProvider(id: id)
         // If we were using this provider, switch to a built-in one
-        if selectedProvider == id {
-            selectedProvider = "anthropic"
+        if self.selectedProvider == id {
+            self.selectedProvider = "anthropic"
         }
         // UI updates automatically with @Observable
     }
-    
+
     func getCustomProvider(id: String) -> Configuration.CustomProvider? {
-        return configManager.getCustomProvider(id: id)
+        self.configManager.getCustomProvider(id: id)
     }
-    
+
     func testCustomProvider(id: String) async -> (success: Bool, error: String?) {
-        return await configManager.testCustomProvider(id: id)
+        await self.configManager.testCustomProvider(id: id)
     }
-    
+
     func discoverModelsForCustomProvider(id: String) async -> (models: [String], error: String?) {
-        return await configManager.discoverModelsForCustomProvider(id: id)
+        await self.configManager.discoverModelsForCustomProvider(id: id)
     }
 }

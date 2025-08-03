@@ -258,26 +258,26 @@ extension WindowIdentificationOptions {
 /*
  /// Base struct for commands that work with windows
  struct WindowCommandBase: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattable {
-     @Option(name: .shortAndLong, help: "Target application name or bundle ID")
-     var app: String?
+ @Option(name: .shortAndLong, help: "Target application name or bundle ID")
+ var app: String?
 
-     @Option(name: .short, help: "Window index (0-based)")
-     var windowIndex: Int?
+ @Option(name: .short, help: "Window index (0-based)")
+ var windowIndex: Int?
 
-     @Option(name: .long, help: "Window title (partial match)")
-     var windowTitle: String?
+ @Option(name: .long, help: "Window title (partial match)")
+ var windowTitle: String?
 
-     @Flag(name: .long, help: "Output in JSON format")
-     var jsonOutput = false
+ @Flag(name: .long, help: "Output in JSON format")
+ var jsonOutput = false
 
-     /// Get window identification options
-     var windowOptions: WindowIdentificationOptions {
-         WindowIdentificationOptions(
-             app: app,
-             windowTitle: windowTitle,
-             windowIndex: windowIndex
-         )
-     }
+ /// Get window identification options
+ var windowOptions: WindowIdentificationOptions {
+ WindowIdentificationOptions(
+ app: app,
+ windowTitle: windowTitle,
+ windowIndex: windowIndex
+ )
+ }
  }
  */
 

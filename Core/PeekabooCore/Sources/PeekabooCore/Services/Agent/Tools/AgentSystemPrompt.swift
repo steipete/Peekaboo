@@ -67,6 +67,13 @@ public struct AgentSystemPrompt {
         - If a window isn't responding, check if it's blocked by a dialog
         - Always provide specific error details to help users understand issues
 
+        **Tool Usage Guidelines:**
+        - **ALWAYS provide ALL required parameters** when calling tools
+        - For the 'calculate' tool: ALWAYS include the 'expression' parameter with the math expression
+        - Example: To calculate 1+1, call calculate with {"expression": "1+1"}
+        - Never call tools with missing required parameters
+        - Double-check that all tool calls include the necessary data
+
         **Efficiency Tips:**
         - Batch related actions together
         - Use keyboard shortcuts when faster than clicking

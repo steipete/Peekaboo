@@ -296,7 +296,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
 
     private func convertToAnthropicRequest(_ request: ModelRequest, stream: Bool) throws -> AnthropicRequest {
         var anthropicMessages: [AnthropicMessage] = []
-        var systemPrompt: String? = nil
+        var systemPrompt: String?
 
         // Convert messages
         for message in request.messages {

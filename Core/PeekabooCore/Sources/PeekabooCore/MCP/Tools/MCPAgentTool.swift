@@ -12,7 +12,7 @@ public struct MCPAgentTool: MCPTool {
     public var description: String {
         """
         Execute complex automation tasks using an AI agent powered by OpenAI's Assistants API.
-        The agent can understand natural language instructions and break them down into specific 
+        The agent can understand natural language instructions and break them down into specific
         Peekaboo commands to accomplish complex workflows.
 
         Capabilities:
@@ -267,7 +267,7 @@ private func parseModelString(_ modelString: String) -> LanguageModel {
         if modelString.contains("opus-4") {
             return .anthropic(.opus4)
         } else if modelString.contains("sonnet-4") {
-            return .anthropic(.sonnet4)  
+            return .anthropic(.sonnet4)
         } else if modelString.contains("haiku-3.5") {
             return .anthropic(.haiku3_5)
         } else if modelString.contains("sonnet-3.5") {
@@ -289,7 +289,7 @@ private func parseModelString(_ modelString: String) -> LanguageModel {
     } else if modelString.hasPrefix("llama") {
         return .ollama(.llama3_3)
     }
-    
+
     // Default to Anthropic Opus 4
     return .anthropic(.opus4)
 }

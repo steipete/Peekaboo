@@ -4,12 +4,12 @@
 //
 //  Simplified Inspector window for debugging
 
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct InspectorWindow: View {
     @Environment(Permissions.self) private var permissions
-        
+
     var body: some View {
         InspectorView()
             .frame(minWidth: 400, minHeight: 600)
@@ -23,19 +23,19 @@ struct InspectorWindow: View {
                 window.standardWindowButton(.closeButton)?.isEnabled = true
                 window.standardWindowButton(.miniaturizeButton)?.isEnabled = true
                 window.standardWindowButton(.zoomButton)?.isEnabled = true
-                
+
                 // CRITICAL: Accept mouse events for local monitor to work
                 window.ignoresMouseEvents = false
-                
+
                 // Set window identifier for debugging
                 window.identifier = NSUserInterfaceItemIdentifier("inspector")
-                
+
                 // Note: Don't call makeKeyAndOrderFront here as it forces the window to appear
                 // The window should only appear when explicitly opened via menu/shortcut
             }))
             .onAppear {
                 Task {
-                    await permissions.check()
+                    await self.permissions.check()
                 }
             }
     }
@@ -44,13 +44,13 @@ struct InspectorWindow: View {
 // Window accessor to configure NSWindow properties
 struct WindowAccessor: NSViewRepresentable {
     let windowAction: (NSWindow) -> Void
-    
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         // Don't try to access window here - it's not available yet
         return view
     }
-    
+
     func updateNSView(_ nsView: NSView, context: Context) {
         // Window is available here - configure it
         if let window = nsView.window {

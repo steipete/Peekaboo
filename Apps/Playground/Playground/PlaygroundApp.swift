@@ -83,7 +83,7 @@ struct PlaygroundApp: App {
         NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { event in
             let eventTypeStr: String
             var keyInfo = ""
-            
+
             switch event.type {
             case .keyDown:
                 eventTypeStr = "Key Down"
@@ -117,56 +117,56 @@ struct PlaygroundApp: App {
             default:
                 eventTypeStr = "Unknown"
             }
-            
+
             // Log with more detail for debugging
             let logMessage = "\(eventTypeStr): \(keyInfo) (keyCode: \(event.keyCode))"
             keyLogger.info("\(logMessage)")
-            
+
             // Also log to ActionLogger for UI display (only for keyDown events)
             if event.type == .keyDown {
                 ActionLogger.shared.log(.keyboard, "Key pressed: \(keyInfo)")
             }
-            
+
             return event
         }
     }
-    
+
     private func specialKeyName(for keyCode: UInt16) -> String {
         switch keyCode {
-        case 36: return "Return"
-        case 76: return "Enter"
-        case 48: return "Tab"
-        case 53: return "Escape"
-        case 49: return "Space"
-        case 51: return "Delete"
-        case 117: return "Forward Delete"
-        case 123: return "Left Arrow"
-        case 124: return "Right Arrow"
-        case 125: return "Down Arrow"
-        case 126: return "Up Arrow"
-        case 115: return "Home"
-        case 119: return "End"
-        case 116: return "Page Up"
-        case 121: return "Page Down"
-        case 122: return "F1"
-        case 120: return "F2"
-        case 99: return "F3"
-        case 118: return "F4"
-        case 96: return "F5"
-        case 97: return "F6"
-        case 98: return "F7"
-        case 100: return "F8"
-        case 101: return "F9"
-        case 109: return "F10"
-        case 103: return "F11"
-        case 111: return "F12"
-        case 105: return "F13"
-        case 107: return "F14"
-        case 113: return "F15"
-        case 57: return "Caps Lock"
-        case 114: return "Help"
-        case 71: return "Clear"
-        default: return ""
+        case 36: "Return"
+        case 76: "Enter"
+        case 48: "Tab"
+        case 53: "Escape"
+        case 49: "Space"
+        case 51: "Delete"
+        case 117: "Forward Delete"
+        case 123: "Left Arrow"
+        case 124: "Right Arrow"
+        case 125: "Down Arrow"
+        case 126: "Up Arrow"
+        case 115: "Home"
+        case 119: "End"
+        case 116: "Page Up"
+        case 121: "Page Down"
+        case 122: "F1"
+        case 120: "F2"
+        case 99: "F3"
+        case 118: "F4"
+        case 96: "F5"
+        case 97: "F6"
+        case 98: "F7"
+        case 100: "F8"
+        case 101: "F9"
+        case 109: "F10"
+        case 103: "F11"
+        case 111: "F12"
+        case 105: "F13"
+        case 107: "F14"
+        case 113: "F15"
+        case 57: "Caps Lock"
+        case 114: "Help"
+        case 71: "Clear"
+        default: ""
         }
     }
 

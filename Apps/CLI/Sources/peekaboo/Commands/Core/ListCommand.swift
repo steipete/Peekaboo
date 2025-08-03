@@ -31,7 +31,7 @@ struct ListCommand: AsyncParsableCommand {
 
         SUBCOMMANDS:
           apps          List all running applications with process IDs
-          windows       List windows for a specific application  
+          windows       List windows for a specific application
           permissions   Check permissions required for Peekaboo
           menubar       List all menu bar items (status icons)
           screens       List all available displays/monitors

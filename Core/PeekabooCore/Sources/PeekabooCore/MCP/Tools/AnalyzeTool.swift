@@ -13,14 +13,14 @@ public struct AnalyzeTool: MCPTool {
         """
         Analyzes a pre-existing image file from the local filesystem using a configured AI model.
 
-        This tool is useful when an image already exists (e.g., previously captured, downloaded, or generated) and you 
+        This tool is useful when an image already exists (e.g., previously captured, downloaded, or generated) and you
         need to understand its content, extract text, or answer specific questions about it.
 
         Capabilities:
-        - Image Understanding: Provide any question about the image (e.g., "What objects are in this picture?", 
+        - Image Understanding: Provide any question about the image (e.g., "What objects are in this picture?",
           "Describe the scene.", "Is there a red car?").
         - Text Extraction (OCR): Ask the AI to extract text from the image (e.g., "What text is visible in this screenshot?").
-        - Flexible AI Configuration: Can use server-default AI providers/models or specify a particular one per call 
+        - Flexible AI Configuration: Can use server-default AI providers/models or specify a particular one per call
           via 'provider_config'.
 
         Example:
@@ -111,8 +111,7 @@ public struct AnalyzeTool: MCPTool {
                 imagePath: expandedPath,
                 question: question,
                 modelName: modelName,
-                providerType: providerType
-            )
+                providerType: providerType)
 
             let duration = Date().timeIntervalSince(startTime)
             self.logger.info("Analysis completed in \(String(format: "%.2f", duration))s")
@@ -160,14 +159,19 @@ public struct AnalyzeTool: MCPTool {
         return ("claude-opus-4-20250514", "anthropic")
     }
 
-    private func analyzeImageWithAI(imagePath: String, question: String, modelName: String, providerType: String?) async throws -> String {
+    private func analyzeImageWithAI(
+        imagePath: String,
+        question: String,
+        modelName: String,
+        providerType: String?) async throws -> String
+    {
         // Load and encode the image
         guard let imageData = try? Data(contentsOf: URL(fileURLWithPath: imagePath)) else {
             throw PeekabooError.invalidInput("Could not load image from path: \(imagePath)")
         }
-        
+
         let base64Image = imageData.base64EncodedString()
-        
+
         // Create the model using the new API
         let languageModel: LanguageModel
         if let providerType {
@@ -185,25 +189,28 @@ public struct AnalyzeTool: MCPTool {
             }
         } else {
             // Try to parse the model name into a LanguageModel
-            languageModel = try parseModelName(modelName)
+            languageModel = try self.parseModelName(modelName)
         }
-        
+
         // Create the conversation with the image and question
         let imageContent = ModelMessage.ContentPart.ImageContent(data: base64Image, mimeType: "image/png")
-        let conversation = ConversationBuilder()
-            .user(text: question, images: [imageContent])
-            .build()
-        
-        // Use the ConversationContext's generateText method
-        let result = try await conversation.generateText(using: languageModel)
-        
+        let messages = [ModelMessage.user(text: question, images: [imageContent])]
+
+        // Use the global generateText function
+        let result = try await generateText(
+            model: languageModel,
+            messages: messages,
+            tools: nil,
+            settings: .default,
+            maxSteps: 1)
+
         return result.text
     }
-    
+
     /// Parse a model name string into a LanguageModel enum
     private func parseModelName(_ modelName: String) throws -> LanguageModel {
         let lowercased = modelName.lowercased()
-        
+
         // Claude models
         if lowercased.contains("claude") {
             if lowercased.contains("opus") {
@@ -216,7 +223,7 @@ public struct AnalyzeTool: MCPTool {
                 return .anthropic(.opus4) // Default Claude
             }
         }
-        
+
         // OpenAI models
         if lowercased.contains("gpt") || lowercased.contains("o3") || lowercased.contains("o4") {
             if lowercased.contains("o3") {
@@ -231,12 +238,12 @@ public struct AnalyzeTool: MCPTool {
                 return .openai(.gpt4o) // Default GPT
             }
         }
-        
+
         // Grok models
         if lowercased.contains("grok") {
             return .grok(.grok4)
         }
-        
+
         // Ollama models
         if lowercased.contains("llama") || lowercased.contains("llava") || lowercased.contains("mistral") {
             if lowercased.contains("llava") {
@@ -249,7 +256,7 @@ public struct AnalyzeTool: MCPTool {
                 return .ollama(.llama3_3) // Default Ollama
             }
         }
-        
+
         // Default fallback
         return .anthropic(.opus4)
     }

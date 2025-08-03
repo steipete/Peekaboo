@@ -45,7 +45,11 @@ import Foundation
     ///   - direction: Scroll direction ("up", "down", "left", "right")
     ///   - amount: Number of scroll units
     ///   - reply: Callback with success status
-    func showScrollFeedback(at point: CGPoint, direction: String, amount: Int, reply: @Sendable @escaping (Bool) -> Void)
+    func showScrollFeedback(
+        at point: CGPoint,
+        direction: String,
+        amount: Int,
+        reply: @Sendable @escaping (Bool) -> Void)
 
     // MARK: - Mouse Movement
 
@@ -144,7 +148,11 @@ import Foundation
     ///   - toSpace: Destination space index
     ///   - direction: Animation direction ("left", "right")
     ///   - reply: Callback with success status
-    func showSpaceSwitch(from fromSpace: Int, to toSpace: Int, direction: String, reply: @Sendable @escaping (Bool) -> Void)
+    func showSpaceSwitch(
+        from fromSpace: Int,
+        to toSpace: Int,
+        direction: String,
+        reply: @Sendable @escaping (Bool) -> Void)
 
     // MARK: - Element Detection
 
@@ -153,7 +161,10 @@ import Foundation
     ///   - elements: Dictionary of element IDs to their rectangles
     ///   - duration: Display duration
     ///   - reply: Callback with success status
-    func showElementDetection(elements: [String: CGRect], duration: TimeInterval, reply: @Sendable @escaping (Bool) -> Void)
+    func showElementDetection(
+        elements: [String: CGRect],
+        duration: TimeInterval,
+        reply: @Sendable @escaping (Bool) -> Void)
 
     /// Shows annotated screenshot with UI element overlays
     /// - Parameters:

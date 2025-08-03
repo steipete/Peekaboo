@@ -590,9 +590,9 @@ public final class ConfigurationManager: @unchecked Sendable {
     public func getSelectedProvider() -> String {
         // Extract provider from providers string (e.g., "anthropic/model" -> "anthropic")
         let providers = self.getAIProviders()
-        return parseFirstProvider(providers) ?? "anthropic"
+        return self.parseFirstProvider(providers) ?? "anthropic"
     }
-    
+
     private func parseFirstProvider(_ providers: String) -> String? {
         let components = providers.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         guard let firstProvider = components.first else { return nil }

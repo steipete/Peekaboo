@@ -15,7 +15,7 @@ public struct WindowTool: MCPTool {
         Actions:
         - close: Close a window
         - minimize: Minimize a window
-        - maximize: Maximize a window  
+        - maximize: Maximize a window
         - move: Move a window to specific coordinates (requires x, y)
         - resize: Resize a window to specific dimensions (requires width, height)
         - set-bounds: Set both position and size (requires x, y, width, height)

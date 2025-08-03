@@ -11,7 +11,7 @@ public struct SeeTool: MCPTool {
     public var description: String {
         """
         Captures a screenshot and analyzes UI elements for automation.
-        Returns UI element map with Peekaboo IDs (B1 for buttons, T1 for text fields, etc.) 
+        Returns UI element map with Peekaboo IDs (B1 for buttons, T1 for text fields, etc.)
         that can be used with interaction commands.
         Creates or updates a session for tracking UI state across multiple commands.
         Peekaboo MCP 3.0.0-beta.2 using anthropic/claude-opus-4-20250514, ollama/llava:latest

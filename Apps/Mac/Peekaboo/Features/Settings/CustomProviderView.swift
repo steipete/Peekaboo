@@ -1,5 +1,5 @@
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 /// Custom provider management view for adding, editing, and removing AI providers
 struct CustomProviderView: View {
@@ -10,34 +10,35 @@ struct CustomProviderView: View {
     @State private var showingDeleteConfirmation = false
     @State private var testResults: [String: (success: Bool, message: String)] = [:]
     @State private var isTestingConnection: Set<String> = []
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
             HStack {
                 Text("Custom Providers")
                     .font(.headline)
-                
+
                 Spacer()
-                
+
                 Button("Add Provider") {
-                    showingAddProvider = true
+                    self.showingAddProvider = true
                 }
                 .buttonStyle(.borderedProminent)
             }
-            
+
             // Provider list
-            if settings.customProviders.isEmpty {
+            if self.settings.customProviders.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "server.rack")
                         .font(.system(size: 40))
                         .foregroundColor(.secondary)
-                    
+
                     Text("No Custom Providers")
                         .font(.headline)
                         .foregroundColor(.secondary)
-                    
-                    Text("Add custom AI providers to connect to additional endpoints like OpenRouter, Groq, or self-hosted models.")
+
+                    Text(
+                        "Add custom AI providers to connect to additional endpoints like OpenRouter, Groq, or self-hosted models.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -47,75 +48,78 @@ struct CustomProviderView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 8) {
-                        ForEach(Array(settings.customProviders.sorted(by: { $0.key < $1.key })), id: \.key) { id, provider in
+                        ForEach(
+                            Array(self.settings.customProviders.sorted(by: { $0.key < $1.key })),
+                            id: \.key)
+                        { id, provider in
                             CustomProviderRowView(
                                 id: id,
                                 provider: provider,
-                                isSelected: settings.selectedProvider == id,
-                                testResult: testResults[id],
-                                isTesting: isTestingConnection.contains(id),
+                                isSelected: self.settings.selectedProvider == id,
+                                testResult: self.testResults[id],
+                                isTesting: self.isTestingConnection.contains(id),
                                 onSelect: {
-                                    settings.selectedProvider = id
+                                    self.settings.selectedProvider = id
                                 },
                                 onEdit: {
-                                    providerToEdit = IdentifiableCustomProvider((id, provider))
+                                    self.providerToEdit = IdentifiableCustomProvider((id, provider))
                                 },
                                 onDelete: {
-                                    selectedProviderId = id
-                                    showingDeleteConfirmation = true
+                                    self.selectedProviderId = id
+                                    self.showingDeleteConfirmation = true
                                 },
                                 onTest: {
-                                    testConnection(for: id)
-                                }
-                            )
+                                    self.testConnection(for: id)
+                                })
                         }
                     }
                 }
                 .frame(maxHeight: 200)
             }
         }
-        .sheet(isPresented: $showingAddProvider) {
+        .sheet(isPresented: self.$showingAddProvider) {
             AddCustomProviderView()
         }
-        .sheet(item: $providerToEdit) { editInfo in
+        .sheet(item: self.$providerToEdit) { editInfo in
             EditCustomProviderView(providerId: editInfo.id, provider: editInfo.provider)
         }
         .confirmationDialog(
             "Delete Provider",
-            isPresented: $showingDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
+            isPresented: self.$showingDeleteConfirmation,
+            titleVisibility: .visible)
+        {
             Button("Delete", role: .destructive) {
                 if let id = selectedProviderId {
-                    deleteProvider(id: id)
+                    self.deleteProvider(id: id)
                 }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             if let id = selectedProviderId,
-               let provider = settings.customProviders[id] {
+               let provider = settings.customProviders[id]
+            {
                 Text("Are you sure you want to delete '\(provider.name)'? This action cannot be undone.")
             }
         }
     }
-    
+
     private func testConnection(for id: String) {
-        isTestingConnection.insert(id)
-        testResults[id] = nil
-        
+        self.isTestingConnection.insert(id)
+        self.testResults[id] = nil
+
         Task {
             let (success, error) = await settings.testCustomProvider(id: id)
             await MainActor.run {
-                isTestingConnection.remove(id)
-                testResults[id] = (success, error ?? (success ? "Connection successful" : "Connection failed"))
+                self.isTestingConnection.remove(id)
+                self.testResults[id] = (success, error ?? (success ? "Connection successful" : "Connection failed"))
             }
         }
     }
-    
+
     private func deleteProvider(id: String) {
         do {
-            try settings.removeCustomProvider(id: id)
-            testResults.removeValue(forKey: id)
+            try self.settings.removeCustomProvider(id: id)
+            self.testResults.removeValue(forKey: id)
         } catch {
             // Show error alert
             print("Failed to delete provider: \(error)")
@@ -134,41 +138,41 @@ struct CustomProviderRowView: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onTest: () -> Void
-    
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(provider.name)
+                    Text(self.provider.name)
                         .font(.headline)
-                    
-                    if isSelected {
+
+                    if self.isSelected {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.accentColor)
                     }
-                    
+
                     Spacer()
-                    
+
                     // Provider type badge
-                    Text(provider.type.displayName)
+                    Text(self.provider.type.displayName)
                         .font(.caption)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Color.accentColor.opacity(0.2))
                         .cornerRadius(4)
                 }
-                
-                Text(provider.options.baseURL)
+
+                Text(self.provider.options.baseURL)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 if let description = provider.description {
                     Text(description)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
                 }
-                
+
                 // Test result
                 if let result = testResult {
                     HStack {
@@ -178,7 +182,7 @@ struct CustomProviderRowView: View {
                             .font(.caption)
                             .foregroundColor(result.success ? .green : .red)
                     }
-                } else if isTesting {
+                } else if self.isTesting {
                     HStack {
                         ProgressView()
                             .scaleEffect(0.5)
@@ -188,30 +192,30 @@ struct CustomProviderRowView: View {
                     }
                 }
             }
-            
+
             Spacer()
-            
+
             VStack(spacing: 4) {
                 Button("Select") {
-                    onSelect()
+                    self.onSelect()
                 }
                 .buttonStyle(.bordered)
-                .disabled(isSelected)
-                
+                .disabled(self.isSelected)
+
                 HStack(spacing: 4) {
                     Button("Test") {
-                        onTest()
+                        self.onTest()
                     }
                     .buttonStyle(.bordered)
-                    .disabled(isTesting)
-                    
+                    .disabled(self.isTesting)
+
                     Button("Edit") {
-                        onEdit()
+                        self.onEdit()
                     }
                     .buttonStyle(.bordered)
-                    
+
                     Button("Delete") {
-                        onDelete()
+                        self.onDelete()
                     }
                     .buttonStyle(.bordered)
                     .foregroundColor(.red)
@@ -228,7 +232,7 @@ struct CustomProviderRowView: View {
 struct AddCustomProviderView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(PeekabooSettings.self) private var settings
-    
+
     @State private var providerId = ""
     @State private var name = ""
     @State private var description = ""
@@ -238,7 +242,7 @@ struct AddCustomProviderView: View {
     @State private var headers = ""
     @State private var showingError = false
     @State private var errorMessage = ""
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -246,59 +250,59 @@ struct AddCustomProviderView: View {
                     HStack {
                         Text("Provider ID")
                             .frame(width: 100, alignment: .trailing)
-                        TextField("openrouter", text: $providerId)
+                        TextField("openrouter", text: self.$providerId)
                             .textFieldStyle(.roundedBorder)
                     }
-                    
+
                     HStack {
                         Text("Name")
                             .frame(width: 100, alignment: .trailing)
-                        TextField("OpenRouter", text: $name)
+                        TextField("OpenRouter", text: self.$name)
                             .textFieldStyle(.roundedBorder)
                     }
-                    
+
                     HStack {
                         Text("Description")
                             .frame(width: 100, alignment: .trailing)
-                        TextField("Access to 300+ models", text: $description)
+                        TextField("Access to 300+ models", text: self.$description)
                             .textFieldStyle(.roundedBorder)
                     }
                 }
-                
+
                 Section("Configuration") {
                     HStack {
                         Text("Type")
                             .frame(width: 100, alignment: .trailing)
-                        Picker("Type", selection: $type) {
+                        Picker("Type", selection: self.$type) {
                             ForEach(Configuration.CustomProvider.ProviderType.allCases, id: \.self) { providerType in
                                 Text(providerType.displayName).tag(providerType)
                             }
                         }
                         .pickerStyle(.segmented)
                     }
-                    
+
                     HStack {
                         Text("Base URL")
                             .frame(width: 100, alignment: .trailing)
-                        TextField("https://openrouter.ai/api/v1", text: $baseURL)
+                        TextField("https://openrouter.ai/api/v1", text: self.$baseURL)
                             .textFieldStyle(.roundedBorder)
                     }
-                    
+
                     HStack {
                         Text("API Key")
                             .frame(width: 100, alignment: .trailing)
-                        TextField("{env:OPENROUTER_API_KEY}", text: $apiKey)
+                        TextField("{env:OPENROUTER_API_KEY}", text: self.$apiKey)
                             .textFieldStyle(.roundedBorder)
                     }
-                    
+
                     HStack {
                         Text("Headers")
                             .frame(width: 100, alignment: .trailing)
-                        TextField("key:value,key:value", text: $headers)
+                        TextField("key:value,key:value", text: self.$headers)
                             .textFieldStyle(.roundedBorder)
                     }
                 }
-                
+
                 Section {
                     Text("Use environment variable references like {env:API_KEY} for secure credential management.")
                         .font(.caption)
@@ -310,36 +314,36 @@ struct AddCustomProviderView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        dismiss()
+                        self.dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        addProvider()
+                        self.addProvider()
                     }
-                    .disabled(!isValid)
+                    .disabled(!self.isValid)
                 }
             }
         }
         .frame(width: 500, height: 500)
-        .alert("Error", isPresented: $showingError) {
+        .alert("Error", isPresented: self.$showingError) {
             Button("OK") {}
         } message: {
-            Text(errorMessage)
+            Text(self.errorMessage)
         }
     }
-    
+
     private var isValid: Bool {
-        !providerId.isEmpty && !name.isEmpty && !baseURL.isEmpty && !apiKey.isEmpty
+        !self.providerId.isEmpty && !self.name.isEmpty && !self.baseURL.isEmpty && !self.apiKey.isEmpty
     }
-    
+
     private func addProvider() {
         // Parse headers
         var headerDict: [String: String]?
-        if !headers.isEmpty {
+        if !self.headers.isEmpty {
             headerDict = [:]
-            let pairs = headers.split(separator: ",")
+            let pairs = self.headers.split(separator: ",")
             for pair in pairs {
                 let components = pair.split(separator: ":", maxSplits: 1)
                 if components.count == 2 {
@@ -349,28 +353,26 @@ struct AddCustomProviderView: View {
                 }
             }
         }
-        
+
         let options = Configuration.ProviderOptions(
-            baseURL: baseURL,
-            apiKey: apiKey,
-            headers: headerDict
-        )
-        
+            baseURL: self.baseURL,
+            apiKey: self.apiKey,
+            headers: headerDict)
+
         let provider = Configuration.CustomProvider(
-            name: name,
-            description: description.isEmpty ? nil : description,
-            type: type,
+            name: self.name,
+            description: self.description.isEmpty ? nil : self.description,
+            type: self.type,
             options: options,
             models: nil,
-            enabled: true
-        )
-        
+            enabled: true)
+
         do {
-            try settings.addCustomProvider(provider, id: providerId)
-            dismiss()
+            try self.settings.addCustomProvider(provider, id: self.providerId)
+            self.dismiss()
         } catch {
-            errorMessage = error.localizedDescription
-            showingError = true
+            self.errorMessage = error.localizedDescription
+            self.showingError = true
         }
     }
 }
@@ -379,7 +381,7 @@ struct AddCustomProviderView: View {
 struct EditCustomProviderView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(PeekabooSettings.self) private var settings
-    
+
     let providerId: String
     @State private var name: String
     @State private var description: String
@@ -389,7 +391,7 @@ struct EditCustomProviderView: View {
     @State private var headers: String
     @State private var showingError = false
     @State private var errorMessage = ""
-    
+
     init(providerId: String, provider: Configuration.CustomProvider) {
         self.providerId = providerId
         self._name = State(initialValue: provider.name)
@@ -397,12 +399,12 @@ struct EditCustomProviderView: View {
         self._type = State(initialValue: provider.type)
         self._baseURL = State(initialValue: provider.options.baseURL)
         self._apiKey = State(initialValue: provider.options.apiKey)
-        
+
         // Convert headers back to string
         let headersString = provider.options.headers?.map { "\($0.key):\($0.value)" }.joined(separator: ",") ?? ""
         self._headers = State(initialValue: headersString)
     }
-    
+
     var body: some View {
         NavigationView {
             Form {
@@ -410,55 +412,55 @@ struct EditCustomProviderView: View {
                     HStack {
                         Text("Provider ID")
                             .frame(width: 100, alignment: .trailing)
-                        Text(providerId)
+                        Text(self.providerId)
                             .foregroundColor(.secondary)
                     }
-                    
+
                     HStack {
                         Text("Name")
                             .frame(width: 100, alignment: .trailing)
-                        TextField("OpenRouter", text: $name)
+                        TextField("OpenRouter", text: self.$name)
                             .textFieldStyle(.roundedBorder)
                     }
-                    
+
                     HStack {
                         Text("Description")
                             .frame(width: 100, alignment: .trailing)
-                        TextField("Access to 300+ models", text: $description)
+                        TextField("Access to 300+ models", text: self.$description)
                             .textFieldStyle(.roundedBorder)
                     }
                 }
-                
+
                 Section("Configuration") {
                     HStack {
                         Text("Type")
                             .frame(width: 100, alignment: .trailing)
-                        Picker("Type", selection: $type) {
+                        Picker("Type", selection: self.$type) {
                             ForEach(Configuration.CustomProvider.ProviderType.allCases, id: \.self) { providerType in
                                 Text(providerType.displayName).tag(providerType)
                             }
                         }
                         .pickerStyle(.segmented)
                     }
-                    
+
                     HStack {
                         Text("Base URL")
                             .frame(width: 100, alignment: .trailing)
-                        TextField("https://openrouter.ai/api/v1", text: $baseURL)
+                        TextField("https://openrouter.ai/api/v1", text: self.$baseURL)
                             .textFieldStyle(.roundedBorder)
                     }
-                    
+
                     HStack {
                         Text("API Key")
                             .frame(width: 100, alignment: .trailing)
-                        TextField("{env:OPENROUTER_API_KEY}", text: $apiKey)
+                        TextField("{env:OPENROUTER_API_KEY}", text: self.$apiKey)
                             .textFieldStyle(.roundedBorder)
                     }
-                    
+
                     HStack {
                         Text("Headers")
                             .frame(width: 100, alignment: .trailing)
-                        TextField("key:value,key:value", text: $headers)
+                        TextField("key:value,key:value", text: self.$headers)
                             .textFieldStyle(.roundedBorder)
                     }
                 }
@@ -468,36 +470,36 @@ struct EditCustomProviderView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        dismiss()
+                        self.dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        saveProvider()
+                        self.saveProvider()
                     }
-                    .disabled(!isValid)
+                    .disabled(!self.isValid)
                 }
             }
         }
         .frame(width: 500, height: 500)
-        .alert("Error", isPresented: $showingError) {
+        .alert("Error", isPresented: self.$showingError) {
             Button("OK") {}
         } message: {
-            Text(errorMessage)
+            Text(self.errorMessage)
         }
     }
-    
+
     private var isValid: Bool {
-        !name.isEmpty && !baseURL.isEmpty && !apiKey.isEmpty
+        !self.name.isEmpty && !self.baseURL.isEmpty && !self.apiKey.isEmpty
     }
-    
+
     private func saveProvider() {
         // Parse headers
         var headerDict: [String: String]?
-        if !headers.isEmpty {
+        if !self.headers.isEmpty {
             headerDict = [:]
-            let pairs = headers.split(separator: ",")
+            let pairs = self.headers.split(separator: ",")
             for pair in pairs {
                 let components = pair.split(separator: ":", maxSplits: 1)
                 if components.count == 2 {
@@ -507,30 +509,28 @@ struct EditCustomProviderView: View {
                 }
             }
         }
-        
+
         let options = Configuration.ProviderOptions(
-            baseURL: baseURL,
-            apiKey: apiKey,
-            headers: headerDict
-        )
-        
+            baseURL: self.baseURL,
+            apiKey: self.apiKey,
+            headers: headerDict)
+
         let provider = Configuration.CustomProvider(
-            name: name,
-            description: description.isEmpty ? nil : description,
-            type: type,
+            name: self.name,
+            description: self.description.isEmpty ? nil : self.description,
+            type: self.type,
             options: options,
             models: nil,
-            enabled: true
-        )
-        
+            enabled: true)
+
         do {
             // Remove old provider and add updated one
-            try settings.removeCustomProvider(id: providerId)
-            try settings.addCustomProvider(provider, id: providerId)
-            dismiss()
+            try self.settings.removeCustomProvider(id: self.providerId)
+            try self.settings.addCustomProvider(provider, id: self.providerId)
+            self.dismiss()
         } catch {
-            errorMessage = error.localizedDescription
-            showingError = true
+            self.errorMessage = error.localizedDescription
+            self.showingError = true
         }
     }
 }
@@ -539,7 +539,7 @@ struct EditCustomProviderView: View {
 struct IdentifiableCustomProvider: Identifiable {
     let id: String
     let provider: Configuration.CustomProvider
-    
+
     init(_ tuple: (String, Configuration.CustomProvider)) {
         self.id = tuple.0
         self.provider = tuple.1

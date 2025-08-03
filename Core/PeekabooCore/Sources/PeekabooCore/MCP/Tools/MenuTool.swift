@@ -15,7 +15,7 @@ public struct MenuTool: MCPTool {
         - click: Click on a specific menu item using path notation
         - click-extra: Click on a system menu extra (menu bar items)
 
-        Target applications by name (e.g., "Safari"), bundle ID (e.g., "com.apple.Safari"), 
+        Target applications by name (e.g., "Safari"), bundle ID (e.g., "com.apple.Safari"),
         or process ID (e.g., "PID:663"). Fuzzy matching is supported for application names.
 
         Examples:

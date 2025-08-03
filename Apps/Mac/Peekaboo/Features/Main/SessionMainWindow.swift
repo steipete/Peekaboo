@@ -8,18 +8,18 @@ import UniformTypeIdentifiers
 struct VisualEffectView: NSViewRepresentable {
     let material: NSVisualEffectView.Material
     let blendingMode: NSVisualEffectView.BlendingMode
-    
+
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
-        view.material = material
-        view.blendingMode = blendingMode
+        view.material = self.material
+        view.blendingMode = self.blendingMode
         view.state = .active
         return view
     }
-    
+
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = material
-        nsView.blendingMode = blendingMode
+        nsView.material = self.material
+        nsView.blendingMode = self.blendingMode
     }
 }
 
@@ -146,8 +146,7 @@ struct SessionSidebar: View {
                     .tag(session.id)
                     .transition(.asymmetric(
                         insertion: .slide.combined(with: .opacity),
-                        removal: .opacity
-                    ))
+                        removal: .opacity))
                     .animation(.spring(response: 0.3, dampingFraction: 0.8), value: self.filteredSessions.count)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
@@ -383,9 +382,10 @@ struct SessionChatView: View {
                                 .id(message.id)
                                 .transition(.asymmetric(
                                     insertion: .push(from: .bottom).combined(with: .opacity),
-                                    removal: .opacity
-                                ))
-                                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: self.session.messages.count)
+                                    removal: .opacity))
+                                .animation(
+                                    .spring(response: 0.3, dampingFraction: 0.8),
+                                    value: self.session.messages.count)
                         }
 
                         // Show progress indicator for active session
@@ -395,8 +395,7 @@ struct SessionChatView: View {
                                 .padding(.top, 8)
                                 .transition(.asymmetric(
                                     insertion: .push(from: .bottom).combined(with: .opacity),
-                                    removal: .opacity
-                                ))
+                                    removal: .opacity))
                                 .animation(.spring(response: 0.3, dampingFraction: 0.8), value: self.agent.isProcessing)
                         }
                     }
@@ -702,12 +701,12 @@ struct SessionChatHeader: View {
                     .foregroundColor(.secondary)
             }
             .padding()
-            .background(showDebugInfo ? Color.clear : Color(NSColor.windowBackgroundColor))
+            .background(self.showDebugInfo ? Color.clear : Color(NSColor.windowBackgroundColor))
 
             if self.showDebugInfo {
                 Divider()
                     .padding(.horizontal)
-                
+
                 SessionDebugInfo(session: self.session, isActive: self.isActive)
                     .padding(.horizontal)
                     .padding(.vertical, 8)
@@ -715,14 +714,13 @@ struct SessionChatHeader: View {
             }
         }
         .background(
-            showDebugInfo ?
-            // Extended white background with subtle material effect
-            ZStack {
-                Color(NSColor.windowBackgroundColor)
-                VisualEffectView(material: .headerView, blendingMode: .withinWindow)
-                    .opacity(0.5)
-            } : nil
-        )
+            self.showDebugInfo ?
+                // Extended white background with subtle material effect
+                ZStack {
+                    Color(NSColor.windowBackgroundColor)
+                    VisualEffectView(material: .headerView, blendingMode: .withinWindow)
+                        .opacity(0.5)
+                } : nil)
     }
 }
 
@@ -1034,11 +1032,11 @@ struct DetailedMessageRow: View {
         .padding()
         .background(self.backgroundForMessage)
         .cornerRadius(8)
-        .scaleEffect(appeared ? 1 : 0.95)
-        .opacity(appeared ? 1 : 0)
+        .scaleEffect(self.appeared ? 1 : 0.95)
+        .opacity(self.appeared ? 1 : 0)
         .onAppear {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                appeared = true
+                self.appeared = true
             }
         }
         .sheet(isPresented: self.$showingImageInspector) {
@@ -1346,16 +1344,16 @@ struct SessionDebugInfo: View {
                     Image(systemName: "number.square.fill")
                         .font(.caption)
                         .foregroundColor(.secondary.opacity(0.8))
-                    
+
                     Text(String(self.session.id.prefix(8)))
                         .font(.system(.caption, design: .monospaced))
                         .foregroundColor(.secondary)
                         .help(self.session.id) // Full ID on hover
                 }
-                
+
                 Divider()
                     .frame(height: 12)
-                
+
                 // Messages & Tools combined
                 HStack(spacing: 12) {
                     HStack(spacing: 4) {
@@ -1366,7 +1364,7 @@ struct SessionDebugInfo: View {
                             .font(.caption)
                             .fontWeight(.medium)
                     }
-                    
+
                     HStack(spacing: 4) {
                         Image(systemName: "wrench.and.screwdriver.fill")
                             .font(.caption)
@@ -1377,15 +1375,15 @@ struct SessionDebugInfo: View {
                     }
                 }
             }
-            
+
             Spacer()
-            
+
             // Right group: Duration
             HStack(spacing: 4) {
                 Image(systemName: "clock.fill")
                     .font(.caption)
                     .foregroundColor(.secondary.opacity(0.8))
-                
+
                 SessionDurationText(startTime: self.session.startTime)
                     .font(.caption)
                     .fontWeight(.medium)
@@ -1401,16 +1399,16 @@ struct SessionDebugInfo: View {
 struct SessionDurationText: View {
     let startTime: Date
     @State private var currentTime = Date()
-    
+
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    
+
     var body: some View {
-        Text(formatDuration(self.currentTime.timeIntervalSince(self.startTime)))
+        Text(self.formatDuration(self.currentTime.timeIntervalSince(self.startTime)))
             .onReceive(self.timer) { _ in
                 self.currentTime = Date()
             }
     }
-    
+
     private func formatDuration(_ interval: TimeInterval) -> String {
         if interval < 60 {
             return "\(Int(interval))s"
