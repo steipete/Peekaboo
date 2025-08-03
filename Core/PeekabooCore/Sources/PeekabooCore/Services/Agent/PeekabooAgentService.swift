@@ -740,7 +740,8 @@ extension PeekabooAgentService {
         let response = try await generateText(
             model: model,
             messages: conversation.messages,
-            tools: tools.isEmpty ? nil : tools
+            tools: tools.isEmpty ? nil : tools,
+            maxSteps: 3  // Allow multiple steps for tool execution and response
         )
         
         let fullContent = response.text
@@ -793,7 +794,8 @@ extension PeekabooAgentService {
         let response = try await generateText(
             model: model,
             messages: conversation.messages,
-            tools: tools.isEmpty ? nil : tools
+            tools: tools.isEmpty ? nil : tools,
+            maxSteps: 3  // Allow multiple steps for tool execution and response
         )
         
         let endTime = Date()
