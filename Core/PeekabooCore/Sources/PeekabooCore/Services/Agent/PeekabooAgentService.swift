@@ -404,6 +404,106 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
         return tools
     }
+    
+    /// Create SimpleTool versions of essential Peekaboo tools for TachikomaCore integration
+    private func createSimpleTools() -> [SimpleTool] {
+        let services = self.services
+        var tools: [SimpleTool] = []
+        
+        // Simple test tool with no parameters
+        do {
+            let simpleTool = try tool(name: "get_time", description: "Get the current time") { builder in
+                builder.execute { _ in
+                    let formatter = DateFormatter()
+                    formatter.timeStyle = .medium
+                    return .string("Current time: \(formatter.string(from: Date()))")
+                }
+            }
+            tools.append(simpleTool)
+        } catch {
+            print("Failed to create time tool: \(error)")
+        }
+        
+        // List apps tool
+        do {
+            let listAppsTool = try tool(name: "list_apps", description: "List all running applications") { builder in
+                builder.execute { _ in
+                    let result = try await services.applications.listApplications()
+                    let runningApps = result.data.applications
+                    let appNames = runningApps.map { $0.name }.sorted()
+                    return .string("Running applications: " + appNames.joined(separator: ", "))
+                }
+            }
+            tools.append(listAppsTool)
+        } catch {
+            // Skip if tool creation fails
+        }
+        
+        // See (screenshot) tool
+        do {
+            let seeTool = try tool(name: "see", description: "Capture and analyze the current screen or application") { builder in
+                builder
+                    .stringParameter("app", description: "Application name to capture (optional)", required: false)
+                    .execute { args in
+                        let appName = args.getStringOptional("app")
+                        
+                        // Capture screen
+                        let captureResult = try await services.screenCapture.captureScreen(
+                            displayIndex: nil
+                        )
+                        
+                        // Return basic screen capture information
+                        // TODO: Implement AI analysis using Tachikoma vision models
+                        let windowInfo = captureResult.metadata.windowInfo?.title ?? "Unknown"
+                        return .string("Screen captured successfully. Window: \(windowInfo). Path: \(captureResult.savedPath ?? "N/A")")
+                    }
+            }
+            tools.append(seeTool)
+        } catch {
+            // Skip if tool creation fails
+        }
+        
+        // Click tool
+        do {
+            let clickTool = try tool(name: "click", description: "Click on UI elements") { builder in
+                builder
+                    .stringParameter("element", description: "Description of the element to click", required: true)
+                    .boolParameter("double", description: "Whether to double-click", required: false)
+                    .execute { args in
+                        let elementDescription = try args.getString("element")  
+                        let isDouble = args.getBoolOptional("double") ?? false
+                        
+                        // For now, return a message indicating what would be clicked
+                        // TODO: Implement actual element detection and clicking
+                        let clickType = isDouble ? "Double-click" : "Click"
+                        return .string("\(clickType) on '\(elementDescription)' - Feature not yet implemented")
+                    }
+            }
+            tools.append(clickTool)
+        } catch {
+            // Skip if tool creation fails
+        }
+        
+        // Shell/bash tool
+        do {
+            let shellTool = try tool(name: "run_bash", description: "Execute shell commands") { builder in
+                builder
+                    .stringParameter("command", description: "Shell command to execute", required: true)
+                    .execute { args in
+                        let command = try args.getString("command")
+                        
+                        // Shell execution is not available in ProcessService - it's for Peekaboo scripts
+                        // For now, return a placeholder
+                        return .string("Shell command execution not yet implemented: \(command)")
+                    }
+            }
+            tools.append(shellTool)
+        } catch {
+            // Skip if tool creation fails
+        }
+        
+        return tools
+    }
 
     // MARK: - Helper Methods
 
@@ -627,22 +727,26 @@ extension PeekabooAgentService {
             .user(task)
             .build()
         
-        // Stream the response
-        var fullContent = ""
-        let streamResult = try await streamText(
+        // Create tools for the model (convert to SimpleTool format)
+        let tools = self.createSimpleTools()
+        
+        print("DEBUG: Passing \(tools.count) tools to generateText")
+        for tool in tools {
+            print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) parameters")
+        }
+        
+        // IMPORTANT: TachikomaCore streamText doesn't handle tool execution
+        // Use generateText instead when tools are present
+        let response = try await generateText(
             model: model,
             messages: conversation.messages,
-            tools: [] // For now, tools are not passed to the core API
+            tools: tools.isEmpty ? nil : tools
         )
         
-        for try await chunk in streamResult.textStream {
-            // Only process text deltas
-            if chunk.type == .textDelta, let content = chunk.content {
-                fullContent += content
-                // Send chunk to the streaming delegate
-                await streamingDelegate.onChunk(content)
-            }
-        }
+        let fullContent = response.text
+        
+        // Send the complete response to streaming delegate
+        await streamingDelegate.onChunk(fullContent)
         
         let endTime = Date()
         let executionTime = endTime.timeIntervalSince(startTime)
@@ -650,12 +754,12 @@ extension PeekabooAgentService {
         // Create result
         return AgentExecutionResult(
             content: fullContent,
-            messages: conversation.messages + [ModelMessage.assistant(fullContent)],
+            messages: response.messages,
             sessionId: sessionId,
-            usage: nil, // Usage info not available from streamText yet
+            usage: response.usage,
             metadata: AgentMetadata(
                 executionTime: executionTime,
-                toolCallCount: 0,
+                toolCallCount: response.steps.reduce(0) { $0 + $1.toolCalls.count },
                 modelName: model.description,
                 startTime: startTime,
                 endTime: endTime
@@ -677,11 +781,19 @@ extension PeekabooAgentService {
             .user(task)
             .build()
         
+        // Create tools for the model (convert to SimpleTool format)
+        let tools = self.createSimpleTools()
+        
+        print("DEBUG: Passing \(tools.count) tools to generateText (non-streaming)")
+        for tool in tools {
+            print("DEBUG: Tool '\(tool.name)' has \(tool.parameters.properties.count) parameters")
+        }
+        
         // Generate the response
         let response = try await generateText(
             model: model,
             messages: conversation.messages,
-            tools: [] // For now, tools are not passed to the core API
+            tools: tools.isEmpty ? nil : tools
         )
         
         let endTime = Date()

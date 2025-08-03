@@ -1,6 +1,7 @@
 import os.log
 import PeekabooCore
 import SwiftUI
+import TachikomaCore
 
 struct MenuBarStatusView: View {
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "MenuBarStatus")
@@ -133,7 +134,7 @@ struct MenuBarStatusView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                .help("Tokens: \(usage.promptTokens) in, \(usage.completionTokens) out")
+                .help("Tokens: \(usage.inputTokens) in, \(usage.outputTokens) out")
             }
 
             // Voice mode toggle button

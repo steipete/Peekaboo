@@ -356,11 +356,11 @@ struct AISettingsView: View {
 
 struct VisualizerSettingsTabView: View {
     @Environment(PeekabooSettings.self) private var settings
-    @Environment(VisualizerCoordinator.self) private var visualizerCoordinator
+    @EnvironmentObject private var visualizerCoordinator: VisualizerCoordinator
     
     var body: some View {
         VisualizerSettingsView(settings: settings)
-            .environment(visualizerCoordinator)
+            .environmentObject(visualizerCoordinator)
     }
 }
 
