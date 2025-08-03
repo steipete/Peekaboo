@@ -13,7 +13,7 @@ extension PeekabooAgentService {
         createTool(
             name: "find_element",
             description: "Find a specific UI element by label or identifier",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [
                     "label": ParameterSchema.string(
                         description: "Label or text to search for"),
@@ -26,8 +26,8 @@ extension PeekabooAgentService {
                 required: ["label"]),
             execute: { params, context in
                 let searchLabel = try params.string("label")
-                let appName = params.string("app", default: nil)
-                let elementType = params.string("element_type", default: nil)
+                let appName = params.string("app")
+                let elementType = params.string("element_type")
 
                 let startTime = Date()
                 let targetDescription = appName ?? "entire screen"
@@ -43,20 +43,20 @@ extension PeekabooAgentService {
                     _ = Date().timeIntervalSince(startTime)
 
                     // If element type was specified, verify it matches
-                    if let elementType {
+                    if let elementType = elementType {
                         let expectedType = mapElementTypeToElementType(elementType)
                         if element.type != expectedType {
                             var notFoundMessage = "No elements found matching '\(searchLabel)'"
                             notFoundMessage += " of type '\(elementType)'"
                             notFoundMessage += " in \(targetDescription)"
-                            return .error(message: notFoundMessage)
+                            return ToolOutput.failure(PeekabooError.elementNotFound(notFoundMessage))
                         }
                     }
 
                     // Format the result
                     let displayText = element.label ?? element.value ?? "Unlabeled \(element.type)"
                     var description = "Found element matching '\(searchLabel)'"
-                    if let elementType {
+                    if let elementType = elementType {
                         description += " of type '\(elementType)'"
                     }
                     description += " in \(targetDescription):\n"
@@ -70,14 +70,14 @@ extension PeekabooAgentService {
                         description += "\n   Status: Disabled"
                     }
 
-                    return .success(description)
+                    return ToolOutput.success(description)
                 } catch {
                     var notFoundMessage = "No elements found matching '\(searchLabel)'"
-                    if let elementType {
+                    if let elementType = elementType {
                         notFoundMessage += " of type '\(elementType)'"
                     }
                     notFoundMessage += " in \(targetDescription)"
-                    return .error(message: notFoundMessage)
+                    return .failure(PeekabooError.elementNotFound(notFoundMessage))
                 }
             })
     }
@@ -87,7 +87,7 @@ extension PeekabooAgentService {
         createTool(
             name: "list_elements",
             description: "List all interactive elements in the current view",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [
                     "app": ParameterSchema.string(
                         description: "Optional: Application name to search within"),
@@ -97,7 +97,7 @@ extension PeekabooAgentService {
                 ],
                 required: []),
             execute: { params, context in
-                let appName = params.string("app", default: nil)
+                let appName = params.string("app")
                 let elementType = params.string("element_type", default: "all") ?? "all"
 
                 let startTime = Date()
@@ -111,19 +111,19 @@ extension PeekabooAgentService {
                     // Capture specific application
                     captureResult = try await context.screenCapture.captureWindow(
                         appIdentifier: appName,
-                        windowIndex: nil)
+                        windowIndex: nil as Int?)
                     targetDescription = appName
                 } else {
                     // Capture entire screen
-                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
+                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil as Int?)
                     targetDescription = "entire screen"
                 }
 
                 // Detect elements in the screenshot
                 detectionResult = try await context.automation.detectElements(
                     in: captureResult.imageData,
-                    sessionId: nil,
-                    windowContext: nil)
+                    sessionId: nil as String?,
+                    windowContext: nil as WindowContext?)
 
                 _ = Date().timeIntervalSince(startTime)
 
@@ -167,7 +167,7 @@ extension PeekabooAgentService {
                     }
                 }
 
-                return .success(filteredOutput.description)
+                return ToolOutput.success(filteredOutput.description)
             })
     }
 
@@ -179,7 +179,7 @@ extension PeekabooAgentService {
             execute: { _, context in
                 // Get focused element information
                 guard let focusInfo = context.automation.getFocusedElement() else {
-                    return .error(message: "No element is currently focused")
+                    return ToolOutput.failure(PeekabooError.elementNotFound("No element is currently focused"))
                 }
 
                 // Format the focused element information
@@ -195,7 +195,7 @@ extension PeekabooAgentService {
                 description += "\nPosition: [\(Int(focusInfo.frame.origin.x)), \(Int(focusInfo.frame.origin.y))]"
                 description += "\nSize: \(Int(focusInfo.frame.size.width))×\(Int(focusInfo.frame.size.height))"
 
-                return .success(description)
+                return ToolOutput.success(description)
             })
     }
 }

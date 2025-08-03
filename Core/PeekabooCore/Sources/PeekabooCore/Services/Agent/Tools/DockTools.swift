@@ -142,10 +142,10 @@ extension PeekabooAgentService {
                         }
                     }
 
-                    return .success(output)
+                    return ToolOutput.success(output)
                 } else {
                     _ = Date().timeIntervalSince(startTime)
-                    return .success("Clicked \(appName) in Dock (app may be starting)")
+                    return ToolOutput.success("Clicked \(appName) in Dock (app may be starting)")
                 }
             })
     }
@@ -166,16 +166,16 @@ extension PeekabooAgentService {
                 _ = Date().timeIntervalSince(startTime)
 
                 if dockItems.isEmpty {
-                    return .success("No items found in Dock")
+                    return ToolOutput.success("No items found in Dock")
                 }
 
                 // Filter by section if requested
                 let filteredItems: [DockItem] = switch section {
                 case "apps":
-                    dockItems.filter { $0.itemType == .application }
+                    dockItems.filter { $0.itemType == DockItemType.application }
                 case "recent":
                     // Recent items are typically folders
-                    dockItems.filter { $0.itemType == .folder }
+                    dockItems.filter { $0.itemType == DockItemType.folder }
                 default:
                     dockItems
                 }
@@ -242,7 +242,7 @@ extension PeekabooAgentService {
                     }
                 }
 
-                return .success(output.trimmingCharacters(in: .whitespacesAndNewlines))
+                return ToolOutput.success(output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 }

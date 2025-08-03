@@ -17,13 +17,13 @@ extension PeekabooAgentService {
         createTool(
             name: "list_windows",
             description: "List all visible windows across all applications. Uses fast CGWindowList API when screen recording permission is granted, with automatic fallback to accessibility API. Results are returned quickly with built-in timeout protection to prevent hangs.",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [
                     "app": ParameterSchema.string(description: "Optional: Filter windows by application name"),
                 ],
                 required: []),
             execute: { params, context in
-                let appFilter = params.string("app", default: nil)
+                let appFilter: String? = params.string("app")
 
                 var windows: [ServiceWindowInfo] = []
 
@@ -117,7 +117,7 @@ extension PeekabooAgentService {
                     } else {
                         "No windows found"
                     }
-                    return .success(message)
+                    return ToolOutput.success(message)
                 }
 
                 // Since we don't have applicationName on ServiceWindowInfo, we'll display all windows
@@ -134,7 +134,7 @@ extension PeekabooAgentService {
                     output += "\n"
                 }
 
-                return .success(
+                return ToolOutput.success(
                     output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
@@ -144,7 +144,7 @@ extension PeekabooAgentService {
         createTool(
             name: "focus_window",
             description: "Bring a window to the front and give it focus",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [
                     "title": ParameterSchema
                         .string(description: "Window title to search for (partial match supported)"),
@@ -153,9 +153,9 @@ extension PeekabooAgentService {
                 ],
                 required: []),
             execute: { params, context in
-                let title = params.string("title", default: nil)
-                let appName = params.string("app", default: nil)
-                let windowId = params.int("window_id", default: nil)
+                let title: String? = params.string("title")
+                let appName: String? = params.string("app")
+                let windowId: Int? = params.int("window_id")
 
                 // Require at least one parameter
                 guard title != nil || appName != nil || windowId != nil else {
@@ -263,7 +263,7 @@ extension PeekabooAgentService {
                 // The window.windowID is already the system window ID
                 let systemWindowID = window.windowID
 
-                return .success(
+                return ToolOutput.success(
                     "Focused \(appInfo.name) - \"\(window.title)\" (Window ID: \(systemWindowID))")
             })
     }
@@ -295,17 +295,17 @@ extension PeekabooAgentService {
             description: "Resize and/or move a window",
             parameters: parameters,
             execute: { (params: ToolInput, context: PeekabooServices) in
-                let title = params.string("title", default: nil)
-                let appName = params.string("app", default: nil)
-                let windowId = params.int("window_id", default: nil)
-                let frontmost = params.bool("frontmost", default: false)
-                let width = params.int("width", default: nil)
-                let height = params.int("height", default: nil)
-                let x = params.int("x", default: nil)
-                let y = params.int("y", default: nil)
-                let preset = params.string("preset", default: nil)
-                let targetScreen = params.int("target_screen", default: nil)
-                let screenPreset = params.string("screen_preset", default: nil)
+                let title = try params.string("title")
+                let appName = try params.string("app")
+                let windowId = try params.int("window_id")
+                let frontmost = try params.bool("frontmost", default: false)
+                let width = try params.int("width")
+                let height = try params.int("height")
+                let x = try params.int("x")
+                let y = try params.int("y")
+                let preset = try params.string("preset")
+                let targetScreen = try params.int("target_screen")
+                let screenPreset = try params.string("screen_preset")
 
                 // Log the resize request for debugging
                 var searchCriteria: [String] = []
@@ -595,7 +595,7 @@ extension PeekabooAgentService {
                     }
                 }
 
-                return .success(output)
+                return ToolOutput.success(output)
             })
     }
 
@@ -604,7 +604,7 @@ extension PeekabooAgentService {
         createTool(
             name: "list_spaces",
             description: "List all macOS Spaces (virtual desktops)",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [:],
                 required: []),
             execute: { _, _ in
@@ -612,7 +612,7 @@ extension PeekabooAgentService {
                 let spaces = spaceService.getAllSpaces()
 
                 if spaces.isEmpty {
-                    return .success("No Spaces found")
+                    return ToolOutput.success("No Spaces found")
                 }
 
                 var output = "Found \(spaces.count) Space(s):\n\n"
@@ -628,7 +628,7 @@ extension PeekabooAgentService {
                     output += "\n"
                 }
 
-                return .success(
+                return ToolOutput.success(
                     output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
@@ -638,14 +638,14 @@ extension PeekabooAgentService {
         createTool(
             name: "list_screens",
             description: "List all available displays/monitors with their properties",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [:],
                 required: []),
             execute: { _, context in
                 let screens = context.screens.listScreens()
 
                 if screens.isEmpty {
-                    return .success("No screens found")
+                    return ToolOutput.success("No screens found")
                 }
 
                 var output = "Found \(screens.count) screen(s):\n\n"
@@ -666,7 +666,7 @@ extension PeekabooAgentService {
 
                 output += "💡 Use screen index with 'see' tool to capture specific screens"
 
-                return .success(
+                return ToolOutput.success(
                     output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
@@ -676,13 +676,14 @@ extension PeekabooAgentService {
         createTool(
             name: "switch_space",
             description: "Switch to a different macOS Space (virtual desktop)",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [
                     "space_number": ParameterSchema.integer(description: "Space number to switch to (1-based)"),
                 ],
                 required: ["space_number"]),
             execute: { params, _ in
-                guard let spaceNumber = params.int("space_number", default: nil) else {
+                let spaceNumber: Int? = try params.int("space_number")
+                guard let spaceNumber else {
                     throw PeekabooError.invalidInput("space_number is required")
                 }
 
@@ -704,7 +705,7 @@ extension PeekabooAgentService {
                 // Give it time to switch
                 try? await Task.sleep(nanoseconds: 500_000_000)
 
-                return .success(
+                return ToolOutput.success(
                     "Switched to Space \(spaceNumber)")
             })
     }
@@ -714,7 +715,7 @@ extension PeekabooAgentService {
         createTool(
             name: "move_window_to_space",
             description: "Move a window to a different macOS Space (virtual desktop)",
-            parameters: .object(
+            parameters: ToolParameters.object(
                 properties: [
                     "window_id": ParameterSchema.integer(description: "Window ID to move"),
                     "space_number": ParameterSchema.integer(description: "Target space number (1-based)"),
@@ -722,8 +723,8 @@ extension PeekabooAgentService {
                 ],
                 required: []),
             execute: { params, _ in
-                let windowId = params.int("window_id", default: nil)
-                let spaceNumber = params.int("space_number", default: nil)
+                let windowId: Int? = try params.int("window_id")
+                let spaceNumber: Int? = try params.int("space_number")
                 let bringToCurrent = params.bool("bring_to_current", default: false)
 
                 guard let windowId else {
@@ -733,7 +734,7 @@ extension PeekabooAgentService {
                 if bringToCurrent {
                     let spaceService = SpaceManagementService()
                     try spaceService.moveWindowToCurrentSpace(windowID: CGWindowID(windowId))
-                    return .success("Moved window to current Space")
+                    return ToolOutput.success("Moved window to current Space")
                 } else {
                     guard let spaceNumber else {
                         throw PeekabooError.invalidInput("Either space_number or bring_to_current must be specified")
@@ -748,7 +749,7 @@ extension PeekabooAgentService {
                     let targetSpace = spaces[spaceNumber - 1]
                     try spaceService.moveWindowToSpace(windowID: CGWindowID(windowId), spaceID: targetSpace.id)
 
-                    return .success("Moved window to Space \(spaceNumber)")
+                    return ToolOutput.success("Moved window to Space \(spaceNumber)")
                 }
             })
     }

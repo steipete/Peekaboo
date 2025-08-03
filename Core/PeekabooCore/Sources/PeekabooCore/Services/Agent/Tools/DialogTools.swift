@@ -131,7 +131,7 @@ extension PeekabooAgentService {
             parameters: definition.toAgentParameters(),
             execute: { params, context in
                 let buttonLabel = try params.string("button")
-                let appName = params.string("app", default: nil)
+                let appName: String? = try params.string("app")
 
                 // Get the frontmost app if not specified
                 let targetApp: String
@@ -148,7 +148,7 @@ extension PeekabooAgentService {
                     windowTitle: appName)
                 _ = Date().timeIntervalSince(startTime)
 
-                return .success("Clicked '\(buttonLabel)' in dialog - \(targetApp)")
+                return ToolOutput.success("Clicked '\(buttonLabel)' in dialog - \(targetApp)")
             })
     }
 
@@ -162,8 +162,8 @@ extension PeekabooAgentService {
             parameters: definition.toAgentParameters(),
             execute: { params, context in
                 let text = try params.string("text")
-                let fieldLabel = params.string("field", default: nil)
-                let appName = params.string("app", default: nil)
+                let fieldLabel: String? = try params.string("field")
+                let appName: String? = try params.string("app")
                 let clearFirst = params.bool("clear_first", default: true)
 
                 // For now, this is a simplified implementation
@@ -194,10 +194,10 @@ extension PeekabooAgentService {
                 // Type the text
                 try await context.automation.type(
                     text: text ?? "",
-                    target: nil,
+                    target: nil as String?,
                     clearExisting: false,
                     typingDelay: 0,
-                    sessionId: nil)
+                    sessionId: nil as String?)
 
                 _ = Date().timeIntervalSince(startTime)
 
@@ -207,7 +207,7 @@ extension PeekabooAgentService {
                 }
                 output += " - \(targetApp) dialog"
 
-                return .success(output)
+                return ToolOutput.success(output)
             })
     }
 }

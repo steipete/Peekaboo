@@ -89,7 +89,7 @@ extension PeekabooAgentService {
                 let appsOutput = try await context.applications.listApplications()
 
                 if appsOutput.data.applications.isEmpty {
-                    return .success("No running applications found")
+                    return ToolOutput.success("No running applications found")
                 }
 
                 var output = "Running applications:\n\n"
@@ -102,7 +102,7 @@ extension PeekabooAgentService {
                     output += "\n"
                 }
 
-                return .success(
+                return ToolOutput.success(
                     output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
@@ -176,7 +176,7 @@ extension PeekabooAgentService {
                         statusMessage += ")"
                     }
 
-                    return .success(statusMessage)
+                    return ToolOutput.success(statusMessage)
                 }
 
                 // Launch the app
@@ -202,12 +202,12 @@ extension PeekabooAgentService {
                             "\(windows.count) new windows"
                         }
 
-                        return .success("Launched \(launchedApp.name) (\(windowDescription))")
+                        return ToolOutput.success("Launched \(launchedApp.name) (\(windowDescription))")
                     } else {
                         throw PeekabooError.operationError(message: "\(appName) launched but is not responding")
                     }
                 } else {
-                    return .success("Launched \(launchedApp.name) (not waiting for completion)")
+                    return ToolOutput.success("Launched \(launchedApp.name) (not waiting for completion)")
                 }
             })
     }

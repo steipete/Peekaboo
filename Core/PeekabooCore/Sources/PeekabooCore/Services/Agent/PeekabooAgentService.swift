@@ -2,8 +2,23 @@ import CoreGraphics
 import Foundation
 import Tachikoma
 
-// Use Tachikoma's Tool directly - it's defined at module level, not as nested type
-// Import Tachikoma provides: Tool, ToolParameters, ToolInput, ToolOutput
+// Convenience extensions for cleaner return statements
+extension ToolOutput {
+    /// Create a successful string output
+    static func success(_ message: String) -> ToolOutput {
+        .string(message)
+    }
+    
+    /// Create an error output from a PeekabooError
+    static func failure(_ error: PeekabooError) -> ToolOutput {
+        .error(message: error.localizedDescription)
+    }
+    
+    /// Create an error output from any Error
+    static func failure(_ error: Error) -> ToolOutput {
+        .error(message: error.localizedDescription)
+    }
+}
 
 // MARK: - Helper Types
 
@@ -357,8 +372,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
     // MARK: - Tool Creation
 
-    private func createPeekabooTools() -> [Tachikoma.Tool<PeekabooServices>] {
-        var tools: [Tachikoma.Tool<PeekabooServices>] = []
+    private func createPeekabooTools() -> [Tool<PeekabooServices>] {
+        var tools: [Tool<PeekabooServices>] = []
 
         // Vision tools
         tools.append(createSeeTool())
@@ -408,8 +423,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         tools.append(createShellTool())
 
         // Completion tools
-        tools.append(CompletionTools.createDoneTool() as Tachikoma.Tool<PeekabooServices>)
-        tools.append(CompletionTools.createNeedInfoTool() as Tachikoma.Tool<PeekabooServices>)
+        tools.append(CompletionTools.createDoneTool())
+        tools.append(CompletionTools.createNeedInfoTool())
 
         return tools
     }
@@ -594,11 +609,14 @@ extension PeekabooAgentService {
         description: String,
         parameters: ToolParameters,
         execute: @escaping (ToolInput, PeekabooServices) async throws -> ToolOutput
-    ) -> Tachikoma.Tool<PeekabooServices> {
-        return Tachikoma.Tool(
+    ) -> Tool<PeekabooServices> {
+        let toolDefinition = ToolDefinition(
             name: name,
             description: description,
-            parameters: parameters,
+            inputSchema: parameters)
+        
+        return Tool(
+            definition: toolDefinition,
             execute: execute
         )
     }
@@ -608,11 +626,14 @@ extension PeekabooAgentService {
         name: String,
         description: String,
         execute: @escaping (ToolInput, PeekabooServices) async throws -> ToolOutput
-    ) -> Tachikoma.Tool<PeekabooServices> {
-        return Tachikoma.Tool(
+    ) -> Tool<PeekabooServices> {
+        let toolDefinition = ToolDefinition(
             name: name,
             description: description,
-            parameters: ToolParameters(),
+            inputSchema: ToolParameters.object(properties: [:], required: []))
+        
+        return Tool(
+            definition: toolDefinition,
             execute: execute
         )
     }

@@ -206,9 +206,9 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let appName = params.string("app", default: nil)
+                let appName: String? = params.string("app")
                 let format = params.string("format", default: "full") ?? "full"
-                let filterType = params.string("filter", default: nil)
+                let filterType: String? = params.string("filter")
 
                 let startTime = Date()
 
@@ -221,7 +221,7 @@ extension PeekabooAgentService {
                     // Capture specific application
                     captureResult = try await context.screenCapture.captureWindow(
                         appIdentifier: appName,
-                        windowIndex: nil)
+                        windowIndex: nil as Int?)
 
                     // Get more app context
                     if let app = try? await context.applications.findApplication(identifier: appName) {
@@ -233,7 +233,7 @@ extension PeekabooAgentService {
                     // Only detect elements for specific app captures
                     detectionResult = try await context.automation.detectElements(
                         in: captureResult.imageData,
-                        sessionId: nil,
+                        sessionId: nil as String?,
                         windowContext: WindowContext(applicationName: appName, windowTitle: nil))
                     skipElementDetection = false
 
@@ -248,7 +248,7 @@ extension PeekabooAgentService {
                     }
                 } else {
                     // Capture entire screen
-                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
+                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil as Int?)
 
                     // Count visible apps on screen
                     let appsOutput = try await context.applications.listApplications()
@@ -336,7 +336,7 @@ extension PeekabooAgentService {
                     let savedPath = captureResult.savedPath ?? detectionResult.screenshotPath
                     summary += "\nSaved to: \(savedPath)"
 
-                    return .success(summary)
+                    return ToolOutput.success(summary)
                 }
 
                 // Full format with detailed element list
@@ -355,7 +355,7 @@ extension PeekabooAgentService {
                 let savedPath = captureResult.savedPath ?? detectionResult.screenshotPath
                 fullOutput += "\nSaved to: \(savedPath)"
 
-                return .success(fullOutput)
+                return ToolOutput.success(fullOutput)
             })
     }
 
@@ -370,7 +370,7 @@ extension PeekabooAgentService {
             execute: { params, context in
                 let path = try params.string("path")
                 let expandedPath = path.expandedPath
-                let appName = params.string("app", default: nil)
+                let appName: String? = params.string("app")
 
                 let startTime = Date()
 
@@ -380,7 +380,7 @@ extension PeekabooAgentService {
                 if let appName {
                     captureResult = try await context.screenCapture.captureWindow(
                         appIdentifier: appName,
-                        windowIndex: nil)
+                        windowIndex: nil as Int?)
 
                     // Get more app context
                     if let app = try? await context.applications.findApplication(identifier: appName) {
@@ -389,7 +389,7 @@ extension PeekabooAgentService {
                         targetDescription = appName
                     }
                 } else {
-                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil)
+                    captureResult = try await context.screenCapture.captureScreen(displayIndex: nil as Int?)
 
                     // Count visible apps on screen
                     let appsOutput = try await context.applications.listApplications()
@@ -405,7 +405,7 @@ extension PeekabooAgentService {
                 let fileSizeKB = (try? FileManager.default.attributesOfItem(atPath: expandedPath)[.size] as? Int64)
                     .map { $0 / 1024 } ?? 0
 
-                return .success(
+                return ToolOutput.success(
                     "Captured \(targetDescription) → \(expandedPath) (\(Int(captureResult.metadata.size.width))x\(Int(captureResult.metadata.size.height)), \(fileSizeKB)KB)")
             })
     }
@@ -424,9 +424,9 @@ extension PeekabooAgentService {
                 ],
                 required: []),
             execute: { params, context in
-                let title = params.string("title", default: nil)
-                let windowId = params.int("window_id", default: nil).map { CGWindowID($0) }
-                let savePath = params.string("save_path", default: nil)
+                let title: String? = params.string("title")
+                let windowId = params.int("window_id").map { CGWindowID($0) }
+                let savePath: String? = params.string("save_path")
 
                 guard title != nil || windowId != nil else {
                     throw PeekabooError.invalidInput("Either 'title' or 'window_id' must be provided")
@@ -512,7 +512,7 @@ extension PeekabooAgentService {
                 // Detect elements
                 let detectionResult = try await context.automation.detectElements(
                     in: captureResult.imageData,
-                    sessionId: nil,
+                    sessionId: nil as String?,
                     windowContext: nil)
 
                 // Save if path provided
@@ -539,7 +539,7 @@ extension PeekabooAgentService {
                     output += "\nSaved to: \(savedPath)"
                 }
 
-                return .success(output)
+                return ToolOutput.success(output)
             })
     }
 }

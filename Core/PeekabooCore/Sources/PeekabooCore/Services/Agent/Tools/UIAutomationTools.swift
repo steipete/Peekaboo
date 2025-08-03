@@ -395,7 +395,7 @@ extension PeekabooAgentService {
             parameters: parameters,
             execute: { params, context in
                 let target = try params.string("target")
-                let appName = params.string("app", default: nil)
+                let appName = params.string("app")
                 let doubleClick = params.bool("double_click", default: false)
                 let rightClick = params.bool("right_click", default: false)
 
@@ -412,7 +412,7 @@ extension PeekabooAgentService {
                     try await context.automation.click(
                         target: .coordinates(coordinates),
                         clickType: clickType,
-                        sessionId: nil)
+                        sessionId: nil as String?)
 
                     let duration = Date().timeIntervalSince(startTime)
 
@@ -421,7 +421,7 @@ extension PeekabooAgentService {
                     let targetApp = appName ?? frontmostApp?.name ?? "unknown"
 
                     let actionType = rightClick ? "Right-clicked" : (doubleClick ? "Double-clicked" : "Clicked")
-                    return .success(
+                    return ToolOutput.success(
                         "\(actionType) at (\(Int(coordinates.x)), \(Int(coordinates.y))) in \(targetApp)")
                 }
 
@@ -431,7 +431,7 @@ extension PeekabooAgentService {
                 try await context.automation.click(
                     target: .query(target),
                     clickType: clickType,
-                    sessionId: nil)
+                    sessionId: nil as String?)
 
                 let duration = Date().timeIntervalSince(startTime)
 
@@ -440,7 +440,7 @@ extension PeekabooAgentService {
                 let targetApp = appName ?? frontmostApp?.name ?? "unknown"
 
                 let actionType = rightClick ? "Right-clicked" : (doubleClick ? "Double-clicked" : "Clicked")
-                return .success("\(actionType) on '\(target)' in \(targetApp)")
+                return ToolOutput.success("\(actionType) on '\(target)' in \(targetApp)")
             })
     }
 
@@ -463,8 +463,8 @@ extension PeekabooAgentService {
                 required: ["text"]),
             execute: { params, context in
                 let text = try params.string("text")
-                let fieldLabel = params.string("field", default: nil)
-                let appName = params.string("app", default: nil)
+                let fieldLabel: String? = params.string("field")
+                let appName: String? = params.string("app")
                 let clearFirst = params.bool("clear_first", default: false)
 
                 let startTime = Date()
@@ -473,9 +473,9 @@ extension PeekabooAgentService {
                 if let fieldLabel {
                     // Click on the field to focus it
                     try await context.automation.click(
-                        target: .query(fieldLabel),
-                        clickType: .single,
-                        sessionId: nil)
+                        target: ClickTarget.query(fieldLabel),
+                        clickType: ClickType.single,
+                        sessionId: nil as String?)
 
                     // Small delay to ensure focus
                     try await Task.sleep(nanoseconds: TimeInterval.shortDelay.nanoseconds)
@@ -487,7 +487,7 @@ extension PeekabooAgentService {
                     target: fieldLabel,
                     clearExisting: clearFirst,
                     typingDelay: 0,
-                    sessionId: nil)
+                    sessionId: nil as String?)
 
                 let duration = Date().timeIntervalSince(startTime)
 
@@ -513,7 +513,7 @@ extension PeekabooAgentService {
                     output += " (cleared first)"
                 }
 
-                return .success(output)
+                return ToolOutput.success(output)
             })
     }
 
@@ -538,8 +538,8 @@ extension PeekabooAgentService {
             execute: { params, context in
                 let directionStr = try params.string("direction")
                 let amount = params.int("amount", default: 5) ?? 5
-                let target = params.string("target", default: nil)
-                let appName = params.string("app", default: nil)
+                let target: String? = params.string("target")
+                let appName: String? = params.string("app")
 
                 let startTime = Date()
 
@@ -560,7 +560,7 @@ extension PeekabooAgentService {
                     target: target,
                     smooth: false,
                     delay: 0,
-                    sessionId: nil)
+                    sessionId: nil as String?)
 
                 let duration = Date().timeIntervalSince(startTime)
 
@@ -574,7 +574,7 @@ extension PeekabooAgentService {
                 }
                 output += " - \(targetApp)"
 
-                return .success(output)
+                return ToolOutput.success(output)
             })
     }
 
@@ -633,7 +633,7 @@ extension PeekabooAgentService {
                 let result = try await context.automation.typeActions(
                     actions,
                     typingDelay: 100, // 100ms between key presses
-                    sessionId: nil)
+                    sessionId: nil as String?)
 
                 let duration = Date().timeIntervalSince(startTime)
 
@@ -647,7 +647,7 @@ extension PeekabooAgentService {
                 }
                 output += " in \(targetApp)"
 
-                return .success(output)
+                return ToolOutput.success(output)
             })
     }
 
@@ -718,7 +718,7 @@ extension PeekabooAgentService {
                 }
                 shortcutDisplay += keyStr?.capitalized ?? ""
 
-                return .success("Pressed \(shortcutDisplay) in \(targetApp)")
+                return ToolOutput.success("Pressed \(shortcutDisplay) in \(targetApp)")
             })
     }
 }

@@ -311,9 +311,14 @@ public final class PeekabooServices: @unchecked Sendable {
                 """)
             }
 
-            agent = PeekabooAgentService(
-                services: services,
-                defaultModelName: determination.model)
+            do {
+                agent = try PeekabooAgentService(
+                    services: services,
+                    defaultModelName: determination.model)
+            } catch {
+                logger.error("Failed to initialize PeekabooAgentService: \(error)")
+                agent = nil
+            }
             logger.debug("✅ PeekabooAgentService initialized with available providers")
         } else {
             agent = nil
@@ -372,7 +377,7 @@ public final class PeekabooServices: @unchecked Sendable {
             self.agentLock.lock()
             defer { agentLock.unlock() }
 
-            self.agent = PeekabooAgentService(
+            self.agent = try? PeekabooAgentService(
                 services: self,
                 defaultModelName: defaultModel ?? "claude-opus-4-20250514")
             self.logger.info("✅ Agent service refreshed with providers: \(providers)")

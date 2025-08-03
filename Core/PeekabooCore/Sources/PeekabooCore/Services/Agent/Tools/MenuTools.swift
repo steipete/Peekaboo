@@ -113,7 +113,7 @@ extension PeekabooAgentService {
             parameters: definition.toAgentParameters(),
             execute: { params, context in
                 let menuPath = try params.string("path")
-                let appName = params.string("app", default: nil)
+                let appName = params.string("app")
 
                 // Parse menu path
                 let pathComponents = (menuPath ?? "")
@@ -154,7 +154,7 @@ extension PeekabooAgentService {
                 try await context.menu.clickMenuItem(app: targetApp, itemPath: menuPath ?? "")
                 _ = Date().timeIntervalSince(startTime)
 
-                return .success("Clicked \(targetApp) > \(menuPath ?? "")")
+                return ToolOutput.success("Clicked \(targetApp) > \(menuPath ?? "")")
             })
     }
 
@@ -167,8 +167,8 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                let appName = params.string("app", default: nil)
-                let specificMenu = params.string("menu", default: nil)
+                let appName = params.string("app")
+                let specificMenu = params.string("menu")
 
                 let startTime = Date()
 
@@ -230,7 +230,7 @@ extension PeekabooAgentService {
                     summary += " (expanded '\(specificMenu)' menu with \(expandedMenuItems) items)"
                 }
 
-                return .success(output.trimmingCharacters(in: .whitespacesAndNewlines))
+                return ToolOutput.success(output.trimmingCharacters(in: .whitespacesAndNewlines))
             })
     }
 }
