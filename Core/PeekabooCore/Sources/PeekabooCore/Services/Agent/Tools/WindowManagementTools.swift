@@ -27,7 +27,7 @@ extension PeekabooAgentService {
 
                 var windows: [ServiceWindowInfo] = []
 
-                if let appFilter {
+                if let appFilter = appFilter {
                     // If app filter is specified, only get windows from that app
                     let appsOutput = try await context.applications.listApplications()
                     if let targetApp = appsOutput.data.applications
@@ -112,7 +112,7 @@ extension PeekabooAgentService {
                 }
 
                 if windows.isEmpty {
-                    let message = if let appFilter {
+                    let message = if let appFilter = appFilter {
                         "No windows found for application '\(appFilter)'"
                     } else {
                         "No windows found"
@@ -163,7 +163,7 @@ extension PeekabooAgentService {
                 }
 
                 // First ensure the app is running and not hidden
-                if let appName {
+                if let appName = appName {
                     // Get running applications
                     let appsOutput = try await context.applications.listApplications()
                     if let app = appsOutput.data.applications
@@ -185,10 +185,10 @@ extension PeekabooAgentService {
                     windows = try await context.windows.listWindows(target: .applicationAndTitle(
                         app: appName,
                         title: title))
-                } else if let appName {
+                } else if let appName = appName {
                     // If only app is specified, get all windows from that app
                     windows = try await context.windows.listWindows(target: .application(appName))
-                } else if let title {
+                } else if let title = title {
                     // If only title is specified, use title-based search (searches all apps)
                     windows = try await context.windows.listWindows(target: .title(title))
                 } else {
@@ -210,7 +210,7 @@ extension PeekabooAgentService {
 
                 // Find the target window
                 let window: ServiceWindowInfo
-                if let windowId {
+                if let windowId = windowId {
                     guard let targetWindow = windows.first(where: { $0.windowID == windowId }) else {
                         throw PeekabooError.windowNotFound(criteria: "ID \(windowId)")
                     }
@@ -234,7 +234,7 @@ extension PeekabooAgentService {
 
                 // Get app info for better feedback
                 let appInfo: ServiceApplicationInfo
-                if let appName {
+                if let appName = appName {
                     appInfo = try await context.applications.findApplication(identifier: appName)
                 } else {
                     // Need to find which app owns this window
@@ -309,19 +309,19 @@ extension PeekabooAgentService {
 
                 // Log the resize request for debugging
                 var searchCriteria: [String] = []
-                if let title { searchCriteria.append("title='\(title)'") }
-                if let appName { searchCriteria.append("app='\(appName)'") }
-                if let windowId { searchCriteria.append("id=\(windowId)") }
+                if let title = title { searchCriteria.append("title='\(title)'") }
+                if let appName = appName { searchCriteria.append("app='\(appName)'") }
+                if let windowId = windowId { searchCriteria.append("id=\(windowId)") }
                 if frontmost { searchCriteria.append("frontmost=true") }
 
                 var resizeParams: [String] = []
-                if let width { resizeParams.append("width=\(width)") }
-                if let height { resizeParams.append("height=\(height)") }
-                if let x { resizeParams.append("x=\(x)") }
-                if let y { resizeParams.append("y=\(y)") }
-                if let preset { resizeParams.append("preset=\(preset)") }
-                if let targetScreen { resizeParams.append("targetScreen=\(targetScreen)") }
-                if let screenPreset { resizeParams.append("screenPreset=\(screenPreset)") }
+                if let width = width { resizeParams.append("width=\(width)") }
+                if let height = height { resizeParams.append("height=\(height)") }
+                if let x = x { resizeParams.append("x=\(x)") }
+                if let y = y { resizeParams.append("y=\(y)") }
+                if let preset = preset { resizeParams.append("preset=\(preset)") }
+                if let targetScreen = targetScreen { resizeParams.append("targetScreen=\(targetScreen)") }
+                if let screenPreset = screenPreset { resizeParams.append("screenPreset=\(screenPreset)") }
 
                 Self.logger
                     .info(
@@ -349,7 +349,7 @@ extension PeekabooAgentService {
                         throw PeekabooError.windowNotFound(criteria: "frontmost window for \(frontApp.name)")
                     }
                     window = frontWindow
-                } else if let windowId {
+                } else if let windowId = windowId {
                     // If window ID is specified, search all apps for that specific window
                     let appsOutput = try await context.applications.listApplications()
                     var foundWindow: ServiceWindowInfo?
@@ -382,10 +382,10 @@ extension PeekabooAgentService {
                             app: appName,
                             title: title))
                         // No need to filter further - the service already filtered by title
-                    } else if let appName {
+                    } else if let appName = appName {
                         // If only app is specified, get all windows from that app
                         windows = try await context.windows.listWindows(target: .application(appName))
-                    } else if let title {
+                    } else if let title = title {
                         // If only title is specified, use title-based search (searches all apps)
                         windows = try await context.windows.listWindows(target: .title(title))
                     } else {
@@ -442,10 +442,10 @@ extension PeekabooAgentService {
 
                 // Determine target screen
                 let targetScreenInfo: ScreenInfo?
-                if let targetScreen {
+                if let targetScreen = targetScreen {
                     // Use specific screen index
                     targetScreenInfo = context.screens.screen(at: targetScreen)
-                } else if let screenPreset {
+                } else if let screenPreset = screenPreset {
                     // Use screen preset
                     let currentScreen = context.screens.screenContainingWindow(bounds: window.bounds)
                     let screens = context.screens.listScreens()
@@ -476,7 +476,7 @@ extension PeekabooAgentService {
                         .primaryScreen
                 }
 
-                if let preset {
+                if let preset = preset {
                     // Get screen bounds from target screen
                     let screenBounds = targetScreenInfo?.frame ?? NSScreen.main?.frame ?? CGRect(
                         x: 0,
@@ -519,10 +519,10 @@ extension PeekabooAgentService {
                     }
                 } else {
                     // Apply individual parameters
-                    if let x { newBounds.origin.x = CGFloat(x) }
-                    if let y { newBounds.origin.y = CGFloat(y) }
-                    if let width { newBounds.size.width = CGFloat(width) }
-                    if let height { newBounds.size.height = CGFloat(height) }
+                    if let x = x { newBounds.origin.x = CGFloat(x) }
+                    if let y = y { newBounds.origin.y = CGFloat(y) }
+                    if let width = width { newBounds.size.width = CGFloat(width) }
+                    if let height = height { newBounds.size.height = CGFloat(height) }
 
                     // If we're moving to a different screen but no preset was specified,
                     // maintain relative position on the new screen
@@ -550,7 +550,7 @@ extension PeekabooAgentService {
                 let appInfo: ServiceApplicationInfo
                 if frontmost {
                     appInfo = try await context.applications.getFrontmostApplication()
-                } else if let appName {
+                } else if let appName = appName {
                     appInfo = try await context.applications.findApplication(identifier: appName)
                 } else {
                     // Need to find which app owns this window
@@ -582,7 +582,7 @@ extension PeekabooAgentService {
                 let systemWindowID = window.windowID
 
                 var output = ""
-                if let preset {
+                if let preset = preset {
                     let presetName = preset.replacingOccurrences(of: "_", with: " ").capitalized
                     output = "\(presetName) \(appInfo.name) - \"\(window.title)\" (Window ID: \(systemWindowID))"
                     if preset == "maximize" {

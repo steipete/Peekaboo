@@ -610,13 +610,10 @@ extension PeekabooAgentService {
         parameters: ToolParameters,
         execute: @escaping (ToolInput, PeekabooServices) async throws -> ToolOutput
     ) -> Tool<PeekabooServices> {
-        let toolDefinition = ToolDefinition(
+        return Tool(
             name: name,
             description: description,
-            inputSchema: parameters)
-        
-        return Tool(
-            definition: toolDefinition,
+            parameters: parameters,
             execute: execute
         )
     }
@@ -627,13 +624,10 @@ extension PeekabooAgentService {
         description: String,
         execute: @escaping (ToolInput, PeekabooServices) async throws -> ToolOutput
     ) -> Tool<PeekabooServices> {
-        let toolDefinition = ToolDefinition(
+        return Tool(
             name: name,
             description: description,
-            inputSchema: ToolParameters.object(properties: [:], required: []))
-        
-        return Tool(
-            definition: toolDefinition,
+            parameters: ToolParameters.object(properties: [:], required: []),
             execute: execute
         )
     }

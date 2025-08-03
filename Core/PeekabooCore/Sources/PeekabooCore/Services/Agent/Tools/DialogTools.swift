@@ -135,7 +135,7 @@ extension PeekabooAgentService {
 
                 // Get the frontmost app if not specified
                 let targetApp: String
-                if let appName {
+                if let appName = appName {
                     targetApp = appName
                 } else {
                     let frontmostApp = try await context.applications.getFrontmostApplication()
@@ -174,7 +174,7 @@ extension PeekabooAgentService {
 
                 // Get the frontmost app if not specified
                 let targetApp: String
-                if let appName {
+                if let appName = appName {
                     targetApp = appName
                 } else {
                     let frontmostApp = try await context.applications.getFrontmostApplication()
@@ -202,7 +202,7 @@ extension PeekabooAgentService {
                 _ = Date().timeIntervalSince(startTime)
 
                 var output = "Entered \"\(text ?? "")\""
-                if let fieldLabel {
+                if let fieldLabel = fieldLabel {
                     output += " in '\(fieldLabel)' field"
                 }
                 output += " - \(targetApp) dialog"

@@ -217,7 +217,7 @@ extension PeekabooAgentService {
                 let detectionResult: ElementDetectionResult
                 let skipElementDetection: Bool
 
-                if let appName {
+                if let appName = appName {
                     // Capture specific application
                     captureResult = try await context.screenCapture.captureWindow(
                         appIdentifier: appName,
@@ -286,7 +286,7 @@ extension PeekabooAgentService {
 
                 // Filter elements if requested
                 var elements = detectionResult.elements
-                if let filterType {
+                if let filterType = filterType {
                     // Create a filtered copy
                     elements = DetectedElements(
                         buttons: filterType == "button" ? elements.buttons : [],
@@ -377,7 +377,7 @@ extension PeekabooAgentService {
                 let captureResult: CaptureResult
                 let targetDescription: String
 
-                if let appName {
+                if let appName = appName {
                     captureResult = try await context.screenCapture.captureWindow(
                         appIdentifier: appName,
                         windowIndex: nil as Int?)
@@ -438,7 +438,7 @@ extension PeekabooAgentService {
                 var windows: [ServiceWindowInfo] = []
                 var searchedApps = 0
 
-                if let title {
+                if let title = title {
                     // If title is specified, use title-based search
                     windows = try await context.windows.listWindows(target: .title(title))
                 } else if windowId == nil {
@@ -476,7 +476,7 @@ extension PeekabooAgentService {
                 let window: ServiceWindowInfo
                 let appName: String
 
-                if let windowId {
+                if let windowId = windowId {
                     guard let foundWindow = windows.first(where: { $0.windowID == windowId }) else {
                         throw PeekabooError.windowNotFound(criteria: "ID \(windowId)")
                     }
@@ -487,7 +487,7 @@ extension PeekabooAgentService {
                     appName = appsOutput.data.applications.first { _ in
                         windows.contains { w in w.windowID == windowId }
                     }?.name ?? "Unknown App"
-                } else if let title {
+                } else if let title = title {
                     guard let foundWindow = windows
                         .first(where: { $0.title.lowercased().contains(title.lowercased()) })
                     else {
@@ -517,7 +517,7 @@ extension PeekabooAgentService {
 
                 // Save if path provided
                 var savedPath: String?
-                if let savePath {
+                if let savePath = savePath {
                     let expandedPath = savePath.expandedPath
                     let fileURL = URL(fileURLWithPath: expandedPath)
                     try captureResult.imageData.write(to: fileURL)
@@ -535,7 +535,7 @@ extension PeekabooAgentService {
                 output += "\n"
                 output += elementList.description
 
-                if let savedPath {
+                if let savedPath = savedPath {
                     output += "\nSaved to: \(savedPath)"
                 }
 

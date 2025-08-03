@@ -470,7 +470,7 @@ extension PeekabooAgentService {
                 let startTime = Date()
 
                 // If a specific field is targeted, click it first
-                if let fieldLabel {
+                if let fieldLabel = fieldLabel {
                     // Click on the field to focus it
                     try await context.automation.click(
                         target: ClickTarget.query(fieldLabel),
@@ -504,7 +504,7 @@ extension PeekabooAgentService {
                     output = "Typed \"\(preview)\" (\(characterCount) characters)"
                 }
 
-                if let fieldLabel {
+                if let fieldLabel = fieldLabel {
                     output += " into '\(fieldLabel)'"
                 }
                 output += " in \(targetApp)"
@@ -569,7 +569,7 @@ extension PeekabooAgentService {
                 let targetApp = appName ?? frontmostApp?.name ?? "unknown"
 
                 var output = "Scrolled \(directionStr) by \(amount) units"
-                if let target {
+                if let target = target {
                     output += " in '\(target)'"
                 }
                 output += " - \(targetApp)"

@@ -26,8 +26,8 @@ extension PeekabooAgentService {
                 required: ["label"]),
             execute: { params, context in
                 let searchLabel = try params.string("label")
-                let appName = params.string("app")
-                let elementType = params.string("element_type")
+                let appName = try params.string("app")
+                let elementType = try params.string("element_type")
 
                 let startTime = Date()
                 let targetDescription = appName ?? "entire screen"
@@ -97,8 +97,8 @@ extension PeekabooAgentService {
                 ],
                 required: []),
             execute: { params, context in
-                let appName = params.string("app")
-                let elementType = params.string("element_type", default: "all") ?? "all"
+                let appName: String? = try params.string("app")
+                let elementType = try params.string("element_type", default: "all") ?? "all"
 
                 let startTime = Date()
 
@@ -107,7 +107,7 @@ extension PeekabooAgentService {
                 let detectionResult: ElementDetectionResult
 
                 let targetDescription: String
-                if let appName {
+                if let appName = appName {
                     // Capture specific application
                     captureResult = try await context.screenCapture.captureWindow(
                         appIdentifier: appName,

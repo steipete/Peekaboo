@@ -41,7 +41,7 @@ public enum CompletionTools {
                 let context: String? = try params.string("context")
 
                 var response = "❓ Need more information: \(question)"
-                if let context {
+                if let context = context {
                     response += "\n\nContext: \(context)"
                 }
 

@@ -59,7 +59,7 @@ extension PeekabooAgentService {
             metadata["app_name"] = appName
 
         case let .windowNotFound(criteria):
-            if let criteria {
+            if let criteria = criteria {
                 message = "No window found matching: \(criteria)"
                 metadata["criteria"] = criteria
             } else {
