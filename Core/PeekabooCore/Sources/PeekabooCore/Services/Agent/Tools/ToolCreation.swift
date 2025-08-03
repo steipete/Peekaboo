@@ -11,7 +11,7 @@ public func createSimpleTool<Context>(
     required: [String] = [],
     execute: @escaping (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
 {
-    return Tool(
+    Tool(
         name: name,
         description: description,
         parameters: ToolParameters.object(
@@ -27,7 +27,7 @@ public func createTool<Context>(
     parameters: ToolParameters? = nil,
     execute: @escaping (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
 {
-    return Tool(
+    Tool(
         name: name,
         description: description,
         parameters: parameters ?? ToolParameters.object(

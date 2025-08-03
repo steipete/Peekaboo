@@ -8,12 +8,12 @@ extension ToolOutput {
     static func success(_ message: String) -> ToolOutput {
         .string(message)
     }
-    
+
     /// Create an error output from a PeekabooError
     static func failure(_ error: PeekabooError) -> ToolOutput {
         .error(message: error.localizedDescription)
     }
-    
+
     /// Create an error output from any Error
     static func failure(_ error: Error) -> ToolOutput {
         .error(message: error.localizedDescription)
@@ -27,21 +27,21 @@ extension ToolOutput {
 @MainActor
 final class StreamingEventDelegate: AgentEventDelegate {
     let onChunk: @MainActor (String) async -> Void
-    
+
     init(onChunk: @MainActor @escaping (String) async -> Void) {
         self.onChunk = onChunk
     }
-    
+
     func agentDidEmitEvent(_ event: AgentEvent) {
         Task { @MainActor in
             // Extract content from different event types
             switch event {
             case let .thinkingMessage(content):
-                await onChunk(content)
+                await self.onChunk(content)
             case let .assistantMessage(content):
-                await onChunk(content)
+                await self.onChunk(content)
             case let .completed(summary, _):
-                await onChunk(summary)
+                await self.onChunk(summary)
             default:
                 break
             }
@@ -63,7 +63,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
     /// The default model name used by this agent service
     public var defaultModel: String { self.defaultModelName }
-    
+
     /// Get the masked API key for the current model
     public var maskedApiKey: String? {
         get async {
@@ -81,7 +81,8 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     public init(
         services: PeekabooServices,
         defaultModelName: String = "claude-opus-4-20250514")
-    throws {
+        throws
+    {
         self.services = services
         self.tachikoma = .shared
         self.sessionManager = try AgentSessionManager()
@@ -145,13 +146,13 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             }
 
             // Run the agent with streaming
-            let model = try await Tachikoma.shared.getModel( self.defaultModelName)
-            
+            let model = try await Tachikoma.shared.getModel(self.defaultModelName)
+
             // Create event delegate wrapper for streaming
             let streamingDelegate = StreamingEventDelegate { chunk in
                 await eventHandler.send(.assistantMessage(content: chunk))
             }
-            
+
             let result = try await AgentRunner.runStreaming(
                 agent: agent,
                 input: task,
@@ -164,7 +165,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             return result
         } else {
             // Execute without streaming
-            let model = try await Tachikoma.shared.getModel( self.defaultModelName)
+            let model = try await Tachikoma.shared.getModel(self.defaultModelName)
             return try await AgentRunner.run(
                 agent: agent,
                 input: task,
@@ -232,13 +233,13 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             let input = audioContent.transcript ?? "[Audio message without transcript]"
 
             // Run the agent with streaming
-            let model = try await Tachikoma.shared.getModel( self.defaultModelName)
-            
+            let model = try await Tachikoma.shared.getModel(self.defaultModelName)
+
             // Create event delegate wrapper for streaming
             let streamingDelegate = StreamingEventDelegate { chunk in
                 await eventHandler.send(.assistantMessage(content: chunk))
             }
-            
+
             let result = try await AgentRunner.runStreaming(
                 agent: agent,
                 input: input,
@@ -255,7 +256,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             let input = audioContent.transcript ?? "[Audio message without transcript]"
 
             // Execute without streaming
-            let model = try await Tachikoma.shared.getModel( self.defaultModelName)
+            let model = try await Tachikoma.shared.getModel(self.defaultModelName)
             return try await AgentRunner.run(
                 agent: agent,
                 input: input,
@@ -283,14 +284,14 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         apiType: String? = nil) async throws -> PeekabooAgent<PeekabooServices>
     {
         // Create model using Tachikoma's ModelProvider
-        let model = try await Tachikoma.shared.getModel( modelName)
+        let model = try await Tachikoma.shared.getModel(modelName)
 
         let agent = PeekabooAgent<PeekabooServices>(
             model: model,
             sessionId: UUID().uuidString,
             name: name,
             instructions: AgentSystemPrompt.generate(),
-            tools: createPeekabooTools(),
+            tools: self.createPeekabooTools(),
             context: self.services)
 
         return agent
@@ -339,13 +340,13 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             }
 
             // Run the agent with streaming
-            let model = try await Tachikoma.shared.getModel( self.defaultModelName)
-            
+            let model = try await Tachikoma.shared.getModel(self.defaultModelName)
+
             // Create event delegate wrapper for streaming
             let streamingDelegate = StreamingEventDelegate { chunk in
                 await eventHandler.send(.assistantMessage(content: chunk))
             }
-            
+
             let result = try await AgentRunner.runStreaming(
                 agent: agent,
                 input: task,
@@ -358,7 +359,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             return result
         } else {
             // Non-streaming execution
-            let model = try await Tachikoma.shared.getModel( modelName)
+            let model = try await Tachikoma.shared.getModel(modelName)
             return try await AgentRunner.run(
                 agent: agent,
                 input: task,
@@ -377,7 +378,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
         // AgentRunner.runStreaming doesn't have a streamHandler parameter
         // We need to use the agent directly with an event delegate
-        let model = try await Tachikoma.shared.getModel( modelName)
+        let model = try await Tachikoma.shared.getModel(modelName)
         return try await AgentRunner.runStreaming(
             agent: agent,
             input: task,
@@ -539,7 +540,7 @@ extension PeekabooAgentService {
             }
 
             // Run the agent with streaming
-            let model = try await Tachikoma.shared.getModel( modelName)
+            let model = try await Tachikoma.shared.getModel(modelName)
             let result = try await AgentRunner.runStreaming(
                 agent: agent,
                 input: continuationPrompt,
@@ -552,7 +553,7 @@ extension PeekabooAgentService {
             return result
         } else {
             // Execute without streaming
-            let model = try await Tachikoma.shared.getModel( modelName)
+            let model = try await Tachikoma.shared.getModel(modelName)
             return try await AgentRunner.run(
                 agent: agent,
                 input: continuationPrompt,
@@ -623,27 +624,25 @@ extension PeekabooAgentService {
         name: String,
         description: String,
         parameters: ToolParameters,
-        execute: @escaping (ToolInput, PeekabooServices) async throws -> ToolOutput
-    ) -> Tool<PeekabooServices> {
-        return Tool(
+        execute: @escaping (ToolInput, PeekabooServices) async throws -> ToolOutput) -> Tool<PeekabooServices>
+    {
+        Tool(
             name: name,
             description: description,
             parameters: parameters,
-            execute: execute
-        )
+            execute: execute)
     }
-    
+
     /// Create a simple Tachikoma tool without parameters
     func createSimpleTool(
         name: String,
         description: String,
-        execute: @escaping (ToolInput, PeekabooServices) async throws -> ToolOutput
-    ) -> Tool<PeekabooServices> {
-        return Tool(
+        execute: @escaping (ToolInput, PeekabooServices) async throws -> ToolOutput) -> Tool<PeekabooServices>
+    {
+        Tool(
             name: name,
             description: description,
             parameters: ToolParameters.object(properties: [:], required: []),
-            execute: execute
-        )
+            execute: execute)
     }
 }

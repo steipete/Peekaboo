@@ -101,7 +101,7 @@ extension PeekabooAgentService {
                 process.arguments = ["-c", command]
 
                 let actualWorkingDir: String
-                if let workingDirectory = workingDirectory {
+                if let workingDirectory {
                     let expandedPath = workingDirectory.expandedPath
                     process.currentDirectoryURL = URL(fileURLWithPath: expandedPath)
                     actualWorkingDir = expandedPath

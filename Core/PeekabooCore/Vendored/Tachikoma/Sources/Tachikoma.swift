@@ -17,12 +17,12 @@ public final class Tachikoma: @unchecked Sendable {
     private let logger: Logger
 
     private init() {
-        logger = Logger(label: "build.tachikoma")
+        self.logger = Logger(label: "build.tachikoma")
     }
 
     /// Get the shared logger instance
     public var log: Logger {
-        logger
+        self.logger
     }
 
     /// Get a model instance for the specified model name
@@ -30,7 +30,7 @@ public final class Tachikoma: @unchecked Sendable {
     /// - Returns: A model instance conforming to ModelInterface
     /// - Throws: TachikomaError if the model is not available or configuration is invalid
     public func getModel(_ modelName: String) async throws -> any ModelInterface {
-        return try await ModelProvider.shared.getModel(modelName: modelName)
+        try await ModelProvider.shared.getModel(modelName: modelName)
     }
 
     /// Configure OpenAI provider with specific settings
@@ -66,7 +66,7 @@ public final class Tachikoma: @unchecked Sendable {
     /// List all available models from configured providers
     /// - Returns: Array of available model identifiers
     public func availableModels() async -> [String] {
-        return await ModelProvider.shared.listModels()
+        await ModelProvider.shared.listModels()
     }
 
     /// Clear all cached model instances
@@ -80,8 +80,8 @@ public final class Tachikoma: @unchecked Sendable {
     ///   - factory: Factory closure that creates the model instance
     public func registerModel(
         name modelName: String,
-        factory: @escaping @Sendable () throws -> any ModelInterface
-    ) async {
+        factory: @escaping @Sendable () throws -> any ModelInterface) async
+    {
         await ModelProvider.shared.register(modelName: modelName, factory: factory)
     }
 }

@@ -5,55 +5,55 @@
 //  Application selection UI component
 //
 
-import SwiftUI
 import AppKit
+import SwiftUI
 
 public struct AppSelectorView: View {
     @ObservedObject var overlayManager: OverlayManager
-    
+
     public init(overlayManager: OverlayManager) {
         self.overlayManager = overlayManager
     }
-    
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Target Applications")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                
+
                 Spacer()
-                
+
                 Menu("Detail Level") {
                     Button("Essential (Buttons & Inputs)") {
-                        overlayManager.setDetailLevel(.essential)
+                        self.overlayManager.setDetailLevel(.essential)
                     }
-                    .disabled(overlayManager.detailLevel == .essential)
-                    
+                    .disabled(self.overlayManager.detailLevel == .essential)
+
                     Button("Moderate (Include Lists & Tables)") {
-                        overlayManager.setDetailLevel(.moderate)
+                        self.overlayManager.setDetailLevel(.moderate)
                     }
-                    .disabled(overlayManager.detailLevel == .moderate)
-                    
+                    .disabled(self.overlayManager.detailLevel == .moderate)
+
                     Button("All (Show Everything)") {
-                        overlayManager.setDetailLevel(.all)
+                        self.overlayManager.setDetailLevel(.all)
                     }
-                    .disabled(overlayManager.detailLevel == .all)
+                    .disabled(self.overlayManager.detailLevel == .all)
                 }
                 .menuStyle(.borderlessButton)
                 .padding(.trailing, 8)
-                
+
                 Menu {
                     Button("All Applications") {
-                        overlayManager.setAppSelectionMode(.all)
+                        self.overlayManager.setAppSelectionMode(.all)
                     }
-                    .disabled(overlayManager.selectedAppMode == .all)
-                    
+                    .disabled(self.overlayManager.selectedAppMode == .all)
+
                     Divider()
-                    
-                    ForEach(overlayManager.applications) { app in
+
+                    ForEach(self.overlayManager.applications) { app in
                         Button(action: {
-                            overlayManager.setAppSelectionMode(.single, bundleID: app.bundleIdentifier)
+                            self.overlayManager.setAppSelectionMode(.single, bundleID: app.bundleIdentifier)
                         }) {
                             HStack {
                                 if let icon = app.icon {
@@ -64,16 +64,18 @@ public struct AppSelectorView: View {
                                 Text(app.name)
                             }
                         }
-                        .disabled(overlayManager.selectedAppMode == .single && 
-                                 overlayManager.selectedAppBundleID == app.bundleIdentifier)
+                        .disabled(self.overlayManager.selectedAppMode == .single &&
+                            self.overlayManager.selectedAppBundleID == app.bundleIdentifier)
                     }
                 } label: {
                     HStack {
-                        if overlayManager.selectedAppMode == .all {
+                        if self.overlayManager.selectedAppMode == .all {
                             Image(systemName: "apps.iphone")
                             Text("All Applications")
                         } else if let selectedID = overlayManager.selectedAppBundleID,
-                                  let app = overlayManager.applications.first(where: { $0.bundleIdentifier == selectedID }) {
+                                  let app = overlayManager.applications
+                                      .first(where: { $0.bundleIdentifier == selectedID })
+                        {
                             if let icon = app.icon {
                                 Image(nsImage: icon)
                                     .resizable()
@@ -91,8 +93,8 @@ public struct AppSelectorView: View {
                 }
                 .menuStyle(.borderlessButton)
             }
-            
-            if overlayManager.selectedAppMode == .single {
+
+            if self.overlayManager.selectedAppMode == .single {
                 Text("Inspecting single application")
                     .font(.caption)
                     .foregroundColor(.secondary)

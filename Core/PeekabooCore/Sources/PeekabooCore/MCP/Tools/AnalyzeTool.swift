@@ -136,11 +136,10 @@ public struct AnalyzeTool: MCPTool {
 
             // Get the response
             let response = try await model.getResponse(request: request)
-            let analysisText: String
-            if case .outputText(let text) = response.content.first {
-                analysisText = text
+            let analysisText: String = if case let .outputText(text) = response.content.first {
+                text
             } else {
-                analysisText = "No response received"
+                "No response received"
             }
 
             let duration = Date().timeIntervalSince(startTime)

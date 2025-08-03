@@ -257,7 +257,7 @@ struct OllamaModelTests {
                 description: "Perform calculation",
                 parameters: ToolParameters(
                     properties: [
-                        "expression": ParameterSchema(type: .string, description: "Math expression")
+                        "expression": ParameterSchema(type: .string, description: "Math expression"),
                     ],
                     required: ["expression"])))
 
@@ -338,8 +338,7 @@ struct OllamaModelTests {
         let fileContent = FileContent(
             id: nil,
             url: nil,
-            name: "test.txt"
-        )
+            name: "test.txt")
 
         let request = ModelRequest(
             messages: [
@@ -368,8 +367,7 @@ struct OllamaModelTests {
 
         let audioContent = AudioContent(
             transcript: "Hello, this is a test transcript.",
-            duration: 5.0
-        )
+            duration: 5.0)
 
         let request = ModelRequest(
             messages: [
@@ -470,7 +468,7 @@ struct OllamaModelProviderTests {
             "firefunction-v2",
         ]
 
-        // Models without tool support  
+        // Models without tool support
         let nonToolModels = [
             "llava",
             "bakllava",
@@ -550,7 +548,7 @@ struct OllamaModelProviderTests {
 
         // Vision models
         let visionModels = ["llava", "bakllava", "llama3.2-vision:11b"]
-        
+
         // Text-only models
         let textModels = ["llama3.3", "mistral-nemo", "command-r"]
 

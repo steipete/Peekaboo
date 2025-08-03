@@ -309,13 +309,11 @@ struct GrokModelProviderTests {
             temperature: 0.7,
             frequencyPenalty: 0.5,
             presencePenalty: 0.5,
-            stopSequences: ["stop"]
-        )
+            stopSequences: ["stop"])
 
         let request = ModelRequest(
             messages: [Message.user(content: .text("Test"))],
-            settings: settings
-        )
+            settings: settings)
 
         // Test each model handles parameter filtering
         for (name, model) in [("grok-3", grok3Model), ("grok-4", grok4Model), ("grok-beta", grokBetaModel)] {

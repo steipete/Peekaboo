@@ -6,14 +6,13 @@ public func createTool<Context>(
     name: String,
     description: String,
     parameters: ToolParameters? = nil,
-    execute: @escaping (ToolInput, Context) async throws -> ToolOutput
-) -> Tool<Context> {
-    return Tool<Context>(
+    execute: @escaping (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
+{
+    Tool<Context>(
         name: name,
         description: description,
         parameters: parameters ?? ToolParameters.object(properties: [:], required: []),
-        execute: execute
-    )
+        execute: execute)
 }
 
 /// Create a simple tool with basic parameter handling
@@ -23,14 +22,13 @@ public func createSimpleTool<Context>(
     description: String,
     parameters: [String: ParameterSchema] = [:],
     required: [String] = [],
-    execute: @escaping (ToolInput, Context) async throws -> ToolOutput
-) -> Tool<Context> {
-    return createTool(
+    execute: @escaping (ToolInput, Context) async throws -> ToolOutput) -> Tool<Context>
+{
+    createTool(
         name: name,
         description: description,
         parameters: ToolParameters.object(properties: parameters, required: required),
-        execute: execute
-    )
+        execute: execute)
 }
 
 /// Create a string parameter schema
@@ -38,8 +36,8 @@ public func createSimpleTool<Context>(
 public func stringParam(
     description: String,
     enumValues _: [String]? = nil,
-    pattern: String? = nil
-) -> ParameterSchema {
+    pattern: String? = nil) -> ParameterSchema
+{
     ParameterSchema.string(description: description, pattern: pattern)
 }
 
@@ -48,8 +46,8 @@ public func stringParam(
 public func numberParam(
     description: String,
     minimum: Double? = nil,
-    maximum: Double? = nil
-) -> ParameterSchema {
+    maximum: Double? = nil) -> ParameterSchema
+{
     ParameterSchema.number(description: description, minimum: minimum, maximum: maximum)
 }
 
@@ -58,8 +56,8 @@ public func numberParam(
 public func integerParam(
     description: String,
     minimum: Int? = nil,
-    maximum: Int? = nil
-) -> ParameterSchema {
+    maximum: Int? = nil) -> ParameterSchema
+{
     ParameterSchema.integer(description: description, minimum: minimum?.double, maximum: maximum?.double)
 }
 
@@ -73,8 +71,8 @@ public func boolParam(description: String) -> ParameterSchema {
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public func arrayParam(
     description: String,
-    items: ParameterSchema
-) -> ParameterSchema {
+    items: ParameterSchema) -> ParameterSchema
+{
     ParameterSchema.array(of: items, description: description)
 }
 
@@ -83,8 +81,8 @@ public func arrayParam(
 public func objectParam(
     description: String,
     properties: [String: ParameterSchema],
-    required _: [String] = []
-) -> ParameterSchema {
+    required _: [String] = []) -> ParameterSchema
+{
     ParameterSchema.object(properties: properties, description: description)
 }
 

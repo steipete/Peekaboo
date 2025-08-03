@@ -9,13 +9,12 @@ let package = Package(
         .macOS(.v14),
         .iOS(.v17),
         .watchOS(.v10),
-        .tvOS(.v17)
+        .tvOS(.v17),
     ],
     products: [
         .library(
             name: "Tachikoma",
-            targets: ["Tachikoma"]
-        ),
+            targets: ["Tachikoma"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
@@ -39,8 +38,7 @@ let package = Package(
                 .enableUpcomingFeature("GlobalConcurrency"),
                 .enableUpcomingFeature("IsolatedDefaultValues"),
                 .enableUpcomingFeature("InternalImportsByDefault"),
-            ]
-        ),
+            ]),
         .testTarget(
             name: "TachikomaTests",
             dependencies: [
@@ -59,7 +57,5 @@ let package = Package(
                 .enableUpcomingFeature("GlobalConcurrency"),
                 .enableUpcomingFeature("IsolatedDefaultValues"),
                 .enableUpcomingFeature("InternalImportsByDefault"),
-            ]
-        ),
-    ]
-)
+            ]),
+    ])

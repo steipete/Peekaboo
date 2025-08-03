@@ -456,9 +456,9 @@ struct ConfigCommand: ParsableCommand {
             }
         }
     }
-    
+
     // MARK: - Custom Provider Management Commands
-    
+
     /// Subcommand to add a custom AI provider
     struct AddProviderCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -466,12 +466,12 @@ struct ConfigCommand: ParsableCommand {
             abstract: "Add a custom AI provider",
             discussion: """
             Add a custom AI provider to your Peekaboo configuration.
-            
+
             This allows you to connect to OpenAI-compatible or Anthropic-compatible
             endpoints beyond the built-in providers.
-            
+
             Examples:
-            
+
             # Add OpenRouter
             peekaboo config add-provider openrouter \\
               --type openai \\
@@ -479,14 +479,14 @@ struct ConfigCommand: ParsableCommand {
               --base-url "https://openrouter.ai/api/v1" \\
               --api-key "{env:OPENROUTER_API_KEY}" \\
               --description "Access to 300+ models via OpenRouter"
-            
+
             # Add local Ollama with authentication
             peekaboo config add-provider local-ollama \\
               --type openai \\
               --name "Local Ollama" \\
               --base-url "http://localhost:11434/v1" \\
               --api-key "dummy-key"
-            
+
             # Add Groq
             peekaboo config add-provider groq \\
               --type openai \\
@@ -495,43 +495,43 @@ struct ConfigCommand: ParsableCommand {
               --api-key "{env:GROQ_API_KEY}"
             """
         )
-        
+
         @Argument(help: "Unique identifier for the provider (letters, numbers, hyphens only)")
         var providerId: String
-        
+
         @Option(name: .long, help: "Provider type (openai or anthropic)")
         var type: String
-        
+
         @Option(name: .long, help: "Human-readable name for the provider")
         var name: String
-        
+
         @Option(name: .long, help: "Base URL for the API endpoint")
         var baseUrl: String
-        
+
         @Option(name: .long, help: "API key or credential reference (e.g., {env:API_KEY})")
         var apiKey: String
-        
+
         @Option(name: .long, help: "Optional description of the provider")
         var description: String?
-        
+
         @Option(name: .long, help: "Additional HTTP headers (key:value,key:value)")
         var headers: String?
-        
+
         @Flag(name: .long, help: "Enable JSON output")
         var jsonOutput: Bool = false
-        
+
         @Flag(name: .long, help: "Overwrite existing provider with same ID")
         var force: Bool = false
-        
+
         mutating func run() async throws {
             let manager = ConfigurationManager.shared
-            
+
             // Validate provider ID format
             let validIdPattern = "^[a-zA-Z0-9-_]+$"
             let regex = try NSRegularExpression(pattern: validIdPattern)
             let range = NSRange(location: 0, length: providerId.utf16.count)
-            if regex.firstMatch(in: providerId, options: [], range: range) == nil {
-                if jsonOutput {
+            if regex.firstMatch(in: self.providerId, options: [], range: range) == nil {
+                if self.jsonOutput {
                     let errorOutput = ErrorOutput(
                         error: true,
                         code: "INVALID_ID",
@@ -544,11 +544,11 @@ struct ConfigCommand: ParsableCommand {
                 }
                 throw ExitCode.failure
             }
-            
+
             // Check if provider already exists
-            if manager.getCustomProvider(id: providerId) != nil {
-                if !force {
-                    if jsonOutput {
+            if manager.getCustomProvider(id: self.providerId) != nil {
+                if !self.force {
+                    if self.jsonOutput {
                         let errorOutput = ErrorOutput(
                             error: true,
                             code: "PROVIDER_EXISTS",
@@ -557,15 +557,15 @@ struct ConfigCommand: ParsableCommand {
                         )
                         outputJSON(errorOutput)
                     } else {
-                        print("❌ Provider '\(providerId)' already exists. Use --force to overwrite.")
+                        print("❌ Provider '\(self.providerId)' already exists. Use --force to overwrite.")
                     }
                     throw ExitCode.failure
                 }
             }
-            
+
             // Validate and parse provider type
             guard let providerType = Configuration.CustomProvider.ProviderType(rawValue: type) else {
-                if jsonOutput {
+                if self.jsonOutput {
                     let errorOutput = ErrorOutput(
                         error: true,
                         code: "INVALID_TYPE",
@@ -574,14 +574,14 @@ struct ConfigCommand: ParsableCommand {
                     )
                     outputJSON(errorOutput)
                 } else {
-                    print("❌ Invalid provider type '\(type)'. Must be 'openai' or 'anthropic'.")
+                    print("❌ Invalid provider type '\(self.type)'. Must be 'openai' or 'anthropic'.")
                 }
                 throw ExitCode.failure
             }
-            
+
             // Parse headers if provided
             var headerDict: [String: String]?
-            if let headers = headers {
+            if let headers {
                 headerDict = [:]
                 let pairs = headers.split(separator: ",")
                 for pair in pairs {
@@ -593,28 +593,28 @@ struct ConfigCommand: ParsableCommand {
                     }
                 }
             }
-            
+
             // Create provider configuration
             let options = Configuration.ProviderOptions(
-                baseURL: baseUrl,
-                apiKey: apiKey,
+                baseURL: self.baseUrl,
+                apiKey: self.apiKey,
                 headers: headerDict
             )
-            
+
             let provider = Configuration.CustomProvider(
-                name: name,
-                description: description,
+                name: self.name,
+                description: self.description,
                 type: providerType,
                 options: options,
                 models: nil, // User can add models later or they'll be discovered
                 enabled: true
             )
-            
+
             do {
                 // Add provider to configuration
-                try manager.addCustomProvider(provider, id: providerId)
-                
-                if jsonOutput {
+                try manager.addCustomProvider(provider, id: self.providerId)
+
+                if self.jsonOutput {
                     let successOutput = SuccessOutput(
                         success: true,
                         data: [
@@ -626,16 +626,16 @@ struct ConfigCommand: ParsableCommand {
                     )
                     outputJSON(successOutput)
                 } else {
-                    print("✅ Added custom provider '\(providerId)' (\(name))")
-                    print("   Type: \(type)")
-                    print("   Base URL: \(baseUrl)")
-                    if let description = description {
+                    print("✅ Added custom provider '\(self.providerId)' (\(self.name))")
+                    print("   Type: \(self.type)")
+                    print("   Base URL: \(self.baseUrl)")
+                    if let description {
                         print("   Description: \(description)")
                     }
-                    print("\n💡 Test the connection with: peekaboo config test-provider \(providerId)")
+                    print("\n💡 Test the connection with: peekaboo config test-provider \(self.providerId)")
                 }
             } catch {
-                if jsonOutput {
+                if self.jsonOutput {
                     let errorOutput = ErrorOutput(
                         error: true,
                         code: "ADD_FAILED",
@@ -650,7 +650,7 @@ struct ConfigCommand: ParsableCommand {
             }
         }
     }
-    
+
     /// Subcommand to list custom AI providers
     struct ListProvidersCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -658,20 +658,20 @@ struct ConfigCommand: ParsableCommand {
             abstract: "List configured custom AI providers",
             discussion: """
             Display all custom AI providers configured in Peekaboo.
-            
+
             This shows providers you've added with 'peekaboo config add-provider',
             not the built-in providers (openai, anthropic, ollama).
             """
         )
-        
+
         @Flag(name: .long, help: "Enable JSON output")
         var jsonOutput: Bool = false
-        
+
         mutating func run() async throws {
             let manager = ConfigurationManager.shared
             let customProviders = manager.listCustomProviders()
-            
-            if jsonOutput {
+
+            if self.jsonOutput {
                 let data: [String: Any] = [
                     "providers": customProviders.mapValues { provider in
                         [
@@ -689,11 +689,13 @@ struct ConfigCommand: ParsableCommand {
             } else {
                 if customProviders.isEmpty {
                     print("No custom providers configured.")
-                    print("Add one with: peekaboo config add-provider <id> --type <type> --name <name> --base-url <url> --api-key <key>")
+                    print(
+                        "Add one with: peekaboo config add-provider <id> --type <type> --name <name> --base-url <url> --api-key <key>"
+                    )
                 } else {
                     print("Custom AI Providers:")
                     print()
-                    
+
                     for (id, provider) in customProviders.sorted(by: { $0.key < $1.key }) {
                         let status = provider.enabled ? "✅" : "❌"
                         print("  \(status) \(id) (\(provider.name))")
@@ -707,14 +709,14 @@ struct ConfigCommand: ParsableCommand {
                         }
                         print()
                     }
-                    
+
                     print("💡 Test a provider with: peekaboo config test-provider <id>")
                     print("💡 Remove a provider with: peekaboo config remove-provider <id>")
                 }
             }
         }
     }
-    
+
     /// Subcommand to test a custom AI provider connection
     struct TestProviderCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -722,28 +724,28 @@ struct ConfigCommand: ParsableCommand {
             abstract: "Test connection to a custom AI provider",
             discussion: """
             Test the connection to a custom AI provider by making a simple API call.
-            
+
             This verifies that:
             • The base URL is accessible
             • The API key is valid
             • The endpoint responds correctly
-            
+
             For OpenAI-compatible providers, this calls the /models endpoint.
             For Anthropic-compatible providers, this makes a simple message request.
             """
         )
-        
+
         @Argument(help: "Provider ID to test")
         var providerId: String
-        
+
         @Flag(name: .long, help: "Enable JSON output")
         var jsonOutput: Bool = false
-        
+
         mutating func run() async throws {
             let manager = ConfigurationManager.shared
-            let (success, error) = await manager.testCustomProvider(id: providerId)
-            
-            if jsonOutput {
+            let (success, error) = await manager.testCustomProvider(id: self.providerId)
+
+            if self.jsonOutput {
                 if success {
                     let successOutput = SuccessOutput(
                         success: true,
@@ -764,18 +766,18 @@ struct ConfigCommand: ParsableCommand {
                 }
             } else {
                 if success {
-                    print("✅ Connection to '\(providerId)' successful!")
+                    print("✅ Connection to '\(self.providerId)' successful!")
                 } else {
-                    print("❌ Connection to '\(providerId)' failed: \(error ?? "Unknown error")")
+                    print("❌ Connection to '\(self.providerId)' failed: \(error ?? "Unknown error")")
                 }
             }
-            
+
             if !success {
                 throw ExitCode.failure
             }
         }
     }
-    
+
     /// Subcommand to remove a custom AI provider
     struct RemoveProviderCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -783,27 +785,27 @@ struct ConfigCommand: ParsableCommand {
             abstract: "Remove a custom AI provider",
             discussion: """
             Remove a custom AI provider from your Peekaboo configuration.
-            
+
             This only removes providers you've added with 'peekaboo config add-provider'.
             Built-in providers (openai, anthropic, ollama) cannot be removed.
             """
         )
-        
+
         @Argument(help: "Provider ID to remove")
         var providerId: String
-        
+
         @Flag(name: .long, help: "Enable JSON output")
         var jsonOutput: Bool = false
-        
+
         @Flag(name: .long, help: "Skip confirmation prompt")
         var force: Bool = false
-        
+
         mutating func run() async throws {
             let manager = ConfigurationManager.shared
-            
+
             // Check if provider exists
             guard let provider = manager.getCustomProvider(id: providerId) else {
-                if jsonOutput {
+                if self.jsonOutput {
                     let errorOutput = ErrorOutput(
                         error: true,
                         code: "PROVIDER_NOT_FOUND",
@@ -812,25 +814,28 @@ struct ConfigCommand: ParsableCommand {
                     )
                     outputJSON(errorOutput)
                 } else {
-                    print("❌ Provider '\(providerId)' not found")
+                    print("❌ Provider '\(self.providerId)' not found")
                 }
                 throw ExitCode.failure
             }
-            
+
             // Confirm removal unless forced
-            if !force && !jsonOutput {
-                print("Are you sure you want to remove provider '\(providerId)' (\(provider.name))? [y/N]: ", terminator: "")
+            if !self.force && !self.jsonOutput {
+                print(
+                    "Are you sure you want to remove provider '\(self.providerId)' (\(provider.name))? [y/N]: ",
+                    terminator: ""
+                )
                 let response = readLine()?.lowercased()
                 if response != "y" && response != "yes" {
                     print("Cancelled.")
                     return
                 }
             }
-            
+
             do {
-                try manager.removeCustomProvider(id: providerId)
-                
-                if jsonOutput {
+                try manager.removeCustomProvider(id: self.providerId)
+
+                if self.jsonOutput {
                     let successOutput = SuccessOutput(
                         success: true,
                         data: [
@@ -840,10 +845,10 @@ struct ConfigCommand: ParsableCommand {
                     )
                     outputJSON(successOutput)
                 } else {
-                    print("✅ Removed custom provider '\(providerId)'")
+                    print("✅ Removed custom provider '\(self.providerId)'")
                 }
             } catch {
-                if jsonOutput {
+                if self.jsonOutput {
                     let errorOutput = ErrorOutput(
                         error: true,
                         code: "REMOVE_FAILED",
@@ -858,7 +863,7 @@ struct ConfigCommand: ParsableCommand {
             }
         }
     }
-    
+
     /// Subcommand to discover models from a custom AI provider
     struct ModelsProviderCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
@@ -866,27 +871,27 @@ struct ConfigCommand: ParsableCommand {
             abstract: "List available models from a custom AI provider",
             discussion: """
             Discover and list available models from a custom AI provider.
-            
+
             For OpenAI-compatible providers, this queries the /models endpoint.
             For Anthropic-compatible providers, this shows configured models
             since Anthropic doesn't have a public models endpoint.
             """
         )
-        
+
         @Argument(help: "Provider ID to query")
         var providerId: String
-        
+
         @Flag(name: .long, help: "Enable JSON output")
         var jsonOutput: Bool = false
-        
+
         @Flag(name: .long, help: "Discover models from API (for OpenAI-compatible providers)")
         var discover: Bool = false
-        
+
         mutating func run() async throws {
             let manager = ConfigurationManager.shared
-            
+
             guard let provider = manager.getCustomProvider(id: providerId) else {
-                if jsonOutput {
+                if self.jsonOutput {
                     let errorOutput = ErrorOutput(
                         error: true,
                         code: "PROVIDER_NOT_FOUND",
@@ -895,24 +900,24 @@ struct ConfigCommand: ParsableCommand {
                     )
                     outputJSON(errorOutput)
                 } else {
-                    print("❌ Provider '\(providerId)' not found")
+                    print("❌ Provider '\(self.providerId)' not found")
                 }
                 throw ExitCode.failure
             }
-            
+
             var models: [String] = []
             var apiError: String?
-            
-            if discover && provider.type == .openai {
-                let (discoveredModels, error) = await manager.discoverModelsForCustomProvider(id: providerId)
+
+            if self.discover && provider.type == .openai {
+                let (discoveredModels, error) = await manager.discoverModelsForCustomProvider(id: self.providerId)
                 models = discoveredModels
                 apiError = error
             } else {
                 // Use configured models
                 models = provider.models?.keys.map { String($0) } ?? []
             }
-            
-            if jsonOutput {
+
+            if self.jsonOutput {
                 let data: [String: Any] = [
                     "providerId": providerId,
                     "models": models,
@@ -922,18 +927,18 @@ struct ConfigCommand: ParsableCommand {
                 let output = SuccessOutput(success: apiError == nil, data: data)
                 outputJSON(output)
             } else {
-                print("Models for provider '\(providerId)' (\(provider.name)):")
+                print("Models for provider '\(self.providerId)' (\(provider.name)):")
                 print()
-                
+
                 if let error = apiError {
                     print("❌ Failed to discover models: \(error)")
                     if !models.isEmpty {
                         print("Showing configured models instead:")
                     }
                 }
-                
+
                 if models.isEmpty {
-                    if provider.type == .openai && !discover {
+                    if provider.type == .openai && !self.discover {
                         print("No configured models. Try --discover to query the API.")
                     } else {
                         print("No models available.")
@@ -944,8 +949,8 @@ struct ConfigCommand: ParsableCommand {
                     }
                     print()
                     print("Found \(models.count) model(s)")
-                    
-                    if provider.type == .openai && !discover {
+
+                    if provider.type == .openai && !self.discover {
                         print("💡 Use --discover to query the API for all available models")
                     }
                 }

@@ -125,7 +125,7 @@ extension PeekabooAgentService {
                 }
 
                 // Ensure app is focused if specified
-                if let appName = appName {
+                if let appName {
                     let appsOutput = try await context.applications.listApplications()
                     if let app = appsOutput.data.applications
                         .first(where: { $0.name.lowercased() == appName.lowercased() })
@@ -139,7 +139,7 @@ extension PeekabooAgentService {
 
                 // Click the menu item using menu service
                 let targetApp: String
-                if let appName = appName {
+                if let appName {
                     targetApp = appName
                 } else {
                     // Get frontmost app
@@ -174,7 +174,7 @@ extension PeekabooAgentService {
 
                 // Get app name for context
                 let targetApp: String
-                if let appName = appName {
+                if let appName {
                     targetApp = appName
                 } else {
                     let frontmostApp = try await context.applications.getFrontmostApplication()
@@ -182,7 +182,7 @@ extension PeekabooAgentService {
                 }
 
                 // Get menu structure
-                let menuStructure: MenuStructure = if let appName = appName {
+                let menuStructure: MenuStructure = if let appName {
                     // Get menus for specific app
                     try await context.menu.listMenus(for: appName)
                 } else {
@@ -207,7 +207,7 @@ extension PeekabooAgentService {
                 var output = ""
 
                 // If specific menu requested, filter
-                if let specificMenu = specificMenu {
+                if let specificMenu {
                     if let targetMenu = menuStructure.menus
                         .first(where: { $0.title.lowercased() == specificMenu.lowercased() })
                     {

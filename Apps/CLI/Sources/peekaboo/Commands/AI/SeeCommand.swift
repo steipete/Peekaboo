@@ -26,8 +26,11 @@ ApplicationResolvable {
 
     @Option(help: "Output path for screenshot")
     var path: String?
-    
-    @Option(name: .long, help: "Specific screen index to capture (0-based). If not specified, captures all screens when in screen mode")
+
+    @Option(
+        name: .long,
+        help: "Specific screen index to capture (0-based). If not specified, captures all screens when in screen mode"
+    )
     var screenIndex: Int?
 
     @Flag(help: "Generate annotated screenshot with interaction markers")
@@ -143,7 +146,7 @@ ApplicationResolvable {
     private func performCaptureWithDetection() async throws -> CaptureAndDetectionResult {
         // Handle special app cases
         let captureResult: CaptureResult
-        
+
         if let appName = self.app?.lowercased() {
             switch appName {
             case "menubar":
@@ -199,7 +202,7 @@ ApplicationResolvable {
             metadata: detectionResult.metadata
         )
     }
-    
+
     private func performStandardCapture() async throws -> CaptureResult {
         let effectiveMode = self.determineMode()
         Logger.shared.verbose(
@@ -228,7 +231,10 @@ ApplicationResolvable {
                         category: "WindowSearch",
                         metadata: ["title": title]
                     )
-                    let windowsOutput = try await PeekabooServices.shared.applications.listWindows(for: appIdentifier, timeout: nil)
+                    let windowsOutput = try await PeekabooServices.shared.applications.listWindows(
+                        for: appIdentifier,
+                        timeout: nil
+                    )
                     Logger.shared.verbose(
                         "Found windows",
                         category: "WindowSearch",
@@ -278,7 +284,7 @@ ApplicationResolvable {
         guard let mainScreen = NSScreen.main else {
             throw PeekabooError.captureFailed("No main screen found")
         }
-        
+
         // Menu bar is at the top of the screen
         let menuBarHeight: CGFloat = 24.0 // Standard macOS menu bar height
         let menuBarRect = CGRect(
@@ -287,11 +293,11 @@ ApplicationResolvable {
             width: mainScreen.frame.width,
             height: menuBarHeight
         )
-        
+
         // Capture the menu bar area
         return try await PeekabooServices.shared.screenCapture.captureArea(menuBarRect)
     }
-    
+
     private func saveScreenshot(_ imageData: Data) throws -> String {
         let outputPath: String
 
@@ -872,38 +878,40 @@ extension SeeCommand {
         if self.annotate {
             Logger.shared.info("Annotation is disabled for full screen captures due to performance constraints")
         }
-        
+
         Logger.shared.verbose("Initiating screen capture", category: "Capture")
         Logger.shared.startTimer("screen_capture")
-        
+
         defer {
             Logger.shared.stopTimer("screen_capture")
         }
-        
+
         if let index = self.screenIndex {
             // Capture specific screen
             Logger.shared.verbose("Capturing specific screen", category: "Capture", metadata: ["screenIndex": index])
             let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
-            
+
             // Add display info to output
             if let displayInfo = result.metadata.displayInfo {
                 let bounds = displayInfo.bounds
-                print("🖥️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height)))")
+                print(
+                    "🖥️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height)))"
+                )
             }
-            
+
             return result
         } else {
             // Capture all screens
             Logger.shared.verbose("Capturing all screens", category: "Capture")
             let results = try await self.captureAllScreens()
-            
+
             if results.isEmpty {
                 throw CaptureError.captureFailure("Failed to capture any screens")
             }
-            
+
             // Save all screenshots except the first (which will be saved by the normal flow)
             print("📸 Captured \(results.count) screen(s):")
-            
+
             for (index, result) in results.enumerated() {
                 if index > 0 {
                     // Save additional screenshots
@@ -914,32 +922,37 @@ extension SeeCommand {
                         let filename = (basePath as NSString).lastPathComponent
                         let nameWithoutExt = (filename as NSString).deletingPathExtension
                         let ext = (filename as NSString).pathExtension
-                        
-                        screenPath = (directory as NSString).appendingPathComponent("\(nameWithoutExt)_screen\(index).\(ext)")
+
+                        screenPath = (directory as NSString)
+                            .appendingPathComponent("\(nameWithoutExt)_screen\(index).\(ext)")
                     } else {
                         // Default path with screen index
                         let timestamp = ISO8601DateFormatter().string(from: Date())
                         screenPath = "screenshot_\(timestamp)_screen\(index).png"
                     }
-                    
+
                     // Save the screenshot
                     try result.imageData.write(to: URL(fileURLWithPath: screenPath))
-                    
+
                     // Display info about this screen
                     if let displayInfo = result.metadata.displayInfo {
                         let fileSize = self.getFileSize(screenPath) ?? 0
                         let bounds = displayInfo.bounds
-                        print("   🖥️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height))) → \(screenPath) (\(self.formatFileSize(Int64(fileSize))))")
+                        print(
+                            "   🖥️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height))) → \(screenPath) (\(self.formatFileSize(Int64(fileSize))))"
+                        )
                     }
                 } else {
                     // First screen will be saved by the normal flow, just show info
                     if let displayInfo = result.metadata.displayInfo {
                         let bounds = displayInfo.bounds
-                        print("   🖥️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height))) → (primary)")
+                        print(
+                            "   🖥️  Display \(index): \(displayInfo.name ?? "Display \(index)") (\(Int(bounds.width))×\(Int(bounds.height))) → (primary)"
+                        )
                     }
                 }
             }
-            
+
             // Return the primary screen result (first one)
             return results[0]
         }
@@ -951,23 +964,23 @@ extension SeeCommand {
 extension SeeCommand {
     private func captureAllScreens() async throws -> [CaptureResult] {
         var results: [CaptureResult] = []
-        
+
         // Get available displays from the screen capture service
         let content = try await SCShareableContent.current
         let displays = content.displays
-        
+
         Logger.shared.info("Found \(displays.count) display(s) to capture")
-        
+
         for (index, display) in displays.enumerated() {
             Logger.shared.verbose("Capturing display \(index)", category: "MultiScreen", metadata: [
                 "displayID": display.displayID,
                 "width": display.width,
                 "height": display.height
             ])
-            
+
             do {
                 let result = try await PeekabooServices.shared.screenCapture.captureScreen(displayIndex: index)
-                
+
                 // Update path to include screen index if capturing multiple screens
                 if displays.count > 1 {
                     let updatedResult = self.updateCaptureResultPath(result, screenIndex: index, displayInfo: display)
@@ -980,21 +993,25 @@ extension SeeCommand {
                 // Continue capturing other screens even if one fails
             }
         }
-        
+
         if results.isEmpty {
             throw CaptureError.captureFailure("Failed to capture any screens")
         }
-        
+
         return results
     }
-    
-    private func updateCaptureResultPath(_ result: CaptureResult, screenIndex: Int, displayInfo: SCDisplay) -> CaptureResult {
+
+    private func updateCaptureResultPath(
+        _ result: CaptureResult,
+        screenIndex: Int,
+        displayInfo: SCDisplay
+    ) -> CaptureResult {
         // Since CaptureResult is immutable and doesn't have a path property,
         // we can't update the path. Just return the original result.
         // The saved path is already included in result.savedPath if it was saved.
-        return result
+        result
     }
-    
+
     private func formatFileSize(_ bytes: Int64) -> String {
         let formatter = ByteCountFormatter()
         formatter.countStyle = .file

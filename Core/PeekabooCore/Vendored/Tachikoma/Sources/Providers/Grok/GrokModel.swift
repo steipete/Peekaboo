@@ -12,8 +12,8 @@ public final class GrokModel: ModelInterface, Sendable {
         apiKey: String,
         modelName: String = "grok-4-0709",
         baseURL: URL = URL(string: "https://api.x.ai/v1")!,
-        session: URLSession? = nil
-    ) {
+        session: URLSession? = nil)
+    {
         self.apiKey = apiKey
         self.modelName = modelName
         self.baseURL = baseURL
@@ -32,9 +32,9 @@ public final class GrokModel: ModelInterface, Sendable {
     // MARK: - ModelInterface Implementation
 
     public var maskedApiKey: String {
-        guard apiKey.count > 8 else { return "***" }
-        let start = apiKey.prefix(6)
-        let end = apiKey.suffix(2)
+        guard self.apiKey.count > 8 else { return "***" }
+        let start = self.apiKey.prefix(6)
+        let end = self.apiKey.suffix(2)
         return "\(start)...\(end)"
     }
 
@@ -49,11 +49,11 @@ public final class GrokModel: ModelInterface, Sendable {
         }
 
         if httpResponse.statusCode != 200 {
-            try handleErrorResponse(data: data, response: httpResponse)
+            try self.handleErrorResponse(data: data, response: httpResponse)
         }
 
         let chatResponse = try JSONDecoder().decode(GrokChatCompletionResponse.self, from: data)
-        return try convertFromGrokResponse(chatResponse)
+        return try self.convertFromGrokResponse(chatResponse)
     }
 
     public func getStreamedResponse(request: ModelRequest) async throws -> AsyncThrowingStream<StreamEvent, any Error> {
@@ -66,7 +66,8 @@ public final class GrokModel: ModelInterface, Sendable {
                     let (bytes, response) = try await session.bytes(for: urlRequest)
 
                     guard let httpResponse = response as? HTTPURLResponse else {
-                        continuation.finish(throwing: TachikomaError.networkError(underlying: URLError(.badServerResponse)))
+                        continuation
+                            .finish(throwing: TachikomaError.networkError(underlying: URLError(.badServerResponse)))
                         return
                     }
 
@@ -102,8 +103,7 @@ public final class GrokModel: ModelInterface, Sendable {
                             if let chunkData = data.data(using: .utf8),
                                let chunk = try? JSONDecoder().decode(
                                    GrokChatCompletionChunk.self,
-                                   from: chunkData
-                               )
+                                   from: chunkData)
                             {
                                 if let events = self.processGrokChunk(chunk, toolCalls: &currentToolCalls) {
                                     for event in events {
@@ -125,10 +125,10 @@ public final class GrokModel: ModelInterface, Sendable {
     // MARK: - Private Helper Methods
 
     private func createURLRequest(endpoint: String, body: any Encodable) throws -> URLRequest {
-        let url = baseURL.appendingPathComponent(endpoint)
+        let url = self.baseURL.appendingPathComponent(endpoint)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(self.apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let encoder = JSONEncoder()
@@ -163,8 +163,7 @@ public final class GrokModel: ModelInterface, Sendable {
                     role: "tool",
                     content: .string(content),
                     toolCalls: nil,
-                    toolCallId: toolCallId
-                )
+                    toolCallId: toolCallId)
 
             case .reasoning:
                 throw TachikomaError.invalidRequest("Reasoning messages not supported in Grok")
@@ -178,9 +177,7 @@ public final class GrokModel: ModelInterface, Sendable {
                 function: GrokTool.Function(
                     name: toolDef.function.name,
                     description: toolDef.function.description,
-                    parameters: self.convertToolParameters(toolDef.function.parameters)
-                )
-            )
+                    parameters: self.convertToolParameters(toolDef.function.parameters)))
         }
 
         // Filter parameters for Grok 4
@@ -189,7 +186,7 @@ public final class GrokModel: ModelInterface, Sendable {
         var presencePenalty = request.settings.presencePenalty
         var stop = request.settings.stopSequences
 
-        if modelName.contains("grok-4") || modelName.contains("grok-3") {
+        if self.modelName.contains("grok-4") || self.modelName.contains("grok-3") {
             // Grok 3 and 4 models don't support these parameters
             frequencyPenalty = nil
             presencePenalty = nil
@@ -197,17 +194,16 @@ public final class GrokModel: ModelInterface, Sendable {
         }
 
         return GrokChatCompletionRequest(
-            model: modelName,
+            model: self.modelName,
             messages: messages,
             tools: tools,
-            toolChoice: convertToolChoice(request.settings.toolChoice),
+            toolChoice: self.convertToolChoice(request.settings.toolChoice),
             temperature: temperature,
             maxTokens: request.settings.maxTokens,
             stream: stream,
             frequencyPenalty: frequencyPenalty,
             presencePenalty: presencePenalty,
-            stop: stop
-        )
+            stop: stop)
     }
 
     private func convertUserMessageContent(_ content: MessageContent) throws -> GrokMessage {
@@ -224,18 +220,14 @@ public final class GrokModel: ModelInterface, Sendable {
                     text: nil,
                     imageUrl: GrokImageUrl(
                         url: url,
-                        detail: imageContent.detail?.rawValue
-                    )
-                ))
+                        detail: imageContent.detail?.rawValue)))
             } else if let base64 = imageContent.base64 {
                 content.append(GrokMessageContentPart(
                     type: "image_url",
                     text: nil,
                     imageUrl: GrokImageUrl(
                         url: "data:image/jpeg;base64,\(base64)",
-                        detail: imageContent.detail?.rawValue
-                    )
-                ))
+                        detail: imageContent.detail?.rawValue)))
             }
 
             return GrokMessage(role: "user", content: .array(content), toolCalls: nil, toolCallId: nil)
@@ -246,24 +238,20 @@ public final class GrokModel: ModelInterface, Sendable {
                     return GrokMessageContentPart(
                         type: "text",
                         text: text,
-                        imageUrl: nil
-                    )
+                        imageUrl: nil)
                 } else if let image = part.imageUrl {
                     if let url = image.url {
                         return GrokMessageContentPart(
                             type: "image_url",
                             text: nil,
-                            imageUrl: GrokImageUrl(url: url, detail: image.detail?.rawValue)
-                        )
+                            imageUrl: GrokImageUrl(url: url, detail: image.detail?.rawValue))
                     } else if let base64 = image.base64 {
                         return GrokMessageContentPart(
                             type: "image_url",
                             text: nil,
                             imageUrl: GrokImageUrl(
                                 url: "data:image/jpeg;base64,\(base64)",
-                                detail: image.detail?.rawValue
-                            )
-                        )
+                                detail: image.detail?.rawValue))
                     }
                 }
                 return nil
@@ -285,7 +273,9 @@ public final class GrokModel: ModelInterface, Sendable {
                 }
                 return GrokMessage(role: "user", content: .string(text), toolCalls: nil, toolCallId: nil)
             } else {
-                throw TachikomaError.invalidRequest("Audio content must be transcribed before sending to Grok. Please ensure transcript is provided.")
+                throw TachikomaError
+                    .invalidRequest(
+                        "Audio content must be transcribed before sending to Grok. Please ensure transcript is provided.")
             }
         }
     }
@@ -308,9 +298,7 @@ public final class GrokModel: ModelInterface, Sendable {
                     type: toolCall.type.rawValue,
                     function: GrokFunctionCall(
                         name: toolCall.function.name,
-                        arguments: toolCall.function.arguments
-                    )
-                ))
+                        arguments: toolCall.function.arguments)))
             }
         }
 
@@ -320,8 +308,7 @@ public final class GrokModel: ModelInterface, Sendable {
                 role: "assistant",
                 content: textContent.isEmpty ? nil : .string(textContent),
                 toolCalls: toolCalls,
-                toolCallId: nil
-            )
+                toolCallId: nil)
         }
 
         return GrokMessage(role: "assistant", content: .string(textContent), toolCalls: nil, toolCallId: nil)
@@ -332,8 +319,7 @@ public final class GrokModel: ModelInterface, Sendable {
         return GrokTool.Parameters(
             type: type,
             properties: properties,
-            required: required
-        )
+            required: required)
     }
 
     private func convertToolChoice(_ toolChoice: ToolChoice?) -> GrokToolChoice? {
@@ -349,8 +335,7 @@ public final class GrokModel: ModelInterface, Sendable {
         case let .specific(toolName):
             return .object(GrokToolChoiceObject(
                 type: "function",
-                function: GrokToolChoiceFunction(name: toolName)
-            ))
+                function: GrokToolChoiceFunction(name: toolName)))
         }
     }
 
@@ -374,9 +359,7 @@ public final class GrokModel: ModelInterface, Sendable {
                     type: .function,
                     function: FunctionCall(
                         name: toolCall.function.name,
-                        arguments: toolCall.function.arguments
-                    )
-                )))
+                        arguments: toolCall.function.arguments))))
             }
         }
 
@@ -386,8 +369,7 @@ public final class GrokModel: ModelInterface, Sendable {
                 completionTokens: usage.completionTokens,
                 totalTokens: usage.totalTokens,
                 promptTokensDetails: nil,
-                completionTokensDetails: nil
-            )
+                completionTokensDetails: nil)
         }
 
         return ModelResponse(
@@ -396,8 +378,7 @@ public final class GrokModel: ModelInterface, Sendable {
             content: content,
             usage: usage,
             flagged: false,
-            finishReason: convertFinishReason(choice.finishReason)
-        )
+            finishReason: self.convertFinishReason(choice.finishReason))
     }
 
     private func convertFinishReason(_ reason: String?) -> FinishReason? {
@@ -407,8 +388,8 @@ public final class GrokModel: ModelInterface, Sendable {
 
     private func processGrokChunk(
         _ chunk: GrokChatCompletionChunk,
-        toolCalls: inout [String: GrokPartialToolCall]
-    ) -> [StreamEvent]? {
+        toolCalls: inout [String: GrokPartialToolCall]) -> [StreamEvent]?
+    {
         var events: [StreamEvent] = []
 
         // First chunk often contains metadata
@@ -416,8 +397,7 @@ public final class GrokModel: ModelInterface, Sendable {
             events.append(.responseStarted(StreamResponseStarted(
                 id: chunk.id,
                 model: chunk.model,
-                systemFingerprint: chunk.systemFingerprint
-            )))
+                systemFingerprint: chunk.systemFingerprint)))
         }
 
         for choice in chunk.choices {
@@ -447,9 +427,7 @@ public final class GrokModel: ModelInterface, Sendable {
                             index: toolCallDelta.index,
                             function: FunctionCallDelta(
                                 name: functionDelta.name,
-                                arguments: functionDelta.arguments
-                            )
-                        )))
+                                arguments: functionDelta.arguments))))
                     }
                 }
             }
@@ -469,8 +447,7 @@ public final class GrokModel: ModelInterface, Sendable {
                 events.append(.responseCompleted(StreamResponseCompleted(
                     id: chunk.id,
                     usage: nil,
-                    finishReason: FinishReason(rawValue: finishReason)
-                )))
+                    finishReason: FinishReason(rawValue: finishReason))))
             }
         }
 
@@ -492,7 +469,7 @@ public final class GrokModel: ModelInterface, Sendable {
                 } else {
                     throw TachikomaError.invalidRequest(message)
                 }
-            case 500 ... 599:
+            case 500...599:
                 throw TachikomaError.modelOverloaded
             default:
                 throw TachikomaError.apiError(message: message, code: errorResponse.error.code)

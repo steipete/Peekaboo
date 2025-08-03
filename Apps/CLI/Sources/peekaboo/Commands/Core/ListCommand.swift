@@ -25,7 +25,7 @@ struct ListCommand: AsyncParsableCommand {
           peekaboo list menubar --json-output            # Output as JSON
 
           peekaboo list permissions                      # Check permissions
-          
+
           peekaboo list screens                          # List all displays
           peekaboo list screens --json-output            # Output as JSON
 
@@ -36,7 +36,13 @@ struct ListCommand: AsyncParsableCommand {
           menubar       List all menu bar items (status icons)
           screens       List all available displays/monitors
         """,
-        subcommands: [AppsSubcommand.self, WindowsSubcommand.self, PermissionsSubcommand.self, MenuBarSubcommand.self, ScreensSubcommand.self],
+        subcommands: [
+            AppsSubcommand.self,
+            WindowsSubcommand.self,
+            PermissionsSubcommand.self,
+            MenuBarSubcommand.self,
+            ScreensSubcommand.self
+        ],
         defaultSubcommand: AppsSubcommand.self
     )
 
@@ -199,11 +205,11 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
         abstract: "Check system permissions required for Peekaboo",
         discussion: """
         Checks system permissions using PeekabooCore PeekabooServices.shared.
-        
+
         Permissions checked:
         - Screen Recording: Required for capturing screen content and optimal window listing
         - Accessibility: Required for UI automation (clicking, typing, etc.)
-        
+
         Note: Screen Recording permission also improves performance for window operations
         by allowing use of faster CGWindowList API with full window information.
         """
@@ -217,14 +223,14 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
 
         // Get permissions using shared helper
         let permissionInfos = await PermissionHelpers.getCurrentPermissions()
-        
+
         // Extract status for JSON output
         let screenRecording = permissionInfos.first { $0.name == "Screen Recording" }?.isGranted ?? false
         let accessibility = permissionInfos.first { $0.name == "Accessibility" }?.isGranted ?? false
-        
+
         // Additional check for screen recording using CGWindowList heuristic
-        let cgWindowListCheck = checkScreenRecordingViaWindowList()
-        
+        let cgWindowListCheck = self.checkScreenRecordingViaWindowList()
+
         // Create permission status for JSON
         let permissions = PermissionStatus(
             screenRecording: screenRecording,
@@ -235,16 +241,16 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
 
         output(data) {
             print("Peekaboo Permissions Status:")
-            
+
             for permission in permissionInfos {
                 print("  \(PermissionHelpers.formatPermissionStatus(permission))")
-                
+
                 // Only show grant instructions if permission is not granted
                 if !permission.isGranted {
                     print("    Grant via: \(permission.grantInstructions)")
                 }
             }
-            
+
             // Show additional performance info for screen recording
             if screenRecording {
                 if cgWindowListCheck {
@@ -256,15 +262,18 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
             }
         }
     }
-    
+
     /// Check screen recording permission using CGWindowList heuristic
     private func checkScreenRecordingViaWindowList() -> Bool {
-        guard let windowList = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionAll, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
             return false
         }
-        
+
         let ourPID = ProcessInfo.processInfo.processIdentifier
-        
+
         // Check if we can see window names from other processes
         for window in windowList {
             guard let ownerPID = window[kCGWindowOwnerPID as String] as? Int32,
@@ -275,7 +284,7 @@ struct PermissionsSubcommand: AsyncParsableCommand, OutputFormattable {
             // Found a window name from another process - we have permission
             return true
         }
-        
+
         return false
     }
 }
@@ -368,25 +377,25 @@ struct ScreensSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
         Lists all connected displays including their resolution, position, and other properties.
         Useful for discovering screen indices for the 'see --screen-index' command and
         debugging multi-monitor setups.
-        
+
         The screen index shown can be used with commands like:
           peekaboo see --screen-index 0    # Capture primary screen
           peekaboo see --screen-index 1    # Capture secondary screen
         """
     )
-    
+
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
-    
+
     @MainActor
     mutating func run() async throws {
         Logger.shared.setJsonOutputMode(self.jsonOutput)
-        
+
         do {
             // Get screens from the service
             let screens = PeekabooServices.shared.screens.listScreens()
             let primaryIndex = screens.firstIndex { $0.isPrimary }
-            
+
             // Create output data
             let screenListData = ScreenListData(
                 screens: screens.map { screen in
@@ -412,7 +421,7 @@ struct ScreensSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
                 },
                 primaryIndex: primaryIndex
             )
-            
+
             let output = UnifiedToolOutput(
                 data: screenListData,
                 summary: UnifiedToolOutput<ScreenListData>.Summary(
@@ -434,25 +443,25 @@ struct ScreensSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
                     hints: ["Use 'peekaboo see --screen-index N' to capture a specific screen"]
                 )
             )
-            
+
             if self.jsonOutput {
                 try print(output.toJSON())
             } else {
                 // Human-readable output
                 print("Screens (\(screens.count) total):")
-                
+
                 for screen in screens {
                     print("\n\(screen.index). \(screen.name)\(screen.isPrimary ? " (Primary)" : "")")
                     print("   Resolution: \(Int(screen.frame.width))×\(Int(screen.frame.height))")
                     print("   Position: \(Int(screen.frame.origin.x)),\(Int(screen.frame.origin.y))")
                     print("   Scale: \(screen.scaleFactor)x\(screen.scaleFactor > 1 ? " (Retina)" : "")")
-                    
+
                     // Show visible area if different from full resolution
                     if screen.visibleFrame.size != screen.frame.size {
                         print("   Visible Area: \(Int(screen.visibleFrame.width))×\(Int(screen.visibleFrame.height))")
                     }
                 }
-                
+
                 print("\n💡 Use 'peekaboo see --screen-index N' to capture a specific screen")
             }
         } catch {
@@ -467,7 +476,7 @@ struct ScreensSubcommand: AsyncParsableCommand, ErrorHandlingCommand, OutputForm
 struct ScreenListData: Codable {
     let screens: [ScreenDetails]
     let primaryIndex: Int?
-    
+
     struct ScreenDetails: Codable {
         let index: Int
         let name: String
@@ -478,12 +487,12 @@ struct ScreenListData: Codable {
         let scaleFactor: CGFloat
         let displayID: Int
     }
-    
+
     struct Resolution: Codable {
         let width: Int
         let height: Int
     }
-    
+
     struct Position: Codable {
         let x: Int
         let y: Int

@@ -23,8 +23,8 @@ public final class PeekabooAgent<Context>: @unchecked Sendable {
         instructions: String,
         tools: [Tool<Context>] = [],
         modelSettings: ModelSettings,
-        context: Context
-    ) {
+        context: Context)
+    {
         self.name = name
         self.instructions = instructions
         self.tools = tools
@@ -39,36 +39,36 @@ public final class PeekabooAgent<Context>: @unchecked Sendable {
         name: String,
         instructions: String,
         tools: [Tool<Context>] = [],
-        context: Context
-    ) {
+        context: Context)
+    {
         self.name = name
         self.instructions = instructions
         self.tools = tools
-        modelSettings = ModelSettings() // Default settings
+        self.modelSettings = ModelSettings() // Default settings
         self.context = context
     }
 
     /// Add a tool to the agent
     public func addTool(_ tool: Tool<Context>) {
-        tools.append(tool)
+        self.tools.append(tool)
     }
 
     /// Remove a tool by name
     public func removeTool(named name: String) {
-        tools.removeAll { $0.name == name }
+        self.tools.removeAll { $0.name == name }
     }
 
     /// Execute a task using the agent
     public func executeTask(
         _ input: String,
         model: any ModelInterface,
-        eventDelegate: (any AgentEventDelegate)? = nil
-    ) async throws -> AgentExecutionResult {
+        eventDelegate: (any AgentEventDelegate)? = nil) async throws -> AgentExecutionResult
+    {
         let startTime = Date()
         await eventDelegate?.agentDidEmitEvent(.taskStarted(task: input))
 
         // Convert tools to tool definitions
-        let toolDefinitions = tools.map { $0.toToolDefinition() }
+        let toolDefinitions = self.tools.map { $0.toToolDefinition() }
 
         // Create the request
         let request = ModelRequest(
@@ -77,8 +77,7 @@ public final class PeekabooAgent<Context>: @unchecked Sendable {
                 .user(content: .text(input)),
             ],
             tools: toolDefinitions,
-            settings: modelSettings
-        )
+            settings: modelSettings)
 
         // Execute the model request
         let response = try await model.getResponse(request: request)
@@ -102,17 +101,15 @@ public final class PeekabooAgent<Context>: @unchecked Sendable {
 
                     do {
                         let toolInput = try ToolInput(jsonString: toolCall.function.arguments)
-                        let result = try await tool.execute(toolInput, context)
+                        let result = try await tool.execute(toolInput, self.context)
 
                         await eventDelegate?.agentDidEmitEvent(.toolCallCompleted(
                             toolName: toolCall.function.name,
-                            result: String(describing: result)
-                        ))
+                            result: String(describing: result)))
                     } catch {
                         await eventDelegate?.agentDidEmitEvent(.toolCallFailed(
                             toolName: toolCall.function.name,
-                            error: error.localizedDescription
-                        ))
+                            error: error.localizedDescription))
                     }
                 }
             }
@@ -122,10 +119,9 @@ public final class PeekabooAgent<Context>: @unchecked Sendable {
         let metadata = AgentMetadata(
             executionTime: endTime.timeIntervalSince(startTime),
             toolCallCount: allToolCalls.count,
-            modelName: modelSettings.modelName,
+            modelName: self.modelSettings.modelName,
             startTime: startTime,
-            endTime: endTime
-        )
+            endTime: endTime)
 
         let result = AgentExecutionResult(
             content: finalContent,
@@ -137,8 +133,7 @@ public final class PeekabooAgent<Context>: @unchecked Sendable {
             sessionId: nil,
             usage: response.usage,
             toolCalls: allToolCalls,
-            metadata: metadata
-        )
+            metadata: metadata)
 
         await eventDelegate?.agentDidEmitEvent(.taskCompleted(result: result))
         return result
@@ -149,21 +144,21 @@ public final class PeekabooAgent<Context>: @unchecked Sendable {
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
 public struct AgentRunner {
     /// Run an agent with streaming support
-    public static func runStreaming<Context>(
-        agent: PeekabooAgent<Context>,
+    public static func runStreaming(
+        agent: PeekabooAgent<some Any>,
         input: String,
         model: any ModelInterface,
-        eventDelegate: (any AgentEventDelegate)? = nil
-    ) async throws -> AgentExecutionResult {
-        return try await agent.executeTask(input, model: model, eventDelegate: eventDelegate)
+        eventDelegate: (any AgentEventDelegate)? = nil) async throws -> AgentExecutionResult
+    {
+        try await agent.executeTask(input, model: model, eventDelegate: eventDelegate)
     }
 
     /// Run an agent without streaming
-    public static func run<Context>(
-        agent: PeekabooAgent<Context>,
+    public static func run(
+        agent: PeekabooAgent<some Any>,
         input: String,
-        model: any ModelInterface
-    ) async throws -> AgentExecutionResult {
-        return try await agent.executeTask(input, model: model, eventDelegate: nil)
+        model: any ModelInterface) async throws -> AgentExecutionResult
+    {
+        try await agent.executeTask(input, model: model, eventDelegate: nil)
     }
 }

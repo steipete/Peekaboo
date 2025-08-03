@@ -1,5 +1,5 @@
-import ArgumentParser
 import ApplicationServices
+import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -11,14 +11,14 @@ struct PermissionCommand: AsyncParsableCommand {
         abstract: "Manage system permissions for Peekaboo",
         discussion: """
         Request and check system permissions required by Peekaboo.
-        
+
         EXAMPLES:
           # Check current permission status
           peekaboo agent permission status
-          
+
           # Request screen recording permission
           peekaboo agent permission request-screen-recording
-          
+
           # Request accessibility permission
           peekaboo agent permission request-accessibility
         """,
@@ -38,18 +38,18 @@ struct StatusSubcommand: AsyncParsableCommand {
         commandName: "status",
         abstract: "Check current permission status"
     )
-    
+
     func run() async throws {
         // Reuse the existing permissions check logic
         let screenRecording = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
         let accessibility = await PeekabooServices.shared.automation.hasAccessibilityPermission()
-        
+
         print("Peekaboo Permission Status")
         print("==========================")
         print("")
         print("Screen Recording: \(screenRecording ? "✅ Granted" : "❌ Not granted")")
         print("Accessibility:    \(accessibility ? "✅ Granted" : "❌ Not granted")")
-        
+
         if !screenRecording || !accessibility {
             print("\nTo grant missing permissions:")
             if !screenRecording {
@@ -69,22 +69,22 @@ struct RequestScreenRecordingSubcommand: AsyncParsableCommand {
         commandName: "request-screen-recording",
         abstract: "Trigger screen recording permission prompt"
     )
-    
+
     func run() async throws {
         print("Requesting Screen Recording permission...")
         print("")
-        
+
         // Check current status first
         let hasPermission = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
-        
+
         if hasPermission {
             print("✅ Screen Recording permission is already granted!")
             return
         }
-        
+
         print("Triggering permission prompt...")
         print("")
-        
+
         // Method 1: Try CGRequestScreenCaptureAccess if available (macOS 10.15+)
         if #available(macOS 10.15, *) {
             let granted = CGRequestScreenCaptureAccess()
@@ -101,7 +101,7 @@ struct RequestScreenRecordingSubcommand: AsyncParsableCommand {
         } else {
             // Fallback: Trigger by attempting to capture
             print("Attempting screen capture to trigger permission prompt...")
-            
+
             // This will trigger the permission dialog
             _ = CGWindowListCreateImage(
                 CGRect(x: 0, y: 0, width: 1, height: 1),
@@ -109,7 +109,7 @@ struct RequestScreenRecordingSubcommand: AsyncParsableCommand {
                 kCGNullWindowID,
                 .nominalResolution
             )
-            
+
             print("")
             print("If a permission dialog appeared:")
             print("- Click 'Open System Settings'")
@@ -128,27 +128,27 @@ struct RequestAccessibilitySubcommand: AsyncParsableCommand {
         commandName: "request-accessibility",
         abstract: "Request accessibility permission"
     )
-    
+
     func run() async throws {
         print("Requesting Accessibility permission...")
         print("")
-        
+
         // Check current status first
         let hasPermission = await PeekabooServices.shared.automation.hasAccessibilityPermission()
-        
+
         if hasPermission {
             print("✅ Accessibility permission is already granted!")
             return
         }
-        
+
         print("Opening System Settings to Accessibility permissions...")
         print("")
-        
+
         // Open System Settings to the Accessibility pane
         let optionKey = "AXTrustedCheckOptionPrompt" // Use string literal to avoid concurrency issue
         let options = [optionKey: true] as CFDictionary
         let trusted = AXIsProcessTrustedWithOptions(options)
-        
+
         if trusted {
             print("✅ Accessibility permission granted!")
         } else {

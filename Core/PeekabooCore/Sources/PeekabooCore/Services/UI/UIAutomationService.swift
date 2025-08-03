@@ -556,7 +556,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
      *     print("In application: \(focusInfo.applicationName)")
      *     print("Element title: \(focusInfo.title ?? "No title")")
      *     print("At coordinates: \(focusInfo.frame)")
-     *     
+     *
      *     // Check if it's a text field before typing
      *     if focusInfo.role == "AXTextField" {
      *         try await automation.type(text: "Hello", target: nil, ...)
@@ -883,7 +883,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
  *     default:
  *         print("Other element: \(focus.role)")
  *     }
- *     
+ *
  *     // Application-specific behavior
  *     if focus.bundleIdentifier == "com.apple.Safari" {
  *         print("Focus is in Safari")

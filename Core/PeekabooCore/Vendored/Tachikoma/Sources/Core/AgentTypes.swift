@@ -27,8 +27,8 @@ public struct AgentExecutionResult: Sendable {
         sessionId: String? = nil,
         usage: Usage? = nil,
         toolCalls: [ToolCallItem] = [],
-        metadata: AgentMetadata
-    ) {
+        metadata: AgentMetadata)
+    {
         self.content = content
         self.messages = messages
         self.sessionId = sessionId
@@ -65,8 +65,8 @@ public struct AgentMetadata: Sendable {
         modelName: String,
         startTime: Date,
         endTime: Date,
-        context: [String: String] = [:]
-    ) {
+        context: [String: String] = [:])
+    {
         self.executionTime = executionTime
         self.toolCallCount = toolCallCount
         self.modelName = modelName

@@ -32,11 +32,11 @@ struct OllamaFunction: Encodable {
 
     func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(name, forKey: .name)
-        try container.encode(description, forKey: .description)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.description, forKey: .description)
 
         // Encode parameters as JSON
-        let data = try JSONSerialization.data(withJSONObject: parameters)
+        let data = try JSONSerialization.data(withJSONObject: self.parameters)
         let jsonString = String(data: data, encoding: .utf8) ?? "{}"
         try container.encode(jsonString, forKey: .parameters)
     }

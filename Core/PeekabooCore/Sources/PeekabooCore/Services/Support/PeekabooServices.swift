@@ -373,7 +373,6 @@ public final class PeekabooServices: @unchecked Sendable {
             logger.debug("⚠️ PeekabooAgentService skipped - no API keys found for any provider")
         }
 
-        
         // Return services with agent
         return PeekabooServices(
             logging: logging,
@@ -390,8 +389,7 @@ public final class PeekabooServices: @unchecked Sendable {
             permissions: permissions,
             configuration: config,
             agent: agent,
-            screens: screens,
-)
+            screens: screens)
     }
 
     /// Refresh the agent service when API keys change

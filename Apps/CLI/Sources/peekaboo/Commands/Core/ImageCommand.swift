@@ -50,7 +50,10 @@ ApplicationResolvable {
         """
     )
 
-    @Option(name: .long, help: "Target application name, bundle ID, 'PID:12345' for process ID, or special values: 'menubar', 'frontmost'")
+    @Option(
+        name: .long,
+        help: "Target application name, bundle ID, 'PID:12345' for process ID, or special values: 'menubar', 'frontmost'"
+    )
     var app: String?
 
     @Option(name: .long, help: "Target application by process ID")
@@ -127,7 +130,7 @@ ApplicationResolvable {
                 break
             }
         }
-        
+
         let captureMode = self.determineMode()
         Logger.shared.verbose("Starting capture with mode: \(captureMode)")
 
@@ -308,15 +311,15 @@ ApplicationResolvable {
             .screen
         }
     }
-    
+
     private func captureMenuBar() async throws -> [SavedFile] {
         Logger.shared.verbose("Capturing menu bar area")
-        
+
         // Get the main screen bounds
         guard let mainScreen = NSScreen.main else {
             throw PeekabooError.captureFailed("No main screen found")
         }
-        
+
         // Menu bar is at the top of the screen
         let menuBarHeight: CGFloat = 24.0 // Standard macOS menu bar height
         let menuBarRect = CGRect(
@@ -325,12 +328,12 @@ ApplicationResolvable {
             width: mainScreen.frame.width,
             height: menuBarHeight
         )
-        
+
         // Capture the menu bar area
         let result = try await PeekabooServices.shared.screenCapture.captureArea(menuBarRect)
-        
+
         let savedPath = try saveImage(result.imageData, name: "menubar")
-        
+
         return [SavedFile(
             path: savedPath,
             item_label: "Menu Bar",

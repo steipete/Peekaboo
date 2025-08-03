@@ -67,9 +67,10 @@ struct PressCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
 
         do {
             // Validate all keys are recognized
-            for key in keys {
+            for key in self.keys {
                 guard SpecialKey(rawValue: key.lowercased()) != nil else {
-                    throw ArgumentParser.ValidationError("Unknown key: '\(key)'. Run 'peekaboo press --help' for available keys.")
+                    throw ArgumentParser
+                        .ValidationError("Unknown key: '\(key)'. Run 'peekaboo press --help' for available keys.")
                 }
             }
 
@@ -90,15 +91,15 @@ struct PressCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
 
             // Build actions - repeat each key sequence 'count' times
             var actions: [TypeAction] = []
-            for _ in 0..<count {
-                for (index, key) in keys.enumerated() {
+            for _ in 0..<self.count {
+                for (index, key) in self.keys.enumerated() {
                     if let specialKey = SpecialKey(rawValue: key.lowercased()) {
                         actions.append(.key(specialKey))
                     }
-                    
+
                     // Add delay between keys (but not after the last key of the last repetition)
-                    let isLastKey = index == keys.count - 1
-                    let isLastRepetition = count == 1
+                    let isLastKey = index == self.keys.count - 1
+                    let isLastRepetition = self.count == 1
                     if !isLastKey || !isLastRepetition {
                         // We'll handle the delay in the service
                     }
@@ -108,7 +109,7 @@ struct PressCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
             // Execute key presses
             let result = try await PeekabooServices.shared.automation.typeActions(
                 actions,
-                typingDelay: delay,
+                typingDelay: self.delay,
                 sessionId: sessionId
             )
 
@@ -117,15 +118,15 @@ struct PressCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                 success: true,
                 keys: keys,
                 totalPresses: result.keyPresses,
-                count: count,
+                count: self.count,
                 executionTime: Date().timeIntervalSince(startTime)
             )
 
             output(pressResult) {
                 print("✅ Key press completed")
-                print("🔑 Keys: \(keys.joined(separator: " → "))")
-                if count > 1 {
-                    print("🔢 Repeated: \(count) times")
+                print("🔑 Keys: \(self.keys.joined(separator: " → "))")
+                if self.count > 1 {
+                    print("🔢 Repeated: \(self.count) times")
                 }
                 print("📊 Total presses: \(result.keyPresses)")
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")

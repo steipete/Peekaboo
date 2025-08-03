@@ -43,7 +43,7 @@ extension PeekabooAgentService {
                     _ = Date().timeIntervalSince(startTime)
 
                     // If element type was specified, verify it matches
-                    if let elementType = elementType {
+                    if let elementType {
                         let expectedType = mapElementTypeToElementType(elementType)
                         if element.type != expectedType {
                             var notFoundMessage = "No elements found matching '\(searchLabel)'"
@@ -56,7 +56,7 @@ extension PeekabooAgentService {
                     // Format the result
                     let displayText = element.label ?? element.value ?? "Unlabeled \(element.type)"
                     var description = "Found element matching '\(searchLabel)'"
-                    if let elementType = elementType {
+                    if let elementType {
                         description += " of type '\(elementType)'"
                     }
                     description += " in \(targetDescription):\n"
@@ -73,7 +73,7 @@ extension PeekabooAgentService {
                     return ToolOutput.success(description)
                 } catch {
                     var notFoundMessage = "No elements found matching '\(searchLabel)'"
-                    if let elementType = elementType {
+                    if let elementType {
                         notFoundMessage += " of type '\(elementType)'"
                     }
                     notFoundMessage += " in \(targetDescription)"
@@ -107,7 +107,7 @@ extension PeekabooAgentService {
                 let detectionResult: ElementDetectionResult
 
                 let targetDescription: String
-                if let appName = appName {
+                if let appName {
                     // Capture specific application
                     captureResult = try await context.screenCapture.captureWindow(
                         appIdentifier: appName,

@@ -95,7 +95,7 @@ class ApplicationQueryTests: XCTestCase {
 
         XCTAssertEqual(response.success, true)
         XCTAssertNotNil(response.data, "Should have data")
-        
+
         // For collectAll command, we get a single AXElementData that might contain multiple results
         // Check that we got some data back
         if let data = response.data {

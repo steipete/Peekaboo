@@ -6,15 +6,15 @@
 //
 
 import AppKit
-import SwiftUI
 import PeekabooCore
+import SwiftUI
 
 /// Configuration for the Inspector view
 public struct InspectorConfiguration {
     public var showPermissionAlert: Bool = true
     public var enableOverlay: Bool = true
     public var defaultDetailLevel: OverlayManager.DetailLevel = .moderate
-    
+
     public init() {}
 }
 
@@ -24,96 +24,96 @@ public struct InspectorView: View {
     @State private var showPermissionAlert = false
     @State private var permissionStatus: PermissionStatus = .checking
     @State private var permissionCheckTimer: Timer?
-    
+
     private let configuration: InspectorConfiguration
-    
+
     public enum PermissionStatus {
         case checking
         case granted
         case denied
     }
-    
+
     public init(configuration: InspectorConfiguration = InspectorConfiguration()) {
         self.configuration = configuration
     }
-    
+
     public var body: some View {
         VStack(spacing: 0) {
-            headerView
-            
+            self.headerView
+
             Divider()
-            
-            if permissionStatus == .denied {
+
+            if self.permissionStatus == .denied {
                 PermissionDeniedView()
-            } else if permissionStatus == .checking {
+            } else if self.permissionStatus == .checking {
                 ProgressView("Checking permissions...")
                     .padding()
             } else {
-                mainContent
+                self.mainContent
             }
         }
         .frame(width: 450, height: 700)
         .background(Color(NSColor.windowBackgroundColor))
-        .environmentObject(overlayManager)
+        .environmentObject(self.overlayManager)
         .onAppear {
-            startPermissionMonitoring()
-            if configuration.enableOverlay {
-                openOverlayWindow()
+            self.startPermissionMonitoring()
+            if self.configuration.enableOverlay {
+                self.openOverlayWindow()
             }
         }
         .onDisappear {
-            stopPermissionMonitoring()
+            self.stopPermissionMonitoring()
         }
     }
-    
+
     private var headerView: some View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Peekaboo Inspector")
                         .font(.headline)
-                    Text(overlayManager.applications.isEmpty ? 
-                         "Hover over UI elements to inspect" :
-                         "Monitoring \(overlayManager.applications.count) app\(overlayManager.applications.count == 1 ? "" : "s")")
+                    Text(self.overlayManager.applications.isEmpty ?
+                        "Hover over UI elements to inspect" :
+                        "Monitoring \(self.overlayManager.applications.count) app\(self.overlayManager.applications.count == 1 ? "" : "s")")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
-                Toggle("Overlay", isOn: $overlayManager.isOverlayActive)
+
+                Toggle("Overlay", isOn: self.$overlayManager.isOverlayActive)
                     .toggleStyle(.switch)
             }
             .padding()
-            
+
             Divider()
-            
-            AppSelectorView(overlayManager: overlayManager)
+
+            AppSelectorView(overlayManager: self.overlayManager)
         }
         .background(Color(NSColor.controlBackgroundColor))
     }
-    
+
     private var mainContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if let hoveredElement = overlayManager.hoveredElement {
                     ElementDetailsView(element: hoveredElement)
-                        .environmentObject(overlayManager)
+                        .environmentObject(self.overlayManager)
                 } else {
                     Text("Hover over an element to see details")
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding()
                 }
-                
+
                 Divider()
-                
-                AllElementsView(overlayManager: overlayManager)
+
+                AllElementsView(overlayManager: self.overlayManager)
             }
             .padding()
         }
     }
-    
+
     private func checkPermissions(prompt: Bool = false) {
         let accessEnabled: Bool
         if prompt {
@@ -122,39 +122,39 @@ public struct InspectorView: View {
         } else {
             accessEnabled = AXIsProcessTrusted()
         }
-        
+
         let newStatus: PermissionStatus = accessEnabled ? .granted : .denied
-        
+
         // Only update if status changed
-        if permissionStatus != newStatus {
+        if self.permissionStatus != newStatus {
             withAnimation {
-                permissionStatus = newStatus
+                self.permissionStatus = newStatus
             }
-            
+
             // If granted, refresh elements immediately
             if newStatus == .granted {
-                overlayManager.refreshAllApplications()
+                self.overlayManager.refreshAllApplications()
             }
         }
     }
-    
+
     private func startPermissionMonitoring() {
         // Initial check with prompt
-        checkPermissions(prompt: configuration.showPermissionAlert)
-        
+        self.checkPermissions(prompt: self.configuration.showPermissionAlert)
+
         // Start periodic checking without prompt
-        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+        self.permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             Task { @MainActor in
-                checkPermissions(prompt: false)
+                self.checkPermissions(prompt: false)
             }
         }
     }
-    
+
     private func stopPermissionMonitoring() {
-        permissionCheckTimer?.invalidate()
-        permissionCheckTimer = nil
+        self.permissionCheckTimer?.invalidate()
+        self.permissionCheckTimer = nil
     }
-    
+
     private func openOverlayWindow() {
         // This would be implemented by the host application
         // as it needs to manage actual window creation

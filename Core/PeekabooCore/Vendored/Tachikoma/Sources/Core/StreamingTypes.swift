@@ -299,8 +299,8 @@ public struct Usage: Codable, Sendable {
         completionTokens: Int,
         totalTokens: Int,
         promptTokensDetails: TokenDetails? = nil,
-        completionTokensDetails: TokenDetails? = nil
-    ) {
+        completionTokensDetails: TokenDetails? = nil)
+    {
         self.promptTokens = promptTokens
         self.completionTokens = completionTokens
         self.totalTokens = totalTokens
@@ -352,9 +352,9 @@ public struct ErrorDetail: Codable, Sendable {
 // MARK: - Stream Event Extensions
 
 @available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *)
-public extension StreamEvent {
+extension StreamEvent {
     /// Check if this is a final event
-    var isFinal: Bool {
+    public var isFinal: Bool {
         switch self {
         case .responseCompleted, .error, .reasoningSummaryCompleted:
             true
@@ -364,7 +364,7 @@ public extension StreamEvent {
     }
 
     /// Extract any text content from the event
-    var textContent: String? {
+    public var textContent: String? {
         switch self {
         case let .textDelta(delta):
             delta.delta

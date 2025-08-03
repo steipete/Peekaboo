@@ -40,8 +40,7 @@ public struct AgentConfiguration: Sendable {
         modelSpecificParameters: [
             "reasoning_effort": o3ReasoningEffort,
             "reasoning_summary": "detailed",
-        ]
-    )
+        ])
 
     /// Default reasoning effort for o3 models
     public static let o3ReasoningEffort = "medium"
@@ -57,8 +56,8 @@ public struct AgentConfiguration: Sendable {
         sessionTimeout: TimeInterval = 600.0,
         verboseLogging: Bool = false,
         autoSaveSessions: Bool = true,
-        modelSpecificParameters: [String: String] = [:]
-    ) {
+        modelSpecificParameters: [String: String] = [:])
+    {
         self.maxTokens = maxTokens
         self.temperature = temperature
         self.maxToolCalls = maxToolCalls
@@ -72,72 +71,67 @@ public struct AgentConfiguration: Sendable {
     /// Create configuration optimized for a specific model
     public static func forModel(_ modelName: String) -> AgentConfiguration {
         if modelName.hasPrefix("o3") || modelName.hasPrefix("o4") {
-            return .o3Optimized
+            .o3Optimized
         } else if modelName.contains("claude") {
-            return AgentConfiguration(
+            AgentConfiguration(
                 maxTokens: 8192,
                 temperature: 0.1,
                 maxToolCalls: 30,
                 toolTimeout: 90.0,
-                sessionTimeout: 900.0
-            )
+                sessionTimeout: 900.0)
         } else if modelName.contains("gpt-4") {
-            return AgentConfiguration(
+            AgentConfiguration(
                 maxTokens: 4096,
                 temperature: 0.1,
                 maxToolCalls: 25,
                 toolTimeout: 75.0,
-                sessionTimeout: 750.0
-            )
+                sessionTimeout: 750.0)
         } else {
-            return .default
+            .default
         }
     }
 
     /// Update configuration with model-specific parameters
     public func withModelParameters(_ parameters: [String: String]) -> AgentConfiguration {
-        var newParameters = modelSpecificParameters
+        var newParameters = self.modelSpecificParameters
         for (key, value) in parameters {
             newParameters[key] = value
         }
 
         return AgentConfiguration(
-            maxTokens: maxTokens,
-            temperature: temperature,
-            maxToolCalls: maxToolCalls,
-            toolTimeout: toolTimeout,
-            sessionTimeout: sessionTimeout,
-            verboseLogging: verboseLogging,
-            autoSaveSessions: autoSaveSessions,
-            modelSpecificParameters: newParameters
-        )
+            maxTokens: self.maxTokens,
+            temperature: self.temperature,
+            maxToolCalls: self.maxToolCalls,
+            toolTimeout: self.toolTimeout,
+            sessionTimeout: self.sessionTimeout,
+            verboseLogging: self.verboseLogging,
+            autoSaveSessions: self.autoSaveSessions,
+            modelSpecificParameters: newParameters)
     }
 
     /// Enable verbose logging
     public func withVerboseLogging(_ enabled: Bool = true) -> AgentConfiguration {
-        return AgentConfiguration(
-            maxTokens: maxTokens,
-            temperature: temperature,
-            maxToolCalls: maxToolCalls,
-            toolTimeout: toolTimeout,
-            sessionTimeout: sessionTimeout,
+        AgentConfiguration(
+            maxTokens: self.maxTokens,
+            temperature: self.temperature,
+            maxToolCalls: self.maxToolCalls,
+            toolTimeout: self.toolTimeout,
+            sessionTimeout: self.sessionTimeout,
             verboseLogging: enabled,
-            autoSaveSessions: autoSaveSessions,
-            modelSpecificParameters: modelSpecificParameters
-        )
+            autoSaveSessions: self.autoSaveSessions,
+            modelSpecificParameters: self.modelSpecificParameters)
     }
 
     /// Update timeout settings
     public func withTimeouts(tool: TimeInterval? = nil, session: TimeInterval? = nil) -> AgentConfiguration {
-        return AgentConfiguration(
-            maxTokens: maxTokens,
-            temperature: temperature,
-            maxToolCalls: maxToolCalls,
-            toolTimeout: tool ?? toolTimeout,
-            sessionTimeout: session ?? sessionTimeout,
-            verboseLogging: verboseLogging,
-            autoSaveSessions: autoSaveSessions,
-            modelSpecificParameters: modelSpecificParameters
-        )
+        AgentConfiguration(
+            maxTokens: self.maxTokens,
+            temperature: self.temperature,
+            maxToolCalls: self.maxToolCalls,
+            toolTimeout: tool ?? self.toolTimeout,
+            sessionTimeout: session ?? self.sessionTimeout,
+            verboseLogging: self.verboseLogging,
+            autoSaveSessions: self.autoSaveSessions,
+            modelSpecificParameters: self.modelSpecificParameters)
     }
 }

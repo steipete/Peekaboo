@@ -8,7 +8,7 @@ struct TachikomaCoreTests {
     func singletonInitialization() async throws {
         let tachikoma1 = Tachikoma.shared
         let tachikoma2 = Tachikoma.shared
-        
+
         // Should be the same instance
         #expect(tachikoma1 === tachikoma2)
     }
@@ -57,28 +57,24 @@ struct TachikomaCoreTests {
         // Test OpenAI configuration
         let openaiConfig = ProviderConfiguration.OpenAI(
             apiKey: "test-key",
-            baseURL: URL(string: "https://api.openai.com/v1")!
-        )
+            baseURL: URL(string: "https://api.openai.com/v1")!)
         await tachikoma.configureOpenAI(openaiConfig)
 
         // Test Anthropic configuration
         let anthropicConfig = ProviderConfiguration.Anthropic(
             apiKey: "test-key",
-            baseURL: URL(string: "https://api.anthropic.com/v1")!
-        )
+            baseURL: URL(string: "https://api.anthropic.com/v1")!)
         await tachikoma.configureAnthropic(anthropicConfig)
 
         // Test Grok configuration
         let grokConfig = ProviderConfiguration.Grok(
             apiKey: "test-key",
-            baseURL: URL(string: "https://api.x.ai/v1")!
-        )
+            baseURL: URL(string: "https://api.x.ai/v1")!)
         await tachikoma.configureGrok(grokConfig)
 
         // Test Ollama configuration
         let ollamaConfig = ProviderConfiguration.Ollama(
-            baseURL: URL(string: "http://localhost:11434")!
-        )
+            baseURL: URL(string: "http://localhost:11434")!)
         await tachikoma.configureOllama(ollamaConfig)
     }
 
@@ -105,7 +101,7 @@ struct TachikomaCoreTests {
 
         // Test retrieval
         let modelNames = ["factory-openai", "factory-anthropic", "factory-grok", "factory-ollama"]
-        
+
         for modelName in modelNames {
             do {
                 let model = try await tachikoma.getModel(modelName)
@@ -148,7 +144,7 @@ struct MessageTypeTests {
     @Test("System message creation")
     func systemMessageCreation() {
         let message = Message.system(content: "You are a helpful assistant.")
-        
+
         if case let .system(id, content) = message {
             #expect(id == nil)
             #expect(content == "You are a helpful assistant.")
@@ -160,7 +156,7 @@ struct MessageTypeTests {
     @Test("User message with text content")
     func userMessageWithTextContent() {
         let message = Message.user(content: .text("Hello, AI!"))
-        
+
         if case let .user(id, content) = message {
             #expect(id == nil)
             if case let .text(text) = content {
@@ -178,19 +174,19 @@ struct MessageTypeTests {
         let imageData = Data([0xFF, 0xD8, 0xFF])
         let message = Message.user(content: .multimodal([
             .text("What's in this image?"),
-            .imageUrl(ImageUrl(base64: imageData.base64EncodedString()))
+            .imageUrl(ImageUrl(base64: imageData.base64EncodedString())),
         ]))
-        
+
         if case let .user(_, content) = message {
             if case let .multimodal(parts) = content {
                 #expect(parts.count == 2)
-                
+
                 if case let .text(text) = parts[0] {
                     #expect(text == "What's in this image?")
                 } else {
                     Issue.record("Expected text part at index 0")
                 }
-                
+
                 if case .imageUrl = parts[1] {
                     // Expected image part
                 } else {
@@ -207,14 +203,14 @@ struct MessageTypeTests {
     @Test("Assistant message creation")
     func assistantMessageCreation() {
         let message = Message.assistant(content: [
-            .outputText("Hello! How can I help you?")
+            .outputText("Hello! How can I help you?"),
         ])
-        
+
         if case let .assistant(id, content, status) = message {
             #expect(id == nil)
             #expect(status == .completed)
             #expect(content.count == 1)
-            
+
             if case let .outputText(text) = content[0] {
                 #expect(text == "Hello! How can I help you?")
             } else {
@@ -232,12 +228,10 @@ struct MessageTypeTests {
             type: .function,
             function: FunctionCall(
                 name: "get_weather",
-                arguments: "{\"location\": \"San Francisco\"}"
-            )
-        )
-        
+                arguments: "{\"location\": \"San Francisco\"}"))
+
         let message = Message.assistant(content: [.toolCall(toolCall)])
-        
+
         if case let .assistant(_, content, _) = message {
             if case let .toolCall(call) = content[0] {
                 #expect(call.id == "call_123")
@@ -255,9 +249,8 @@ struct MessageTypeTests {
     func toolResultMessage() {
         let message = Message.tool(
             toolCallId: "call_123",
-            content: "The weather in San Francisco is 72°F and sunny."
-        )
-        
+            content: "The weather in San Francisco is 72°F and sunny.")
+
         if case let .tool(id, toolCallId, content) = message {
             #expect(id == nil)
             #expect(toolCallId == "call_123")
@@ -270,7 +263,7 @@ struct MessageTypeTests {
     @Test("Reasoning message")
     func reasoningMessage() {
         let message = Message.reasoning(content: "Let me think about this step by step...")
-        
+
         if case let .reasoning(id, content) = message {
             #expect(id == nil)
             #expect(content == "Let me think about this step by step...")
@@ -282,7 +275,7 @@ struct MessageTypeTests {
     @Test("Message with custom ID")
     func messageWithCustomID() {
         let message = Message.user(id: "custom-123", content: .text("Hello"))
-        
+
         if case let .user(id, _) = message {
             #expect(id == "custom-123")
         } else {
@@ -297,11 +290,11 @@ struct MessageTypeTests {
             .user(content: .text("User")),
             .assistant(content: [.outputText("Assistant")]),
             .tool(toolCallId: "call", content: "Tool"),
-            .reasoning(content: "Reasoning")
+            .reasoning(content: "Reasoning"),
         ]
-        
+
         let expectedTypes: [MessageType] = [.system, .user, .assistant, .tool, .reasoning]
-        
+
         for (message, expectedType) in zip(messages, expectedTypes) {
             #expect(message.type == expectedType)
         }
@@ -315,7 +308,7 @@ struct MessageContentTests {
     @Test("Text content")
     func textContent() {
         let content = MessageContent.text("Hello, world!")
-        
+
         if case let .text(text) = content {
             #expect(text == "Hello, world!")
         } else {
@@ -328,7 +321,7 @@ struct MessageContentTests {
         let imageData = Data([0xFF, 0xD8, 0xFF])
         let imageUrl = ImageUrl(base64: imageData.base64EncodedString())
         let content = MessageContent.image(imageUrl)
-        
+
         if case let .image(url) = content {
             #expect(url.base64 == imageData.base64EncodedString())
             #expect(url.url == nil)
@@ -341,7 +334,7 @@ struct MessageContentTests {
     func imageContentWithURL() {
         let imageUrl = ImageUrl(url: "https://example.com/image.jpg")
         let content = MessageContent.image(imageUrl)
-        
+
         if case let .image(url) = content {
             #expect(url.url == "https://example.com/image.jpg")
             #expect(url.base64 == nil)
@@ -354,10 +347,9 @@ struct MessageContentTests {
     func audioContent() {
         let audioData = AudioContent(
             transcript: "Hello, this is a test.",
-            duration: 5.0
-        )
+            duration: 5.0)
         let content = MessageContent.audio(audioData)
-        
+
         if case let .audio(audio) = content {
             #expect(audio.transcript == "Hello, this is a test.")
             #expect(audio.duration == 5.0)
@@ -371,10 +363,9 @@ struct MessageContentTests {
         let fileData = FileContent(
             filename: "test.txt",
             content: "File content here",
-            mimeType: "text/plain"
-        )
+            mimeType: "text/plain")
         let content = MessageContent.file(fileData)
-        
+
         if case let .file(file) = content {
             #expect(file.filename == "test.txt")
             #expect(file.content == "File content here")
@@ -389,19 +380,19 @@ struct MessageContentTests {
         let parts: [MessageContentPart] = [
             .text("Describe this image:"),
             .imageUrl(ImageUrl(url: "https://example.com/image.jpg")),
-            .text("What do you see?")
+            .text("What do you see?"),
         ]
         let content = MessageContent.multimodal(parts)
-        
+
         if case let .multimodal(contentParts) = content {
             #expect(contentParts.count == 3)
-            
+
             #expect(contentParts[0].type == "text")
             #expect(contentParts[0].text == "Describe this image:")
-            
+
             #expect(contentParts[1].type == "image")
             #expect(contentParts[1].imageUrl != nil)
-            
+
             #expect(contentParts[2].type == "text")
             #expect(contentParts[2].text == "What do you see?")
         } else {
@@ -425,10 +416,10 @@ struct ErrorHandlingTests {
             .configurationError("Missing configuration"),
             .streamingError("Stream interrupted"),
         ]
-        
+
         // Verify all error cases can be created
         #expect(errors.count == 9)
-        
+
         // Test error descriptions
         for error in errors {
             let description = error.localizedDescription
@@ -441,7 +432,7 @@ struct ErrorHandlingTests {
         let error1 = TachikomaError.modelNotFound("test")
         let error2 = TachikomaError.modelNotFound("test")
         let error3 = TachikomaError.modelNotFound("different")
-        
+
         #expect(error1.localizedDescription == error2.localizedDescription)
         #expect(error1.localizedDescription != error3.localizedDescription)
     }
@@ -454,7 +445,7 @@ struct ModelSettingsTests {
     @Test("Default model settings")
     func defaultModelSettings() {
         let settings = ModelSettings(modelName: "test-model")
-        
+
         #expect(settings.modelName == "test-model")
         #expect(settings.temperature == nil)
         #expect(settings.maxTokens == nil)
@@ -476,7 +467,7 @@ struct ModelSettingsTests {
         additionalParams.set("reasoning", value: ["summary": "detailed"])
         additionalParams.set("logprobs", value: true)
         additionalParams.set("topLogprobs", value: 5)
-        
+
         let settings = ModelSettings(
             modelName: "test-model",
             temperature: 0.7,
@@ -488,9 +479,8 @@ struct ModelSettingsTests {
             toolChoice: .auto,
             parallelToolCalls: true,
             seed: 42,
-            additionalParameters: additionalParams
-        )
-        
+            additionalParameters: additionalParams)
+
         #expect(settings.modelName == "test-model")
         #expect(settings.temperature == 0.7)
         #expect(settings.maxTokens == 1000)

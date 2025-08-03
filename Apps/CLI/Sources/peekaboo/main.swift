@@ -15,16 +15,16 @@ func logError(_ message: String) {
 func getDynamicPermissionsSection() -> String {
     // We can't use async in the configuration initializer, so we'll provide a static fallback
     // The actual dynamic checking happens in the permissions command
-    return """
-PERMISSIONS:
-  Peekaboo requires system permissions to function properly.
-  
-  Screen Recording (Required): For all screenshot operations
-  Accessibility (Optional): For window focus control
-  
-  Check current status and grant instructions:
-    peekaboo permissions
-"""
+    """
+    PERMISSIONS:
+      Peekaboo requires system permissions to function properly.
+
+      Screen Recording (Required): For all screenshot operations
+      Accessibility (Optional): For window focus control
+
+      Check current status and grant instructions:
+        peekaboo permissions
+    """
 }
 
 /// Main command-line interface for Peekaboo.
@@ -35,7 +35,7 @@ struct Peekaboo: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "peekaboo",
         abstract: "Lightning-fast macOS screenshots, AI vision analysis, " +
-                  "and GUI automation with intelligent focus management",
+            "and GUI automation with intelligent focus management",
         discussion: """
         VERSION: \(Version.fullVersion)
 
@@ -98,9 +98,9 @@ struct Peekaboo: AsyncParsableCommand {
         LEARNING PEEKABOO:
           For AI agents and automation scripts, use the learn command to load
           all Peekaboo documentation in one go:
-          
+
           peekaboo learn              # Complete usage guide with all tools
-          
+
           This outputs comprehensive documentation including system instructions,
           all available tools with parameters and examples, and best practices.
 

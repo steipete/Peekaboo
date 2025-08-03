@@ -74,7 +74,7 @@ public enum Message: Codable, Sendable {
 
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(type, forKey: .type)
+        try container.encode(self.type, forKey: .type)
 
         switch self {
         case let .system(id, content):
@@ -199,8 +199,8 @@ public struct FileContent: Codable, Sendable {
         name: String? = nil,
         filename: String? = nil,
         content: String? = nil,
-        mimeType: String? = nil
-    ) {
+        mimeType: String? = nil)
+    {
         self.id = id
         self.url = url
         self.name = name
@@ -228,8 +228,8 @@ public struct AudioContent: Codable, Sendable {
         base64: String? = nil,
         transcript: String? = nil,
         duration: TimeInterval? = nil,
-        mimeType: String? = nil
-    ) {
+        mimeType: String? = nil)
+    {
         self.url = url
         self.base64 = base64
         self.transcript = transcript
@@ -351,9 +351,9 @@ public enum MessageStatus: String, Codable, Sendable {
 
 // MARK: - Helper Extensions
 
-public extension AssistantContent {
+extension AssistantContent {
     /// Extract text content if available
-    var textContent: String? {
+    public var textContent: String? {
         switch self {
         case let .outputText(text):
             text

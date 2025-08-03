@@ -1,5 +1,5 @@
-import ArgumentParser
 import ApplicationServices
+import ArgumentParser
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -37,7 +37,7 @@ struct PermissionsCommand: AsyncParsableCommand {
         PERMISSIONS:
           Screen Recording  Required for screenshots and improves window listing performance
                            Grant via: System Settings > Privacy & Security > Screen Recording
-                           
+
                            Benefits:
                            • Enables screen capture functionality
                            • Allows fast window enumeration via CGWindowList
@@ -72,7 +72,6 @@ struct PermissionsCommand: AsyncParsableCommand {
         ],
         defaultSubcommand: CheckSubcommand.self
     )
-
 }
 
 // MARK: - Check Subcommand
@@ -82,7 +81,7 @@ struct CheckSubcommand: AsyncParsableCommand {
         commandName: "check",
         abstract: "Check current permission status"
     )
-    
+
     @Flag(name: .long, help: "Output results in JSON format for scripting")
     var jsonOutput = false
 
@@ -91,14 +90,14 @@ struct CheckSubcommand: AsyncParsableCommand {
 
         // Get permissions using shared helper
         let permissionInfos = await PermissionHelpers.getCurrentPermissions()
-        
+
         // Extract status for JSON output
         let screenRecording = permissionInfos.first { $0.name == "Screen Recording" }?.isGranted ?? false
         let accessibility = permissionInfos.first { $0.name == "Accessibility" }?.isGranted ?? false
-        
+
         // Check CGWindowList access (indicates full screen recording permission)
-        let cgWindowListAccess = checkCGWindowListAccess()
-        
+        let cgWindowListAccess = self.checkCGWindowListAccess()
+
         // Create permission status for JSON
         let permissions = PermissionStatus(
             screenRecording: screenRecording,
@@ -111,7 +110,7 @@ struct CheckSubcommand: AsyncParsableCommand {
         } else {
             print("Peekaboo Permissions Status:")
             print("")
-            
+
             // Show screen recording with performance info
             if let screenRecordingInfo = permissionInfos.first(where: { $0.name == "Screen Recording" }) {
                 print("  \(PermissionHelpers.formatPermissionStatus(screenRecordingInfo))")
@@ -125,7 +124,7 @@ struct CheckSubcommand: AsyncParsableCommand {
                     print("    → To trigger prompt: peekaboo permissions request screen-recording")
                 }
             }
-            
+
             // Show accessibility
             if let accessibilityInfo = permissionInfos.first(where: { $0.name == "Accessibility" }) {
                 print("")
@@ -135,26 +134,29 @@ struct CheckSubcommand: AsyncParsableCommand {
                     print("    → To trigger prompt: peekaboo permissions request accessibility")
                 }
             }
-            
+
             if screenRecording && accessibility {
                 print("\n✅ All permissions granted - Peekaboo is fully operational!")
             }
         }
 
         // Exit with error if required permissions are missing
-        let hasAllRequired = permissionInfos.filter { $0.isRequired }.allSatisfy { $0.isGranted }
+        let hasAllRequired = permissionInfos.filter(\.isRequired).allSatisfy(\.isGranted)
         if !hasAllRequired {
             throw ExitCode(1)
         }
     }
-    
+
     private func checkCGWindowListAccess() -> Bool {
-        guard let windowList = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionAll, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
             return false
         }
-        
+
         let ourPID = ProcessInfo.processInfo.processIdentifier
-        
+
         // Check if we can see window names from other processes
         for window in windowList {
             guard let ownerPID = window[kCGWindowOwnerPID as String] as? Int32,
@@ -164,7 +166,7 @@ struct CheckSubcommand: AsyncParsableCommand {
             }
             return true
         }
-        
+
         return false
     }
 }
@@ -177,52 +179,52 @@ struct RequestSubcommand: AsyncParsableCommand {
         abstract: "Request system permissions",
         discussion: """
         Request specific system permissions or all at once.
-        
+
         EXAMPLES:
           peekaboo permissions request screen-recording
           peekaboo permissions request accessibility
           peekaboo permissions request all
         """
     )
-    
+
     enum Permission: String, ExpressibleByArgument {
         case screenRecording = "screen-recording"
-        case accessibility = "accessibility"
-        case all = "all"
+        case accessibility
+        case all
     }
-    
+
     @Argument(help: "Permission to request")
     var permission: Permission
-    
+
     func run() async throws {
-        switch permission {
+        switch self.permission {
         case .screenRecording:
-            try await requestScreenRecording()
+            try await self.requestScreenRecording()
         case .accessibility:
-            try await requestAccessibility()
+            try await self.requestAccessibility()
         case .all:
             print("Requesting all permissions...\n")
-            try await requestScreenRecording()
+            try await self.requestScreenRecording()
             print("")
-            try await requestAccessibility()
+            try await self.requestAccessibility()
         }
     }
-    
+
     private func requestScreenRecording() async throws {
         print("Requesting Screen Recording permission...")
         print("")
-        
+
         // Check current status first
         let hasPermission = await PeekabooServices.shared.screenCapture.hasScreenRecordingPermission()
-        
+
         if hasPermission {
             print("✅ Screen Recording permission is already granted!")
             return
         }
-        
+
         print("Triggering permission prompt...")
         print("")
-        
+
         // This will trigger the permission dialog
         _ = CGWindowListCreateImage(
             CGRect(x: 0, y: 0, width: 1, height: 1),
@@ -230,7 +232,7 @@ struct RequestSubcommand: AsyncParsableCommand {
             kCGNullWindowID,
             .nominalResolution
         )
-        
+
         print("If a permission dialog appeared:")
         print("1. Click 'Open System Settings'")
         print("2. Enable Screen Recording for Peekaboo")
@@ -238,27 +240,27 @@ struct RequestSubcommand: AsyncParsableCommand {
         print("If no dialog appeared, grant manually in:")
         print("System Settings > Privacy & Security > Screen Recording")
     }
-    
+
     private func requestAccessibility() async throws {
         print("Requesting Accessibility permission...")
         print("")
-        
+
         // Check current status first
         let hasPermission = await PeekabooServices.shared.automation.hasAccessibilityPermission()
-        
+
         if hasPermission {
             print("✅ Accessibility permission is already granted!")
             return
         }
-        
+
         print("Opening System Settings to Accessibility permissions...")
         print("")
-        
+
         // Open System Settings to the Accessibility pane
         let optionKey = "AXTrustedCheckOptionPrompt" // Use string literal to avoid concurrency issue
         let options = [optionKey: true] as CFDictionary
         let trusted = AXIsProcessTrustedWithOptions(options)
-        
+
         if trusted {
             print("✅ Accessibility permission granted!")
         } else {

@@ -12,32 +12,30 @@ import PeekabooCore
 /// Inspector-style visualization with circle indicators and hover effects
 @MainActor
 public struct InspectorVisualizationPreset: ElementStyleProvider {
-    
     public let indicatorStyle: IndicatorStyle = .circle(
         diameter: 30,
-        position: .topLeft
-    )
-    
+        position: .topLeft)
+
     public let showsLabels: Bool = false // Labels shown on hover
     public let supportsHoverState: Bool = true
-    
+
     /// Circle opacity when not hovered
     private let normalOpacity: Double = 0.5
-    
+
     /// Circle opacity when hovered
     private let hoverOpacity: Double = 1.0
-    
+
     public init() {}
-    
+
     public func style(for category: ElementCategory, state: ElementVisualizationState) -> ElementStyle {
         let baseColor = PeekabooColorPalette.color(for: category)
-        
+
         switch state {
         case .normal:
             // Circle indicator with ID inside, semi-transparent
             return ElementStyle(
                 primaryColor: baseColor,
-                fillOpacity: normalOpacity,
+                fillOpacity: self.normalOpacity,
                 strokeWidth: 0, // No stroke for circles
                 strokeOpacity: 0,
                 cornerRadius: 15, // Half of diameter for circle
@@ -47,10 +45,8 @@ public struct InspectorVisualizationPreset: ElementStyleProvider {
                     fontWeight: .bold,
                     backgroundColor: nil, // Text directly on circle
                     textColor: CGColor(gray: 1, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 0, vertical: 0)
-                )
-            )
-            
+                    padding: LabelStyle.EdgeInsets(horizontal: 0, vertical: 0)))
+
         case .hovered:
             // Full opacity circle + outline frame + info bubble
             return ElementStyle(
@@ -65,10 +61,8 @@ public struct InspectorVisualizationPreset: ElementStyleProvider {
                     fontWeight: .regular,
                     backgroundColor: CGColor(gray: 0, alpha: 0.8),
                     textColor: CGColor(gray: 1, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)
-                )
-            )
-            
+                    padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)))
+
         case .selected:
             // Enhanced visibility for selected elements
             return ElementStyle(
@@ -81,17 +75,14 @@ public struct InspectorVisualizationPreset: ElementStyleProvider {
                     color: baseColor.copy(alpha: 0.5)!,
                     radius: 8,
                     offsetX: 0,
-                    offsetY: 0
-                ),
+                    offsetY: 0),
                 labelStyle: LabelStyle(
                     fontSize: 10,
                     fontWeight: .bold,
                     backgroundColor: baseColor,
                     textColor: CGColor(gray: 1, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)
-                )
-            )
-            
+                    padding: LabelStyle.EdgeInsets(horizontal: 8, vertical: 4)))
+
         case .disabled:
             // Grayed out for disabled elements
             return ElementStyle(
@@ -106,9 +97,7 @@ public struct InspectorVisualizationPreset: ElementStyleProvider {
                     fontWeight: .regular,
                     backgroundColor: nil,
                     textColor: CGColor(gray: 0.7, alpha: 1),
-                    padding: LabelStyle.EdgeInsets(horizontal: 0, vertical: 0)
-                )
-            )
+                    padding: LabelStyle.EdgeInsets(horizontal: 0, vertical: 0)))
         }
     }
 }
@@ -119,10 +108,10 @@ extension InspectorVisualizationPreset {
     /// Special style for the circle indicator itself
     public func circleStyle(for category: ElementCategory, isHovered: Bool) -> ElementStyle {
         let baseColor = PeekabooColorPalette.color(for: category)
-        
+
         return ElementStyle(
             primaryColor: baseColor,
-            fillOpacity: isHovered ? hoverOpacity : normalOpacity,
+            fillOpacity: isHovered ? self.hoverOpacity : self.normalOpacity,
             strokeWidth: 0,
             strokeOpacity: 0,
             cornerRadius: 15,
@@ -132,15 +121,13 @@ extension InspectorVisualizationPreset {
                 fontWeight: .bold,
                 backgroundColor: nil,
                 textColor: CGColor(gray: 1, alpha: 1),
-                padding: LabelStyle.EdgeInsets(horizontal: 0, vertical: 0)
-            )
-        )
+                padding: LabelStyle.EdgeInsets(horizontal: 0, vertical: 0)))
     }
-    
+
     /// Style for the hover frame overlay
     public func frameOverlayStyle(for category: ElementCategory) -> ElementStyle {
         let baseColor = PeekabooColorPalette.color(for: category)
-        
+
         return ElementStyle(
             primaryColor: baseColor,
             fillOpacity: 0,
@@ -148,13 +135,12 @@ extension InspectorVisualizationPreset {
             strokeOpacity: 1.0,
             cornerRadius: 0,
             shadow: nil,
-            labelStyle: .default
-        )
+            labelStyle: .default)
     }
-    
+
     /// Style for the info bubble shown on hover
     public func infoBubbleStyle() -> ElementStyle {
-        return ElementStyle(
+        ElementStyle(
             primaryColor: CGColor(gray: 0, alpha: 1),
             fillOpacity: 0.8,
             strokeWidth: 0,
@@ -166,8 +152,6 @@ extension InspectorVisualizationPreset {
                 fontWeight: .regular,
                 backgroundColor: nil,
                 textColor: CGColor(gray: 1, alpha: 1),
-                padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)
-            )
-        )
+                padding: LabelStyle.EdgeInsets(horizontal: 6, vertical: 3)))
     }
 }

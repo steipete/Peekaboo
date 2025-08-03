@@ -190,9 +190,7 @@ struct AnthropicModelTests {
             type: .function,
             function: FunctionCall(
                 name: "get_weather",
-                arguments: "{\"location\": \"Paris\"}"
-            )
-        )
+                arguments: "{\"location\": \"Paris\"}"))
 
         let messages: [Message] = [
             Message.user(content: .text("What's the weather in Paris?")),
@@ -278,8 +276,7 @@ struct AnthropicModelTests {
 
         let audioContent = AudioContent(
             transcript: "Hello, this is a test transcript.",
-            duration: 5.0
-        )
+            duration: 5.0)
 
         let request = ModelRequest(
             messages: [
@@ -303,8 +300,7 @@ struct AnthropicModelTests {
         let fileContent = FileContent(
             id: nil,
             url: nil,
-            name: "test.txt"
-        )
+            name: "test.txt")
 
         let request = ModelRequest(
             messages: [
@@ -339,8 +335,7 @@ struct AnthropicProviderConfigurationTests {
         // Test custom Anthropic configuration
         let config = ProviderConfiguration.Anthropic(
             apiKey: "test-key",
-            baseURL: URL(string: "https://api.anthropic.com/v1")!
-        )
+            baseURL: URL(string: "https://api.anthropic.com/v1")!)
 
         await tachikoma.configureAnthropic(config)
     }

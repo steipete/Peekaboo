@@ -109,7 +109,7 @@ struct AXORCCommand: ParsableCommand {
             try runMain()
         }
     }
-    
+
     @MainActor
     private func runMain() throws {
         // fputs("AXORCMain.run: VERY FIRST LINE EXECUTED.\n", stderr)
@@ -156,7 +156,7 @@ struct AXORCCommand: ParsableCommand {
             json: json,
             directPayload: directPayload
         )
-        
+
         // Set the global input source for ping responses
         axorcInputSource = inputResult.sourceDescription
 

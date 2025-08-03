@@ -14,24 +14,24 @@ class GrokPartialToolCall {
     }
 
     init(from delta: GrokToolCallDelta) {
-        id = delta.id ?? ""
-        index = delta.index
-        name = delta.function?.name
-        arguments = delta.function?.arguments ?? ""
+        self.id = delta.id ?? ""
+        self.index = delta.index
+        self.name = delta.function?.name
+        self.arguments = delta.function?.arguments ?? ""
     }
 
     func update(with delta: GrokToolCallDelta) {
         if let funcName = delta.function?.name {
-            name = funcName
+            self.name = funcName
         }
         if let args = delta.function?.arguments {
-            arguments += args
+            self.arguments += args
         }
     }
 
     func toCompleted() -> FunctionCall? {
         guard let name else { return nil }
-        return FunctionCall(name: name, arguments: arguments)
+        return FunctionCall(name: name, arguments: self.arguments)
     }
 }
 
@@ -262,15 +262,15 @@ struct GrokErrorResponse: Decodable {
     let error: GrokError
 
     var message: String {
-        error.message
+        self.error.message
     }
 
     var code: String? {
-        error.code
+        self.error.code
     }
 
     var type: String? {
-        error.type
+        self.error.type
     }
 }
 
@@ -303,8 +303,8 @@ struct GrokPropertySchema: Codable, Sendable {
         minimum: Double? = nil,
         maximum: Double? = nil,
         pattern: String? = nil,
-        required: [String]? = nil
-    ) {
+        required: [String]? = nil)
+    {
         self.type = type
         self.description = description
         self.enum = enumValues
@@ -318,15 +318,15 @@ struct GrokPropertySchema: Codable, Sendable {
 
     /// Create from a ParameterSchema
     init(from schema: ParameterSchema) {
-        type = schema.type.rawValue
-        description = schema.description
+        self.type = schema.type.rawValue
+        self.description = schema.description
         self.enum = schema.enumValues
-        items = schema.items.map { Box(GrokPropertySchema(from: $0.value)) }
-        properties = schema.properties?.mapValues { GrokPropertySchema(from: $0) }
-        minimum = schema.minimum
-        maximum = schema.maximum
-        pattern = schema.pattern
-        required = nil
+        self.items = schema.items.map { Box(GrokPropertySchema(from: $0.value)) }
+        self.properties = schema.properties?.mapValues { GrokPropertySchema(from: $0) }
+        self.minimum = schema.minimum
+        self.maximum = schema.maximum
+        self.pattern = schema.pattern
+        self.required = nil
     }
 }
 

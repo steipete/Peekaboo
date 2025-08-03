@@ -17,16 +17,16 @@ struct StreamingTypesTests {
             .error("Network error"),
             .metadata(["usage": ["tokens": 42]]),
         ]
-        
+
         #expect(events.count == 9)
-        
+
         // Test specific event properties
         if case let .contentDelta(text) = events[0] {
             #expect(text == "Hello")
         } else {
             Issue.record("Expected contentDelta event")
         }
-        
+
         if case let .toolCallDelta(id, name, args) = events[2] {
             #expect(id == "tool_123")
             #expect(name == "get_")
@@ -34,7 +34,7 @@ struct StreamingTypesTests {
         } else {
             Issue.record("Expected toolCallDelta event")
         }
-        
+
         if case .done = events[6] {
             // Expected
         } else {
@@ -51,19 +51,21 @@ struct StreamingTypesTests {
             .error("Network error"),
             .metadata(["usage": ["tokens": 42]]),
         ]
-        
+
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()
-        
+
         for originalEvent in originalEvents {
             let data = try encoder.encode(originalEvent)
             let decodedEvent = try decoder.decode(StreamEvent.self, from: data)
-            
+
             // Compare events (simplified comparison)
             switch (originalEvent, decodedEvent) {
             case let (.contentDelta(orig), .contentDelta(decoded)):
                 #expect(orig == decoded)
-            case let (.toolCallComplete(origId, origName, origArgs), .toolCallComplete(decodedId, decodedName, decodedArgs)):
+            case let (
+                .toolCallComplete(origId, origName, origArgs),
+                .toolCallComplete(decodedId, decodedName, decodedArgs)):
                 #expect(origId == decodedId)
                 #expect(origName == decodedName)
                 #expect(origArgs == decodedArgs)
@@ -88,9 +90,9 @@ struct StreamingTypesTests {
             .contentDelta("Hello"),
             .contentDelta(" world"),
             .contentComplete("Hello world!"),
-            .done
+            .done,
         ]
-        
+
         // Create an AsyncStream to simulate streaming
         let stream = AsyncThrowingStream<StreamEvent, Error> { continuation in
             Task {
@@ -101,10 +103,10 @@ struct StreamingTypesTests {
                 continuation.finish()
             }
         }
-        
+
         // Collect events from the stream
         var collectedEvents: [StreamEvent] = []
-        
+
         do {
             for try await event in stream {
                 collectedEvents.append(event)
@@ -112,22 +114,22 @@ struct StreamingTypesTests {
         } catch {
             Issue.record("Stream iteration failed: \(error)")
         }
-        
+
         #expect(collectedEvents.count == 4)
-        
+
         // Verify event sequence
         if case let .contentDelta(text1) = collectedEvents[0] {
             #expect(text1 == "Hello")
         } else {
             Issue.record("Expected first contentDelta")
         }
-        
+
         if case let .contentDelta(text2) = collectedEvents[1] {
             #expect(text2 == " world")
         } else {
             Issue.record("Expected second contentDelta")
         }
-        
+
         if case .done = collectedEvents[3] {
             // Expected
         } else {
@@ -141,10 +143,10 @@ struct StreamingTypesTests {
             continuation.yield(.contentDelta("Hello"))
             continuation.finish(throwing: TachikomaError.networkError("Connection lost"))
         }
-        
+
         var collectedEvents: [StreamEvent] = []
         var caughtError: Error?
-        
+
         do {
             for try await event in stream {
                 collectedEvents.append(event)
@@ -152,12 +154,13 @@ struct StreamingTypesTests {
         } catch {
             caughtError = error
         }
-        
+
         #expect(collectedEvents.count == 1)
         #expect(caughtError is TachikomaError)
-        
+
         if let tachikomaError = caughtError as? TachikomaError,
-           case let .networkError(message) = tachikomaError {
+           case let .networkError(message) = tachikomaError
+        {
             #expect(message == "Connection lost")
         } else {
             Issue.record("Expected TachikomaError.networkError")
@@ -177,11 +180,8 @@ struct ToolDefinitionTests {
                 description: "Get the current time",
                 parameters: ToolParameters(
                     properties: [:],
-                    required: []
-                )
-            )
-        )
-        
+                    required: [])))
+
         #expect(tool.function.name == "get_time")
         #expect(tool.function.description == "Get the current time")
         #expect(tool.function.parameters.properties.isEmpty)
@@ -199,32 +199,26 @@ struct ToolDefinitionTests {
                     properties: [
                         "location": ParameterSchema(
                             type: .string,
-                            description: "The location to get weather for"
-                        ),
+                            description: "The location to get weather for"),
                         "units": ParameterSchema(
                             type: .string,
                             description: "Temperature units",
-                            enumValues: ["celsius", "fahrenheit"]
-                        ),
+                            enumValues: ["celsius", "fahrenheit"]),
                         "include_forecast": ParameterSchema(
                             type: .boolean,
-                            description: "Include forecast data"
-                        )
+                            description: "Include forecast data"),
                     ],
-                    required: ["location"]
-                )
-            )
-        )
-        
+                    required: ["location"])))
+
         #expect(tool.function.name == "get_weather")
         #expect(tool.function.parameters.properties.count == 3)
         #expect(tool.function.parameters.required == ["location"])
-        
+
         // Check parameter schemas
         let locationParam = tool.function.parameters.properties["location"]
         #expect(locationParam?.type == .string)
         #expect(locationParam?.description == "The location to get weather for")
-        
+
         let unitsParam = tool.function.parameters.properties["units"]
         #expect(unitsParam?.enumValues == ["celsius", "fahrenheit"])
     }
@@ -239,9 +233,9 @@ struct ToolDefinitionTests {
             ParameterSchema(type: .array, description: "An array value"),
             ParameterSchema(type: .object, description: "An object value"),
         ]
-        
+
         #expect(schemas.count == 6)
-        
+
         // Test specific properties
         let intSchema = schemas[1]
         #expect(intSchema.type == .integer)
@@ -257,19 +251,18 @@ struct ToolDefinitionTests {
                 "name": ParameterSchema(type: .string, description: "Name field"),
                 "age": ParameterSchema(type: .integer, description: "Age field", minimum: 0),
             ],
-            required: ["name"]
-        )
-        
+            required: ["name"])
+
         let encoder = JSONEncoder()
         let data = try encoder.encode(original)
-        
+
         let decoder = JSONDecoder()
         let decoded = try decoder.decode(ToolParameters.self, from: data)
-        
+
         #expect(decoded.type == original.type)
         #expect(decoded.properties.count == original.properties.count)
         #expect(decoded.required == original.required)
-        
+
         let nameParam = decoded.properties["name"]
         #expect(nameParam?.type == .string)
         #expect(nameParam?.description == "Name field")
@@ -281,18 +274,17 @@ struct ToolDefinitionTests {
         struct WeatherContext {
             let apiKey: String
         }
-        
+
         // Create a generic tool
         let weatherTool = Tool<WeatherContext>(
             name: "get_weather",
             description: "Get weather for a location",
             parameters: ToolParameters(
                 properties: [
-                    "location": ParameterSchema(type: .string, description: "Location name")
+                    "location": ParameterSchema(type: .string, description: "Location name"),
                 ],
-                required: ["location"]
-            )
-        ) { input, context in
+                required: ["location"]))
+        { input, context in
             // Simulate tool execution
             var location = "Unknown"
             if case let .dictionary(dict) = input {
@@ -300,19 +292,19 @@ struct ToolDefinitionTests {
             }
             return .string("Weather in \(location): 72°F and sunny (API key: \(context.apiKey.prefix(3))...)")
         }
-        
+
         // Convert to tool definition
         let toolDef = weatherTool.toToolDefinition()
-        
+
         #expect(toolDef.function.name == "get_weather")
         #expect(toolDef.function.description == "Get weather for a location")
-        
+
         // Test tool execution
         let context = WeatherContext(apiKey: "test-api-key-123")
         let input = ToolInput.dictionary(["location": "San Francisco"])
-        
+
         let output = try await weatherTool.execute(input, context)
-        
+
         if case let .string(result) = output {
             #expect(result.contains("San Francisco"))
             #expect(result.contains("test..."))
@@ -328,10 +320,8 @@ struct ToolDefinitionTests {
             type: .function,
             function: FunctionCall(
                 name: "calculate",
-                arguments: "{\"expression\": \"2 + 2\"}"
-            )
-        )
-        
+                arguments: "{\"expression\": \"2 + 2\"}"))
+
         #expect(toolCall.id == "call_abc123")
         #expect(toolCall.type == .function)
         #expect(toolCall.function.name == "calculate")
@@ -342,18 +332,18 @@ struct ToolDefinitionTests {
     func toolInputAndOutput() {
         let input = ToolInput.dictionary([
             "location": "Paris",
-            "units": "celsius"
+            "units": "celsius",
         ])
-        
+
         if case let .dictionary(args) = input {
             #expect(args["location"] as? String == "Paris")
             #expect(args["units"] as? String == "celsius")
         } else {
             Issue.record("Expected dictionary input")
         }
-        
+
         let output = ToolOutput.string("Weather in Paris: 18°C and cloudy")
-        
+
         if case let .string(content) = output {
             #expect(content == "Weather in Paris: 18°C and cloudy")
         } else {
@@ -365,16 +355,15 @@ struct ToolDefinitionTests {
     func functionCallArgumentParsing() throws {
         let functionCall = FunctionCall(
             name: "get_weather",
-            arguments: "{\"location\": \"Tokyo\", \"units\": \"celsius\"}"
-        )
-        
+            arguments: "{\"location\": \"Tokyo\", \"units\": \"celsius\"}")
+
         #expect(functionCall.name == "get_weather")
         #expect(functionCall.arguments == "{\"location\": \"Tokyo\", \"units\": \"celsius\"}")
-        
+
         // Test parsing arguments as JSON
         let data = functionCall.arguments.data(using: .utf8)!
         let parsed = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        
+
         #expect(parsed?["location"] as? String == "Tokyo")
         #expect(parsed?["units"] as? String == "celsius")
     }
@@ -387,12 +376,11 @@ struct ToolDefinitionTests {
             properties: [
                 "nested_string": ParameterSchema(type: .string, description: "Nested string"),
                 "nested_array": ParameterSchema(type: .array, description: "Nested array"),
-            ]
-        )
-        
+            ])
+
         #expect(schema.type == .object)
         #expect(schema.properties?.count == 2)
-        
+
         let nestedString = schema.properties?["nested_string"] as? ParameterSchema
         #expect(nestedString?.type == .string)
         #expect(nestedString?.description == "Nested string")
@@ -409,29 +397,25 @@ struct ToolDefinitionTests {
                     properties: [
                         "expression": ParameterSchema(
                             type: .string,
-                            description: "Mathematical expression to evaluate"
-                        )
+                            description: "Mathematical expression to evaluate"),
                     ],
-                    required: ["expression"]
-                )
-            )
-        )
-        
+                    required: ["expression"])))
+
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        
+
         let jsonData = try encoder.encode(tool)
         let jsonString = String(data: jsonData, encoding: .utf8)!
-        
+
         #expect(jsonString.contains("calculate"))
         #expect(jsonString.contains("Perform a calculation"))
         #expect(jsonString.contains("expression"))
         #expect(jsonString.contains("Mathematical expression"))
-        
+
         // Test round-trip encoding/decoding
         let decoder = JSONDecoder()
         let decoded = try decoder.decode(ToolDefinition.self, from: jsonData)
-        
+
         #expect(decoded.function.name == tool.function.name)
         #expect(decoded.function.description == tool.function.description)
         #expect(decoded.function.parameters.required == tool.function.parameters.required)

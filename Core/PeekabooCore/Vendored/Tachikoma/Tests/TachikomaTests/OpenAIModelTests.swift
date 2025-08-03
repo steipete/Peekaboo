@@ -325,8 +325,7 @@ struct OpenAIModelTests {
         let fileContent = FileContent(
             filename: "test.txt",
             content: "Test file content",
-            mimeType: "text/plain"
-        )
+            mimeType: "text/plain")
 
         let request = ModelRequest(
             messages: [
@@ -355,8 +354,7 @@ struct OpenAIModelTests {
 
         let audioContent = AudioContent(
             transcript: "Hello, this is a test transcript.",
-            duration: 5.0
-        )
+            duration: 5.0)
 
         let request = ModelRequest(
             messages: [
@@ -385,8 +383,7 @@ struct OpenAIProviderConfigurationTests {
         // Test custom OpenAI configuration
         let config = ProviderConfiguration.OpenAI(
             apiKey: "test-key",
-            baseURL: URL(string: "https://api.openai.com/v1")!
-        )
+            baseURL: URL(string: "https://api.openai.com/v1")!)
 
         await tachikoma.configureOpenAI(config)
     }

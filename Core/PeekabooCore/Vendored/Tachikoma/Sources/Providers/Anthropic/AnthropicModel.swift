@@ -15,13 +15,13 @@ public final class AnthropicModel: ModelInterface, Sendable {
         baseURL: URL = URL(string: "https://api.anthropic.com/v1")!,
         anthropicVersion: String = "2023-06-01",
         modelName: String? = nil,
-        session: URLSession? = nil
-    ) {
+        session: URLSession? = nil)
+    {
         self.apiKey = apiKey
         self.baseURL = baseURL
         self.anthropicVersion = anthropicVersion
         self.modelName = modelName
-        customHeaders = nil
+        self.customHeaders = nil
 
         if let session {
             self.session = session
@@ -40,13 +40,13 @@ public final class AnthropicModel: ModelInterface, Sendable {
         modelName: String? = nil,
         headers: [String: String]? = nil,
         anthropicVersion: String = "2023-06-01",
-        session: URLSession? = nil
-    ) {
+        session: URLSession? = nil)
+    {
         self.apiKey = apiKey
         self.baseURL = URL(string: baseURL) ?? URL(string: "https://api.anthropic.com/v1")!
         self.anthropicVersion = anthropicVersion
         self.modelName = modelName
-        customHeaders = headers
+        self.customHeaders = headers
 
         if let session {
             self.session = session
@@ -61,9 +61,9 @@ public final class AnthropicModel: ModelInterface, Sendable {
     // MARK: - ModelInterface Implementation
 
     public var maskedApiKey: String {
-        guard apiKey.count > 8 else { return "***" }
-        let start = apiKey.prefix(6)
-        let end = apiKey.suffix(2)
+        guard self.apiKey.count > 8 else { return "***" }
+        let start = self.apiKey.prefix(6)
+        let end = self.apiKey.suffix(2)
         return "\(start)...\(end)"
     }
 
@@ -78,12 +78,12 @@ public final class AnthropicModel: ModelInterface, Sendable {
         }
 
         if httpResponse.statusCode != 200 {
-            try handleErrorResponse(data: data, response: httpResponse)
+            try self.handleErrorResponse(data: data, response: httpResponse)
         }
 
         do {
             let anthropicResponse = try JSONDecoder().decode(AnthropicResponse.self, from: data)
-            return try convertFromAnthropicResponse(anthropicResponse)
+            return try self.convertFromAnthropicResponse(anthropicResponse)
         } catch {
             throw TachikomaError.decodingError(underlying: error)
         }
@@ -99,7 +99,8 @@ public final class AnthropicModel: ModelInterface, Sendable {
                     let (bytes, response) = try await session.bytes(for: urlRequest)
 
                     guard let httpResponse = response as? HTTPURLResponse else {
-                        continuation.finish(throwing: TachikomaError.networkError(underlying: URLError(.badServerResponse)))
+                        continuation
+                            .finish(throwing: TachikomaError.networkError(underlying: URLError(.badServerResponse)))
                         return
                     }
 
@@ -133,8 +134,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
                                 do {
                                     let event = try JSONDecoder().decode(
                                         AnthropicStreamEvent.self,
-                                        from: eventData
-                                    )
+                                        from: eventData)
 
                                     switch event.type {
                                     case "message_start":
@@ -143,8 +143,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
                                             continuation.yield(.responseStarted(StreamResponseStarted(
                                                 id: message.id,
                                                 model: message.model,
-                                                systemFingerprint: nil
-                                            )))
+                                                systemFingerprint: nil)))
                                         }
 
                                     case "content_block_start":
@@ -155,8 +154,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
                                                 let partialCall = PartialToolCall(
                                                     id: id,
                                                     name: name,
-                                                    index: currentContentIndex
-                                                )
+                                                    index: currentContentIndex)
                                                 currentToolCalls[id] = partialCall
                                             }
                                         }
@@ -167,8 +165,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
                                                 // Text delta
                                                 continuation.yield(.textDelta(StreamTextDelta(
                                                     delta: text,
-                                                    index: currentContentIndex
-                                                )))
+                                                    index: currentContentIndex)))
                                                 accumulatedText += text
                                             } else if let partialJson = delta.partialJson {
                                                 // Tool use arguments delta
@@ -182,9 +179,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
                                                         index: toolCall.index,
                                                         function: FunctionCallDelta(
                                                             name: toolCall.name,
-                                                            arguments: partialJson
-                                                        )
-                                                    )))
+                                                            arguments: partialJson))))
                                                 }
                                             }
                                         }
@@ -210,8 +205,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
                                             continuation.yield(.responseCompleted(StreamResponseCompleted(
                                                 id: id,
                                                 usage: pendingUsage,
-                                                finishReason: .stop
-                                            )))
+                                                finishReason: .stop)))
                                         }
                                         continuation.finish()
                                         return
@@ -246,8 +240,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
                                                                 completionTokens: outputTokens,
                                                                 totalTokens: inputTokens + outputTokens,
                                                                 promptTokensDetails: nil,
-                                                                completionTokensDetails: nil
-                                                            )
+                                                                completionTokensDetails: nil)
 
                                                             // Store the usage for later
                                                             pendingUsage = tokenUsage
@@ -275,15 +268,15 @@ public final class AnthropicModel: ModelInterface, Sendable {
     // MARK: - Private Methods
 
     private func createURLRequest(endpoint: String, body: any Encodable) throws -> URLRequest {
-        let url = baseURL.appendingPathComponent(endpoint)
+        let url = self.baseURL.appendingPathComponent(endpoint)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue(anthropicVersion, forHTTPHeaderField: "anthropic-version")
+        request.setValue(self.apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue(self.anthropicVersion, forHTTPHeaderField: "anthropic-version")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         // Add custom headers from provider configuration
-        customHeaders?.forEach { key, value in
+        self.customHeaders?.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
         }
 
@@ -328,12 +321,10 @@ public final class AnthropicModel: ModelInterface, Sendable {
                 // Convert tool result to user message with tool_result content block
                 let toolResultBlock = AnthropicContentBlock.toolResult(
                     toolUseId: toolCallId,
-                    content: content
-                )
+                    content: content)
                 anthropicMessages.append(AnthropicMessage(
                     role: .user,
-                    content: .array([toolResultBlock])
-                ))
+                    content: .array([toolResultBlock])))
 
             case let .reasoning(_, content):
                 // Treat reasoning as a system message for now
@@ -350,12 +341,11 @@ public final class AnthropicModel: ModelInterface, Sendable {
             AnthropicTool(
                 name: toolDef.function.name,
                 description: toolDef.function.description,
-                inputSchema: self.convertToolParameters(toolDef.function.parameters)
-            )
+                inputSchema: self.convertToolParameters(toolDef.function.parameters))
         }
 
         // Convert tool choice
-        let toolChoice = convertToolChoice(request.settings.toolChoice)
+        let toolChoice = self.convertToolChoice(request.settings.toolChoice)
 
         // Create system content with cache control
         let systemContent: AnthropicSystemContent? = if let systemPrompt {
@@ -364,15 +354,14 @@ public final class AnthropicModel: ModelInterface, Sendable {
                 AnthropicSystemBlock(
                     type: "text",
                     text: systemPrompt,
-                    cacheControl: AnthropicCacheControl(type: "ephemeral")
-                ),
+                    cacheControl: AnthropicCacheControl(type: "ephemeral")),
             ])
         } else {
             nil
         }
 
         return AnthropicRequest(
-            model: modelName ?? request.settings.modelName,
+            model: self.modelName ?? request.settings.modelName,
             messages: anthropicMessages,
             system: systemContent,
             maxTokens: request.settings.maxTokens ?? 4096,
@@ -383,8 +372,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
             stopSequences: request.settings.stopSequences,
             tools: tools,
             toolChoice: toolChoice,
-            metadata: request.settings.user.map { AnthropicMetadata(userId: $0) }
-        )
+            metadata: request.settings.user.map { AnthropicMetadata(userId: $0) })
     }
 
     private func convertUserMessage(_ content: MessageContent) throws -> AnthropicMessage {
@@ -435,15 +423,17 @@ public final class AnthropicModel: ModelInterface, Sendable {
                 }
                 return AnthropicMessage(role: .user, content: .string(text))
             } else {
-                throw TachikomaError.invalidRequest("Audio content must be transcribed before sending to Claude. Please ensure transcript is provided.")
+                throw TachikomaError
+                    .invalidRequest(
+                        "Audio content must be transcribed before sending to Claude. Please ensure transcript is provided.")
             }
         }
     }
 
     private func convertAssistantMessage(
         _ content: [AssistantContent],
-        status _: MessageStatus
-    ) throws -> AnthropicMessage {
+        status _: MessageStatus) throws -> AnthropicMessage
+    {
         var blocks: [AnthropicContentBlock] = []
 
         for content in content {
@@ -458,7 +448,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
                 // Parse arguments as JSON
                 let arguments: [String: Any] = if let data = toolCall.function.arguments.data(using: .utf8),
                                                   let json = try? JSONSerialization
-                                                  .jsonObject(with: data) as? [String: Any]
+                                                      .jsonObject(with: data) as? [String: Any]
                 {
                     json
                 } else {
@@ -468,8 +458,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
                 blocks.append(.toolUse(
                     id: toolCall.id,
                     name: toolCall.function.name,
-                    input: arguments
-                ))
+                    input: arguments))
             }
         }
 
@@ -480,20 +469,19 @@ public final class AnthropicModel: ModelInterface, Sendable {
         var properties: [String: AnthropicPropertySchema] = [:]
 
         for (key, schema) in params.properties {
-            properties[key] = convertParameterSchema(schema)
+            properties[key] = self.convertParameterSchema(schema)
         }
 
         return AnthropicJSONSchema(
             type: params.type,
             properties: properties,
-            required: params.required
-        )
+            required: params.required)
     }
 
     private func convertParameterSchema(_ schema: ParameterSchema) -> AnthropicPropertySchema {
         // Handle nested items for arrays
         let items: AnthropicPropertySchema? = if schema.type == .array, let schemaItems = schema.items {
-            convertParameterSchema(schemaItems.value)
+            self.convertParameterSchema(schemaItems.value)
         } else {
             nil
         }
@@ -503,7 +491,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
         if schema.type == .object, let schemaProps = schema.properties {
             var convertedProps: [String: AnthropicPropertySchema] = [:]
             for (key, nestedSchema) in schemaProps {
-                convertedProps[key] = convertParameterSchema(nestedSchema)
+                convertedProps[key] = self.convertParameterSchema(nestedSchema)
             }
             properties = convertedProps
         } else {
@@ -552,8 +540,9 @@ public final class AnthropicModel: ModelInterface, Sendable {
                    let input = block.input
                 {
                     // Convert input dictionary to JSON string
-                    let arguments: String = if let data = try? JSONSerialization.data(withJSONObject: input.mapValues { $0.toAny() }),
-                                               let json = String(data: data, encoding: .utf8)
+                    let arguments: String = if let data = try? JSONSerialization
+                        .data(withJSONObject: input.mapValues { $0.toAny() }),
+                        let json = String(data: data, encoding: .utf8)
                     {
                         json
                     } else {
@@ -565,9 +554,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
                         type: .function,
                         function: FunctionCall(
                             name: name,
-                            arguments: arguments
-                        )
-                    )))
+                            arguments: arguments))))
                 }
 
             default:
@@ -581,8 +568,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
             completionTokens: response.usage.outputTokens,
             totalTokens: response.usage.inputTokens + response.usage.outputTokens,
             promptTokensDetails: nil,
-            completionTokensDetails: nil
-        )
+            completionTokensDetails: nil)
 
         return ModelResponse(
             id: response.id,
@@ -590,8 +576,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
             content: content,
             usage: usage,
             flagged: false,
-            finishReason: convertStopReason(response.stopReason)
-        )
+            finishReason: self.convertStopReason(response.stopReason))
     }
 
     private func convertStopReason(_ reason: String?) -> FinishReason? {
@@ -626,7 +611,7 @@ public final class AnthropicModel: ModelInterface, Sendable {
                 } else {
                     throw TachikomaError.invalidRequest(message)
                 }
-            case 500 ... 599:
+            case 500...599:
                 throw TachikomaError.modelOverloaded
             default:
                 throw TachikomaError.apiError(message: message)
@@ -652,10 +637,10 @@ private class PartialToolCall {
     }
 
     func appendArguments(_ args: String) {
-        arguments += args
+        self.arguments += args
     }
 
     func toCompleted() -> FunctionCall? {
-        FunctionCall(name: name, arguments: arguments)
+        FunctionCall(name: self.name, arguments: self.arguments)
     }
 }

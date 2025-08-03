@@ -86,7 +86,7 @@ struct PermissionsServiceTests {
         } else {
             // Should throw specific CaptureError when permission is denied
             do {
-                try permissionsService.requireScreenRecordingPermission()
+                try self.permissionsService.requireScreenRecordingPermission()
                 Issue.record("Expected CaptureError.screenRecordingPermissionDenied but no error was thrown")
             } catch let captureError as CaptureError {
                 // Should be screenRecordingPermissionDenied
@@ -115,7 +115,7 @@ struct PermissionsServiceTests {
         } else {
             // Should throw specific CaptureError when permission is denied
             do {
-                try permissionsService.requireAccessibilityPermission()
+                try self.permissionsService.requireAccessibilityPermission()
                 Issue.record("Expected CaptureError.accessibilityPermissionDenied but no error was thrown")
             } catch let captureError as CaptureError {
                 // Should be accessibilityPermissionDenied

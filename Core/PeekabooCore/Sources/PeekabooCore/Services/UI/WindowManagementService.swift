@@ -13,7 +13,7 @@ import os.log
  *
  * ## Core Operations
  * - Window state: close, minimize, maximize, focus
- * - Positioning: move windows to specific coordinates  
+ * - Positioning: move windows to specific coordinates
  * - Resizing: resize windows to specific dimensions
  * - Multi-window support with index-based targeting
  *

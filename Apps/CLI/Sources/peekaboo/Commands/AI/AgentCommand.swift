@@ -138,7 +138,7 @@ func iconForTool(_ toolName: String) -> String {
     if toolName == "need_more_information" || toolName == "need_info" {
         return "❓"
     }
-    
+
     guard let tool = AgentTool(rawValue: toolName) else {
         return "⚙️"
     }
@@ -357,89 +357,89 @@ struct AgentCommand: AsyncParsableCommand {
             print("\(TerminalColor.red)Error: Audio input functionality is not yet implemented\(TerminalColor.reset)")
             return
         }
-        
+
         /* Commented out until audio service is implemented
-        if self.audio || self.audioFile != nil {
-            if !self.jsonOutput && !self.quiet {
-                if let audioPath = audioFile {
-                    print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
-                } else {
-                    print(
-                        "\(TerminalColor.cyan)🎙️ Starting audio recording... (Press Ctrl+C to stop)\(TerminalColor.reset)"
-                    )
-                }
-            }
+         if self.audio || self.audioFile != nil {
+             if !self.jsonOutput && !self.quiet {
+                 if let audioPath = audioFile {
+                     print("\(TerminalColor.cyan)🎙️ Processing audio file: \(audioPath)\(TerminalColor.reset)")
+                 } else {
+                     print(
+                         "\(TerminalColor.cyan)🎙️ Starting audio recording... (Press Ctrl+C to stop)\(TerminalColor.reset)"
+                     )
+                 }
+             }
 
-            let audioService = services.audioInput
+             let audioService = services.audioInput
 
-            do {
-                if let audioPath = audioFile {
-                    // Transcribe from file
-                    let url = URL(fileURLWithPath: audioPath)
-                    executionTask = try await audioService.transcribeAudioFile(url)
-                } else {
-                    // Record from microphone
-                    try await audioService.startRecording()
+             do {
+                 if let audioPath = audioFile {
+                     // Transcribe from file
+                     let url = URL(fileURLWithPath: audioPath)
+                     executionTask = try await audioService.transcribeAudioFile(url)
+                 } else {
+                     // Record from microphone
+                     try await audioService.startRecording()
 
-                    // Create a continuation to handle the async signal
-                    let transcript = try await withTaskCancellationHandler {
-                        try await withCheckedThrowingContinuation { continuation in
-                            // Set up signal handler for Ctrl+C
-                            let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
-                            signalSource.setEventHandler {
-                                signalSource.cancel()
-                                Task { @MainActor in
-                                    do {
-                                        let transcript = try await audioService.stopRecording()
-                                        continuation.resume(returning: transcript)
-                                    } catch {
-                                        continuation.resume(throwing: error)
-                                    }
-                                }
-                            }
-                            signalSource.resume()
+                     // Create a continuation to handle the async signal
+                     let transcript = try await withTaskCancellationHandler {
+                         try await withCheckedThrowingContinuation { continuation in
+                             // Set up signal handler for Ctrl+C
+                             let signalSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
+                             signalSource.setEventHandler {
+                                 signalSource.cancel()
+                                 Task { @MainActor in
+                                     do {
+                                         let transcript = try await audioService.stopRecording()
+                                         continuation.resume(returning: transcript)
+                                     } catch {
+                                         continuation.resume(throwing: error)
+                                     }
+                                 }
+                             }
+                             signalSource.resume()
 
-                            // Also provide a way to stop recording after a timeout (optional)
-                            // This could be configured via a flag if needed
-                        }
-                    } onCancel: {
-                        Task { @MainActor in
-                            _ = try? await audioService.stopRecording()
-                        }
-                    }
+                             // Also provide a way to stop recording after a timeout (optional)
+                             // This could be configured via a flag if needed
+                         }
+                     } onCancel: {
+                         Task { @MainActor in
+                             _ = try? await audioService.stopRecording()
+                         }
+                     }
 
-                    executionTask = transcript
-                }
+                     executionTask = transcript
+                 }
 
-                if !self.jsonOutput && !self.quiet {
-                    print("\(TerminalColor.green)✅ Transcription complete\(TerminalColor.reset)")
-                    print("\(TerminalColor.gray)Transcript: \(executionTask.prefix(100))...\(TerminalColor.reset)")
-                }
+                 if !self.jsonOutput && !self.quiet {
+                     print("\(TerminalColor.green)✅ Transcription complete\(TerminalColor.reset)")
+                     print("\(TerminalColor.gray)Transcript: \(executionTask.prefix(100))...\(TerminalColor.reset)")
+                 }
 
-                // If we have both audio and a task, combine them
-                if let providedTask = task {
-                    executionTask = "\(providedTask)\n\nAudio transcript:\n\(executionTask)"
-                }
+                 // If we have both audio and a task, combine them
+                 if let providedTask = task {
+                     executionTask = "\(providedTask)\n\nAudio transcript:\n\(executionTask)"
+                 }
 
-            } catch {
-                if self.jsonOutput {
-                    let errorObj = [
-                        "success": false,
-                        "error": "Audio processing failed: \(error.localizedDescription)"
-                    ] as [String: Any]
-                    let jsonData = try JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted)
-                    print(String(data: jsonData, encoding: .utf8) ?? "{}")
-                } else {
-                    print(
-                        "\(TerminalColor.red)❌ Audio processing failed: \(error.localizedDescription)\(TerminalColor.reset)"
-                    )
-                }
-                return
-            }
-        } else {
-            // Regular execution requires task
-        */
-        
+             } catch {
+                 if self.jsonOutput {
+                     let errorObj = [
+                         "success": false,
+                         "error": "Audio processing failed: \(error.localizedDescription)"
+                     ] as [String: Any]
+                     let jsonData = try JSONSerialization.data(withJSONObject: errorObj, options: .prettyPrinted)
+                     print(String(data: jsonData, encoding: .utf8) ?? "{}")
+                 } else {
+                     print(
+                         "\(TerminalColor.red)❌ Audio processing failed: \(error.localizedDescription)\(TerminalColor.reset)"
+                     )
+                 }
+                 return
+             }
+         } else {
+             // Regular execution requires task
+         */
+
         // Check if we have a task to execute
         if let providedTask = task {
             executionTask = providedTask
@@ -656,7 +656,7 @@ struct AgentCommand: AsyncParsableCommand {
             }
 
             // Show API key info in verbose mode
-            if self.outputMode == .verbose, 
+            if self.outputMode == .verbose,
                let peekabooAgent = peekabooAgent as? PeekabooAgentService,
                let apiKey = await peekabooAgent.maskedApiKey {
                 print("\(TerminalColor.gray)API Key: \(apiKey)\(TerminalColor.reset)")
@@ -1483,7 +1483,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
 
                 // Check if this is a special communication tool that should be displayed as assistant text
                 let isCommunicationTool = (name == "task_completed" || name == "need_more_information")
-                
+
                 if !isCommunicationTool {
                     // Always add a newline before tool output for better formatting
                     // This ensures consistent spacing between thinking/content and tools
@@ -1548,7 +1548,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                     if name == "task_completed" {
                         // Show as assistant message, not tool execution
                         print() // Add newline for spacing
-                        
+
                         if let summary = json["summary"] as? String {
                             print("\(summary)")
                         }
@@ -1571,10 +1571,10 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                     else if name == "need_more_information" {
                         // Show as assistant message, not tool execution
                         print() // Add newline for spacing
-                        
+
                         if let question = json["question"] as? String {
                             print("\(question)")
-                            
+
                             if let context = json["context"] as? String {
                                 print("\n\(TerminalColor.gray)Context: \(context)\(TerminalColor.reset)")
                             }

@@ -136,7 +136,10 @@ struct ClickCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattab
                     }
 
                 } else {
-                    throw ArgumentParser.ValidationError("Specify an element query, --on/--id, or --coords. Did you mean to pass the query as a positional argument? Usage: `peekaboo click \"button text\"`")
+                    throw ArgumentParser
+                        .ValidationError(
+                            "Specify an element query, --on/--id, or --coords. Did you mean to pass the query as a positional argument? Usage: `peekaboo click \"button text\"`"
+                        )
                 }
             }
 

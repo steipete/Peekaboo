@@ -42,17 +42,17 @@ struct ElementDetectionServiceTests {
     func detectWindowsForNonActiveApp() async throws {
         let sessionManager = MockSessionManager()
         let service = ElementDetectionService(sessionManager: sessionManager)
-        
+
         // This test verifies that window detection doesn't require the app to be active
         // Previously, the service would throw an error if !targetApp.isActive
         // Now it should work for background apps as well
-        
+
         // Note: In a real test environment, we'd need to:
         // 1. Launch a test app
         // 2. Switch focus to another app
         // 3. Try to detect windows from the background app
         // 4. Verify it doesn't throw "is running but not active" error
-        
+
         // For now, we're documenting the expected behavior
         #expect(true) // Placeholder for actual test implementation
     }

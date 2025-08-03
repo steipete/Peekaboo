@@ -52,7 +52,7 @@ struct SeeCommandTests {
         #expect(command.mode == .screen)
         #expect(command.screenIndex == 1)
     }
-    
+
     @Test("See command screen-index only works with screen mode")
     func screenIndexRequiresScreenMode() throws {
         // Should parse without error even if not in screen mode
@@ -60,7 +60,7 @@ struct SeeCommandTests {
         #expect(command.screenIndex == 0)
         // The validation happens at runtime, not parse time
     }
-    
+
     @Test("See command handles multi-screen capture defaults")
     func multiScreenDefaults() throws {
         let command = try SeeCommand.parse(["--mode", "screen"])

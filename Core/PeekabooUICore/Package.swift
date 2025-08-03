@@ -7,8 +7,7 @@ let package = Package(
     products: [
         .library(
             name: "PeekabooUICore",
-            targets: ["PeekabooUICore"]
-        ),
+            targets: ["PeekabooUICore"]),
     ],
     dependencies: [
         .package(path: "../PeekabooCore"),
@@ -22,15 +21,12 @@ let package = Package(
                 .product(name: "AXorcist", package: "AXorcist"),
             ],
             swiftSettings: [
-                .swiftLanguageMode(.v6)
-            ]
-        ),
+                .swiftLanguageMode(.v6),
+            ]),
         .testTarget(
             name: "PeekabooUITests",
             dependencies: ["PeekabooUICore"],
             swiftSettings: [
-                .swiftLanguageMode(.v6)
-            ]
-        ),
-    ]
-)
+                .swiftLanguageMode(.v6),
+            ]),
+    ])

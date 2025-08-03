@@ -10,8 +10,8 @@ public final class OllamaModel: ModelInterface, Sendable {
     public init(
         modelName: String,
         baseURL: URL = URL(string: "http://localhost:11434")!,
-        session: URLSession? = nil
-    ) {
+        session: URLSession? = nil)
+    {
         self.modelName = modelName
         self.baseURL = baseURL
 
@@ -42,11 +42,11 @@ public final class OllamaModel: ModelInterface, Sendable {
         }
 
         if httpResponse.statusCode != 200 {
-            try handleErrorResponse(data: data, response: httpResponse)
+            try self.handleErrorResponse(data: data, response: httpResponse)
         }
 
         let ollamaResponse = try JSONDecoder().decode(OllamaChatResponse.self, from: data)
-        return try convertFromOllamaResponse(ollamaResponse)
+        return try self.convertFromOllamaResponse(ollamaResponse)
     }
 
     public func getStreamedResponse(request: ModelRequest) async throws -> AsyncThrowingStream<StreamEvent, any Error> {
@@ -59,7 +59,8 @@ public final class OllamaModel: ModelInterface, Sendable {
                     let (bytes, response) = try await session.bytes(for: urlRequest)
 
                     guard let httpResponse = response as? HTTPURLResponse else {
-                        continuation.finish(throwing: TachikomaError.networkError(underlying: URLError(.badServerResponse)))
+                        continuation
+                            .finish(throwing: TachikomaError.networkError(underlying: URLError(.badServerResponse)))
                         return
                     }
 
@@ -103,7 +104,7 @@ public final class OllamaModel: ModelInterface, Sendable {
     // MARK: - Private Methods
 
     private func createURLRequest(endpoint: String, body: any Encodable) throws -> URLRequest {
-        let url = baseURL.appendingPathComponent(endpoint)
+        let url = self.baseURL.appendingPathComponent(endpoint)
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -130,10 +131,10 @@ public final class OllamaModel: ModelInterface, Sendable {
                 return OllamaMessage(role: "system", content: content, images: nil)
 
             case let .user(_, content):
-                return try convertUserMessage(content)
+                return try self.convertUserMessage(content)
 
             case let .assistant(_, content, _):
-                return convertAssistantMessage(content)
+                return self.convertAssistantMessage(content)
 
             case let .tool(_, _, content):
                 // Ollama handles tool results differently - might need adaptation
@@ -152,22 +153,18 @@ public final class OllamaModel: ModelInterface, Sendable {
                 function: OllamaFunction(
                     name: toolDef.function.name,
                     description: toolDef.function.description,
-                    parameters: convertToolParameters(toolDef.function.parameters)
-                )
-            )
+                    parameters: self.convertToolParameters(toolDef.function.parameters)))
         }
 
         return OllamaChatRequest(
-            model: modelName,
+            model: self.modelName,
             messages: messages,
             tools: tools,
             stream: stream,
             options: OllamaOptions(
                 temperature: request.settings.temperature,
                 topP: request.settings.topP,
-                stop: request.settings.stopSequences
-            )
-        )
+                stop: request.settings.stopSequences))
     }
 
     private func convertUserMessage(_ content: MessageContent) throws -> OllamaMessage {
@@ -196,7 +193,8 @@ public final class OllamaModel: ModelInterface, Sendable {
                     if let base64 = image.base64 {
                         images.append(base64)
                     } else if image.url != nil {
-                        throw TachikomaError.invalidRequest("Image URLs not supported in Ollama - please provide base64 data")
+                        throw TachikomaError
+                            .invalidRequest("Image URLs not supported in Ollama - please provide base64 data")
                     }
                 }
             }
@@ -244,7 +242,7 @@ public final class OllamaModel: ModelInterface, Sendable {
         var properties: [String: Any] = [:]
 
         for (key, schema) in params.properties {
-            properties[key] = convertParameterSchema(schema)
+            properties[key] = self.convertParameterSchema(schema)
         }
 
         return [
@@ -279,8 +277,7 @@ public final class OllamaModel: ModelInterface, Sendable {
             completionTokens: 0, // Not provided by Ollama
             totalTokens: 0, // Not provided by Ollama
             promptTokensDetails: nil,
-            completionTokensDetails: nil
-        )
+            completionTokensDetails: nil)
 
         return ModelResponse(
             id: UUID().uuidString, // Ollama doesn't provide response IDs
@@ -288,8 +285,7 @@ public final class OllamaModel: ModelInterface, Sendable {
             content: content,
             usage: usage,
             flagged: false,
-            finishReason: response.done ? .stop : nil
-        )
+            finishReason: response.done ? .stop : nil)
     }
 
     private func processOllamaChunk(_ chunk: OllamaChatChunk) -> [StreamEvent]? {
@@ -300,8 +296,7 @@ public final class OllamaModel: ModelInterface, Sendable {
             events.append(.responseStarted(StreamResponseStarted(
                 id: UUID().uuidString,
                 model: chunk.model,
-                systemFingerprint: nil
-            )))
+                systemFingerprint: nil)))
         }
 
         // Text content
@@ -314,8 +309,7 @@ public final class OllamaModel: ModelInterface, Sendable {
             events.append(.responseCompleted(StreamResponseCompleted(
                 id: UUID().uuidString,
                 usage: nil,
-                finishReason: .stop
-            )))
+                finishReason: .stop)))
         }
 
         return events.isEmpty ? nil : events
@@ -330,8 +324,8 @@ public final class OllamaModel: ModelInterface, Sendable {
             case 400:
                 throw TachikomaError.invalidRequest(message)
             case 404:
-                throw TachikomaError.modelNotFound(modelName)
-            case 500 ... 599:
+                throw TachikomaError.modelNotFound(self.modelName)
+            case 500...599:
                 throw TachikomaError.modelOverloaded
             default:
                 throw TachikomaError.apiError(message: message)

@@ -31,8 +31,8 @@ public struct SessionSummary: Sendable, Codable {
         lastAccessedAt: Date,
         messageCount: Int,
         status: SessionStatus,
-        summary: String? = nil
-    ) {
+        summary: String? = nil)
+    {
         self.id = id
         self.modelName = modelName
         self.createdAt = createdAt
@@ -79,8 +79,8 @@ public struct AgentSession: Sendable, Codable {
         messages: [Message],
         metadata: SessionMetadata,
         createdAt: Date,
-        updatedAt: Date
-    ) {
+        updatedAt: Date)
+    {
         self.id = id
         self.modelName = modelName
         self.messages = messages
@@ -113,8 +113,8 @@ public struct SessionMetadata: Sendable, Codable {
         totalCost: Double? = nil,
         toolCallCount: Int = 0,
         totalExecutionTime: TimeInterval = 0,
-        customData: [String: String] = [:]
-    ) {
+        customData: [String: String] = [:])
+    {
         self.totalTokens = totalTokens
         self.totalCost = totalCost
         self.toolCallCount = toolCallCount
@@ -142,21 +142,20 @@ public final class AgentSessionManager: @unchecked Sendable {
             self.sessionDirectory = sessionDirectory
         } else {
             // Default to ~/.tachikoma/sessions/
-            let homeDir = fileManager.homeDirectoryForCurrentUser
+            let homeDir = self.fileManager.homeDirectoryForCurrentUser
             self.sessionDirectory = homeDir.appendingPathComponent(".tachikoma/sessions")
         }
 
         // Create session directory if it doesn't exist
-        try fileManager.createDirectory(at: self.sessionDirectory, withIntermediateDirectories: true)
+        try self.fileManager.createDirectory(at: self.sessionDirectory, withIntermediateDirectories: true)
     }
 
     /// List all available sessions
     public func listSessions() -> [SessionSummary] {
         do {
             let sessionFiles = try fileManager.contentsOfDirectory(
-                at: sessionDirectory,
-                includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey]
-            )
+                at: self.sessionDirectory,
+                includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey])
 
             return sessionFiles.compactMap { url in
                 guard url.pathExtension == "json" else { return nil }
@@ -165,7 +164,10 @@ public final class AgentSessionManager: @unchecked Sendable {
                     let data = try Data(contentsOf: url)
                     let session = try JSONDecoder().decode(AgentSession.self, from: data)
 
-                    let resourceValues = try url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+                    let resourceValues = try url.resourceValues(forKeys: [
+                        .creationDateKey,
+                        .contentModificationDateKey,
+                    ])
                     let createdAt = resourceValues.creationDate ?? Date()
                     let lastAccessedAt = resourceValues.contentModificationDate ?? Date()
 
@@ -175,9 +177,8 @@ public final class AgentSessionManager: @unchecked Sendable {
                         createdAt: createdAt,
                         lastAccessedAt: lastAccessedAt,
                         messageCount: session.messages.count,
-                        status: isSessionExpired(lastAccessedAt) ? .expired : .active,
-                        summary: generateSessionSummary(from: session.messages)
-                    )
+                        status: self.isSessionExpired(lastAccessedAt) ? .expired : .active,
+                        summary: self.generateSessionSummary(from: session.messages))
                 } catch {
                     return nil
                 }
@@ -189,12 +190,12 @@ public final class AgentSessionManager: @unchecked Sendable {
 
     /// Save a session to persistent storage
     public func saveSession(_ session: AgentSession) throws {
-        let sessionFile = sessionDirectory.appendingPathComponent("\(session.id).json")
+        let sessionFile = self.sessionDirectory.appendingPathComponent("\(session.id).json")
         let data = try JSONEncoder().encode(session)
         try data.write(to: sessionFile)
 
         // Update cache
-        cacheQueue.async(flags: .barrier) {
+        self.cacheQueue.async(flags: .barrier) {
             self.sessionCache[session.id] = session
             self.evictOldCacheEntries()
         }
@@ -203,8 +204,8 @@ public final class AgentSessionManager: @unchecked Sendable {
     /// Load a session from storage
     public func loadSession(id: String) throws -> AgentSession? {
         // Check cache first
-        let cachedSession = cacheQueue.sync {
-            sessionCache[id]
+        let cachedSession = self.cacheQueue.sync {
+            self.sessionCache[id]
         }
 
         if let cachedSession {
@@ -212,8 +213,8 @@ public final class AgentSessionManager: @unchecked Sendable {
         }
 
         // Load from disk
-        let sessionFile = sessionDirectory.appendingPathComponent("\(id).json")
-        guard fileManager.fileExists(atPath: sessionFile.path) else {
+        let sessionFile = self.sessionDirectory.appendingPathComponent("\(id).json")
+        guard self.fileManager.fileExists(atPath: sessionFile.path) else {
             return nil
         }
 
@@ -221,7 +222,7 @@ public final class AgentSessionManager: @unchecked Sendable {
         let session = try JSONDecoder().decode(AgentSession.self, from: data)
 
         // Add to cache
-        cacheQueue.async(flags: .barrier) {
+        self.cacheQueue.async(flags: .barrier) {
             self.sessionCache[id] = session
             self.evictOldCacheEntries()
         }
@@ -231,22 +232,22 @@ public final class AgentSessionManager: @unchecked Sendable {
 
     /// Delete a session
     public func deleteSession(id: String) throws {
-        let sessionFile = sessionDirectory.appendingPathComponent("\(id).json")
-        try fileManager.removeItem(at: sessionFile)
+        let sessionFile = self.sessionDirectory.appendingPathComponent("\(id).json")
+        try self.fileManager.removeItem(at: sessionFile)
 
         // Remove from cache
-        cacheQueue.async(flags: .barrier) {
+        self.cacheQueue.async(flags: .barrier) {
             self.sessionCache.removeValue(forKey: id)
         }
     }
 
     /// Clean up expired sessions
     public func cleanupExpiredSessions() throws {
-        let sessions = listSessions()
-        let expiredSessions = sessions.filter { isSessionExpired($0.lastAccessedAt) }
+        let sessions = self.listSessions()
+        let expiredSessions = sessions.filter { self.isSessionExpired($0.lastAccessedAt) }
 
         for session in expiredSessions {
-            try deleteSession(id: session.id)
+            try self.deleteSession(id: session.id)
         }
     }
 
@@ -278,18 +279,18 @@ public final class AgentSessionManager: @unchecked Sendable {
     }
 
     private func evictOldCacheEntries() {
-        guard sessionCache.count > Self.maxCacheSize else { return }
+        guard self.sessionCache.count > Self.maxCacheSize else { return }
 
         // Remove oldest entries
-        let sortedKeys = sessionCache.keys.sorted { key1, key2 in
-            let session1 = sessionCache[key1]!
-            let session2 = sessionCache[key2]!
+        let sortedKeys = self.sessionCache.keys.sorted { key1, key2 in
+            let session1 = self.sessionCache[key1]!
+            let session2 = self.sessionCache[key2]!
             return session1.updatedAt < session2.updatedAt
         }
 
-        let keysToRemove = sortedKeys.prefix(sessionCache.count - Self.maxCacheSize)
+        let keysToRemove = sortedKeys.prefix(self.sessionCache.count - Self.maxCacheSize)
         for key in keysToRemove {
-            sessionCache.removeValue(forKey: key)
+            self.sessionCache.removeValue(forKey: key)
         }
     }
 }

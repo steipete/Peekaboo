@@ -31,7 +31,7 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
               --escape    Press escape
               --delete    Press delete
               --clear     Clear current field (Cmd+A, Delete)
-            
+
             ESCAPE SEQUENCES:
               Supported escape sequences in text:
               \\n  - Newline/return
@@ -92,7 +92,7 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
 
             if let textToType = text {
                 // Process escape sequences
-                let processedActions = processTextWithEscapes(textToType)
+                let processedActions = self.processTextWithEscapes(textToType)
                 actions.append(contentsOf: processedActions)
             }
 
@@ -168,19 +168,19 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
     }
 
     // Error handling is provided by ErrorHandlingCommand protocol
-    
+
     /// Process text with escape sequences like \n, \t, etc.
-    internal func processTextWithEscapes(_ text: String) -> [TypeAction] {
+    func processTextWithEscapes(_ text: String) -> [TypeAction] {
         var actions: [TypeAction] = []
         var currentText = ""
         var i = text.startIndex
-        
+
         while i < text.endIndex {
             let char = text[i]
-            
+
             if char == "\\" && text.index(after: i) < text.endIndex {
                 let nextChar = text[text.index(after: i)]
-                
+
                 switch nextChar {
                 case "n":
                     // Add accumulated text
@@ -192,7 +192,7 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                     actions.append(.key(.return))
                     // Skip the 'n'
                     i = text.index(after: i)
-                    
+
                 case "t":
                     // Add accumulated text
                     if !currentText.isEmpty {
@@ -203,7 +203,7 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                     actions.append(.key(.tab))
                     // Skip the 't'
                     i = text.index(after: i)
-                    
+
                 case "b":
                     // Add accumulated text
                     if !currentText.isEmpty {
@@ -214,7 +214,7 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                     actions.append(.key(.delete))
                     // Skip the 'b'
                     i = text.index(after: i)
-                    
+
                 case "e":
                     // Add accumulated text
                     if !currentText.isEmpty {
@@ -225,13 +225,13 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
                     actions.append(.key(.escape))
                     // Skip the 'e'
                     i = text.index(after: i)
-                    
+
                 case "\\":
                     // Escaped backslash
                     currentText.append("\\")
                     // Skip the second backslash
                     i = text.index(after: i)
-                    
+
                 default:
                     // Not a recognized escape, keep the backslash
                     currentText.append(char)
@@ -239,15 +239,15 @@ struct TypeCommand: AsyncParsableCommand, ErrorHandlingCommand, OutputFormattabl
             } else {
                 currentText.append(char)
             }
-            
+
             i = text.index(after: i)
         }
-        
+
         // Add any remaining text
         if !currentText.isEmpty {
             actions.append(.text(currentText))
         }
-        
+
         return actions
     }
 }

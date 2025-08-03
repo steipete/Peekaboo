@@ -14,71 +14,70 @@ public class OverlayWindowController {
     private var overlayWindows: [NSScreen: NSWindow] = [:]
     private let overlayManager: OverlayManager
     private let preset: ElementStyleProvider
-    
+
     public init(
         overlayManager: OverlayManager,
-        preset: ElementStyleProvider = InspectorVisualizationPreset()
-    ) {
+        preset: ElementStyleProvider = InspectorVisualizationPreset())
+    {
         self.overlayManager = overlayManager
         self.preset = preset
     }
-    
+
     /// Shows overlay windows on all screens
     public func showOverlays() {
         for screen in NSScreen.screens {
-            showOverlay(on: screen)
+            self.showOverlay(on: screen)
         }
     }
-    
+
     /// Hides all overlay windows
     public func hideOverlays() {
-        for window in overlayWindows.values {
+        for window in self.overlayWindows.values {
             window.orderOut(nil)
         }
     }
-    
+
     /// Removes all overlay windows
     public func removeOverlays() {
-        for window in overlayWindows.values {
+        for window in self.overlayWindows.values {
             window.close()
         }
-        overlayWindows.removeAll()
+        self.overlayWindows.removeAll()
     }
-    
+
     /// Updates overlay visibility based on manager state
     public func updateVisibility() {
-        if overlayManager.isOverlayActive {
-            showOverlays()
+        if self.overlayManager.isOverlayActive {
+            self.showOverlays()
         } else {
-            hideOverlays()
+            self.hideOverlays()
         }
     }
-    
+
     // MARK: - Private Methods
-    
+
     private func showOverlay(on screen: NSScreen) {
-        let window = overlayWindows[screen] ?? createOverlayWindow(for: screen)
-        
+        let window = self.overlayWindows[screen] ?? self.createOverlayWindow(for: screen)
+
         // Update content
         let overlayView = AllAppsOverlayView(overlayManager: overlayManager, preset: preset)
         window.contentView = NSHostingView(rootView: overlayView)
-        
+
         // Position and show
         window.setFrame(screen.frame, display: true)
         window.orderFrontRegardless()
-        
-        overlayWindows[screen] = window
+
+        self.overlayWindows[screen] = window
     }
-    
+
     private func createOverlayWindow(for screen: NSScreen) -> NSWindow {
         let window = NSWindow(
             contentRect: screen.frame,
             styleMask: [.borderless],
             backing: .buffered,
             defer: false,
-            screen: screen
-        )
-        
+            screen: screen)
+
         // Configure window
         window.isReleasedWhenClosed = false
         window.level = .floating
@@ -87,52 +86,51 @@ public class OverlayWindowController {
         window.hasShadow = false
         window.ignoresMouseEvents = true
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
-        
+
         // Make window click-through
         window.styleMask.insert(.nonactivatingPanel)
-        
+
         return window
     }
 }
 
 // MARK: - Screen Change Monitoring
 
-public extension OverlayWindowController {
+extension OverlayWindowController {
     /// Starts monitoring for screen configuration changes
-    func startMonitoringScreenChanges() {
+    public func startMonitoringScreenChanges() {
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil,
-            queue: .main
-        ) { [weak self] _ in
+            queue: .main)
+        { [weak self] _ in
             Task { @MainActor in
                 self?.handleScreenChange()
             }
         }
     }
-    
+
     /// Stops monitoring screen changes
-    func stopMonitoringScreenChanges() {
+    public func stopMonitoringScreenChanges() {
         NotificationCenter.default.removeObserver(
             self,
             name: NSApplication.didChangeScreenParametersNotification,
-            object: nil
-        )
+            object: nil)
     }
-    
+
     private func handleScreenChange() {
         // Remove windows for screens that no longer exist
         let currentScreens = Set(NSScreen.screens)
         let windowScreens = Set(overlayWindows.keys)
-        
+
         for screen in windowScreens.subtracting(currentScreens) {
-            overlayWindows[screen]?.close()
-            overlayWindows.removeValue(forKey: screen)
+            self.overlayWindows[screen]?.close()
+            self.overlayWindows.removeValue(forKey: screen)
         }
-        
+
         // Update overlay visibility
-        if overlayManager.isOverlayActive {
-            showOverlays()
+        if self.overlayManager.isOverlayActive {
+            self.showOverlays()
         }
     }
 }
