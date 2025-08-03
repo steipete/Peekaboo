@@ -75,9 +75,7 @@
     }
   },
   "notifications": {
-    "enabled": true,
-    "successSound": "Glass",
-    "failureSound": "Basso"
+    "enabled": true
   },
   "logging": {
     "file": ".poltergeist.log",
