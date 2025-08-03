@@ -157,7 +157,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 agent: agent,
                 input: task,
                 model: model,
-                eventDelegate: nil) // TODO: Fix streaming delegate
+                eventDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -244,7 +244,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 agent: agent,
                 input: input,
                 model: model,
-                eventDelegate: nil) // TODO: Fix streaming delegate
+                eventDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -351,7 +351,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                 agent: agent,
                 input: task,
                 model: model,
-                eventDelegate: nil) // TODO: Fix streaming delegate
+                eventDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
@@ -545,7 +545,7 @@ extension PeekabooAgentService {
                 agent: agent,
                 input: continuationPrompt,
                 model: model,
-                eventDelegate: nil) // TODO: Fix streaming delegate
+                eventDelegate: streamingDelegate)
 
             // Send completion event with usage information
             await eventHandler.send(.completed(summary: result.content, usage: result.usage))
