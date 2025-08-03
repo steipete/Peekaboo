@@ -4,6 +4,7 @@ import Tachikoma
 // MARK: - Terminal Output Utilities
 
 /// Utility functions for colorized terminal output and formatting
+/// Used across all Tachikoma examples for consistent, beautiful CLI output
 public enum TerminalOutput {
     /// ANSI color codes for terminal output
     public enum Color: String {
@@ -42,17 +43,17 @@ public enum TerminalOutput {
         print("\(emoji) \(provider)", color: .cyan)
     }
     
-    /// Get emoji for provider
+    /// Get emoji for provider - makes provider identification visual and fun
     public static func providerEmoji(_ provider: String) -> String {
         switch provider.lowercased() {
         case let p where p.contains("openai") || p.contains("gpt"):
-            return "🤖"
+            return "🤖" // OpenAI - robot/AI theme
         case let p where p.contains("anthropic") || p.contains("claude"):
-            return "🧠"
+            return "🧠" // Anthropic - brain/thinking theme
         case let p where p.contains("ollama") || p.contains("llama"):
-            return "🦙"
+            return "🦙" // Ollama - llama theme
         case let p where p.contains("grok"):
-            return "🚀"
+            return "🚀" // Grok - rocket/fast theme
         default:
             return "🤖"
         }
@@ -62,7 +63,7 @@ public enum TerminalOutput {
 // MARK: - Response Comparison Utilities
 
 /// Utility for comparing responses from different providers
-public struct ResponseComparison {
+public struct ResponseComparison: Sendable {
     public let provider: String
     public let response: String
     public let duration: TimeInterval
@@ -93,11 +94,8 @@ public struct ResponseFormatter {
         }
         
         // Print headers with boxes
-        let headerLine = headers.map { header in
-            let padding = max(0, maxWidth - header.count)
-            let leftPad = padding / 2
-            let rightPad = padding - leftPad
-            return "┌\(String(repeating: "─", count: maxWidth))┐"
+        let headerLine = headers.map { _ in
+            "┌\(String(repeating: "─", count: maxWidth))┐"
         }.joined(separator: " ")
         
         output += headerLine + "\n"
@@ -164,13 +162,14 @@ public struct ResponseFormatter {
 
 // MARK: - Provider Detection and Setup
 
-/// Utility for detecting available providers
+/// Utility for detecting available providers based on environment variables
 public struct ProviderDetector {
-    /// Detect which providers are available based on environment
+    /// Detect which providers are available based on environment variables
+    /// This helps examples gracefully handle missing API keys
     public static func detectAvailableProviders() -> [String] {
         var providers: [String] = []
         
-        // Check for API keys
+        // Check for API keys in environment variables
         if ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil {
             providers.append("OpenAI")
         }
@@ -190,13 +189,13 @@ public struct ProviderDetector {
         return providers
     }
     
-    /// Get recommended model for each provider
+    /// Get recommended model for each provider - updated with latest models
     public static func recommendedModels() -> [String: String] {
         return [
-            "OpenAI": "gpt-4.1",
-            "Anthropic": "claude-opus-4-20250514",
-            "Grok": "grok-4",
-            "Ollama": "llama3.3"
+            "OpenAI": "gpt-4.1",                    // Latest GPT-4.1
+            "Anthropic": "claude-opus-4-20250514", // Claude Opus 4 (May 2025)
+            "Grok": "grok-4",                       // Latest Grok
+            "Ollama": "llama3.3"                    // Best Ollama model for function calling
         ]
     }
 }
@@ -221,7 +220,6 @@ public struct ConfigurationHelper {
         TerminalOutput.header("🚀 Tachikoma Examples Setup")
         
         let available = ProviderDetector.detectAvailableProviders()
-        let recommended = ProviderDetector.recommendedModels()
         
         TerminalOutput.print("Available providers: \(available.joined(separator: ", "))", color: .green)
         

@@ -71,13 +71,14 @@ struct TachikomaMultimodal: AsyncParsableCommand {
             return
         }
         
-        // Verify image exists and read it
+        // Load and validate the image file
         let imageData = try loadImage(from: imagePath)
         
-        // Determine the prompt
+        // Determine the final prompt based on flags and user input
         let finalPrompt = determineFinalPrompt()
         
         if compareVision {
+            // Compare how different providers analyze the same image
             try await compareVisionAcrossProviders(
                 imageData: imageData,
                 imagePath: imagePath,
@@ -86,6 +87,7 @@ struct TachikomaMultimodal: AsyncParsableCommand {
                 availableModels: availableModels
             )
         } else {
+            // Analyze with a single provider
             try await analyzeSingleProvider(
                 imageData: imageData,
                 imagePath: imagePath,
@@ -233,41 +235,52 @@ struct TachikomaMultimodal: AsyncParsableCommand {
         displayComparisonResults(analyses)
     }
     
-    /// Analyze image with a specific provider
+    /// Analyze image with a specific provider using multimodal capabilities
     private func analyzeImageWithProvider(imageData: Data, prompt: String, model: ModelInterface, modelName: String) async throws -> VisionAnalysis {
         let providerName = getProviderName(from: modelName)
         let startTime = Date()
         
         do {
-            // Create multimodal message
-            let imageContent = MessageContent.image(
-                data: imageData,
-                mimeType: detectMimeType(from: imageData)
-            )
+            // Prepare the image for multimodal request
+            let base64Image = imageData.base64EncodedString()
             
-            let textContent = MessageContent.text(prompt)
-            let combinedContent = MessageContent.multipart([textContent, imageContent])
+            // Create multimodal content combining text prompt and image
+            // This demonstrates Tachikoma's unified multimodal interface
+            let multimodalContent = MessageContent.multimodal([
+                MessageContentPart(type: "text", text: prompt, imageUrl: nil),
+                MessageContentPart(type: "image_url", text: nil, imageUrl: ImageContent(base64: base64Image))
+            ])
             
-            let request = ConversationRequest(
-                messages: [Message(role: .user, content: combinedContent)],
-                maxTokens: 1000
+            let request = ModelRequest(
+                messages: [Message.user(content: multimodalContent)],
+                tools: nil, // No function calling for vision analysis
+                settings: ModelSettings(maxTokens: 1000)
             )
             
             let response = try await model.getResponse(request: request)
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
             
-            let responseText = response.message.content.text ?? "No response"
-            let tokenCount = PerformanceMeasurement.estimateTokenCount(responseText)
+            // Extract text content from response
+            // Vision models return their analysis as text content
+            let responseText = response.content.compactMap { item in
+                if case let .outputText(text) = item {
+                    return text
+                }
+                return nil
+            }.joined()
+            
+            let finalResponseText = responseText.isEmpty ? "No response" : responseText
+            let tokenCount = PerformanceMeasurement.estimateTokenCount(finalResponseText)
             
             return VisionAnalysis(
                 provider: providerName,
                 model: modelName,
-                response: responseText,
+                response: finalResponseText,
                 duration: duration,
                 tokenCount: tokenCount,
-                wordCount: responseText.split(separator: " ").count,
-                confidenceScore: calculateConfidenceScore(responseText),
+                wordCount: finalResponseText.split(separator: " ").count,
+                confidenceScore: calculateConfidenceScore(finalResponseText),
                 capabilities: getModelCapabilities(modelName)
             )
             
@@ -363,7 +376,7 @@ struct TachikomaMultimodal: AsyncParsableCommand {
     
     /// Detect MIME type from image data
     private func detectMimeType(from data: Data) -> String {
-        guard let firstByte = data.first else { return "application/octet-stream" }
+        guard !data.isEmpty else { return "application/octet-stream" }
         
         if data.count >= 2 && data[0] == 0xFF && data[1] == 0xD8 {
             return "image/jpeg"

@@ -43,7 +43,8 @@ struct TachikomaComparison: AsyncParsableCommand {
         // Setup and show available providers
         ConfigurationHelper.printSetupInstructions()
         
-        // Create the model provider
+        // Create the model provider using environment-based configuration
+        // This automatically detects all available API keys and sets up providers
         let modelProvider = try ConfigurationHelper.createProviderWithAvailableModels()
         let availableModels = modelProvider.availableModels()
         
@@ -53,7 +54,7 @@ struct TachikomaComparison: AsyncParsableCommand {
             return
         }
         
-        // Determine which providers/models to use
+        // Determine which providers/models to use for comparison
         let modelsToCompare = try selectModelsToCompare(availableModels: availableModels)
         
         if modelsToCompare.isEmpty {
@@ -149,16 +150,18 @@ struct TachikomaComparison: AsyncParsableCommand {
         }
     }
     
-    /// The main comparison logic
+    /// The main comparison logic - this is where Tachikoma really shines!
     private func compareProviders(prompt: String, modelProvider: AIModelProvider, models: [String]) async throws {
         TerminalOutput.print("\n" + String(repeating: "═", count: 100), color: .blue)
         TerminalOutput.print("🤔 Prompt: \(prompt)", color: .bold)
         TerminalOutput.print(String(repeating: "═", count: 100), color: .blue)
         
         // Send requests to all providers concurrently
+        // This demonstrates Tachikoma's power: same code, multiple providers
         var comparisons: [ResponseComparison] = []
         
         try await withThrowingTaskGroup(of: ResponseComparison.self) { group in
+            // Start all provider requests in parallel
             for model in models {
                 group.addTask {
                     try await self.getResponseFromProvider(
@@ -169,6 +172,7 @@ struct TachikomaComparison: AsyncParsableCommand {
                 }
             }
             
+            // Collect results as they complete
             for try await comparison in group {
                 comparisons.append(comparison)
             }
@@ -177,7 +181,7 @@ struct TachikomaComparison: AsyncParsableCommand {
         // Sort by provider name for consistent display
         comparisons.sort { $0.provider < $1.provider }
         
-        // Display results
+        // Display results in requested format
         if verbose {
             displayVerboseResults(comparisons)
         } else {
@@ -191,17 +195,31 @@ struct TachikomaComparison: AsyncParsableCommand {
     /// Get response from a single provider with performance measurement
     private func getResponseFromProvider(prompt: String, modelProvider: AIModelProvider, modelName: String) async throws -> ResponseComparison {
         do {
+            // Get the model instance - same interface for all providers
             let model = try modelProvider.getModel(modelName)
             let providerName = getProviderName(from: modelName)
             
+            // Measure performance while getting the response
             let (response, duration) = try await PerformanceMeasurement.measure {
-                let request = ConversationRequest(
-                    messages: [Message(role: .user, content: .text(prompt))],
-                    maxTokens: 500
+                // Create a standard request that works with any provider
+                let request = ModelRequest(
+                    messages: [Message.user(content: .text(prompt))],
+                    tools: nil, // No function calling for comparison
+                    settings: ModelSettings(maxTokens: 500) // Limit response length
                 )
                 
                 let result = try await model.getResponse(request: request)
-                return result.message.content.text ?? "No response"
+                
+                // Extract text content from response
+                // All providers return the same AssistantContent format
+                let textContent = result.content.compactMap { item in
+                    if case let .outputText(text) = item {
+                        return text
+                    }
+                    return nil
+                }.joined()
+                
+                return textContent.isEmpty ? "No response" : textContent
             }
             
             let tokenCount = PerformanceMeasurement.estimateTokenCount(response)

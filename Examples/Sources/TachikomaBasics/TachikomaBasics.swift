@@ -119,6 +119,7 @@ struct TachikomaBasics: AsyncParsableCommand {
         }
         
         // Step 1: Create the model provider
+        // AIConfiguration.fromEnvironment() automatically detects API keys and sets up providers
         let modelProvider: AIModelProvider
         do {
             modelProvider = try AIConfiguration.fromEnvironment()
@@ -133,6 +134,7 @@ struct TachikomaBasics: AsyncParsableCommand {
         }
         
         // Step 2: Select which model to use
+        // This demonstrates Tachikoma's provider-agnostic approach
         let selectedModel = try selectModel(from: modelProvider)
         
         if verbose {
@@ -140,6 +142,7 @@ struct TachikomaBasics: AsyncParsableCommand {
         }
         
         // Step 3: Get the model instance
+        // Same interface works for OpenAI, Anthropic, Ollama, or Grok
         let model = try modelProvider.getModel(selectedModel)
         
         if verbose {
@@ -147,10 +150,11 @@ struct TachikomaBasics: AsyncParsableCommand {
         }
         
         // Step 4: Create a request
+        // ModelRequest provides a unified interface across all providers
         let request = ModelRequest(
-            messages: [Message.user(content: .text(message))],
-            tools: nil,
-            settings: ModelSettings(maxTokens: 300)
+            messages: [Message.user(content: .text(message))], // Simple text message
+            tools: nil, // No function calling for this basic example
+            settings: ModelSettings(maxTokens: 300) // Limit response length
         )
         
         if verbose {
@@ -160,6 +164,7 @@ struct TachikomaBasics: AsyncParsableCommand {
         // Step 5: Send the request and measure performance
         let startTime = Date()
         do {
+            // The same getResponse() call works with any provider
             let response = try await model.getResponse(request: request)
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
@@ -197,6 +202,7 @@ struct TachikomaBasics: AsyncParsableCommand {
         if let requestedProvider = provider {
             let recommended = ProviderDetector.recommendedModels()
             
+            // Try to use the recommended model for this provider
             if let recommendedModel = recommended[requestedProvider.capitalized],
                availableModels.contains(recommendedModel) {
                 return recommendedModel
@@ -215,6 +221,7 @@ struct TachikomaBasics: AsyncParsableCommand {
         }
         
         // Auto-select the best available model
+        // Prioritized by quality and general capabilities
         let preferredOrder = ["claude-opus-4-20250514", "gpt-4.1", "llama3.3", "grok-4"]
         
         for preferred in preferredOrder {
@@ -239,6 +246,7 @@ struct TachikomaBasics: AsyncParsableCommand {
         TerminalOutput.separator("─")
         
         // Extract text content from response
+        // ModelResponse.content is an array of AssistantContent items
         let textContent = response.content.compactMap { item in
             if case let .outputText(text) = item {
                 return text

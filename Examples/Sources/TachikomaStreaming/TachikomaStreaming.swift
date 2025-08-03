@@ -63,7 +63,7 @@ struct TachikomaStreaming: AsyncParsableCommand {
         }
     }
     
-    /// Stream from a single provider
+    /// Stream from a single provider to demonstrate real-time responses
     private func runSingleStream(prompt: String, modelProvider: AIModelProvider, availableModels: [String]) async throws {
         let selectedModel = try selectModel(from: availableModels)
         let model = try modelProvider.getModel(selectedModel)
@@ -73,13 +73,16 @@ struct TachikomaStreaming: AsyncParsableCommand {
         TerminalOutput.print("💭 Prompt: \(prompt)", color: .dim)
         TerminalOutput.separator("─")
         
+        // Track performance metrics
         let startTime = Date()
         var totalTokens = 0
         var firstTokenTime: Date?
         
-        let request = ConversationRequest(
-            messages: [Message(role: .user, content: .text(prompt))],
-            maxTokens: maxTokens
+        // Create the streaming request
+        let request = ModelRequest(
+            messages: [Message.user(content: .text(prompt))],
+            tools: nil, // No function calling for streaming demo
+            settings: ModelSettings(maxTokens: maxTokens)
         )
         
         if verbose {
@@ -93,7 +96,9 @@ struct TachikomaStreaming: AsyncParsableCommand {
             
             var responseText = ""
             
-            for try await chunk in model.streamResponse(request: request) {
+            // Process the streaming response
+            // getStreamedResponse() returns an AsyncSequence of StreamEvent
+            for try await event in try await model.getStreamedResponse(request: request) {
                 if firstTokenTime == nil {
                     firstTokenTime = Date()
                     if verbose {
@@ -102,16 +107,31 @@ struct TachikomaStreaming: AsyncParsableCommand {
                     }
                 }
                 
-                if let content = chunk.content.text {
-                    responseText += content
-                    print(content, terminator: "")
+                // Handle different types of streaming events
+                switch event {
+                case .textDelta(let delta):
+                    // Text content arrives incrementally as the model generates it
+                    let text = delta.delta
+                    responseText += text
+                    print(text, terminator: "") // Print immediately for real-time effect
                     fflush(stdout)
-                    totalTokens += PerformanceMeasurement.estimateTokenCount(content)
+                    totalTokens += PerformanceMeasurement.estimateTokenCount(text)
                     
-                    // Add artificial delay to visualize streaming
+                    // Optional: Add artificial delay to visualize streaming
                     if delayMs > 0 {
                         try await Task.sleep(nanoseconds: UInt64(delayMs * 1_000_000))
                     }
+                case .responseCompleted:
+                    // Stream has finished - break out of the loop
+                    break
+                case .error(let errorEvent):
+                    // Handle streaming errors
+                    throw NSError(domain: "StreamingError", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: errorEvent.error.message
+                    ])
+                default:
+                    // Handle other event types silently (metadata, etc.)
+                    break
                 }
             }
             
@@ -197,20 +217,33 @@ struct TachikomaStreaming: AsyncParsableCommand {
         var totalTokens = 0
         var responseText = ""
         
-        let request = ConversationRequest(
-            messages: [Message(role: .user, content: .text(prompt))],
-            maxTokens: maxTokens / 2  // Shorter for racing
+        let request = ModelRequest(
+            messages: [Message.user(content: .text(prompt))],
+            tools: nil,
+            settings: ModelSettings(maxTokens: maxTokens / 2)  // Shorter for racing
         )
         
         do {
-            for try await chunk in model.streamResponse(request: request) {
+            for try await event in try await model.getStreamedResponse(request: request) {
                 if firstTokenTime == nil {
                     firstTokenTime = Date()
                 }
                 
-                if let content = chunk.content.text {
-                    responseText += content
-                    totalTokens += PerformanceMeasurement.estimateTokenCount(content)
+                // Handle different event types
+                switch event {
+                case .textDelta(let delta):
+                    let text = delta.delta
+                    responseText += text
+                    totalTokens += PerformanceMeasurement.estimateTokenCount(text)
+                case .responseCompleted:
+                    break
+                case .error(let errorEvent):
+                    throw NSError(domain: "StreamingError", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: errorEvent.error.message
+                    ])
+                default:
+                    // Handle other event types silently
+                    break
                 }
             }
             
@@ -417,7 +450,7 @@ struct TachikomaStreaming: AsyncParsableCommand {
 // MARK: - Supporting Types
 
 /// Result of a racing stream
-struct RaceResult {
+class RaceResult: @unchecked Sendable {
     let provider: String
     let model: String
     let totalDuration: TimeInterval

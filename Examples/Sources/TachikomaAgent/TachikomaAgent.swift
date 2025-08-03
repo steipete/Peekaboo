@@ -88,8 +88,8 @@ struct TachikomaAgent: AsyncParsableCommand {
         TerminalOutput.print("💡 Use --tools all to enable all available tools", color: .yellow)
     }
     
-    /// Select which tools to enable
-    private func selectTools() -> [FunctionDeclaration] {
+    /// Select which tools to enable for the agent
+    private func selectTools() -> [ToolDefinition] {
         let allTools = createAllTools()
         
         if let toolsString = tools {
@@ -97,24 +97,25 @@ struct TachikomaAgent: AsyncParsableCommand {
                 return allTools
             }
             
+            // Parse comma-separated tool names
             let requestedTools = toolsString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
             return allTools.filter { tool in
-                requestedTools.contains(tool.name.lowercased())
+                requestedTools.contains(tool.function.name.lowercased())
             }
         }
         
-        // Default: enable basic tools
-        return allTools.filter { ["weather", "calculator"].contains($0.name) }
+        // Default: enable basic tools for demonstration
+        return allTools.filter { ["weather", "calculator"].contains($0.function.name) }
     }
     
     /// Run a single task
-    private func runSingleTask(task: String, modelProvider: AIModelProvider, availableModels: [String], tools: [FunctionDeclaration]) async throws {
+    private func runSingleTask(task: String, modelProvider: AIModelProvider, availableModels: [String], tools: [ToolDefinition]) async throws {
         let selectedModel = try selectModel(from: availableModels)
         let model = try modelProvider.getModel(selectedModel)
         let providerName = getProviderName(from: selectedModel)
         
         TerminalOutput.print("🎯 Agent Provider: \(providerName)", color: .cyan)
-        TerminalOutput.print("🔧 Enabled Tools: \(tools.map { $0.name }.joined(separator: ", "))", color: .dim)
+        TerminalOutput.print("🔧 Enabled Tools: \(tools.map { $0.function.name }.joined(separator: ", "))", color: .dim)
         TerminalOutput.print("💭 Task: \(task)", color: .yellow)
         TerminalOutput.separator("─")
         
@@ -123,13 +124,13 @@ struct TachikomaAgent: AsyncParsableCommand {
     }
     
     /// Run conversation mode
-    private func runConversationMode(modelProvider: AIModelProvider, availableModels: [String], tools: [FunctionDeclaration]) async throws {
+    private func runConversationMode(modelProvider: AIModelProvider, availableModels: [String], tools: [ToolDefinition]) async throws {
         let selectedModel = try selectModel(from: availableModels)
         let model = try modelProvider.getModel(selectedModel)
         let providerName = getProviderName(from: selectedModel)
         
         TerminalOutput.print("🎭 Starting conversation with \(providerName) agent", color: .cyan)
-        TerminalOutput.print("🔧 Available tools: \(tools.map { $0.name }.joined(separator: ", "))", color: .dim)
+        TerminalOutput.print("🔧 Available tools: \(tools.map { $0.function.name }.joined(separator: ", "))", color: .dim)
         TerminalOutput.print("Type 'quit' or 'exit' to end the conversation.", color: .dim)
         TerminalOutput.separator("─")
         
@@ -195,7 +196,7 @@ struct TachikomaAgent: AsyncParsableCommand {
     }
     
     /// Create all available tools
-    private func createAllTools() -> [FunctionDeclaration] {
+    private func createAllTools() -> [ToolDefinition] {
         return [
             createWeatherTool(),
             createCalculatorTool(),
@@ -207,77 +208,89 @@ struct TachikomaAgent: AsyncParsableCommand {
     }
     
     /// Weather lookup tool
-    private func createWeatherTool() -> FunctionDeclaration {
-        return FunctionDeclaration(
-            name: "weather",
-            description: "Get current weather information for a specific location",
-            parameters: .object(properties: [
-                "location": .string(description: "The city and country/state, e.g. 'Tokyo, Japan' or 'San Francisco, CA'"),
-                "units": .string(description: "Temperature units: 'celsius' or 'fahrenheit'", enumValues: ["celsius", "fahrenheit"])
-            ], required: ["location"])
+    private func createWeatherTool() -> ToolDefinition {
+        return ToolDefinition(
+            function: FunctionDefinition(
+                name: "weather",
+                description: "Get current weather information for a specific location",
+                parameters: ToolParameters.object(properties: [
+                    "location": .string(description: "The city and country/state, e.g. 'Tokyo, Japan' or 'San Francisco, CA'"),
+                    "units": .string(description: "Temperature units: 'celsius' or 'fahrenheit'")
+                ], required: ["location"])
+            )
         )
     }
     
     /// Calculator tool
-    private func createCalculatorTool() -> FunctionDeclaration {
-        return FunctionDeclaration(
-            name: "calculator",
-            description: "Perform mathematical calculations including basic math, percentages, and conversions",
-            parameters: .object(properties: [
-                "expression": .string(description: "Mathematical expression to evaluate, e.g. '15 * 0.15' or '67.50 * 1.15'"),
-                "operation": .string(description: "Type of calculation", enumValues: ["basic", "percentage", "tip", "conversion"])
-            ], required: ["expression"])
+    private func createCalculatorTool() -> ToolDefinition {
+        return ToolDefinition(
+            function: FunctionDefinition(
+                name: "calculator",
+                description: "Perform mathematical calculations including basic math, percentages, and conversions",
+                parameters: ToolParameters.object(properties: [
+                    "expression": .string(description: "Mathematical expression to evaluate, e.g. '15 * 0.15' or '67.50 * 1.15'"),
+                    "operation": .enumeration(["basic", "percentage", "tip", "conversion"], description: "Type of calculation")
+                ], required: ["expression"])
+            )
         )
     }
     
     /// File reader tool
-    private func createFileReaderTool() -> FunctionDeclaration {
-        return FunctionDeclaration(
-            name: "file_reader",
-            description: "Read contents of text files from the local filesystem",
-            parameters: .object(properties: [
-                "file_path": .string(description: "Path to the file to read"),
-                "encoding": .string(description: "Text encoding", enumValues: ["utf8", "ascii"])
-            ], required: ["file_path"])
+    private func createFileReaderTool() -> ToolDefinition {
+        return ToolDefinition(
+            function: FunctionDefinition(
+                name: "file_reader",
+                description: "Read contents of text files from the local filesystem",
+                parameters: ToolParameters.object(properties: [
+                    "file_path": .string(description: "Path to the file to read"),
+                    "encoding": .enumeration(["utf8", "ascii"], description: "Text encoding")
+                ], required: ["file_path"])
+            )
         )
     }
     
     /// Web search tool
-    private func createWebSearchTool() -> FunctionDeclaration {
-        return FunctionDeclaration(
-            name: "web_search",
-            description: "Search the web for current information (simulated for demo)",
-            parameters: .object(properties: [
-                "query": .string(description: "Search query"),
-                "num_results": .integer(description: "Number of results to return (1-10)")
-            ], required: ["query"])
+    private func createWebSearchTool() -> ToolDefinition {
+        return ToolDefinition(
+            function: FunctionDefinition(
+                name: "web_search",
+                description: "Search the web for current information (simulated for demo)",
+                parameters: ToolParameters.object(properties: [
+                    "query": .string(description: "Search query"),
+                    "num_results": .integer(description: "Number of results to return (1-10)")
+                ], required: ["query"])
+            )
         )
     }
     
     /// Time/date tool
-    private func createTimeTool() -> FunctionDeclaration {
-        return FunctionDeclaration(
-            name: "time",
-            description: "Get current time, date, or timezone information",
-            parameters: .object(properties: [
-                "timezone": .string(description: "Timezone identifier, e.g. 'America/New_York' or 'UTC'"),
-                "format": .string(description: "Output format", enumValues: ["iso8601", "human", "timestamp"])
-            ])
+    private func createTimeTool() -> ToolDefinition {
+        return ToolDefinition(
+            function: FunctionDefinition(
+                name: "time",
+                description: "Get current time, date, or timezone information",
+                parameters: ToolParameters.object(properties: [
+                    "timezone": .string(description: "Timezone identifier, e.g. 'America/New_York' or 'UTC'"),
+                    "format": .enumeration(["iso8601", "human", "timestamp"], description: "Output format")
+                ])
+            )
         )
     }
     
     /// Random number/choice tool
-    private func createRandomTool() -> FunctionDeclaration {
-        return FunctionDeclaration(
-            name: "random",
-            description: "Generate random numbers or make random choices",
-            parameters: .object(properties: [
-                "type": .string(description: "Type of random generation", enumValues: ["number", "choice", "dice"]),
-                "min": .integer(description: "Minimum value for number generation"),
-                "max": .integer(description: "Maximum value for number generation"),
-                "choices": .array(items: .string(), description: "List of choices to pick from"),
-                "sides": .integer(description: "Number of sides for dice roll")
-            ], required: ["type"])
+    private func createRandomTool() -> ToolDefinition {
+        return ToolDefinition(
+            function: FunctionDefinition(
+                name: "random",
+                description: "Generate random numbers or make random choices",
+                parameters: ToolParameters.object(properties: [
+                    "type": .enumeration(["number", "choice", "dice"], description: "Type of random generation"),
+                    "min": .integer(description: "Minimum value for number generation"),
+                    "max": .integer(description: "Maximum value for number generation"),
+                    "choices": .array(of: .string(), description: "List of choices to pick from"),
+                    "sides": .integer(description: "Number of sides for dice roll")
+                ], required: ["type"])
+            )
         )
     }
 }
@@ -287,12 +300,12 @@ struct TachikomaAgent: AsyncParsableCommand {
 /// Handles the execution of agent tasks with function calling
 class AgentRunner {
     private let model: ModelInterface
-    private let tools: [FunctionDeclaration]
+    private let tools: [ToolDefinition]
     private let verbose: Bool
     private let maxFunctionCalls: Int
     private var conversationHistory: [Message] = []
     
-    init(model: ModelInterface, tools: [FunctionDeclaration], verbose: Bool, maxFunctionCalls: Int) {
+    init(model: ModelInterface, tools: [ToolDefinition], verbose: Bool, maxFunctionCalls: Int) {
         self.model = model
         self.tools = tools
         self.verbose = verbose
@@ -302,8 +315,8 @@ class AgentRunner {
     /// Execute a single task
     func executeTask(_ task: String) async throws {
         conversationHistory = [
-            Message(role: .system, content: .text(createSystemPrompt())),
-            Message(role: .user, content: .text(task))
+            Message.system(content: createSystemPrompt()),
+            Message.user(content: .text(task))
         ]
         
         try await processConversation()
@@ -311,19 +324,21 @@ class AgentRunner {
     
     /// Continue an ongoing conversation
     func continueConversation(_ userInput: String) async throws {
-        conversationHistory.append(Message(role: .user, content: .text(userInput)))
+        conversationHistory.append(Message.user(content: .text(userInput)))
         try await processConversation()
     }
     
     /// Process the conversation with function calling
+    /// This demonstrates the core agent loop: request -> response -> function calls -> repeat
     private func processConversation() async throws {
         var functionCallCount = 0
         
         while functionCallCount < maxFunctionCalls {
-            let request = ConversationRequest(
+            // Create request with conversation history and available tools
+            let request = ModelRequest(
                 messages: conversationHistory,
-                maxTokens: 1000,
-                tools: tools.isEmpty ? nil : tools
+                tools: tools.isEmpty ? nil : tools, // Include tools for function calling
+                settings: ModelSettings(maxTokens: 1000)
             )
             
             if verbose {
@@ -331,31 +346,46 @@ class AgentRunner {
             }
             
             let response = try await model.getResponse(request: request)
-            conversationHistory.append(response.message)
+            
+            // Extract text content and tool calls from response
+            // AssistantContent can contain both text and function calls
+            let textContent = response.content.compactMap { item in
+                if case let .outputText(text) = item {
+                    return text
+                }
+                return nil
+            }.joined()
+            
+            let toolCalls = response.content.compactMap { item in
+                if case let .toolCall(call) = item {
+                    return call
+                }
+                return nil
+            }
+            
+            // Add assistant message to conversation history
+            conversationHistory.append(Message.assistant(content: response.content))
             
             // Check if the model wants to call functions
-            if let toolCalls = response.message.toolCalls, !toolCalls.isEmpty {
+            if !toolCalls.isEmpty {
                 if verbose {
                     TerminalOutput.print("🔧 Model requesting \(toolCalls.count) function call(s)", color: .cyan)
                 }
                 
                 var functionResults: [Message] = []
                 
+                // Execute each function call the model requested
                 for toolCall in toolCalls {
                     if verbose {
                         TerminalOutput.print("  📞 Calling function: \(toolCall.function.name)", color: .yellow)
-                        if let args = toolCall.function.arguments {
-                            TerminalOutput.print("     Arguments: \(args)", color: .dim)
-                        }
+                        TerminalOutput.print("     Arguments: \(toolCall.function.arguments)", color: .dim)
                     }
                     
-                    let result = try await executeFunction(toolCall.function)
+                    // Execute the function and get the result
+                    let result = try await executeFunction(toolCall.function.name, arguments: toolCall.function.arguments)
                     
-                    let resultMessage = Message(
-                        role: .tool,
-                        content: .text(result),
-                        toolCallId: toolCall.id
-                    )
+                    // Create a tool result message to send back to the model
+                    let resultMessage = Message.tool(toolCallId: toolCall.id, content: result)
                     functionResults.append(resultMessage)
                     
                     if verbose {
@@ -363,16 +393,17 @@ class AgentRunner {
                     }
                 }
                 
+                // Add all function results to conversation history
                 conversationHistory.append(contentsOf: functionResults)
                 functionCallCount += toolCalls.count
                 
             } else {
                 // No function calls, display the response and exit
                 let emoji = getProviderEmoji()
-                TerminalOutput.print("\\n\(emoji) Agent: ", color: .bold)
+                TerminalOutput.print("\n\(emoji) Agent: ", color: .bold)
                 
-                if let content = response.message.content.text {
-                    TerminalOutput.print(content, color: .white)
+                if !textContent.isEmpty {
+                    TerminalOutput.print(textContent, color: .white)
                 } else {
                     TerminalOutput.print("(No response content)", color: .dim)
                 }
@@ -382,34 +413,38 @@ class AgentRunner {
         }
         
         if functionCallCount >= maxFunctionCalls {
-            TerminalOutput.print("\\n⚠️ Reached maximum function call limit (\(maxFunctionCalls))", color: .yellow)
+            TerminalOutput.print("\n⚠️ Reached maximum function call limit (\(maxFunctionCalls))", color: .yellow)
         }
     }
     
     /// Execute a function call and return the result
-    private func executeFunction(_ functionCall: FunctionCall) async throws -> String {
-        switch functionCall.name {
+    private func executeFunction(_ functionName: String, arguments: String) async throws -> String {
+        switch functionName {
         case "weather":
-            return try executeWeatherFunction(functionCall.arguments)
+            return try executeWeatherFunction(arguments)
         case "calculator":
-            return try executeCalculatorFunction(functionCall.arguments)
+            return try executeCalculatorFunction(arguments)
         case "file_reader":
-            return try executeFileReaderFunction(functionCall.arguments)
+            return try executeFileReaderFunction(arguments)
         case "web_search":
-            return try executeWebSearchFunction(functionCall.arguments)
+            return try executeWebSearchFunction(arguments)
         case "time":
-            return try executeTimeFunction(functionCall.arguments)
+            return try executeTimeFunction(arguments)
         case "random":
-            return try executeRandomFunction(functionCall.arguments)
+            return try executeRandomFunction(arguments)
         default:
-            return "Error: Unknown function '\(functionCall.name)'"
+            return "Error: Unknown function '\(functionName)'"
         }
     }
     
     /// Execute weather function (simulated)
-    private func executeWeatherFunction(_ arguments: [String: Any]?) throws -> String {
-        guard let args = arguments,
-              let location = args["location"] as? String else {
+    private func executeWeatherFunction(_ arguments: String) throws -> String {
+        // Parse JSON arguments
+        let data = arguments.data(using: .utf8) ?? Data()
+        let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let args = parsed ?? [:]
+        
+        guard let location = args["location"] as? String else {
             return "Error: Missing location parameter"
         }
         
@@ -438,9 +473,13 @@ class AgentRunner {
     }
     
     /// Execute calculator function
-    private func executeCalculatorFunction(_ arguments: [String: Any]?) throws -> String {
-        guard let args = arguments,
-              let expression = args["expression"] as? String else {
+    private func executeCalculatorFunction(_ arguments: String) throws -> String {
+        // Parse JSON arguments
+        let data = arguments.data(using: .utf8) ?? Data()
+        let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let args = parsed ?? [:]
+        
+        guard let expression = args["expression"] as? String else {
             return "Error: Missing expression parameter"
         }
         
@@ -462,9 +501,13 @@ class AgentRunner {
     }
     
     /// Execute file reader function
-    private func executeFileReaderFunction(_ arguments: [String: Any]?) throws -> String {
-        guard let args = arguments,
-              let filePath = args["file_path"] as? String else {
+    private func executeFileReaderFunction(_ arguments: String) throws -> String {
+        // Parse JSON arguments
+        let data = arguments.data(using: .utf8) ?? Data()
+        let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let args = parsed ?? [:]
+        
+        guard let filePath = args["file_path"] as? String else {
             return "Error: Missing file_path parameter"
         }
         
@@ -477,9 +520,13 @@ class AgentRunner {
     }
     
     /// Execute web search function (simulated)
-    private func executeWebSearchFunction(_ arguments: [String: Any]?) throws -> String {
-        guard let args = arguments,
-              let query = args["query"] as? String else {
+    private func executeWebSearchFunction(_ arguments: String) throws -> String {
+        // Parse JSON arguments
+        let data = arguments.data(using: .utf8) ?? Data()
+        let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let args = parsed ?? [:]
+        
+        guard let query = args["query"] as? String else {
             return "Error: Missing query parameter"
         }
         
@@ -503,9 +550,14 @@ class AgentRunner {
     }
     
     /// Execute time function
-    private func executeTimeFunction(_ arguments: [String: Any]?) throws -> String {
-        let timezone = arguments?["timezone"] as? String ?? "UTC"
-        let format = arguments?["format"] as? String ?? "human"
+    private func executeTimeFunction(_ arguments: String) throws -> String {
+        // Parse JSON arguments
+        let data = arguments.data(using: .utf8) ?? Data()
+        let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let args = parsed ?? [:]
+        
+        let timezone = args["timezone"] as? String ?? "UTC"
+        let format = args["format"] as? String ?? "human"
         
         let now = Date()
         let formatter = DateFormatter()
@@ -529,9 +581,13 @@ class AgentRunner {
     }
     
     /// Execute random function
-    private func executeRandomFunction(_ arguments: [String: Any]?) throws -> String {
-        guard let args = arguments,
-              let type = args["type"] as? String else {
+    private func executeRandomFunction(_ arguments: String) throws -> String {
+        // Parse JSON arguments
+        let data = arguments.data(using: .utf8) ?? Data()
+        let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let args = parsed ?? [:]
+        
+        guard let type = args["type"] as? String else {
             return "Error: Missing type parameter"
         }
         
@@ -543,11 +599,12 @@ class AgentRunner {
             return "Random number between \(min) and \(max): \(result)"
             
         case "choice":
-            guard let choices = args["choices"] as? [String], !choices.isEmpty else {
+            guard let choicesArray = args["choices"] as? [String],
+                  !choicesArray.isEmpty else {
                 return "Error: No choices provided"
             }
-            let result = choices.randomElement()!
-            return "Random choice from [\(choices.joined(separator: ", "))]: \(result)"
+            let result = choicesArray.randomElement()!
+            return "Random choice from [\(choicesArray.joined(separator: ", "))]: \(result)"
             
         case "dice":
             let sides = args["sides"] as? Int ?? 6
@@ -622,7 +679,7 @@ class AgentRunner {
     
     /// Create system prompt for the agent
     private func createSystemPrompt() -> String {
-        let toolNames = tools.map { $0.name }.joined(separator: ", ")
+        let toolNames = tools.map { $0.function.name }.joined(separator: ", ")
         
         return """
         You are a helpful AI agent with access to the following tools: \(toolNames).
@@ -634,7 +691,7 @@ class AgentRunner {
         4. Be conversational and friendly
         
         Available tools:
-        \(tools.map { "- \($0.name): \($0.description)" }.joined(separator: "\n"))
+        \(tools.map { "- \($0.function.name): \($0.function.description)" }.joined(separator: "\n"))
         
         When a user asks for something that can be accomplished with your tools, use them!
         """
