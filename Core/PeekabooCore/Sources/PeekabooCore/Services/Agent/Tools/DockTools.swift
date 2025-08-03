@@ -102,11 +102,11 @@ extension PeekabooAgentService {
                 // Check if app was already running before clicking
                 let appsBeforeLaunchOutput = try await context.applications.listApplications()
                 let wasRunning = appsBeforeLaunchOutput.data.applications.contains {
-                    $0.name.lowercased() == appName?.lowercased() ?? ""
+                    $0.name.lowercased() == appName.lowercased()
                 }
 
                 let startTime = Date()
-                try await context.dock.launchFromDock(appName: appName ?? "")
+                try await context.dock.launchFromDock(appName: appName)
 
                 // Wait a moment for launch
                 try await Task.sleep(nanoseconds: TimeInterval.mediumDelay.nanoseconds)
@@ -114,7 +114,7 @@ extension PeekabooAgentService {
                 // Verify launch and get window info
                 let appsAfterLaunchOutput = try await context.applications.listApplications()
                 if let launchedApp = appsAfterLaunchOutput.data.applications
-                    .first(where: { $0.name.lowercased() == appName?.lowercased() ?? "" })
+                    .first(where: { $0.name.lowercased() == appName.lowercased() })
                 {
                     _ = Date().timeIntervalSince(startTime)
 

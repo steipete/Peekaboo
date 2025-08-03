@@ -77,8 +77,7 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, _ in
-                guard let command = params.string("command")
-                else { throw PeekabooError.invalidInput("Command is required") }
+                let command = try params.string("command")
                 let workingDirectory = params.string("working_directory", default: nil)
                 let timeout = params.int("timeout", default: 30) ?? 30
 

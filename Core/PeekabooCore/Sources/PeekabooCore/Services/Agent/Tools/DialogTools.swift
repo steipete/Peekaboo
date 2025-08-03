@@ -130,9 +130,7 @@ extension PeekabooAgentService {
             description: definition.agentDescription,
             parameters: definition.toAgentParameters(),
             execute: { params, context in
-                guard let buttonLabel = params.string("button") else {
-                    throw PeekabooError.invalidInput("Button label is required")
-                }
+                let buttonLabel = try params.string("button")
                 let appName = params.string("app", default: nil)
 
                 // Get the frontmost app if not specified

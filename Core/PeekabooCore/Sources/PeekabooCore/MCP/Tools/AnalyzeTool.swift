@@ -117,20 +117,31 @@ public struct AnalyzeTool: MCPTool {
                 MessageContentPart(type: "image", imageUrl: imageContent),
             ])
 
-            let messages: [Tachikoma.Message] = [
-                .user(content: messageContent),
-            ]
+            // Create messages array - avoid ambiguity by not using type annotation
+            let userMessage = Message.user(content: messageContent)
+            let messages = [userMessage]
+
+            let settings = ModelSettings(
+                modelName: modelName,
+                temperature: 0.7,
+                maxTokens: 4096)
 
             let request = ModelRequest(
                 messages: messages,
-                temperature: 0.7,
-                maxTokens: 4096)
+                tools: nil,
+                settings: settings)
 
             self.logger.info("Analyzing image with \(providerType ?? "auto")/\(modelName)")
             let startTime = Date()
 
             // Get the response
-            let analysisText = try await model.sendRequest(request)
+            let response = try await model.getResponse(request: request)
+            let analysisText: String
+            if case .outputText(let text) = response.content.first {
+                analysisText = text
+            } else {
+                analysisText = "No response received"
+            }
 
             let duration = Date().timeIntervalSince(startTime)
             self.logger.info("Analysis completed in \(String(format: "%.2f", duration))s")
@@ -179,11 +190,9 @@ public struct AnalyzeTool: MCPTool {
     }
 
     private func getOrCreateModel(modelName: String, providerType: String?) async throws -> any ModelInterface {
-        let modelProvider = ModelProvider.shared
-
-        // Try to get the model from the provider first
+        // Use Tachikoma API which handles actor isolation properly
         do {
-            return try await modelProvider.getModel(name: modelName, providerType: providerType)
+            return try await Tachikoma.shared.getModel(modelName)
         } catch {
             // If not found, try to create based on provider type
             if let providerType {

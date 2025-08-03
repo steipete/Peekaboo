@@ -122,7 +122,7 @@ extension PeekabooAgentService {
                 // First check if already running
                 let runningAppsOutput = try await context.applications.listApplications()
                 if let existingApp = runningAppsOutput.data.applications
-                    .first(where: { $0.name.lowercased() == appName?.lowercased() ?? "" })
+                    .first(where: { $0.name.lowercased() == appName.lowercased() })
                 {
                     // Get window information
                     let windows = try await context.windows.listWindows(target: .application(existingApp.name))
