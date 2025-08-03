@@ -99,14 +99,14 @@ public extension AXorcist {
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .debug,
             message: "HandleGetAttrs: Attributes for '\(briefDesc)': " +
-                "\(attributesDict.mapValues { String(describing: $0.anyValue?.value) })"
+                "\(attributesDict.mapValues { String(describing: $0.anyValue) })"
         ))
 
         // Log fetched attributes for debugging purposes
         GlobalAXLogger.shared.log(AXLogEntry(
             level: .debug,
             message: "GetAttributes: Fetched attributes for \(briefDesc): " +
-                "\(attributesDict.mapValues { String(describing: $0.anyValue?.value) })"
+                "\(attributesDict.mapValues { String(describing: $0.anyValue) })"
         ))
 
         // Construct a simple payload containing just the attributes dictionary.

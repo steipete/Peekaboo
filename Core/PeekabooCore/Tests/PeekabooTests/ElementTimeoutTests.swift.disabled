@@ -1,4 +1,5 @@
 import ApplicationServices
+import AppKit
 import AXorcist
 import Foundation
 import Testing
@@ -152,7 +153,8 @@ struct ElementTimeoutTests {
         guard let app = NSWorkspace.shared.runningApplications.first(where: {
             $0.bundleIdentifier == "com.apple.finder"
         }) else {
-            throw Issue.record("Finder not running")
+            Issue.record("Finder not running")
+            return
         }
 
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
@@ -160,7 +162,8 @@ struct ElementTimeoutTests {
 
         // When getting menu bar
         guard let menuBar = element.menuBarWithTimeout(timeout: 2.0) else {
-            throw Issue.record("No menu bar found")
+            Issue.record("No menu bar found")
+            return
         }
 
         // And getting menu items
