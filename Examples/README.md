@@ -95,6 +95,177 @@ swift run TachikomaMultimodal --compare-vision "Which provider sees better?"
 - Vision capability comparison (Claude vs GPT-4V vs LLaVA)
 - Practical image processing workflows
 
+## 📘 Tachikoma API Basics
+
+Before diving into the examples, here's how to use Tachikoma in your own Swift projects:
+
+### Basic Setup
+
+```swift
+import Tachikoma
+
+// 1. Create a model provider (auto-detects available providers)
+let modelProvider = try AIConfiguration.fromEnvironment()
+
+// 2. Get a specific model
+let model = try modelProvider.getModel("gpt-4.1") // or "claude-opus-4-20250514", "llama3.3", etc.
+```
+
+### Simple Text Generation
+
+```swift
+// Create a basic request
+let request = ModelRequest(
+    messages: [Message.user(content: .text("Explain quantum computing"))],
+    settings: ModelSettings(maxTokens: 300)
+)
+
+// Get response
+let response = try await model.getResponse(request: request)
+
+// Extract text
+let text = response.content.compactMap { item in
+    if case let .outputText(text) = item { return text }
+    return nil
+}.joined()
+
+print(text)
+```
+
+### Multi-Provider Comparison
+
+```swift
+// Compare responses from multiple providers
+let providers = ["gpt-4.1", "claude-opus-4-20250514", "llama3.3"]
+
+for providerModel in providers {
+    let model = try modelProvider.getModel(providerModel)
+    let response = try await model.getResponse(request: request)
+    print("🤖 \(providerModel): \(extractText(response))")
+}
+```
+
+### Streaming Responses
+
+```swift
+// Stream responses in real-time
+let stream = try await model.streamResponse(request: request)
+
+for try await event in stream {
+    switch event {
+    case .delta(let delta):
+        if case let .outputText(text) = delta {
+            print(text, terminator: "") // Print as it arrives
+        }
+    case .done:
+        print("\n✅ Complete!")
+    case .error(let error):
+        print("❌ Error: \(error)")
+    }
+}
+```
+
+### Function Calling (Agent Patterns)
+
+```swift
+// Define tools for the AI to use
+let weatherTool = ToolDefinition(
+    function: FunctionDefinition(
+        name: "get_weather",
+        description: "Get current weather for a location",
+        parameters: ToolParameters.object(properties: [
+            "location": .string(description: "City name")
+        ], required: ["location"])
+    )
+)
+
+// Create request with tools
+let request = ModelRequest(
+    messages: [Message.user(content: .text("What's the weather in Tokyo?"))],
+    tools: [weatherTool],
+    settings: ModelSettings(maxTokens: 500)
+)
+
+let response = try await model.getResponse(request: request)
+
+// Handle tool calls
+for content in response.content {
+    if case let .toolCall(call) = content {
+        print("🔧 AI wants to call: \(call.function.name)")
+        print("📋 Arguments: \(call.function.arguments)")
+        
+        // Execute tool and send result back...
+    }
+}
+```
+
+### Multimodal (Vision + Text)
+
+```swift
+// Load image as base64
+let imageData = Data(contentsOf: URL(fileURLWithPath: "chart.png"))
+let base64Image = imageData.base64EncodedString()
+
+// Create multimodal request
+let request = ModelRequest(
+    messages: [Message.user(content: .multimodal([
+        MessageContentPart(type: "text", text: "Analyze this chart"),
+        MessageContentPart(type: "image_url", 
+                          imageUrl: ImageContent(base64: base64Image))
+    ]))],
+    settings: ModelSettings(maxTokens: 500)
+)
+
+let response = try await model.getResponse(request: request)
+print("🔍 Analysis: \(extractText(response))")
+```
+
+### Error Handling
+
+```swift
+do {
+    let response = try await model.getResponse(request: request)
+    // Handle success
+} catch AIError.rateLimitExceeded {
+    print("⏳ Rate limit hit, waiting...")
+} catch AIError.invalidAPIKey {
+    print("🔑 Check your API key")
+} catch {
+    print("❌ Unexpected error: \(error)")
+}
+```
+
+### Provider-Specific Features
+
+```swift
+// OpenAI-specific: Use reasoning models
+let o3Model = try modelProvider.getModel("o3")
+let request = ModelRequest(
+    messages: [Message.user(content: .text("Solve this complex problem"))],
+    settings: ModelSettings(
+        maxTokens: 1000,
+        reasoningEffort: .high // o3-specific parameter
+    )
+)
+
+// Anthropic-specific: Use thinking mode
+let claudeModel = try modelProvider.getModel("claude-opus-4-20250514-thinking")
+// Thinking mode automatically enabled
+```
+
+### Configuration Options
+
+```swift
+// Custom configuration
+let config = AIConfiguration(providers: [
+    .openAI(apiKey: "sk-...", baseURL: "https://api.openai.com"),
+    .anthropic(apiKey: "sk-ant-...", baseURL: "https://api.anthropic.com"),
+    .ollama(baseURL: "http://localhost:11434")
+])
+
+let modelProvider = try AIModelProvider(configuration: config)
+```
+
 ## 🚀 Quick Start
 
 ### 1. Prerequisites
@@ -226,22 +397,64 @@ swift run TachikomaComparison --column-width 80 --max-length 1000 "Long question
 swift run TachikomaAgent --tools weather,calculator,file_reader "Complex task"
 ```
 
-## 📊 Performance Comparison
+## 📊 Performance Metrics
 
-The examples automatically measure and display:
+All examples automatically measure and display performance metrics after each run:
 
+### Basic Examples (TachikomaBasics)
 - **Response Time**: How fast each provider responds
-- **Token Usage**: Estimated tokens consumed
+- **Token Usage**: Estimated tokens consumed  
 - **Cost Estimation**: Approximate cost per request
-- **Response Quality**: Length and characteristics
+- **Model Information**: Which specific model was used
 
-Example output:
+```
+⏱️ Duration: 2.45s | 🔤 Tokens: ~67 | 🤖 Model: gpt-4.1
+💰 Estimated cost: $0.0034
+```
+
+### Comparison Examples (TachikomaComparison)
+- **Side-by-side comparison** of multiple providers
+- **Performance ranking** with fastest/slowest identification
+- **Cost analysis** across providers
+
 ```
 📊 Summary Statistics:
-⚡ Fastest: Ollama llama3.3 (0.85s)
-🐌 Slowest: OpenAI gpt-4.1 (2.34s)
+⚡ Fastest: OpenAI gpt-4.1 (1.14s)
+🐌 Slowest: Ollama llama3.3 (26.46s)
 💰 Cheapest: Ollama llama3.3 (Free)
 💸 Most Expensive: Anthropic claude-opus-4 ($0.0045)
+```
+
+### Streaming Examples (TachikomaStreaming)
+- **Real-time streaming metrics** with live updates
+- **Time to first token** measurement
+- **Streaming rate** in tokens/second and characters/second
+
+```
+📊 Streaming Statistics:
+⏱️ Total time: 13.05s | 🚀 Time to first token: 9.60s
+📊 Streaming rate: 8.6 tokens/sec | ⚡ Character rate: 36 chars/sec
+🔤 Total tokens: 112 | 📏 Response length: 469 characters
+```
+
+### Agent Examples (TachikomaAgent) - NEW!
+- **Total execution time** for complex multi-step tasks
+- **Function call tracking** showing tool usage
+- **Performance assessment** (Fast/Good/Slow)
+
+```
+📊 Agent Performance Summary:
+⏱️ Total time: 0.67s | 🔤 Tokens used: ~8 | 🔧 Function calls: 0
+🚀 Performance: Fast
+```
+
+### Vision Examples (TachikomaMultimodal)
+- **Image processing duration** for vision tasks
+- **Analysis confidence** percentage
+- **Word count** and response characteristics
+
+```
+⏱️ Duration: 22.51s | 🔤 Tokens: 301 | 📝 Words: 182 | 🎯 Confidence: 90%
 ```
 
 ## 🎨 Customization

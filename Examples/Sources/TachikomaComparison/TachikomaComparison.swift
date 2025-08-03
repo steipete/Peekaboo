@@ -85,7 +85,13 @@ struct TachikomaComparison: AsyncParsableCommand {
             var selectedModels: [String] = []
             
             for provider in requestedProviders {
-                if let recommendedModel = providerToModel[provider.capitalized] {
+                // Make provider matching case-insensitive
+                let normalizedProvider = provider.lowercased()
+                let matchingKey = providerToModel.keys.first { key in
+                    key.lowercased() == normalizedProvider
+                }
+                
+                if let key = matchingKey, let recommendedModel = providerToModel[key] {
                     if availableModels.contains(recommendedModel) {
                         selectedModels.append(recommendedModel)
                     } else {

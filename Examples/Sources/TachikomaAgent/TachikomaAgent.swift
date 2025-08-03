@@ -332,6 +332,8 @@ class AgentRunner {
     /// This demonstrates the core agent loop: request -> response -> function calls -> repeat
     private func processConversation() async throws {
         var functionCallCount = 0
+        let startTime = Date() // Track total execution time
+        var totalTokens = 0 // Track total tokens used across all requests
         
         while functionCallCount < maxFunctionCalls {
             // Create request with conversation history and available tools
@@ -355,6 +357,9 @@ class AgentRunner {
                 }
                 return nil
             }.joined()
+            
+            // Track token usage for performance metrics
+            totalTokens += PerformanceMeasurement.estimateTokenCount(textContent)
             
             let toolCalls = response.content.compactMap { item in
                 if case let .toolCall(call) = item {
@@ -415,6 +420,11 @@ class AgentRunner {
         if functionCallCount >= maxFunctionCalls {
             TerminalOutput.print("\n⚠️ Reached maximum function call limit (\(maxFunctionCalls))", color: .yellow)
         }
+        
+        // Display performance metrics after agent task completion
+        let endTime = Date()
+        let totalDuration = endTime.timeIntervalSince(startTime)
+        displayAgentPerformance(duration: totalDuration, totalTokens: totalTokens, functionCalls: functionCallCount)
     }
     
     /// Execute a function call and return the result
@@ -701,5 +711,30 @@ class AgentRunner {
     private func getProviderEmoji() -> String {
         // This is a simple implementation - in practice, you'd detect from the model
         return "🤖"
+    }
+    
+    /// Display agent performance metrics after task completion
+    private func displayAgentPerformance(duration: TimeInterval, totalTokens: Int, functionCalls: Int) {
+        TerminalOutput.separator("─")
+        TerminalOutput.print("📊 Agent Performance Summary:", color: .bold)
+        
+        let stats = [
+            "⏱️ Total time: \(String(format: "%.2fs", duration))",
+            "🔤 Tokens used: ~\(totalTokens)",
+            "🔧 Function calls: \(functionCalls)"
+        ]
+        
+        TerminalOutput.print(stats.joined(separator: " | "), color: .dim)
+        
+        // Performance assessment
+        if duration < 10 {
+            TerminalOutput.print("🚀 Performance: Fast", color: .green)
+        } else if duration < 30 {
+            TerminalOutput.print("⚡ Performance: Good", color: .yellow)
+        } else {
+            TerminalOutput.print("🐌 Performance: Slow (complex task or model latency)", color: .yellow)
+        }
+        
+        TerminalOutput.separator("─")
     }
 }
