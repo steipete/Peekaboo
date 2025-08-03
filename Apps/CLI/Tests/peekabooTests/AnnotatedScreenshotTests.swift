@@ -67,7 +67,7 @@ struct AnnotatedScreenshotTests {
         let sessionCache = try SessionCache(sessionId: "test-id-generation")
 
         // Create elements with different roles
-        var elements: [String: SessionCache.UIAutomationSession.UIElement] = [:]
+        var elements: [String: PeekabooCore.UIElement] = [:]
         let elementTypes = [
             ("B1", "AXButton", "Button 1"),
             ("B2", "AXButton", "Button 2"),
@@ -78,7 +78,7 @@ struct AnnotatedScreenshotTests {
         ]
 
         for (id, role, title) in elementTypes {
-            elements[id] = SessionCache.UIAutomationSession.UIElement(
+            elements[id] = PeekabooCore.UIElement(
                 id: id,
                 elementId: "elem_\(id)",
                 role: role,
@@ -121,8 +121,8 @@ struct AnnotatedScreenshotTests {
         let sessionCache = try SessionCache(sessionId: "test-actionable")
 
         // Create mix of actionable and non-actionable elements
-        let elements: [String: SessionCache.UIAutomationSession.UIElement] = [
-            "B1": SessionCache.UIAutomationSession.UIElement(
+        let elements: [String: PeekabooCore.UIElement] = [
+            "B1": PeekabooCore.UIElement(
                 id: "B1",
                 elementId: "elem1",
                 role: "AXButton",
@@ -132,7 +132,7 @@ struct AnnotatedScreenshotTests {
                 frame: CGRect(x: 50, y: 50, width: 100, height: 40),
                 isActionable: true
             ),
-            "G1": SessionCache.UIAutomationSession.UIElement(
+            "G1": PeekabooCore.UIElement(
                 id: "G1",
                 elementId: "elem2",
                 role: "AXGroup",
@@ -142,7 +142,7 @@ struct AnnotatedScreenshotTests {
                 frame: CGRect(x: 200, y: 50, width: 100, height: 40),
                 isActionable: false
             ),
-            "T1": SessionCache.UIAutomationSession.UIElement(
+            "T1": PeekabooCore.UIElement(
                 id: "T1",
                 elementId: "elem3",
                 role: "AXStaticText",
@@ -182,8 +182,8 @@ struct AnnotatedScreenshotTests {
         let sessionCache = try SessionCache(sessionId: "test-positioning")
 
         // Create elements at different positions
-        let elements: [String: SessionCache.UIAutomationSession.UIElement] = [
-            "B1": SessionCache.UIAutomationSession.UIElement(
+        let elements: [String: PeekabooCore.UIElement] = [
+            "B1": PeekabooCore.UIElement(
                 id: "B1",
                 elementId: "elem1",
                 role: "AXButton",
@@ -193,7 +193,7 @@ struct AnnotatedScreenshotTests {
                 frame: CGRect(x: 10, y: 10, width: 100, height: 40),
                 isActionable: true
             ),
-            "B2": SessionCache.UIAutomationSession.UIElement(
+            "B2": PeekabooCore.UIElement(
                 id: "B2",
                 elementId: "elem2",
                 role: "AXButton",
@@ -203,7 +203,7 @@ struct AnnotatedScreenshotTests {
                 frame: CGRect(x: 300, y: 500, width: 100, height: 40),
                 isActionable: true
             ),
-            "T1": SessionCache.UIAutomationSession.UIElement(
+            "T1": PeekabooCore.UIElement(
                 id: "T1",
                 elementId: "elem3",
                 role: "AXTextField",
@@ -508,9 +508,9 @@ struct AnnotatedScreenshotTests {
         try pngData.write(to: URL(fileURLWithPath: path))
     }
 
-    private func createTestUIElements() -> [String: SessionCache.UIAutomationSession.UIElement] {
+    private func createTestUIElements() -> [String: PeekabooCore.UIElement] {
         [
-            "B1": SessionCache.UIAutomationSession.UIElement(
+            "B1": PeekabooCore.UIElement(
                 id: "B1",
                 elementId: "button1",
                 role: "AXButton",
@@ -520,7 +520,7 @@ struct AnnotatedScreenshotTests {
                 frame: CGRect(x: 650, y: 50, width: 100, height: 40),
                 isActionable: true
             ),
-            "B2": SessionCache.UIAutomationSession.UIElement(
+            "B2": PeekabooCore.UIElement(
                 id: "B2",
                 elementId: "button2",
                 role: "AXButton",
@@ -530,7 +530,7 @@ struct AnnotatedScreenshotTests {
                 frame: CGRect(x: 540, y: 50, width: 100, height: 40),
                 isActionable: true
             ),
-            "T1": SessionCache.UIAutomationSession.UIElement(
+            "T1": PeekabooCore.UIElement(
                 id: "T1",
                 elementId: "textfield1",
                 role: "AXTextField",
@@ -540,7 +540,7 @@ struct AnnotatedScreenshotTests {
                 frame: CGRect(x: 100, y: 150, width: 300, height: 30),
                 isActionable: true
             ),
-            "C1": SessionCache.UIAutomationSession.UIElement(
+            "C1": PeekabooCore.UIElement(
                 id: "C1",
                 elementId: "checkbox1",
                 role: "AXCheckBox",

@@ -133,8 +133,8 @@ struct LabelExtractionTests {
 
     @Test("SessionCache UIElement includes label and identifier fields")
     func sessionCacheUIElementFormat() async throws {
-        // Test that SessionCache.UIAutomationSession.UIElement includes label and identifier fields
-        let element = SessionCache.UIAutomationSession.UIElement(
+        // Test that PeekabooCore.UIElement includes label and identifier fields
+        let element = PeekabooCore.UIElement(
             id: "B1",
             elementId: "element_1",
             role: "AXButton",
