@@ -1,6 +1,24 @@
 import Foundation
 import PeekabooCore
 import SwiftUI
+import Tachikoma
+
+/// Tool execution record for tracking agent actions
+struct ToolExecution {
+    let toolName: String
+    let arguments: String?
+    let timestamp: Date
+    var status: ToolExecutionStatus
+    var result: String?
+    var duration: TimeInterval?
+}
+
+/// Tool execution status
+enum ToolExecutionStatus {
+    case running
+    case completed
+    case failed
+}
 
 /// Simplified agent interface for the Peekaboo Mac app.
 ///
