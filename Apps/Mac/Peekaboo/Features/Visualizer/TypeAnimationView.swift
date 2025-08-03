@@ -185,30 +185,38 @@ struct TypeAnimationView: View {
 
         // Animate typing at a realistic speed
         self.animationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            if self.currentKeyIndex < self.keys.count {
-                let key = self.keys[self.currentKeyIndex]
+            Task { @MainActor in
+                if self.currentKeyIndex < self.keys.count {
+                    let key = self.keys[self.currentKeyIndex]
 
-                // Press the key
-                _ = withAnimation(.easeIn(duration: 0.05)) {
-                    self.pressedKeys.insert(key.lowercased())
-                }
-
-                // Release the key
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                    withAnimation(.easeOut(duration: 0.05)) {
-                        _ = self.pressedKeys.remove(key.lowercased())
+                    // Press the key
+                    _ = withAnimation(.easeIn(duration: 0.05)) {
+                        self.pressedKeys.insert(key.lowercased())
                     }
-                }
 
-                self.currentKeyIndex += 1
-            } else {
-                // Animation complete, start fade out after 500ms
-                self.animationTimer?.invalidate()
-                self.animationTimer = nil
+                    // Release the key
+                    Task {
+                        try? await Task.sleep(nanoseconds: 80_000_000) // 0.08 seconds
+                        await MainActor.run {
+                            withAnimation(.easeOut(duration: 0.05)) {
+                                _ = self.pressedKeys.remove(key.lowercased())
+                            }
+                        }
+                    }
 
-                self.fadeOutTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
-                    withAnimation(.easeOut(duration: 0.5)) {
-                        self.opacity = 0.0
+                    self.currentKeyIndex += 1
+                } else {
+                    // Animation complete, start fade out after 500ms
+                    self.animationTimer?.invalidate()
+                    self.animationTimer = nil
+
+                    Task {
+                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                        await MainActor.run {
+                            withAnimation(.easeOut(duration: 0.5)) {
+                                self.opacity = 0.0
+                            }
+                        }
                     }
                 }
             }
@@ -223,8 +231,10 @@ struct TypeAnimationView: View {
 
         // Update periodically
         Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
-            let newVariation = Int.random(in: -5...5)
-            self.wordsPerMinute = max(40, min(120, self.wordsPerMinute + newVariation))
+            Task { @MainActor in
+                let newVariation = Int.random(in: -5...5)
+                self.wordsPerMinute = max(40, min(120, self.wordsPerMinute + newVariation))
+            }
         }
     }
 }

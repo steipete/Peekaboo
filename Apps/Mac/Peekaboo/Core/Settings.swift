@@ -8,6 +8,7 @@ import ServiceManagement
 /// Settings are automatically persisted to UserDefaults and synchronized across app launches.
 /// This class uses the modern @Observable pattern for SwiftUI integration.
 @Observable
+@MainActor
 final class PeekabooSettings {
     // Reference to ConfigurationManager
     private let configManager = ConfigurationManager.shared

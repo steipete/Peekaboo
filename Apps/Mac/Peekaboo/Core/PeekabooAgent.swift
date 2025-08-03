@@ -18,6 +18,7 @@ enum ToolExecutionStatus {
     case running
     case completed
     case failed
+    case cancelled
 }
 
 /// Simplified agent interface for the Peekaboo Mac app.
@@ -167,10 +168,10 @@ final class PeekabooAgent {
                     )
                     self.sessionStore.addMessage(userMessage, to: currentSession)
 
-                    // Generate title for new sessions
-                    if currentSession.title == "New Session", currentSession.messages.count == 1 {
-                        self.sessionStore.generateTitleForSession(currentSession)
-                    }
+                    // TODO: Generate title for new sessions
+                    // if currentSession.title == "New Session", currentSession.messages.count == 1 {
+                    //     self.sessionStore.generateTitleForSession(currentSession)
+                    // }
                 }
 
                 // Create event delegate for real-time updates
@@ -200,7 +201,7 @@ final class PeekabooAgent {
                     {
                         self.sessionStore.sessions[index].modelName = self.settings.selectedModel
                         Task {
-                            self.sessionStore.saveSessions()
+                            try? await self.sessionStore.saveSessions()
                         }
                     }
                 }
@@ -370,10 +371,10 @@ final class PeekabooAgent {
                     
                     self.sessionStore.addMessage(userMessage, to: currentSession)
 
-                    // Generate title for new sessions
-                    if currentSession.title == "New Session", currentSession.messages.count == 1 {
-                        self.sessionStore.generateTitleForSession(currentSession)
-                    }
+                    // TODO: Generate title for new sessions
+                    // if currentSession.title == "New Session", currentSession.messages.count == 1 {
+                    //     self.sessionStore.generateTitleForSession(currentSession)
+                    // }
                 }
 
                 // Create event delegate for real-time updates
@@ -433,7 +434,7 @@ final class PeekabooAgent {
                     {
                         self.sessionStore.sessions[index].modelName = self.settings.selectedModel
                         Task {
-                            self.sessionStore.saveSessions()
+                            try? await self.sessionStore.saveSessions()
                         }
                     }
                 }
@@ -555,7 +556,7 @@ final class PeekabooAgent {
 
     // MARK: - Private Methods
 
-    private func handleAgentEvent(_ event: AgentEvent) {
+    private func handleAgentEvent(_ event: PeekabooCore.AgentEvent) {
         switch event {
         case let .error(message):
             self.lastError = message
@@ -594,7 +595,7 @@ final class PeekabooAgent {
                             content: accumulatedContent,
                             timestamp: lastMessage.timestamp,
                             toolCalls: lastMessage.toolCalls)
-                } else if !delta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                } else if !delta.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
                     // Create new assistant message with the first delta
                     let assistantMessage = ConversationMessage(
                         role: .assistant,
@@ -605,7 +606,7 @@ final class PeekabooAgent {
 
         case let .thinkingMessage(content):
             // Add thinking/planning message to session
-            if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if !content.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
                 self.isThinking = true
                 self.currentThinkingContent = content
                 self.currentTool = nil
@@ -666,7 +667,7 @@ final class PeekabooAgent {
                         self.sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls[toolCallIndex]
                             .result = result
                         Task {
-                            self.sessionStore.saveSessions()
+                            try? await self.sessionStore.saveSessions()
                         }
                     }
                 }
@@ -923,13 +924,13 @@ public enum AgentError: LocalizedError {
 // MARK: - Agent Event Delegate Wrapper
 
 private final class AgentEventDelegateWrapper: PeekabooCore.AgentEventDelegate {
-    private let handler: (AgentEvent) -> Void
+    private let handler: (PeekabooCore.AgentEvent) -> Void
 
-    init(handler: @escaping (AgentEvent) -> Void) {
+    init(handler: @escaping (PeekabooCore.AgentEvent) -> Void) {
         self.handler = handler
     }
 
-    func agentDidEmitEvent(_ event: AgentEvent) {
+    func agentDidEmitEvent(_ event: PeekabooCore.AgentEvent) {
         self.handler(event)
     }
 }

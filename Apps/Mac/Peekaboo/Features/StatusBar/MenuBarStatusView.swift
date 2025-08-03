@@ -95,7 +95,7 @@ struct MenuBarStatusView: View {
                                     .frame(width: 14, height: 14)
                                 Text(ToolFormatter.compactToolSummary(
                                     toolName: currentTool.toolName,
-                                    arguments: currentTool.arguments))
+                                    arguments: currentTool.arguments ?? ""))
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                     .lineLimit(1)
@@ -304,7 +304,7 @@ struct MenuBarStatusView: View {
                             withAnimation {
                                 self.sessionStore.sessions.removeAll { $0.id == session.id }
                                 Task {
-                                    self.sessionStore.saveSessions()
+                                    try? await self.sessionStore.saveSessions()
                                 }
                             }
                         })
