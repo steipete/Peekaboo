@@ -1,7 +1,6 @@
 import Foundation
 import PeekabooCore
 import SwiftUI
-import Tachikoma
 import TachikomaCore
 
 /// Tool execution record for tracking agent actions
@@ -293,7 +292,7 @@ final class PeekabooAgent {
                 {
                     self.sessionStore.sessions[index].modelName = self.settings.selectedModel
                     Task {
-                        try? self.sessionStore.saveSessions()
+                        self.sessionStore.saveSessions()
                     }
                 }
             }
@@ -522,7 +521,7 @@ final class PeekabooAgent {
                         self.sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls[toolCallIndex]
                             .result = result
                         Task {
-                            try? await self.sessionStore.saveSessions()
+                            self.sessionStore.saveSessions()
                         }
                     }
                 }

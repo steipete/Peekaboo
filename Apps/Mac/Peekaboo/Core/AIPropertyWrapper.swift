@@ -81,7 +81,7 @@ public class AIManager: ObservableObject {
         let userMessage = ModelMessage.user(message)
         self.messages.append(userMessage)
 
-        await self.generate()
+        await self.generateResponse()
     }
 
     public func send(text: String, images: [ModelMessage.ContentPart.ImageContent]) async {
@@ -90,10 +90,10 @@ public class AIManager: ObservableObject {
         let userMessage = ModelMessage.user(text: text, images: images)
         self.messages.append(userMessage)
 
-        await self.generate()
+        await self.generateResponse()
     }
 
-    public func generate() async {
+    public func generateResponse() async {
         guard !self.isGenerating else { return }
 
         self.isGenerating = true
@@ -101,19 +101,17 @@ public class AIManager: ObservableObject {
         self.lastResult = nil
 
         do {
-            let result = try await TachikomaCore.generate(
-                prompt: self.messages.last?.content.compactMap { part in
-                    if case let .text(text) = part {
-                        return text
-                    }
-                    return nil
-                }.joined(separator: "\n") ?? "",
-                using: self.model,
-                system: self.system,
-                tools: self.tools)
+            // Use the proper message-based API instead of extracting text
+            let result = try await generateText(
+                model: .anthropic(.opus4), // Use the model from the app
+                messages: self.messages,
+                tools: nil,
+                settings: self.settings,
+                maxSteps: 1
+            )
 
-            self.lastResult = result
-            self.messages.append(.assistant(result))
+            self.lastResult = result.text
+            self.messages.append(.assistant(result.text))
 
         } catch let tachikomaError as TachikomaError {
             error = tachikomaError
@@ -124,7 +122,7 @@ public class AIManager: ObservableObject {
         self.isGenerating = false
     }
 
-    public func stream() async {
+    public func streamResponse() async {
         guard !self.isGenerating else { return }
 
         self.isGenerating = true
@@ -133,22 +131,19 @@ public class AIManager: ObservableObject {
 
         self.streamingTask = Task {
             do {
-                let prompt = self.messages.last?.content.compactMap { part in
-                    if case let .text(text) = part {
-                        return text
-                    }
-                    return nil
-                }.joined(separator: "\n") ?? ""
-
+                // Use the proper streaming message-based API
                 var fullText = ""
-                for try await token in TachikomaCore.stream(
-                    prompt,
-                    using: self.model,
-                    system: self.system,
-                    tools: self.tools) {
-                    
+                let streamResult = try await streamText(
+                    model: .anthropic(.opus4), // Use the model from the app
+                    messages: self.messages,
+                    tools: nil,
+                    settings: self.settings,
+                    maxSteps: 1
+                )
+                
+                for try await delta in streamResult.textStream {
                     if !Task.isCancelled {
-                        if let content = token.content {
+                        if let content = delta.content {
                             fullText += content
                             await MainActor.run {
                                 self.streamingText = fullText

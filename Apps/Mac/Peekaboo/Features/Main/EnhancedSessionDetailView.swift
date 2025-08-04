@@ -277,7 +277,7 @@ private struct ToolCategoryRow: View {
 // MARK: - Message Row (reused from original)
 
 private struct SessionMessageRow: View {
-    let message: ConversationMessage
+    let message: PeekabooCore.ConversationMessage
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -288,7 +288,7 @@ private struct SessionMessageRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(message.role.displayName)
+                    Text(message.role.rawValue.capitalized)
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(.secondary)
@@ -318,8 +318,6 @@ private struct SessionMessageRow: View {
             return "brain.head.profile"
         case .system:
             return "gear.circle.fill"
-        case .tool:
-            return "wrench.and.screwdriver.fill"
         }
     }
 
@@ -331,8 +329,6 @@ private struct SessionMessageRow: View {
             return .green
         case .system:
             return .orange
-        case .tool:
-            return .purple
         }
     }
 }
@@ -342,12 +338,12 @@ private struct SessionMessageRow: View {
         session: ConversationSession(
             id: "preview",
             title: "Screenshot and Analysis",
-            startTime: Date(),
             messages: [
-                ConversationMessage(role: .user, content: "Take a screenshot of Safari"),
-                ConversationMessage(role: .assistant, content: "I'll take a screenshot of Safari for you."),
-                ConversationMessage(role: .tool, content: "Screenshot captured: safari_screenshot.png")
-            ]
+                PeekabooCore.ConversationMessage(role: .user, content: "Take a screenshot of Safari"),
+                PeekabooCore.ConversationMessage(role: .assistant, content: "I'll take a screenshot of Safari for you."),
+                PeekabooCore.ConversationMessage(role: .system, content: "Screenshot captured: safari_screenshot.png")
+            ],
+            startTime: Date()
         )
     )
     .frame(width: 800, height: 600)

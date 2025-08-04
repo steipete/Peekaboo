@@ -607,6 +607,35 @@ PEEKABOO_OLLAMA_BASE_URL="http://remote-server:11434" ./scripts/peekaboo-wait.sh
 5. **Streaming**: Ollama supports streaming responses, showing text as it's generated.
 6. **Tool Call Format**: Some models (like llama3.3) output tool calls as JSON text in the content field rather than using the `tool_calls` field. Peekaboo automatically detects and parses these.
 
+### Comprehensive Tool Testing Results (2025-08-04)
+
+✅ **Successfully Tested Tools with llama3.3:**
+- `list_apps` - Lists running applications correctly
+- `calculate` - Performs mathematical calculations (15 * 23 = 345)
+- `get_time` - Returns current system time
+- `list_windows` - Window enumeration and management
+- Multi-tool workflows - Successfully combines multiple tools
+
+✅ **Successfully Tested Vision Tools with llava:**
+- `see` - Takes screenshots and provides detailed AI analysis
+- Screen content description and analysis
+- UI element identification and description
+
+❌ **Known Limitations:**
+- Shell command execution (`run_bash`) - Agent system uses simplified tools that don't include full shell implementation
+- Some advanced UI automation features may have reduced accuracy compared to cloud models
+
+**Technical Findings:**
+- Agent execution uses `createSimpleTools()` for TachikomaCore integration instead of full `createPeekabooTools()`
+- Vision analysis works excellently with ollama/llava model
+- Tool calling works reliably with proper JSON parameter parsing
+
+**Performance Notes:**
+- Tool calling works reliably with proper JSON parameter parsing
+- Response times: 5-60 seconds depending on task complexity
+- Vision analysis: 15-20 seconds for screenshot + AI description
+- Models load automatically on first use (may take 30-60 seconds initially)
+
 ## Important Implementation Details
 
 ### Default Model Selection

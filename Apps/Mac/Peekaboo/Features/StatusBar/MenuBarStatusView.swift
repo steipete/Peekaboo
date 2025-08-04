@@ -302,7 +302,7 @@ struct MenuBarStatusView: View {
                             withAnimation {
                                 self.sessionStore.sessions.removeAll { $0.id == session.id }
                                 Task {
-                                    try? await self.sessionStore.saveSessions()
+                                    self.sessionStore.saveSessions()
                                 }
                             }
                         })

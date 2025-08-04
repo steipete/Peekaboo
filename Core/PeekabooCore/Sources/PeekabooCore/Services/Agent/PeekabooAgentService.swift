@@ -91,6 +91,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         dryRun: Bool = false,
         eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
+        print("DEBUG: executeTask (without sessionId) called with eventDelegate: \(eventDelegate != nil)")
         // For dry run, just return a simulated result
         if dryRun {
             return AgentExecutionResult(
@@ -286,6 +287,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
         model: LanguageModel? = nil,
         eventDelegate: AgentEventDelegate? = nil) async throws -> AgentExecutionResult
     {
+        print("DEBUG: executeTask (with sessionId) called with eventDelegate: \(eventDelegate != nil)")
         // Note: In the new API, we don't need to create agents - we use direct functions
 
         // If we have an event delegate, use streaming
@@ -505,17 +507,12 @@ public final class PeekabooAgentService: AgentServiceProtocol {
                                 "Error: Invalid expression format. Use arithmetic expressions like '1+1', not equations.")
                         }
 
-                        // Try to evaluate using NSExpression with error handling
-                        do {
-                            let nsExpression = NSExpression(format: cleanExpression)
-                            if let result = nsExpression.expressionValue(with: nil, context: nil) as? NSNumber {
-                                return .string("\(result)")
-                            } else {
-                                return .string("Error: Could not evaluate expression '\(cleanExpression)'")
-                            }
-                        } catch {
-                            return .string(
-                                "Error: Invalid expression '\(cleanExpression)': \(error.localizedDescription)")
+                        // Try to evaluate using NSExpression
+                        let nsExpression = NSExpression(format: cleanExpression)
+                        if let result = nsExpression.expressionValue(with: nil, context: nil) as? NSNumber {
+                            return .string("\(result)")
+                        } else {
+                            return .string("Error: Could not evaluate expression '\(cleanExpression)'")
                         }
                     }
             }
@@ -539,26 +536,109 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             // Skip if tool creation fails
         }
 
-        // See (screenshot) tool
+        // See (screenshot) tool - use full implementation with AI analysis
         do {
             let seeTool = try tool(
                 name: "see",
-                description: "Capture and analyze the current screen or application")
+                description: "Capture screen/window and analyze UI elements with AI vision")
             { builder in
                 builder
                     .stringParameter("app", description: "Application name to capture (optional)", required: false)
+                    .stringParameter("question", description: "Question to ask about the screenshot (optional)", required: false)
                     .execute { args in
                         let appName = args.getStringOptional("app")
+                        let question = args.getStringOptional("question") ?? "Describe what you see in this screenshot"
 
-                        // Capture screen
-                        let captureResult = try await services.screenCapture.captureScreen(
-                            displayIndex: nil)
+                        let startTime = Date()
 
-                        // Return basic screen capture information
-                        // TODO: Implement AI analysis using Tachikoma vision models
+                        let captureResult: CaptureResult
+                        let targetDescription: String
+
+                        if let appName {
+                            // Capture specific application
+                            captureResult = try await services.screenCapture.captureWindow(
+                                appIdentifier: appName,
+                                windowIndex: nil as Int?)
+
+                            // Get more app context
+                            if let app = try? await services.applications.findApplication(identifier: appName) {
+                                targetDescription = app.name
+                            } else {
+                                targetDescription = appName
+                            }
+                        } else {
+                            // Capture entire screen
+                            captureResult = try await services.screenCapture.captureScreen(displayIndex: nil as Int?)
+                            targetDescription = "screen"
+                        }
+
+                        let duration = Date().timeIntervalSince(startTime)
+
+                        // Try to use AI analysis if available
+                        let imageData = captureResult.imageData
+                        
+                        // Create a temporary file for the image
+                        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
+                            .appendingPathComponent("screenshot_\(UUID().uuidString).png")
+                        try imageData.write(to: tempURL)
+
+                        // Use the analyze tool logic for AI analysis
+                        if let aiProviders = ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"],
+                           !aiProviders.isEmpty {
+                            do {
+                                // Parse AI providers
+                                let components = aiProviders.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+                                if let firstProvider = components.first {
+                                    let parts = firstProvider.split(separator: "/")
+                                    if parts.count >= 2 {
+                                        let provider = String(parts[0])
+                                        let _ = String(parts[1]) // Suppress unused warning
+
+                                        // Create the model
+                                        let languageModel: LanguageModel
+                                        switch provider.lowercased() {
+                                        case "anthropic":
+                                            languageModel = .anthropic(.opus4)
+                                        case "openai":
+                                            languageModel = .openai(.gpt4o)
+                                        case "grok":
+                                            languageModel = .grok(.grok4)
+                                        case "ollama":
+                                            languageModel = .ollama(.llava) // Use vision model for screenshots
+                                        default:
+                                            languageModel = .anthropic(.opus4)
+                                        }
+
+                                        // Create the conversation with the image and question
+                                        let base64Image = imageData.base64EncodedString()
+                                        let imageContent = ModelMessage.ContentPart.ImageContent(data: base64Image, mimeType: "image/png")
+                                        let messages = [ModelMessage.user(text: question, images: [imageContent])]
+
+                                        // Use the global generateText function
+                                        let result = try await generateText(
+                                            model: languageModel,
+                                            messages: messages,
+                                            tools: nil,
+                                            settings: .default,
+                                            maxSteps: 1)
+
+                                        // Clean up temp file
+                                        try? FileManager.default.removeItem(at: tempURL)
+
+                                        return .string("📸 Screenshot captured (\(targetDescription)) in \(String(format: "%.2fs", duration))\n\n🤖 AI Analysis:\n\(result.text)")
+                                    }
+                                }
+                            } catch {
+                                // Fall back to basic capture info if AI analysis fails
+                            }
+                        }
+
+                        // Clean up temp file
+                        try? FileManager.default.removeItem(at: tempURL)
+
+                        // Fallback to basic capture information
                         let windowInfo = captureResult.metadata.windowInfo?.title ?? "Unknown"
-                        return .string(
-                            "Screen captured successfully. Window: \(windowInfo). Path: \(captureResult.savedPath ?? "N/A")")
+                        return .string("📸 Screenshot captured (\(targetDescription)) in \(String(format: "%.2fs", duration))\nWindow: \(windowInfo)\nPath: \(captureResult.savedPath ?? "N/A")")
                     }
             }
             tools.append(seeTool)
@@ -587,17 +667,110 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             // Skip if tool creation fails
         }
 
-        // Shell/bash tool
+        // Shell/bash tool - use the actual shell implementation
         do {
-            let shellTool = try tool(name: "run_bash", description: "Execute shell commands") { builder in
+            let shellTool = try tool(name: "run_bash", description: "Execute shell commands safely") { builder in
                 builder
                     .stringParameter("command", description: "Shell command to execute", required: true)
+                    .stringParameter("working_directory", description: "Working directory for the command", required: false)
+                    .intParameter("timeout", description: "Command timeout in seconds (default: 30)", required: false)
                     .execute { args in
                         let command = try args.getString("command")
+                        let workingDirectory = args.getStringOptional("working_directory")
+                        let timeout = args.getIntOptional("timeout") ?? 30
 
-                        // Shell execution is not available in ProcessService - it's for Peekaboo scripts
-                        // For now, return a placeholder
-                        return .string("Shell command execution not yet implemented: \(command)")
+                        let startTime = Date()
+
+                        // Safety check for dangerous commands
+                        let dangerousCommands = ["rm -rf /", "dd if=", "mkfs", "format"]
+                        for dangerous in dangerousCommands {
+                            if command.contains(dangerous) {
+                                return .string("Error: Command appears to be potentially destructive and was blocked for safety")
+                            }
+                        }
+
+                        // Extract the actual command name for better reporting
+                        let commandParts = command.split(separator: " ", maxSplits: 1)
+                        let commandName = String(commandParts.first ?? "shell")
+
+                        let process = Process()
+                        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+                        process.arguments = ["-c", command]
+
+                        if let workingDirectory {
+                            let expandedPath = (workingDirectory as NSString).expandingTildeInPath
+                            process.currentDirectoryURL = URL(fileURLWithPath: expandedPath)
+                        }
+
+                        let outputPipe = Pipe()
+                        let errorPipe = Pipe()
+                        process.standardOutput = outputPipe
+                        process.standardError = errorPipe
+
+                        do {
+                            try process.run()
+                        } catch {
+                            return .string("Error: Failed to execute command: \(error.localizedDescription)")
+                        }
+
+                        // Simple timeout handling
+                        let timeoutTask = Task {
+                            try await Task.sleep(nanoseconds: UInt64(timeout) * 1_000_000_000)
+                            if process.isRunning {
+                                process.terminate()
+                            }
+                        }
+
+                        process.waitUntilExit()
+                        timeoutTask.cancel()
+
+                        let duration = Date().timeIntervalSince(startTime)
+
+                        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+                        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+
+                        let output = String(data: outputData, encoding: .utf8) ?? ""
+                        let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+
+                        if process.terminationStatus != 0 {
+                            var errorMessage = "'\(commandName)' failed with exit code \(process.terminationStatus) after \(String(format: "%.2fs", duration))"
+                            if !errorOutput.isEmpty {
+                                errorMessage += "\n\nError output:\n\(errorOutput)"
+                            }
+                            if !output.isEmpty {
+                                errorMessage += "\n\nStandard output:\n\(output)"
+                            }
+                            return .string(errorMessage)
+                        }
+
+                        var result = output
+                        let lineCount = output.components(separatedBy: .newlines).count(where: { !$0.isEmpty })
+                        var truncated = false
+
+                        if result.isEmpty {
+                            result = "✓ '\(commandName)' completed successfully (no output)"
+                        } else if result.count > 5000 {
+                            result = String(result.prefix(5000))
+                            truncated = true
+                        }
+
+                        // Create a summary line
+                        var summary = "Executed '\(commandName)'"
+                        if lineCount > 0 {
+                            summary += " → \(lineCount) lines"
+                        }
+                        summary += " in \(String(format: "%.2fs", duration))"
+                        if truncated {
+                            summary += " (truncated from \(output.count) characters)"
+                        }
+
+                        // Format the final output
+                        var finalOutput = summary + "\n"
+                        if !result.isEmpty, !result.contains("completed successfully") {
+                            finalOutput += "\n" + result
+                        }
+
+                        return .string(finalOutput.trimmingCharacters(in: .whitespacesAndNewlines))
                     }
             }
             tools.append(shellTool)
@@ -835,6 +1008,29 @@ extension PeekabooAgentService {
             ModelMessage.user(task)
         ]
 
+        // Create and save initial session
+        let session = AgentSession(
+            id: sessionId,
+            modelName: model.description,
+            messages: messages,
+            metadata: SessionMetadata(),
+            createdAt: startTime,
+            updatedAt: startTime
+        )
+        
+        // Debug logging for session creation - ALWAYS print for debugging
+        print("DEBUG (streaming): Creating session with ID: \(sessionId)")
+        print("DEBUG (streaming): Session messages count: \(messages.count)")
+        print("DEBUG (streaming): Session directory: ~/.peekaboo/agent_sessions")
+        
+        do {
+            try await self.sessionManager.saveSession(session)
+            print("DEBUG (streaming): Successfully saved initial session with ID: \(sessionId)")
+        } catch {
+            print("ERROR (streaming): Failed to save initial session: \(error)")
+            throw error
+        }
+
         // Create tools for the model (convert to SimpleTool format)
         let tools = self.createSimpleTools()
 
@@ -872,6 +1068,21 @@ extension PeekabooAgentService {
         let endTime = Date()
         let executionTime = endTime.timeIntervalSince(startTime)
 
+        // Update session with final results
+        let updatedSession = AgentSession(
+            id: sessionId,
+            modelName: model.description,
+            messages: response.messages,
+            metadata: SessionMetadata(
+                toolCallCount: response.steps.reduce(0) { $0 + $1.toolCalls.count },
+                totalExecutionTime: executionTime,
+                customData: ["status": "completed"]
+            ),
+            createdAt: startTime,
+            updatedAt: endTime
+        )
+        try await self.sessionManager.saveSession(updatedSession)
+
         // Create result
         return AgentExecutionResult(
             content: fullContent,
@@ -900,6 +1111,34 @@ extension PeekabooAgentService {
             ModelMessage.system(AgentSystemPrompt.generate()),
             ModelMessage.user(task)
         ]
+
+        // Create and save initial session
+        let session = AgentSession(
+            id: sessionId,
+            modelName: model.description,
+            messages: messages,
+            metadata: SessionMetadata(),
+            createdAt: startTime,
+            updatedAt: startTime
+        )
+        
+        // Debug logging for session creation
+        if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+           ProcessInfo.processInfo.arguments.contains("-v") {
+            print("DEBUG (non-streaming): Creating session with ID: \(sessionId)")
+            print("DEBUG (non-streaming): Session messages count: \(messages.count)")
+        }
+        
+        do {
+            try await self.sessionManager.saveSession(session)
+            if ProcessInfo.processInfo.arguments.contains("--verbose") ||
+               ProcessInfo.processInfo.arguments.contains("-v") {
+                print("DEBUG (non-streaming): Successfully saved initial session")
+            }
+        } catch {
+            print("ERROR (non-streaming): Failed to save initial session: \(error)")
+            throw error
+        }
 
         // Create tools for the model (convert to SimpleTool format)
         let tools = self.createSimpleTools()
@@ -932,10 +1171,26 @@ extension PeekabooAgentService {
         let endTime = Date()
         let executionTime = endTime.timeIntervalSince(startTime)
 
+        // Update session with final results
+        let finalMessages = messages + [ModelMessage.assistant(response.text)]
+        let updatedSession = AgentSession(
+            id: sessionId,
+            modelName: model.description,
+            messages: finalMessages,
+            metadata: SessionMetadata(
+                toolCallCount: 0,
+                totalExecutionTime: executionTime,
+                customData: ["status": "completed"]
+            ),
+            createdAt: startTime,
+            updatedAt: endTime
+        )
+        try await self.sessionManager.saveSession(updatedSession)
+
         // Create result
         return AgentExecutionResult(
             content: response.text,
-            messages: messages + [ModelMessage.assistant(response.text)],
+            messages: finalMessages,
             sessionId: sessionId,
             usage: nil, // Usage info not available from generateText yet
             metadata: AgentMetadata(
