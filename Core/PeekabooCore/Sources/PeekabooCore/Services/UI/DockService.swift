@@ -18,7 +18,13 @@ public enum DockError: Error {
 /// Default implementation of Dock interaction operations using AXorcist
 @MainActor
 public final class DockService: DockServiceProtocol {
-    public init() {}
+    private let visualizerClient = VisualizationClient.shared
+    
+    public init() {
+        Task { @MainActor in
+            self.visualizerClient.connect()
+        }
+    }
 
     public func listDockItems(includeAll: Bool = false) async throws -> [DockItem] {
         // Find Dock application
@@ -98,6 +104,9 @@ public final class DockService: DockServiceProtocol {
         // Find the Dock item
         let dockElement = try findDockElement(appName: appName)
 
+        // Show app launch visualization
+        _ = await self.visualizerClient.showAppLaunch(appName: appName, iconPath: nil)
+        
         // Click the item to launch
         do {
             try dockElement.performAction(.press)
@@ -125,6 +134,9 @@ public final class DockService: DockServiceProtocol {
             y: position.y + size.height / 2)
 
         let dockElement = element
+
+        // Show right-click feedback
+        _ = await self.visualizerClient.showClickFeedback(at: center, type: .right)
 
         // Perform right-click
         let rightMouseDown = CGEvent(

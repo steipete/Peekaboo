@@ -778,6 +778,172 @@ public final class PeekabooAgentService: AgentServiceProtocol {
             // Skip if tool creation fails
         }
 
+        // Shell alias for backward compatibility - same tool but named "shell"
+        do {
+            let shellAlias = try tool(name: "shell", description: "Execute shell commands safely (alias for run_bash)") { builder in
+                builder
+                    .stringParameter("command", description: "Shell command to execute", required: true)
+                    .stringParameter("working_directory", description: "Working directory for the command", required: false)
+                    .intParameter("timeout", description: "Command timeout in seconds (default: 30)", required: false)
+                    .execute { args in
+                        let command = try args.getString("command")
+                        let workingDirectory = args.getStringOptional("working_directory")
+                        let timeout = args.getIntOptional("timeout") ?? 30
+
+                        let startTime = Date()
+
+                        // Safety check for dangerous commands
+                        let dangerousCommands = ["rm -rf /", "dd if=", "mkfs", "format"]
+                        for dangerous in dangerousCommands {
+                            if command.contains(dangerous) {
+                                return .string("Error: Command appears to be potentially destructive and was blocked for safety")
+                            }
+                        }
+
+                        // Extract the actual command name for better reporting
+                        let commandParts = command.split(separator: " ", maxSplits: 1)
+                        let commandName = String(commandParts.first ?? "shell")
+
+                        let process = Process()
+                        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+                        process.arguments = ["-c", command]
+
+                        if let workingDirectory {
+                            let expandedPath = (workingDirectory as NSString).expandingTildeInPath
+                            process.currentDirectoryURL = URL(fileURLWithPath: expandedPath)
+                        }
+
+                        let outputPipe = Pipe()
+                        let errorPipe = Pipe()
+                        process.standardOutput = outputPipe
+                        process.standardError = errorPipe
+
+                        do {
+                            try process.run()
+                        } catch {
+                            return .string("Error: Failed to execute command: \(error.localizedDescription)")
+                        }
+
+                        // Simple timeout handling
+                        let timeoutTask = Task {
+                            try await Task.sleep(nanoseconds: UInt64(timeout) * 1_000_000_000)
+                            if process.isRunning {
+                                process.terminate()
+                            }
+                        }
+
+                        process.waitUntilExit()
+                        timeoutTask.cancel()
+
+                        let duration = Date().timeIntervalSince(startTime)
+
+                        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+                        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+
+                        let output = String(data: outputData, encoding: .utf8) ?? ""
+                        let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+
+                        if process.terminationStatus != 0 {
+                            var errorMessage = "'\(commandName)' failed with exit code \(process.terminationStatus) after \(String(format: "%.2fs", duration))"
+                            if !errorOutput.isEmpty {
+                                errorMessage += "\n\nError output:\n\(errorOutput)"
+                            }
+                            if !output.isEmpty {
+                                errorMessage += "\n\nStandard output:\n\(output)"
+                            }
+                            return .string(errorMessage)
+                        }
+
+                        var result = output
+                        let lineCount = output.components(separatedBy: .newlines).count(where: { !$0.isEmpty })
+                        var truncated = false
+
+                        if result.isEmpty {
+                            result = "✓ '\(commandName)' completed successfully (no output)"
+                        } else if result.count > 5000 {
+                            result = String(result.prefix(5000))
+                            truncated = true
+                        }
+
+                        // Create a summary line
+                        var summary = "Executed '\(commandName)'"
+                        if lineCount > 0 {
+                            summary += " → \(lineCount) lines"
+                        }
+                        summary += " in \(String(format: "%.2fs", duration))"
+                        if truncated {
+                            summary += " (truncated from \(output.count) characters)"
+                        }
+
+                        // Format the final output
+                        var finalOutput = summary + "\n"
+                        if !result.isEmpty, !result.contains("completed successfully") {
+                            finalOutput += "\n" + result
+                        }
+
+                        return .string(finalOutput.trimmingCharacters(in: .whitespacesAndNewlines))
+                    }
+            }
+            tools.append(shellAlias)
+        } catch {
+            // Skip if tool creation fails
+        }
+
+        // List windows tool
+        do {
+            let listWindowsTool = try tool(name: "list_windows", description: "List all windows from running applications") { builder in
+                builder
+                    .stringParameter("app", description: "Application name to list windows for (optional)", required: false)
+                    .execute { args in
+                        let appName = args.getStringOptional("app")
+                        
+                        let startTime = Date()
+                        var windowsInfo: [String] = []
+                        
+                        if let appName {
+                            // List windows for specific app
+                            let windows = try await services.windows.listWindows(target: .application(appName))
+                            for window in windows {
+                                windowsInfo.append("• \(window.title) (ID: \(window.windowID))")
+                            }
+                            let duration = Date().timeIntervalSince(startTime)
+                            
+                            if windowsInfo.isEmpty {
+                                return .string("No windows found for '\(appName)' in \(String(format: "%.2fs", duration))")
+                            } else {
+                                return .string("Windows for '\(appName)' (\(windowsInfo.count) found) in \(String(format: "%.2fs", duration)):\n\(windowsInfo.joined(separator: "\n"))")
+                            }
+                        } else {
+                            // List all windows from all apps
+                            let appsOutput = try await services.applications.listApplications()
+                            let apps = appsOutput.data.applications
+                            
+                            for app in apps.prefix(10) { // Limit to first 10 apps to avoid excessive output
+                                do {
+                                    let windows = try await services.windows.listWindows(target: .application(app.name))
+                                    for window in windows {
+                                        windowsInfo.append("• \(app.name): \(window.title) (ID: \(window.windowID))")
+                                    }
+                                } catch {
+                                    // Skip apps that fail to list windows
+                                }
+                            }
+                            
+                            let duration = Date().timeIntervalSince(startTime)
+                            
+                            if windowsInfo.isEmpty {
+                                return .string("No windows found from running applications in \(String(format: "%.2fs", duration))")
+                            } else {
+                                return .string("Windows from running applications (\(windowsInfo.count) found) in \(String(format: "%.2fs", duration)):\n\(windowsInfo.joined(separator: "\n"))")
+                            }
+                        }
+                    }
+            }
+            tools.append(listWindowsTool)
+        } catch {
+            // Skip if tool creation fails
+        }
+
         return tools
     }
 

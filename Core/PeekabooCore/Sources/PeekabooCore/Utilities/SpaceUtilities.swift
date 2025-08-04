@@ -197,6 +197,7 @@ public struct SpaceInfo: Sendable {
 @MainActor
 public final class SpaceManagementService {
     private var _connection: CGSConnectionID?
+    private let visualizerClient = VisualizationClient.shared
 
     private var connection: CGSConnectionID {
         if _connection == nil {
@@ -217,6 +218,9 @@ public final class SpaceManagementService {
 
     public init() {
         // Defer connection initialization until first use
+        Task { @MainActor in
+            self.visualizerClient.connect()
+        }
     }
 
     // MARK: - Space Information
@@ -472,6 +476,12 @@ public final class SpaceManagementService {
 
     /// Switch to a specific Space
     public func switchToSpace(_ spaceID: CGSSpaceID) async throws {
+        let currentSpace = CGSGetActiveSpace(connection)
+        let direction: SpaceDirection = spaceID > currentSpace ? .right : .left
+        
+        // Show space switch visualization
+        _ = await self.visualizerClient.showSpaceSwitch(from: Int(currentSpace), to: Int(spaceID), direction: direction)
+        
         // Use kCGSPackagesMainDisplayIdentifier for the main display
         CGSManagedDisplaySetCurrentSpace(connection, kCGSPackagesMainDisplayIdentifier, spaceID)
 

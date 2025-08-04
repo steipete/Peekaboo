@@ -17,7 +17,7 @@ import Foundation
     /// - Parameters:
     ///   - rect: The area that was captured
     ///   - reply: Callback with success status
-    func showScreenshotFlash(in rect: CGRect, reply: @Sendable @escaping (Bool) -> Void)
+    func showScreenshotFlash(in rect: CGRect, reply: @escaping (Bool) -> Void)
 
     // MARK: - Click Feedback
 
@@ -26,7 +26,7 @@ import Foundation
     ///   - point: The location of the click
     ///   - type: Type of click ("single", "double", "right")
     ///   - reply: Callback with success status
-    func showClickFeedback(at point: CGPoint, type: String, reply: @Sendable @escaping (Bool) -> Void)
+    func showClickFeedback(at point: CGPoint, type: String, reply: @escaping (Bool) -> Void)
 
     // MARK: - Typing Feedback
 
@@ -35,7 +35,7 @@ import Foundation
     ///   - keys: Array of keys being typed
     ///   - duration: Duration to show the keyboard
     ///   - reply: Callback with success status
-    func showTypingFeedback(keys: [String], duration: TimeInterval, reply: @Sendable @escaping (Bool) -> Void)
+    func showTypingFeedback(keys: [String], duration: TimeInterval, reply: @escaping (Bool) -> Void)
 
     // MARK: - Scroll Feedback
 
@@ -49,7 +49,7 @@ import Foundation
         at point: CGPoint,
         direction: String,
         amount: Int,
-        reply: @Sendable @escaping (Bool) -> Void)
+        reply: @escaping (Bool) -> Void)
 
     // MARK: - Mouse Movement
 
@@ -63,7 +63,7 @@ import Foundation
         from fromPoint: CGPoint,
         to toPoint: CGPoint,
         duration: TimeInterval,
-        reply: @Sendable @escaping (Bool) -> Void)
+        reply: @escaping (Bool) -> Void)
 
     // MARK: - Swipe/Drag
 
@@ -77,7 +77,7 @@ import Foundation
         from fromPoint: CGPoint,
         to toPoint: CGPoint,
         duration: TimeInterval,
-        reply: @Sendable @escaping (Bool) -> Void)
+        reply: @escaping (Bool) -> Void)
 
     // MARK: - Hotkey Display
 
@@ -86,7 +86,7 @@ import Foundation
     ///   - keys: Array of keys in the combination
     ///   - duration: Display duration
     ///   - reply: Callback with success status
-    func showHotkeyDisplay(keys: [String], duration: TimeInterval, reply: @Sendable @escaping (Bool) -> Void)
+    func showHotkeyDisplay(keys: [String], duration: TimeInterval, reply: @escaping (Bool) -> Void)
 
     // MARK: - App Lifecycle
 
@@ -95,14 +95,14 @@ import Foundation
     ///   - appName: Name of the app being launched
     ///   - iconPath: Optional path to app icon
     ///   - reply: Callback with success status
-    func showAppLaunch(appName: String, iconPath: String?, reply: @Sendable @escaping (Bool) -> Void)
+    func showAppLaunch(appName: String, iconPath: String?, reply: @escaping (Bool) -> Void)
 
     /// Shows app quit animation
     /// - Parameters:
     ///   - appName: Name of the app being quit
     ///   - iconPath: Optional path to app icon
     ///   - reply: Callback with success status
-    func showAppQuit(appName: String, iconPath: String?, reply: @Sendable @escaping (Bool) -> Void)
+    func showAppQuit(appName: String, iconPath: String?, reply: @escaping (Bool) -> Void)
 
     // MARK: - Window Operations
 
@@ -116,7 +116,7 @@ import Foundation
         operation: String,
         windowRect: CGRect,
         duration: TimeInterval,
-        reply: @Sendable @escaping (Bool) -> Void)
+        reply: @escaping (Bool) -> Void)
 
     // MARK: - Menu Navigation
 
@@ -124,7 +124,7 @@ import Foundation
     /// - Parameters:
     ///   - menuPath: Array of menu items in the path
     ///   - reply: Callback with success status
-    func showMenuNavigation(menuPath: [String], reply: @Sendable @escaping (Bool) -> Void)
+    func showMenuNavigation(menuPath: [String], reply: @escaping (Bool) -> Void)
 
     // MARK: - Dialog Interactions
 
@@ -138,7 +138,7 @@ import Foundation
         elementType: String,
         elementRect: CGRect,
         action: String,
-        reply: @Sendable @escaping (Bool) -> Void)
+        reply: @escaping (Bool) -> Void)
 
     // MARK: - Space Switching
 
@@ -152,7 +152,7 @@ import Foundation
         from fromSpace: Int,
         to toSpace: Int,
         direction: String,
-        reply: @Sendable @escaping (Bool) -> Void)
+        reply: @escaping (Bool) -> Void)
 
     // MARK: - Element Detection
 
@@ -164,7 +164,7 @@ import Foundation
     func showElementDetection(
         elements: [String: CGRect],
         duration: TimeInterval,
-        reply: @Sendable @escaping (Bool) -> Void)
+        reply: @escaping (Bool) -> Void)
 
     /// Shows annotated screenshot with UI element overlays
     /// - Parameters:
@@ -178,19 +178,19 @@ import Foundation
         elementData: Data,
         windowBounds: CGRect,
         duration: TimeInterval,
-        reply: @Sendable @escaping (Bool) -> Void)
+        reply: @escaping (Bool) -> Void)
 
     // MARK: - Configuration
 
     /// Checks if visual feedback is enabled
     /// - Parameter reply: Callback with enabled status
-    func isVisualFeedbackEnabled(reply: @Sendable @escaping (Bool) -> Void)
+    func isVisualFeedbackEnabled(reply: @escaping (Bool) -> Void)
 
     /// Updates visual feedback settings
     /// - Parameters:
     ///   - settings: Dictionary of setting keys and values
     ///   - reply: Callback with success status
-    func updateSettings(_ settings: [String: Any], reply: @Sendable @escaping (Bool) -> Void)
+    func updateSettings(_ settings: [String: Any], reply: @escaping (Bool) -> Void)
 }
 
 /// Service name for the XPC connection

@@ -228,7 +228,11 @@ final class PeekabooAgent {
 
             // Create or get session BEFORE task execution
             if self.sessionStore.currentSession == nil {
-                _ = self.sessionStore.createSession(title: "", modelName: self.settings.selectedModel)
+                let newSession = self.sessionStore.createSession(title: "", modelName: self.settings.selectedModel)
+                self.currentSessionId = newSession.id
+            } else {
+                // Ensure currentSessionId matches the current session
+                self.currentSessionId = self.sessionStore.currentSession?.id
             }
 
             // Add user message at the very beginning
@@ -247,10 +251,10 @@ final class PeekabooAgent {
 
                 self.sessionStore.addMessage(userMessage, to: currentSession)
 
-                // TODO: Generate title for new sessions
-                // if currentSession.title == "New Session", currentSession.messages.count == 1 {
-                //     self.sessionStore.generateTitleForSession(currentSession)
-                // }
+                // Generate title for new sessions
+                if currentSession.title == "New Session" || currentSession.title.isEmpty {
+                    self.sessionStore.generateTitleForSession(currentSession)
+                }
             }
 
             // Create event delegate for real-time updates
