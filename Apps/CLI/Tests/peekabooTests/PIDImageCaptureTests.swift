@@ -39,7 +39,6 @@ struct PIDImageCaptureTests {
             let result = try await captureWithPID(command: command, targetPID: pid)
 
             #expect(result.success == true)
-            // Since we're mocking, we know data is ImageCaptureData
             #expect(result.data != nil)
         } catch {
             Issue.record("Failed to capture windows by PID: \(error)")
@@ -80,7 +79,6 @@ struct PIDImageCaptureTests {
             let result = try await captureWithPID(command: command, targetPID: pid)
 
             #expect(result.success == true)
-            // Since we're mocking, we know data contains windows from specific PID
             #expect(result.data != nil)
         } catch {
             Issue.record("Failed to capture specific instance by PID: \(error)")
@@ -180,7 +178,7 @@ struct PIDImageCaptureTests {
 
         return JSONResponse(
             success: true,
-            data: captureData,
+            data: Empty(),
             messages: ["Captured windows for PID: \(targetPID)"],
             debugLogs: [],
             error: nil

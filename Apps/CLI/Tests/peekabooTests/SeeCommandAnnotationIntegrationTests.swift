@@ -60,6 +60,7 @@ struct SeeCommandAnnotationIntegrationTests {
             ui_map: "",
             application_name: "Safari",
             window_title: nil,
+            is_dialog: false,
             element_count: 0,
             interactable_count: 0,
             capture_mode: "window",
@@ -89,6 +90,7 @@ struct SeeCommandAnnotationIntegrationTests {
             ui_map: "",
             application_name: "Safari",
             window_title: "Start Page",
+            is_dialog: false,
             element_count: 0,
             interactable_count: 0,
             capture_mode: "window",
@@ -112,6 +114,7 @@ struct SeeCommandAnnotationIntegrationTests {
 
     @Test("Window bounds affect element coordinate transformation")
     @available(*, message: "Run with RUN_LOCAL_TESTS=true")
+    @MainActor
     func windowBoundsTransformation() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             return

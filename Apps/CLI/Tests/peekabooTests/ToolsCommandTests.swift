@@ -13,10 +13,10 @@ struct ToolsCommandTests {
         
         #expect(config.commandName == "tools")
         #expect(config.abstract == "List available tools with filtering and display options")
-        #expect(config.discussion?.contains("Examples:") == true)
-        #expect(config.discussion?.contains("peekaboo tools") == true)
-        #expect(config.discussion?.contains("--native-only") == true)
-        #expect(config.discussion?.contains("--mcp-only") == true)
+        #expect(config.discussion.contains("Examples:"))
+        #expect(config.discussion.contains("peekaboo tools"))
+        #expect(config.discussion.contains("--native-only"))
+        #expect(config.discussion.contains("--mcp-only"))
     }
     
     @Test("ToolsCommand default values")
@@ -196,11 +196,10 @@ struct ToolsCommandStructureTests {
         // Verify all required configuration properties
         #expect(config.commandName == "tools")
         #expect(!config.abstract.isEmpty)
-        #expect(config.discussion != nil)
-        #expect(!config.discussion!.isEmpty)
+        #expect(!config.discussion.isEmpty)
         
         // Verify discussion contains usage examples
-        let discussion = config.discussion!
+        let discussion = config.discussion
         #expect(discussion.contains("peekaboo tools"))
         #expect(discussion.contains("Examples:"))
         #expect(discussion.contains("--native-only"))

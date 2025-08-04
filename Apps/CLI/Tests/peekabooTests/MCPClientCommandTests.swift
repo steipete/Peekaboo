@@ -13,7 +13,7 @@ struct MCPClientCommandTests {
         
         #expect(config.commandName == "mcp")
         #expect(config.abstract == "Model Context Protocol server and client operations")
-        #expect(config.discussion?.contains("EXAMPLES:") == true)
+        #expect(config.discussion.contains("EXAMPLES:"))
         
         // Verify all subcommands are present
         #expect(config.subcommands.count == 10) // Serve, List, Add, Remove, Test, Info, Enable, Disable, Call, Inspect
@@ -41,10 +41,10 @@ struct MCPListCommandTests {
         let config = MCPCommand.List.configuration
         
         #expect(config.abstract == "List configured MCP servers with health status")
-        #expect(config.discussion?.contains("EXAMPLE OUTPUT:") == true)
-        #expect(config.discussion?.contains("Checking MCP server health...") == true)
-        #expect(config.discussion?.contains("✓ Connected") == true)
-        #expect(config.discussion?.contains("✗ Failed to connect") == true)
+        #expect(config.discussion.contains("EXAMPLE OUTPUT:"))
+        #expect(config.discussion.contains("Checking MCP server health..."))
+        #expect(config.discussion.contains("✓ Connected"))
+        #expect(config.discussion.contains("✗ Failed to connect"))
     }
     
     @Test("List command default values")
@@ -86,9 +86,9 @@ struct MCPAddCommandTests {
         
         #expect(config.commandName == "add")
         #expect(config.abstract == "Add a new external MCP server")
-        #expect(config.discussion?.contains("EXAMPLES:") == true)
-        #expect(config.discussion?.contains("npx -y @modelcontextprotocol/server-github") == true)
-        #expect(config.discussion?.contains("npx -y @modelcontextprotocol/server-filesystem") == true)
+        #expect(config.discussion.contains("EXAMPLES:"))
+        #expect(config.discussion.contains("npx -y @modelcontextprotocol/server-github"))
+        #expect(config.discussion.contains("npx -y @modelcontextprotocol/server-filesystem"))
     }
     
     @Test("Add command default values")

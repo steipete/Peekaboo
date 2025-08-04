@@ -109,10 +109,13 @@ struct SeeCommandAnnotationTests {
             size: CGSize(width: 1200, height: 800),
             mode: .window,
             applicationInfo: ServiceApplicationInfo(
-                name: appInfo.app_name,
-                bundleIdentifier: appInfo.bundle_id,
                 processIdentifier: appInfo.pid,
-                isActive: appInfo.is_active
+                bundleIdentifier: appInfo.bundle_id,
+                name: appInfo.app_name,
+                bundlePath: nil,
+                isActive: appInfo.is_active,
+                isHidden: false,
+                windowCount: 1
             ),
             windowInfo: ServiceWindowInfo(
                 title: windowInfo.window_title,
@@ -123,7 +126,7 @@ struct SeeCommandAnnotationTests {
                     width: windowInfo.bounds?.width ?? 0,
                     height: windowInfo.bounds?.height ?? 0
                 ),
-                isOnScreen: windowInfo.is_on_screen ?? true
+                // Remove isOnScreen - it's not part of ServiceWindowInfo
             ),
             displayInfo: nil,
             timestamp: Date()

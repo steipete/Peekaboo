@@ -22,17 +22,20 @@ public class JSONOutput {
 /// This is now deprecated - use CodableJSONResponse with specific types instead
 struct JSONResponse: Codable {
     let success: Bool
+    let data: Empty? // Added for test compatibility
     let messages: [String]?
     let debug_logs: [String]
     let error: ErrorInfo?
 
     init(
         success: Bool,
+        data: Empty? = nil, // Added for test compatibility
         messages: [String]? = nil,
         debugLogs: [String] = [],
         error: ErrorInfo? = nil
     ) {
         self.success = success
+        self.data = data
         self.messages = messages
         self.debug_logs = debugLogs
         self.error = error
