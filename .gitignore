@@ -164,6 +164,9 @@ Core/**/.swiftpm/
 .cache/
 debug
 
+# Crush directory
+.crush/
+
 # OS generated files
 Thumbs.db
 
