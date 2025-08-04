@@ -4,6 +4,10 @@ import Foundation
 import PeekabooCore
 import Tachikoma
 
+#if canImport(TermKit)
+import TermKit
+#endif
+
 // Temporary session info struct until PeekabooAgentService implements session management
 // Test: Icon notifications are now working
 struct AgentSessionInfo: Codable {
@@ -34,11 +38,14 @@ private func aiDebugPrint(_ message: String) {
     }
 }
 
-/// Output modes for agent execution
+/// Output modes for agent execution with progressive enhancement
 enum OutputMode {
-    case quiet // Only final result
-    case compact // Clean, colorized output with tool calls (default)
-    case verbose // Full JSON debug information
+    case minimal     // CI/pipes - no colors, simple text
+    case compact     // Basic colors and icons (legacy default)
+    case enhanced    // Rich formatting with progress indicators
+    case tui         // Full Terminal User Interface
+    case quiet       // Only final result
+    case verbose     // Full JSON debug information
 }
 
 /// ANSI color codes for terminal output
@@ -177,6 +184,13 @@ struct AgentCommand: AsyncParsableCommand {
           peekaboo agent "Click on the login button and fill the form"
           peekaboo agent "Find the Terminal app and run 'ls -la'"
 
+          # Output control (auto-detected by default):
+          peekaboo agent --force-tui "Complex task"      # Force TUI even in limited terminals
+          peekaboo agent --simple "Basic task"           # Force simple output, no colors
+          peekaboo agent --no-color "CI task"            # Disable colors only
+          peekaboo agent --verbose "Debug task"          # Full JSON debug output
+          peekaboo agent --quiet "Silent task"           # Only show final result
+
           # Control execution steps:
           peekaboo agent --max-steps 5 "Simple task"  # Limit to 5 steps
           peekaboo agent --max-steps 50 "Complex multi-step automation"  # Allow more steps
@@ -197,6 +211,21 @@ struct AgentCommand: AsyncParsableCommand {
         3. Execute each step using Peekaboo commands (default: max 20 steps)
         4. Verify results with screenshots
         5. Retry if needed
+
+        OUTPUT MODES (Auto-detected by default):
+        The agent automatically selects the best output mode based on your terminal capabilities:
+        
+        • TUI Mode: Full terminal interface with progress dashboard (good terminals, 100x20+ chars)
+        • Enhanced: Rich formatting with progress indicators (color terminals, 80+ chars)  
+        • Compact: Basic colors and icons (color terminals)
+        • Minimal: Plain text, CI-friendly (pipes, CI environments, no-color terminals)
+        
+        Manual overrides:
+        - --force-tui: Force TUI mode even in limited terminals
+        - --simple: Force minimal output mode (no colors or rich formatting)
+        - --no-color: Disable colors while keeping other formatting
+        - --verbose: Full JSON debug information for troubleshooting
+        - --quiet: Only final result, silent execution
 
         EXECUTION CONTROL:
         The --max-steps parameter controls how many AI reasoning steps the agent can take.
@@ -249,9 +278,32 @@ struct AgentCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Use real-time audio streaming (OpenAI only)")
     var realtime = false
 
-    /// Computed property for output mode based on flags
+    @Flag(name: .long, help: "Force TUI mode even in limited terminals")
+    var forceTui = false
+
+    @Flag(name: .long, help: "Force simple output mode (no colors or rich formatting)")
+    var simple = false
+
+    @Flag(name: .long, help: "Disable colors in output")
+    var noColor = false
+
+    /// Computed property for output mode with smart detection and progressive enhancement
     private var outputMode: OutputMode {
-        self.quiet ? .quiet : (self.verbose ? .verbose : .compact)
+        // Explicit user overrides first
+        if self.quiet { return .quiet }
+        if self.verbose { return .verbose }
+        if self.forceTui { return .tui }
+        if self.simple { return .minimal }
+        if self.noColor { return .minimal }
+        
+        // Check for environment-based forced modes
+        if let forcedMode = TerminalDetector.shouldForceOutputMode() {
+            return forcedMode
+        }
+        
+        // Smart detection based on terminal capabilities
+        let capabilities = TerminalDetector.detectCapabilities()
+        return capabilities.recommendedOutputMode
     }
 
     @MainActor
@@ -671,12 +723,35 @@ struct AgentCommand: AsyncParsableCommand {
         let displayModelName = self.getDisplayModelName(actualModelName)
 
         // Create event delegate for real-time updates
-        let eventDelegate = await MainActor.run {
+        let eventDelegate: AgentEventDelegate
+        
+        #if canImport(TermKit)
+        if self.outputMode == .tui {
+            // Initialize TUI mode
+            let tuiManager = TermKitTUIManager()
+            
+            // Start the TUI in a background task
+            Task {
+                tuiManager.startTUI()
+            }
+            
+            // Initialize TUI with task info
+            tuiManager.startTask(task, maxSteps: maxSteps, modelName: displayModelName)
+            
+            eventDelegate = TermKitAgentEventDelegate(tuiManager: tuiManager)
+        } else {
+            eventDelegate = await MainActor.run {
+                CompactEventDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
+            }
+        }
+        #else
+        eventDelegate = await MainActor.run {
             CompactEventDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
         }
+        #endif
 
-        // Show header with properly cased model name
-        if self.outputMode != .quiet && !self.jsonOutput {
+        // Show header with properly cased model name (skip for TUI mode as it handles its own display)
+        if self.outputMode != .quiet && self.outputMode != .tui && self.outputMode != .minimal && !self.jsonOutput {
             switch self.outputMode {
             case .verbose:
                 print("\n╭─────────────────────────────────────────────────────────────╮")
@@ -695,7 +770,7 @@ struct AgentCommand: AsyncParsableCommand {
                     print("Session: \(sessionId.prefix(8))... (resumed)")
                 }
                 print("\nInitializing agent...\n")
-            case .compact:
+            case .compact, .enhanced:
                 // Show model in header
                 let versionNumber = Version.current.replacingOccurrences(of: "Peekaboo ", with: "")
                 let versionInfo = "(\(Version.gitBranch)/\(Version.gitCommit), \(Version.gitCommitDate))"
@@ -705,7 +780,7 @@ struct AgentCommand: AsyncParsableCommand {
                 if let sessionId {
                     print("\(TerminalColor.gray)🔄 Session: \(sessionId.prefix(8))...\(TerminalColor.reset)")
                 }
-            case .quiet:
+            case .quiet, .tui, .minimal:
                 break
             }
         }
@@ -730,17 +805,17 @@ struct AgentCommand: AsyncParsableCommand {
             // Update token count in delegate if available
             if let usage = result.usage {
                 await MainActor.run {
-                    eventDelegate.updateTokenCount(usage.totalTokens)
+                    (eventDelegate as? CompactEventDelegate)?.updateTokenCount(usage.totalTokens)
                 }
             }
 
             // Handle result display
             self.displayResult(result)
 
-            // Show final summary if not already shown
-            if !self.jsonOutput && self.outputMode != .quiet {
+            // Show final summary if not already shown (TUI handles its own summary)
+            if !self.jsonOutput && self.outputMode != .quiet && self.outputMode != .tui && self.outputMode != .minimal {
                 await MainActor.run {
-                    eventDelegate.showFinalSummaryIfNeeded(result)
+                    (eventDelegate as? CompactEventDelegate)?.showFinalSummaryIfNeeded(result)
                 }
             }
 
@@ -753,6 +828,21 @@ struct AgentCommand: AsyncParsableCommand {
 
             // Update terminal title to show completion
             self.updateTerminalTitle("Completed: \(task.prefix(50))")
+            
+            // Clean up TUI if it was used
+            #if canImport(TermKit)
+            if self.outputMode == .tui {
+                // Give user a moment to see the final state before exiting
+                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            }
+            #endif
+            
+            // Show terminal capabilities in verbose mode for debugging
+            if self.outputMode == .verbose {
+                let capabilities = TerminalDetector.detectCapabilities()
+                print("\(TerminalColor.gray)Terminal: \(TerminalDetector.capabilitiesDescription(capabilities))\(TerminalColor.reset)")
+                print("\(TerminalColor.gray)Selected mode: \(self.outputMode.description)\(TerminalColor.reset)")
+            }
         } catch let error as DecodingError {
             aiDebugPrint("DEBUG: DecodingError caught: \(error)")
             throw error
@@ -985,10 +1075,23 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
         let tokenInfo = self.totalTokens > 0 ? ", \(self.totalTokens) tokens" : ""
         let toolsText = result.metadata.toolCallCount == 1 ? "⚒ 1 tool" : "⚒ \(result.metadata.toolCallCount) tools"
 
-        if self.outputMode == .compact {
-            print(
-                "\n\(TerminalColor.bold)\(TerminalColor.green)✅ Task completed\(TerminalColor.reset) \(TerminalColor.gray)(Total: \(self.formatDuration(totalElapsed)), \(toolsText)\(tokenInfo))\(TerminalColor.reset)"
-            )
+        if self.outputMode == .compact || self.outputMode == .enhanced {
+            if self.outputMode == .enhanced {
+                // Enhanced mode with better formatting
+                print("\n" + String(repeating: "─", count: 60))
+                print(
+                    "\(TerminalColor.bold)\(TerminalColor.green)✅ Task Completed Successfully\(TerminalColor.reset)"
+                )
+                print(
+                    "\(TerminalColor.gray)📊 Stats: \(self.formatDuration(totalElapsed)) • \(toolsText)\(tokenInfo)\(TerminalColor.reset)"
+                )
+                print(String(repeating: "─", count: 60))
+            } else {
+                // Compact mode (legacy format)
+                print(
+                    "\n\(TerminalColor.bold)\(TerminalColor.green)✅ Task completed\(TerminalColor.reset) \(TerminalColor.gray)(Total: \(self.formatDuration(totalElapsed)), \(toolsText)\(tokenInfo))\(TerminalColor.reset)"
+                )
+            }
         }
     }
 
@@ -1553,9 +1656,11 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
         case let .started(task):
             if self.outputMode == .verbose {
                 print("🚀 Starting: \(task)")
-            } else if self.outputMode == .compact {
+            } else if self.outputMode == .compact || self.outputMode == .enhanced {
                 // Start the ghost animation when agent starts thinking
                 self.ghostAnimator.start()
+            } else if self.outputMode == .minimal {
+                print("Starting: \(task)")
             }
 
         case let .toolCallStarted(name, arguments):
@@ -1583,7 +1688,11 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                     self.hasReceivedContent = false // Reset for next thinking phase
 
                     let icon = iconForTool(name)
-                    print("\(TerminalColor.blue)\(icon) \(name)\(TerminalColor.reset)", terminator: "")
+                    if self.outputMode == .minimal {
+                        print("\(name)", terminator: "")
+                    } else {
+                        print("\(TerminalColor.blue)\(icon) \(name)\(TerminalColor.reset)", terminator: "")
+                    }
 
                     if self.outputMode == .verbose {
                         // Show formatted arguments in verbose mode
@@ -1601,7 +1710,11 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                            let args = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                             let summary = self.compactToolSummary(name, args)
                             if !summary.isEmpty {
-                                print(" \(TerminalColor.gray)\(summary)\(TerminalColor.reset)", terminator: "")
+                                if self.outputMode == .minimal {
+                                    print(" \(summary)", terminator: "")
+                                } else {
+                                    print(" \(TerminalColor.gray)\(summary)\(TerminalColor.reset)", terminator: "")
+                                }
                             }
                         }
                     }
@@ -1674,10 +1787,24 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                     // Regular tool handling
                     else if let success = json["success"] as? Bool {
                         if success {
-                            if !resultSummary.isEmpty {
-                                print(" \(TerminalColor.green)✓\(TerminalColor.reset) \(resultSummary)\(duration)")
+                            if self.outputMode == .minimal {
+                                if !resultSummary.isEmpty {
+                                    print(" OK \(resultSummary)\(duration)")
+                                } else {
+                                    print(" OK\(duration)")
+                                }
+                            } else if self.outputMode == .enhanced {
+                                if !resultSummary.isEmpty {
+                                    print(" \(TerminalColor.green)✅\(TerminalColor.reset) \(resultSummary)\(duration)")
+                                } else {
+                                    print(" \(TerminalColor.green)✅\(TerminalColor.reset)\(duration)")
+                                }
                             } else {
-                                print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                                if !resultSummary.isEmpty {
+                                    print(" \(TerminalColor.green)✓\(TerminalColor.reset) \(resultSummary)\(duration)")
+                                } else {
+                                    print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                                }
                             }
 
                             // Show formatted result in verbose mode
@@ -1688,17 +1815,29 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                                 }
                             }
                         } else {
-                            print(" \(TerminalColor.red)✗\(TerminalColor.reset)\(duration)")
+                            if self.outputMode == .minimal {
+                                print(" FAILED\(duration)")
+                            } else {
+                                print(" \(TerminalColor.red)✗\(TerminalColor.reset)\(duration)")
+                            }
 
                             // Display enhanced error information
                             self.displayEnhancedError(tool: name, json: json)
                         }
                     } else {
                         // Tools that don't have explicit success field
-                        if !resultSummary.isEmpty {
-                            print(" \(TerminalColor.green)✓\(TerminalColor.reset) \(resultSummary)\(duration)")
+                        if self.outputMode == .minimal {
+                            if !resultSummary.isEmpty {
+                                print(" OK \(resultSummary)\(duration)")
+                            } else {
+                                print(" OK\(duration)")
+                            }
                         } else {
-                            print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                            if !resultSummary.isEmpty {
+                                print(" \(TerminalColor.green)✓\(TerminalColor.reset) \(resultSummary)\(duration)")
+                            } else {
+                                print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                            }
                         }
 
                         // Show formatted result in verbose mode
@@ -1719,7 +1858,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
         case let .assistantMessage(content):
             if self.outputMode == .verbose {
                 print("\n💭 Assistant: \(content)")
-            } else if self.outputMode == .compact {
+            } else if self.outputMode == .compact || self.outputMode == .enhanced {
                 // Stop animation on first content if still running
                 if self.isThinking && !content.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
                     self.ghostAnimator.stop()
@@ -1729,7 +1868,11 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                     print()
                 }
 
-                // In compact mode, show all streaming text directly
+                // In compact/enhanced mode, show all streaming text directly
+                print(content, terminator: "")
+                fflush(stdout)
+            } else if self.outputMode == .minimal {
+                // Minimal mode - just show the content without colors or animations
                 print(content, terminator: "")
                 fflush(stdout)
             }
@@ -1737,23 +1880,32 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
         case let .thinkingMessage(content):
             if self.outputMode == .verbose {
                 print("\n🤔 Thinking: \(content)")
-            } else if self.outputMode == .compact {
+            } else if self.outputMode == .compact || self.outputMode == .enhanced {
                 // Stop animation when thinking content arrives
                 if self.isThinking {
                     self.ghostAnimator.stop()
                     self.isThinking = false
                     // Print thinking prefix once
-                    print("\n\(TerminalColor.cyan)💭 Thinking:\(TerminalColor.reset) ", terminator: "")
+                    let prefix = self.outputMode == .enhanced ? "🧠 Thinking:" : "💭 Thinking:"
+                    print("\n\(TerminalColor.cyan)\(prefix)\(TerminalColor.reset) ", terminator: "")
                 }
 
                 // Show thinking content
                 print(content, terminator: "")
                 fflush(stdout)
+            } else if self.outputMode == .minimal {
+                // Minimal mode - simple thinking indicator
+                print("Thinking: \(content)", terminator: "")
+                fflush(stdout)
             }
 
         case let .error(message):
             self.ghostAnimator.stop() // Stop animation on error
-            print("\n\(TerminalColor.red)❌ Error: \(message)\(TerminalColor.reset)")
+            if self.outputMode == .minimal {
+                print("\nError: \(message)")
+            } else {
+                print("\n\(TerminalColor.red)❌ Error: \(message)\(TerminalColor.reset)")
+            }
 
         case .completed:
             self.ghostAnimator.stop() // Ensure animation is stopped

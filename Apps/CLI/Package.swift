@@ -23,6 +23,7 @@ let package = Package(
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "MCP", package: "swift-sdk"),
+                .product(name: "TermKit", package: "TermKit"),
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
                 .product(name: "Tachikoma", package: "Tachikoma"),
             ],
