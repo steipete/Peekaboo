@@ -269,15 +269,15 @@ private func parseModelString(_ modelString: String) -> LanguageModel {
         } else if modelString.contains("sonnet-4") {
             return .anthropic(.sonnet4)
         } else if modelString.contains("haiku-3.5") {
-            return .anthropic(.haiku3_5)
+            return .anthropic(.haiku35)
         } else if modelString.contains("sonnet-3.5") {
-            return .anthropic(.sonnet3_5)
+            return .anthropic(.sonnet35)
         }
         // Default to Opus 4
         return .anthropic(.opus4)
     } else if modelString.hasPrefix("gpt") {
         if modelString.contains("4.1") {
-            return .openai(.gpt4_1)
+            return .openai(.gpt41)
         } else if modelString.contains("4o") {
             return .openai(.gpt4o)
         }
@@ -287,7 +287,7 @@ private func parseModelString(_ modelString: String) -> LanguageModel {
     } else if modelString.hasPrefix("grok") {
         return .grok(.grok4)
     } else if modelString.hasPrefix("llama") {
-        return .ollama(.llama3_3)
+        return .ollama(.llama33)
     }
 
     // Default to Anthropic Opus 4

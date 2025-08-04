@@ -2,7 +2,7 @@ import ArgumentParser
 import Dispatch
 import Foundation
 import PeekabooCore
-import Tachikoma
+import TachikomaCore
 
 // Temporary session info struct until PeekabooAgentService implements session management
 // Test: Icon notifications are now working
@@ -598,9 +598,9 @@ struct AgentCommand: AsyncParsableCommand {
         } else if lowercased.contains("gpt-4o-mini") || lowercased == "gpt4o-mini" {
             return .openai(.gpt4oMini)
         } else if lowercased.contains("gpt-4.1") || lowercased == "gpt4.1" || lowercased == "gpt-4.1" {
-            return .openai(.gpt4_1)
+            return .openai(.gpt41)
         } else if lowercased.contains("gpt-4.1-mini") || lowercased == "gpt4.1-mini" {
-            return .openai(.gpt4_1Mini)
+            return .openai(.gpt41Mini)
         } else if lowercased == "o3" {
             return .openai(.o3)
         } else if lowercased == "o3-mini" || lowercased == "o3mini" {
@@ -618,23 +618,23 @@ struct AgentCommand: AsyncParsableCommand {
             .contains("claude-4-sonnet") || lowercased == "claude-sonnet-4" {
             return .anthropic(.sonnet4)
         } else if lowercased.contains("claude-3-5-sonnet") || lowercased == "claude-3-5-sonnet" {
-            return .anthropic(.sonnet3_5)
+            return .anthropic(.sonnet35)
         } else if lowercased.contains("claude-3-5-haiku") || lowercased == "claude-3-5-haiku" {
-            return .anthropic(.haiku3_5)
+            return .anthropic(.haiku35)
 
             // Grok Models
         } else if lowercased.contains("grok-4") || lowercased == "grok-4" || lowercased == "grok4" {
             return .grok(.grok4)
         } else if lowercased.contains("grok-2") || lowercased == "grok-2" || lowercased == "grok2" {
-            return .grok(.grok2_1212)
+            return .grok(.grok21212)
 
             // Ollama Models
         } else if lowercased.contains("llama3.3") || lowercased == "llama3.3" {
-            return .ollama(.llama3_3)
+            return .ollama(.llama33)
         } else if lowercased.contains("llama3.2") || lowercased == "llama3.2" {
-            return .ollama(.llama3_2)
+            return .ollama(.llama32)
         } else if lowercased.contains("llama3.1") || lowercased == "llama3.1" {
-            return .ollama(.llama3_1)
+            return .ollama(.llama31)
 
             // Fallback - try to infer provider from common patterns
         } else if lowercased.contains("gpt") || lowercased.contains("o3") || lowercased.contains("o4") {
@@ -644,7 +644,7 @@ struct AgentCommand: AsyncParsableCommand {
         } else if lowercased.contains("grok") {
             return .grok(.grok4) // Default Grok model
         } else if lowercased.contains("llama") {
-            return .ollama(.llama3_3) // Default Ollama model
+            return .ollama(.llama33) // Default Ollama model
         }
 
         return nil
@@ -788,14 +788,14 @@ struct AgentCommand: AsyncParsableCommand {
                 "success": true,
                 "result": [
                     "content": result.content,
-                    "sessionId": result.sessionId,
+                    "sessionId": result.sessionId as Any,
                     "toolCalls": result.messages.flatMap { message in
                         message.content.compactMap { content in
                             if case let .toolCall(toolCall) = content {
                                 return [
                                     "id": toolCall.id,
                                     "name": toolCall.name,
-                                    "arguments": toolCall.arguments
+                                    "arguments": String(describing: toolCall.arguments)
                                 ]
                             }
                             return nil

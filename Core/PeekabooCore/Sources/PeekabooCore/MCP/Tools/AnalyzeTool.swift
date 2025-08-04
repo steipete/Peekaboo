@@ -216,9 +216,9 @@ public struct AnalyzeTool: MCPTool {
             if lowercased.contains("opus") {
                 return .anthropic(.opus4)
             } else if lowercased.contains("sonnet") {
-                return .anthropic(.sonnet3_5)
+                return .anthropic(.sonnet35)
             } else if lowercased.contains("haiku") {
-                return .anthropic(.haiku3_5)
+                return .anthropic(.haiku35)
             } else {
                 return .anthropic(.opus4) // Default Claude
             }
@@ -233,7 +233,7 @@ public struct AnalyzeTool: MCPTool {
             } else if lowercased.contains("4o") {
                 return .openai(.gpt4o)
             } else if lowercased.contains("gpt-4.1") {
-                return .openai(.gpt4_1)
+                return .openai(.gpt41)
             } else {
                 return .openai(.gpt4o) // Default GPT
             }
@@ -249,11 +249,11 @@ public struct AnalyzeTool: MCPTool {
             if lowercased.contains("llava") {
                 return .ollama(.llava)
             } else if lowercased.contains("llama3.3") {
-                return .ollama(.llama3_3)
+                return .ollama(.llama33)
             } else if lowercased.contains("mistral") {
                 return .ollama(.mistralNemo)
             } else {
-                return .ollama(.llama3_3) // Default Ollama
+                return .ollama(.llama33) // Default Ollama
             }
         }
 
