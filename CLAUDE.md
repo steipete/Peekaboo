@@ -268,8 +268,7 @@ Error: [specific error summary]
 **Your response should be:**
 1. **Immediately run `npm run build:swift`** - don't check logs or status
 2. **Fix the compilation errors** shown in the output
-3. **Signal recovery**: After successful build, run `./scripts/poltergeist/poltergeist-signal-recovery.sh`
-4. **Continue with your task** - the wrapper will now work correctly
+3. **Continue with your task** - the wrapper will now work correctly
 
 **Why this works:**
 - Exit code 42 specifically indicates Poltergeist build failure
@@ -427,7 +426,7 @@ Also available: `./scripts/playground-log.sh` for quick Playground-only logs.
 ## Agent System and Tool Prompts
 
 ### System Prompt
-The agent system prompt is defined in `/Core/PeekabooCore/Sources/PeekabooCore/Services/AgentService/PeekabooAgentService.swift` in the `generateSystemPrompt()` method (around line 875). This prompt contains:
+The agent system prompt is defined in `/Core/PeekabooCore/Sources/PeekabooCore/Services/Agent/PeekabooAgentService.swift` in the `generateSystemPrompt()` method (around line 875). This prompt contains:
 - Communication style requirements
 - Task completion guidelines
 - Window management strategies
@@ -474,70 +473,3 @@ if let appDelegate = NSApp.delegate as? AppDelegate {
 2. Pass the AppDelegate through environment values
 3. Use shared singleton patterns for app-wide services
 4. Store references in accessible places during initialization
-
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
-NEVER use AnyCodable anywhere in the codebase. We are actively removing all usage of AnyCodable. If you encounter a need for type-erased encoding/decoding, create proper typed structs instead. This is a critical architectural decision - AnyCodable leads to type-unsafe code and we've spent significant effort removing it.
-Stay professional in code comments - avoid casual phrases like "FIXED VERSION" or "NEW AND IMPROVED". Keep comments technical and descriptive.
-NEVER create duplicate files with suffixes like "Fixed", "Enhanced", "New", etc. Always work on the existing files. If a file needs fixes, fix it in place. Creating duplicates creates confusion and maintenance burden.
-
-## Playground Testing Methodology
-
-When asked to test CLI tools with the Playground app, follow the comprehensive testing methodology documented in `/docs/playground-testing.md`. Key points:
-
-1. **Systematic Testing**: Test EVERY command exhaustively
-2. **Documentation First**: Always read `--help` and source code
-3. **Log Monitoring**: Check playground logs after each command
-4. **Bug Tracking**: Document all issues in `Apps/Playground/PLAYGROUND_TEST.md`
-5. **Fix and Verify**: Apply fixes and retest until working
-
-The Playground app is specifically designed for testing Peekaboo's automation capabilities with various UI elements and logging to verify command execution.
-
-## Agent Log Debug Mode
-
-When the user types "agent log debug", analyze Peekaboo CLI logs to identify bugs and improvement opportunities. The goal is to make Peekaboo more agent-friendly.
-
-**What to Look For:**
-
-1. **Common Agent Mistakes**:
-   - Missing required parameters or incorrect parameter usage
-   - Misunderstanding of command syntax or options
-   - Attempting unsupported operations
-   - Confusion about tool capabilities or limitations
-
-2. **Actual Bugs**:
-   - Crashes, errors, or unexpected behavior
-   - Missing functionality that should exist
-   - Performance issues or timeouts
-   - Inconsistent behavior across similar commands
-
-3. **UX Improvements**:
-   - Unclear error messages that could be more helpful
-   - Missing hints or suggestions when agents make mistakes
-   - Opportunities to add guardrails or validation
-   - Places where agents get stuck in loops or retry patterns
-
-4. **Missing Features**:
-   - Common operations that require multiple steps but could be simplified
-   - Patterns where agents work around limitations
-   - Frequently attempted unsupported commands
-
-**How to Analyze:**
-
-1. Read through the entire log systematically
-2. Identify patterns of confusion or repeated attempts
-3. Note any error messages that could be clearer
-4. Look for places where the agent had to guess or try multiple approaches
-5. Consider what helpful messages or features would have prevented issues
-
-**Output Format:**
-
-- List specific bugs found with reproduction steps
-- Suggest concrete improvements to error messages
-- Recommend new features or commands based on agent behavior
-- Propose additions to system/tool prompts to guide future agents
-- Prioritize fixes by impact on agent experience
-
