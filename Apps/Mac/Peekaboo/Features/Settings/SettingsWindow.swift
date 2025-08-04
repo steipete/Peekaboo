@@ -368,84 +368,53 @@ struct VisualizerSettingsTabView: View {
 
 struct ShortcutsSettingsView: View {
     @Environment(PeekabooSettings.self) private var settings
-    @State private var recordingShortcut = false
 
     var body: some View {
         Form {
             Section("Global Shortcuts") {
-                HStack {
-                    Text("Toggle Peekaboo")
-                        .frame(width: 120, alignment: .trailing)
-
-                    Text(self.settings.globalShortcut)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.secondary.opacity(0.1))
-                        .cornerRadius(6)
-
-                    Button(self.recordingShortcut ? "Recording..." : "Record") {
-                        self.recordingShortcut = true
-
-                        // Set up event monitor for shortcut recording
-                        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                            guard self.recordingShortcut else { return event }
-
-                            // Capture the key combination
-                            let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
-                            if !modifiers.isEmpty, event.charactersIgnoringModifiers != nil {
-                                // Convert NSEvent.ModifierFlags to string representation
-                                var shortcutParts: [String] = []
-                                if modifiers.contains(.command) { shortcutParts.append("⌘") }
-                                if modifiers.contains(.control) { shortcutParts.append("⌃") }
-                                if modifiers.contains(.option) { shortcutParts.append("⌥") }
-                                if modifiers.contains(.shift) { shortcutParts.append("⇧") }
-                                shortcutParts.append(event.charactersIgnoringModifiers!.uppercased())
-
-                                // Update the shortcut in settings
-                                self.settings.globalShortcut = shortcutParts.joined()
-
-                                self.recordingShortcut = false
-                                return nil // Consume the event
-                            }
-
-                            return event
-                        }
-
-                        // Stop recording after 5 seconds
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                            self.recordingShortcut = false
-                        }
-                    }
-                    .disabled(self.recordingShortcut)
-                }
-
-                Text("Default shortcuts:")
+                Text("Keyboard shortcuts work globally - from any app and are currently fixed to the defaults below.")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .padding(.top, 8)
+                    .padding(.bottom, 8)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    self.shortcutInfo("⌘⇧Space", "Toggle Peekaboo window")
-                    self.shortcutInfo("⌘⇧P", "Open Peekaboo")
+                VStack(alignment: .leading, spacing: 8) {
+                    self.shortcutInfo("⌘⇧Space", "Toggle Popover", "Opens the AI assistant interface")
+                    self.shortcutInfo("⌘⇧P", "Show Main Window", "Opens the sessions management window")
+                    self.shortcutInfo("⌘⇧I", "Show Inspector", "Opens the debugging interface")
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
+                
+                Text("Note: These shortcuts are currently fixed but work globally from any application.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .italic()
+                    .padding(.top, 12)
             }
         }
         .formStyle(.grouped)
         .padding()
     }
 
-    private func shortcutInfo(_ keys: String, _ description: String) -> some View {
-        HStack(spacing: 8) {
-            Text(keys)
-                .font(.system(.caption, design: .monospaced))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color.secondary.opacity(0.1))
-                .cornerRadius(4)
+    private func shortcutInfo(_ keys: String, _ title: String, _ description: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 8) {
+                Text(keys)
+                    .font(.system(.caption, design: .monospaced))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.secondary.opacity(0.1))
+                    .cornerRadius(4)
 
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.medium)
+            }
+            
             Text(description)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .padding(.leading, 4)
         }
     }
 }

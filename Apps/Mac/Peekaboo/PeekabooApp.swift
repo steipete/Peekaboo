@@ -1,6 +1,7 @@
 import AppKit
 import os.log
 import SwiftUI
+import Carbon
 
 @main
 struct PeekabooApp: App {
@@ -255,6 +256,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showInspector() {
+        self.logger.info("showInspector called")
+        
+        // Mark that Inspector has been requested
+        UserDefaults.standard.set(true, forKey: "inspectorWindowRequested")
+        
+        // Open the inspector window
         self.openWindow(id: "inspector")
     }
 
@@ -299,20 +306,65 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Keyboard Shortcuts
 
     private func setupKeyboardShortcuts() {
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            // Cmd+Shift+Space - Toggle popover
-            if event.modifierFlags.contains([.command, .shift]), event.keyCode == 49 {
+        // Set up global keyboard shortcuts using Carbon HotKey API
+        // This provides true global shortcuts that work from any app
+        
+        // Toggle popover shortcut (⌘⇧Space by default)
+        self.registerGlobalShortcut(
+            keyCode: UInt32(kVK_Space),
+            modifiers: UInt32(cmdKey | shiftKey),
+            id: 1) { [weak self] in
+                self?.logger.info("Global shortcut triggered: togglePopover")
                 self?.statusBarController?.togglePopover()
-                return nil
             }
-
-            // Cmd+Shift+P - Show main window
-            if event.modifierFlags.contains([.command, .shift]), event.keyCode == 35 {
+        
+        // Show main window shortcut (⌘⇧P by default)
+        self.registerGlobalShortcut(
+            keyCode: UInt32(kVK_ANSI_P),
+            modifiers: UInt32(cmdKey | shiftKey),
+            id: 2) { [weak self] in
+                self?.logger.info("Global shortcut triggered: showMainWindow")  
                 self?.showMainWindow()
-                return nil
             }
-
-            return event
+        
+        // Show inspector shortcut (⌘⇧I by default)
+        self.registerGlobalShortcut(
+            keyCode: UInt32(kVK_ANSI_I),
+            modifiers: UInt32(cmdKey | shiftKey),
+            id: 3) { [weak self] in
+                self?.logger.info("Global shortcut triggered: showInspector")
+                self?.showInspector()
+            }
+    }
+    
+    private func registerGlobalShortcut(keyCode: UInt32, modifiers: UInt32, id: UInt32, handler: @escaping () -> Void) {
+        var hotKeyRef: EventHotKeyRef?
+        var gMyHotKeyID = EventHotKeyID(signature: fourCharCodeFrom("PEEK"), id: id)
+        
+        let status = RegisterEventHotKey(
+            keyCode,
+            modifiers,
+            gMyHotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &hotKeyRef)
+        
+        if status != noErr {
+            self.logger.error("Failed to register global shortcut \(id): \(status)")
+            return
+        }
+        
+        self.logger.info("Successfully registered global shortcut \(id)")
+        
+        // Store the handler for later use
+        GlobalShortcutManager.shared.setHandler(for: id, handler: handler)
+    }
+    
+    private func fourCharCodeFrom(_ string: String) -> FourCharCode {
+        let utf8 = Array(string.utf8)
+        let paddedBytes = utf8.prefix(4) + Array(repeating: UInt8(0), count: max(0, 4 - utf8.count))
+        return paddedBytes.withUnsafeBytes { ptr in
+            ptr.load(as: UInt32.self).bigEndian
         }
     }
 

@@ -1,11 +1,12 @@
 import AVFoundation
 import Foundation
 import Observation
+import TachikomaCore
 
 /// Records audio and sends it to AI models for transcription.
 ///
 /// `AudioRecorder` provides a modern alternative to system speech recognition by
-/// recording audio and sending it directly to AI models (like OpenAI Whisper) for
+/// recording audio and sending it directly to AI models via Tachikoma for
 /// superior transcription quality.
 @Observable
 @MainActor
@@ -115,69 +116,18 @@ final class AudioRecorder: NSObject {
                 throw AudioError.noAPIKey
             }
 
-            // Read audio file
-            let audioData = try Data(contentsOf: url)
+            // Create AudioData from the recorded file
+            let audioData = try AudioData(contentsOf: url)
 
-            // Create multipart form data request
-            var request = URLRequest(url: URL(string: "https://api.openai.com/v1/audio/transcriptions")!)
-            request.httpMethod = "POST"
-            request.setValue("Bearer \(self.settings.openAIAPIKey)", forHTTPHeaderField: "Authorization")
+            // Use Tachikoma's transcribe function with OpenAI Whisper
+            let transcriptionResult = try await transcribe(
+                audioData,
+                using: .openai(.whisper1),
+                language: "en"
+            )
 
-            let boundary = UUID().uuidString
-            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-            // Build multipart body
-            var body = Data()
-
-            // Add model parameter
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
-            body.append("whisper-1\r\n".data(using: .utf8)!)
-
-            // Add audio file
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\n".data(using: .utf8)!)
-            body.append("Content-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
-            body.append(audioData)
-            body.append("\r\n".data(using: .utf8)!)
-
-            // Add language hint for better accuracy
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"language\"\r\n\r\n".data(using: .utf8)!)
-            body.append("en\r\n".data(using: .utf8)!)
-
-            // Close boundary
-            body.append("--\(boundary)--\r\n".data(using: .utf8)!)
-
-            request.httpBody = body
-
-            // Send request
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            // Check response
-            if let httpResponse = response as? HTTPURLResponse,
-               httpResponse.statusCode == 200
-            {
-                // Parse response
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let text = json["text"] as? String
-                {
-                    await MainActor.run {
-                        self.transcript = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                    }
-                } else {
-                    throw AudioError.transcriptionFailed
-                }
-            } else {
-                // Try to parse error
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let error = json["error"] as? [String: Any],
-                   let message = error["message"] as? String
-                {
-                    throw AudioError.apiError(message)
-                } else {
-                    throw AudioError.transcriptionFailed
-                }
+            await MainActor.run {
+                self.transcript = transcriptionResult.text.trimmingCharacters(in: .whitespacesAndNewlines)
             }
 
             // Clean up audio file

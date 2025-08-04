@@ -118,9 +118,8 @@ final class PeekabooSettings {
         }
     }
 
-    var globalShortcut: String = "⌘⇧Space" {
-        didSet { self.save() }
-    }
+    // Note: Global shortcuts are now managed by KeyboardShortcuts library
+    // No need for manual storage - KeyboardShortcuts handles persistence automatically
 
     // Mac-specific UI Features
     var voiceActivationEnabled: Bool = true {
@@ -354,7 +353,7 @@ final class PeekabooSettings {
         // Check actual launch at login status
         self.launchAtLogin = SMAppService.mainApp.status == .enabled
         self.userDefaults.set(self.launchAtLogin, forKey: "\(self.keyPrefix)launchAtLogin")
-        self.globalShortcut = self.userDefaults.string(forKey: "\(self.keyPrefix)globalShortcut") ?? "⌘⇧Space"
+        // globalShortcut is now managed by KeyboardShortcuts library - no need to load from UserDefaults
 
         // Default voiceActivationEnabled to true if not previously set
         if self.userDefaults.object(forKey: "\(self.keyPrefix)voiceActivationEnabled") == nil {
@@ -442,7 +441,7 @@ final class PeekabooSettings {
         self.userDefaults.set(self.alwaysOnTop, forKey: "\(self.keyPrefix)alwaysOnTop")
         self.userDefaults.set(self.showInDock, forKey: "\(self.keyPrefix)showInDock")
         self.userDefaults.set(self.launchAtLogin, forKey: "\(self.keyPrefix)launchAtLogin")
-        self.userDefaults.set(self.globalShortcut, forKey: "\(self.keyPrefix)globalShortcut")
+        // globalShortcut is now managed by KeyboardShortcuts library - no need to save to UserDefaults
 
         self.userDefaults.set(self.voiceActivationEnabled, forKey: "\(self.keyPrefix)voiceActivationEnabled")
         self.userDefaults.set(self.hapticFeedbackEnabled, forKey: "\(self.keyPrefix)hapticFeedbackEnabled")
