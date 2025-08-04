@@ -356,20 +356,14 @@ struct AISettingsView: View {
 
 struct VisualizerSettingsTabView: View {
     @Environment(PeekabooSettings.self) private var settings
-    @EnvironmentObject private var visualizerCoordinator: VisualizerCoordinator
+    @Environment(VisualizerCoordinator.self) private var visualizerCoordinator
 
     var body: some View {
         VisualizerSettingsView(settings: self.settings)
-            .environmentObject(self.visualizerCoordinator)
+            .environment(self.visualizerCoordinator)
     }
 }
 
 // MARK: - Shortcuts Settings (Wrapper)
 
-struct ShortcutsSettingsView: View {
-    @Environment(PeekabooSettings.self) private var settings
-
-    var body: some View {
-        ShortcutSettingsView(settings: self.settings)
-    }
-}
+// ShortcutsSettingsView is now in its own file

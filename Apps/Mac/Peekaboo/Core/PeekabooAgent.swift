@@ -296,7 +296,7 @@ final class PeekabooAgent {
                 {
                     self.sessionStore.sessions[index].modelName = self.settings.selectedModel
                     Task {
-                        self.sessionStore.saveSessions()
+                        try? await self.sessionStore.saveSessions()
                     }
                 }
             }
@@ -525,7 +525,7 @@ final class PeekabooAgent {
                         self.sessionStore.sessions[sessionIndex].messages[toolMessageIndex].toolCalls[toolCallIndex]
                             .result = result
                         Task {
-                            self.sessionStore.saveSessions()
+                            try? await self.sessionStore.saveSessions()
                         }
                     }
                 }

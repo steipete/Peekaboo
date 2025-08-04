@@ -115,7 +115,7 @@ struct PeekabooApp: App {
             SettingsWindow()
                 .environment(self.settings)
                 .environment(self.permissions)
-                .environmentObject(self.appDelegate.visualizerCoordinator ?? VisualizerCoordinator())
+                .environment(self.appDelegate.visualizerCoordinator ?? VisualizerCoordinator())
                 .onAppear {
                     // Ensure visualizer coordinator is available
                     if self.appDelegate.visualizerCoordinator == nil {

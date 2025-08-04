@@ -60,7 +60,7 @@ struct RecentSessionsView: View {
                             withAnimation {
                                 sessionStore.sessions.removeAll { $0.id == session.id }
                                 Task {
-                                    sessionStore.saveSessions()
+                                    try? await sessionStore.saveSessions()
                                 }
                             }
                         })
