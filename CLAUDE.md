@@ -53,13 +53,13 @@ To test this project interactive we can use:
 **IMPORTANT: AI AGENTS SHOULD NEVER MANUALLY BUILD**
 
 When working with the Peekaboo CLI:
-1. **ALWAYS** use pgrun: `pgrun peekaboo`
+1. **ALWAYS** use polter: `polter peekaboo`
 2. **NEVER** run `npm run build:swift` or other build commands
 3. **NEVER** use the raw `./peekaboo` binary directly
 
-**Why this matters**: pgrun ensures you always run fresh binaries by checking build status and waiting for Poltergeist to rebuild automatically. Manual rebuilding should only be done when troubleshooting Swift Package Manager issues (see troubleshooting section below).
+**Why this matters**: polter ensures you always run fresh binaries by checking build status and waiting for Poltergeist to rebuild automatically. Manual rebuilding should only be done when troubleshooting Swift Package Manager issues (see troubleshooting section below).
 
-pgrun automatically:
+polter automatically:
 - Detects if the binary is stale
 - Waits for Poltergeist to finish rebuilding if needed
 - Runs your command with the fresh binary
@@ -67,14 +67,14 @@ pgrun automatically:
 
 Example:
 ```bash
-# Install pgrun globally (one time)
+# Install polter globally (one time)
 npm install -g @steipete/poltergeist
 
-# Use pgrun directly
-pgrun peekaboo agent "do something"
+# Use polter directly
+polter peekaboo agent "do something"
 
 # Create convenient alias
-alias pb='pgrun peekaboo'
+alias pb='polter peekaboo'
 pb agent "do something"
 
 # WRONG: ./peekaboo agent "do something"
@@ -82,7 +82,7 @@ pb agent "do something"
 # LEGACY: ./scripts/peekaboo-wait.sh agent "do something"  # Still works but not needed
 ```
 
-If Poltergeist isn't running, pgrun will warn but still execute with stale binary:
+If Poltergeist isn't running, polter will warn but still execute with stale binary:
 ```bash
 npm run poltergeist:haunt  # Start Poltergeist for fresh builds
 ```
@@ -117,11 +117,11 @@ npm run poltergeist:haunt  # Start Poltergeist for fresh builds
    # Poltergeist handles ALL rebuilding automatically!
    ```
 
-3. **ALWAYS use pgrun**:
+3. **ALWAYS use polter**:
    ```bash
    # WRONG: ./peekaboo command
    # WRONG: ./Apps/CLI/.build/debug/peekaboo command
-   # RIGHT: pgrun peekaboo command
+   # RIGHT: polter peekaboo command
    # LEGACY: ./scripts/peekaboo-wait.sh command  # Still works but not needed
    ```
 
@@ -135,7 +135,7 @@ npm run poltergeist:haunt  # Start Poltergeist for fresh builds
 - All `Package.swift` files
 - Excludes auto-generated `Version.swift` to prevent infinite loops
 
-**pgrun Smart Execution**:
+**polter Smart Execution**:
 - Checks if binary is fresh via Poltergeist state management
 - If stale, waits for Poltergeist to finish rebuilding (configurable timeout)
 - Runs the CLI with your command once ready
@@ -157,21 +157,21 @@ npm run poltergeist:haunt  # Start Poltergeist for fresh builds
 
 ### Debugging
 
-For pgrun debugging:
+For polter debugging:
 ```bash
-pgrun peekaboo --verbose list apps
+polter peekaboo --verbose list apps
 ```
 
 ### Summary
 
-With Poltergeist running and using pgrun, you NEVER need to:
+With Poltergeist running and using polter, you NEVER need to:
 - Check if the CLI needs rebuilding
 - Run any build commands manually
 - Worry about "build staleness" errors
 - Wait for builds to complete
 - Use wrapper scripts or custom build logic
 
-Just use `pgrun peekaboo` for all CLI commands and let Poltergeist handle the rest!
+Just use `polter peekaboo` for all CLI commands and let Poltergeist handle the rest!
 
 **BUT ALWAYS**: Check the build timestamp in the CLI output to ensure you're running the latest version!
 
