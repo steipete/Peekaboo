@@ -127,7 +127,7 @@ struct SessionSidebar: View {
 
         self.sessionStore.sessions.removeAll { $0.id == session.id }
         Task {
-            self.sessionStore.saveSessions()
+            try? await self.sessionStore.saveSessions()
         }
 
         if self.selectedSessionId == session.id {
@@ -142,7 +142,7 @@ struct SessionSidebar: View {
 
         self.sessionStore.sessions.insert(newSession, at: 0)
         Task {
-            self.sessionStore.saveSessions()
+            try? await self.sessionStore.saveSessions()
         }
 
         self.selectedSessionId = newSession.id
