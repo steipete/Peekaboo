@@ -1,5 +1,5 @@
 import Foundation
-import TachikomaCore
+import Tachikoma
 
 /// Protocol defining the agent service interface
 @available(macOS 14.0, *)

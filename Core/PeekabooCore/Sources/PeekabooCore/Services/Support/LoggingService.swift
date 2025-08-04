@@ -4,7 +4,7 @@ import os
 /// Default implementation of LoggingServiceProtocol using Apple's unified logging
 public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
     private let subsystem: String
-    private var loggers: [String: Logger]
+    private var loggers: [String: os.Logger]
     private let queue = DispatchQueue(label: "boo.peekaboo.logging", attributes: .concurrent)
     private var performanceMeasurements = [String: (startTime: Date, operation: String, correlationId: String?)]()
 
@@ -36,18 +36,18 @@ public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
     }
 
     /// Get or create a Logger for the specified category
-    private func logger(for category: String) -> Logger {
+    private func osLogger(category: String) -> os.Logger {
         self.queue.sync {
             if let logger = loggers[category] {
                 return logger
             }
-            let logger = Logger(subsystem: subsystem, category: category)
+            let logger = os.Logger(subsystem: subsystem, category: category)
             return logger
         }
     }
 
     /// Store a logger for reuse
-    private func storeLogger(_ logger: Logger, for category: String) {
+    private func storeLogger(_ logger: os.Logger, category: String) {
         self.queue.async(flags: .barrier) {
             self.loggers[category] = logger
         }
@@ -56,8 +56,8 @@ public final class LoggingService: LoggingServiceProtocol, @unchecked Sendable {
     public func log(_ entry: LogEntry) {
         guard entry.level >= self.minimumLogLevel else { return }
 
-        let logger = logger(for: entry.category)
-        self.storeLogger(logger, for: entry.category)
+        let logger = self.osLogger(category: entry.category)
+        self.storeLogger(logger, category: entry.category)
 
         // Convert metadata to structured format
         var logMessage = entry.message

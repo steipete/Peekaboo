@@ -25,7 +25,7 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "MCP", package: "swift-sdk"),
                 .product(name: "AXorcist", package: "AXorcist"),
-                .product(name: "TachikomaCore", package: "Tachikoma"),
+                .product(name: "Tachikoma", package: "Tachikoma"),
             ],
             exclude: [
                 "README.md",

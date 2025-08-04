@@ -3,7 +3,7 @@ import AXorcist
 import CoreGraphics
 import Foundation
 import OSLog
-import TachikomaCore
+import Tachikoma
 
 // MARK: - Window Management Tools
 

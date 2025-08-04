@@ -1,5 +1,5 @@
 import Foundation
-import TachikomaCore
+import Tachikoma
 
 /// Extensions to convert UnifiedToolDefinition to agent tool formats
 @available(macOS 14.0, *)

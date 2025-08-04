@@ -13,6 +13,8 @@ public struct Configuration: Codable {
     public var agent: AgentConfig?
     public var visualizer: VisualizerConfig?
     public var customProviders: [String: CustomProvider]?
+    public var mcpClients: [String: MCPClientConfig]?
+    public var toolDisplay: ToolDisplayConfig?
 
     public init(
         aiProviders: AIProviderConfig? = nil,
@@ -20,7 +22,9 @@ public struct Configuration: Codable {
         logging: LoggingConfig? = nil,
         agent: AgentConfig? = nil,
         visualizer: VisualizerConfig? = nil,
-        customProviders: [String: CustomProvider]? = nil)
+        customProviders: [String: CustomProvider]? = nil,
+        mcpClients: [String: MCPClientConfig]? = nil,
+        toolDisplay: ToolDisplayConfig? = nil)
     {
         self.aiProviders = aiProviders
         self.defaults = defaults
@@ -28,6 +32,8 @@ public struct Configuration: Codable {
         self.agent = agent
         self.visualizer = visualizer
         self.customProviders = customProviders
+        self.mcpClients = mcpClients
+        self.toolDisplay = toolDisplay
     }
 
     /// Configuration for AI vision providers.
@@ -278,6 +284,61 @@ public struct Configuration: Codable {
             self.supportsTools = supportsTools
             self.supportsVision = supportsVision
             self.parameters = parameters
+        }
+    }
+
+    /// Configuration for MCP client connections to external servers.
+    ///
+    /// Defines connection parameters for external MCP servers, including transport
+    /// type, command execution, environment variables, and connection settings.
+    public struct MCPClientConfig: Codable {
+        public var transport: String
+        public var command: String
+        public var args: [String]
+        public var env: [String: String]
+        public var enabled: Bool
+        public var timeout: TimeInterval
+        public var autoReconnect: Bool
+        public var description: String?
+
+        public init(
+            transport: String = "stdio",
+            command: String,
+            args: [String] = [],
+            env: [String: String] = [:],
+            enabled: Bool = true,
+            timeout: TimeInterval = 10.0,
+            autoReconnect: Bool = true,
+            description: String? = nil
+        ) {
+            self.transport = transport
+            self.command = command
+            self.args = args
+            self.env = env
+            self.enabled = enabled
+            self.timeout = timeout
+            self.autoReconnect = autoReconnect
+            self.description = description
+        }
+    }
+
+    /// Configuration for tool display and organization.
+    ///
+    /// Controls how tools are shown in listings, including whether to show
+    /// external MCP tools by default and how to organize them.
+    public struct ToolDisplayConfig: Codable {
+        public var showMcpToolsByDefault: Bool
+        public var useServerPrefixes: Bool
+        public var groupByServer: Bool
+
+        public init(
+            showMcpToolsByDefault: Bool = true,
+            useServerPrefixes: Bool = true,
+            groupByServer: Bool = false
+        ) {
+            self.showMcpToolsByDefault = showMcpToolsByDefault
+            self.useServerPrefixes = useServerPrefixes
+            self.groupByServer = groupByServer
         }
     }
 }

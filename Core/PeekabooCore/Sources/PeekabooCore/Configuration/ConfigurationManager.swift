@@ -1,5 +1,5 @@
 import Foundation
-import TachikomaCore
+import Tachikoma
 
 /// Manages configuration loading and precedence resolution.
 ///

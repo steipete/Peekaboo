@@ -1,5 +1,5 @@
 import Foundation
-import TachikomaCore
+import Tachikoma
 
 // MARK: - PeekabooToolBridge
 
@@ -37,7 +37,7 @@ public class PeekabooToolBridge {
             name: nativeTool.name,
             description: nativeTool.description,
             parameters: convertedParameters,
-            execute: { [weak self] tachikomaArgs in
+            execute: { [weak self] (tachikomaArgs: ToolArguments) in
                 guard let self = self else {
                     throw TachikomaError.apiError("PeekabooToolBridge deallocated")
                 }
@@ -57,24 +57,24 @@ public class PeekabooToolBridge {
     // MARK: - Parameter Conversion
     
     /// Convert Peekaboo ToolParameters to TachikomaCore ToolParameters
-    private func convertParameters(_ peekabooParams: ToolParameters) -> TachikomaCore.ToolParameters {
-        var convertedProperties: [String: TachikomaCore.ToolParameterProperty] = [:]
+    private func convertParameters(_ peekabooParams: ToolParameters) -> ToolParameters {
+        var convertedProperties: [String: ToolParameterProperty] = [:]
         
         // Convert each parameter property
         for (key, property) in peekabooParams.properties {
             convertedProperties[key] = convertParameterProperty(property)
         }
         
-        return TachikomaCore.ToolParameters(
+        return ToolParameters(
             properties: convertedProperties,
             required: peekabooParams.required
         )
     }
     
     /// Convert individual parameter property  
-    private func convertParameterProperty(_ property: ToolParameterProperty) -> TachikomaCore.ToolParameterProperty {
+    private func convertParameterProperty(_ property: ToolParameterProperty) -> ToolParameterProperty {
         // Map Peekaboo parameter types to TachikomaCore types
-        let convertedType: TachikomaCore.ToolParameterProperty.ParameterType
+        let convertedType: ToolParameterProperty.ParameterType
         switch property.type {
         case .string:
             convertedType = .string
@@ -86,17 +86,16 @@ public class PeekabooToolBridge {
             convertedType = .array
         case .object:
             convertedType = .object
-        case .enumeration:
-            convertedType = .string // Enums become strings with enum values
+        case .number:
+            convertedType = .number
+        case .null:
+            convertedType = .null
         }
         
-        // Handle enum values from Peekaboo's options field
-        var enumValues: [String]? = nil
-        if let options = property.options {
-            enumValues = options
-        }
+        // Get enum values directly from TachikomaCore property
+        let enumValues = property.enumValues
         
-        return TachikomaCore.ToolParameterProperty(
+        return ToolParameterProperty(
             type: convertedType,
             description: property.description,
             enumValues: enumValues,

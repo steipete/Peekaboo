@@ -114,6 +114,7 @@ struct Peekaboo: AsyncParsableCommand {
             // Core commands
             ImageCommand.self,
             ListCommand.self,
+            ToolsCommand.self,
             ConfigCommand.self,
             PermissionsCommand.self,
             LearnCommand.self,

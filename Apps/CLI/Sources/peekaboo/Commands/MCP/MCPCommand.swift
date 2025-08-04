@@ -21,8 +21,14 @@ struct MCPCommand: AsyncParsableCommand {
         """,
         subcommands: [
             Serve.self,
-            Call.self,
             List.self,
+            Add.self,
+            Remove.self,
+            Test.self,
+            Info.self,
+            Enable.self,
+            Disable.self,
+            Call.self,
             Inspect.self,
         ]
     )
@@ -101,16 +107,425 @@ extension MCPCommand {
         }
     }
 
-    /// List available MCP servers
+    /// List available MCP servers with health checking
     struct List: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
-            abstract: "List available MCP servers",
-            discussion: "Shows configured MCP servers that can be connected to."
+            abstract: "List configured MCP servers with health status",
+            discussion: """
+            Shows all configured external MCP servers along with their current health status.
+            Health checking verifies connectivity and counts available tools.
+            
+            EXAMPLE OUTPUT:
+              Checking MCP server health...
+              
+              github: npx -y @modelcontextprotocol/server-github - ✓ Connected (12 tools)
+              files: npx -y @modelcontextprotocol/server-filesystem - ✗ Failed to connect
+            """
         )
+        
+        @Flag(name: .long, help: "Output in JSON format")
+        var jsonOutput = false
+        
+        @Flag(name: .long, help: "Skip health checks (faster)")
+        var skipHealthCheck = false
 
         func run() async throws {
-            Logger.shared.error("MCP server listing not yet implemented")
-            throw ExitCode.failure
+            let clientManager = MCPClientManager.shared
+            let serverNames = await clientManager.getServerNames()
+            
+            if serverNames.isEmpty {
+                if jsonOutput {
+                    let output = ["servers": [String: Any](), "summary": ["total": 0, "healthy": 0]]
+                    let jsonData = try JSONSerialization.data(withJSONObject: output, options: .prettyPrinted)
+                    if let jsonString = String(data: jsonData, encoding: .utf8) {
+                        print(jsonString)
+                    }
+                } else {
+                    print("No MCP servers configured.")
+                    print("\nTo add a server:")
+                    print("  peekaboo mcp add <name> -- <command> [args...]")
+                }
+                return
+            }
+            
+            if !skipHealthCheck && !jsonOutput {
+                print("Checking MCP server health...")
+                print()
+            }
+            
+            // Get health status for all servers
+            let healthResults = skipHealthCheck ? [:] : await clientManager.checkAllServersHealth()
+            
+            if jsonOutput {
+                try await outputJSON(serverNames: serverNames, healthResults: healthResults, clientManager: clientManager)
+            } else {
+                await outputFormatted(serverNames: serverNames, healthResults: healthResults, clientManager: clientManager)
+            }
+        }
+        
+        private func outputJSON(serverNames: [String], healthResults: [String: MCPServerHealth], clientManager: MCPClientManager) async throws {
+            var servers: [String: Any] = [:]
+            var healthyCount = 0
+            
+            for serverName in serverNames {
+                let serverInfo = await clientManager.getServerInfo(name: serverName)
+                let health = healthResults[serverName] ?? .unknown
+                
+                servers[serverName] = [
+                    "command": serverInfo?.config.command ?? "",
+                    "args": serverInfo?.config.args ?? [],
+                    "enabled": serverInfo?.config.enabled ?? false,
+                    "health": [
+                        "status": health.isHealthy ? "connected" : "disconnected",
+                        "details": health.statusText
+                    ]
+                ]
+                
+                if health.isHealthy {
+                    healthyCount += 1
+                }
+            }
+            
+            let output: [String: Any] = [
+                "servers": servers,
+                "summary": [
+                    "total": serverNames.count,
+                    "healthy": healthyCount,
+                    "configured": serverNames.count
+                ]
+            ]
+            
+            let jsonData = try JSONSerialization.data(withJSONObject: output, options: .prettyPrinted)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                print(jsonString)
+            }
+        }
+        
+        private func outputFormatted(serverNames: [String], healthResults: [String: MCPServerHealth], clientManager: MCPClientManager) async {
+            var healthyCount = 0
+            
+            for serverName in serverNames.sorted() {
+                let serverInfo = await clientManager.getServerInfo(name: serverName)
+                let health = healthResults[serverName] ?? .unknown
+                
+                if health.isHealthy {
+                    healthyCount += 1
+                }
+                
+                let command = serverInfo?.config.command ?? "unknown"
+                let args = serverInfo?.config.args ?? []
+                let fullCommand = ([command] + args).joined(separator: " ")
+                
+                let healthSymbol = health.symbol
+                let healthText = health.statusText
+                
+                print("\(serverName): \(fullCommand) - \(healthSymbol) \(healthText)")
+            }
+            
+            print()
+            print("Total: \(serverNames.count) servers configured, \(healthyCount) healthy")
+            
+            // Show tool count if we have external tools
+            let externalTools = await clientManager.getExternalTools()
+            let totalExternalTools = externalTools.values.reduce(0) { $0 + $1.count }
+            if totalExternalTools > 0 {
+                print("External tools available: \(totalExternalTools)")
+            }
+        }
+    }
+    
+    /// Add a new MCP server
+    struct Add: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "add",
+            abstract: "Add a new external MCP server",
+            discussion: """
+            Add a new external MCP server that Peekaboo can connect to and use tools from.
+            
+            EXAMPLES:
+              peekaboo mcp add github -- npx -y @modelcontextprotocol/server-github
+              peekaboo mcp add files -- npx -y @modelcontextprotocol/server-filesystem /Users/me/docs
+              peekaboo mcp add weather -e API_KEY=xyz123 -- /usr/local/bin/weather-server
+            """
+        )
+        
+        @Argument(help: "Name for the MCP server")
+        var name: String
+        
+        @Option(name: .shortAndLong, help: "Environment variables (key=value)")
+        var env: [String] = []
+        
+        @Option(help: "Connection timeout in seconds")
+        var timeout: Double = 10.0
+        
+        @Option(help: "Transport type (stdio, http, sse)")
+        var transport: String = "stdio"
+        
+        @Option(help: "Description of the server")
+        var description: String?
+        
+        @Flag(help: "Disable the server after adding")
+        var disabled = false
+        
+        @Argument(parsing: .remaining, help: "Command and arguments to run the MCP server")
+        var command: [String] = []
+        
+        func run() async throws {
+            guard !command.isEmpty else {
+                Logger.shared.error("Command is required. Use -- to separate command from options.")
+                throw ExitCode.failure
+            }
+            
+            let clientManager = MCPClientManager.shared
+            
+            // Parse environment variables
+            var envDict: [String: String] = [:]
+            for envVar in env {
+                let parts = envVar.split(separator: "=", maxSplits: 1)
+                if parts.count == 2 {
+                    envDict[String(parts[0])] = String(parts[1])
+                } else {
+                    Logger.shared.error("Invalid environment variable format: \(envVar). Use key=value")
+                    throw ExitCode.failure
+                }
+            }
+            
+            // Create server config
+            let config = Configuration.MCPClientConfig(
+                transport: transport,
+                command: command[0],
+                args: Array(command.dropFirst()),
+                env: envDict,
+                enabled: !disabled,
+                timeout: timeout,
+                autoReconnect: true,
+                description: description
+            )
+            
+            do {
+                try await clientManager.addServer(name: name, config: config)
+                print("✓ Added MCP server '\(name)'")
+                
+                // Test connection if enabled
+                if !disabled {
+                    print("Testing connection...")
+                    let health = await clientManager.checkServerHealth(name: name)
+                    print("\(health.symbol) \(health.statusText)")
+                }
+            } catch {
+                Logger.shared.error("Failed to add MCP server: \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        }
+    }
+    
+    /// Remove an MCP server
+    struct Remove: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "remove",
+            abstract: "Remove an external MCP server",
+            discussion: "Remove a configured MCP server and disconnect from it."
+        )
+        
+        @Argument(help: "Name of the MCP server to remove")
+        var name: String
+        
+        @Flag(help: "Skip confirmation prompt")
+        var force = false
+        
+        func run() async throws {
+            let clientManager = MCPClientManager.shared
+            
+            // Check if server exists
+            let serverInfo = await clientManager.getServerInfo(name: name)
+            guard serverInfo != nil else {
+                Logger.shared.error("MCP server '\(name)' not found")
+                throw ExitCode.failure
+            }
+            
+            // Confirm removal unless --force
+            if !force {
+                print("Remove MCP server '\(name)'? (y/N): ", terminator: "")
+                let response = readLine() ?? ""
+                if !["y", "yes"].contains(response.lowercased()) {
+                    print("Cancelled.")
+                    return
+                }
+            }
+            
+            do {
+                try await clientManager.removeServer(name: name)
+                print("✓ Removed MCP server '\(name)'")
+            } catch {
+                Logger.shared.error("Failed to remove MCP server: \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        }
+    }
+    
+    /// Test connection to an MCP server
+    struct Test: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "test",
+            abstract: "Test connection to an MCP server",
+            discussion: "Test connectivity and list available tools from an MCP server."
+        )
+        
+        @Argument(help: "Name of the MCP server to test")
+        var name: String
+        
+        @Option(help: "Connection timeout in seconds")
+        var timeout: Double = 10.0
+        
+        @Flag(help: "Show available tools")
+        var showTools = false
+        
+        func run() async throws {
+            let clientManager = MCPClientManager.shared
+            
+            print("Testing connection to MCP server '\(name)'...")
+            
+            let health = await clientManager.checkServerHealth(name: name, timeout: timeout)
+            
+            print("\(health.symbol) \(health.statusText)")
+            
+            if health.isHealthy && showTools {
+                let externalTools = await clientManager.getExternalTools()
+                if let serverTools = externalTools[name] {
+                    print("\nAvailable tools (\(serverTools.count)):")
+                    for tool in serverTools.sorted(by: { $0.name < $1.name }) {
+                        print("  \(tool.name) - \(tool.description ?? "No description")")
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Show detailed information about an MCP server
+    struct Info: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "info",
+            abstract: "Show detailed information about an MCP server",
+            discussion: "Display comprehensive information about a configured MCP server."
+        )
+        
+        @Argument(help: "Name of the MCP server")
+        var name: String
+        
+        @Flag(name: .long, help: "Output in JSON format")
+        var jsonOutput = false
+        
+        func run() async throws {
+            let clientManager = MCPClientManager.shared
+            
+            guard let serverInfo = await clientManager.getServerInfo(name: name) else {
+                Logger.shared.error("MCP server '\(name)' not found")
+                throw ExitCode.failure
+            }
+            
+            if jsonOutput {
+                let output: [String: Any] = [
+                    "name": serverInfo.name,
+                    "config": [
+                        "command": serverInfo.config.command,
+                        "args": serverInfo.config.args,
+                        "transport": serverInfo.config.transport,
+                        "enabled": serverInfo.config.enabled,
+                        "timeout": serverInfo.config.timeout,
+                        "autoReconnect": serverInfo.config.autoReconnect,
+                        "env": serverInfo.config.env
+                    ],
+                    "health": [
+                        "status": serverInfo.health.isHealthy ? "connected" : "disconnected",
+                        "details": serverInfo.health.statusText
+                    ],
+                    "toolCount": serverInfo.toolCount,
+                    "lastConnected": serverInfo.lastConnected?.timeIntervalSince1970
+                ]
+                
+                let jsonData = try JSONSerialization.data(withJSONObject: output, options: .prettyPrinted)
+                if let jsonString = String(data: jsonData, encoding: .utf8) {
+                    print(jsonString)
+                }
+            } else {
+                print("Server: \(serverInfo.name)")
+                print("Command: \(serverInfo.config.command) \(serverInfo.config.args.joined(separator: " "))")
+                print("Transport: \(serverInfo.config.transport)")
+                print("Enabled: \(serverInfo.config.enabled ? "Yes" : "No")")
+                print("Timeout: \(serverInfo.config.timeout)s")
+                print("Auto-reconnect: \(serverInfo.config.autoReconnect ? "Yes" : "No")")
+                
+                if !serverInfo.config.env.isEmpty {
+                    print("Environment:")
+                    for (key, value) in serverInfo.config.env.sorted(by: { $0.key < $1.key }) {
+                        print("  \(key)=\(value)")
+                    }
+                }
+                
+                if let description = serverInfo.config.description {
+                    print("Description: \(description)")
+                }
+                
+                print("\nHealth: \(serverInfo.health.symbol) \(serverInfo.health.statusText)")
+                print("Tools: \(serverInfo.toolCount)")
+                
+                if let lastConnected = serverInfo.lastConnected {
+                    print("Last connected: \(lastConnected)")
+                }
+            }
+        }
+    }
+    
+    /// Enable an MCP server
+    struct Enable: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "enable",
+            abstract: "Enable a disabled MCP server",
+            discussion: "Enable a previously disabled MCP server and attempt to connect."
+        )
+        
+        @Argument(help: "Name of the MCP server to enable")
+        var name: String
+        
+        func run() async throws {
+            let clientManager = MCPClientManager.shared
+            
+            do {
+                try await clientManager.enableServer(name: name)
+                print("✓ Enabled MCP server '\(name)'")
+                
+                // Test connection
+                print("Testing connection...")
+                let health = await clientManager.checkServerHealth(name: name)
+                print("\(health.symbol) \(health.statusText)")
+            } catch {
+                Logger.shared.error("Failed to enable MCP server: \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
+        }
+    }
+    
+    /// Disable an MCP server
+    struct Disable: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "disable",
+            abstract: "Disable an MCP server",
+            discussion: "Disable an MCP server without removing its configuration."
+        )
+        
+        @Argument(help: "Name of the MCP server to disable")
+        var name: String
+        
+        func run() async throws {
+            let clientManager = MCPClientManager.shared
+            
+            do {
+                try await clientManager.disableServer(name: name)
+                print("✓ Disabled MCP server '\(name)'")
+            } catch {
+                Logger.shared.error("Failed to disable MCP server: \(error.localizedDescription)")
+                throw ExitCode.failure
+            }
         }
     }
 

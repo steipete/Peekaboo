@@ -1,7 +1,7 @@
 import Foundation
 import MCP
 import os.log
-import TachikomaCore
+import Tachikoma
 
 /// MCP tool for analyzing images with AI
 public struct AnalyzeTool: MCPTool {

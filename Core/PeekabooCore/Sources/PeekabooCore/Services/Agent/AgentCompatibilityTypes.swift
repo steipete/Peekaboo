@@ -1,5 +1,5 @@
 import Foundation
-import TachikomaCore
+import Tachikoma
 
 // MARK: - Event Types
 

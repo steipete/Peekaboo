@@ -1,6 +1,6 @@
 import Foundation
 import os.log
-import TachikomaCore
+import Tachikoma
 
 /**
  * Central service registry and coordination hub for all Peekaboo functionality.

@@ -1,6 +1,6 @@
 import CoreGraphics
 import Foundation
-import TachikomaCore
+import Tachikoma
 
 // MARK: - Timeout State Actor
 

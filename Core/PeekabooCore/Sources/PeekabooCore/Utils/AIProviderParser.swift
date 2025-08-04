@@ -1,5 +1,5 @@
 import Foundation
-import TachikomaCore
+import Tachikoma
 
 /// Utility for parsing AI provider configurations from string format
 /// Migrated from legacy system to work with current Tachikoma architecture
