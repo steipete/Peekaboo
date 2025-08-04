@@ -11,8 +11,7 @@ import Foundation
 import os
 
 /// Client for communicating with the Peekaboo.app visualizer service
-@MainActor
-public final class VisualizationClient {
+public final class VisualizationClient: @unchecked Sendable {
     // MARK: - Properties
 
     /// Shared instance for convenience
@@ -76,27 +75,34 @@ public final class VisualizationClient {
         self.connection?.remoteObjectInterface = NSXPCInterface(with: VisualizerXPCProtocol.self)
 
         // Set up interruption handler
-        self.connection?.interruptionHandler = { [weak self] in
-            self?.handleConnectionInterruption()
+        self.connection?.interruptionHandler = {
+            DispatchQueue.main.async { [weak self] in
+                self?.handleConnectionInterruption()
+            }
         }
 
         // Set up invalidation handler
-        self.connection?.invalidationHandler = { [weak self] in
-            self?.handleConnectionInvalidation()
+        self.connection?.invalidationHandler = {
+            DispatchQueue.main.async { [weak self] in
+                self?.handleConnectionInvalidation()
+            }
         }
 
         // Resume the connection
         self.connection?.resume()
 
         // Get remote proxy
-        self.remoteProxy = self.connection?.remoteObjectProxyWithErrorHandler { [weak self] error in
-            self?.logger.error("Failed to get remote proxy: \(error.localizedDescription)")
-            self?.isConnected = false
+        self.remoteProxy = self.connection?.remoteObjectProxyWithErrorHandler { error in
+            // Don't capture self here to avoid @MainActor checks
+            DispatchQueue.main.async { [weak self] in
+                self?.logger.error("Failed to get remote proxy: \(error.localizedDescription)")
+                self?.isConnected = false
+            }
         } as? VisualizerXPCProtocol
 
         // Test connection
-        self.remoteProxy?.isVisualFeedbackEnabled { [weak self] enabled in
-            Task { @MainActor in
+        self.remoteProxy?.isVisualFeedbackEnabled { enabled in
+            DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.isConnected = true
                 self.isEnabled = enabled
@@ -388,7 +394,7 @@ public final class VisualizationClient {
         let runningApps = workspace.runningApplications
 
         return runningApps.contains { app in
-            app.bundleIdentifier == "boo.peekaboo.mac"
+            app.bundleIdentifier == "boo.peekaboo.mac" || app.bundleIdentifier == "boo.peekaboo.mac.debug"
         }
     }
 
