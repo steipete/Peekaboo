@@ -97,6 +97,11 @@ final class GhostAnimator {
         ]
         self.message = "Thinking..."
     }
+    
+    init(message: String) {
+        self.emojis = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] // Braille spinner
+        self.message = message
+    }
 
     func start() {
         self.stop() // Ensure no previous animation is running
@@ -117,7 +122,7 @@ final class GhostAnimator {
                 frameIndex = (frameIndex + 1) % self.emojis.count
 
                 do {
-                    try await Task.sleep(nanoseconds: 200_000_000) // 200ms per frame for smoother rotation
+                    try await Task.sleep(nanoseconds: 400_000_000) // 400ms per frame for better visibility
                 } catch {
                     break
                 }
@@ -131,6 +136,14 @@ final class GhostAnimator {
         // Move to next line, keeping the thinking text visible
         print() // New line
         fflush(stdout)
+    }
+    
+    func stopWithDelay() async {
+        // Add a brief pause to make the animation less abrupt
+        do {
+            try await Task.sleep(nanoseconds: 500_000_000) // 500ms delay before clearing
+        } catch {}
+        self.stop()
     }
 }
 
@@ -1799,7 +1812,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                     if self.outputMode == .minimal {
                         print("\(name)", terminator: "")
                     } else {
-                        print("\(TerminalColor.blue)\(icon) \(name)\(TerminalColor.reset)", terminator: "")
+                        print("\(TerminalColor.blue)\(TerminalColor.bold)\(icon) \(name)\(TerminalColor.reset)", terminator: "")
                     }
 
                     if self.outputMode == .verbose {
@@ -1903,15 +1916,16 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                                 }
                             } else if self.outputMode == .enhanced {
                                 if !resultSummary.isEmpty {
-                                    print(" \(TerminalColor.green)✅\(TerminalColor.reset) \(resultSummary)\(duration)")
+                                    print(" \(TerminalColor.bgGreen)\(TerminalColor.bold) ✅ \(TerminalColor.reset) \(TerminalColor.bold)\(resultSummary)\(TerminalColor.reset)\(duration)")
                                 } else {
-                                    print(" \(TerminalColor.green)✅\(TerminalColor.reset)\(duration)")
+                                    print(" \(TerminalColor.bgGreen)\(TerminalColor.bold) ✅ \(TerminalColor.reset)\(duration)")
                                 }
                             } else {
+                                // Add visual emphasis with background color flash for tool completion
                                 if !resultSummary.isEmpty {
-                                    print(" \(TerminalColor.green)✓\(TerminalColor.reset) \(resultSummary)\(duration)")
+                                    print(" \(TerminalColor.bgGreen)\(TerminalColor.bold) ✓ \(TerminalColor.reset) \(TerminalColor.bold)\(resultSummary)\(TerminalColor.reset)\(duration)")
                                 } else {
-                                    print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                                    print(" \(TerminalColor.bgGreen)\(TerminalColor.bold) ✓ \(TerminalColor.reset)\(duration)")
                                 }
                             }
 
@@ -1940,11 +1954,18 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                             } else {
                                 print(" OK\(duration)")
                             }
-                        } else {
+                        } else if self.outputMode == .enhanced {
                             if !resultSummary.isEmpty {
-                                print(" \(TerminalColor.green)✓\(TerminalColor.reset) \(resultSummary)\(duration)")
+                                print(" \(TerminalColor.bgGreen)\(TerminalColor.bold) ✅ \(TerminalColor.reset) \(TerminalColor.bold)\(resultSummary)\(TerminalColor.reset)\(duration)")
                             } else {
-                                print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                                print(" \(TerminalColor.bgGreen)\(TerminalColor.bold) ✅ \(TerminalColor.reset)\(duration)")
+                            }
+                        } else {
+                            // Add a brief highlight effect for tool completion
+                            if !resultSummary.isEmpty {
+                                print(" \(TerminalColor.bgGreen)\(TerminalColor.bold) ✓ \(TerminalColor.reset) \(TerminalColor.bold)\(resultSummary)\(TerminalColor.reset)\(duration)")
+                            } else {
+                                print(" \(TerminalColor.bgGreen)\(TerminalColor.bold) ✓ \(TerminalColor.reset)\(duration)")
                             }
                         }
 
@@ -1957,7 +1978,7 @@ final class CompactEventDelegate: PeekabooCore.AgentEventDelegate {
                         }
                     }
                 } else {
-                    print(" \(TerminalColor.green)✓\(TerminalColor.reset)\(duration)")
+                    print(" \(TerminalColor.bgGreen)\(TerminalColor.bold) ✓ \(TerminalColor.reset)\(duration)")
                 }
             }
             self.currentTool = nil
