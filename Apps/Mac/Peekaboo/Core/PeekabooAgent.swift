@@ -117,21 +117,54 @@ final class PeekabooAgent {
         try await self.executeTaskWithContent(.text(task))
     }
 
-    /// Execute a task with audio content
-    /// TODO: Implement audio support when TachikomaCore audio API is available
+    /// Execute a task with audio content using Tachikoma Audio API
     func executeTaskWithAudio(
         audioData: Data,
         duration: TimeInterval,
         mimeType: String = "audio/wav",
         transcript: String? = nil) async throws
     {
-        // For now, fall back to text if transcript is available
+        // If transcript is already available, use it directly for faster execution
         if let transcript {
             try await self.executeTask(transcript)
             return
         }
-
-        throw AgentError.invalidConfiguration("Audio content not yet supported in TachikomaCore")
+        
+        // Otherwise, transcribe the audio using Tachikoma and then execute
+        do {
+            // Create AudioData from the raw data
+            let audioFormat: AudioFormat = {
+                switch mimeType {
+                case "audio/wav": return .wav
+                case "audio/mp3": return .mp3
+                case "audio/flac": return .flac
+                case "audio/opus": return .opus
+                case "audio/m4a": return .m4a
+                case "audio/aac": return .aac
+                case "audio/ogg": return .ogg
+                default: return .wav // Default fallback
+                }
+            }()
+            
+            let audioDataStruct = AudioData(
+                data: audioData,
+                format: audioFormat,
+                duration: duration
+            )
+            
+            // Transcribe using Tachikoma's OpenAI Whisper integration
+            let transcriptionResult = try await transcribe(
+                audioDataStruct,
+                using: .openai(.whisper1),
+                language: "en"
+            )
+            
+            // Execute the task with the transcribed text
+            try await self.executeTask(transcriptionResult.text)
+            
+        } catch {
+            throw AgentError.executionFailed("Failed to transcribe audio: \(error.localizedDescription)")
+        }
     }
 
     /// Common implementation for executing tasks with different content types

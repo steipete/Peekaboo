@@ -313,7 +313,7 @@ Run the following command:
 claude mcp add-json peekaboo '{
   "type": "stdio",
   "command": "npx",
-  "args": ["-y", "@steipete/peekaboo-mcp@beta"],
+  "args": ["-y", "@steipete/peekaboo-mcp"],
   "env": {
     "PEEKABOO_AI_PROVIDERS": "anthropic/claude-opus-4,openai/gpt-4.1,ollama/llava:latest",
     "OPENAI_API_KEY": "your-openai-api-key-here"
@@ -354,7 +354,7 @@ Add to your Cursor settings:
   "mcpServers": {
     "peekaboo": {
       "command": "npx",
-      "args": ["-y", "@steipete/peekaboo-mcp"],
+      "args": ["-y", "@steipete/peekaboo-mcp@beta"],
       "env": {
         "PEEKABOO_AI_PROVIDERS": "openai/gpt-4.1,ollama/llava:latest",
         "OPENAI_API_KEY": "your-openai-api-key-here"

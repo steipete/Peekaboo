@@ -410,8 +410,8 @@ struct MainWindow: View {
 
             // Handle different recognition modes
             switch self.speechRecognizer.recognitionMode {
-            case .native, .whisper:
-                // For native and whisper, use the transcript
+            case .native, .whisper, .tachikoma:
+                // For native, whisper, and tachikoma, use the transcript
                 let transcript = self.speechRecognizer.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !transcript.isEmpty {
                     self.inputText = transcript
