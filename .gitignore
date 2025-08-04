@@ -173,6 +173,9 @@ debug
 *.backup
 *~
 
+# Crush directory
+.crush/
+
 # OS generated files
 Thumbs.db
 ehthumbs.db
