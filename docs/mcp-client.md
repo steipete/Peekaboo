@@ -1,6 +1,6 @@
 # Peekaboo MCP Client Implementation
 
-<!-- Generated: 2025-08-04 23:59:45 UTC -->
+<!-- Generated: 2025-08-05 00:15:30 UTC -->
 
 > **✅ IMPLEMENTED**: Peekaboo now functions as both an MCP server and client, enabling consumption of external MCP servers while providing its native automation tools.
 
@@ -11,6 +11,8 @@ This document describes the completed MCP client implementation in Peekaboo, whi
 Peekaboo now operates as both:
 - **MCP Server**: Exposing 22+ native Swift automation tools
 - **MCP Client**: Consuming tools from external MCP servers with server prefixes
+
+**Default Integration**: Peekaboo ships with [BrowserMCP](https://browsermcp.io) enabled by default, providing lightweight browser automation capabilities. This can be disabled via configuration if not needed.
 
 ### Key Features
 
@@ -128,12 +130,12 @@ peekaboo mcp list --json-output
 ```
 Checking MCP server health...
 
+browser: npx -y @agent-infra/mcp-server-browser@latest - ✓ Connected (15 tools, 134ms) [default]
 github: npx -y @modelcontextprotocol/server-github - ✓ Connected (12 tools, 145ms)
 files: npx -y @modelcontextprotocol/server-filesystem - ✓ Connected (8 tools, 89ms)
 weather: /usr/local/bin/weather-mcp - ✗ Failed to connect (Command not found)
-playwright: npx -y @playwright/mcp@latest - ✓ Connected (25 tools, 234ms)
 
-Total: 4 servers configured, 3 healthy, 45 external tools available
+Total: 4 servers configured, 3 healthy, 35 external tools available
 ```
 
 ### MCP Server Management
@@ -196,11 +198,31 @@ peekaboo mcp disable weather
 
 ## Configuration
 
-MCP client settings are stored in `~/.peekaboo/config.json`:
+MCP client settings are stored in `~/.peekaboo/config.json`. Peekaboo ships with BrowserMCP enabled by default, but you can disable it or add additional servers:
+
+### Default Server Configuration
+
+To disable the default BrowserMCP server:
+```json
+{
+  "mcpClient": {
+    "servers": {
+      "browser": {
+        "enabled": false
+      }
+    }
+  }
+}
+```
+
+### Custom Server Configuration
+
+Full configuration example with additional servers:
 
 ```json
 {
-  "mcpClients": {
+  "mcpClient": {
+    "servers": {
     "github": {
       "transport": "stdio",
       "command": "npx",
@@ -284,6 +306,14 @@ The agent system automatically:
 - Maintains tool attribution in responses
 
 ## Popular MCP Servers
+
+### BrowserMCP (Default)
+```bash
+# Included by default, or add manually:
+peekaboo mcp add browser -- npx -y @agent-infra/mcp-server-browser@latest
+```
+**Tools**: navigate, click, type, screenshot, get_url, get_title, wait_for_selector, evaluate_js, fill_form, close_tab, new_tab
+**Description**: Lightweight browser automation via Puppeteer for web interaction tasks.
 
 ### GitHub Server
 ```bash

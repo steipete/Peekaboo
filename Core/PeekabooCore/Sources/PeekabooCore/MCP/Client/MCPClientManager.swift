@@ -278,7 +278,50 @@ public actor MCPClientManager {
     private var serverConfigs: [String: MCPServerConfig] = [:]
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp.client", category: "manager")
     
+    /// Default MCP servers that ship with Peekaboo
+    public static let defaultServers: [String: MCPServerConfig] = [
+        "browser": MCPServerConfig(
+            command: "npx",
+            args: ["-y", "@agent-infra/mcp-server-browser@latest"],
+            enabled: true,
+            timeout: 15.0,
+            autoReconnect: true,
+            description: "Browser automation via BrowserMCP - lightweight browser control with Puppeteer"
+        )
+    ]
+    
     private init() {}
+    
+    // MARK: - Default Server Management
+    
+    /// Initialize default servers if not explicitly configured by user
+    public func initializeDefaultServers(userConfigs: [String: MCPServerConfig]) async {
+        for (serverName, defaultConfig) in Self.defaultServers {
+            // Skip if user has explicitly configured this server
+            if userConfigs.keys.contains(serverName) {
+                logger.info("Default server '\(serverName)' overridden by user configuration")
+                continue
+            }
+            
+            // Add default server
+            do {
+                try await addServer(name: serverName, config: defaultConfig)
+                logger.info("Initialized default MCP server '\(serverName)'")
+            } catch {
+                logger.error("Failed to initialize default server '\(serverName)': \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    /// Check if a server is a default server
+    public func isDefaultServer(name: String) -> Bool {
+        return Self.defaultServers.keys.contains(name)
+    }
+    
+    /// Get default server configuration
+    public func getDefaultServerConfig(name: String) -> MCPServerConfig? {
+        return Self.defaultServers[name]
+    }
     
     // MARK: - Server Management
     

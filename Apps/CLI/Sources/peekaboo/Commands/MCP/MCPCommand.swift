@@ -219,7 +219,11 @@ extension MCPCommand {
                 let healthSymbol = health.symbol
                 let healthText = health.statusText
                 
-                print("\(serverName): \(fullCommand) - \(healthSymbol) \(healthText)")
+                // Show if this is a default server
+                let isDefault = await clientManager.isDefaultServer(name: serverName)
+                let defaultMarker = isDefault ? " [default]" : ""
+                
+                print("\(serverName): \(fullCommand) - \(healthSymbol) \(healthText)\(defaultMarker)")
             }
             
             print()

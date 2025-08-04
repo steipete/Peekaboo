@@ -526,6 +526,31 @@ public final class ConfigurationManager: @unchecked Sendable {
             // "ollamaBaseUrl": "http://localhost:11434"
           },
 
+          // MCP Client Configuration
+          "mcpClient": {
+            // External MCP servers to connect to
+            // Peekaboo ships with BrowserMCP by default (https://browsermcp.io)
+            // To disable the default browser server, add:
+            // "servers": {
+            //   "browser": {
+            //     "enabled": false
+            //   }
+            // }
+            
+            // Example: Add GitHub MCP server
+            // "servers": {
+            //   "github": {
+            //     "transport": "stdio",
+            //     "command": "npx",
+            //     "args": ["-y", "@modelcontextprotocol/server-github"],
+            //     "enabled": true,
+            //     "timeout": 15.0,
+            //     "autoReconnect": true,
+            //     "description": "GitHub repository integration"
+            //   }
+            // }
+          },
+
           // Default Settings for Capture Operations
           "defaults": {
             // Default path for saving screenshots
@@ -650,6 +675,32 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// Test method to verify module interface
     public func testMethod() -> String {
         "test"
+    }
+    
+    // MARK: - MCP Client Configuration
+    
+    /// Get MCP client configuration with default servers merged
+    public func getMCPClientConfig() -> Configuration.MCPClientConfig? {
+        return self.getConfiguration()?.mcpClient
+    }
+    
+    /// Initialize MCP client with default servers
+    public func initializeMCPClient() async {
+        // Get user-configured servers
+        let userServers = getMCPClientConfig()?.servers ?? [:]
+        
+        // Initialize default servers through MCPClientManager
+        await MCPClientManager.shared.initializeDefaultServers(userConfigs: userServers)
+        
+        // Add user-configured servers
+        for (serverName, serverConfig) in userServers {
+            do {
+                try await MCPClientManager.shared.addServer(name: serverName, config: serverConfig)
+            } catch {
+                // Log error but continue with other servers
+                print("Warning: Failed to initialize MCP server '\(serverName)': \(error.localizedDescription)")
+            }
+        }
     }
 
     // MARK: - Custom Provider Management

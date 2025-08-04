@@ -163,6 +163,9 @@ struct Main {
 
         // Load configuration at startup
         _ = ConfigurationManager.shared.loadConfiguration()
+        
+        // Initialize MCP client with default servers
+        await ConfigurationManager.shared.initializeMCPClient()
 
         // Run the command normally - ArgumentParser will handle unknown commands
         await Peekaboo.main()

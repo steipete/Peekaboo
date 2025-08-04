@@ -364,6 +364,69 @@ Add to your Cursor settings:
 }
 ```
 
+## 🔗 MCP Client Integration
+
+Peekaboo v3 now functions as both an MCP server (exposing its tools) and an MCP client (consuming external tools). This enables powerful workflows that combine Peekaboo's native automation with tools from the broader MCP ecosystem.
+
+### Default Integration: BrowserMCP
+
+Peekaboo ships with [BrowserMCP](https://browsermcp.io) enabled by default, providing browser automation capabilities via Puppeteer:
+
+```bash
+# BrowserMCP tools are available immediately
+peekaboo tools --mcp-only                    # List only external MCP tools  
+peekaboo tools --mcp browser                 # Show BrowserMCP tools specifically
+peekaboo agent "Navigate to github.com and click the sign up button"  # Uses browser:navigate and browser:click
+```
+
+### Managing External MCP Servers
+
+```bash
+# List all configured servers with health status
+peekaboo mcp list
+
+# Add popular MCP servers
+peekaboo mcp add github -e GITHUB_TOKEN=ghp_xxx -- npx -y @modelcontextprotocol/server-github
+peekaboo mcp add files -- npx -y @modelcontextprotocol/server-filesystem ~/Documents
+
+# Test server connection
+peekaboo mcp test github --show-tools
+
+# Enable/disable servers
+peekaboo mcp disable browser    # Disable default BrowserMCP
+peekaboo mcp enable github      # Re-enable a server
+```
+
+### Configuration
+
+External servers are configured in `~/.peekaboo/config.json`. To disable BrowserMCP:
+
+```json
+{
+  "mcpClient": {
+    "servers": {
+      "browser": {
+        "enabled": false
+      }
+    }
+  }
+}
+```
+
+### Available External Tools
+
+All external tools are prefixed with their server name:
+
+- **browser:navigate** - Navigate to URL (BrowserMCP)
+- **browser:click** - Click elements on webpage (BrowserMCP)  
+- **browser:screenshot** - Take webpage screenshot (BrowserMCP)
+- **github:create_issue** - Create GitHub issues (GitHub server)
+- **files:read_file** - Read files (Filesystem server)
+
+The AI agent automatically uses the best combination of native and external tools for each task.
+
+See [docs/mcp-client.md](docs/mcp-client.md) for complete documentation.
+
 ### MCP Tools Available
 
 #### Core Tools
