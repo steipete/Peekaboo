@@ -2,6 +2,7 @@ import ApplicationServices
 import AXorcist
 import Foundation
 import os
+@preconcurrency import Dispatch
 
 extension Element {
     /// Set a messaging timeout for this element to prevent hangs
