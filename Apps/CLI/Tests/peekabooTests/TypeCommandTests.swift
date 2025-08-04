@@ -4,7 +4,6 @@ import Testing
 @testable import peekaboo
 
 @Suite("TypeCommand Tests")
-@available(macOS 14.0, *)
 struct TypeCommandTests {
     @Test("Type command with text argument")
     func typeWithText() throws {

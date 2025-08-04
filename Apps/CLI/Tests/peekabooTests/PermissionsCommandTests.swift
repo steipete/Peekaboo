@@ -2,6 +2,8 @@ import Foundation
 import Testing
 @testable import peekaboo
 
+// TODO: PermissionsCommand tests commented out - command no longer exists
+/*
 @Suite
 struct PermissionsCommandTests {
     @Test("PermissionsCommand configuration matches original")
@@ -21,3 +23,4 @@ struct PermissionsCommandTests {
         #expect(command.jsonOutput == false)
     }
 }
+*/

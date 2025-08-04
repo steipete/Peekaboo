@@ -4,7 +4,6 @@ import Testing
 @testable import peekaboo
 
 @Suite("PressCommand Tests")
-@available(macOS 14.0, *)
 struct PressCommandTests {
     @Test("Press command with single key")
     func pressSingleKey() throws {

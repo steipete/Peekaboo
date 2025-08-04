@@ -4,7 +4,6 @@ import Testing
 @testable import peekaboo
 
 @Suite("PressCommand Integration Tests")
-@available(macOS 14.0, *)
 struct PressCommandIntegrationTests {
     // MARK: - Command Integration with TypeService
 
@@ -99,16 +98,16 @@ struct PressCommandIntegrationTests {
     @Test("Press command with focus options")
     func pressCommandWithFocusOptions() throws {
         // Test various focus option combinations
-        let command1 = try PressCommand.parse(["tab", "--bring-to-front"])
-        #expect(command1.focusOptions.bringToFront == true)
-        #expect(command1.focusOptions.switchSpace == false) // default
+        let command1 = try PressCommand.parse(["tab", "--bring-to-current-space"])
+        #expect(command1.focusOptions.bringToCurrentSpace == true)
+        #expect(command1.focusOptions.spaceSwitch == false) // default
 
-        let command2 = try PressCommand.parse(["return", "--switch-space"])
-        #expect(command2.focusOptions.switchSpace == true)
-        #expect(command2.focusOptions.bringToFront == false) // default
+        let command2 = try PressCommand.parse(["return", "--space-switch"])
+        #expect(command2.focusOptions.spaceSwitch == true)
+        #expect(command2.focusOptions.bringToCurrentSpace == false) // default
 
-        let command3 = try PressCommand.parse(["escape", "--auto-focus"])
-        #expect(command3.focusOptions.autoFocus == true)
+        let command3 = try PressCommand.parse(["escape", "--no-auto-focus"])
+        #expect(command3.focusOptions.autoFocus == false)
     }
 
     @Test("Press command JSON output format")
@@ -129,12 +128,12 @@ struct PressCommandIntegrationTests {
             (["up", "up", "up", "space"], "Navigate up and toggle")
         ]
 
-        for (keys, description) in navigationSequences {
+        for (keys, _) in navigationSequences {
             let command = try PressCommand.parse(keys)
             #expect(command.keys == keys)
 
             // All keys should be valid
-            for key in keys {
+            for _ in keys {
                 // Note: "shift" in this context would be handled as a modifier, not a key press
                 // All other keys should be valid special keys
             }
@@ -151,9 +150,9 @@ struct PressCommandIntegrationTests {
             (["tab", "down", "down", "return"], "Tab to dropdown, select item")
         ]
 
-        for (keys, description) in dialogPatterns {
+        for (keys, _) in dialogPatterns {
             let command = try PressCommand.parse(keys)
-            #expect(command.keys == keys, description)
+            #expect(command.keys == keys)
         }
     }
 
