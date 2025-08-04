@@ -13,7 +13,7 @@ struct ModelSelectionIntegrationTests {
             .openai(.gpt4o),
             .anthropic(.opus4),
             .grok(.grok4),
-            .ollama(.llama3_3)
+            .ollama(.llama33)
         ]
         
         for expectedModel in testCases {
@@ -74,7 +74,7 @@ struct ModelSelectionIntegrationTests {
             .openai(.gpt4o),
             .anthropic(.opus4),
             .grok(.grok4),
-            .ollama(.llama3_3)
+            .ollama(.llama33)
         ]
         
         let mockServices = PeekabooServices.shared
@@ -198,7 +198,7 @@ struct ModelSelectionRegressionTests {
         // This test specifically addresses the bug where the extended executeTask method
         // with sessionId and model parameters was ignoring the model parameter
         
-        let mockServices = try PeekabooServices.shared
+        let mockServices = PeekabooServices.shared
         let defaultModel = LanguageModel.anthropic(.opus4)
         let agentService = try PeekabooAgentService(
             services: mockServices,
@@ -233,7 +233,7 @@ struct ModelSelectionRegressionTests {
         // This test addresses the specific bug where the streaming execution path
         // was using self.defaultLanguageModel instead of the passed model parameter
         
-        let mockServices = try PeekabooServices.shared
+        let mockServices = PeekabooServices.shared
         let defaultModel = LanguageModel.anthropic(.opus4)
         let agentService = try PeekabooAgentService(
             services: mockServices,

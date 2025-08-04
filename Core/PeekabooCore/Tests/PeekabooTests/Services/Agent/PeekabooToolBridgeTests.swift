@@ -5,11 +5,12 @@ import Tachikoma
 
 /// Tests for PeekabooToolBridge functionality
 @Suite("Peekaboo Tool Bridge Tests")
+@MainActor
 struct PeekabooToolBridgeTests {
     
     @Test("Bridge initialization with services and tools")
     func testBridgeInitialization() async throws {
-        let services = try PeekabooServices.createForTesting()
+        let services = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: services)
         
         // Get native tools from agent service
@@ -31,7 +32,7 @@ struct PeekabooToolBridgeTests {
     
     @Test("Parameter conversion from Peekaboo to Tachikoma")
     func testParameterConversion() async throws {
-        let services = try PeekabooServices.createForTesting()
+        let services = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: services)
         
         // Get native tools and find shell tool
@@ -55,7 +56,7 @@ struct PeekabooToolBridgeTests {
     
     @Test("Tool execution through bridge")
     func testToolExecution() async throws {
-        let services = try PeekabooServices.createForTesting()
+        let services = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: services)
         
         // Get tools and create bridge
@@ -85,7 +86,7 @@ struct PeekabooToolBridgeTests {
     
     @Test("Bridge maintains tool execution capability")
     func testBridgeIntegration() async throws {
-        let services = try PeekabooServices.createForTesting()
+        let services = PeekabooServices.shared
         let agentService = try PeekabooAgentService(services: services)
         
         // Test the bridged simple tools method
@@ -106,7 +107,7 @@ struct PeekabooToolBridgeTests {
     
     @Test("Parameter type conversion accuracy")
     func testParameterTypeConversion() async throws {
-        let services = try PeekabooServices.createForTesting()
+        let services = PeekabooServices.shared
         
         // Create a test tool with various parameter types
         let testTool = Tool<PeekabooServices>(

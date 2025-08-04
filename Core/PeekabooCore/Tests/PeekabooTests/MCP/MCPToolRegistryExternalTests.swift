@@ -247,7 +247,7 @@ struct MCPToolRegistryMockExternalTests {
         // Simulate external tools by directly adding them
         // (In real usage, this would be done through registerExternalTools)
         let clientManager = MCPClientManager.shared
-        let externalTool = ExternalMCPTool(
+        let _ = ExternalMCPTool(
             serverName: "test-server",
             originalTool: Tool(
                 name: "external_tool",

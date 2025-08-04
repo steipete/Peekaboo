@@ -59,15 +59,26 @@ final class PeekabooTermKitTUI {
         
         setupUI()
         
-        // Run the agent task in background
-        Task { @MainActor in
-            do {
-                try await agentTask()
-            } catch {
-                self.addError("Agent error: \(error.localizedDescription)")
-                // Auto-exit after error
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                    self?.stop()
+        // Run the agent task on a background queue to avoid blocking the main thread
+        DispatchQueue.global(qos: .userInitiated).async {
+            Task {
+                do {
+                    try await agentTask()
+                    // Auto-complete after successful execution
+                    DispatchQueue.main.async {
+                        self.addOutput("✅ Task completed successfully", style: .system)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                            self?.stop()
+                        }
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        self.addError("Agent error: \(error.localizedDescription)")
+                        // Auto-exit after error
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                            self?.stop()
+                        }
+                    }
                 }
             }
         }
@@ -88,84 +99,44 @@ final class PeekabooTermKitTUI {
         
         let top = Toplevel()
         
-        // Header Frame
-        let headerFrame = Frame("Agent Status")
-        headerFrame.x = Pos.at(0)
-        headerFrame.y = Pos.at(0)
-        headerFrame.width = Dim.fill()
-        headerFrame.height = Dim.sized(5)
+        // Simplified single frame for now to avoid layout crashes
+        let mainFrame = Frame("Peekaboo Agent")
+        mainFrame.x = Pos.at(0)
+        mainFrame.y = Pos.at(0)
+        mainFrame.width = Dim.fill()
+        mainFrame.height = Dim.fill()
         
         // Status label
         statusLabel = Label("Task: \(currentTask)")
-        statusLabel?.x = Pos.at(1)
-        statusLabel?.y = Pos.at(1)
-        headerFrame.addSubview(statusLabel!)
+        statusLabel?.x = Pos.at(2)
+        statusLabel?.y = Pos.at(2)
+        mainFrame.addSubview(statusLabel!)
         
-        // Progress bar
+        // Progress bar - simplified
         progressBar = ProgressBar()
-        progressBar?.x = Pos.at(1)
-        progressBar?.y = Pos.at(2)
-        progressBar?.width = Dim.fill() - 2  // Leave 1 char margin on each side
+        progressBar?.x = Pos.at(2)
+        progressBar?.y = Pos.at(4)
+        progressBar?.width = Dim.sized(50)  // Fixed width to avoid arithmetic issues
         progressBar?.fraction = 0.0
-        headerFrame.addSubview(progressBar!)
+        mainFrame.addSubview(progressBar!)
         
-        // Model and stats label
+        // Model label
         let modelLabel = Label("Model: \(modelName)")
-        modelLabel.x = Pos.at(1)
-        modelLabel.y = Pos.at(3)
-        headerFrame.addSubview(modelLabel)
+        modelLabel.x = Pos.at(2)
+        modelLabel.y = Pos.at(6)
+        mainFrame.addSubview(modelLabel)
         
-        top.addSubview(headerFrame)
-        
-        // Tools Frame (left side)
-        let toolsFrame = Frame("Tools & History")
-        toolsFrame.x = Pos.at(0)
-        toolsFrame.y = Pos.bottom(of: headerFrame)
-        toolsFrame.width = Dim.percent(n: 30)
-        toolsFrame.height = Dim.fill() - 1  // Leave margin at bottom
-        
-        // Tools history text (using TextView instead of ListView for simplicity)
-        let toolsTextView = TextView()
-        toolsTextView.x = Pos.at(1)
-        toolsTextView.y = Pos.at(1)
-        toolsTextView.width = Dim.fill() - 2
-        toolsTextView.height = Dim.fill() - 2
-        toolsTextView.canFocus = false
-        toolsTextView.text = "Tools will appear here..."
-        toolsFrame.addSubview(toolsTextView)
-        
-        // Store reference to update later
-        self.toolsListView = nil  // Not using ListView for now
-        
-        top.addSubview(toolsFrame)
-        
-        // Output Frame (right side)
-        let outputFrame = Frame("Output")
-        outputFrame.x = Pos.right(of: toolsFrame)
-        outputFrame.y = Pos.bottom(of: headerFrame)
-        outputFrame.width = Dim.fill()
-        outputFrame.height = Dim.fill() - 1
-        
-        // Output text view
+        // Output text view - simplified
         outputTextView = TextView()
-        outputTextView?.x = Pos.at(1)
-        outputTextView?.y = Pos.at(1)
-        outputTextView?.width = Dim.fill() - 2
-        outputTextView?.height = Dim.fill() - 2
+        outputTextView?.x = Pos.at(2)
+        outputTextView?.y = Pos.at(8)
+        outputTextView?.width = Dim.sized(80)  // Fixed width
+        outputTextView?.height = Dim.sized(15) // Fixed height
         outputTextView?.canFocus = false
-        outputFrame.addSubview(outputTextView!)
+        outputTextView?.text = "Peekaboo Agent started...\n"
+        mainFrame.addSubview(outputTextView!)
         
-        top.addSubview(outputFrame)
-        
-        // Bottom status bar
-        let statusBar = Label("Press Ctrl+C to exit")
-        statusBar.x = Pos.at(0)
-        statusBar.y = Pos.anchorEnd(margin: 1)
-        statusBar.width = Dim.fill()
-        statusBar.textAlignment = .centered
-        statusBar.colorScheme = Colors.menu
-        top.addSubview(statusBar)
-        
+        top.addSubview(mainFrame)
         Application.top.addSubview(top)
     }
     

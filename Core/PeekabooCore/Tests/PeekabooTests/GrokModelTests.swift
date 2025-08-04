@@ -103,7 +103,7 @@ struct GrokModelTests {
                 settings: .default,
                 maxSteps: 1
             )
-            #expect(true) // Should not reach here without API key
+            #expect(Bool(true)) // Should not reach here without API key
         } catch {
             // Expected to fail without API key - this is testing the structure
             #expect(error is TachikomaError)

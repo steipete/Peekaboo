@@ -27,7 +27,7 @@ struct MCPErrorHandlingTests {
             var errorDescription: String? { "Test error occurred" }
         }
 
-        let underlyingError = TestError()
+        let _ = TestError()
         let error = PeekabooCore.MCPError.executionFailed("Operation failed")
 
         // Note: The current MCPError doesn't support underlying errors
