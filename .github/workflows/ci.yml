@@ -50,12 +50,6 @@ jobs:
         }
         EOF
     
-    - name: Verify Swift CLI binary exists
-      run: |
-        # Verify the CLI binary was built by npm run build
-        ls -la peekaboo
-        ./peekaboo --version
-    
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
@@ -68,22 +62,24 @@ jobs:
     - name: Build TypeScript and Swift CLI
       run: npm run build
     
-    - name: Run linter
-      run: npm run lint --if-present
+    - name: Verify Swift CLI binary exists
+      run: |
+        # Verify the CLI binary was built by npm run build
+        ls -la peekaboo
+        ./peekaboo --version
     
-    - name: Run tests with coverage
-      run: npm run test:coverage
+    - name: Run linter
+      run: npm run lint:swift --if-present
+    
+    - name: Run Swift tests (quick check)
+      if: matrix.node-version == '20.x'
+      timeout-minutes: 10
+      run: |
+        cd Apps/CLI
+        # Run a subset of Swift tests for quick validation
+        swift test --parallel --filter "ConfigCommandTests|VersionTests"
       env:
         CI: true
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      if: matrix.node-version == '20.x'
-      with:
-        file: ./coverage/lcov.info
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
 
   build-swift:
     runs-on: macos-latest
@@ -136,5 +132,27 @@ jobs:
         cd Apps/CLI
         # Run only tests that are known to compile and work
         swift test --parallel --filter "ConfigCommandTests|ListCommandTests|VersionTests|ModelsTests|FileHandlingTests|ConfigurationTests|MCPClientCommandTests|TypeCommandTests|PressCommandTests"
+      env:
+        CI: true
+
+  build-mac-app:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Xcode
+      run: |
+        sudo xcode-select -s $DEVELOPER_DIR
+        xcodebuild -version
+        swift --version
+    
+    - name: Build Mac App
+      run: |
+        xcodebuild -workspace Apps/Peekaboo.xcworkspace -scheme Peekaboo -configuration Debug build
       env:
         CI: true

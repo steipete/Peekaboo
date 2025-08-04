@@ -141,11 +141,12 @@ npm run poltergeist:haunt  # Start Poltergeist for fresh builds
 - Excludes auto-generated `Version.swift` to prevent infinite loops
 
 **polter Smart Execution**:
-- Checks if binary is fresh via Poltergeist state management
-- If stale, waits for Poltergeist to finish rebuilding (configurable timeout)
-- Runs the CLI with your command once ready
-- Falls back gracefully when Poltergeist isn't running
-- Shows progress updates and clear status messages
+1. **State Discovery**: Finds your project's poltergeist configuration
+2. **Build Status Check**: Reads current build state from temp directory (`/tmp/poltergeist/` on Unix, `%TEMP%\poltergeist` on Windows)
+3. **Smart Waiting**: Waits for in-progress builds with live progress indication
+4. **Fail Fast**: Immediately exits on build failures with clear messages
+5. **Fresh Execution**: Only runs executables when builds are confirmed fresh
+6. **Graceful Fallback**: When Poltergeist isn't running, executes potentially stale binaries with warnings
 
 **Build Notifications**:
 - Poltergeist sends macOS notifications when builds complete
@@ -160,11 +161,80 @@ npm run poltergeist:haunt  # Start Poltergeist for fresh builds
 - **Simplicity**: No need to think about build state
 - **Speed**: Poltergeist builds in the background while you work
 
+### Fallback Behavior
+
+When Poltergeist is not running or configuration is missing, `polter` gracefully falls back to stale execution:
+
+```bash
+⚠️  POLTERGEIST NOT RUNNING - EXECUTING POTENTIALLY STALE BINARY
+   The binary may be outdated. For fresh builds, start Poltergeist:
+   npm run poltergeist:haunt
+
+✅ Running binary: peekaboo (potentially stale)
+```
+
+**Fallback Logic**:
+1. **No config found**: Attempts to find binary in common locations (`./`, `./build/`, `./dist/`)
+2. **Target not configured**: Searches for binary even if not in Poltergeist config
+3. **Binary discovery**: Tries multiple paths and handles suffix variations (`-cli`, `-app`)
+4. **Clear warnings**: Always warns when running without build verification
+
+### Status Messages
+
+```bash
+🔨 Waiting for build to complete... (8s elapsed)
+❌ Build failed! Cannot execute stale binary.
+✅ Build completed successfully! Executing fresh binary...
+```
+
 ### Debugging
 
-For polter debugging:
+For polter debugging and advanced usage:
 ```bash
+# Basic debugging
 polter peekaboo --verbose list apps
+
+# Command options
+polter peekaboo --timeout 60000    # Wait up to 60 seconds
+polter peekaboo --force            # Run even if build failed
+polter peekaboo --no-wait          # Fail immediately if building
+polter peekaboo --verbose          # Show detailed progress
+
+# Convenient aliases (after global install)
+alias pb='polter peekaboo'
+pb agent "do something"
+```
+
+### State Management
+
+Poltergeist uses a unified state management system with atomic operations:
+
+- **Single state file per target**: Cross-platform temp directory (`/tmp/poltergeist/` on Unix, `%TEMP%\poltergeist` on Windows)
+- **Atomic writes**: Temp file + rename for consistency
+- **Heartbeat monitoring**: Process liveness detection
+- **Build history**: Track success/failure patterns
+- **Cross-tool compatibility**: State readable by external tools
+
+**State File Structure**:
+```json
+{
+  "target": "peekaboo",
+  "status": "running",
+  "process": {
+    "pid": 12345,
+    "hostname": "MacBook-Pro.local",
+    "startTime": "2025-08-02T20:15:30.000Z",
+    "heartbeat": "2025-08-02T20:16:00.000Z"
+  },
+  "build": {
+    "status": "success",
+    "startTime": "2025-08-02T20:15:45.000Z",
+    "endTime": "2025-08-02T20:15:47.500Z",
+    "duration": 2500,
+    "gitHash": "abc123f",
+    "outputPath": "./peekaboo"
+  }
+}
 ```
 
 ### Summary
