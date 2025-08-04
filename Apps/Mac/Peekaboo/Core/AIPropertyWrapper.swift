@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 import SwiftUI
-import TachikomaCore
+import Tachikoma
 
 // MARK: - @AI Property Wrapper for SwiftUI
 

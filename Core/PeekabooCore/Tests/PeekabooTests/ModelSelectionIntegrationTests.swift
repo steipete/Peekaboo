@@ -1,5 +1,5 @@
 import Testing
-import TachikomaCore
+import Tachikoma
 @testable import PeekabooCore
 
 /// Integration tests for model selection within PeekabooCore

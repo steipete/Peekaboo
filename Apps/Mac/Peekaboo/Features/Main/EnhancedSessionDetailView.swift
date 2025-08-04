@@ -1,6 +1,6 @@
 import PeekabooCore
 import SwiftUI
-import TachikomaCore
+import Tachikoma
 
 struct EnhancedSessionDetailView: View {
     let session: ConversationSession

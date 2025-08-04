@@ -1,5 +1,5 @@
 import SwiftUI
-import TachikomaCore
+import Tachikoma
 
 // MARK: - Chat View Components
 

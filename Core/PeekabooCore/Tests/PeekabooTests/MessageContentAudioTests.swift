@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import TachikomaCore
+import Tachikoma
 @testable import PeekabooCore
 
 @Suite("Audio Content Tests - Tachikoma Integration")

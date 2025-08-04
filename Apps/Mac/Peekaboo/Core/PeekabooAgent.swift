@@ -1,7 +1,7 @@
 import Foundation
 import PeekabooCore
 import SwiftUI
-import TachikomaCore
+import Tachikoma
 
 /// Tool execution record for tracking agent actions
 struct ToolExecution: Identifiable {

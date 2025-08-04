@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 import Observation
 import Speech
-import TachikomaCore
+import Tachikoma
 
 /// Provides speech-to-text capabilities for voice-driven automation.
 ///

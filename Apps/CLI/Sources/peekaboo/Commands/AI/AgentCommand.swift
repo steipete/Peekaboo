@@ -2,7 +2,7 @@ import ArgumentParser
 import Dispatch
 import Foundation
 import PeekabooCore
-import TachikomaCore
+import Tachikoma
 
 // Temporary session info struct until PeekabooAgentService implements session management
 // Test: Icon notifications are now working

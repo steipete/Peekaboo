@@ -1,5 +1,5 @@
 import Testing
-import TachikomaCore
+import Tachikoma
 @testable import peekaboo
 
 // Extend AgentCommand to expose parseModelString for testing

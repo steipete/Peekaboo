@@ -1,7 +1,7 @@
 import os.log
 import PeekabooCore
 import SwiftUI
-import TachikomaCore
+import Tachikoma
 
 struct MenuBarStatusView: View {
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "MenuBarStatus")
