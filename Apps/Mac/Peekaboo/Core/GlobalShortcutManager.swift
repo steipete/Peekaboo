@@ -30,6 +30,11 @@ final class GlobalShortcutManager: NSObject {
         self.logger.info("Registered handler for shortcut ID: \(id)")
     }
     
+    func clearAllHandlers() {
+        self.handlers.removeAll()
+        self.logger.info("Cleared all shortcut handlers")
+    }
+    
     private func setupEventHandler() {
         let eventTypes = [
             EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: OSType(kEventHotKeyPressed))

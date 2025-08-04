@@ -144,6 +144,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Visualizer components
     var visualizerCoordinator: VisualizerCoordinator?
     private var visualizerXPCService: VisualizerXPCService?
+    
+    // Keyboard shortcut tracking
+    private var registeredShortcuts: [UInt32: EventHotKeyRef] = [:]
 
     func applicationDidFinishLaunching(_: Notification) {
         self.logger.info("Peekaboo launching... (Poltergeist test)")
@@ -294,6 +297,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             selector: #selector(self.handleShowInspector),
             name: Notification.Name("ShowInspector"),
             object: nil)
+        
+        // Listen for keyboard shortcut changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(self.handleShortcutsChanged),
+            name: .shortcutsChanged,
+            object: nil)
     }
 
     @objc private func handleShowInspector() {
@@ -302,39 +312,67 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.set(true, forKey: "inspectorWindowRequested")
         self.showInspector()
     }
+    
+    @objc private func handleShortcutsChanged() {
+        self.logger.info("Keyboard shortcuts changed, updating global shortcuts")
+        self.setupKeyboardShortcuts()
+    }
 
     // MARK: - Keyboard Shortcuts
 
     private func setupKeyboardShortcuts() {
+        // Unregister all existing shortcuts first
+        self.unregisterAllShortcuts()
+        
+        guard let settings = self.settings else {
+            self.logger.warning("Settings not available, cannot setup keyboard shortcuts")
+            return
+        }
+        
         // Set up global keyboard shortcuts using Carbon HotKey API
         // This provides true global shortcuts that work from any app
         
-        // Toggle popover shortcut (⌘⇧Space by default)
-        self.registerGlobalShortcut(
-            keyCode: UInt32(kVK_Space),
-            modifiers: UInt32(cmdKey | shiftKey),
-            id: 1) { [weak self] in
-                self?.logger.info("Global shortcut triggered: togglePopover")
-                self?.statusBarController?.togglePopover()
-            }
+        // Register each shortcut if configured
+        if let shortcut = settings.togglePopoverShortcut {
+            self.registerGlobalShortcut(
+                keyCode: shortcut.keyCode,
+                modifiers: shortcut.carbonModifiers,
+                id: 1) { [weak self] in
+                    self?.logger.info("Global shortcut triggered: togglePopover")
+                    self?.statusBarController?.togglePopover()
+                }
+        }
         
-        // Show main window shortcut (⌘⇧P by default)
-        self.registerGlobalShortcut(
-            keyCode: UInt32(kVK_ANSI_P),
-            modifiers: UInt32(cmdKey | shiftKey),
-            id: 2) { [weak self] in
-                self?.logger.info("Global shortcut triggered: showMainWindow")  
-                self?.showMainWindow()
-            }
+        if let shortcut = settings.showMainWindowShortcut {
+            self.registerGlobalShortcut(
+                keyCode: shortcut.keyCode,
+                modifiers: shortcut.carbonModifiers,
+                id: 2) { [weak self] in
+                    self?.logger.info("Global shortcut triggered: showMainWindow")  
+                    self?.showMainWindow()
+                }
+        }
         
-        // Show inspector shortcut (⌘⇧I by default)
-        self.registerGlobalShortcut(
-            keyCode: UInt32(kVK_ANSI_I),
-            modifiers: UInt32(cmdKey | shiftKey),
-            id: 3) { [weak self] in
-                self?.logger.info("Global shortcut triggered: showInspector")
-                self?.showInspector()
-            }
+        if let shortcut = settings.showInspectorShortcut {
+            self.registerGlobalShortcut(
+                keyCode: shortcut.keyCode,
+                modifiers: shortcut.carbonModifiers,
+                id: 3) { [weak self] in
+                    self?.logger.info("Global shortcut triggered: showInspector")
+                    self?.showInspector()
+                }
+        }
+    }
+    
+    private func unregisterAllShortcuts() {
+        for (id, hotKeyRef) in registeredShortcuts {
+            UnregisterEventHotKey(hotKeyRef)
+            self.logger.info("Unregistered global shortcut \(id)")
+        }
+        registeredShortcuts.removeAll()
+        
+        // Clear handlers from GlobalShortcutManager
+        GlobalShortcutManager.shared.clearAllHandlers()
     }
     
     private func registerGlobalShortcut(keyCode: UInt32, modifiers: UInt32, id: UInt32, handler: @escaping () -> Void) {
@@ -354,7 +392,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         
+        guard let hotKeyRef = hotKeyRef else {
+            self.logger.error("Hot key reference is nil for shortcut \(id)")
+            return
+        }
+        
         self.logger.info("Successfully registered global shortcut \(id)")
+        
+        // Track the registered shortcut
+        registeredShortcuts[id] = hotKeyRef
         
         // Store the handler for later use
         GlobalShortcutManager.shared.setHandler(for: id, handler: handler)

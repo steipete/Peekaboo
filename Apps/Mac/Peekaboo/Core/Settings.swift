@@ -2,6 +2,11 @@ import Foundation
 import Observation
 import PeekabooCore
 import ServiceManagement
+import Carbon
+
+extension Notification.Name {
+    static let shortcutsChanged = Notification.Name("ShortcutsChanged")
+}
 
 /// Application settings and preferences manager.
 ///
@@ -118,8 +123,28 @@ final class PeekabooSettings {
         }
     }
 
-    // Note: Global shortcuts are now managed by KeyboardShortcuts library
-    // No need for manual storage - KeyboardShortcuts handles persistence automatically
+    // MARK: - Keyboard Shortcuts
+    
+    var togglePopoverShortcut: KeyboardShortcut? {
+        didSet { 
+            self.save()
+            NotificationCenter.default.post(name: .shortcutsChanged, object: nil)
+        }
+    }
+    
+    var showMainWindowShortcut: KeyboardShortcut? {
+        didSet { 
+            self.save()
+            NotificationCenter.default.post(name: .shortcutsChanged, object: nil)
+        }
+    }
+    
+    var showInspectorShortcut: KeyboardShortcut? {
+        didSet { 
+            self.save()
+            NotificationCenter.default.post(name: .shortcutsChanged, object: nil)
+        }
+    }
 
     // Mac-specific UI Features
     var voiceActivationEnabled: Bool = true {
@@ -353,7 +378,9 @@ final class PeekabooSettings {
         // Check actual launch at login status
         self.launchAtLogin = SMAppService.mainApp.status == .enabled
         self.userDefaults.set(self.launchAtLogin, forKey: "\(self.keyPrefix)launchAtLogin")
-        // globalShortcut is now managed by KeyboardShortcuts library - no need to load from UserDefaults
+        
+        // Load keyboard shortcuts
+        self.loadKeyboardShortcuts()
 
         // Default voiceActivationEnabled to true if not previously set
         if self.userDefaults.object(forKey: "\(self.keyPrefix)voiceActivationEnabled") == nil {
@@ -441,7 +468,9 @@ final class PeekabooSettings {
         self.userDefaults.set(self.alwaysOnTop, forKey: "\(self.keyPrefix)alwaysOnTop")
         self.userDefaults.set(self.showInDock, forKey: "\(self.keyPrefix)showInDock")
         self.userDefaults.set(self.launchAtLogin, forKey: "\(self.keyPrefix)launchAtLogin")
-        // globalShortcut is now managed by KeyboardShortcuts library - no need to save to UserDefaults
+        
+        // Save keyboard shortcuts
+        self.saveKeyboardShortcuts()
 
         self.userDefaults.set(self.voiceActivationEnabled, forKey: "\(self.keyPrefix)voiceActivationEnabled")
         self.userDefaults.set(self.hapticFeedbackEnabled, forKey: "\(self.keyPrefix)hapticFeedbackEnabled")
@@ -676,5 +705,58 @@ final class PeekabooSettings {
 
     func discoverModelsForCustomProvider(id: String) async -> (models: [String], error: String?) {
         await self.configManager.discoverModelsForCustomProvider(id: id)
+    }
+    
+    // MARK: - Keyboard Shortcuts Helper Methods
+    
+    private func loadKeyboardShortcuts() {
+        // Load keyboard shortcuts or set defaults
+        self.togglePopoverShortcut = loadShortcut(key: "togglePopoverShortcut") ?? KeyboardShortcut(
+            keyCode: UInt32(kVK_Space),
+            modifiers: [.command, .shift]
+        )
+        
+        self.showMainWindowShortcut = loadShortcut(key: "showMainWindowShortcut") ?? KeyboardShortcut(
+            keyCode: UInt32(kVK_ANSI_P),
+            modifiers: [.command, .shift]
+        )
+        
+        self.showInspectorShortcut = loadShortcut(key: "showInspectorShortcut") ?? KeyboardShortcut(
+            keyCode: UInt32(kVK_ANSI_I),
+            modifiers: [.command, .shift]
+        )
+    }
+    
+    private func saveKeyboardShortcuts() {
+        saveShortcut(self.togglePopoverShortcut, key: "togglePopoverShortcut")
+        saveShortcut(self.showMainWindowShortcut, key: "showMainWindowShortcut")
+        saveShortcut(self.showInspectorShortcut, key: "showInspectorShortcut")
+    }
+    
+    private func loadShortcut(key: String) -> KeyboardShortcut? {
+        guard let data = self.userDefaults.data(forKey: "\(self.keyPrefix)\(key)") else {
+            return nil
+        }
+        
+        do {
+            return try JSONDecoder().decode(KeyboardShortcut.self, from: data)
+        } catch {
+            print("Failed to decode keyboard shortcut for \(key): \(error)")
+            return nil
+        }
+    }
+    
+    private func saveShortcut(_ shortcut: KeyboardShortcut?, key: String) {
+        guard let shortcut = shortcut else {
+            self.userDefaults.removeObject(forKey: "\(self.keyPrefix)\(key)")
+            return
+        }
+        
+        do {
+            let data = try JSONEncoder().encode(shortcut)
+            self.userDefaults.set(data, forKey: "\(self.keyPrefix)\(key)")
+        } catch {
+            print("Failed to encode keyboard shortcut for \(key): \(error)")
+        }
     }
 }

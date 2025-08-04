@@ -364,57 +364,12 @@ struct VisualizerSettingsTabView: View {
     }
 }
 
-// MARK: - Shortcuts Settings
+// MARK: - Shortcuts Settings (Wrapper)
 
 struct ShortcutsSettingsView: View {
     @Environment(PeekabooSettings.self) private var settings
 
     var body: some View {
-        Form {
-            Section("Global Shortcuts") {
-                Text("Keyboard shortcuts work globally - from any app and are currently fixed to the defaults below.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 8)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    self.shortcutInfo("⌘⇧Space", "Toggle Popover", "Opens the AI assistant interface")
-                    self.shortcutInfo("⌘⇧P", "Show Main Window", "Opens the sessions management window")
-                    self.shortcutInfo("⌘⇧I", "Show Inspector", "Opens the debugging interface")
-                }
-                .font(.caption)
-                .foregroundColor(.secondary)
-                
-                Text("Note: These shortcuts are currently fixed but work globally from any application.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .italic()
-                    .padding(.top, 12)
-            }
-        }
-        .formStyle(.grouped)
-        .padding()
-    }
-
-    private func shortcutInfo(_ keys: String, _ title: String, _ description: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 8) {
-                Text(keys)
-                    .font(.system(.caption, design: .monospaced))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.secondary.opacity(0.1))
-                    .cornerRadius(4)
-
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.medium)
-            }
-            
-            Text(description)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-                .padding(.leading, 4)
-        }
+        ShortcutSettingsView(settings: self.settings)
     }
 }
