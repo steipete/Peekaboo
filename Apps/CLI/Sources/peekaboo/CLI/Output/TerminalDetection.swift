@@ -218,12 +218,8 @@ enum TerminalDetector {
             }
         }
         
-        // Check for TermKit availability
-        #if canImport(TermKit)
+        // TermKit is always available now (local fork with macOS 14.0 support)
         return true
-        #else
-        return false
-        #endif
     }
     
     // MARK: - Utility Methods

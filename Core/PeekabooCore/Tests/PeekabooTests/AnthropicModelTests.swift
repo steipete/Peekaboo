@@ -10,7 +10,7 @@ struct AnthropicModelTests {
         // Test current Anthropic models
         let opus4 = Model.anthropic(.opus4)
         let sonnet4 = Model.anthropic(.sonnet4)
-        let haiku35 = Model.anthropic(.haiku3_5)
+        let haiku35 = Model.anthropic(.haiku35)
         
         #expect(opus4.providerName == "Anthropic")
         #expect(sonnet4.providerName == "Anthropic")
@@ -41,7 +41,7 @@ struct AnthropicModelTests {
         let anthropicModels = [
             Model.anthropic(.opus4),
             Model.anthropic(.sonnet4),
-            Model.anthropic(.haiku3_5)
+            Model.anthropic(.haiku35)
         ]
         
         for model in anthropicModels {
@@ -81,7 +81,7 @@ struct AnthropicModelTests {
         let visionCapableModels = [
             Model.anthropic(.opus4),
             Model.anthropic(.sonnet4),
-            Model.anthropic(.haiku3_5)
+            Model.anthropic(.haiku35)
         ]
         
         for model in visionCapableModels {
@@ -93,7 +93,7 @@ struct AnthropicModelTests {
     func modelComparison() {
         let opus4 = Model.anthropic(.opus4)
         let sonnet4 = Model.anthropic(.sonnet4)
-        let haiku35 = Model.anthropic(.haiku3_5)
+        let haiku35 = Model.anthropic(.haiku35)
         
         // Test model descriptions
         #expect(opus4.description.contains("Anthropic"))

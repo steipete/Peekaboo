@@ -53,10 +53,12 @@ struct MCPClientManagerTests {
         )
         
         try await manager.addServer(name: "test-remove", config: config)
-        #expect(await manager.getServerNames().contains("test-remove"))
+        let namesAfterAdd = await manager.getServerNames()
+        #expect(namesAfterAdd.contains("test-remove"))
         
         try await manager.removeServer(name: "test-remove")
-        #expect(!await manager.getServerNames().contains("test-remove"))
+        let namesAfterRemove = await manager.getServerNames()
+        #expect(!namesAfterRemove.contains("test-remove"))
     }
     
     @Test("Enable and disable MCP server")
@@ -235,7 +237,12 @@ struct MCPClientManagerTests {
         #expect(serverInfo == nil)
         
         let health = await manager.checkServerHealth(name: "non-existent-server")
-        #expect(health == .unknown)
+        switch health {
+        case .unknown:
+            break // Expected
+        default:
+            Issue.record("Expected unknown health status, got \(health)")
+        }
         
         // These should throw errors
         await #expect(throws: MCPClientError.self) {

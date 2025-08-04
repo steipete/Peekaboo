@@ -59,6 +59,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     private let sessionManager: AgentSessionManager
     private let defaultLanguageModel: LanguageModel
     private var currentModel: LanguageModel?
+    private var toolBridge: PeekabooToolBridge?
 
     /// The default model used by this agent service
     public var defaultModel: String { self.defaultLanguageModel.description }

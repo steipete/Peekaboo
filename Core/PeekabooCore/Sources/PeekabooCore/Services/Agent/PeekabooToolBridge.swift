@@ -6,7 +6,7 @@ import Tachikoma
 /// Bridge that converts Peekaboo's native Tool<PeekabooServices> to TachikomaCore's SimpleTool format
 /// This eliminates the need for duplicate SimpleTool implementations while preserving rich tool validation
 @available(macOS 14.0, *)
-public class PeekabooToolBridge {
+public class PeekabooToolBridge: @unchecked Sendable {
     private let services: PeekabooServices
     private let nativeTools: [Tool<PeekabooServices>]
     
@@ -37,10 +37,7 @@ public class PeekabooToolBridge {
             name: nativeTool.name,
             description: nativeTool.description,
             parameters: convertedParameters,
-            execute: { [weak self] (tachikomaArgs: ToolArguments) in
-                guard let self = self else {
-                    throw TachikomaError.apiError("PeekabooToolBridge deallocated")
-                }
+            execute: { [self] (tachikomaArgs: Tachikoma.ToolArguments) in
                 
                 // Convert TachikomaCore arguments to Peekaboo format
                 let peekabooInput = try self.convertArgumentsToPeekabooInput(tachikomaArgs)
@@ -109,7 +106,7 @@ public class PeekabooToolBridge {
     // MARK: - Argument Conversion
     
     /// Convert TachikomaCore ToolArguments to Peekaboo ToolInput
-    private func convertArgumentsToPeekabooInput(_ tachikomaArgs: ToolArguments) throws -> ToolInput {
+    private func convertArgumentsToPeekabooInput(_ tachikomaArgs: Tachikoma.ToolArguments) throws -> ToolInput {
         // Both ToolArguments and ToolInput use the same [String: ToolArgument] structure
         // We can directly pass the arguments from TachikomaCore to Peekaboo
         return ToolInput(tachikomaArgs.allArguments)
@@ -145,6 +142,7 @@ extension PeekabooAgentService {
     func createBridgedSimpleTools() -> [SimpleTool] {
         let nativeTools = createPeekabooTools()
         let bridge = PeekabooToolBridge(services: services, nativeTools: nativeTools)
+        // Note: The bridge is stored in the returned SimpleTool closures, keeping it alive
         return bridge.createSimpleTools()
     }
 }

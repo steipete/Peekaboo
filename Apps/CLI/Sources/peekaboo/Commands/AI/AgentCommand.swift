@@ -4,9 +4,7 @@ import Foundation
 import PeekabooCore
 import Tachikoma
 
-#if canImport(TermKit)
 import TermKit
-#endif
 
 // Temporary session info struct until PeekabooAgentService implements session management
 // Test: Icon notifications are now working
@@ -189,6 +187,7 @@ struct AgentCommand: AsyncParsableCommand {
           peekaboo agent --simple "Basic task"           # Force simple output, no colors
           peekaboo agent --no-color "CI task"            # Disable colors only
           peekaboo agent --verbose "Debug task"          # Full JSON debug output
+          peekaboo agent --debug-terminal "Debug task"   # Show terminal detection details
           peekaboo agent --quiet "Silent task"           # Only show final result
 
           # Control execution steps:
@@ -225,6 +224,7 @@ struct AgentCommand: AsyncParsableCommand {
         - --simple: Force minimal output mode (no colors or rich formatting)
         - --no-color: Disable colors while keeping other formatting
         - --verbose: Full JSON debug information for troubleshooting
+        - --debug-terminal: Show detailed terminal detection and TUI debugging info
         - --quiet: Only final result, silent execution
 
         EXECUTION CONTROL:
@@ -241,6 +241,9 @@ struct AgentCommand: AsyncParsableCommand {
 
     @Flag(name: .shortAndLong, help: "Enable verbose output with full JSON debug information")
     var verbose = false
+
+    @Flag(name: .customLong("debug-terminal"), help: "Show detailed terminal detection and TUI debugging info")
+    var debugTerminal = false
 
     @Flag(name: [.short, .long], help: "Quiet mode - only show final result")
     var quiet = false
@@ -291,7 +294,7 @@ struct AgentCommand: AsyncParsableCommand {
     private var outputMode: OutputMode {
         // Explicit user overrides first
         if self.quiet { return .quiet }
-        if self.verbose { return .verbose }
+        if self.verbose || self.debugTerminal { return .verbose }
         if self.forceTui { return .tui }
         if self.simple { return .minimal }
         if self.noColor { return .minimal }
@@ -303,11 +306,24 @@ struct AgentCommand: AsyncParsableCommand {
         
         // Smart detection based on terminal capabilities
         let capabilities = TerminalDetector.detectCapabilities()
-        return capabilities.recommendedOutputMode
+        let recommendedMode = capabilities.recommendedOutputMode
+        
+        // Show detailed detection info in debug terminal mode
+        if self.debugTerminal {
+            self.printTerminalDetectionDebug(capabilities, actualMode: recommendedMode)
+        }
+        
+        return recommendedMode
     }
 
     @MainActor
     mutating func run() async throws {
+        // Show terminal detection debug if requested
+        if self.debugTerminal {
+            let capabilities = TerminalDetector.detectCapabilities()
+            self.printTerminalDetectionDebug(capabilities, actualMode: self.outputMode)
+        }
+        
         do {
             try await self.runInternal()
         } catch let error as DecodingError {
@@ -725,30 +741,10 @@ struct AgentCommand: AsyncParsableCommand {
         // Create event delegate for real-time updates
         let eventDelegate: AgentEventDelegate
         
-        #if canImport(TermKit)
-        if self.outputMode == .tui {
-            // Initialize TUI mode
-            let tuiManager = TermKitTUIManager()
-            
-            // Start the TUI in a background task
-            Task {
-                tuiManager.startTUI()
-            }
-            
-            // Initialize TUI with task info
-            tuiManager.startTask(task, maxSteps: maxSteps, modelName: displayModelName)
-            
-            eventDelegate = TermKitAgentEventDelegate(tuiManager: tuiManager)
-        } else {
-            eventDelegate = await MainActor.run {
-                CompactEventDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
-            }
-        }
-        #else
+        // For now, use CompactEventDelegate for all modes (TUI implementation coming soon)
         eventDelegate = await MainActor.run {
             CompactEventDelegate(outputMode: self.outputMode, jsonOutput: self.jsonOutput, task: task)
         }
-        #endif
 
         // Show header with properly cased model name (skip for TUI mode as it handles its own display)
         if self.outputMode != .quiet && self.outputMode != .tui && self.outputMode != .minimal && !self.jsonOutput {
@@ -829,13 +825,11 @@ struct AgentCommand: AsyncParsableCommand {
             // Update terminal title to show completion
             self.updateTerminalTitle("Completed: \(task.prefix(50))")
             
-            // Clean up TUI if it was used
-            #if canImport(TermKit)
+            // Clean up TUI if it was used (implementation coming soon)
             if self.outputMode == .tui {
                 // Give user a moment to see the final state before exiting
                 try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
             }
-            #endif
             
             // Show terminal capabilities in verbose mode for debugging
             if self.outputMode == .verbose {
@@ -1035,6 +1029,70 @@ struct AgentCommand: AsyncParsableCommand {
             let days = Int(interval / 86400)
             return "\(days) day\(days == 1 ? "" : "s") ago"
         }
+    }
+    
+    /// Print detailed terminal detection debugging information
+    private func printTerminalDetectionDebug(_ capabilities: TerminalCapabilities, actualMode: OutputMode) {
+        print("\n" + String(repeating: "=", count: 60))
+        print("\(TerminalColor.bold)\(TerminalColor.cyan)TERMINAL DETECTION DEBUG (-vv)\(TerminalColor.reset)")
+        print(String(repeating: "=", count: 60))
+        
+        // Basic terminal info
+        print("📟 \(TerminalColor.bold)Terminal Type:\(TerminalColor.reset) \(capabilities.termType ?? "unknown")")
+        print("📏 \(TerminalColor.bold)Dimensions:\(TerminalColor.reset) \(capabilities.width)x\(capabilities.height)")
+        
+        // Capability flags
+        print("🔧 \(TerminalColor.bold)Capabilities:\(TerminalColor.reset)")
+        print("   • Interactive: \(capabilities.isInteractive ? "✅" : "❌") (isatty check)")
+        print("   • Colors: \(capabilities.supportsColors ? "✅" : "❌") (ANSI color support)")
+        print("   • True Color: \(capabilities.supportsTrueColor ? "✅" : "❌") (24-bit color)")
+        print("   • TUI Ready: \(capabilities.supportsTUI ? "✅" : "❌") (full TUI requirements)")
+        
+        // Environment info
+        print("🌍 \(TerminalColor.bold)Environment:\(TerminalColor.reset)")
+        print("   • CI Environment: \(capabilities.isCI ? "✅" : "❌")")
+        print("   • Piped Output: \(capabilities.isPiped ? "✅" : "❌")")
+        
+        // Environment variables
+        let env = ProcessInfo.processInfo.environment
+        print("🔧 \(TerminalColor.bold)Environment Variables:\(TerminalColor.reset)")
+        print("   • TERM: \(env["TERM"] ?? "not set")")
+        print("   • COLORTERM: \(env["COLORTERM"] ?? "not set")")
+        print("   • NO_COLOR: \(env["NO_COLOR"] != nil ? "set" : "not set")")
+        print("   • FORCE_COLOR: \(env["FORCE_COLOR"] ?? "not set")")
+        print("   • PEEKABOO_OUTPUT_MODE: \(env["PEEKABOO_OUTPUT_MODE"] ?? "not set")")
+        
+        // TUI specific checks
+        print("🎮 \(TerminalColor.bold)TUI Requirements Check:\(TerminalColor.reset)")
+        print("   • Interactive: \(capabilities.isInteractive ? "✅" : "❌")")
+        print("   • Colors: \(capabilities.supportsColors ? "✅" : "❌")")
+        print("   • Not CI: \(!capabilities.isCI ? "✅" : "❌")")
+        print("   • Width ≥100: \(capabilities.width >= 100 ? "✅ (\(capabilities.width))" : "❌ (\(capabilities.width))")")
+        print("   • Height ≥20: \(capabilities.height >= 20 ? "✅ (\(capabilities.height))" : "❌ (\(capabilities.height))")")
+        
+        print("   • TermKit Available: ✅")
+        
+        // Recommended vs actual mode
+        let recommendedMode = capabilities.recommendedOutputMode
+        print("🎯 \(TerminalColor.bold)Recommended Mode:\(TerminalColor.reset) \(recommendedMode.description)")
+        print("🎯 \(TerminalColor.bold)Actual Mode:\(TerminalColor.reset) \(actualMode.description)")
+        
+        if recommendedMode != actualMode {
+            print("⚠️  \(TerminalColor.yellow)Mode Override Detected\(TerminalColor.reset) - explicit flag or environment variable used")
+        }
+        
+        // Show decision logic
+        if !capabilities.isInteractive || capabilities.isCI || capabilities.isPiped {
+            print("   → Fallback to minimal (non-interactive/CI/piped)")
+        } else if capabilities.supportsTUI && capabilities.width >= 100 && capabilities.height >= 20 {
+            print("   → TUI mode (all requirements met)")
+        } else if capabilities.supportsColors && capabilities.width >= 80 {
+            print("   → Enhanced mode (colors + sufficient width)")
+        } else {
+            print("   → Compact mode (basic terminal)")
+        }
+        
+        print(String(repeating: "=", count: 60) + "\n")
     }
 }
 

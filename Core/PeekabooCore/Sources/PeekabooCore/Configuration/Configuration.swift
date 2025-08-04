@@ -291,7 +291,7 @@ public struct Configuration: Codable {
     ///
     /// Defines connection parameters for external MCP servers, including transport
     /// type, command execution, environment variables, and connection settings.
-    public struct MCPClientConfig: Codable {
+    public struct MCPClientConfig: Codable, Sendable {
         public var transport: String
         public var command: String
         public var args: [String]

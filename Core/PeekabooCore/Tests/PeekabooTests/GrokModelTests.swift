@@ -9,8 +9,8 @@ struct GrokModelTests {
     func modelSelectionAndProperties() {
         // Test current Grok models
         let grok4 = Model.grok(.grok4)
-        let grok2 = Model.grok(.grok2_1212)
-        let grok2Vision = Model.grok(.grok2Vision_1212)
+        let grok2 = Model.grok(.grok21212)
+        let grok2Vision = Model.grok(.grok2Vision1212)
         let grokBeta = Model.grok(.grokBeta)
         
         #expect(grok4.providerName == "Grok")
@@ -47,8 +47,8 @@ struct GrokModelTests {
         let models = [
             Model.grok(.grok4),
             Model.grok(.grok4Latest),
-            Model.grok(.grok2_1212),
-            Model.grok(.grok2Vision_1212),
+            Model.grok(.grok21212),
+            Model.grok(.grok2Vision1212),
             Model.grok(.grokBeta),
             Model.grok(.grokVisionBeta)
         ]
@@ -61,7 +61,7 @@ struct GrokModelTests {
         
         // Test vision models have vision capability
         let visionModels = [
-            Model.grok(.grok2Vision_1212),
+            Model.grok(.grok2Vision1212),
             Model.grok(.grokVisionBeta)
         ]
         
@@ -73,7 +73,7 @@ struct GrokModelTests {
     @Test("Grok model context lengths")
     func modelContextLengths() {
         let grok4 = Model.grok(.grok4)
-        let grok2 = Model.grok(.grok2_1212)
+        let grok2 = Model.grok(.grok21212)
         
         // Grok models should have reasonable context lengths
         #expect(grok4.contextLength > 50_000) // At least 50K context
@@ -115,7 +115,7 @@ struct GrokModelTests {
         // Test that Grok models are compatible with OpenAI-style API
         let grokModels = [
             Model.grok(.grok4),
-            Model.grok(.grok2_1212),
+            Model.grok(.grok21212),
             Model.grok(.grokBeta)
         ]
         

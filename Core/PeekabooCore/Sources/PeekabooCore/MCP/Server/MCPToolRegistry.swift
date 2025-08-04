@@ -74,7 +74,7 @@ public final class MCPToolRegistry {
         self.clientManager = clientManager
         
         // Clear existing external tools
-        externalTools.removeAll()
+        self.externalTools.removeAll()
         
         // Get external tools from all servers
         let externalToolsByServer = await clientManager.getExternalTools()
@@ -86,12 +86,12 @@ public final class MCPToolRegistry {
                     originalTool: toolInfo,
                     clientManager: clientManager
                 )
-                externalTools[externalTool.name] = externalTool
-                logger.debug("Registered external tool: \(externalTool.name)")
+                self.externalTools[externalTool.name] = externalTool
+                self.logger.debug("Registered external tool: \(externalTool.name)")
             }
         }
         
-        logger.info("Registered \(externalTools.count) external tools from \(externalToolsByServer.count) servers")
+        self.logger.info("Registered \(self.externalTools.count) external tools from \(externalToolsByServer.count) servers")
     }
     
     /// Refresh external tools from servers

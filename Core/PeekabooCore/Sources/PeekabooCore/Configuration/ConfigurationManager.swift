@@ -527,27 +527,29 @@ public final class ConfigurationManager: @unchecked Sendable {
           },
 
           // MCP Client Configuration
-          "mcpClient": {
+          "mcpClients": {
             // External MCP servers to connect to
             // Peekaboo ships with BrowserMCP by default (https://browsermcp.io)
             // To disable the default browser server, add:
-            // "servers": {
-            //   "browser": {
-            //     "enabled": false
-            //   }
+            // "browser": {
+            //   "transport": "stdio",
+            //   "command": "npx", 
+            //   "args": ["-y", "@agent-infra/mcp-server-browser@latest"],
+            //   "enabled": false,
+            //   "timeout": 15.0,
+            //   "autoReconnect": true,
+            //   "description": "Browser automation via BrowserMCP"
             // }
             
             // Example: Add GitHub MCP server
-            // "servers": {
-            //   "github": {
-            //     "transport": "stdio",
-            //     "command": "npx",
-            //     "args": ["-y", "@modelcontextprotocol/server-github"],
-            //     "enabled": true,
-            //     "timeout": 15.0,
-            //     "autoReconnect": true,
-            //     "description": "GitHub repository integration"
-            //   }
+            // "github": {
+            //   "transport": "stdio",
+            //   "command": "npx",
+            //   "args": ["-y", "@modelcontextprotocol/server-github"],
+            //   "enabled": true,
+            //   "timeout": 15.0,
+            //   "autoReconnect": true,
+            //   "description": "GitHub repository integration"
             // }
           },
 
@@ -679,23 +681,34 @@ public final class ConfigurationManager: @unchecked Sendable {
     
     // MARK: - MCP Client Configuration
     
-    /// Get MCP client configuration with default servers merged
-    public func getMCPClientConfig() -> Configuration.MCPClientConfig? {
-        return self.getConfiguration()?.mcpClient
+    /// Get MCP client servers dictionary 
+    public func getMCPClientServers() -> [String: Configuration.MCPClientConfig] {
+        return self.getConfiguration()?.mcpClients ?? [:]
     }
     
     /// Initialize MCP client with default servers
     public func initializeMCPClient() async {
         // Get user-configured servers
-        let userServers = getMCPClientConfig()?.servers ?? [:]
+        let userServers = getMCPClientServers()
         
         // Initialize default servers through MCPClientManager
         await MCPClientManager.shared.initializeDefaultServers(userConfigs: userServers)
         
-        // Add user-configured servers
+        // Add user-configured servers - process each server individually to avoid data race issues
         for (serverName, serverConfig) in userServers {
             do {
-                try await MCPClientManager.shared.addServer(name: serverName, config: serverConfig)
+                // Create a copy of the config to avoid data race issues
+                let configCopy = Configuration.MCPClientConfig(
+                    transport: serverConfig.transport,
+                    command: serverConfig.command,
+                    args: serverConfig.args,
+                    env: serverConfig.env,
+                    enabled: serverConfig.enabled,
+                    timeout: serverConfig.timeout,
+                    autoReconnect: serverConfig.autoReconnect,
+                    description: serverConfig.description
+                )
+                try await MCPClientManager.shared.addServer(name: serverName, config: configCopy)
             } catch {
                 // Log error but continue with other servers
                 print("Warning: Failed to initialize MCP server '\(serverName)': \(error.localizedDescription)")

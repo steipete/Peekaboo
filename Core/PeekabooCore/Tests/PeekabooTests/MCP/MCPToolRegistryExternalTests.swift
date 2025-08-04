@@ -217,7 +217,7 @@ struct MCPToolRegistryExternalTests {
     }
     
     @Test("Refresh external tools with client manager")
-    func testRefreshExternalToolsWithClientManager() async {
+    func testRefreshExternalToolsWithClientManager() async throws {
         let registry = MCPToolRegistry()
         let clientManager = MCPClientManager.shared
         
@@ -249,7 +249,7 @@ struct MCPToolRegistryMockExternalTests {
         let clientManager = MCPClientManager.shared
         let externalTool = ExternalMCPTool(
             serverName: "test-server",
-            originalTool: Tool.Info(
+            originalTool: Tool(
                 name: "external_tool",
                 description: "External tool",
                 inputSchema: .object([:])

@@ -12,7 +12,7 @@ struct ExternalMCPToolTests {
         let clientManager = MCPClientManager.shared
         
         // Create a mock tool info
-        let originalTool = Tool.Info(
+        let originalTool = Tool(
             name: "test_tool",
             description: "A test tool for external MCP",
             inputSchema: .object(["param": .string("test")])
@@ -42,7 +42,7 @@ struct ExternalMCPToolTests {
     func testToolNamePrefixing() async {
         let clientManager = MCPClientManager.shared
         
-        let originalTool = Tool.Info(
+        let originalTool = Tool(
             name: "create_file",
             description: "Create a new file",
             inputSchema: .object([:])
@@ -75,17 +75,17 @@ struct CategorizedToolsTests {
         // Create mock external tools
         let externalTool1 = ExternalMCPTool(
             serverName: "server1",
-            originalTool: Tool.Info(name: "external1", description: "External tool 1", inputSchema: .object([:])),
+            originalTool: Tool(name: "external1", description: "External tool 1", inputSchema: .object([:])),
             clientManager: clientManager
         )
         let externalTool2 = ExternalMCPTool(
             serverName: "server1",
-            originalTool: Tool.Info(name: "external2", description: "External tool 2", inputSchema: .object([:])),
+            originalTool: Tool(name: "external2", description: "External tool 2", inputSchema: .object([:])),
             clientManager: clientManager
         )
         let externalTool3 = ExternalMCPTool(
             serverName: "server2",
-            originalTool: Tool.Info(name: "external3", description: "External tool 3", inputSchema: .object([:])),
+            originalTool: Tool(name: "external3", description: "External tool 3", inputSchema: .object([:])),
             clientManager: clientManager
         )
         
@@ -220,14 +220,14 @@ struct ToolOrganizerTests {
             "server1": [
                 ExternalMCPTool(
                     serverName: "server1",
-                    originalTool: Tool.Info(name: "external1", description: "External tool 1", inputSchema: .object([:])),
+                    originalTool: Tool(name: "external1", description: "External tool 1", inputSchema: .object([:])),
                     clientManager: clientManager
                 )
             ] as [MCPTool],
             "server2": [
                 ExternalMCPTool(
                     serverName: "server2",
-                    originalTool: Tool.Info(name: "external2", description: "External tool 2", inputSchema: .object([:])),
+                    originalTool: Tool(name: "external2", description: "External tool 2", inputSchema: .object([:])),
                     clientManager: clientManager
                 )
             ] as [MCPTool]
@@ -278,12 +278,12 @@ struct ToolOrganizerTests {
             "server1": [
                 ExternalMCPTool(
                     serverName: "server1",
-                    originalTool: Tool.Info(name: "zulu", description: "Last external", inputSchema: .object([:])),
+                    originalTool: Tool(name: "zulu", description: "Last external", inputSchema: .object([:])),
                     clientManager: clientManager
                 ),
                 ExternalMCPTool(
                     serverName: "server1",
-                    originalTool: Tool.Info(name: "alpha", description: "First external", inputSchema: .object([:])),
+                    originalTool: Tool(name: "alpha", description: "First external", inputSchema: .object([:])),
                     clientManager: clientManager
                 )
             ] as [MCPTool]
@@ -317,7 +317,7 @@ struct ToolOrganizerTests {
         
         let externalTool = ExternalMCPTool(
             serverName: "test-server",
-            originalTool: Tool.Info(name: "external_tool", description: "External tool", inputSchema: .object([:])),
+            originalTool: Tool(name: "external_tool", description: "External tool", inputSchema: .object([:])),
             clientManager: clientManager
         )
         

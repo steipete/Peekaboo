@@ -205,11 +205,9 @@ MCP client settings are stored in `~/.peekaboo/config.json`. Peekaboo ships with
 To disable the default BrowserMCP server:
 ```json
 {
-  "mcpClient": {
-    "servers": {
-      "browser": {
-        "enabled": false
-      }
+  "mcpClients": {
+    "browser": {
+      "enabled": false
     }
   }
 }
@@ -221,8 +219,7 @@ Full configuration example with additional servers:
 
 ```json
 {
-  "mcpClient": {
-    "servers": {
+  "mcpClients": {
     "github": {
       "transport": "stdio",
       "command": "npx",

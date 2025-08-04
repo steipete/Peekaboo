@@ -403,11 +403,9 @@ External servers are configured in `~/.peekaboo/config.json`. To disable Browser
 
 ```json
 {
-  "mcpClient": {
-    "servers": {
-      "browser": {
-        "enabled": false
-      }
+  "mcpClients": {
+    "browser": {
+      "enabled": false
     }
   }
 }

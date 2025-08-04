@@ -5,11 +5,11 @@ import os.log
 /// External MCP tool that proxies requests to an external MCP server
 public struct ExternalMCPTool: MCPTool {
     public let serverName: String
-    public let originalTool: Tool.Info
+    public let originalTool: Tool
     private let clientManager: MCPClientManager
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp.client", category: "external-tool")
     
-    public init(serverName: String, originalTool: Tool.Info, clientManager: MCPClientManager) {
+    public init(serverName: String, originalTool: Tool, clientManager: MCPClientManager) {
         self.serverName = serverName
         self.originalTool = originalTool
         self.clientManager = clientManager
@@ -22,11 +22,11 @@ public struct ExternalMCPTool: MCPTool {
     }
     
     public var description: String {
-        "[\(serverName)] \(originalTool.description ?? "External tool")"
+        "[\(serverName)] \(originalTool.description)"
     }
     
     public var inputSchema: Value {
-        originalTool.inputSchema
+        originalTool.inputSchema ?? Value.object([:])
     }
     
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
@@ -161,8 +161,8 @@ public struct ToolDisplayOptions: Sendable {
     
     /// Compact display for CLI usage
     public static let compact = ToolDisplayOptions(
-        showDescription: false,
-        showToolCount: false
+        showToolCount: false,
+        showDescription: false
     )
     
     /// Verbose display with all information
