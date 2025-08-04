@@ -50,8 +50,14 @@ final class PeekabooTermKitTUI {
     func start(agentTask: @escaping () async throws -> Void) {
         guard !isRunning else { return }
         
-        // Initialize TermKit
-        Application.prepare()
+        // IMPORTANT: Cannot call Application.run() from MainActor context
+        // because it calls dispatch_main() which crashes when already on main queue.
+        // Need to run the TUI setup and agent task without blocking dispatch_main.
+        
+        // Initialize TermKit with Unix driver to avoid macOS curses issues
+        // See: https://github.com/migueldeicaza/TermKit commit 5fee151
+        // Force Unix driver for now since curses still has issues on macOS 15.x
+        Application.prepare(driverType: .unix)
         
         // Create main window
         window = Window()
@@ -59,39 +65,54 @@ final class PeekabooTermKitTUI {
         
         setupUI()
         
-        // Run the agent task on a background queue to avoid blocking the main thread
-        DispatchQueue.global(qos: .userInitiated).async {
-            Task {
-                do {
-                    try await agentTask()
-                    // Auto-complete after successful execution
-                    DispatchQueue.main.async {
-                        self.addOutput("✅ Task completed successfully", style: .system)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-                            self?.stop()
-                        }
-                    }
-                } catch {
-                    DispatchQueue.main.async {
-                        self.addError("Agent error: \(error.localizedDescription)")
-                        // Auto-exit after error
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                            self?.stop()
-                        }
-                    }
+        // Start the agent task asynchronously
+        Task {
+            do {
+                try await agentTask()
+                // Auto-complete after successful execution
+                await MainActor.run {
+                    self.addOutput("✅ Task completed successfully", style: .system)
+                }
+                
+                // Keep TUI visible for 2 seconds then exit
+                try await Task.sleep(nanoseconds: 2_000_000_000)
+                await MainActor.run {
+                    self.stop()
+                }
+            } catch {
+                await MainActor.run {
+                    self.addError("Agent error: \(error.localizedDescription)")
+                }
+                
+                // Keep error visible for 3 seconds then exit
+                try await Task.sleep(nanoseconds: 3_000_000_000)
+                await MainActor.run {
+                    self.stop()
                 }
             }
         }
         
-        // Run the TUI (blocks until Application.requestStop is called)
+        // Set running state but don't call Application.run() 
+        // to avoid dispatch_main() crash
         isRunning = true
-        Application.run()
+        
+        // Instead of Application.run(), we'll simulate basic TUI behavior
+        // This is a temporary workaround until TermKit can be used safely
+        // from MainActor contexts
+        simulateBasicTUI()
     }
     
     func stop() {
         guard isRunning else { return }
-        Application.requestStop()
+        
+        // Only call requestStop if we actually started the Application run loop
+        // Since we're avoiding Application.run() to prevent dispatch_main() crash,
+        // we don't need to call requestStop()
+        // Application.requestStop()
+        
         isRunning = false
+        print("═══════════════════════════════════════════════════════════")
+        print("🏁 Agent session ended")
     }
     
     private func setupUI() {
@@ -314,6 +335,22 @@ final class PeekabooTermKitTUI {
             let remainingSeconds = Int(seconds.truncatingRemainder(dividingBy: 60))
             return String(format: "%dm %ds", minutes, remainingSeconds)
         }
+    }
+    
+    /// Temporary workaround for TermKit's dispatch_main() issue
+    /// This provides basic output without the full TUI functionality
+    private func simulateBasicTUI() {
+        // For now, just provide console output instead of full TUI
+        // The real UI events will still be sent via the event delegate
+        print("🖥️  Peekaboo Agent TUI Mode")
+        print("📝 Task: \(currentTask)")
+        print("🤖 Model: \(modelName)")
+        print("⏱️  Started at \(DateFormatter.localizedString(from: startTime, dateStyle: .none, timeStyle: .medium))")
+        print("═══════════════════════════════════════════════════════════")
+        
+        // The agent task is already running in the background Task
+        // UI updates will come through the event delegate system
+        // This is a simpler fallback until TermKit can be fixed
     }
     
 }
